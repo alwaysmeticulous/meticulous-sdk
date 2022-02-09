@@ -1,11 +1,18 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
   "bin": {
     "meticulous": "bin/meticulous"
+  },
+  "publishConfig": {
+    "access": "restricted"
   },
   "scripts": {
     "clean": "rimraf dist",
