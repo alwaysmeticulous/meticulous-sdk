@@ -5,8 +5,7 @@
   "types": "dist/index.d.ts",
   "files": [
     "bin",
-    "dist",
-    "README.md"
+    "dist"
   ],
   "bin": {
     "meticulous": "bin/meticulous"
@@ -23,6 +22,7 @@
     "cli:dev": "ts-node src/main.ts"
   },
   "dependencies": {
+    "archiver": "^5.3.0",
     "axios": "^0.25.0",
     "yargs": "^17.3.1"
   },
