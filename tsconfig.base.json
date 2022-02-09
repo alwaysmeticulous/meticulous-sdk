@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    /* Projects */
+    "incremental": true,
+    /* Language and Environment */
+    "target": "ES2019",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    /* Modules */
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    /* Emit */
+    "declaration": true,
+    "newLine": "lf",
+    "preserveConstEnums": true,
+    /* Interop Constraints */
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    /* Type Checking */
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    /* Completeness */
+    "skipLibCheck": true
+  }
+}

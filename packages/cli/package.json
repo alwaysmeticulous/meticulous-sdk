@@ -1,0 +1,30 @@
+{
+  "name": "@alwaysmeticulous/cli",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "bin": {
+    "meticulous": "bin/meticulous"
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsc --build tsconfig.json",
+    "dev": "tsc --build tsconfig.json --watch",
+    "format": "prettier --write src",
+    "cli": "node dist/main.js",
+    "cli:dev": "ts-node src/main.ts"
+  },
+  "dependencies": {
+    "axios": "^0.25.0",
+    "yargs": "^17.3.1"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "engines": {
+    "node": ">= 12"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "meticulous-sdk",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "clean": "lerna run clean",
+    "build": "lerna run build",
+    "format": "lerna run format",
+    "cli": "yarn workspace @alwaysmeticulous/cli cli",
+    "cli:dev": "yarn workspace @alwaysmeticulous/cli cli:dev"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^17.0.16",
+    "@types/yargs": "^17.0.8",
+    "lerna": "^4.0.0",
+    "prettier": "^2.5.1",
+    "rimraf": "^3.0.2",
+    "ts-node": "^10.5.0",
+    "typescript": "^4.5.5"
+  },
+  "engines": {
+    "node": ">= 12"
+  }
+}
