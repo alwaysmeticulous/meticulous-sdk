@@ -5,7 +5,8 @@
   "types": "dist/index.d.ts",
   "files": [
     "bin",
-    "dist"
+    "dist",
+    "README.md"
   ],
   "bin": {
     "meticulous": "bin/meticulous"
