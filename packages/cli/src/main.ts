@@ -1,5 +1,6 @@
 import yargs from "yargs";
 import { showProject } from "./commands/show-project/show-project.command";
+import { uploadBuild } from "./commands/upload-build/upload-build.command";
 
 export const main: () => void = () => {
   const promise = yargs
@@ -10,6 +11,7 @@ export const main: () => void = () => {
       Meticulous CLI`
     )
     .command(showProject)
+    .command(uploadBuild)
     .help()
     .strictCommands()
     .demandCommand().argv;
