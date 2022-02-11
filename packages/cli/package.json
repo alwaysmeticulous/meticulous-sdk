@@ -1,18 +1,16 @@
 {
   "name": "@alwaysmeticulous/cli",
   "version": "1.0.0-alpha.1",
+  "description": "The Meticulous CLI",
+  "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "bin",
-    "dist",
-    "README.md"
+    "dist"
   ],
   "bin": {
     "meticulous": "bin/meticulous"
-  },
-  "publishConfig": {
-    "access": "restricted"
   },
   "scripts": {
     "clean": "rimraf dist",
@@ -34,5 +32,14 @@
   },
   "engines": {
     "node": ">= 12"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
   }
 }
