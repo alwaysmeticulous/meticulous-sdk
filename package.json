@@ -11,7 +11,6 @@
     "cli": "yarn workspace @alwaysmeticulous/cli cli",
     "cli:dev": "yarn workspace @alwaysmeticulous/cli cli:dev"
   },
-  "dependencies": {},
   "devDependencies": {
     "@types/archiver": "^5.3.1",
     "@types/node": "^17.0.16",
