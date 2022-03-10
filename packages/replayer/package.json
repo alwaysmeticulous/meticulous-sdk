@@ -1,17 +1,13 @@
 {
-  "name": "@alwaysmeticulous/cli",
+  "name": "@alwaysmeticulous/replayer",
   "version": "1.1.0-alpha.1",
-  "description": "The Meticulous CLI",
+  "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "bin",
     "dist"
   ],
-  "bin": {
-    "meticulous": "bin/meticulous"
-  },
   "scripts": {
     "clean": "rimraf dist",
     "build": "tsc --build tsconfig.json",
@@ -21,18 +17,8 @@
     "cli:dev": "ts-node src/main.ts"
   },
   "dependencies": {
-    "archiver": "^5.3.0",
-    "axios": "^0.25.0",
-    "luxon": "^2.2.0",
-    "yargs": "^17.3.1"
-  },
-  "peerDependencies": {
-    "@alwaysmeticulous/replayer": "^1.1.0-alpha.1"
-  },
-  "peerDependenciesMeta": {
-    "@alwaysmeticulous/replayer": {
-      "optional": true
-    }
+    "puppeteer": "^13.4.1",
+    "rrweb": "0.7.27"
   },
   "author": {
     "name": "The Meticulous Team",

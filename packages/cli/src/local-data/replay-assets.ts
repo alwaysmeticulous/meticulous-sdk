@@ -1,0 +1,71 @@
+import axios from "axios";
+import { mkdir, readFile, writeFile } from "fs/promises";
+import { basename, join } from "path";
+import { getMeticulousLocalDataDir } from "./local-data";
+
+export interface AssetMetadataItem {
+  fileName: string;
+  etag: string;
+  fetchUrl: string;
+}
+
+export interface AssetMetadata {
+  assets: AssetMetadataItem[];
+}
+
+export const loadAssetMetadata: () => Promise<AssetMetadata> = async () => {
+  const assetsDir = join(getMeticulousLocalDataDir(), "assets");
+  await mkdir(assetsDir, { recursive: true });
+  const assetsFile = join(assetsDir, `assets.json`);
+
+  const existingMetadata = await readFile(assetsFile)
+    .then((data) => JSON.parse(data.toString("utf-8")))
+    .catch(() => null);
+  if (existingMetadata) {
+    return existingMetadata;
+  }
+
+  return { assets: [] };
+};
+
+export const saveAssetMetadata: (
+  assetMetadata: AssetMetadata
+) => Promise<void> = async (assetMetadata) => {
+  const assetsDir = join(getMeticulousLocalDataDir(), "assets");
+  await mkdir(assetsDir, { recursive: true });
+  const assetsFile = join(assetsDir, `assets.json`);
+
+  await writeFile(assetsFile, JSON.stringify(assetMetadata, null, 2));
+};
+
+export const fetchAsset: (fetchUrl: string) => Promise<string> = async (
+  fetchUrl
+) => {
+  const assetsDir = join(getMeticulousLocalDataDir(), "assets");
+
+  const assetMetadata = await loadAssetMetadata();
+  const etag = (await axios.head(fetchUrl)).headers["etag"] || "";
+
+  const entry = assetMetadata.assets.find((item) => item.fetchUrl === fetchUrl);
+  const fileName = entry
+    ? entry.fileName
+    : basename(new URL(fetchUrl).pathname);
+  const filePath = join(assetsDir, fileName);
+
+  if (entry && etag === entry.etag) {
+    console.log(`${fetchUrl} already present`);
+    return filePath;
+  }
+
+  const contents = (await axios.get(fetchUrl)).data;
+  await writeFile(filePath, contents);
+  if (entry) {
+    console.log(`${fetchUrl} updated`);
+    entry.etag = etag;
+  } else {
+    console.log(`${fetchUrl} downloaded`);
+    assetMetadata.assets.push({ fileName, etag, fetchUrl });
+  }
+  await saveAssetMetadata(assetMetadata);
+  return filePath;
+};

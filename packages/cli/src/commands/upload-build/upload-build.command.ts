@@ -4,9 +4,9 @@ import {
   createProjectBuild,
   getProjectBuildPushUrl,
   putProjectBuildPushedStatus,
-  uploadProjectBuildArchive,
 } from "../../api/project-build.api";
 import { getProject } from "../../api/project.api";
+import { uploadArchive } from "../../api/upload";
 import {
   checkDistFolder,
   createArchive,
@@ -70,7 +70,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
   // 5. Send archive to S3
   try {
-    await uploadProjectBuildArchive(uploadUrl, archivePath);
+    await uploadArchive(uploadUrl, archivePath);
   } catch (error) {
     await putProjectBuildPushedStatus(client, projectBuild.id, "failure").catch(
       (updateError) => console.error(updateError)
