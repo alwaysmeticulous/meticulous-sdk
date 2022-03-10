@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replayer",
-  "version": "1.1.0-alpha.1",
+  "version": "1.1.0",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
