@@ -1,7 +1,4 @@
 import axios, { AxiosInstance } from "axios";
-import { readFile } from "fs/promises";
-import { createReadStream } from "fs";
-import https from "https";
 
 export const getProjectBuild: (
   client: AxiosInstance,
@@ -24,7 +21,7 @@ export const createProjectBuild: (
   client: AxiosInstance,
   commitSha: string
 ) => Promise<any> = async (client, commitSha) => {
-  const { data } = await client.post(`project-builds`, {
+  const { data } = await client.post("project-builds", {
     commitSha,
   });
   return data;
@@ -53,19 +50,6 @@ export const getProjectBuildPushUrl: (
       throw error;
     });
   return data;
-};
-
-export const uploadProjectBuildArchive: (
-  uploadUrl: string,
-  archivePath: string
-) => Promise<void> = async (uploadUrl, archivePath) => {
-  await axios.put(uploadUrl, await readFile(archivePath), {
-    headers: {
-      "Content-Type": "application/zip",
-    },
-    maxBodyLength: Infinity,
-    maxContentLength: Infinity,
-  });
 };
 
 export const putProjectBuildPushedStatus: (
