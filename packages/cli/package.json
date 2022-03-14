@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "1.1.0",
+  "version": "1.2.0-alpha.0",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
@@ -27,7 +27,8 @@
     "yargs": "^17.3.1"
   },
   "peerDependencies": {
-    "@alwaysmeticulous/replayer": "^1.1.0-alpha.1"
+    "@alwaysmeticulous/record": "^1.1.0",
+    "@alwaysmeticulous/replayer": "^1.1.0"
   },
   "peerDependenciesMeta": {
     "@alwaysmeticulous/replayer": {
