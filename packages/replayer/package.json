@@ -12,9 +12,7 @@
     "clean": "rimraf dist",
     "build": "tsc --build tsconfig.json",
     "dev": "tsc --build tsconfig.json --watch",
-    "format": "prettier --write src",
-    "cli": "node dist/main.js",
-    "cli:dev": "ts-node src/main.ts"
+    "format": "prettier --write src"
   },
   "dependencies": {
     "puppeteer": "^13.4.1",

@@ -1,5 +1,4 @@
 import axios, { AxiosInstance } from "axios";
-import { readFile } from "fs/promises";
 
 export const getReplay: (
   client: AxiosInstance,
