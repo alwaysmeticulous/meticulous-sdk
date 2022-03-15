@@ -28,6 +28,7 @@ export async function bootstrapPage(
   await page.evaluateOnNewDocument(`
     window["METICULOUS_RECORDING_TOKEN"] = "${recordingToken}";
     window["METICULOUS_APP_COMMIT_HASH"] = "${appCommitHash}";
+    window["METICULOUS_FORCE_RECORDING"] = true;
   `);
 
   const recordingSnippetFile = await readFile(recordingSnippet, "utf8");
