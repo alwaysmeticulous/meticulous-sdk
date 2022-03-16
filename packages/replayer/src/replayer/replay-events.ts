@@ -68,6 +68,7 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
     browser_ ||
     (await puppeteer.launch({
       defaultViewport,
+      args: [`--window-size=${width},${height}`],
       headless: headless || false,
       devtools: devTools || false,
     }));

@@ -33,6 +33,7 @@ export const recordSession: (
     browser_ ||
     (await puppeteer.launch({
       defaultViewport,
+      args: [`--window-size=${width},${height}`],
       headless: false,
       devtools: devTools || false,
     }));
