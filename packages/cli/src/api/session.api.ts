@@ -31,3 +31,19 @@ export const getRecordedSessionData: (
     });
   return data;
 };
+
+export const getRecordingCommandId: (
+  client: AxiosInstance
+) => Promise<string> = async (client) => {
+  const { data } = await client.post("sessions/start");
+  const { recordingCommandId } = data as { recordingCommandId: string };
+  return recordingCommandId;
+};
+
+export const postSessionIdNotification: (
+  client: AxiosInstance,
+  sessionId: string,
+  recordingCommandId: string
+) => Promise<void> = async (client, sessionId, recordingCommandId) => {
+  await client.post(`sessions/${sessionId}/notify`, { recordingCommandId });
+};

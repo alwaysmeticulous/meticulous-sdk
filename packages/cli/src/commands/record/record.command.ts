@@ -2,6 +2,10 @@ import type { recordSession as recordSessionFn } from "@alwaysmeticulous/record"
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getProject } from "../../api/project.api";
+import {
+  getRecordingCommandId,
+  postSessionIdNotification,
+} from "../../api/session.api";
 import { fetchAsset } from "../../local-data/replay-assets";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 
@@ -56,6 +60,9 @@ const handler: (options: Options) => Promise<void> = async ({
     process.exit(1);
   }
 
+  // Report recording start
+  const recordingCommandId = await getRecordingCommandId(client);
+
   // 5. Start recording
   await recordSession({
     browser: null,
@@ -66,6 +73,16 @@ const handler: (options: Options) => Promise<void> = async ({
     recordingSnippet,
     width,
     height,
+    onDetectedSession: (sessionId) => {
+      postSessionIdNotification(client, sessionId, recordingCommandId).catch(
+        (error) => {
+          console.error(
+            `Warning: error while notifying session recording ${sessionId}`
+          );
+          console.error(error);
+        }
+      );
+    },
   });
 };
 
