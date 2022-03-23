@@ -4,13 +4,20 @@ import { join } from "path";
 import { getRecordedSession, getRecordedSessionData } from "../api/session.api";
 import { getMeticulousLocalDataDir } from "./local-data";
 
+const sanitizedSessionId: (sessionId: string) => string = (sessionId) => {
+  return sessionId.replace(/[^a-zA-Z0-9]/g, "_");
+};
+
 export const getOrFetchRecordedSession: (
   client: AxiosInstance,
   sessionId: string
 ) => Promise<any> = async (client, sessionId) => {
   const sessionsDir = join(getMeticulousLocalDataDir(), "sessions");
   await mkdir(sessionsDir, { recursive: true });
-  const sessionFile = join(sessionsDir, `${sessionId}.json`);
+  const sessionFile = join(
+    sessionsDir,
+    `${sanitizedSessionId(sessionId)}.json`
+  );
 
   const existingSession = await readFile(sessionFile)
     .then((data) => JSON.parse(data.toString("utf-8")))
@@ -39,7 +46,10 @@ export const getOrFetchRecordedSessionData: (
 ) => Promise<any> = async (client, sessionId) => {
   const sessionsDir = join(getMeticulousLocalDataDir(), "sessions");
   await mkdir(sessionsDir, { recursive: true });
-  const sessionDataFile = join(sessionsDir, `${sessionId}_data.json`);
+  const sessionDataFile = join(
+    sessionsDir,
+    `${sanitizedSessionId(sessionId)}_data.json`
+  );
 
   const existingSessionData = await readFile(sessionDataFile)
     .then((data) => JSON.parse(data.toString("utf-8")))
