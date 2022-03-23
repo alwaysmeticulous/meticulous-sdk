@@ -11,6 +11,7 @@ export interface RecordSessionOptions {
   recordingSnippet: string;
   width?: number | null | undefined;
   height?: number | null | undefined;
+  onDetectedSession?: (sessionId: string) => void;
 }
 
 export const recordSession: (
@@ -24,6 +25,7 @@ export const recordSession: (
   recordingSnippet,
   width: width_,
   height: height_,
+  onDetectedSession,
 }) => {
   const width = width_ || 1920;
   const height = height_ || 1080;
@@ -66,6 +68,9 @@ export const recordSession: (
         console.log(
           `Link: https://app.meticulous.ai/projects/${project.organization.name}/${project.name}/sessions/${sessionId}`
         );
+        if (onDetectedSession) {
+          onDetectedSession(sessionId);
+        }
       }
     } catch (error) {}
   }, 1000);
