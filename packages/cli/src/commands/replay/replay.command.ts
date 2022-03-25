@@ -72,7 +72,7 @@ const handler: (options: Options) => Promise<void> = async ({
     process.exit(1);
   }
 
-  // Report recording start
+  // Report replay start
   const replayCommandId = await getReplayCommandId(client, sessionId);
 
   // 5. Create replay directory
@@ -161,7 +161,7 @@ const handler: (options: Options) => Promise<void> = async ({
       replay.id,
       "failure",
       replayCommandId
-    ).catch((updateError) => console.error(updateError));
+    ).catch(console.error);
     console.error(error);
     process.exit(1);
   }
