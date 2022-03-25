@@ -6,6 +6,7 @@ import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import {
   createReplay,
+  getReplayCommandId,
   getReplayPushUrl,
   putReplayPushedStatus,
 } from "../../api/replay.api";
@@ -70,6 +71,9 @@ const handler: (options: Options) => Promise<void> = async ({
     console.error(error);
     process.exit(1);
   }
+
+  // Report recording start
+  const replayCommandId = await getReplayCommandId(client, sessionId);
 
   // 5. Create replay directory
   await mkdir(join(getMeticulousLocalDataDir(), "replays"), {
@@ -152,9 +156,12 @@ const handler: (options: Options) => Promise<void> = async ({
   try {
     await uploadArchive(uploadUrl, archivePath);
   } catch (error) {
-    await putReplayPushedStatus(client, replay.id, "failure").catch(
-      (updateError) => console.error(updateError)
-    );
+    await putReplayPushedStatus(
+      client,
+      replay.id,
+      "failure",
+      replayCommandId
+    ).catch((updateError) => console.error(updateError));
     console.error(error);
     process.exit(1);
   }
@@ -163,7 +170,8 @@ const handler: (options: Options) => Promise<void> = async ({
   const updatedProjectBuild = await putReplayPushedStatus(
     client,
     replay.id,
-    "success"
+    "success",
+    replayCommandId
   );
   console.log("Replay artifacts successfully sent to Meticulous");
   console.log(updatedProjectBuild);
