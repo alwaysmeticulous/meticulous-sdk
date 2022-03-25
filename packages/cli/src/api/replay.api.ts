@@ -62,10 +62,21 @@ export const getReplayPushUrl: (
 export const putReplayPushedStatus: (
   client: AxiosInstance,
   projectBuildId: string,
-  status: "success" | "failure"
-) => Promise<any> = async (client, projectBuildId, status) => {
+  status: "success" | "failure",
+  replayCommandId: string
+) => Promise<any> = async (client, projectBuildId, status, replayCommandId) => {
   const { data } = await client.put(`replays/${projectBuildId}/pushed`, {
     status,
+    replayCommandId,
   });
   return data;
+};
+
+export const getReplayCommandId: (
+  client: AxiosInstance,
+  sessionId: string
+) => Promise<string> = async (client, sessionId) => {
+  const { data } = await client.post("replays/start", { sessionId });
+  const { replayCommandId } = data as { replayCommandId: string };
+  return replayCommandId;
 };
