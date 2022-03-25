@@ -23,19 +23,16 @@ export const recordSession: (
   appCommitHash,
   devTools,
   recordingSnippet,
-  width: width_,
-  height: height_,
+  width,
+  height,
   onDetectedSession,
 }) => {
-  const width = width_ || 1920;
-  const height = height_ || 1080;
-  const defaultViewport = { width, height };
+  const defaultViewport = width && height ? { width, height } : null;
 
   const browser: Browser =
     browser_ ||
     (await puppeteer.launch({
       defaultViewport,
-      args: [`--window-size=${width},${height}`],
       headless: false,
       devtools: devTools || false,
     }));
