@@ -24,13 +24,16 @@ export async function bootstrapPage(
   appCommitHash: string,
   recordingSnippet: string
 ): Promise<void> {
-  // Disable the recording snippet
-  await page.evaluateOnNewDocument(`
-    window["METICULOUS_RECORDING_TOKEN"] = "${recordingToken}";
-    window["METICULOUS_APP_COMMIT_HASH"] = "${appCommitHash}";
-    window["METICULOUS_FORCE_RECORDING"] = true;
-  `);
-
   const recordingSnippetFile = await readFile(recordingSnippet, "utf8");
-  await page.evaluateOnNewDocument(recordingSnippetFile);
+
+  page.on("framenavigated", async (frame) => {
+    if (page.mainFrame() === frame) {
+      await frame.evaluate(`
+         window["METICULOUS_RECORDING_TOKEN"] = "${recordingToken}";
+         window["METICULOUS_APP_COMMIT_HASH"] = "${appCommitHash}";
+         window["METICULOUS_FORCE_RECORDING"] = true;
+      `);
+      await frame.evaluate(recordingSnippetFile);
+    }
+  });
 }
