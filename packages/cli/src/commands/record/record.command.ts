@@ -15,6 +15,7 @@ interface Options {
   devTools?: boolean | null | undefined;
   width?: number | null | undefined;
   height?: number | null | undefined;
+  uploadIntervalMs?: number | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -23,6 +24,7 @@ const handler: (options: Options) => Promise<void> = async ({
   devTools,
   width,
   height,
+  uploadIntervalMs,
 }) => {
   // 1. Fetch the recording token
   const client = createClient({ apiToken });
@@ -73,6 +75,7 @@ const handler: (options: Options) => Promise<void> = async ({
     recordingSnippet,
     width,
     height,
+    uploadIntervalMs,
     onDetectedSession: (sessionId) => {
       postSessionIdNotification(client, sessionId, recordingCommandId).catch(
         (error) => {
@@ -99,12 +102,17 @@ export const record: CommandModule<{}, Options> = {
     },
     devTools: {
       boolean: true,
+      description: "Open Chrome Dev Tools",
     },
     width: {
       number: true,
     },
     height: {
       number: true,
+    },
+    uploadIntervalMs: {
+      number: true,
+      description: "Meticulous recording upload interval (in milliseconds)",
     },
   },
   handler,

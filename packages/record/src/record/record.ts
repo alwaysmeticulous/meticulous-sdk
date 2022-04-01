@@ -1,6 +1,8 @@
 import puppeteer, { Browser } from "puppeteer";
 import { bootstrapPage, defer } from "./record.utils";
 
+const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
+
 export interface RecordSessionOptions {
   browser: any;
   project: any;
@@ -11,6 +13,7 @@ export interface RecordSessionOptions {
   recordingSnippet: string;
   width?: number | null | undefined;
   height?: number | null | undefined;
+  uploadIntervalMs?: number | null | undefined;
   onDetectedSession?: (sessionId: string) => void;
 }
 
@@ -25,6 +28,7 @@ export const recordSession: (
   recordingSnippet,
   width,
   height,
+  uploadIntervalMs,
   onDetectedSession,
 }) => {
   const defaultViewport = width && height ? { width, height } : null;
@@ -50,7 +54,13 @@ export const recordSession: (
   const closePromise = defer();
   page.on("close", () => closePromise.resolve());
 
-  await bootstrapPage(page, recordingToken, appCommitHash, recordingSnippet);
+  await bootstrapPage({
+    page,
+    recordingToken,
+    appCommitHash,
+    recordingSnippet,
+    uploadIntervalMs: uploadIntervalMs || DEFAULT_UPLOAD_INTERVAL_MS,
+  });
 
   // Collect and show recorded session ids
   const sessionIds: string[] = [];
