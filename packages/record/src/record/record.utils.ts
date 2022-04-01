@@ -18,20 +18,28 @@ export function defer<T = void>(): IDeferred<T> {
 }
 
 // Setup Meticulous recording
-export async function bootstrapPage(
-  page: Page,
-  recordingToken: string,
-  appCommitHash: string,
-  recordingSnippet: string
-): Promise<void> {
+export async function bootstrapPage({
+  page,
+  recordingToken,
+  appCommitHash,
+  recordingSnippet,
+  uploadIntervalMs,
+}: {
+  page: Page;
+  recordingToken: string;
+  appCommitHash: string;
+  recordingSnippet: string;
+  uploadIntervalMs: number | null;
+}): Promise<void> {
   const recordingSnippetFile = await readFile(recordingSnippet, "utf8");
 
   page.on("framenavigated", async (frame) => {
     if (page.mainFrame() === frame) {
       await frame.evaluate(`
-         window["METICULOUS_RECORDING_TOKEN"] = "${recordingToken}";
-         window["METICULOUS_APP_COMMIT_HASH"] = "${appCommitHash}";
-         window["METICULOUS_FORCE_RECORDING"] = true;
+        window["METICULOUS_RECORDING_TOKEN"] = "${recordingToken}";
+        window["METICULOUS_APP_COMMIT_HASH"] = "${appCommitHash}";
+        window["METICULOUS_FORCE_RECORDING"] = true;
+        window["METICULOUS_UPLOAD_INTERVAL_MS"] = ${uploadIntervalMs};
       `);
       await frame.evaluate(recordingSnippetFile);
     }
