@@ -26,6 +26,8 @@ interface Options {
   commitSha?: string | null | undefined;
   sessionId: string;
   appUrl: string;
+  devTools?: boolean | null | undefined;
+  screenshot?: boolean | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -33,6 +35,8 @@ const handler: (options: Options) => Promise<void> = async ({
   commitSha: commitSha_,
   sessionId,
   appUrl,
+  devTools,
+  screenshot,
 }) => {
   const client = createClient({ apiToken });
 
@@ -93,7 +97,7 @@ const handler: (options: Options) => Promise<void> = async ({
     recordingId: "manual-replay",
     meticulousSha: "meticulousSha",
     headless: false,
-    devTools: false,
+    devTools: devTools || false,
     dependencies: {
       reanimator: {
         key: "reanimator",
@@ -112,6 +116,7 @@ const handler: (options: Options) => Promise<void> = async ({
         location: rrweb,
       },
     },
+    screenshot: screenshot || false,
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -199,6 +204,14 @@ export const replay: CommandModule<{}, Options> = {
     appUrl: {
       string: true,
       demandOption: true,
+    },
+    devTools: {
+      boolean: true,
+      description: "Open Chrome Dev Tools",
+    },
+    screenshot: {
+      boolean: true,
+      description: "Take a screenshot at the end of replay",
     },
   },
   handler,
