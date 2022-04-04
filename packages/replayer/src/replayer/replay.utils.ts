@@ -409,3 +409,9 @@ export function writeOutput(
     opts.promiseThatResolvesOnceWritesFinished.resolve();
   });
 }
+
+export const prepareScreenshotsDir: (tempDir: string) => Promise<void> = async (
+  tempDir
+) => {
+  await mkdir(join(tempDir, "screenshots"), { recursive: true });
+};

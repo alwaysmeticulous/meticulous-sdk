@@ -1,3 +1,4 @@
+import { join } from "path";
 import puppeteer, { Browser } from "puppeteer";
 import type { event } from "rrweb/typings/types";
 import { RecordedSession, SessionData } from "../session/session.types";
@@ -6,6 +7,7 @@ import {
   defer,
   getOnEmitEventCallback,
   injectScript,
+  prepareScreenshotsDir,
   pullOutStructuredError,
   ReplayEventsDependencies,
   sleep,
@@ -24,6 +26,7 @@ export interface ReplayEventsOptions {
   devTools?: boolean;
   verbose?: boolean;
   dependencies: ReplayEventsDependencies;
+  screenshot?: boolean;
 }
 
 export const replayEvents: (options: ReplayEventsOptions) => Promise<{
@@ -192,6 +195,14 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
     timeout: 1800000, // 30 minutes
   });
   console.log("Replay done!");
+
+  if (options.screenshot) {
+    console.log("Taking screenshot");
+    await prepareScreenshotsDir(options.tempDir);
+    await page.screenshot({
+      path: join(options.tempDir, "screenshots", "final-state.png"),
+    });
+  }
 
   await page.evaluate(`window["getEvents"]()`).then((rawEvents: event[]) => {
     const callback = getOnEmitEventCallback({
