@@ -2,8 +2,10 @@ import Zip from "adm-zip";
 import { AxiosInstance } from "axios";
 import { access, mkdir, readFile, rm, writeFile } from "fs/promises";
 import { join } from "path";
+import { PNG } from "pngjs";
 import { downloadFile } from "../api/download";
 import { getReplay, getReplayDownloadUrl } from "../api/replay.api";
+import { readPng } from "../image/io.utils";
 import { getMeticulousLocalDataDir } from "./local-data";
 
 export const getOrFetchReplay: (
@@ -68,4 +70,13 @@ export const getOrFetchReplayArchive: (
   await rm(replayArchiveFile);
 
   console.log(`Exrtracted replay archive in ${replayDir}`);
+};
+
+export const readReplayScreenshot: (replayId: string) => Promise<PNG> = async (
+  replayId
+) => {
+  const replayDir = join(getMeticulousLocalDataDir(), "replays", replayId);
+  const screenshotFile = join(replayDir, "screenshots", "final-state.png");
+  const png = await readPng(screenshotFile);
+  return png;
 };
