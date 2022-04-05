@@ -12,6 +12,7 @@
     "cli:dev": "yarn workspace @alwaysmeticulous/cli cli:dev"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.0",
     "@types/archiver": "^5.3.1",
     "@types/luxon": "^2.0.8",
     "@types/node": "^17.0.16",
