@@ -3,6 +3,7 @@ import { downloadReplay } from "./commands/download-replay/download-replay.comma
 import { downloadSession } from "./commands/download-session/download-session.command";
 import { record } from "./commands/record/record.command";
 import { replay } from "./commands/replay/replay.command";
+import { screenshotDiff } from "./commands/screenshot-diff/screenshot-diff.command";
 import { showProject } from "./commands/show-project/show-project.command";
 import { uploadBuild } from "./commands/upload-build/upload-build.command";
 import { getMeticulousLocalDataDir } from "./local-data/local-data";
@@ -25,6 +26,7 @@ export const main: () => void = () => {
     .command(downloadSession)
     .command(record)
     .command(replay)
+    .command(screenshotDiff)
     .command(showProject)
     .command(uploadBuild)
     .help()
