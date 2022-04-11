@@ -13,6 +13,7 @@ import {
 import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
 import { getMeticulousLocalDataDir } from "../../local-data/local-data";
+import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
 import {
   getOrFetchRecordedSession,
@@ -83,8 +84,9 @@ const handler: (options: Options) => Promise<void> = async ({
   await mkdir(join(getMeticulousLocalDataDir(), "replays"), {
     recursive: true,
   });
+  const tempDirName = sanitizeFilename(`${new Date().toISOString()}-`);
   const tempDir = await mkdtemp(
-    join(getMeticulousLocalDataDir(), "replays", `${new Date().toISOString()}-`)
+    join(getMeticulousLocalDataDir(), "replays", tempDirName)
   );
 
   // 6. Create and save replay parameters
