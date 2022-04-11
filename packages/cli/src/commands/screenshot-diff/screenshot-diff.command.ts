@@ -1,5 +1,6 @@
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
+import { postScreenshotDiffStats } from "../../api/replay.api";
 import { compareImages } from "../../image/diff.utils";
 import { writePng } from "../../image/io.utils";
 import {
@@ -41,6 +42,16 @@ const handler: (options: Options) => Promise<void> = async ({
   console.log({ mismatchPixels, mismatchFraction });
 
   await writeScreenshotDiff({ baseReplayId, headReplayId, diff });
+
+  await postScreenshotDiffStats(client, {
+    baseReplayId,
+    headReplayId,
+    stats: {
+      width: baseScreenshot.width,
+      height: baseScreenshot.height,
+      mismatchPixels,
+    },
+  });
 
   const threshold = threshold_ || DEFAULT_MISMATCH_THRESHOLD;
   if (mismatchFraction > threshold) {
