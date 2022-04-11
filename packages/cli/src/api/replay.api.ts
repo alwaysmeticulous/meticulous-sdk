@@ -102,3 +102,23 @@ export const getReplayCommandId: (
   const { replayCommandId } = data as { replayCommandId: string };
   return replayCommandId;
 };
+
+export interface ScreenshotDiffStats {
+  baseReplayId: string;
+  headReplayId: string;
+  stats: {
+    width: number;
+    height: number;
+    mismatchPixels: number;
+  };
+}
+
+export const postScreenshotDiffStats: (
+  client: AxiosInstance,
+  options: ScreenshotDiffStats
+) => Promise<void> = async (client, { baseReplayId, headReplayId, stats }) => {
+  await client.post(`replays/${headReplayId}/screenshot-diff`, {
+    baseReplayId,
+    stats,
+  });
+};
