@@ -3,10 +3,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { getRecordedSession, getRecordedSessionData } from "../api/session.api";
 import { getMeticulousLocalDataDir } from "./local-data";
-
-const sanitizedSessionId: (sessionId: string) => string = (sessionId) => {
-  return sessionId.replace(/[^a-zA-Z0-9]/g, "_");
-};
+import { sanitizeFilename } from "./local-data.utils";
 
 export const getOrFetchRecordedSession: (
   client: AxiosInstance,
@@ -14,10 +11,7 @@ export const getOrFetchRecordedSession: (
 ) => Promise<any> = async (client, sessionId) => {
   const sessionsDir = join(getMeticulousLocalDataDir(), "sessions");
   await mkdir(sessionsDir, { recursive: true });
-  const sessionFile = join(
-    sessionsDir,
-    `${sanitizedSessionId(sessionId)}.json`
-  );
+  const sessionFile = join(sessionsDir, `${sanitizeFilename(sessionId)}.json`);
 
   const existingSession = await readFile(sessionFile)
     .then((data) => JSON.parse(data.toString("utf-8")))
@@ -48,7 +42,7 @@ export const getOrFetchRecordedSessionData: (
   await mkdir(sessionsDir, { recursive: true });
   const sessionDataFile = join(
     sessionsDir,
-    `${sanitizedSessionId(sessionId)}_data.json`
+    `${sanitizeFilename(sessionId)}_data.json`
   );
 
   const existingSessionData = await readFile(sessionDataFile)
