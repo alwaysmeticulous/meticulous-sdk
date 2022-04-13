@@ -199,9 +199,13 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
   if (options.screenshot) {
     console.log("Taking screenshot");
     await prepareScreenshotsDir(options.tempDir);
-    await page.screenshot({
-      path: join(options.tempDir, "screenshots", "final-state.png"),
-    });
+    const screenshotFile = join(
+      options.tempDir,
+      "screenshots",
+      "final-state.png"
+    );
+    await page.screenshot({ path: screenshotFile });
+    console.log(`Wrote screenshot to ${screenshotFile}`);
   }
 
   await page.evaluate(`window["getEvents"]()`).then((rawEvents: event[]) => {
