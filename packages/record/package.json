@@ -15,7 +15,7 @@
     "format": "prettier --write src"
   },
   "dependencies": {
-    "puppeteer": "^13.4.1"
+    "puppeteer": "^13.5.2"
   },
   "author": {
     "name": "The Meticulous Team",
