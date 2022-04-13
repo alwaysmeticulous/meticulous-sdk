@@ -27,6 +27,7 @@ interface Options {
   commitSha?: string | null | undefined;
   sessionId: string;
   appUrl: string;
+  headless?: boolean | null | undefined;
   devTools?: boolean | null | undefined;
   screenshot?: boolean | null | undefined;
 }
@@ -36,6 +37,7 @@ const handler: (options: Options) => Promise<void> = async ({
   commitSha: commitSha_,
   sessionId,
   appUrl,
+  headless,
   devTools,
   screenshot,
 }) => {
@@ -98,7 +100,7 @@ const handler: (options: Options) => Promise<void> = async ({
     sessionData,
     recordingId: "manual-replay",
     meticulousSha: "meticulousSha",
-    headless: false,
+    headless: headless || false,
     devTools: devTools || false,
     dependencies: {
       reanimator: {
@@ -206,6 +208,10 @@ export const replay: CommandModule<{}, Options> = {
     appUrl: {
       string: true,
       demandOption: true,
+    },
+    headless: {
+      boolean: true,
+      description: "Start browser in headless mode",
     },
     devTools: {
       boolean: true,
