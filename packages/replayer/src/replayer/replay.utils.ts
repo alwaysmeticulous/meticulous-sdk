@@ -65,10 +65,11 @@ export async function bootstrapPage(
   if (verbose) {
     page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
   }
-  // Disable the recording snippet
+  // Disable the recording snippet and set up the recording timeline
   await page.evaluateOnNewDocument(`
+    window["METICULOUS_DISABLED"] = true;
     window.__meticulous = window.__meticulous || {};
-    window.__meticulous["METICULOUS_DISABLED"] = true;
+    window.__meticulous.replayTimeline = [];
   `);
 
   //Set up Polly and Reanimator, which need to setup prior to any other execution.
@@ -280,10 +281,6 @@ export function writeOutput(
   );
   const coverageDir = join(opts.tempDir, "coverage", opts.recordingId);
   const metricJSONPath = join(metricsDir, `${opts.recordingId}.metrics.json`);
-  const domSequenceHTMLPath = join(
-    sessionSummarysDir,
-    `${opts.recordingId}.dom-sequence.html`
-  );
   const eventsSequencePath = join(
     sessionSummarysDir,
     `${opts.recordingId}.events.json`
@@ -327,7 +324,6 @@ export function writeOutput(
 
   // Writes that depend upon sessionSummaryDir
   console.log("Writing dom-sequence.json to", domSequenceJSONPath);
-  console.log("Writing HMTL to ", domSequenceHTMLPath);
   const domSequenceJSONWritePromise = sessionSummaryDirExists.then(() =>
     writeFile(domSequenceJSONPath, JSON.stringify(events, null, "  "))
   );
