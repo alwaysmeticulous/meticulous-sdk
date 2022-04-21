@@ -1,4 +1,5 @@
 import type { recordSession as recordSessionFn } from "@alwaysmeticulous/record";
+import { join } from "path";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getProject } from "../../api/project.api";
@@ -6,6 +7,7 @@ import {
   getRecordingCommandId,
   postSessionIdNotification,
 } from "../../api/session.api";
+import { getMeticulousLocalDataDir } from "../../local-data/local-data";
 import { fetchAsset } from "../../local-data/replay-assets";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 
@@ -16,6 +18,7 @@ interface Options {
   width?: number | null | undefined;
   height?: number | null | undefined;
   uploadIntervalMs?: number | null | undefined;
+  incognito?: boolean | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -25,6 +28,7 @@ const handler: (options: Options) => Promise<void> = async ({
   width,
   height,
   uploadIntervalMs,
+  incognito,
 }) => {
   // 1. Fetch the recording token
   const client = createClient({ apiToken });
@@ -62,6 +66,8 @@ const handler: (options: Options) => Promise<void> = async ({
     process.exit(1);
   }
 
+  const cookieDir = join(getMeticulousLocalDataDir(), "cookies");
+
   // Report recording start
   const recordingCommandId = await getRecordingCommandId(client);
 
@@ -76,6 +82,8 @@ const handler: (options: Options) => Promise<void> = async ({
     width,
     height,
     uploadIntervalMs,
+    incognito,
+    cookieDir,
     onDetectedSession: (sessionId) => {
       postSessionIdNotification(client, sessionId, recordingCommandId).catch(
         (error) => {
@@ -113,6 +121,11 @@ export const record: CommandModule<{}, Options> = {
     uploadIntervalMs: {
       number: true,
       description: "Meticulous recording upload interval (in milliseconds)",
+    },
+    incognito: {
+      boolean: true,
+      description: "Use an incognito browsing context",
+      default: true,
     },
   },
   handler,
