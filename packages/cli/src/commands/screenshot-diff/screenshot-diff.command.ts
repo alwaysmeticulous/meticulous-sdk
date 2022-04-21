@@ -2,7 +2,6 @@ import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { postScreenshotDiffStats } from "../../api/replay.api";
 import { compareImages } from "../../image/diff.utils";
-import { writePng } from "../../image/io.utils";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
@@ -60,7 +59,7 @@ const handler: (options: Options) => Promise<void> = async ({
   }
 };
 
-export const screenshotDiff: CommandModule<{}, Options> = {
+export const screenshotDiff: CommandModule<unknown, Options> = {
   command: "screenshot-diff",
   describe: "Diff two replay screenshots",
   builder: {

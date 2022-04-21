@@ -20,7 +20,7 @@ const handler: (options: Options) => Promise<void> = async ({
   await getOrFetchReplayArchive(client, replayId);
 };
 
-export const downloadReplay: CommandModule<{}, Options> = {
+export const downloadReplay: CommandModule<unknown, Options> = {
   command: "download-replay",
   describe: "Download a replay from Meticulous",
   builder: {

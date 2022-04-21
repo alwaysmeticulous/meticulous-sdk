@@ -18,6 +18,7 @@ export function defer<T = void>(): IDeferred<T> {
     resolve = res;
     reject = rej;
   });
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return { resolve: resolve!, reject: reject!, promise };
 }
 
@@ -29,6 +30,7 @@ export const pullOutStructuredError: (error: string) => {
 } = (error) => {
   const regexStartStringEndingInColon = new RegExp("^(.+?):");
   const errComponents = error.split("\n");
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const name = errComponents[0].match(regexStartStringEndingInColon)![1];
   const message = errComponents[0].split(name)[1];
   const stack = errComponents.slice(1);
@@ -182,6 +184,7 @@ export function getOnEmitEventCallback(opts: {
     //     event = restOfEvent;
     // }
     if (event.data !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we strip x and y
       const { x, y, ...restOfData } = event.data as any;
       event = { ...event, data: restOfData };
     }

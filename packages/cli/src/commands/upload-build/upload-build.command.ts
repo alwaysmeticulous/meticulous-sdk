@@ -91,7 +91,7 @@ const handler: (options: Options) => Promise<void> = async ({
   await deleteArchive(archivePath);
 };
 
-export const uploadBuild: CommandModule<{}, Options> = {
+export const uploadBuild: CommandModule<unknown, Options> = {
   command: "upload-build",
   describe: "Upload build artifacts to Meticulous",
   builder: {

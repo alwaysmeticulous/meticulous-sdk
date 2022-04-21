@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import { join, normalize } from "path";
 
-let version: string = "";
+let version = "";
 
 export const getMeticulousVersion: () => Promise<string> = async () => {
   if (version) {

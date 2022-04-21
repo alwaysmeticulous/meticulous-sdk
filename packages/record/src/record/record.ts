@@ -113,7 +113,9 @@ export const recordSession: (
           "utf-8"
         );
       }
-    } catch (error) {}
+    } catch (error) {
+      console.error(error);
+    }
   }, 1000);
 
   await closePromise.promise;
