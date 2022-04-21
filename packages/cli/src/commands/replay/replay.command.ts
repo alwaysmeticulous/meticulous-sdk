@@ -191,7 +191,7 @@ const handler: (options: Options) => Promise<void> = async ({
   await deleteArchive(archivePath);
 };
 
-export const replay: CommandModule<{}, Options> = {
+export const replay: CommandModule<unknown, Options> = {
   command: "replay",
   describe: "Replay a recorded session",
   builder: {

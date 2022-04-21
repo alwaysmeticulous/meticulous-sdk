@@ -97,7 +97,7 @@ const handler: (options: Options) => Promise<void> = async ({
   });
 };
 
-export const record: CommandModule<{}, Options> = {
+export const record: CommandModule<unknown, Options> = {
   command: "record",
   describe: "Record a session",
   builder: {

@@ -14,6 +14,7 @@ export function defer<T = void>(): IDeferred<T> {
     resolve = res;
     reject = rej;
   });
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return { resolve: resolve!, reject: reject!, promise };
 }
 

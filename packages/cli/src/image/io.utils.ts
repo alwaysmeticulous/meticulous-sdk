@@ -1,6 +1,5 @@
-import { PNG } from "pngjs";
-import { readFile } from "fs/promises";
 import { createReadStream, createWriteStream } from "fs";
+import { PNG } from "pngjs";
 
 export const readPng: (path: string) => Promise<PNG> = async (path) => {
   return new Promise((resolve, reject) => {
