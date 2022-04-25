@@ -1,7 +1,7 @@
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { postScreenshotDiffStats } from "../../api/replay.api";
-import { compareImages } from "../../image/diff.utils";
+import { CompareImageOptions, compareImages } from "../../image/diff.utils";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
@@ -16,6 +16,7 @@ interface Options {
   baseReplayId: string;
   headReplayId: string;
   threshold?: number | null | undefined;
+  pixelThreshold?: number | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -23,6 +24,7 @@ const handler: (options: Options) => Promise<void> = async ({
   baseReplayId,
   headReplayId,
   threshold: threshold_,
+  pixelThreshold,
 }) => {
   const client = createClient({ apiToken });
 
@@ -34,9 +36,13 @@ const handler: (options: Options) => Promise<void> = async ({
   const baseScreenshot = await readReplayScreenshot(baseReplayId);
   const headScreenshot = await readReplayScreenshot(headReplayId);
 
+  const pixelmatchOptions: CompareImageOptions["pixelmatchOptions"] | null =
+    pixelThreshold ? { threshold: pixelThreshold } : null;
+
   const { mismatchPixels, mismatchFraction, diff } = compareImages({
     base: baseScreenshot,
     head: headScreenshot,
+    ...(pixelmatchOptions ? pixelmatchOptions : {}),
   });
   console.log({ mismatchPixels, mismatchFraction });
 
@@ -75,6 +81,9 @@ export const screenshotDiff: CommandModule<unknown, Options> = {
       demandOption: true,
     },
     threshold: {
+      number: true,
+    },
+    pixelThreshold: {
       number: true,
     },
   },
