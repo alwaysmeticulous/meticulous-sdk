@@ -20,7 +20,7 @@ const handler: (options: Options) => Promise<void> = async ({
   await getOrFetchRecordedSessionData(client, sessionId);
 };
 
-export const downloadSession: CommandModule<{}, Options> = {
+export const downloadSession: CommandModule<unknown, Options> = {
   command: "download-session",
   describe: "Download recorded session from Meticulous",
   builder: {

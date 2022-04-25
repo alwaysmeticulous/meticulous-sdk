@@ -16,7 +16,7 @@ const handler: (options: Options) => Promise<void> = async ({ apiToken }) => {
   console.log(project);
 };
 
-export const showProject: CommandModule<{}, Options> = {
+export const showProject: CommandModule<unknown, Options> = {
   command: "show-project",
   describe: "Shows project linked with current API token",
   builder: {

@@ -65,7 +65,7 @@ const handler: (options: Options) => Promise<void> = async ({
   }
 };
 
-export const screenshotDiff: CommandModule<{}, Options> = {
+export const screenshotDiff: CommandModule<unknown, Options> = {
   command: "screenshot-diff",
   describe: "Diff two replay screenshots",
   builder: {

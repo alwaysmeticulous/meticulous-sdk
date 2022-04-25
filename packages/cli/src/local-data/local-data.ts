@@ -1,6 +1,6 @@
 import { join, normalize } from "path";
 
-let _localDataDir: string = "";
+let _localDataDir = "";
 
 export const getMeticulousLocalDataDir: (
   localDataDir?: string | null | undefined
