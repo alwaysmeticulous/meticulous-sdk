@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from "axios";
+import { getProject } from "./project.api";
 
 export const getReplay: (
   client: AxiosInstance,
@@ -121,4 +122,17 @@ export const postScreenshotDiffStats: (
     baseReplayId,
     stats,
   });
+};
+
+export const getDiffUrl: (
+  client: AxiosInstance,
+  baseReplayId: string,
+  headReplayId: string
+) => Promise<string> = async (client, baseReplayId, headReplayId) => {
+  const project = await getProject(client);
+  const organizationName = project.organization.name;
+  const projectName = project.name;
+
+  const diffUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/replays/${headReplayId}/diff/${baseReplayId}`;
+  return diffUrl;
 };

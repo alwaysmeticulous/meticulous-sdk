@@ -16,11 +16,18 @@ import { getMeticulousLocalDataDir } from "../../local-data/local-data";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
 import {
+  getOrFetchReplay,
+  getOrFetchReplayArchive,
+  readLocalReplayScreenshot,
+  readReplayScreenshot,
+} from "../../local-data/replays";
+import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
 } from "../../local-data/sessions";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
+import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -30,6 +37,9 @@ interface Options {
   headless?: boolean | null | undefined;
   devTools?: boolean | null | undefined;
   screenshot?: boolean | null | undefined;
+  baseReplayId?: string | null | undefined;
+  diffThreshold?: number | null | undefined;
+  diffPixelThreshold?: number | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -40,6 +50,9 @@ const handler: (options: Options) => Promise<void> = async ({
   headless,
   devTools,
   screenshot,
+  baseReplayId: baseReplayId_,
+  diffThreshold,
+  diffPixelThreshold,
 }) => {
   const client = createClient({ apiToken });
 
@@ -188,6 +201,30 @@ const handler: (options: Options) => Promise<void> = async ({
   const replayUrl = `https://app.meticulous.ai/projects/${replay.project.organization.name}/${replay.project.name}/replays/${replay.id}`;
   console.log(`View replay at: ${replayUrl}`);
 
+  // 12. Diff against base replay screenshot if one is provided
+  const baseReplayId = baseReplayId_ || "";
+  if (screenshot && baseReplayId) {
+    console.log(
+      `Diffing final state screenshot against replay ${baseReplayId}`
+    );
+
+    await getOrFetchReplay(client, baseReplayId);
+    await getOrFetchReplayArchive(client, baseReplayId);
+
+    const baseScreenshot = await readReplayScreenshot(baseReplayId);
+    const headScreenshot = await readLocalReplayScreenshot(tempDir);
+
+    await diffScreenshots({
+      client,
+      baseReplayId,
+      headReplayId: replay.id,
+      baseScreenshot,
+      headScreenshot,
+      threshold: diffThreshold,
+      pixelThreshold: diffPixelThreshold,
+    });
+  }
+
   await deleteArchive(archivePath);
 };
 
@@ -220,6 +257,16 @@ export const replay: CommandModule<unknown, Options> = {
     screenshot: {
       boolean: true,
       description: "Take a screenshot at the end of replay",
+    },
+    baseReplayId: {
+      string: true,
+      description: "Base replay id to diff the final state screenshot against",
+    },
+    diffThreshold: {
+      number: true,
+    },
+    diffPixelThreshold: {
+      number: true,
     },
   },
   handler,
