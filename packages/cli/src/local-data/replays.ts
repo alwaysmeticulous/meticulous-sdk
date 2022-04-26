@@ -80,3 +80,11 @@ export const readReplayScreenshot: (replayId: string) => Promise<PNG> = async (
   const png = await readPng(screenshotFile);
   return png;
 };
+
+export const readLocalReplayScreenshot: (
+  tempDir: string
+) => Promise<PNG> = async (tempDir) => {
+  const screenshotFile = join(tempDir, "screenshots", "final-state.png");
+  const png = await readPng(screenshotFile);
+  return png;
+};
