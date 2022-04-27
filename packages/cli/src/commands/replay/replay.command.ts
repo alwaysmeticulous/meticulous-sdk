@@ -12,6 +12,8 @@ import {
 } from "../../api/replay.api";
 import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
+import { readConfig, saveConfig } from "../../config/config";
+import { MeticulousCliConfig } from "../../config/config.types";
 import { getMeticulousLocalDataDir } from "../../local-data/local-data";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
@@ -40,9 +42,13 @@ interface Options {
   baseReplayId?: string | null | undefined;
   diffThreshold?: number | null | undefined;
   diffPixelThreshold?: number | null | undefined;
+  save?: boolean | null | undefined;
+  exitOnMismatch?: boolean | null | undefined;
 }
 
-const handler: (options: Options) => Promise<void> = async ({
+export const replayCommandHandler: (
+  options: Options
+) => Promise<void> = async ({
   apiToken,
   commitSha: commitSha_,
   sessionId,
@@ -53,6 +59,8 @@ const handler: (options: Options) => Promise<void> = async ({
   baseReplayId: baseReplayId_,
   diffThreshold,
   diffPixelThreshold,
+  save,
+  exitOnMismatch,
 }) => {
   const client = createClient({ apiToken });
 
@@ -222,7 +230,30 @@ const handler: (options: Options) => Promise<void> = async ({
       headScreenshot,
       threshold: diffThreshold,
       pixelThreshold: diffPixelThreshold,
+      exitOnMismatch: !!exitOnMismatch,
     });
+  }
+
+  // 13. Add test case to meticulous.json if --save option is passed
+  if (save) {
+    if (!screenshot) {
+      console.error(
+        "Warning: saving a new test case without screenshot enabled."
+      );
+    }
+
+    const meticulousConfig = await readConfig();
+    const newConfig: MeticulousCliConfig = {
+      ...meticulousConfig,
+      testCases: [
+        ...(meticulousConfig.testCases || []),
+        {
+          sessionId,
+          baseReplayId: replay.id,
+        },
+      ],
+    };
+    await saveConfig(newConfig);
   }
 
   await deleteArchive(archivePath);
@@ -268,6 +299,12 @@ export const replay: CommandModule<unknown, Options> = {
     diffPixelThreshold: {
       number: true,
     },
+    save: {
+      boolean: true,
+      description:
+        "Adds the replay to the list of test cases in meticulous.json",
+    },
   },
-  handler,
+  handler: (options: Options) =>
+    replayCommandHandler({ ...options, exitOnMismatch: true }),
 };

@@ -21,6 +21,7 @@ export const diffScreenshots: (options: {
   headScreenshot: PNG;
   threshold: number | null | undefined;
   pixelThreshold: number | null | undefined;
+  exitOnMismatch: boolean;
 }) => Promise<void> = async ({
   client,
   baseReplayId,
@@ -29,6 +30,7 @@ export const diffScreenshots: (options: {
   headScreenshot,
   threshold: threshold_,
   pixelThreshold,
+  exitOnMismatch,
 }) => {
   const threshold = threshold_ || DEFAULT_MISMATCH_THRESHOLD;
 
@@ -65,7 +67,10 @@ export const diffScreenshots: (options: {
 
   if (mismatchFraction > threshold) {
     console.log("Screenshots do not match!");
-    process.exit(1);
+    if (exitOnMismatch) {
+      process.exit(1);
+    }
+    throw new Error("Screenshots do not match!");
   }
 };
 
@@ -102,6 +107,7 @@ const handler: (options: Options) => Promise<void> = async ({
     headScreenshot,
     threshold,
     pixelThreshold,
+    exitOnMismatch: true,
   });
 };
 

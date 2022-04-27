@@ -3,6 +3,7 @@ import { downloadReplay } from "./commands/download-replay/download-replay.comma
 import { downloadSession } from "./commands/download-session/download-session.command";
 import { record } from "./commands/record/record.command";
 import { replay } from "./commands/replay/replay.command";
+import { runAllTests } from "./commands/run-all-tests/run-all-tests.command";
 import { screenshotDiff } from "./commands/screenshot-diff/screenshot-diff.command";
 import { showProject } from "./commands/show-project/show-project.command";
 import { uploadBuild } from "./commands/upload-build/upload-build.command";
@@ -26,6 +27,7 @@ export const main: () => void = () => {
     .command(downloadSession)
     .command(record)
     .command(replay)
+    .command(runAllTests)
     .command(screenshotDiff)
     .command(showProject)
     .command(uploadBuild)
