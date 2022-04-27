@@ -27,6 +27,7 @@
     "adm-zip": "^0.5.9",
     "archiver": "^5.3.0",
     "axios": "^0.25.0",
+    "cosmiconfig": "^7.0.1",
     "luxon": "^2.2.0",
     "pixelmatch": "^5.2.1",
     "pngjs": "^6.0.0",
