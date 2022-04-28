@@ -138,7 +138,7 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
 
   await page.setRequestInterception(true);
   page.on("request", (request) => {
-    if (request.isNavigationRequest()) {
+    if (request.frame() === page.mainFrame() && request.isNavigationRequest()) {
       console.log(`WARNING: Navigating to a new page, this is likely to break replay!
 -> ${request.url()}`);
     }
