@@ -137,12 +137,13 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
   console.log(`Navigated to ${initialUrl}`);
 
   await page.setRequestInterception(true);
-  page.on("request", (request) => {
-    if (request.isNavigationRequest()) {
+  page.on("request", async (request) => {
+    if (request.frame() === page.mainFrame() && request.isNavigationRequest()) {
       console.log(`WARNING: Navigating to a new page, this is likely to break replay!
 -> ${request.url()}`);
+      return await request.abort();
     }
-    request.continue();
+    await request.continue();
   });
 
   // inject jquery for use in replay
