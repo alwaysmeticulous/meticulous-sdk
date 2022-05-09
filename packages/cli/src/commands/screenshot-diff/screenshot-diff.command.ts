@@ -13,6 +13,20 @@ import { writeScreenshotDiff } from "../../local-data/screenshot-diffs";
 
 const DEFAULT_MISMATCH_THRESHOLD = 0.01;
 
+export class DiffError extends Error {
+  constructor(
+    message: string,
+    readonly extras?: {
+      baseReplayId: string;
+      headReplayId: string;
+      threshold: number;
+      value: number;
+    }
+  ) {
+    super(message);
+  }
+}
+
 export const diffScreenshots: (options: {
   client: AxiosInstance;
   baseReplayId: string;
@@ -70,7 +84,12 @@ export const diffScreenshots: (options: {
     if (exitOnMismatch) {
       process.exit(1);
     }
-    throw new Error("Screenshots do not match!");
+    throw new DiffError("Screenshots do not match!", {
+      baseReplayId,
+      headReplayId,
+      threshold,
+      value: mismatchFraction,
+    });
   }
 };
 

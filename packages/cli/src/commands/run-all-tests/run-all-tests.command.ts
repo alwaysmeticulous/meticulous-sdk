@@ -1,7 +1,12 @@
 import { CommandModule } from "yargs";
+import { createClient } from "../../api/client";
+import { createTestRun, putTestRunResults } from "../../api/test-run.api";
 import { readConfig } from "../../config/config";
 import { TestCase } from "../../config/config.types";
+import { getCommitSha } from "../../utils/commit-sha.utils";
+import { getMeticulousVersion } from "../../utils/version.utils";
 import { replayCommandHandler } from "../replay/replay.command";
+import { DiffError } from "../screenshot-diff/screenshot-diff.command";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -14,18 +19,21 @@ interface Options {
 }
 
 interface TestCaseResult extends TestCase {
+  headReplayId: string;
   result: "pass" | "fail";
 }
 
 const handler: (options: Options) => Promise<void> = async ({
   apiToken,
-  commitSha,
+  commitSha: commitSha_,
   appUrl,
   headless,
   devTools,
   diffThreshold,
   diffPixelThreshold,
 }) => {
+  const client = createClient({ apiToken });
+
   const config = await readConfig();
   const testCases = config.testCases || [];
 
@@ -33,6 +41,17 @@ const handler: (options: Options) => Promise<void> = async ({
     console.error("Error! No test case defined");
     process.exit(1);
   }
+
+  const commitSha = (await getCommitSha(commitSha_)) || "unknown";
+  const meticulousSha = await getMeticulousVersion();
+  const testRun = await createTestRun({
+    client,
+    commitSha,
+    meticulousSha,
+    configData: config,
+  });
+  const testRunUrl = `https://app.meticulous.ai/test-runs/${testRun.id}`;
+  console.log(`Test run URL: ${testRunUrl}`);
 
   const results: TestCaseResult[] = [];
   for (const testCase of testCases) {
@@ -52,19 +71,49 @@ const handler: (options: Options) => Promise<void> = async ({
       exitOnMismatch: false,
     });
     const result: TestCaseResult = await replayPromise
-      .then(() => ({ ...testCase, result: "pass" } as TestCaseResult))
-      .catch(() => ({ ...testCase, result: "fail" }));
+      .then(
+        (replay) =>
+          ({
+            ...testCase,
+            headReplayId: replay.id,
+            result: "pass",
+          } as TestCaseResult)
+      )
+      .catch((error) => {
+        if (error instanceof DiffError && error.extras) {
+          return {
+            ...testCase,
+            headReplayId: error.extras.headReplayId,
+            result: "fail",
+          };
+        }
+        return { ...testCase, headReplayId: "", result: "fail" };
+      });
     results.push(result);
+    await putTestRunResults({
+      client,
+      testRunId: testRun.id,
+      status: "Running",
+      resultData: { results },
+    });
   }
+
+  const runAllFailure = results.find(({ result }) => result === "fail");
+  await putTestRunResults({
+    client,
+    testRunId: testRun.id,
+    status: runAllFailure ? "Failure" : "Success",
+    resultData: { results },
+  });
 
   console.log("");
   console.log("Results");
   console.log("=======");
-  results.forEach(({ sessionId, baseReplayId, result }) => {
-    console.log(`${sessionId} | ${baseReplayId} => ${result}`);
+  results.forEach(({ title, result }) => {
+    console.log(`${title} => ${result}`);
   });
 
-  if (results.find(({ result }) => result === "fail")) {
+  if (runAllFailure) {
     process.exit(1);
   }
 };
