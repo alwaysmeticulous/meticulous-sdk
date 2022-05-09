@@ -46,9 +46,7 @@ interface Options {
   exitOnMismatch?: boolean | null | undefined;
 }
 
-export const replayCommandHandler: (
-  options: Options
-) => Promise<void> = async ({
+export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   apiToken,
   commitSha: commitSha_,
   sessionId,
@@ -248,6 +246,7 @@ export const replayCommandHandler: (
       testCases: [
         ...(meticulousConfig.testCases || []),
         {
+          title: `${sessionId} | ${replay.id}`,
           sessionId,
           baseReplayId: replay.id,
         },
@@ -257,6 +256,8 @@ export const replayCommandHandler: (
   }
 
   await deleteArchive(archivePath);
+
+  return replay;
 };
 
 export const replay: CommandModule<unknown, Options> = {

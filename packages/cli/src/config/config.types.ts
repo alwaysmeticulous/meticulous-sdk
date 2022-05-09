@@ -1,4 +1,5 @@
 export interface TestCase {
+  title: string;
   sessionId: string;
   baseReplayId: string;
 }

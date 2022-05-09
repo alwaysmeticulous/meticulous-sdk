@@ -24,6 +24,27 @@ const getConfigFilePath: () => Promise<string> = async () => {
   return configFilePath;
 };
 
+const validateConfig: (config: MeticulousCliConfig) => MeticulousCliConfig = (
+  prevConfig
+) => {
+  const { testCases, ...rest } = prevConfig;
+
+  const nextTestCases = (testCases || [])
+    .map(({ title, sessionId, baseReplayId }) => ({
+      title: typeof title === "string" ? title : "",
+      sessionId: typeof sessionId === "string" ? sessionId : "",
+      baseReplayId: typeof baseReplayId === "string" ? baseReplayId : "",
+    }))
+    .map(({ title, sessionId, baseReplayId }) => ({
+      title: title || `${sessionId} | ${baseReplayId}`,
+      sessionId,
+      baseReplayId,
+    }))
+    .filter(({ sessionId, baseReplayId }) => sessionId && baseReplayId);
+
+  return { ...rest, testCases: nextTestCases };
+};
+
 export const readConfig: () => Promise<MeticulousCliConfig> = async () => {
   const filePath = await getConfigFilePath();
   const configStr = await readFile(filePath, "utf-8").catch((error) => {
@@ -34,7 +55,7 @@ export const readConfig: () => Promise<MeticulousCliConfig> = async () => {
     throw error;
   });
   const config: MeticulousCliConfig = JSON.parse(configStr);
-  return config;
+  return validateConfig(config);
 };
 
 export const saveConfig: (
