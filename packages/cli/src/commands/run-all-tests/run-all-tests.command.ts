@@ -50,8 +50,12 @@ const handler: (options: Options) => Promise<void> = async ({
     meticulousSha,
     configData: config,
   });
-  const testRunUrl = `https://app.meticulous.ai/test-runs/${testRun.id}`;
+
+  const { project } = testRun;
+  const testRunUrl = `https://app.meticulous.ai/projects/${project.organization.name}/${project.name}/test-runs/${testRun.id}`;
+  console.log("");
   console.log(`Test run URL: ${testRunUrl}`);
+  console.log("");
 
   const results: TestCaseResult[] = [];
   for (const testCase of testCases) {
@@ -108,6 +112,8 @@ const handler: (options: Options) => Promise<void> = async ({
 
   console.log("");
   console.log("Results");
+  console.log("=======");
+  console.log(`URL: ${testRunUrl}`);
   console.log("=======");
   results.forEach(({ title, result }) => {
     console.log(`${title} => ${result}`);
