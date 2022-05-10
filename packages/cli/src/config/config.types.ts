@@ -7,3 +7,8 @@ export interface TestCase {
 export interface MeticulousCliConfig {
   testCases?: TestCase[];
 }
+
+export interface TestCaseResult extends TestCase {
+  headReplayId: string;
+  result: "pass" | "fail";
+}
