@@ -2,8 +2,9 @@ import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { createTestRun, putTestRunResults } from "../../api/test-run.api";
 import { readConfig } from "../../config/config";
-import { TestCase } from "../../config/config.types";
+import { TestCaseResult } from "../../config/config.types";
 import { getCommitSha } from "../../utils/commit-sha.utils";
+import { writeGitHubSummary } from "../../utils/github-summary.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { replayCommandHandler } from "../replay/replay.command";
 import { DiffError } from "../screenshot-diff/screenshot-diff.command";
@@ -16,11 +17,7 @@ interface Options {
   devTools?: boolean | null | undefined;
   diffThreshold?: number | null | undefined;
   diffPixelThreshold?: number | null | undefined;
-}
-
-interface TestCaseResult extends TestCase {
-  headReplayId: string;
-  result: "pass" | "fail";
+  githubSummary?: boolean | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -31,6 +28,7 @@ const handler: (options: Options) => Promise<void> = async ({
   devTools,
   diffThreshold,
   diffPixelThreshold,
+  githubSummary,
 }) => {
   const client = createClient({ apiToken });
 
@@ -119,6 +117,10 @@ const handler: (options: Options) => Promise<void> = async ({
     console.log(`${title} => ${result}`);
   });
 
+  if (githubSummary) {
+    await writeGitHubSummary({ testRun, results });
+  }
+
   if (runAllFailure) {
     process.exit(1);
   }
@@ -151,6 +153,10 @@ export const runAllTests: CommandModule<unknown, Options> = {
     },
     diffPixelThreshold: {
       number: true,
+    },
+    githubSummary: {
+      boolean: true,
+      description: "Outputs a summary page for GitHub actions",
     },
   },
   handler,
