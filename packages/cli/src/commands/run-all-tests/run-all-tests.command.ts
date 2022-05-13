@@ -57,7 +57,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
   const results: TestCaseResult[] = [];
   for (const testCase of testCases) {
-    const { sessionId, baseReplayId } = testCase;
+    const { sessionId, baseReplayId, options } = testCase;
     const replayPromise = replayCommandHandler({
       apiToken,
       commitSha,
@@ -71,6 +71,7 @@ const handler: (options: Options) => Promise<void> = async ({
       diffPixelThreshold,
       save: false,
       exitOnMismatch: false,
+      ...options,
     });
     const result: TestCaseResult = await replayPromise
       .then(

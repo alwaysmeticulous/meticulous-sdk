@@ -51,44 +51,58 @@ export const diffScreenshots: (options: {
   const pixelmatchOptions: CompareImageOptions["pixelmatchOptions"] | null =
     pixelThreshold ? { threshold: pixelThreshold } : null;
 
-  const { mismatchPixels, mismatchFraction, diff } = compareImages({
-    base: baseScreenshot,
-    head: headScreenshot,
-    ...(pixelmatchOptions ? pixelmatchOptions : {}),
-  });
-  console.log({ mismatchPixels, mismatchFraction });
-  console.log(
-    `${Math.round(
-      mismatchFraction * 100
-    )}% pixel mismatch (threshold is ${Math.round(threshold * 100)}%) => ${
-      mismatchFraction > threshold ? "FAIL!" : "PASS"
-    }`
-  );
+  try {
+    const { mismatchPixels, mismatchFraction, diff } = compareImages({
+      base: baseScreenshot,
+      head: headScreenshot,
+      ...(pixelmatchOptions ? pixelmatchOptions : {}),
+    });
 
-  await writeScreenshotDiff({ baseReplayId, headReplayId, diff });
-  const diffUrl = await getDiffUrl(client, baseReplayId, headReplayId);
-  console.log(`View screenshot diff at ${diffUrl}`);
+    console.log({ mismatchPixels, mismatchFraction });
+    console.log(
+      `${Math.round(
+        mismatchFraction * 100
+      )}% pixel mismatch (threshold is ${Math.round(threshold * 100)}%) => ${
+        mismatchFraction > threshold ? "FAIL!" : "PASS"
+      }`
+    );
 
-  await postScreenshotDiffStats(client, {
-    baseReplayId,
-    headReplayId,
-    stats: {
-      width: baseScreenshot.width,
-      height: baseScreenshot.height,
-      mismatchPixels,
-    },
-  });
+    await writeScreenshotDiff({ baseReplayId, headReplayId, diff });
+    const diffUrl = await getDiffUrl(client, baseReplayId, headReplayId);
+    console.log(`View screenshot diff at ${diffUrl}`);
 
-  if (mismatchFraction > threshold) {
-    console.log("Screenshots do not match!");
+    await postScreenshotDiffStats(client, {
+      baseReplayId,
+      headReplayId,
+      stats: {
+        width: baseScreenshot.width,
+        height: baseScreenshot.height,
+        mismatchPixels,
+      },
+    });
+
+    if (mismatchFraction > threshold) {
+      console.log("Screenshots do not match!");
+      if (exitOnMismatch) {
+        process.exit(1);
+      }
+      throw new DiffError("Screenshots do not match!", {
+        baseReplayId,
+        headReplayId,
+        threshold,
+        value: mismatchFraction,
+      });
+    }
+  } catch (error) {
+    console.log(error);
     if (exitOnMismatch) {
       process.exit(1);
     }
-    throw new DiffError("Screenshots do not match!", {
+    throw new DiffError(`Error while diffing: ${error}`, {
       baseReplayId,
       headReplayId,
       threshold,
-      value: mismatchFraction,
+      value: 1,
     });
   }
 };
