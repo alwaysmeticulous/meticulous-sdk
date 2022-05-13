@@ -114,6 +114,13 @@ export const recordSession: (
         );
       }
     } catch (error) {
+      // Suppress expected errors due to page navigation
+      if (
+        error instanceof Error &&
+        error.message.startsWith("Execution context was destroyed")
+      ) {
+        return;
+      }
       console.error(error);
     }
   }, 1000);
