@@ -39,6 +39,7 @@ interface Options {
   headless?: boolean | null | undefined;
   devTools?: boolean | null | undefined;
   screenshot?: boolean | null | undefined;
+  screenshotSelector?: string | null | undefined;
   baseReplayId?: string | null | undefined;
   diffThreshold?: number | null | undefined;
   diffPixelThreshold?: number | null | undefined;
@@ -54,6 +55,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   headless,
   devTools,
   screenshot,
+  screenshotSelector,
   baseReplayId: baseReplayId_,
   diffThreshold,
   diffPixelThreshold,
@@ -140,6 +142,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
       },
     },
     screenshot: screenshot || false,
+    screenshotSelector: screenshotSelector || "",
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -289,6 +292,11 @@ export const replay: CommandModule<unknown, Options> = {
     screenshot: {
       boolean: true,
       description: "Take a screenshot at the end of replay",
+    },
+    screenshotSelector: {
+      string: true,
+      description:
+        "Query selector to screenshot a specific DOM element instead of the whole page",
     },
     baseReplayId: {
       string: true,

@@ -2,7 +2,7 @@ import { cosmiconfig } from "cosmiconfig";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { cwd } from "process";
-import { MeticulousCliConfig } from "./config.types";
+import { MeticulousCliConfig, ReplayOptions } from "./config.types";
 
 const METICULOUS_CONFIG_FILE = "meticulous.json";
 
@@ -24,21 +24,34 @@ const getConfigFilePath: () => Promise<string> = async () => {
   return configFilePath;
 };
 
+const validateReplayOptions: (options: ReplayOptions) => ReplayOptions = (
+  prevOptions
+) => {
+  const { screenshotSelector, diffThreshold, diffPixelThreshold } = prevOptions;
+  return {
+    ...(screenshotSelector ? { screenshotSelector } : {}),
+    ...(diffThreshold ? { diffThreshold } : {}),
+    ...(diffPixelThreshold ? { diffPixelThreshold } : {}),
+  };
+};
+
 const validateConfig: (config: MeticulousCliConfig) => MeticulousCliConfig = (
   prevConfig
 ) => {
   const { testCases, ...rest } = prevConfig;
 
   const nextTestCases = (testCases || [])
-    .map(({ title, sessionId, baseReplayId }) => ({
+    .map(({ title, sessionId, baseReplayId, options }) => ({
       title: typeof title === "string" ? title : "",
       sessionId: typeof sessionId === "string" ? sessionId : "",
       baseReplayId: typeof baseReplayId === "string" ? baseReplayId : "",
+      ...(options ? { options: validateReplayOptions(options) } : {}),
     }))
-    .map(({ title, sessionId, baseReplayId }) => ({
+    .map(({ title, sessionId, baseReplayId, ...rest }) => ({
       title: title || `${sessionId} | ${baseReplayId}`,
       sessionId,
       baseReplayId,
+      ...rest,
     }))
     .filter(({ sessionId, baseReplayId }) => sessionId && baseReplayId);
 
