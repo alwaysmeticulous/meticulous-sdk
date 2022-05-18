@@ -1,6 +1,10 @@
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
-import { createTestRun, putTestRunResults } from "../../api/test-run.api";
+import {
+  createTestRun,
+  getTestRunUrl,
+  putTestRunResults,
+} from "../../api/test-run.api";
 import { readConfig } from "../../config/config";
 import { TestCaseResult } from "../../config/config.types";
 import { getCommitSha } from "../../utils/commit-sha.utils";
@@ -49,8 +53,7 @@ const handler: (options: Options) => Promise<void> = async ({
     configData: config,
   });
 
-  const { project } = testRun;
-  const testRunUrl = `https://app.meticulous.ai/projects/${project.organization.name}/${project.name}/test-runs/${testRun.id}`;
+  const testRunUrl = getTestRunUrl(testRun);
   console.log("");
   console.log(`Test run URL: ${testRunUrl}`);
   console.log("");

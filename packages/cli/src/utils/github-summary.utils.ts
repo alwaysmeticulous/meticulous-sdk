@@ -1,5 +1,5 @@
 import { writeFile } from "fs/promises";
-import { TestRun } from "../api/test-run.api";
+import { getTestRunUrl, TestRun } from "../api/test-run.api";
 import { TestCaseResult } from "../config/config.types";
 
 const GITHUB_SUMMARY_FILE = "github-summary.md";
@@ -8,8 +8,7 @@ export const writeGitHubSummary: (options: {
   testRun: TestRun;
   results: TestCaseResult[];
 }) => Promise<void> = async ({ testRun, results }) => {
-  const { project } = testRun;
-  const testRunUrl = `https://app.meticulous.ai/projects/${project.organization.name}/${project.name}/test-runs/${testRun.id}`;
+  const testRunUrl = getTestRunUrl(testRun);
 
   const summary = `# Test Results
 
