@@ -36,3 +36,11 @@ export const putTestRunResults: (options: {
   });
   return data;
 };
+
+export const getTestRunUrl = (testRun: TestRun) => {
+  const { project } = testRun;
+  const organizationName = encodeURIComponent(project.organization.name);
+  const projectName = encodeURIComponent(project.name);
+  const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${testRun.id}`;
+  return testRunUrl;
+};

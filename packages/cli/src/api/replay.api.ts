@@ -124,14 +124,21 @@ export const postScreenshotDiffStats: (
   });
 };
 
+export const getReplayUrl = (replay: any) => {
+  const organizationName = encodeURIComponent(replay.project.organization.name);
+  const projectName = encodeURIComponent(replay.project.name);
+  const replayUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/replays/${replay.id}`;
+  return replayUrl;
+};
+
 export const getDiffUrl: (
   client: AxiosInstance,
   baseReplayId: string,
   headReplayId: string
 ) => Promise<string> = async (client, baseReplayId, headReplayId) => {
   const project = await getProject(client);
-  const organizationName = project.organization.name;
-  const projectName = project.name;
+  const organizationName = encodeURIComponent(project.organization.name);
+  const projectName = encodeURIComponent(project.name);
 
   const diffUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/replays/${headReplayId}/diff/${baseReplayId}`;
   return diffUrl;

@@ -8,6 +8,7 @@ import {
   createReplay,
   getReplayCommandId,
   getReplayPushUrl,
+  getReplayUrl,
   putReplayPushedStatus,
 } from "../../api/replay.api";
 import { uploadArchive } from "../../api/upload";
@@ -207,7 +208,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   console.log("Replay artifacts successfully sent to Meticulous");
   console.log(updatedProjectBuild);
 
-  const replayUrl = `https://app.meticulous.ai/projects/${replay.project.organization.name}/${replay.project.name}/replays/${replay.id}`;
+  const replayUrl = getReplayUrl(replay);
   console.log(`View replay at: ${replayUrl}`);
 
   // 12. Diff against base replay screenshot if one is provided
