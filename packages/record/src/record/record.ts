@@ -97,9 +97,11 @@ export const recordSession: (
       );
       if (sessionId && !sessionIds.find((id) => id === sessionId)) {
         sessionIds.push(sessionId);
+        const organizationName = encodeURIComponent(project.organization.name);
+        const projectName = encodeURIComponent(project.name);
         console.log(`Recording session ${sessionId}`);
         console.log(
-          `Link: https://app.meticulous.ai/projects/${project.organization.name}/${project.name}/sessions/${sessionId}`
+          `Link: https://app.meticulous.ai/projects/${organizationName}/${projectName}/sessions/${sessionId}`
         );
         if (onDetectedSession) {
           onDetectedSession(sessionId);
