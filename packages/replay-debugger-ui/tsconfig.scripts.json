@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    /* Projects */
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
+    /* Modules */
+    "rootDir": "./scripts",
+    /* Emit */
+    "outDir": "./dist"
+  },
+  "include": ["scripts"],
+  "exclude": ["node_modules", "dist", ".next"]
+}

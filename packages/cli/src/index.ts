@@ -1,3 +1,4 @@
+export { debugReplay } from "./commands/debug-replay/debug-replay.command";
 export { downloadReplay } from "./commands/download-replay/download-replay.command";
 export { downloadSession } from "./commands/download-session/download-session.command";
 export { record } from "./commands/record/record.command";

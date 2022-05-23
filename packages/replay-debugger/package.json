@@ -1,7 +1,7 @@
 {
-  "name": "@alwaysmeticulous/record",
-  "version": "1.2.17-alpha.0",
-  "description": "The Meticulous toolkit to record user sessions",
+  "name": "@alwaysmeticulous/replay-debugger",
+  "version": "1.2.17-alpha.2",
+  "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,7 +18,9 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
-    "puppeteer": "^13.5.2"
+    "@alwaysmeticulous/replay-debugger-ui": "^1.2.17-alpha.2",
+    "puppeteer": "^13.5.2",
+    "rrweb": "^1.1.3"
   },
   "author": {
     "name": "The Meticulous Team",

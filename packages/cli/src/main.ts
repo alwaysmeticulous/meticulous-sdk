@@ -1,4 +1,5 @@
 import yargs from "yargs";
+import { debugReplay } from "./commands/debug-replay/debug-replay.command";
 import { downloadReplay } from "./commands/download-replay/download-replay.command";
 import { downloadSession } from "./commands/download-session/download-session.command";
 import { record } from "./commands/record/record.command";
@@ -23,6 +24,7 @@ export const main: () => void = () => {
 
       Meticulous CLI`
     )
+    .command(debugReplay)
     .command(downloadReplay)
     .command(downloadSession)
     .command(record)

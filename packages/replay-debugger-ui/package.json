@@ -1,24 +1,38 @@
 {
-  "name": "@alwaysmeticulous/record",
-  "version": "1.2.17-alpha.0",
-  "description": "The Meticulous toolkit to record user sessions",
+  "name": "@alwaysmeticulous/replay-debugger-ui",
+  "version": "1.2.17-alpha.2",
+  "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "scripts",
+    "out"
   ],
   "scripts": {
-    "clean": "rimraf dist",
-    "build": "tsc --build tsconfig.json",
-    "dev": "tsc --build tsconfig.json --watch",
+    "clean": "rimraf dist .next out",
+    "build:next": "next build",
+    "build:next-export": "next export",
+    "build:scripts": "tsc -p tsconfig.scripts.json",
+    "build": "yarn build:next && yarn build:next-export && yarn build:scripts",
+    "dev": "next dev -p 3005",
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
-    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
+    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
+    "serve": "serve -p 3005 -s out"
   },
   "dependencies": {
-    "puppeteer": "^13.5.2"
+    "serve": "^13.0.2"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.7",
+    "classnames": "^2.3.1",
+    "next": "^12.1.6",
+    "postcss": "^8.4.13",
+    "react": "^18.1.0",
+    "react-dom": "^18.1.0",
+    "tailwindcss": "^3.0.24"
   },
   "author": {
     "name": "The Meticulous Team",
