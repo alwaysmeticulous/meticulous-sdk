@@ -29,6 +29,7 @@ import {
   getOrFetchRecordedSessionData,
 } from "../../local-data/sessions";
 import { getCommitSha } from "../../utils/commit-sha.utils";
+import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
 
@@ -264,6 +265,10 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   return replay;
 };
 
+const handler: (options: Options) => Promise<void> = async (options) => {
+  await replayCommandHandler({ ...options, exitOnMismatch: true });
+};
+
 export const replay: CommandModule<unknown, Options> = {
   command: "replay",
   describe: "Replay a recorded session",
@@ -315,6 +320,5 @@ export const replay: CommandModule<unknown, Options> = {
         "Adds the replay to the list of test cases in meticulous.json",
     },
   },
-  handler: (options: Options) =>
-    replayCommandHandler({ ...options, exitOnMismatch: true }),
+  handler: wrapHandler(handler),
 };

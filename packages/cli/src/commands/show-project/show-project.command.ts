@@ -1,6 +1,7 @@
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getProject } from "../../api/project.api";
+import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -24,5 +25,5 @@ export const showProject: CommandModule<unknown, Options> = {
       string: true,
     },
   },
-  handler,
+  handler: wrapHandler(handler),
 };

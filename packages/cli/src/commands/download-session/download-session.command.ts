@@ -4,6 +4,7 @@ import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
 } from "../../local-data/sessions";
+import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -32,5 +33,5 @@ export const downloadSession: CommandModule<unknown, Options> = {
       demandOption: true,
     },
   },
-  handler,
+  handler: wrapHandler(handler),
 };

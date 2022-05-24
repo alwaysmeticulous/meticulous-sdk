@@ -6,6 +6,7 @@ import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
 } from "../../local-data/sessions";
+import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -78,5 +79,5 @@ export const debugReplay: CommandModule<unknown, Options> = {
       description: "Open Chrome Dev Tools",
     },
   },
-  handler,
+  handler: wrapHandler(handler),
 };

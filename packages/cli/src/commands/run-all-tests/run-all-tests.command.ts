@@ -9,6 +9,7 @@ import { readConfig } from "../../config/config";
 import { TestCaseResult } from "../../config/config.types";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { writeGitHubSummary } from "../../utils/github-summary.utils";
+import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { replayCommandHandler } from "../replay/replay.command";
 import { DiffError } from "../screenshot-diff/screenshot-diff.command";
@@ -163,5 +164,5 @@ export const runAllTests: CommandModule<unknown, Options> = {
       description: "Outputs a summary page for GitHub actions",
     },
   },
-  handler,
+  handler: wrapHandler(handler),
 };
