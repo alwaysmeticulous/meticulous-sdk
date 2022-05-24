@@ -37,7 +37,7 @@ interface Options {
   apiToken?: string | null | undefined;
   commitSha?: string | null | undefined;
   sessionId: string;
-  appUrl: string;
+  appUrl?: string | null | undefined;
   headless?: boolean | null | undefined;
   devTools?: boolean | null | undefined;
   screenshot?: boolean | null | undefined;
@@ -116,7 +116,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
 
   // 6. Create and save replay parameters
   const replayEventsParams: Parameters<typeof replayEvents>[0] = {
-    appUrl,
+    appUrl: appUrl || "",
     browser: null,
     tempDir,
     session,
@@ -285,7 +285,6 @@ export const replay: CommandModule<unknown, Options> = {
     },
     appUrl: {
       string: true,
-      demandOption: true,
     },
     headless: {
       boolean: true,

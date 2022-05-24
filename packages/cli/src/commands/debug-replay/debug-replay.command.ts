@@ -11,7 +11,7 @@ import { wrapHandler } from "../../utils/sentry.utils";
 interface Options {
   apiToken?: string | null | undefined;
   sessionId: string;
-  appUrl: string;
+  appUrl?: string | null | undefined;
   devTools?: boolean | null | undefined;
 }
 
@@ -47,7 +47,7 @@ const handler: (options: Options) => Promise<void> = async ({
   // 5. Start replay debugger
   const createReplayerParams: Parameters<typeof createReplayer>[0] = {
     sessionData,
-    appUrl,
+    appUrl: appUrl || "",
     devTools: devTools || false,
     dependencies: {
       replayDebugger: {
@@ -72,7 +72,6 @@ export const debugReplay: CommandModule<unknown, Options> = {
     },
     appUrl: {
       string: true,
-      demandOption: true,
     },
     devTools: {
       boolean: true,

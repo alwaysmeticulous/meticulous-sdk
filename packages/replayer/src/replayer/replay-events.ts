@@ -5,6 +5,7 @@ import {
   bootstrapPage,
   defer,
   getOnEmitEventCallback,
+  getStartUrl,
   injectScript,
   pullOutStructuredError,
   ReplayEventsDependencies,
@@ -51,19 +52,7 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
   const events: event[] = [];
   const eventsWithTimestamps: event[] = [];
 
-  const { width, height, startUrl, startURL } = sessionData.userEvents.window;
-
-  // Default to the base URL if we did not record startURL (legacy sessions)
-  const appUrlObj = new URL(appUrl);
-  const startRouteUrl =
-    appUrlObj.pathname === "/" && !appUrlObj.search && !appUrlObj.hash
-      ? new URL(startUrl || startURL)
-      : appUrlObj;
-  startRouteUrl.host = appUrlObj.host;
-  startRouteUrl.port = appUrlObj.port;
-  startRouteUrl.protocol = appUrlObj.protocol;
-  startRouteUrl.username = appUrlObj.username;
-  startRouteUrl.password = appUrlObj.password;
+  const { width, height } = sessionData.userEvents.window;
 
   const defaultViewport = { width, height };
 
@@ -122,9 +111,9 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
   page.coverage.startJSCoverage();
 
   // Navigate to the URL that the session originated on/from.
-  const initialUrl = startRouteUrl.toString();
-  console.log(`Navigating to ${initialUrl}`);
-  const res = await page.goto(initialUrl, {
+  const startUrl = getStartUrl({ sessionData, appUrl });
+  console.log(`Navigating to ${startUrl}`);
+  const res = await page.goto(startUrl, {
     waitUntil: "domcontentloaded",
   });
   const status = res.status();
@@ -134,7 +123,7 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
       `Expected a 200 status when going to the initial URL of the site. Got a ${status} instead.`
     );
   }
-  console.log(`Navigated to ${initialUrl}`);
+  console.log(`Navigated to ${startUrl}`);
 
   await page.setRequestInterception(true);
   page.on("request", async (request) => {
