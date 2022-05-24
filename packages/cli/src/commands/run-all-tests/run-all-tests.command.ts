@@ -17,7 +17,7 @@ import { DiffError } from "../screenshot-diff/screenshot-diff.command";
 interface Options {
   apiToken?: string | null | undefined;
   commitSha?: string | null | undefined;
-  appUrl: string;
+  appUrl?: string | null | undefined;
   headless?: boolean | null | undefined;
   devTools?: boolean | null | undefined;
   diffThreshold?: number | null | undefined;
@@ -143,7 +143,6 @@ export const runAllTests: CommandModule<unknown, Options> = {
     },
     appUrl: {
       string: true,
-      demandOption: true,
     },
     headless: {
       boolean: true,
