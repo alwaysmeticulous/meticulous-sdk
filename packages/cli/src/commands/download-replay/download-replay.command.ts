@@ -4,6 +4,7 @@ import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
 } from "../../local-data/replays";
+import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -32,5 +33,5 @@ export const downloadReplay: CommandModule<unknown, Options> = {
       demandOption: true,
     },
   },
-  handler,
+  handler: wrapHandler(handler),
 };

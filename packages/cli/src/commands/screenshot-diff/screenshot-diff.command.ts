@@ -10,6 +10,7 @@ import {
   readReplayScreenshot,
 } from "../../local-data/replays";
 import { writeScreenshotDiff } from "../../local-data/screenshot-diffs";
+import { wrapHandler } from "../../utils/sentry.utils";
 
 const DEFAULT_MISMATCH_THRESHOLD = 0.01;
 
@@ -166,5 +167,5 @@ export const screenshotDiff: CommandModule<unknown, Options> = {
       number: true,
     },
   },
-  handler,
+  handler: wrapHandler(handler),
 };

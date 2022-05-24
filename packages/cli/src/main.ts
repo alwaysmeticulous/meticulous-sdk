@@ -9,6 +9,7 @@ import { screenshotDiff } from "./commands/screenshot-diff/screenshot-diff.comma
 import { showProject } from "./commands/show-project/show-project.command";
 import { uploadBuild } from "./commands/upload-build/upload-build.command";
 import { getMeticulousLocalDataDir } from "./local-data/local-data";
+import { initSentry, setOptions } from "./utils/sentry.utils";
 
 const handleDataDir: (dataDir: string | null | undefined) => void = (
   dataDir
@@ -17,6 +18,8 @@ const handleDataDir: (dataDir: string | null | undefined) => void = (
 };
 
 export const main: () => void = () => {
+  initSentry();
+
   const promise = yargs
     .scriptName("meticulous")
     .usage(
@@ -42,7 +45,10 @@ export const main: () => void = () => {
         description: "Where Meticulous stores data (sessions, replays, etc.)",
       },
     })
-    .middleware([(argv) => handleDataDir(argv.dataDir)]).argv;
+    .middleware([
+      (argv) => handleDataDir(argv.dataDir),
+      (argv) => setOptions(argv),
+    ]).argv;
 
   if (promise instanceof Promise) {
     promise.catch((error) => {

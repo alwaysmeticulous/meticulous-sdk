@@ -24,6 +24,7 @@
     "cli:dev": "ts-node src/main.ts"
   },
   "dependencies": {
+    "@sentry/node": "^6.19.7",
     "adm-zip": "^0.5.9",
     "archiver": "^5.3.0",
     "axios": "^0.25.0",

@@ -10,6 +10,7 @@ import {
 import { getMeticulousLocalDataDir } from "../../local-data/local-data";
 import { fetchAsset } from "../../local-data/replay-assets";
 import { getCommitSha } from "../../utils/commit-sha.utils";
+import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -128,5 +129,5 @@ export const record: CommandModule<unknown, Options> = {
       default: true,
     },
   },
-  handler,
+  handler: wrapHandler(handler),
 };

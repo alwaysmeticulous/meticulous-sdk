@@ -13,6 +13,7 @@ import {
   deleteArchive,
 } from "../../archive/archive";
 import { getCommitSha } from "../../utils/commit-sha.utils";
+import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -106,5 +107,5 @@ export const uploadBuild: CommandModule<unknown, Options> = {
       demandOption: true,
     },
   },
-  handler,
+  handler: wrapHandler(handler),
 };
