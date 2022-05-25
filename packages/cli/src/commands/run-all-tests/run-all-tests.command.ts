@@ -20,6 +20,7 @@ interface Options {
   appUrl?: string | null | undefined;
   headless?: boolean | null | undefined;
   devTools?: boolean | null | undefined;
+  bypassCSP?: boolean | null | undefined;
   diffThreshold?: number | null | undefined;
   diffPixelThreshold?: number | null | undefined;
   githubSummary?: boolean | null | undefined;
@@ -31,6 +32,7 @@ const handler: (options: Options) => Promise<void> = async ({
   appUrl,
   headless,
   devTools,
+  bypassCSP,
   diffThreshold,
   diffPixelThreshold,
   githubSummary,
@@ -69,6 +71,7 @@ const handler: (options: Options) => Promise<void> = async ({
       appUrl,
       headless,
       devTools,
+      bypassCSP,
       screenshot: true,
       baseReplayId,
       diffThreshold,
