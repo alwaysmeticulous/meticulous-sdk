@@ -149,6 +149,9 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
       console.log("Movie complete");
       movieCompletedResults = results;
     };
+    window["isMovieCompleted"] = () => {
+      return movieCompletedResults !== null;
+    };
     window["getMovieCompletedResults"] = () => {
       return movieCompletedResults;
     };
@@ -180,7 +183,7 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
   await page.evaluate(`jsReplay.buildData(window.__meticulousPlaybackData).then(
     replayObj => replayObj.start({ accelerate: "false" }))`);
 
-  await page.waitForFunction(`window["getMovieCompletedResults"]()`, {
+  await page.waitForFunction(`window["isMovieCompleted"]()`, {
     polling: 1000, // 1 second
     timeout: 1800000, // 30 minutes
   });
