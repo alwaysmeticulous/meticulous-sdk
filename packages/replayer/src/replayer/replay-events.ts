@@ -24,6 +24,7 @@ export interface ReplayEventsOptions {
   meticulousSha: string;
   headless?: boolean;
   devTools?: boolean;
+  bypassCSP?: boolean;
   verbose?: boolean;
   dependencies: ReplayEventsDependencies;
   screenshot?: boolean;
@@ -42,6 +43,7 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
     meticulousSha,
     headless,
     devTools,
+    bypassCSP,
     verbose,
     dependencies,
   } = options;
@@ -70,6 +72,10 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
   const page = await context.newPage();
   console.log("Created page");
   page.setDefaultNavigationTimeout(120000); // 2 minutes
+
+  if (bypassCSP) {
+    await page.setBypassCSP(true);
+  }
 
   // Set viewport
   await page.setViewport({

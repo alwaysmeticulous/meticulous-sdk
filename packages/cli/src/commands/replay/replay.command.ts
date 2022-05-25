@@ -40,6 +40,7 @@ interface Options {
   appUrl?: string | null | undefined;
   headless?: boolean | null | undefined;
   devTools?: boolean | null | undefined;
+  bypassCSP?: boolean | null | undefined;
   screenshot?: boolean | null | undefined;
   screenshotSelector?: string | null | undefined;
   baseReplayId?: string | null | undefined;
@@ -56,6 +57,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   appUrl,
   headless,
   devTools,
+  bypassCSP,
   screenshot,
   screenshotSelector,
   baseReplayId: baseReplayId_,
@@ -125,6 +127,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
     meticulousSha: "meticulousSha",
     headless: headless || false,
     devTools: devTools || false,
+    bypassCSP: bypassCSP || false,
     dependencies: {
       reanimator: {
         key: "reanimator",
