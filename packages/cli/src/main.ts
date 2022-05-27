@@ -37,7 +37,7 @@ export const main: () => void = () => {
     .command(showProject)
     .command(uploadBuild)
     .help()
-    .strictCommands()
+    .strict()
     .demandCommand()
     .option({
       dataDir: {

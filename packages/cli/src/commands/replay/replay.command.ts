@@ -297,6 +297,10 @@ export const replay: CommandModule<unknown, Options> = {
       boolean: true,
       description: "Open Chrome Dev Tools",
     },
+    bypassCSP: {
+      boolean: true,
+      description: "Enables bypass CSP in the browser",
+    },
     screenshot: {
       boolean: true,
       description: "Take a screenshot at the end of replay",
