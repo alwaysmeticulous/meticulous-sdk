@@ -23,6 +23,7 @@ interface Options {
   bypassCSP?: boolean | null | undefined;
   diffThreshold?: number | null | undefined;
   diffPixelThreshold?: number | null | undefined;
+  networkStubbing: boolean;
   githubSummary?: boolean | null | undefined;
 }
 
@@ -35,6 +36,7 @@ const handler: (options: Options) => Promise<void> = async ({
   bypassCSP,
   diffThreshold,
   diffPixelThreshold,
+  networkStubbing,
   githubSummary,
 }) => {
   const client = createClient({ apiToken });
@@ -78,6 +80,7 @@ const handler: (options: Options) => Promise<void> = async ({
       diffPixelThreshold,
       save: false,
       exitOnMismatch: false,
+      networkStubbing,
       ...options,
     });
     const result: TestCaseResult = await replayPromise
@@ -164,6 +167,11 @@ export const runAllTests: CommandModule<unknown, Options> = {
     githubSummary: {
       boolean: true,
       description: "Outputs a summary page for GitHub actions",
+    },
+    networkStubbing: {
+      boolean: true,
+      description: "Stub network requests during replay",
+      default: true,
     },
   },
   handler: wrapHandler(handler),

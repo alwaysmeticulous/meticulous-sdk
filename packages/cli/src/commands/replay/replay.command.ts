@@ -48,6 +48,7 @@ interface Options {
   diffPixelThreshold?: number | null | undefined;
   save?: boolean | null | undefined;
   exitOnMismatch?: boolean | null | undefined;
+  networkStubbing: boolean;
 }
 
 export const replayCommandHandler: (options: Options) => Promise<any> = async ({
@@ -65,6 +66,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   diffPixelThreshold,
   save,
   exitOnMismatch,
+  networkStubbing,
 }) => {
   const client = createClient({ apiToken });
 
@@ -148,6 +150,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
     },
     screenshot: screenshot || false,
     screenshotSelector: screenshotSelector || "",
+    networkStubbing,
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -320,6 +323,11 @@ export const replay: CommandModule<unknown, Options> = {
       boolean: true,
       description:
         "Adds the replay to the list of test cases in meticulous.json",
+    },
+    networkStubbing: {
+      boolean: true,
+      description: "Stub network requests during replay",
+      default: true,
     },
   },
   handler: wrapHandler(handler),
