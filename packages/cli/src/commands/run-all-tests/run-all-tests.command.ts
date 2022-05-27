@@ -155,6 +155,10 @@ export const runAllTests: CommandModule<unknown, Options> = {
       boolean: true,
       description: "Open Chrome Dev Tools",
     },
+    bypassCSP: {
+      boolean: true,
+      description: "Enables bypass CSP in the browser",
+    },
     diffThreshold: {
       number: true,
     },
