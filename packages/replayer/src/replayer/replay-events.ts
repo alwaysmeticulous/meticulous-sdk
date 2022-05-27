@@ -29,6 +29,7 @@ export interface ReplayEventsOptions {
   dependencies: ReplayEventsDependencies;
   screenshot?: boolean;
   screenshotSelector?: string;
+  networkStubbing: boolean;
 }
 
 export const replayEvents: (options: ReplayEventsOptions) => Promise<{
@@ -46,6 +47,7 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
     bypassCSP,
     verbose,
     dependencies,
+    networkStubbing,
   } = options;
 
   const promiseThatResolvesOnceWritesFinished = defer();
@@ -113,7 +115,13 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
   });
 
   // Bootstrap page
-  await bootstrapPage(page, sessionData, verbose || false, dependencies);
+  await bootstrapPage({
+    page,
+    sessionData,
+    verbose: verbose || false,
+    dependencies,
+    networkStubbing,
+  });
   page.coverage.startJSCoverage();
 
   // Navigate to the URL that the session originated on/from.

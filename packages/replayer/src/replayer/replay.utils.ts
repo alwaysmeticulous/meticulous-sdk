@@ -98,13 +98,24 @@ export const getStartUrl: (options: {
   return startRouteUrl.toString();
 };
 
+export interface BootstrapPageOptions {
+  page: Page;
+  sessionData: SessionData;
+  verbose: boolean;
+  dependencies: ReplayEventsDependencies;
+  networkStubbing: boolean;
+}
+
 // This utility function sets up polly, jsreplay, reanimator and logging.
-export async function bootstrapPage(
-  page: Page,
-  sessionData: SessionData,
-  verbose: boolean,
-  dependencies: ReplayEventsDependencies
-): Promise<void> {
+export const bootstrapPage: (
+  options: BootstrapPageOptions
+) => Promise<void> = async ({
+  page,
+  sessionData,
+  verbose,
+  dependencies,
+  networkStubbing,
+}) => {
   if (verbose) {
     page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
   }
@@ -142,19 +153,21 @@ export async function bootstrapPage(
     `window.Reanimator.replay(window['sessionData']['randomEvents'])`
   );
 
-  const replayNetworkFile = await readFile(
-    dependencies.replayNetworkFile.location,
-    "utf-8"
-  ); // Bundles PollyJS and supports the replay of network responses
-  await page.evaluateOnNewDocument(replayNetworkFile);
-  await page.evaluateOnNewDocument(`window.setUpPolly()`);
+  if (networkStubbing) {
+    const replayNetworkFile = await readFile(
+      dependencies.replayNetworkFile.location,
+      "utf-8"
+    ); // Bundles PollyJS and supports the replay of network responses
+    await page.evaluateOnNewDocument(replayNetworkFile);
+    await page.evaluateOnNewDocument(`window.setUpPolly()`);
+  }
 
   const jsReplay = await readFile(dependencies.jsReplay.location, "utf-8");
   await page.evaluateOnNewDocument(jsReplay);
 
   const rrweb = await readFile(dependencies.rrweb.location, "utf-8");
   await page.evaluateOnNewDocument(rrweb);
-}
+};
 
 const wrapAndExecute = (block: string) => {
   return `(function () { ${block} })();`;
