@@ -46,7 +46,7 @@ export interface ReplayEventsDependency<Key extends string> {
   location: string;
 }
 
-interface BaseReplayEventsDependencies {
+export interface BaseReplayEventsDependencies {
   [key: ReplayEventsDependency<string>["key"]]: ReplayEventsDependency<string>;
 }
 

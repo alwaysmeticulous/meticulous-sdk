@@ -1,19 +1,21 @@
-import { readFile } from "fs/promises";
+import { getStartUrl } from "@alwaysmeticulous/replayer";
 import puppeteer, { Browser } from "puppeteer";
 import { SessionData } from "../session/session.types";
+import { bootstrapPage, ReplayDebuggerDependencies } from "./debugger.utils";
 import { createReplayDebuggerUI } from "./replay-debugger.ui";
-import { getStartUrl, ReplayEventsDependencies } from "./replay.utils";
 
 export const createReplayer: (options: {
   sessionData: SessionData;
   appUrl: string;
   devTools: boolean;
-  dependencies: ReplayEventsDependencies;
+  dependencies: ReplayDebuggerDependencies;
+  networkStubbing: boolean;
 }) => Promise<any> = async ({
   sessionData,
   appUrl,
   devTools,
   dependencies,
+  networkStubbing,
 }) => {
   const { width, height } = sessionData.userEvents.window;
   const defaultViewport = { width, height };
@@ -43,10 +45,13 @@ export const createReplayer: (options: {
     height: height,
   });
 
-  // Inject replay debug snippet
-  await page.evaluateOnNewDocument(
-    await readFile(dependencies.replayDebugger.location, "utf-8")
-  );
+  // Bootstrap page
+  await bootstrapPage({
+    page,
+    sessionData,
+    dependencies,
+    networkStubbing,
+  });
 
   const startUrl = getStartUrl({ sessionData, appUrl });
   console.log(`Navigating to ${startUrl}...`);

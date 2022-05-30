@@ -13,6 +13,7 @@ interface Options {
   sessionId: string;
   appUrl?: string | null | undefined;
   devTools?: boolean | null | undefined;
+  networkStubbing: boolean;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -20,6 +21,7 @@ const handler: (options: Options) => Promise<void> = async ({
   sessionId,
   appUrl,
   devTools,
+  networkStubbing,
 }) => {
   const client = createClient({ apiToken });
 
@@ -30,6 +32,12 @@ const handler: (options: Options) => Promise<void> = async ({
   // 3. Load replay assets
   const replayDebugger = await fetchAsset(
     "https://snippet.meticulous.ai/replay/v1/replay-debugger.bundle.js"
+  );
+  const reanimator = await fetchAsset(
+    "https://snippet.meticulous.ai/replay/v1/reanimator.bundle.js"
+  );
+  const replayNetworkFile = await fetchAsset(
+    "https://snippet.meticulous.ai/replay/v1/replay-network-events.bundle.js"
   );
 
   // 4. Load replay-debugger package
@@ -54,7 +62,16 @@ const handler: (options: Options) => Promise<void> = async ({
         key: "replayDebugger",
         location: replayDebugger,
       },
+      reanimator: {
+        key: "reanimator",
+        location: reanimator,
+      },
+      replayNetworkFile: {
+        key: "replayNetworkFile",
+        location: replayNetworkFile,
+      },
     },
+    networkStubbing,
   };
   await createReplayer(createReplayerParams);
 };
@@ -76,6 +93,11 @@ export const debugReplay: CommandModule<unknown, Options> = {
     devTools: {
       boolean: true,
       description: "Open Chrome Dev Tools",
+    },
+    networkStubbing: {
+      boolean: true,
+      description: "Stub network requests during replay",
+      default: true,
     },
   },
   handler: wrapHandler(handler),
