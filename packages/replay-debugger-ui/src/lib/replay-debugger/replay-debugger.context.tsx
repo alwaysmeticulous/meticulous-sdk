@@ -7,11 +7,14 @@ export interface ReplayDebuggerState<T = ReplayableEvent> {
   loading: boolean;
 }
 
-export type DispathEvent = (eventType: string, eventData: any) => Promise<void>;
+export type DispatchEvent = (
+  eventType: string,
+  eventData: any
+) => Promise<void>;
 
 export interface ReplayDebuggerContextType<T = ReplayableEvent> {
   state: ReplayDebuggerState<T>;
-  dispatchEvent: DispathEvent;
+  dispatchEvent: DispatchEvent;
 }
 
 export const ReplayDebuggerContext =

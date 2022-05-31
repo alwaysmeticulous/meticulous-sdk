@@ -1,6 +1,6 @@
 import { FunctionComponent, ReactNode, useEffect, useState } from "react";
 import {
-  DispathEvent,
+  DispatchEvent,
   ReplayDebuggerContext,
   ReplayDebuggerState,
 } from "./replay-debugger.context";
@@ -13,7 +13,9 @@ export const ReplayDebuggerProvider: FunctionComponent<{
     index: null,
     loading: true,
   });
-  const [dispatchEvent, setDispatchEvent] = useState<DispathEvent | null>(null);
+  const [dispatchEvent, setDispatchEvent] = useState<DispatchEvent | null>(
+    null
+  );
 
   useEffect(() => {
     (window as any).__meticulous__replayDebuggerSetState = setState;

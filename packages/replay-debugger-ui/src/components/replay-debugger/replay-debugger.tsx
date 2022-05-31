@@ -2,6 +2,7 @@ import cx from "classnames";
 import { FunctionComponent, useCallback } from "react";
 import { useReplayDebuggerContext } from "src/lib/replay-debugger/replay-debugger.context";
 import { ReplayDebuggerProvider } from "src/lib/replay-debugger/replay-debugger.provider";
+import { ReplayUserEvents } from "./user-events";
 
 const ReplayDebuggerWrapped: FunctionComponent = () => {
   const { state, dispatchEvent } = useReplayDebuggerContext();
@@ -66,12 +67,12 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
                 "rounded-md",
                 "shadow-sm",
                 "text-white",
-                "bg-indigo-600",
-                "hover:bg-indigo-700",
+                "bg-violet-600",
+                "hover:bg-violet-700",
                 "focus:outline-none",
                 "focus:ring-2",
                 "focus:ring-offset-2",
-                "focus:ring-indigo-500"
+                "focus:ring-violet-500"
               )}
               onClick={onCheckNextEventTarget}
               disabled={loading}
@@ -94,12 +95,12 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
                 "rounded-md",
                 "shadow-sm",
                 "text-white",
-                "bg-indigo-600",
-                "hover:bg-indigo-700",
+                "bg-violet-600",
+                "hover:bg-violet-700",
                 "focus:outline-none",
                 "focus:ring-2",
                 "focus:ring-offset-2",
-                "focus:ring-indigo-500"
+                "focus:ring-violet-500"
               )}
               onClick={onPlayNextEvent}
               disabled={loading}
@@ -109,6 +110,9 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
           </div>
         </div>
       </div>
+
+      <ReplayUserEvents />
+
       <div
         className={cx(
           "mt-4",
