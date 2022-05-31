@@ -1,12 +1,14 @@
 import {
   CursorClickIcon,
   DownloadIcon,
+  FastForwardIcon,
   FingerPrintIcon,
   PencilAltIcon,
   PlayIcon,
   ReplyIcon,
   SwitchVerticalIcon,
   UploadIcon,
+  XIcon,
 } from "@heroicons/react/solid";
 import cx from "classnames";
 import { Duration } from "luxon";
@@ -194,6 +196,78 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
   );
 };
 
+const EndOfReplayItem: FunctionComponent<{ current?: boolean }> = ({
+  current,
+}) => {
+  const { state, dispatchEvent } = useReplayDebuggerContext();
+  const { loading } = state;
+
+  const onReset = useCallback(() => {
+    dispatchEvent("set-index", { index: 0 });
+  }, [dispatchEvent]);
+
+  return (
+    <li
+      className={cx(
+        "p-4",
+        "sm:px-6",
+        "flex",
+        "items-baseline",
+        "snap-center",
+        "ring-2",
+        "ring-inset",
+        current && "bg-violet-100/50",
+        current ? "ring-violet-500" : "ring-transparent"
+      )}
+    >
+      <div
+        className={cx(
+          "p-2",
+          "self-center",
+          "rounded-full",
+          "shadow-sm",
+          "bg-violet-200",
+          "text-violet-800"
+        )}
+      >
+        <XIcon className={cx("w-5", "h-5")} aria-hidden="true" />
+      </div>
+      <div className={cx("ml-2", "self-center")}>
+        <button
+          type="button"
+          className={cx(
+            "inline-flex",
+            "items-center",
+            "p-1",
+            "border",
+            current ? "border-transparent" : "border-zinc-300",
+            "rounded-full",
+            "shadow-sm",
+            current ? "text-white" : "text-zinc-300",
+            current ? "bg-violet-600" : "bg-zinc-100",
+            current && "hover:bg-violet-700",
+            "focus:outline-none",
+            "focus:ring-2",
+            "focus:ring-offset-2",
+            "focus:ring-violet-500",
+            !current && "cursor-not-allowed"
+          )}
+          onClick={onReset}
+          disabled={loading || !current}
+          title="Jump to first event"
+        >
+          <span className="sr-only">Jump to first event</span>
+          <FastForwardIcon
+            className={cx("w-5", "h-5", "rotate-180")}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+      <div className={cx("ml-2", "my-auto", "flex-1")}>End of replay</div>
+    </li>
+  );
+};
+
 export const ReplayUserEvents: FunctionComponent = () => {
   const { state } = useReplayDebuggerContext();
   const { events, index } = state;
@@ -267,6 +341,7 @@ export const ReplayUserEvents: FunctionComponent = () => {
               current={idx === index}
             />
           ))}
+          <EndOfReplayItem current={index === events.length} />
         </ol>
         <div
           className={cx(
