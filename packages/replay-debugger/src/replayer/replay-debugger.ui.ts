@@ -136,10 +136,15 @@ export const createReplayDebuggerUI: <T = ReplayableEvent>(
     }
   };
 
+  const onSetIndex = async ({ index }: { index: number }) => {
+    state.index = Math.max(0, Math.min(state.events.length - 1, index));
+    setState();
+  };
+
   // Bind UI function dispatchEvent()
   await debuggerPage.exposeFunction(
     "__meticulous__replayDebuggerDispatchEvent",
-    (eventType: string) => {
+    (eventType: string, data: any) => {
       if (eventType === "ready") {
         return onReady();
       }
@@ -148,6 +153,9 @@ export const createReplayDebuggerUI: <T = ReplayableEvent>(
       }
       if (eventType === "play-next-event") {
         return onPlayNextEvent();
+      }
+      if (eventType === "set-index") {
+        return onSetIndex({ index: data.index || 0 });
       }
       console.log(`Warning: received unknown event "${eventType}"`);
     }

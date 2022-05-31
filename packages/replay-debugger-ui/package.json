@@ -26,6 +26,8 @@
     "serve": "^13.0.2"
   },
   "devDependencies": {
+    "@headlessui/react": "^1.6.4",
+    "@heroicons/react": "^1.0.6",
     "autoprefixer": "^10.4.7",
     "classnames": "^2.3.1",
     "next": "^12.1.6",
