@@ -49,6 +49,7 @@ interface Options {
   save?: boolean | null | undefined;
   exitOnMismatch?: boolean | null | undefined;
   networkStubbing: boolean;
+  moveBeforeClick?: boolean | null | undefined;
 }
 
 export const replayCommandHandler: (options: Options) => Promise<any> = async ({
@@ -67,6 +68,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   save,
   exitOnMismatch,
   networkStubbing,
+  moveBeforeClick,
 }) => {
   const client = createClient({ apiToken });
 
@@ -151,6 +153,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
     screenshot: screenshot || false,
     screenshotSelector: screenshotSelector || "",
     networkStubbing,
+    moveBeforeClick: moveBeforeClick || false,
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -332,6 +335,10 @@ export const replay: CommandModule<unknown, Options> = {
       boolean: true,
       description: "Stub network requests during replay",
       default: true,
+    },
+    moveBeforeClick: {
+      boolean: true,
+      description: "Simulate mouse movement before clicking",
     },
   },
   handler: wrapHandler(handler),

@@ -30,6 +30,7 @@ export interface ReplayEventsOptions {
   screenshot?: boolean;
   screenshotSelector?: string;
   networkStubbing: boolean;
+  moveBeforeClick: boolean;
 }
 
 export const replayEvents: (options: ReplayEventsOptions) => Promise<{
@@ -48,6 +49,7 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
     verbose,
     dependencies,
     networkStubbing,
+    moveBeforeClick,
   } = options;
 
   const promiseThatResolvesOnceWritesFinished = defer();
@@ -121,6 +123,7 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
     verbose: verbose || false,
     dependencies,
     networkStubbing,
+    moveBeforeClick,
   });
   page.coverage.startJSCoverage();
 
@@ -195,7 +198,7 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
     `window.__meticulousPlaybackData = ${JSON.stringify(sessionData)}`
   );
   await page.evaluate(`jsReplay.buildData(window.__meticulousPlaybackData).then(
-    replayObj => replayObj.start({ accelerate: "false" }))`);
+    replayObj => replayObj.start({ accelerate: false, moveBeforeClick: ${moveBeforeClick} }))`);
 
   await page.waitForFunction(`window["isMovieCompleted"]()`, {
     polling: 1000, // 1 second

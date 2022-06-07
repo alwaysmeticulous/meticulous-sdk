@@ -14,6 +14,7 @@ interface Options {
   appUrl?: string | null | undefined;
   devTools?: boolean | null | undefined;
   networkStubbing: boolean;
+  moveBeforeClick?: boolean | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -22,6 +23,7 @@ const handler: (options: Options) => Promise<void> = async ({
   appUrl,
   devTools,
   networkStubbing,
+  moveBeforeClick,
 }) => {
   const client = createClient({ apiToken });
 
@@ -72,6 +74,7 @@ const handler: (options: Options) => Promise<void> = async ({
       },
     },
     networkStubbing,
+    moveBeforeClick: moveBeforeClick || false,
   };
   await createReplayer(createReplayerParams);
 };
@@ -98,6 +101,10 @@ export const debugReplay: CommandModule<unknown, Options> = {
       boolean: true,
       description: "Stub network requests during replay",
       default: true,
+    },
+    moveBeforeClick: {
+      boolean: true,
+      description: "Simulate mouse movement before clicking",
     },
   },
   handler: wrapHandler(handler),
