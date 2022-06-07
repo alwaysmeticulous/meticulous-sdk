@@ -15,6 +15,7 @@ export interface ReplayDebuggerUIOptions<T = ReplayableEvent> {
   browser: Browser;
   replayedPage: Page;
   replayableEvents: T[];
+  moveBeforeClick: boolean;
 }
 
 export interface ReplayDebuggerUI {
@@ -27,6 +28,7 @@ export const createReplayDebuggerUI: <T = ReplayableEvent>(
   browser,
   replayedPage,
   replayableEvents,
+  moveBeforeClick,
 }) => {
   type T = typeof replayableEvents[0];
 
@@ -119,6 +121,20 @@ export const createReplayDebuggerUI: <T = ReplayableEvent>(
 
     try {
       const nextEvent = state.events[state.index];
+
+      if (moveBeforeClick) {
+        const { x, y, type: eventType } = nextEvent as any;
+        if (
+          (eventType === "click" ||
+            eventType === "mouseup" ||
+            eventType === "mousedown") &&
+          typeof x === "number" &&
+          typeof y === "number"
+        ) {
+          await replayedPage.mouse.move(x, y);
+        }
+      }
+
       const target = await findEventTarget(nextEvent);
       const targetExists = await target.evaluate((target) => !!target);
       console.log(

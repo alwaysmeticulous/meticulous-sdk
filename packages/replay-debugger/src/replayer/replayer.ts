@@ -10,12 +10,14 @@ export const createReplayer: (options: {
   devTools: boolean;
   dependencies: ReplayDebuggerDependencies;
   networkStubbing: boolean;
+  moveBeforeClick: boolean;
 }) => Promise<any> = async ({
   sessionData,
   appUrl,
   devTools,
   dependencies,
   networkStubbing,
+  moveBeforeClick,
 }) => {
   const { width, height } = sessionData.userEvents.window;
   const defaultViewport = { width, height };
@@ -72,6 +74,7 @@ export const createReplayer: (options: {
     browser,
     replayedPage: page,
     replayableEvents,
+    moveBeforeClick,
   });
 
   // Close all pages if one of them is closed

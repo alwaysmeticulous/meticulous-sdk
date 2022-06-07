@@ -98,12 +98,24 @@ export const getStartUrl: (options: {
   return startRouteUrl.toString();
 };
 
+export const exposeMouseMove: (options: {
+  page: Page;
+}) => Promise<void> = async ({ page }) => {
+  await page.exposeFunction(
+    "__meticulous__replayMouseMove",
+    async (x: number, y: number) => {
+      await page.mouse.move(x, y);
+    }
+  );
+};
+
 export interface BootstrapPageOptions {
   page: Page;
   sessionData: SessionData;
   verbose: boolean;
   dependencies: ReplayEventsDependencies;
   networkStubbing: boolean;
+  moveBeforeClick: boolean;
 }
 
 // This utility function sets up polly, jsreplay, reanimator and logging.
@@ -115,6 +127,7 @@ export const bootstrapPage: (
   verbose,
   dependencies,
   networkStubbing,
+  moveBeforeClick,
 }) => {
   if (verbose) {
     page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
@@ -167,6 +180,10 @@ export const bootstrapPage: (
 
   const rrweb = await readFile(dependencies.rrweb.location, "utf-8");
   await page.evaluateOnNewDocument(rrweb);
+
+  if (moveBeforeClick) {
+    await exposeMouseMove({ page });
+  }
 };
 
 const wrapAndExecute = (block: string) => {
