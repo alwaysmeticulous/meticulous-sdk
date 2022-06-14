@@ -1,3 +1,4 @@
+import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import Zip from "adm-zip";
 import { AxiosInstance } from "axios";
 import { access, mkdir, readFile, rm, writeFile } from "fs/promises";
@@ -6,7 +7,6 @@ import { PNG } from "pngjs";
 import { downloadFile } from "../api/download";
 import { getReplay, getReplayDownloadUrl } from "../api/replay.api";
 import { readPng } from "../image/io.utils";
-import { getMeticulousLocalDataDir } from "./local-data";
 
 export const getOrFetchReplay: (
   client: AxiosInstance,

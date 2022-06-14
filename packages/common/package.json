@@ -1,17 +1,13 @@
 {
-  "name": "@alwaysmeticulous/cli",
+  "name": "@alwaysmeticulous/common",
   "version": "1.3.5",
-  "description": "The Meticulous CLI",
+  "description": "Meticulous common utilities",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "bin",
     "dist"
   ],
-  "bin": {
-    "meticulous": "bin/meticulous"
-  },
   "scripts": {
     "clean": "rimraf dist",
     "build": "tsc --build tsconfig.json",
@@ -19,37 +15,10 @@
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
-    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
-    "cli": "node dist/main.js",
-    "cli:dev": "ts-node src/main.ts"
+    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^1.3.0",
-    "@sentry/node": "^6.19.7",
-    "adm-zip": "^0.5.9",
-    "archiver": "^5.3.0",
-    "axios": "^0.25.0",
-    "cosmiconfig": "^7.0.1",
-    "luxon": "^2.2.0",
-    "pixelmatch": "^5.2.1",
-    "pngjs": "^6.0.0",
-    "yargs": "^17.3.1"
-  },
-  "peerDependencies": {
-    "@alwaysmeticulous/record": "^1.3.0",
-    "@alwaysmeticulous/replay-debugger": "^1.3.1",
-    "@alwaysmeticulous/replayer": "^1.3.2"
-  },
-  "peerDependenciesMeta": {
-    "@alwaysmeticulous/record": {
-      "optional": true
-    },
-    "@alwaysmeticulous/replay-debugger": {
-      "optional": true
-    },
-    "@alwaysmeticulous/replayer": {
-      "optional": true
-    }
+    "luxon": "^2.2.0"
   },
   "author": {
     "name": "The Meticulous Team",

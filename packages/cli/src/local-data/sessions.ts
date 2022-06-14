@@ -1,8 +1,8 @@
+import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { getRecordedSession, getRecordedSessionData } from "../api/session.api";
-import { getMeticulousLocalDataDir } from "./local-data";
 import { sanitizeFilename } from "./local-data.utils";
 
 export const getOrFetchRecordedSession: (

@@ -1,3 +1,7 @@
+import {
+  getMeticulousLocalDataDir,
+  DebugLogger,
+} from "@alwaysmeticulous/common";
 import type { recordSession as recordSessionFn } from "@alwaysmeticulous/record";
 import { join } from "path";
 import { CommandModule } from "yargs";
@@ -7,7 +11,6 @@ import {
   getRecordingCommandId,
   postSessionIdNotification,
 } from "../../api/session.api";
-import { getMeticulousLocalDataDir } from "../../local-data/local-data";
 import { fetchAsset } from "../../local-data/replay-assets";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
@@ -20,6 +23,7 @@ interface Options {
   height?: number | null | undefined;
   uploadIntervalMs?: number | null | undefined;
   incognito?: boolean | null | undefined;
+  trace?: boolean | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -30,18 +34,34 @@ const handler: (options: Options) => Promise<void> = async ({
   height,
   uploadIntervalMs,
   incognito,
+  trace,
 }) => {
+  const logger = trace ? await DebugLogger.create() : null;
+  logger?.log("Record options:");
+  logger?.logObject({
+    apiToken,
+    commitSha: commitSha_,
+    devTools,
+    width,
+    height,
+    uploadIntervalMs,
+    incognito,
+    trace,
+  });
+
   // 1. Fetch the recording token
   const client = createClient({ apiToken });
   const project = await getProject(client);
   if (!project) {
     console.error("Could not retrieve project data. Is the API token correct?");
+    logger?.log("Could not retrieve project data. Is the API token correct?");
     process.exit(1);
   }
 
   const recordingToken = project.recordingToken;
   if (!recordingToken) {
     console.error("Could not retrieve recording token.");
+    logger?.log("Could not retrieve recording token.");
     process.exit(1);
   }
   console.log(`Recording token: ${recordingToken}`);
@@ -64,6 +84,8 @@ const handler: (options: Options) => Promise<void> = async ({
   } catch (error) {
     console.error("Error: could not import @alwaysmeticulous/record");
     console.error(error);
+    logger?.log("Error: could not import @alwaysmeticulous/record");
+    logger?.log(`${error}`);
     process.exit(1);
   }
 
@@ -85,6 +107,7 @@ const handler: (options: Options) => Promise<void> = async ({
     uploadIntervalMs,
     incognito,
     cookieDir,
+    logger,
     onDetectedSession: (sessionId) => {
       postSessionIdNotification(client, sessionId, recordingCommandId).catch(
         (error) => {
@@ -92,9 +115,16 @@ const handler: (options: Options) => Promise<void> = async ({
             `Warning: error while notifying session recording ${sessionId}`
           );
           console.error(error);
+          logger?.log(
+            `Warning: error while notifying session recording ${sessionId}`
+          );
+          logger?.log(`${error}`);
         }
       );
     },
+  }).catch((error) => {
+    logger?.log(`${error}`);
+    throw error;
   });
 };
 
@@ -127,6 +157,10 @@ export const record: CommandModule<unknown, Options> = {
       boolean: true,
       description: "Use an incognito browsing context",
       default: true,
+    },
+    trace: {
+      boolean: true,
+      description: "Enable verbose logging",
     },
   },
   handler: wrapHandler(handler),

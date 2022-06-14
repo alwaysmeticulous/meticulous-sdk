@@ -1,3 +1,4 @@
+import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import yargs from "yargs";
 import { debugReplay } from "./commands/debug-replay/debug-replay.command";
 import { downloadReplay } from "./commands/download-replay/download-replay.command";
@@ -8,7 +9,6 @@ import { runAllTests } from "./commands/run-all-tests/run-all-tests.command";
 import { screenshotDiff } from "./commands/screenshot-diff/screenshot-diff.command";
 import { showProject } from "./commands/show-project/show-project.command";
 import { uploadBuild } from "./commands/upload-build/upload-build.command";
-import { getMeticulousLocalDataDir } from "./local-data/local-data";
 import { initSentry, setOptions } from "./utils/sentry.utils";
 
 const handleDataDir: (dataDir: string | null | undefined) => void = (
