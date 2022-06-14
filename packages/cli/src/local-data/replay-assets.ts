@@ -1,7 +1,7 @@
+import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import axios from "axios";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { basename, join } from "path";
-import { getMeticulousLocalDataDir } from "./local-data";
 
 export interface AssetMetadataItem {
   fileName: string;

@@ -1,8 +1,8 @@
+import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import { mkdir } from "fs/promises";
 import { join } from "path";
 import { PNG } from "pngjs";
 import { writePng } from "../image/io.utils";
-import { getMeticulousLocalDataDir } from "./local-data";
 
 export const writeScreenshotDiff: (options: {
   baseReplayId: string;

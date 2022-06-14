@@ -1,3 +1,4 @@
+import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import type { replayEvents as replayEventsFn } from "@alwaysmeticulous/replayer";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import { DateTime } from "luxon";
@@ -15,7 +16,6 @@ import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
 import { readConfig, saveConfig } from "../../config/config";
 import { MeticulousCliConfig } from "../../config/config.types";
-import { getMeticulousLocalDataDir } from "../../local-data/local-data";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
 import {

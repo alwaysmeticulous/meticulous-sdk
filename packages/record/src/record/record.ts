@@ -1,7 +1,8 @@
-import puppeteer, { Browser } from "puppeteer";
-import { bootstrapPage, defer } from "./record.utils";
+import type { DebugLogger } from "@alwaysmeticulous/common";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
+import puppeteer, { Browser, PuppeteerNode } from "puppeteer";
+import { bootstrapPage, defer } from "./record.utils";
 
 const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
 const COOKIE_FILENAME = "cookies.json";
@@ -19,6 +20,7 @@ export interface RecordSessionOptions {
   uploadIntervalMs?: number | null | undefined;
   incognito?: boolean | null | undefined;
   cookieDir?: string | null | undefined;
+  logger?: DebugLogger | null | undefined;
   onDetectedSession?: (sessionId: string) => void;
 }
 
@@ -36,9 +38,49 @@ export const recordSession: (
   uploadIntervalMs,
   incognito,
   cookieDir,
+  logger,
   onDetectedSession,
 }) => {
   console.log("Opening browser...");
+
+  logger?.log("recordSession options:");
+  logger?.logObject({
+    browser: !!browser_,
+    project,
+    recordingToken,
+    appCommitHash,
+    devTools,
+    recordingSnippet,
+    width,
+    height,
+    uploadIntervalMs,
+    incognito,
+    cookieDir,
+    logger: !!logger,
+    onDetectedSession: !!onDetectedSession,
+  });
+
+  if (logger) {
+    const puppeteerEnv = {
+      HTTP_PROXY: process.env["HTTP_PROXY"],
+      HTTPS_PROXY: process.env["HTTPS_PROXY"],
+      NO_PROXY: process.env["NO_PROXY"],
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD:
+        process.env["PUPPETEER_SKIP_CHROMIUM_DOWNLOAD"],
+      PUPPETEER_TMP_DIR: process.env["PUPPETEER_TMP_DIR"],
+      PUPPETEER_DOWNLOAD_HOST: process.env["PUPPETEER_DOWNLOAD_HOST"],
+      PUPPETEER_DOWNLOAD_PATH: process.env["PUPPETEER_DOWNLOAD_PATH"],
+      PUPPETEER_PRODUCT: process.env["PUPPETEER_PRODUCT"],
+      PUPPETEER_EXPERIMENTAL_CHROMIUM_MAC_ARM:
+        process.env["PUPPETEER_EXPERIMENTAL_CHROMIUM_MAC_ARM"],
+    };
+    logger.log("Puppeteer env:");
+    logger.logObject(puppeteerEnv);
+
+    const execPath = (puppeteer as any as PuppeteerNode).executablePath();
+    logger.log("Puppeteer browser:");
+    logger.log(execPath);
+  }
 
   const defaultViewport = width && height ? { width, height } : null;
 
