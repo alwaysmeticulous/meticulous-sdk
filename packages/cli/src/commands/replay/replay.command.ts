@@ -50,6 +50,8 @@ interface Options {
   exitOnMismatch?: boolean | null | undefined;
   networkStubbing: boolean;
   moveBeforeClick?: boolean | null | undefined;
+  cookies?: Record<string, any>[];
+  cookiesFile?: string | null | undefined;
 }
 
 export const replayCommandHandler: (options: Options) => Promise<any> = async ({
@@ -69,6 +71,8 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   exitOnMismatch,
   networkStubbing,
   moveBeforeClick,
+  cookies,
+  cookiesFile,
 }) => {
   const client = createClient({ apiToken });
 
@@ -154,6 +158,8 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
     screenshotSelector: screenshotSelector || "",
     networkStubbing,
     moveBeforeClick: moveBeforeClick || false,
+    cookies: cookies || null,
+    cookiesFile: cookiesFile || "",
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -339,6 +345,10 @@ export const replay: CommandModule<unknown, Options> = {
     moveBeforeClick: {
       boolean: true,
       description: "Simulate mouse movement before clicking",
+    },
+    cookiesFile: {
+      string: true,
+      description: "Path to cookies to inject before replay",
     },
   },
   handler: wrapHandler(handler),

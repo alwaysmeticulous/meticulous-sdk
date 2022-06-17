@@ -1,7 +1,11 @@
 import { getStartUrl } from "@alwaysmeticulous/replayer";
 import puppeteer, { Browser } from "puppeteer";
 import { SessionData } from "../session/session.types";
-import { bootstrapPage, ReplayDebuggerDependencies } from "./debugger.utils";
+import {
+  bootstrapPage,
+  ReplayDebuggerDependencies,
+  setupPageCookies,
+} from "./debugger.utils";
 import { createReplayDebuggerUI } from "./replay-debugger.ui";
 
 export const createReplayer: (options: {
@@ -11,6 +15,7 @@ export const createReplayer: (options: {
   dependencies: ReplayDebuggerDependencies;
   networkStubbing: boolean;
   moveBeforeClick: boolean;
+  cookiesFile: string;
 }) => Promise<any> = async ({
   sessionData,
   appUrl,
@@ -18,6 +23,7 @@ export const createReplayer: (options: {
   dependencies,
   networkStubbing,
   moveBeforeClick,
+  cookiesFile,
 }) => {
   const { width, height } = sessionData.userEvents.window;
   const defaultViewport = { width, height };
@@ -54,6 +60,10 @@ export const createReplayer: (options: {
     dependencies,
     networkStubbing,
   });
+
+  if (cookiesFile) {
+    await setupPageCookies({ page, cookiesFile });
+  }
 
   const startUrl = getStartUrl({ sessionData, appUrl });
   console.log(`Navigating to ${startUrl}...`);

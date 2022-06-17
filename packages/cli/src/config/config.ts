@@ -27,11 +27,13 @@ const getConfigFilePath: () => Promise<string> = async () => {
 const validateReplayOptions: (options: ReplayOptions) => ReplayOptions = (
   prevOptions
 ) => {
-  const { screenshotSelector, diffThreshold, diffPixelThreshold } = prevOptions;
+  const { screenshotSelector, diffThreshold, diffPixelThreshold, cookies } =
+    prevOptions;
   return {
     ...(screenshotSelector ? { screenshotSelector } : {}),
     ...(diffThreshold ? { diffThreshold } : {}),
     ...(diffPixelThreshold ? { diffPixelThreshold } : {}),
+    ...(cookies ? { cookies } : {}),
   };
 };
 

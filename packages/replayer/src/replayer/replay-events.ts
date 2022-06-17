@@ -9,6 +9,7 @@ import {
   injectScript,
   pullOutStructuredError,
   ReplayEventsDependencies,
+  setupPageCookies,
   sleep,
   writeOutput,
 } from "./replay.utils";
@@ -31,6 +32,8 @@ export interface ReplayEventsOptions {
   screenshotSelector?: string;
   networkStubbing: boolean;
   moveBeforeClick: boolean;
+  cookies: Record<string, any>[] | null;
+  cookiesFile: string;
 }
 
 export const replayEvents: (options: ReplayEventsOptions) => Promise<{
@@ -50,6 +53,8 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
     dependencies,
     networkStubbing,
     moveBeforeClick,
+    cookies,
+    cookiesFile,
   } = options;
 
   const promiseThatResolvesOnceWritesFinished = defer();
@@ -126,6 +131,10 @@ export const replayEvents: (options: ReplayEventsOptions) => Promise<{
     moveBeforeClick,
   });
   page.coverage.startJSCoverage();
+
+  if (cookies || cookiesFile) {
+    await setupPageCookies({ page, cookies: cookies || [], cookiesFile });
+  }
 
   // Navigate to the URL that the session originated on/from.
   const startUrl = getStartUrl({ sessionData, appUrl });
