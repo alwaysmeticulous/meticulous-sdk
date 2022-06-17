@@ -5,6 +5,19 @@ import {
 import { readFile } from "fs/promises";
 import { Page } from "puppeteer";
 
+export interface SetupPageCookiesOptions {
+  page: Page;
+  cookiesFile: string;
+}
+
+export const setupPageCookies: (
+  options: SetupPageCookiesOptions
+) => Promise<void> = async ({ page, cookiesFile }) => {
+  const cookiesStr = await readFile(cookiesFile, "utf-8");
+  const cookies = JSON.parse(cookiesStr) as any[];
+  await page.setCookie(...cookies);
+};
+
 export interface ReplayDebuggerDependencies
   extends BaseReplayEventsDependencies {
   replayDebugger: ReplayEventsDependency<"replayDebugger">;

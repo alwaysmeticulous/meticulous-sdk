@@ -2,6 +2,7 @@ export interface ReplayOptions {
   screenshotSelector?: string;
   diffThreshold?: number;
   diffPixelThreshold?: number;
+  cookies?: Record<string, any>[];
 }
 
 export interface TestCase {

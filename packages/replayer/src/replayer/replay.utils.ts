@@ -41,6 +41,23 @@ export const pullOutStructuredError: (error: string) => {
   };
 };
 
+export interface SetupPageCookiesOptions {
+  page: Page;
+  cookies: Record<string, any>[];
+  cookiesFile: string;
+}
+
+export const setupPageCookies: (
+  options: SetupPageCookiesOptions
+) => Promise<void> = async ({ page, cookies: cookies_, cookiesFile }) => {
+  const cookiesStr = cookiesFile ? await readFile(cookiesFile, "utf-8") : null;
+  const cookies = [
+    ...cookies_,
+    ...(cookiesStr ? (JSON.parse(cookiesStr) as any[]) : []),
+  ];
+  await page.setCookie(...cookies);
+};
+
 export interface ReplayEventsDependency<Key extends string> {
   key: Key;
   location: string;

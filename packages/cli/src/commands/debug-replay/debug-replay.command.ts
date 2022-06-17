@@ -15,6 +15,7 @@ interface Options {
   devTools?: boolean | null | undefined;
   networkStubbing: boolean;
   moveBeforeClick?: boolean | null | undefined;
+  cookiesFile?: string | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -24,6 +25,7 @@ const handler: (options: Options) => Promise<void> = async ({
   devTools,
   networkStubbing,
   moveBeforeClick,
+  cookiesFile,
 }) => {
   const client = createClient({ apiToken });
 
@@ -75,6 +77,7 @@ const handler: (options: Options) => Promise<void> = async ({
     },
     networkStubbing,
     moveBeforeClick: moveBeforeClick || false,
+    cookiesFile: cookiesFile || "",
   };
   await createReplayer(createReplayerParams);
 };
@@ -105,6 +108,10 @@ export const debugReplay: CommandModule<unknown, Options> = {
     moveBeforeClick: {
       boolean: true,
       description: "Simulate mouse movement before clicking",
+    },
+    cookiesFile: {
+      string: true,
+      description: "Path to cookies to inject before replay",
     },
   },
   handler: wrapHandler(handler),
