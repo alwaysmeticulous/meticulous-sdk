@@ -1,7 +1,7 @@
-import {
+import type {
   BaseReplayEventsDependencies,
   ReplayEventsDependency,
-} from "@alwaysmeticulous/replayer";
+} from "@alwaysmeticulous/common";
 import { readFile } from "fs/promises";
 import { Page } from "puppeteer";
 

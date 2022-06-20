@@ -1,7 +1,2 @@
-export { replayEvents, ReplayEventsOptions } from "./replayer/replay-events";
-export {
-  BaseReplayEventsDependencies,
-  exposeMouseMove,
-  getStartUrl,
-  ReplayEventsDependency,
-} from "./replayer/replay.utils";
+export { replayEvents } from "./replayer/replay-events";
+export { exposeMouseMove, getStartUrl } from "./replayer/replay.utils";

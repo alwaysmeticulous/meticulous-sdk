@@ -1,4 +1,4 @@
-import type { createReplayer as createReplayerFn } from "@alwaysmeticulous/replay-debugger";
+import type { CreateReplayDebuggerFn } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { fetchAsset } from "../../local-data/replay-assets";
@@ -45,7 +45,7 @@ const handler: (options: Options) => Promise<void> = async ({
   );
 
   // 4. Load replay-debugger package
-  let createReplayer: typeof createReplayerFn;
+  let createReplayer: CreateReplayDebuggerFn;
 
   try {
     const replayDebugger = await require("@alwaysmeticulous/replay-debugger");

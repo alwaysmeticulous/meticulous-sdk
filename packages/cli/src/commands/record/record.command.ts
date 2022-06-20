@@ -1,8 +1,8 @@
+import type { RecordSessionFn } from "@alwaysmeticulous/common";
 import {
-  getMeticulousLocalDataDir,
   DebugLogger,
+  getMeticulousLocalDataDir,
 } from "@alwaysmeticulous/common";
-import type { recordSession as recordSessionFn } from "@alwaysmeticulous/record";
 import { join } from "path";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
@@ -76,7 +76,7 @@ const handler: (options: Options) => Promise<void> = async ({
   );
 
   // 4. Load recording package
-  let recordSession: typeof recordSessionFn;
+  let recordSession: RecordSessionFn;
 
   try {
     const record = await require("@alwaysmeticulous/record");

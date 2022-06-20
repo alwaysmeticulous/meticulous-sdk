@@ -1,6 +1,6 @@
+import type { ReplayEventsFn } from "@alwaysmeticulous/common";
 import puppeteer, { Browser } from "puppeteer";
 import type { event } from "rrweb/typings/types";
-import { RecordedSession, SessionData } from "../session/session.types";
 import {
   bootstrapPage,
   defer,
@@ -8,38 +8,13 @@ import {
   getStartUrl,
   injectScript,
   pullOutStructuredError,
-  ReplayEventsDependencies,
   setupPageCookies,
   sleep,
   writeOutput,
 } from "./replay.utils";
 import { takeScreenshot } from "./screenshot.utils";
 
-export interface ReplayEventsOptions {
-  appUrl: string;
-  browser: any;
-  tempDir: string;
-  session: RecordedSession;
-  sessionData: SessionData;
-  recordingId: string;
-  meticulousSha: string;
-  headless?: boolean;
-  devTools?: boolean;
-  bypassCSP?: boolean;
-  verbose?: boolean;
-  dependencies: ReplayEventsDependencies;
-  screenshot?: boolean;
-  screenshotSelector?: string;
-  networkStubbing: boolean;
-  moveBeforeClick: boolean;
-  cookies: Record<string, any>[] | null;
-  cookiesFile: string;
-}
-
-export const replayEvents: (options: ReplayEventsOptions) => Promise<{
-  eventsFinishedPromise: Promise<void>;
-  writesFinishedPromise: Promise<void>;
-}> = async (options) => {
+export const replayEvents: ReplayEventsFn = async (options) => {
   const {
     appUrl,
     browser: browser_,
