@@ -1,4 +1,4 @@
-import type { DebugLogger } from "@alwaysmeticulous/common";
+import type { RecordSessionFn } from "@alwaysmeticulous/common";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import puppeteer, { Browser, PuppeteerNode } from "puppeteer";
@@ -7,26 +7,7 @@ import { bootstrapPage, defer } from "./record.utils";
 const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
 const COOKIE_FILENAME = "cookies.json";
 
-export interface RecordSessionOptions {
-  browser: any;
-  project: any;
-  recordingToken: string;
-  appCommitHash: string;
-  devTools?: boolean | null | undefined;
-  verbose?: boolean | null | undefined;
-  recordingSnippet: string;
-  width?: number | null | undefined;
-  height?: number | null | undefined;
-  uploadIntervalMs?: number | null | undefined;
-  incognito?: boolean | null | undefined;
-  cookieDir?: string | null | undefined;
-  logger?: DebugLogger | null | undefined;
-  onDetectedSession?: (sessionId: string) => void;
-}
-
-export const recordSession: (
-  options: RecordSessionOptions
-) => Promise<void> = async ({
+export const recordSession: RecordSessionFn = async ({
   browser: browser_,
   project,
   recordingToken,

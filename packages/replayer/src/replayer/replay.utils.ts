@@ -1,9 +1,12 @@
+import type {
+  ReplayEventsDependencies,
+  SessionData,
+} from "@alwaysmeticulous/common";
 import { appendFile, mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { CoverageEntry, Page } from "puppeteer";
 import * as rrweb from "rrweb";
 import type { event } from "rrweb/typings/types";
-import { SessionData } from "../session/session.types";
 
 export interface IDeferred<T = void> {
   resolve: (value: T) => void;
@@ -57,22 +60,6 @@ export const setupPageCookies: (
   ];
   await page.setCookie(...cookies);
 };
-
-export interface ReplayEventsDependency<Key extends string> {
-  key: Key;
-  location: string;
-}
-
-export interface BaseReplayEventsDependencies {
-  [key: ReplayEventsDependency<string>["key"]]: ReplayEventsDependency<string>;
-}
-
-export interface ReplayEventsDependencies extends BaseReplayEventsDependencies {
-  reanimator: ReplayEventsDependency<"reanimator">;
-  replayNetworkFile: ReplayEventsDependency<"replayNetworkFile">;
-  jsReplay: ReplayEventsDependency<"jsReplay">;
-  rrweb: ReplayEventsDependency<"rrweb">;
-}
 
 const getAppUrl: (options: { sessionData: any; appUrl: string }) => string = ({
   sessionData,

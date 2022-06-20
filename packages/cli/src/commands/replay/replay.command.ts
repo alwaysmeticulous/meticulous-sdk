@@ -1,5 +1,5 @@
+import type { ReplayEventsFn } from "@alwaysmeticulous/common";
 import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
-import type { replayEvents as replayEventsFn } from "@alwaysmeticulous/replayer";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import { DateTime } from "luxon";
 import { join } from "path";
@@ -101,7 +101,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   );
 
   // 4. Load replay package
-  let replayEvents: typeof replayEventsFn;
+  let replayEvents: ReplayEventsFn;
 
   try {
     const replayer = await require("@alwaysmeticulous/replayer");

@@ -1,22 +1,10 @@
+import type { CreateReplayDebuggerFn } from "@alwaysmeticulous/common";
 import { getStartUrl } from "@alwaysmeticulous/replayer";
 import puppeteer, { Browser } from "puppeteer";
-import { SessionData } from "../session/session.types";
-import {
-  bootstrapPage,
-  ReplayDebuggerDependencies,
-  setupPageCookies,
-} from "./debugger.utils";
+import { bootstrapPage, setupPageCookies } from "./debugger.utils";
 import { createReplayDebuggerUI } from "./replay-debugger.ui";
 
-export const createReplayer: (options: {
-  sessionData: SessionData;
-  appUrl: string;
-  devTools: boolean;
-  dependencies: ReplayDebuggerDependencies;
-  networkStubbing: boolean;
-  moveBeforeClick: boolean;
-  cookiesFile: string;
-}) => Promise<any> = async ({
+export const createReplayer: CreateReplayDebuggerFn = async ({
   sessionData,
   appUrl,
   devTools,

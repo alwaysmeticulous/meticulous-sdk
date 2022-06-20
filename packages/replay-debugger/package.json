@@ -18,6 +18,7 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
+    "@alwaysmeticulous/common": "^1.3.7",
     "@alwaysmeticulous/replay-debugger-ui": "^1.3.4",
     "@alwaysmeticulous/replayer": "^1.3.7",
     "puppeteer": "^13.5.2",
