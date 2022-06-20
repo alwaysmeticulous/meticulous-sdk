@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/record",
-  "version": "1.3.7",
+  "version": "1.3.8-alpha.2",
   "description": "The Meticulous toolkit to record user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -18,7 +18,7 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^1.3.7",
+    "@alwaysmeticulous/common": "^1.3.8-alpha.2",
     "puppeteer": "^13.5.2"
   },
   "author": {
