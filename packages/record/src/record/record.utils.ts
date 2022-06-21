@@ -24,15 +24,20 @@ export async function bootstrapPage({
   recordingToken,
   appCommitHash,
   recordingSnippet,
+  fetchStallSnippet,
   uploadIntervalMs,
 }: {
   page: Page;
   recordingToken: string;
   appCommitHash: string;
   recordingSnippet: string;
+  fetchStallSnippet: string;
   uploadIntervalMs: number | null;
 }): Promise<void> {
   const recordingSnippetFile = await readFile(recordingSnippet, "utf8");
+  const fetchStallSnippetFile = await readFile(fetchStallSnippet, "utf8");
+
+  await page.evaluateOnNewDocument(fetchStallSnippetFile);
 
   page.on("framenavigated", async (frame) => {
     if (page.mainFrame() === frame) {
@@ -44,6 +49,12 @@ export async function bootstrapPage({
         window["METICULOUS_ENABLE_RRWEB_PLUGIN_NODE_DATA"] = true;
       `);
       await frame.evaluate(recordingSnippetFile);
+      return;
     }
+
+    await frame.evaluate(`
+      window.__meticulous?.stalledFetch?.restoreFetch?.();
+      window.__meticulous?.stalledFetch?.drainQueue?.();
+    `);
   });
 }
