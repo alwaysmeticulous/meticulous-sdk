@@ -70,9 +70,12 @@ const handler: (options: Options) => Promise<void> = async ({
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
   console.log(`Commit: ${commitSha}`);
 
-  // 3. Load recording snippet
+  // 3. Load recording snippets
   const recordingSnippet = await fetchAsset(
     "https://snippet.meticulous.ai/v1/stagingMeticulousSnippet.js"
+  );
+  const fetchStallSnippet = await fetchAsset(
+    "https://snippet.meticulous.ai/record/v1/fetch-stall.bundle.js"
   );
 
   // 4. Load recording package
@@ -102,6 +105,7 @@ const handler: (options: Options) => Promise<void> = async ({
     appCommitHash: commitSha,
     devTools,
     recordingSnippet,
+    fetchStallSnippet,
     width,
     height,
     uploadIntervalMs,
