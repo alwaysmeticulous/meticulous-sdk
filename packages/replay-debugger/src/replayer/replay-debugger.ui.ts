@@ -182,7 +182,7 @@ export const createReplayDebuggerUI: <T = ReplayableEvent>(
   const res = await debuggerPage.goto(url, {
     waitUntil: "domcontentloaded",
   });
-  const status = res.status();
+  const status = res && res.status();
   if (status !== 200) {
     throw new Error(
       `Expected a 200 status when going to the initial URL of the site. Got a ${status} instead.`
