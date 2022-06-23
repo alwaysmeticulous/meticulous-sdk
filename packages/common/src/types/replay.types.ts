@@ -31,6 +31,7 @@ export interface ReplayEventsOptions {
   dependencies: ReplayEventsDependencies;
   screenshot?: boolean;
   screenshotSelector?: string;
+  padTime: boolean;
   networkStubbing: boolean;
   moveBeforeClick: boolean;
   cookies: Record<string, any>[] | null;

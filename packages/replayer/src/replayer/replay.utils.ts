@@ -3,6 +3,7 @@ import type {
   SessionData,
 } from "@alwaysmeticulous/common";
 import { appendFile, mkdir, readFile, writeFile } from "fs/promises";
+import { DateTime, Duration } from "luxon";
 import { join } from "path";
 import { CoverageEntry, Page } from "puppeteer";
 import * as rrweb from "rrweb";
@@ -488,4 +489,20 @@ export const prepareScreenshotsDir: (tempDir: string) => Promise<void> = async (
   tempDir
 ) => {
   await mkdir(join(tempDir, "screenshots"), { recursive: true });
+};
+
+export const getRrwebRecordingDuration: (
+  sessionData: SessionData
+) => Duration | null = (sessionData) => {
+  const rrwebTimestamps = (sessionData.rrwebEvents as { timestamp?: number }[])
+    .map((event) => event.timestamp || NaN)
+    .filter((ts) => !isNaN(ts));
+  const minRrwebTimestamp = DateTime.fromMillis(
+    Math.min(...rrwebTimestamps)
+  ).toUTC();
+  const maxRrwebTimestamp = DateTime.fromMillis(
+    Math.max(...rrwebTimestamps)
+  ).toUTC();
+  const rrwebRecordingDuration = maxRrwebTimestamp.diff(minRrwebTimestamp);
+  return rrwebRecordingDuration.isValid ? rrwebRecordingDuration : null;
 };

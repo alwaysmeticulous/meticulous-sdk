@@ -48,6 +48,7 @@ interface Options {
   diffPixelThreshold?: number | null | undefined;
   save?: boolean | null | undefined;
   exitOnMismatch?: boolean | null | undefined;
+  padTime: boolean;
   networkStubbing: boolean;
   moveBeforeClick?: boolean | null | undefined;
   cookies?: Record<string, any>[];
@@ -69,6 +70,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   diffPixelThreshold,
   save,
   exitOnMismatch,
+  padTime,
   networkStubbing,
   moveBeforeClick,
   cookies,
@@ -154,6 +156,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
         location: rrweb,
       },
     },
+    padTime,
     screenshot: screenshot || false,
     screenshotSelector: screenshotSelector || "",
     networkStubbing,
@@ -336,6 +339,11 @@ export const replay: CommandModule<unknown, Options> = {
       boolean: true,
       description:
         "Adds the replay to the list of test cases in meticulous.json",
+    },
+    padTime: {
+      boolean: true,
+      description: "Pad replay time according to recording duration",
+      default: true,
     },
     networkStubbing: {
       boolean: true,

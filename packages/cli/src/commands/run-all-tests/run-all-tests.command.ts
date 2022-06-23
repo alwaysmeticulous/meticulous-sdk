@@ -23,6 +23,7 @@ interface Options {
   bypassCSP?: boolean | null | undefined;
   diffThreshold?: number | null | undefined;
   diffPixelThreshold?: number | null | undefined;
+  padTime: boolean;
   networkStubbing: boolean;
   githubSummary?: boolean | null | undefined;
 }
@@ -36,6 +37,7 @@ const handler: (options: Options) => Promise<void> = async ({
   bypassCSP,
   diffThreshold,
   diffPixelThreshold,
+  padTime,
   networkStubbing,
   githubSummary,
 }) => {
@@ -80,6 +82,7 @@ const handler: (options: Options) => Promise<void> = async ({
       diffPixelThreshold,
       save: false,
       exitOnMismatch: false,
+      padTime,
       networkStubbing,
       ...options,
     });
@@ -171,6 +174,11 @@ export const runAllTests: CommandModule<unknown, Options> = {
     githubSummary: {
       boolean: true,
       description: "Outputs a summary page for GitHub actions",
+    },
+    padTime: {
+      boolean: true,
+      description: "Pad replay time according to recording duration",
+      default: true,
     },
     networkStubbing: {
       boolean: true,
