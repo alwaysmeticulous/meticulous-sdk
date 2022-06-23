@@ -1,10 +1,12 @@
 import type { ReplayEventsFn } from "@alwaysmeticulous/common";
+import { DateTime } from "luxon";
 import puppeteer, { Browser } from "puppeteer";
 import type { event } from "rrweb/typings/types";
 import {
   bootstrapPage,
   defer,
   getOnEmitEventCallback,
+  getRrwebRecordingDuration,
   getStartUrl,
   injectScript,
   pullOutStructuredError,
@@ -26,6 +28,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     bypassCSP,
     verbose,
     dependencies,
+    padTime,
     networkStubbing,
     moveBeforeClick,
     cookies,
@@ -184,10 +187,32 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   await page.evaluate(`jsReplay.buildData(window.__meticulousPlaybackData).then(
     replayObj => replayObj.start({ accelerate: false, moveBeforeClick: ${moveBeforeClick} }))`);
 
+  const startTime = DateTime.utc();
+
   await page.waitForFunction(`window["isMovieCompleted"]()`, {
     polling: 1000, // 1 second
     timeout: 1800000, // 30 minutes
   });
+
+  // Pad replay time according to session duration recorded with rrweb
+  if (padTime) {
+    const rrwebRecordingDuration = getRrwebRecordingDuration(sessionData);
+    if (rrwebRecordingDuration) {
+      const now = DateTime.utc();
+      const timeToPad = startTime
+        .plus(rrwebRecordingDuration)
+        .diff(now)
+        .toMillis();
+      if (timeToPad > 0) {
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, timeToPad);
+        });
+      }
+    }
+  }
+
   console.log("Replay done!");
 
   if (options.screenshot) {
