@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replay-debugger-ui",
-  "version": "1.3.4",
+  "version": "1.4.0",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
