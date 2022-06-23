@@ -21,7 +21,7 @@
     "@alwaysmeticulous/common": "^1.3.9",
     "@alwaysmeticulous/replay-debugger-ui": "^1.3.4",
     "@alwaysmeticulous/replayer": "^1.3.9",
-    "puppeteer": "^13.5.2",
+    "puppeteer": "^14.4.1",
     "rrweb": "^1.1.3"
   },
   "author": {

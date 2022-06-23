@@ -117,7 +117,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const res = await page.goto(startUrl, {
     waitUntil: "domcontentloaded",
   });
-  const status = res.status();
+  const status = res && res.status();
 
   if (status !== 200) {
     throw new Error(
