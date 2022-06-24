@@ -53,6 +53,7 @@ export async function bootstrapPage({
     }
 
     await frame.evaluate(`
+      window.__meticulous?.stalledFetch?.clearTimeout?.();
       window.__meticulous?.stalledFetch?.restoreFetch?.();
       window.__meticulous?.stalledFetch?.drainQueue?.();
     `);
