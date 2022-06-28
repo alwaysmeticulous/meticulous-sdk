@@ -1,4 +1,6 @@
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
+import log from "loglevel";
 import { PNG } from "pngjs";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
@@ -47,8 +49,9 @@ export const diffScreenshots: (options: {
   pixelThreshold,
   exitOnMismatch,
 }) => {
-  const threshold = threshold_ || DEFAULT_MISMATCH_THRESHOLD;
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
+  const threshold = threshold_ || DEFAULT_MISMATCH_THRESHOLD;
   const pixelmatchOptions: CompareImageOptions["pixelmatchOptions"] | null =
     pixelThreshold ? { threshold: pixelThreshold } : null;
 
@@ -59,8 +62,8 @@ export const diffScreenshots: (options: {
       ...(pixelmatchOptions ? pixelmatchOptions : {}),
     });
 
-    console.log({ mismatchPixels, mismatchFraction });
-    console.log(
+    logger.debug({ mismatchPixels, mismatchFraction });
+    logger.info(
       `${Math.round(
         mismatchFraction * 100
       )}% pixel mismatch (threshold is ${Math.round(threshold * 100)}%) => ${
@@ -70,7 +73,7 @@ export const diffScreenshots: (options: {
 
     await writeScreenshotDiff({ baseReplayId, headReplayId, diff });
     const diffUrl = await getDiffUrl(client, baseReplayId, headReplayId);
-    console.log(`View screenshot diff at ${diffUrl}`);
+    logger.info(`View screenshot diff at ${diffUrl}`);
 
     await postScreenshotDiffStats(client, {
       baseReplayId,
@@ -83,7 +86,7 @@ export const diffScreenshots: (options: {
     });
 
     if (mismatchFraction > threshold) {
-      console.log("Screenshots do not match!");
+      logger.info("Screenshots do not match!");
       if (exitOnMismatch) {
         process.exit(1);
       }
@@ -95,7 +98,9 @@ export const diffScreenshots: (options: {
       });
     }
   } catch (error) {
-    console.log(error);
+    if (!(error instanceof DiffError)) {
+      logger.error(error);
+    }
     if (exitOnMismatch) {
       process.exit(1);
     }

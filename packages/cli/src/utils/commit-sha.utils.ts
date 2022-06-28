@@ -1,4 +1,6 @@
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { exec } from "child_process";
+import log from "loglevel";
 
 const getGitRevParseHead: () => Promise<string> = () => {
   return new Promise((resolve, reject) => {
@@ -19,11 +21,13 @@ export const getCommitSha: (
     return commitSha_;
   }
 
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   try {
     const gitCommitSha = (await getGitRevParseHead()).trim();
     return gitCommitSha;
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     return "";
   }
 };

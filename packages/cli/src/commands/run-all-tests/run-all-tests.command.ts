@@ -1,3 +1,5 @@
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import log from "loglevel";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import {
@@ -41,13 +43,15 @@ const handler: (options: Options) => Promise<void> = async ({
   networkStubbing,
   githubSummary,
 }) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   const client = createClient({ apiToken });
 
   const config = await readConfig();
   const testCases = config.testCases || [];
 
   if (!testCases.length) {
-    console.error("Error! No test case defined");
+    logger.error("Error! No test case defined");
     process.exit(1);
   }
 
@@ -61,9 +65,9 @@ const handler: (options: Options) => Promise<void> = async ({
   });
 
   const testRunUrl = getTestRunUrl(testRun);
-  console.log("");
-  console.log(`Test run URL: ${testRunUrl}`);
-  console.log("");
+  logger.info("");
+  logger.info(`Test run URL: ${testRunUrl}`);
+  logger.info("");
 
   const results: TestCaseResult[] = [];
   for (const testCase of testCases) {
@@ -103,6 +107,7 @@ const handler: (options: Options) => Promise<void> = async ({
             result: "fail",
           };
         }
+        logger.error(error);
         return { ...testCase, headReplayId: "", result: "fail" };
       });
     results.push(result);
@@ -122,13 +127,13 @@ const handler: (options: Options) => Promise<void> = async ({
     resultData: { results },
   });
 
-  console.log("");
-  console.log("Results");
-  console.log("=======");
-  console.log(`URL: ${testRunUrl}`);
-  console.log("=======");
+  logger.info("");
+  logger.info("Results");
+  logger.info("=======");
+  logger.info(`URL: ${testRunUrl}`);
+  logger.info("=======");
   results.forEach(({ title, result }) => {
-    console.log(`${title} => ${result}`);
+    logger.info(`${title} => ${result}`);
   });
 
   if (githubSummary) {

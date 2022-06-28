@@ -1,10 +1,10 @@
-import { WriteStream } from "fs";
-import { DateTime } from "luxon";
-import { getLogFile } from "../local-data/logs";
-import { FileHandle, open } from "fs/promises";
 import { exec } from "child_process";
+import { createHash, randomUUID } from "crypto";
+import { WriteStream } from "fs";
+import { FileHandle, open } from "fs/promises";
+import { DateTime } from "luxon";
 import { getMeticulousLocalDataDir } from "../local-data/local-data";
-import { randomUUID, createHash } from "crypto";
+import { getLogFile } from "../local-data/logs";
 
 const random = () => {
   return createHash("sha256").update(randomUUID()).digest("hex").slice(0, 8);

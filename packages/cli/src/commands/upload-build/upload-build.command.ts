@@ -12,8 +12,10 @@ import {
   createArchive,
   deleteArchive,
 } from "../../archive/archive";
+import log from "loglevel";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -26,35 +28,37 @@ const handler: (options: Options) => Promise<void> = async ({
   commitSha: commitSha_,
   dist,
 }) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   // 1. Print project name
   const client = createClient({ apiToken });
   const project = await getProject(client);
   if (!project) {
-    console.error(
+    logger.error(
       "Error: Could not retrieve project data. Is the API token correct?"
     );
     process.exit(1);
   }
   const projectName = `${project.organization.name}/${project.name}`;
-  console.log(`Project: ${projectName}`);
+  logger.info(`Project: ${projectName}`);
 
   // 2. Guess commit SHA1
   const commitSha = await getCommitSha(commitSha_);
   if (!commitSha) {
-    console.error("Error: Could not guess commit SHA1, aborting");
+    logger.error("Error: Could not guess commit SHA1, aborting");
     process.exit(1);
   }
-  console.log(`Commit: ${commitSha}`);
+  logger.info(`Commit: ${commitSha}`);
 
   // 3. Create zip archive of build artifacts
-  console.log(`Uploading build artifacts from: ${dist}`);
+  logger.info(`Uploading build artifacts from: ${dist}`);
   try {
     await checkDistFolder(dist);
   } catch (error) {
     if (error instanceof Error) {
-      console.error(`Error: ${error.message}`);
+      logger.error(`Error: ${error.message}`);
     } else {
-      console.error(`Error: ${error}`);
+      logger.error(`Error: ${error}`);
     }
     process.exit(1);
   }
@@ -64,7 +68,7 @@ const handler: (options: Options) => Promise<void> = async ({
   const projectBuild = await createProjectBuild(client, commitSha);
   const uploadUrlData = await getProjectBuildPushUrl(client, projectBuild.id);
   if (!uploadUrlData) {
-    console.error("Error: Could not get a push URL from the Meticulous API");
+    logger.error("Error: Could not get a push URL from the Meticulous API");
     process.exit(1);
   }
   const uploadUrl = uploadUrlData.pushUrl;
@@ -74,9 +78,9 @@ const handler: (options: Options) => Promise<void> = async ({
     await uploadArchive(uploadUrl, archivePath);
   } catch (error) {
     await putProjectBuildPushedStatus(client, projectBuild.id, "failure").catch(
-      (updateError) => console.error(updateError)
+      (updateError) => logger.error(updateError)
     );
-    console.error(error);
+    logger.error(error);
     process.exit(1);
   }
 
@@ -86,8 +90,8 @@ const handler: (options: Options) => Promise<void> = async ({
     projectBuild.id,
     "success"
   );
-  console.log("Build artifacts successfully sent to Meticulous");
-  console.log(updatedProjectBuild);
+  logger.info("Build artifacts successfully sent to Meticulous");
+  logger.debug(updatedProjectBuild);
 
   await deleteArchive(archivePath);
 };

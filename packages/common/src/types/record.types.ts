@@ -14,7 +14,7 @@ export interface RecordSessionOptions {
   uploadIntervalMs?: number | null | undefined;
   incognito?: boolean | null | undefined;
   cookieDir?: string | null | undefined;
-  logger?: DebugLogger | null | undefined;
+  debugLogger?: DebugLogger | null | undefined;
   onDetectedSession?: (sessionId: string) => void;
 }
 

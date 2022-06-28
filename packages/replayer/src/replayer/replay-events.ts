@@ -1,4 +1,8 @@
-import type { ReplayEventsFn } from "@alwaysmeticulous/common";
+import {
+  METICULOUS_LOGGER_NAME,
+  ReplayEventsFn,
+} from "@alwaysmeticulous/common";
+import log from "loglevel";
 import { DateTime } from "luxon";
 import puppeteer, { Browser } from "puppeteer";
 import type { event } from "rrweb/typings/types";
@@ -35,6 +39,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     cookiesFile,
   } = options;
 
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   const promiseThatResolvesOnceWritesFinished = defer();
   const promiseThatResolvesOnceServerClosed = defer();
 
@@ -56,8 +62,14 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   const context = await browser.createIncognitoBrowserContext();
 
+  (await browser.defaultBrowserContext().pages()).forEach((page) =>
+    page.close().catch((error) => {
+      logger.error(error);
+    })
+  );
+
   const page = await context.newPage();
-  console.log("Created page");
+  logger.debug("Created page");
   page.setDefaultNavigationTimeout(120000); // 2 minutes
 
   if (bypassCSP) {
@@ -116,7 +128,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   // Navigate to the URL that the session originated on/from.
   const startUrl = getStartUrl({ sessionData, appUrl });
-  console.log(`Navigating to ${startUrl}`);
+  logger.debug(`Navigating to ${startUrl}`);
   const res = await page.goto(startUrl, {
     waitUntil: "domcontentloaded",
   });
@@ -127,12 +139,12 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       `Expected a 200 status when going to the initial URL of the site. Got a ${status} instead.`
     );
   }
-  console.log(`Navigated to ${startUrl}`);
+  logger.debug(`Navigated to ${startUrl}`);
 
   await page.setRequestInterception(true);
   page.on("request", async (request) => {
     if (request.frame() === page.mainFrame() && request.isNavigationRequest()) {
-      console.log(`WARNING: Navigating to a new page, this is likely to break replay!
+      logger.warn(`WARNING: Navigating to a new page, this is likely to break replay!
 -> ${request.url()}`);
       return await request.abort();
     }
@@ -213,7 +225,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     }
   }
 
-  console.log("Replay done!");
+  logger.info("Replay done!");
 
   if (options.screenshot) {
     await takeScreenshot({
@@ -254,26 +266,26 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       });
       results.errors.push(...pageErrorArr);
 
-      console.log(
+      logger.debug(
         "Total failed to match requests: ",
         results.numFailedRequests
       );
-      console.log(
+      logger.debug(
         "Total successfully matched requests: ",
         results.numSuccessRequests
       );
-      console.log(
+      logger.debug(
         "First failed user event...",
         JSON.stringify(results.firstFailedUserEvent)
       );
       const ratio =
         results.numSuccessRequests /
         (results.numFailedRequests + results.numSuccessRequests);
-      console.log("Ratio of successfully matched requests: ", ratio);
+      logger.debug("Ratio of successfully matched requests: ", ratio);
 
-      console.log("Collecting coverage data...");
+      logger.debug("Collecting coverage data...");
       const coverageData = await page.coverage.stopJSCoverage();
-      console.log("Collected coverage data");
+      logger.debug("Collected coverage data");
 
       writeOutput(
         {

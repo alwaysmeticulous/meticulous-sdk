@@ -1,8 +1,12 @@
-import type { RecordSessionFn } from "@alwaysmeticulous/common";
+import {
+  METICULOUS_LOGGER_NAME,
+  RecordSessionFn,
+} from "@alwaysmeticulous/common";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import puppeteer, { Browser, PuppeteerNode } from "puppeteer";
 import { bootstrapPage, defer } from "./record.utils";
+import log from "loglevel";
 
 const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
 const COOKIE_FILENAME = "cookies.json";
@@ -20,13 +24,15 @@ export const recordSession: RecordSessionFn = async ({
   uploadIntervalMs,
   incognito,
   cookieDir,
-  logger,
+  debugLogger,
   onDetectedSession,
 }) => {
-  console.log("Opening browser...");
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  logger?.log("recordSession options:");
-  logger?.logObject({
+  logger.info("Opening browser...");
+
+  debugLogger?.log("recordSession options:");
+  debugLogger?.logObject({
     browser: !!browser_,
     project,
     recordingToken,
@@ -38,11 +44,11 @@ export const recordSession: RecordSessionFn = async ({
     uploadIntervalMs,
     incognito,
     cookieDir,
-    logger: !!logger,
+    debugLogger: !!debugLogger,
     onDetectedSession: !!onDetectedSession,
   });
 
-  if (logger) {
+  if (debugLogger) {
     const puppeteerEnv = {
       HTTP_PROXY: process.env["HTTP_PROXY"],
       HTTPS_PROXY: process.env["HTTPS_PROXY"],
@@ -56,12 +62,12 @@ export const recordSession: RecordSessionFn = async ({
       PUPPETEER_EXPERIMENTAL_CHROMIUM_MAC_ARM:
         process.env["PUPPETEER_EXPERIMENTAL_CHROMIUM_MAC_ARM"],
     };
-    logger.log("Puppeteer env:");
-    logger.logObject(puppeteerEnv);
+    debugLogger.log("Puppeteer env:");
+    debugLogger.logObject(puppeteerEnv);
 
     const execPath = (puppeteer as any as PuppeteerNode).executablePath();
-    logger.log("Puppeteer browser:");
-    logger.log(execPath);
+    debugLogger.log("Puppeteer browser:");
+    debugLogger.log(execPath);
   }
 
   const defaultViewport = width && height ? { width, height } : null;
@@ -110,7 +116,7 @@ export const recordSession: RecordSessionFn = async ({
     uploadIntervalMs: uploadIntervalMs || DEFAULT_UPLOAD_INTERVAL_MS,
   });
 
-  console.log("Browser ready");
+  logger.info("Browser ready");
 
   // Collect and show recorded session ids
   // Also save page cookies if not in incognito context
@@ -124,10 +130,8 @@ export const recordSession: RecordSessionFn = async ({
         sessionIds.push(sessionId);
         const organizationName = encodeURIComponent(project.organization.name);
         const projectName = encodeURIComponent(project.name);
-        console.log(`Recording session ${sessionId}`);
-        console.log(
-          `Link: https://app.meticulous.ai/projects/${organizationName}/${projectName}/sessions/${sessionId}`
-        );
+        const sessionUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/sessions/${sessionId}`;
+        logger.info(`Recording session: ${sessionUrl}`);
         if (onDetectedSession) {
           onDetectedSession(sessionId);
         }
@@ -148,7 +152,7 @@ export const recordSession: RecordSessionFn = async ({
       ) {
         return;
       }
-      console.error(error);
+      logger.error(error);
     }
   }, 1000);
 

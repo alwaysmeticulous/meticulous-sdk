@@ -9,6 +9,7 @@ import { runAllTests } from "./commands/run-all-tests/run-all-tests.command";
 import { screenshotDiff } from "./commands/screenshot-diff/screenshot-diff.command";
 import { showProject } from "./commands/show-project/show-project.command";
 import { uploadBuild } from "./commands/upload-build/upload-build.command";
+import { initLogger, setLogLevel } from "./utils/logger.utils";
 import { initSentry, setOptions } from "./utils/sentry.utils";
 
 const handleDataDir: (dataDir: string | null | undefined) => void = (
@@ -18,6 +19,7 @@ const handleDataDir: (dataDir: string | null | undefined) => void = (
 };
 
 export const main: () => void = () => {
+  initLogger();
   initSentry();
 
   const promise = yargs
@@ -40,12 +42,17 @@ export const main: () => void = () => {
     .strict()
     .demandCommand()
     .option({
+      logLevel: {
+        choices: ["trace", "debug", "info", "warn", "error", "silent"],
+        description: "Log level",
+      },
       dataDir: {
         string: true,
         description: "Where Meticulous stores data (sessions, replays, etc.)",
       },
     })
     .middleware([
+      (argv) => setLogLevel(argv.logLevel),
       (argv) => handleDataDir(argv.dataDir),
       (argv) => setOptions(argv),
     ]).argv;

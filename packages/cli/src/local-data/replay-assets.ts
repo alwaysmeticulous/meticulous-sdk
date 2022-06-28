@@ -1,6 +1,10 @@
-import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
+import {
+  getMeticulousLocalDataDir,
+  METICULOUS_LOGGER_NAME,
+} from "@alwaysmeticulous/common";
 import axios from "axios";
 import { mkdir, readFile, writeFile } from "fs/promises";
+import log from "loglevel";
 import { basename, join } from "path";
 
 export interface AssetMetadataItem {
@@ -41,6 +45,8 @@ export const saveAssetMetadata: (
 export const fetchAsset: (fetchUrl: string) => Promise<string> = async (
   fetchUrl
 ) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   const assetsDir = join(getMeticulousLocalDataDir(), "assets");
 
   const assetMetadata = await loadAssetMetadata();
@@ -53,17 +59,17 @@ export const fetchAsset: (fetchUrl: string) => Promise<string> = async (
   const filePath = join(assetsDir, fileName);
 
   if (entry && etag === entry.etag) {
-    console.log(`${fetchUrl} already present`);
+    logger.debug(`${fetchUrl} already present`);
     return filePath;
   }
 
   const contents = (await axios.get(fetchUrl)).data;
   await writeFile(filePath, contents);
   if (entry) {
-    console.log(`${fetchUrl} updated`);
+    logger.debug(`${fetchUrl} updated`);
     entry.etag = etag;
   } else {
-    console.log(`${fetchUrl} downloaded`);
+    logger.debug(`${fetchUrl} downloaded`);
     assetMetadata.assets.push({ fileName, etag, fetchUrl });
   }
   await saveAssetMetadata(assetMetadata);
