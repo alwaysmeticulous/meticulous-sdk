@@ -1,7 +1,11 @@
-import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
+import {
+  getMeticulousLocalDataDir,
+  METICULOUS_LOGGER_NAME,
+} from "@alwaysmeticulous/common";
 import Zip from "adm-zip";
 import { AxiosInstance } from "axios";
 import { access, mkdir, readFile, rm, writeFile } from "fs/promises";
+import log from "loglevel";
 import { join } from "path";
 import { PNG } from "pngjs";
 import { downloadFile } from "../api/download";
@@ -12,6 +16,8 @@ export const getOrFetchReplay: (
   client: AxiosInstance,
   replayId: string
 ) => Promise<any> = async (client, replayId) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   const replayDir = join(getMeticulousLocalDataDir(), "replays", replayId);
   await mkdir(replayDir, { recursive: true });
   const replayFile = join(replayDir, `${replayId}.json`);
@@ -20,20 +26,18 @@ export const getOrFetchReplay: (
     .then((data) => JSON.parse(data.toString("utf-8")))
     .catch(() => null);
   if (existingReplay) {
-    console.log(`Reading replay from local copy in ${replayFile}`);
+    logger.debug(`Reading replay from local copy in ${replayFile}`);
     return existingReplay;
   }
 
   const replay = await getReplay(client, replayId);
   if (!replay) {
-    console.error(
-      "Error: Could not retrieve replay. Is the API token correct?"
-    );
+    logger.error("Error: Could not retrieve replay. Is the API token correct?");
     process.exit(1);
   }
 
   await writeFile(replayFile, JSON.stringify(replay, null, 2));
-  console.log(`Wrote replay to ${replayFile}`);
+  logger.debug(`Wrote replay to ${replayFile}`);
   return replay;
 };
 
@@ -41,6 +45,8 @@ export const getOrFetchReplayArchive: (
   client: AxiosInstance,
   replayId: string
 ) => Promise<void> = async (client, replayId) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   const replayDir = join(getMeticulousLocalDataDir(), "replays", replayId);
   await mkdir(replayDir, { recursive: true });
   const replayArchiveFile = join(replayDir, `${replayId}.zip`);
@@ -52,13 +58,13 @@ export const getOrFetchReplayArchive: (
     .then(() => true)
     .catch(() => false);
   if (paramsFileExists) {
-    console.log(`Replay archive already downloaded at ${replayDir}`);
+    logger.debug(`Replay archive already downloaded at ${replayDir}`);
     return;
   }
 
   const dowloadUrlData = await getReplayDownloadUrl(client, replayId);
   if (!dowloadUrlData) {
-    console.error(
+    logger.error(
       "Error: Could not retrieve replay archive URL. This may be an invalid replay"
     );
     process.exit(1);
@@ -69,7 +75,7 @@ export const getOrFetchReplayArchive: (
   zipFile.extractAllTo(replayDir, /*overwrite=*/ true);
   await rm(replayArchiveFile);
 
-  console.log(`Exrtracted replay archive in ${replayDir}`);
+  logger.debug(`Exrtracted replay archive in ${replayDir}`);
 };
 
 export const readReplayScreenshot: (replayId: string) => Promise<PNG> = async (

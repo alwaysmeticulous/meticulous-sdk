@@ -1,4 +1,8 @@
-import type { CreateReplayDebuggerFn } from "@alwaysmeticulous/common";
+import {
+  CreateReplayDebuggerFn,
+  METICULOUS_LOGGER_NAME,
+} from "@alwaysmeticulous/common";
+import log from "loglevel";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { fetchAsset } from "../../local-data/replay-assets";
@@ -27,6 +31,8 @@ const handler: (options: Options) => Promise<void> = async ({
   moveBeforeClick,
   cookiesFile,
 }) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   const client = createClient({ apiToken });
 
   // 1. Check session files
@@ -51,8 +57,8 @@ const handler: (options: Options) => Promise<void> = async ({
     const replayDebugger = await require("@alwaysmeticulous/replay-debugger");
     createReplayer = replayDebugger.createReplayer;
   } catch (error) {
-    console.error("Error: could not import @alwaysmeticulous/replay-debugger");
-    console.error(error);
+    logger.error("Error: could not import @alwaysmeticulous/replay-debugger");
+    logger.error(error);
     process.exit(1);
   }
 

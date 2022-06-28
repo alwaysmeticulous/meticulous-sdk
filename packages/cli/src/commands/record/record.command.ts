@@ -1,8 +1,10 @@
-import type { RecordSessionFn } from "@alwaysmeticulous/common";
 import {
   DebugLogger,
   getMeticulousLocalDataDir,
+  METICULOUS_LOGGER_NAME,
+  RecordSessionFn,
 } from "@alwaysmeticulous/common";
+import log from "loglevel";
 import { join } from "path";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
@@ -36,9 +38,10 @@ const handler: (options: Options) => Promise<void> = async ({
   incognito,
   trace,
 }) => {
-  const logger = trace ? await DebugLogger.create() : null;
-  logger?.log("Record options:");
-  logger?.logObject({
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const debugLogger = trace ? await DebugLogger.create() : null;
+  debugLogger?.log("Record options:");
+  debugLogger?.logObject({
     apiToken,
     commitSha: commitSha_,
     devTools,
@@ -49,26 +52,30 @@ const handler: (options: Options) => Promise<void> = async ({
     trace,
   });
 
+  logger.info("Preparing recording...");
+
   // 1. Fetch the recording token
   const client = createClient({ apiToken });
   const project = await getProject(client);
   if (!project) {
-    console.error("Could not retrieve project data. Is the API token correct?");
-    logger?.log("Could not retrieve project data. Is the API token correct?");
+    logger.error("Could not retrieve project data. Is the API token correct?");
+    debugLogger?.log(
+      "Could not retrieve project data. Is the API token correct?"
+    );
     process.exit(1);
   }
 
   const recordingToken = project.recordingToken;
   if (!recordingToken) {
-    console.error("Could not retrieve recording token.");
-    logger?.log("Could not retrieve recording token.");
+    logger.error("Could not retrieve recording token.");
+    debugLogger?.log("Could not retrieve recording token.");
     process.exit(1);
   }
-  console.log(`Recording token: ${recordingToken}`);
+  logger.debug(`Recording token: ${recordingToken}`);
 
   // 2. Guess commit SHA1
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
-  console.log(`Commit: ${commitSha}`);
+  logger.debug(`Commit: ${commitSha}`);
 
   // 3. Load recording snippets
   const recordingSnippet = await fetchAsset(
@@ -85,10 +92,10 @@ const handler: (options: Options) => Promise<void> = async ({
     const record = await require("@alwaysmeticulous/record");
     recordSession = record.recordSession;
   } catch (error) {
-    console.error("Error: could not import @alwaysmeticulous/record");
-    console.error(error);
-    logger?.log("Error: could not import @alwaysmeticulous/record");
-    logger?.log(`${error}`);
+    logger.error("Error: could not import @alwaysmeticulous/record");
+    logger.error(error);
+    debugLogger?.log("Error: could not import @alwaysmeticulous/record");
+    debugLogger?.log(`${error}`);
     process.exit(1);
   }
 
@@ -111,23 +118,23 @@ const handler: (options: Options) => Promise<void> = async ({
     uploadIntervalMs,
     incognito,
     cookieDir,
-    logger,
+    debugLogger,
     onDetectedSession: (sessionId) => {
       postSessionIdNotification(client, sessionId, recordingCommandId).catch(
         (error) => {
-          console.error(
+          logger.error(
             `Warning: error while notifying session recording ${sessionId}`
           );
-          console.error(error);
-          logger?.log(
+          logger.error(error);
+          debugLogger?.log(
             `Warning: error while notifying session recording ${sessionId}`
           );
-          logger?.log(`${error}`);
+          debugLogger?.log(`${error}`);
         }
       );
     },
   }).catch((error) => {
-    logger?.log(`${error}`);
+    debugLogger?.log(`${error}`);
     throw error;
   });
 };

@@ -1,6 +1,10 @@
-import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
+import {
+  getMeticulousLocalDataDir,
+  METICULOUS_LOGGER_NAME,
+} from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import { mkdir, readFile, writeFile } from "fs/promises";
+import log from "loglevel";
 import { join } from "path";
 import { getRecordedSession, getRecordedSessionData } from "../api/session.api";
 import { sanitizeFilename } from "./local-data.utils";
@@ -9,6 +13,8 @@ export const getOrFetchRecordedSession: (
   client: AxiosInstance,
   sessionId: string
 ) => Promise<any> = async (client, sessionId) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   const sessionsDir = join(getMeticulousLocalDataDir(), "sessions");
   await mkdir(sessionsDir, { recursive: true });
   const sessionFile = join(sessionsDir, `${sanitizeFilename(sessionId)}.json`);
@@ -17,20 +23,20 @@ export const getOrFetchRecordedSession: (
     .then((data) => JSON.parse(data.toString("utf-8")))
     .catch(() => null);
   if (existingSession) {
-    console.log(`Reading session from local copy in ${sessionFile}`);
+    logger.debug(`Reading session from local copy in ${sessionFile}`);
     return existingSession;
   }
 
   const session = await getRecordedSession(client, sessionId);
   if (!session) {
-    console.error(
+    logger.error(
       "Error: Could not retrieve session. Is the API token correct?"
     );
     process.exit(1);
   }
 
   await writeFile(sessionFile, JSON.stringify(session, null, 2));
-  console.log(`Wrote session to ${sessionFile}`);
+  logger.debug(`Wrote session to ${sessionFile}`);
   return session;
 };
 
@@ -38,6 +44,8 @@ export const getOrFetchRecordedSessionData: (
   client: AxiosInstance,
   sessionId: string
 ) => Promise<any> = async (client, sessionId) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   const sessionsDir = join(getMeticulousLocalDataDir(), "sessions");
   await mkdir(sessionsDir, { recursive: true });
   const sessionDataFile = join(
@@ -49,19 +57,19 @@ export const getOrFetchRecordedSessionData: (
     .then((data) => JSON.parse(data.toString("utf-8")))
     .catch(() => null);
   if (existingSessionData) {
-    console.log(`Reading session data from local copy in ${sessionDataFile}`);
+    logger.debug(`Reading session data from local copy in ${sessionDataFile}`);
     return existingSessionData;
   }
 
   const sessionData = await getRecordedSessionData(client, sessionId);
   if (!sessionData) {
-    console.error(
+    logger.error(
       "Error: Could not retrieve session data. This may be an invalid session"
     );
     process.exit(1);
   }
 
   await writeFile(sessionDataFile, JSON.stringify(sessionData, null, 2));
-  console.log(`Wrote session data to ${sessionDataFile}`);
+  logger.debug(`Wrote session data to ${sessionDataFile}`);
   return sessionData;
 };

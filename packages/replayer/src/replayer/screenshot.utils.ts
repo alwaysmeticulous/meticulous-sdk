@@ -1,3 +1,5 @@
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import log from "loglevel";
 import { join } from "path";
 import { Page } from "puppeteer";
 import { prepareScreenshotsDir } from "./replay.utils";
@@ -13,11 +15,12 @@ const screenshotPageOrElement: (options: {
   path: string;
   screenshotSelector: string;
 }) => Promise<void> = async ({ page, path, screenshotSelector }) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const toScreenshot = screenshotSelector
     ? await page.$(screenshotSelector)
     : page;
   if (!toScreenshot) {
-    console.log(`Error: could not find element (${screenshotSelector})`);
+    logger.warn(`Error: could not find element (${screenshotSelector})`);
   }
   await (toScreenshot || page).screenshot({ path });
 };
@@ -25,7 +28,8 @@ const screenshotPageOrElement: (options: {
 export const takeScreenshot: (
   options: TakeScreenshotOptions
 ) => Promise<void> = async ({ page, tempDir, screenshotSelector }) => {
-  console.log("Taking screenshot");
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  logger.debug("Taking screenshot");
   await prepareScreenshotsDir(tempDir);
   const screenshotFile = join(tempDir, "screenshots", "final-state.png");
   await screenshotPageOrElement({
@@ -33,5 +37,5 @@ export const takeScreenshot: (
     path: screenshotFile,
     screenshotSelector,
   });
-  console.log(`Wrote screenshot to ${screenshotFile}`);
+  logger.info(`Wrote screenshot to ${screenshotFile}`);
 };

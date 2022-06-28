@@ -1,8 +1,10 @@
-import type {
+import {
+  METICULOUS_LOGGER_NAME,
   ReplayEventsDependencies,
   SessionData,
 } from "@alwaysmeticulous/common";
 import { appendFile, mkdir, readFile, writeFile } from "fs/promises";
+import log from "loglevel";
 import { DateTime, Duration } from "luxon";
 import { join } from "path";
 import { CoverageEntry, Page } from "puppeteer";
@@ -134,8 +136,10 @@ export const bootstrapPage: (
   networkStubbing,
   moveBeforeClick,
 }) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   if (verbose) {
-    page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
+    page.on("console", (msg) => logger.debug("PAGE LOG:", msg.text()));
   }
   // Disable the recording snippet and set up the recording timeline
   await page.evaluateOnNewDocument(`
@@ -350,6 +354,8 @@ export function writeOutput(
   eventsWithTimestamps: event[],
   browser: any
 ): void {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   const resultsPath = join(opts.tempDir, `${opts.recordingId}.results.json`);
   const consoleLogPath = join(opts.tempDir, `${opts.recordingId}.console.json`);
   const metricsDir = join(opts.tempDir, "metrics", opts.recordingId);
@@ -393,7 +399,7 @@ export function writeOutput(
   });
 
   // Writes that depend upon coverageDir
-  console.log("Writing raw-coverage.json to", rawCoverageJSONPath);
+  logger.debug("Writing raw-coverage.json to", rawCoverageJSONPath);
   const rawCoverageWritePromise = coverageDirExists.then(() =>
     writeFile(
       rawCoverageJSONPath,
@@ -402,7 +408,7 @@ export function writeOutput(
   );
 
   // Writes that depend upon sessionSummaryDir
-  console.log("Writing dom-sequence.json to", domSequenceJSONPath);
+  logger.debug("Writing dom-sequence.json to", domSequenceJSONPath);
   const domSequenceJSONWritePromise = sessionSummaryDirExists.then(() =>
     writeFile(domSequenceJSONPath, JSON.stringify(events, null, "  "))
   );
@@ -414,26 +420,26 @@ export function writeOutput(
     JSON.stringify(opts.results)
   ).then(
     () => {
-      console.log("Wrote results.json to", resultsPath);
+      logger.debug("Wrote results.json to", resultsPath);
     },
-    (err) => console.error(err)
+    (err) => logger.error(err)
   );
   const consoleWritePromise = writeFile(
     consoleLogPath,
     JSON.stringify(opts.consoleLog)
   ).then(
     () => {
-      console.log("Wrote console.json to", consoleLogPath);
+      logger.debug("Wrote console.json to", consoleLogPath);
     },
-    (err) => console.error(err)
+    (err) => logger.error(err)
   );
 
-  console.log("Writing errors.json to", errorsJSONPath);
+  logger.debug("Writing errors.json to", errorsJSONPath);
   const errorsWritePromise = sessionSummaryDirExists.then(() =>
     writeFile(errorsJSONPath, JSON.stringify(opts.errors || [], null, "  "))
   );
 
-  console.log("Writing the actual request log to", actualRequestJSONPath);
+  logger.debug("Writing the actual request log to", actualRequestJSONPath);
   const actualRequestsWritePromise = sessionSummaryDirExists.then(() =>
     writeFile(
       actualRequestJSONPath,
@@ -454,7 +460,7 @@ export function writeOutput(
     opts.numSuccessRequests /
     (opts.numSuccessRequests + opts.numFailedRequests);
 
-  console.log("Writing metrics for the session to ", metricJSONPath);
+  logger.debug("Writing metrics for the session to ", metricJSONPath);
   const metricsWritePromise = metricsDirExists.then(() =>
     writeFile(
       metricJSONPath,

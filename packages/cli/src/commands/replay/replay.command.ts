@@ -1,6 +1,10 @@
-import type { ReplayEventsFn } from "@alwaysmeticulous/common";
-import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
+import {
+  getMeticulousLocalDataDir,
+  METICULOUS_LOGGER_NAME,
+  ReplayEventsFn,
+} from "@alwaysmeticulous/common";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
+import log from "loglevel";
 import { DateTime } from "luxon";
 import { join } from "path";
 import { CommandModule } from "yargs";
@@ -76,6 +80,8 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   cookies,
   cookiesFile,
 }) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   const client = createClient({ apiToken });
 
   // 1. Check session files
@@ -84,7 +90,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
 
   // 2. Guess commit SHA1
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
-  console.log(`Commit: ${commitSha}`);
+  logger.debug(`Commit: ${commitSha}`);
 
   const meticulousSha = await getMeticulousVersion();
 
@@ -109,8 +115,8 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
     const replayer = await require("@alwaysmeticulous/replayer");
     replayEvents = replayer.replayEvents;
   } catch (error) {
-    console.error("Error: could not import @alwaysmeticulous/replayer");
-    console.error(error);
+    logger.error("Error: could not import @alwaysmeticulous/replayer");
+    logger.error(error);
     process.exit(1);
   }
 
@@ -170,7 +176,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   );
 
   // 7. Perform replay
-  console.log("Starting replay...");
+  logger.info("Starting replay...");
   const startTime = DateTime.utc();
 
   const { eventsFinishedPromise, writesFinishedPromise } = await replayEvents(
@@ -182,8 +188,8 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
 
   const endTime = DateTime.utc();
 
-  console.log(`Replay time: ${endTime.diff(startTime).as("seconds")} seconds`);
-  console.log("Sending replay results to Meticulous");
+  logger.info(`Replay time: ${endTime.diff(startTime).as("seconds")} seconds`);
+  logger.info("Sending replay results to Meticulous");
 
   // 8. Create a Zip archive containing the replay files
   const archivePath = await createReplayArchive(tempDir);
@@ -198,7 +204,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   });
   const uploadUrlData = await getReplayPushUrl(client, replay.id);
   if (!uploadUrlData) {
-    console.error("Error: Could not get a push URL from the Meticulous API");
+    logger.error("Error: Could not get a push URL from the Meticulous API");
     process.exit(1);
   }
   const uploadUrl = uploadUrlData.pushUrl;
@@ -212,8 +218,8 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
       replay.id,
       "failure",
       replayCommandId
-    ).catch(console.error);
-    console.error(error);
+    ).catch(logger.error);
+    logger.error(error);
     process.exit(1);
   }
 
@@ -224,16 +230,18 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
     "success",
     replayCommandId
   );
-  console.log("Replay artifacts successfully sent to Meticulous");
-  console.log(updatedProjectBuild);
+  logger.info("Replay artifacts successfully sent to Meticulous");
+  logger.debug(updatedProjectBuild);
 
   const replayUrl = getReplayUrl(replay);
-  console.log(`View replay at: ${replayUrl}`);
+  logger.info("=======");
+  logger.info(`View replay at: ${replayUrl}`);
+  logger.info("=======");
 
   // 12. Diff against base replay screenshot if one is provided
   const baseReplayId = baseReplayId_ || "";
   if (screenshot && baseReplayId) {
-    console.log(
+    logger.info(
       `Diffing final state screenshot against replay ${baseReplayId}`
     );
 
@@ -258,7 +266,7 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   // 13. Add test case to meticulous.json if --save option is passed
   if (save) {
     if (!screenshot) {
-      console.error(
+      logger.error(
         "Warning: saving a new test case without screenshot enabled."
       );
     }
