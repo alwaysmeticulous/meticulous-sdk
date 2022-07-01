@@ -18,7 +18,7 @@ export const recordSession: RecordSessionFn = async ({
   appCommitHash,
   devTools,
   recordingSnippet,
-  fetchStallSnippet,
+  earlyNetworkRecorderSnippet,
   width,
   height,
   uploadIntervalMs,
@@ -112,7 +112,7 @@ export const recordSession: RecordSessionFn = async ({
     recordingToken,
     appCommitHash,
     recordingSnippet,
-    fetchStallSnippet,
+    earlyNetworkRecorderSnippet,
     uploadIntervalMs: uploadIntervalMs || DEFAULT_UPLOAD_INTERVAL_MS,
   });
 
