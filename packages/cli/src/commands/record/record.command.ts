@@ -81,8 +81,8 @@ const handler: (options: Options) => Promise<void> = async ({
   const recordingSnippet = await fetchAsset(
     "https://snippet.meticulous.ai/v1/stagingMeticulousSnippet.js"
   );
-  const fetchStallSnippet = await fetchAsset(
-    "https://snippet.meticulous.ai/record/v1/fetch-stall.bundle.js"
+  const earlyNetworkRecorderSnippet = await fetchAsset(
+    "https://snippet.meticulous.ai/record/v1/network-recorder.bundle.js"
   );
 
   // 4. Load recording package
@@ -112,7 +112,7 @@ const handler: (options: Options) => Promise<void> = async ({
     appCommitHash: commitSha,
     devTools,
     recordingSnippet,
-    fetchStallSnippet,
+    earlyNetworkRecorderSnippet,
     width,
     height,
     uploadIntervalMs,
