@@ -9,6 +9,7 @@ import {
 } from "../../api/test-run.api";
 import { readConfig } from "../../config/config";
 import { TestCaseResult } from "../../config/config.types";
+import { runAllTestsInParallel } from "../../parallel-tests/parallel-tests.handler";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { writeGitHubSummary } from "../../utils/github-summary.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
@@ -28,6 +29,8 @@ interface Options {
   padTime: boolean;
   networkStubbing: boolean;
   githubSummary?: boolean | null | undefined;
+  parallelize?: boolean | null | undefined;
+  parallelTasks?: number | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -42,6 +45,8 @@ const handler: (options: Options) => Promise<void> = async ({
   padTime,
   networkStubbing,
   githubSummary,
+  parallelize,
+  parallelTasks,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -57,6 +62,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
   const meticulousSha = await getMeticulousVersion();
+
   const testRun = await createTestRun({
     client,
     commitSha,
@@ -69,55 +75,80 @@ const handler: (options: Options) => Promise<void> = async ({
   logger.info(`Test run URL: ${testRunUrl}`);
   logger.info("");
 
-  const results: TestCaseResult[] = [];
-  for (const testCase of testCases) {
-    const { sessionId, baseReplayId, options } = testCase;
-    const replayPromise = replayCommandHandler({
-      apiToken,
-      commitSha,
-      sessionId,
-      appUrl,
-      headless,
-      devTools,
-      bypassCSP,
-      screenshot: true,
-      baseReplayId,
-      diffThreshold,
-      diffPixelThreshold,
-      save: false,
-      exitOnMismatch: false,
-      padTime,
-      networkStubbing,
-      ...options,
-    });
-    const result: TestCaseResult = await replayPromise
-      .then(
-        (replay) =>
-          ({
-            ...testCase,
-            headReplayId: replay.id,
-            result: "pass",
-          } as TestCaseResult)
-      )
-      .catch((error) => {
-        if (error instanceof DiffError && error.extras) {
-          return {
-            ...testCase,
-            headReplayId: error.extras.headReplayId,
-            result: "fail",
-          };
-        }
-        logger.error(error);
-        return { ...testCase, headReplayId: "", result: "fail" };
+  const getResults = async () => {
+    if (parallelize) {
+      const results = await runAllTestsInParallel({
+        config,
+        client,
+        testRun,
+        apiToken,
+        commitSha,
+        appUrl,
+        headless,
+        devTools,
+        bypassCSP,
+        diffThreshold,
+        diffPixelThreshold,
+        padTime,
+        networkStubbing,
+        parallelTasks,
       });
-    results.push(result);
-    await putTestRunResults({
-      client,
-      testRunId: testRun.id,
-      status: "Running",
-      resultData: { results },
-    });
-  }
+      return results;
+    }
+
+    const results: TestCaseResult[] = [];
+    for (const testCase of testCases) {
+      const { sessionId, baseReplayId, options } = testCase;
+      const replayPromise = replayCommandHandler({
+        apiToken,
+        commitSha,
+        sessionId,
+        appUrl,
+        headless,
+        devTools,
+        bypassCSP,
+        screenshot: true,
+        baseReplayId,
+        diffThreshold,
+        diffPixelThreshold,
+        save: false,
+        exitOnMismatch: false,
+        padTime,
+        networkStubbing,
+        ...options,
+      });
+      const result: TestCaseResult = await replayPromise
+        .then(
+          (replay) =>
+            ({
+              ...testCase,
+              headReplayId: replay.id,
+              result: "pass",
+            } as TestCaseResult)
+        )
+        .catch((error) => {
+          if (error instanceof DiffError && error.extras) {
+            return {
+              ...testCase,
+              headReplayId: error.extras.headReplayId,
+              result: "fail",
+            };
+          }
+          logger.error(error);
+          return { ...testCase, headReplayId: "", result: "fail" };
+        });
+      results.push(result);
+      await putTestRunResults({
+        client,
+        testRunId: testRun.id,
+        status: "Running",
+        resultData: { results },
+      });
+    }
+    return results;
+  };
+
+  const results = await getResults();
 
   const runAllFailure = results.find(({ result }) => result === "fail");
   await putTestRunResults({
@@ -189,6 +220,20 @@ export const runAllTests: CommandModule<unknown, Options> = {
       boolean: true,
       description: "Stub network requests during replay",
       default: true,
+    },
+    parallelize: {
+      boolean: true,
+      description: "Run tests in parallel",
+    },
+    parallelTasks: {
+      number: true,
+      description: "Number of tasks to run in parallel",
+      coerce: (value: number | null | undefined) => {
+        if (typeof value === "number" && value <= 0) {
+          return null;
+        }
+        return value;
+      },
     },
   },
   handler: wrapHandler(handler),
