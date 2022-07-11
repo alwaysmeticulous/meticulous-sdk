@@ -19,6 +19,7 @@ export interface InitMessage {
       networkStubbing: boolean;
     };
     testCase: TestCase;
+    deflake: boolean;
   };
 }
 

@@ -31,6 +31,7 @@ export interface RunAllTestsInParallelOptions {
   padTime: boolean;
   networkStubbing: boolean;
   parallelTasks: number | null | undefined;
+  deflake: boolean;
 }
 
 /** Handler for running Meticulous tests in parallel using child processes */
@@ -51,6 +52,7 @@ export const runAllTestsInParallel: (
   padTime,
   networkStubbing,
   parallelTasks,
+  deflake,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -116,6 +118,7 @@ export const runAllTestsInParallel: (
           networkStubbing,
         },
         testCase,
+        deflake,
       },
     };
     child.send(initMessage);

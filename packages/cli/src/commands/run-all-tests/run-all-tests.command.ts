@@ -9,13 +9,12 @@ import {
 } from "../../api/test-run.api";
 import { readConfig } from "../../config/config";
 import { TestCaseResult } from "../../config/config.types";
+import { deflakeReplayCommandHandler } from "../../deflake-tests/deflake-tests.handler";
 import { runAllTestsInParallel } from "../../parallel-tests/parallel-tests.handler";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { writeGitHubSummary } from "../../utils/github-summary.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
-import { replayCommandHandler } from "../replay/replay.command";
-import { DiffError } from "../screenshot-diff/screenshot-diff.command";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -31,6 +30,7 @@ interface Options {
   githubSummary?: boolean | null | undefined;
   parallelize?: boolean | null | undefined;
   parallelTasks?: number | null | undefined;
+  deflake: boolean;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -47,6 +47,7 @@ const handler: (options: Options) => Promise<void> = async ({
   githubSummary,
   parallelize,
   parallelTasks,
+  deflake,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -92,6 +93,7 @@ const handler: (options: Options) => Promise<void> = async ({
         padTime,
         networkStubbing,
         parallelTasks,
+        deflake,
       });
       return results;
     }
@@ -99,7 +101,9 @@ const handler: (options: Options) => Promise<void> = async ({
     const results: TestCaseResult[] = [];
     for (const testCase of testCases) {
       const { sessionId, baseReplayId, options } = testCase;
-      const replayPromise = replayCommandHandler({
+      const result = await deflakeReplayCommandHandler({
+        testCase: testCase,
+        deflake: deflake || false,
         apiToken,
         commitSha,
         sessionId,
@@ -117,26 +121,6 @@ const handler: (options: Options) => Promise<void> = async ({
         networkStubbing,
         ...options,
       });
-      const result: TestCaseResult = await replayPromise
-        .then(
-          (replay) =>
-            ({
-              ...testCase,
-              headReplayId: replay.id,
-              result: "pass",
-            } as TestCaseResult)
-        )
-        .catch((error) => {
-          if (error instanceof DiffError && error.extras) {
-            return {
-              ...testCase,
-              headReplayId: error.extras.headReplayId,
-              result: "fail",
-            };
-          }
-          logger.error(error);
-          return { ...testCase, headReplayId: "", result: "fail" };
-        });
       results.push(result);
       await putTestRunResults({
         client,
@@ -234,6 +218,11 @@ export const runAllTests: CommandModule<unknown, Options> = {
         }
         return value;
       },
+    },
+    deflake: {
+      boolean: true,
+      description: "Attempt to deflake failing tests",
+      default: false,
     },
   },
   handler: wrapHandler(handler),
