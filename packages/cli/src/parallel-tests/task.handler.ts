@@ -4,9 +4,7 @@ import {
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { Duration } from "luxon";
-import { replayCommandHandler } from "../commands/replay/replay.command";
-import { DiffError } from "../commands/screenshot-diff/screenshot-diff.command";
-import { TestCaseResult } from "../config/config.types";
+import { deflakeReplayCommandHandler } from "../deflake-tests/deflake-tests.handler";
 import { initLogger } from "../utils/logger.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
 
@@ -48,7 +46,8 @@ const main = async () => {
 
   const initMessage = await waitForInitMessage();
 
-  const { logLevel, dataDir, runAllOptions, testCase } = initMessage.data;
+  const { logLevel, dataDir, runAllOptions, testCase, deflake } =
+    initMessage.data;
   logger.setLevel(logLevel);
   getMeticulousLocalDataDir(dataDir);
 
@@ -66,7 +65,9 @@ const main = async () => {
   } = runAllOptions;
   const { sessionId, baseReplayId, options } = testCase;
 
-  const replayPromise = replayCommandHandler({
+  const result = await deflakeReplayCommandHandler({
+    testCase,
+    deflake,
     apiToken,
     commitSha,
     sessionId,
@@ -84,27 +85,6 @@ const main = async () => {
     networkStubbing,
     ...options,
   });
-  const result: TestCaseResult = await replayPromise
-    .then(
-      (replay) =>
-        ({
-          ...testCase,
-          headReplayId: replay.id,
-          result: "pass",
-        } as TestCaseResult)
-    )
-    .catch((error) => {
-      if (error instanceof DiffError && error.extras) {
-        return {
-          ...testCase,
-          headReplayId: error.extras.headReplayId,
-          result: "fail",
-        };
-      }
-      logger.error(error);
-      return { ...testCase, headReplayId: "", result: "fail" };
-    });
-
   const resultMessage: ResultMessage = {
     kind: "result",
     data: {

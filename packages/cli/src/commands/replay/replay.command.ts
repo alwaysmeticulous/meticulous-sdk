@@ -37,7 +37,7 @@ import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
 
-interface Options {
+export interface ReplayCommandHandlerOptions {
   apiToken?: string | null | undefined;
   commitSha?: string | null | undefined;
   sessionId: string;
@@ -59,7 +59,9 @@ interface Options {
   cookiesFile?: string | null | undefined;
 }
 
-export const replayCommandHandler: (options: Options) => Promise<any> = async ({
+export const replayCommandHandler: (
+  options: ReplayCommandHandlerOptions
+) => Promise<any> = async ({
   apiToken,
   commitSha: commitSha_,
   sessionId,
@@ -291,11 +293,13 @@ export const replayCommandHandler: (options: Options) => Promise<any> = async ({
   return replay;
 };
 
-const handler: (options: Options) => Promise<void> = async (options) => {
+const handler: (options: ReplayCommandHandlerOptions) => Promise<void> = async (
+  options
+) => {
   await replayCommandHandler({ ...options, exitOnMismatch: true });
 };
 
-export const replay: CommandModule<unknown, Options> = {
+export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
   command: "replay",
   describe: "Replay a recorded session",
   builder: {
