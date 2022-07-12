@@ -17,6 +17,7 @@ export const recordSession: RecordSessionFn = async ({
   recordingToken,
   appCommitHash,
   devTools,
+  bypassCSP,
   recordingSnippet,
   earlyNetworkRecorderSnippet,
   width,
@@ -38,6 +39,7 @@ export const recordSession: RecordSessionFn = async ({
     recordingToken,
     appCommitHash,
     devTools,
+    bypassCSP,
     recordingSnippet,
     width,
     height,
@@ -90,6 +92,10 @@ export const recordSession: RecordSessionFn = async ({
 
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(120000); // 2 minutes
+
+  if (bypassCSP) {
+    await page.setBypassCSP(true);
+  }
 
   // Restore cookies when not in incognito context
   if (!incognito && cookieDir) {
