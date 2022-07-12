@@ -21,6 +21,7 @@ interface Options {
   apiToken?: string | null | undefined;
   commitSha?: string | null | undefined;
   devTools?: boolean | null | undefined;
+  bypassCSP?: boolean | null | undefined;
   width?: number | null | undefined;
   height?: number | null | undefined;
   uploadIntervalMs?: number | null | undefined;
@@ -32,6 +33,7 @@ const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   commitSha: commitSha_,
   devTools,
+  bypassCSP,
   width,
   height,
   uploadIntervalMs,
@@ -111,6 +113,7 @@ const handler: (options: Options) => Promise<void> = async ({
     recordingToken,
     appCommitHash: commitSha,
     devTools,
+    bypassCSP,
     recordingSnippet,
     earlyNetworkRecorderSnippet,
     width,
@@ -153,6 +156,10 @@ export const record: CommandModule<unknown, Options> = {
     devTools: {
       boolean: true,
       description: "Open Chrome Dev Tools",
+    },
+    bypassCSP: {
+      boolean: true,
+      description: "Enables bypass CSP in the browser",
     },
     width: {
       number: true,
