@@ -14,6 +14,7 @@ import {
   TestCase,
   TestCaseResult,
 } from "../config/config.types";
+import { sortResults } from "../utils/run-all-tests.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
 
 export interface RunAllTestsInParallelOptions {
@@ -177,5 +178,5 @@ export const runAllTestsInParallel: (
 
   await allTasksDone.promise;
 
-  return results;
+  return sortResults({ results, testCases: config.testCases || [] });
 };
