@@ -1,9 +1,30 @@
-import { AxiosInstance } from "axios";
+import axios, { AxiosInstance } from "axios";
+import { TestCaseResult } from "../config/config.types";
 
 export interface TestRun {
   id: string;
+  status: "Running" | "Success" | "Failure";
+  resultData?: {
+    results: TestCaseResult[];
+    [key: string]: any;
+  };
   [key: string]: any;
 }
+
+export const getTestRun: (options: {
+  client: AxiosInstance;
+  testRunId: string;
+}) => Promise<TestRun | null> = async ({ client, testRunId }) => {
+  const { data } = await client.get(`test-runs/${testRunId}`).catch((error) => {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 404) {
+        return { data: null };
+      }
+    }
+    throw error;
+  });
+  return data;
+};
 
 export const createTestRun: (options: {
   client: AxiosInstance;
