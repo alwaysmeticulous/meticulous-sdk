@@ -8,6 +8,7 @@ import { replay } from "./commands/replay/replay.command";
 import { runAllTests } from "./commands/run-all-tests/run-all-tests.command";
 import { screenshotDiff } from "./commands/screenshot-diff/screenshot-diff.command";
 import { showProject } from "./commands/show-project/show-project.command";
+import { updateTests } from "./commands/update-tests/update-tests.command";
 import { uploadBuild } from "./commands/upload-build/upload-build.command";
 import { initLogger, setLogLevel } from "./utils/logger.utils";
 import { initSentry, setOptions } from "./utils/sentry.utils";
@@ -37,6 +38,7 @@ export const main: () => void = () => {
     .command(runAllTests)
     .command(screenshotDiff)
     .command(showProject)
+    .command(updateTests)
     .command(uploadBuild)
     .help()
     .strict()
