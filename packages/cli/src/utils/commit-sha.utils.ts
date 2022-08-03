@@ -27,6 +27,13 @@ export const getCommitSha: (
     const gitCommitSha = (await getGitRevParseHead()).trim();
     return gitCommitSha;
   } catch (error) {
+    // Suppress error logging if not in a git repository
+    if (error instanceof Error) {
+      if (error.message.startsWith("Command failed")) {
+        logger.info("Notice: not running in a git repository");
+        return "";
+      }
+    }
     logger.error(error);
     return "";
   }
