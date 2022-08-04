@@ -127,7 +127,7 @@ export const postScreenshotDiffStats: (
 export const getReplayUrl = (replay: any) => {
   const organizationName = encodeURIComponent(replay.project.organization.name);
   const projectName = encodeURIComponent(replay.project.name);
-  const replayUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/replays/${replay.id}`;
+  const replayUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/simulations/${replay.id}`;
   return replayUrl;
 };
 
@@ -139,7 +139,6 @@ export const getDiffUrl: (
   const project = await getProject(client);
   const organizationName = encodeURIComponent(project.organization.name);
   const projectName = encodeURIComponent(project.name);
-
-  const diffUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/replays/${headReplayId}/diff/${baseReplayId}`;
+  const diffUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/simulations/${headReplayId}/diff/${baseReplayId}`;
   return diffUrl;
 };
