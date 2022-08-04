@@ -1,4 +1,4 @@
 # Meticulous Replayer
 
-This packages allows Meticulous users to perform replay of recorded user
-sesssions.
+This packages allows Meticulous users to perform simulations of recorded user
+sessions.

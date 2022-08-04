@@ -115,16 +115,16 @@ export const diffScreenshots: (options: {
 
 interface Options {
   apiToken?: string | null | undefined;
-  baseReplayId: string;
-  headReplayId: string;
+  baseSimulationId: string;
+  headSimulationId: string;
   threshold?: number | null | undefined;
   pixelThreshold?: number | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
   apiToken,
-  baseReplayId,
-  headReplayId,
+  baseSimulationId: baseReplayId,
+  headSimulationId: headReplayId,
   threshold,
   pixelThreshold,
 }) => {
@@ -157,13 +157,15 @@ export const screenshotDiff: CommandModule<unknown, Options> = {
     apiToken: {
       string: true,
     },
-    baseReplayId: {
+    baseSimulationId: {
       string: true,
       demandOption: true,
+      alias: "baseReplayId",
     },
-    headReplayId: {
+    headSimulationId: {
       string: true,
       demandOption: true,
+      alias: "headReplayId",
     },
     threshold: {
       number: true,

@@ -112,7 +112,7 @@ const handler: (options: Options) => Promise<void> = async ({
         devTools,
         bypassCSP,
         screenshot: true,
-        baseReplayId,
+        baseSimulationId: baseReplayId,
         diffThreshold,
         diffPixelThreshold,
         save: false,

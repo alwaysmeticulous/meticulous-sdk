@@ -47,7 +47,7 @@ export interface ReplayCommandHandlerOptions {
   bypassCSP?: boolean | null | undefined;
   screenshot?: boolean | null | undefined;
   screenshotSelector?: string | null | undefined;
-  baseReplayId?: string | null | undefined;
+  baseSimulationId?: string | null | undefined;
   diffThreshold?: number | null | undefined;
   diffPixelThreshold?: number | null | undefined;
   save?: boolean | null | undefined;
@@ -71,7 +71,7 @@ export const replayCommandHandler: (
   bypassCSP,
   screenshot,
   screenshotSelector,
-  baseReplayId: baseReplayId_,
+  baseSimulationId: baseReplayId_,
   diffThreshold,
   diffPixelThreshold,
   save,
@@ -178,7 +178,7 @@ export const replayCommandHandler: (
   );
 
   // 7. Perform replay
-  logger.info("Starting replay...");
+  logger.info("Starting simulation...");
   const startTime = DateTime.utc();
 
   const { eventsFinishedPromise, writesFinishedPromise } = await replayEvents(
@@ -190,8 +190,8 @@ export const replayCommandHandler: (
 
   const endTime = DateTime.utc();
 
-  logger.info(`Replay time: ${endTime.diff(startTime).as("seconds")} seconds`);
-  logger.info("Sending replay results to Meticulous");
+  logger.info(`Simulation time: ${endTime.diff(startTime).as("seconds")} seconds`);
+  logger.info("Sending simulation results to Meticulous");
 
   // 8. Create a Zip archive containing the replay files
   const archivePath = await createReplayArchive(tempDir);
@@ -232,12 +232,12 @@ export const replayCommandHandler: (
     "success",
     replayCommandId
   );
-  logger.info("Replay artifacts successfully sent to Meticulous");
+  logger.info("Simulation artifacts successfully sent to Meticulous");
   logger.debug(updatedProjectBuild);
 
   const replayUrl = getReplayUrl(replay);
   logger.info("=======");
-  logger.info(`View replay at: ${replayUrl}`);
+  logger.info(`View simulation at: ${replayUrl}`);
   logger.info("=======");
 
   // 12. Diff against base replay screenshot if one is provided
@@ -300,8 +300,9 @@ const handler: (options: ReplayCommandHandlerOptions) => Promise<void> = async (
 };
 
 export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
-  command: "replay",
-  describe: "Replay a recorded session",
+  command: "simulate",
+  aliases: ["replay"],
+  describe: "Simulate (replay) a recorded session",
   builder: {
     apiToken: {
       string: true,
@@ -330,16 +331,17 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
     },
     screenshot: {
       boolean: true,
-      description: "Take a screenshot at the end of replay",
+      description: "Take a screenshot at the end of simulation",
     },
     screenshotSelector: {
       string: true,
       description:
         "Query selector to screenshot a specific DOM element instead of the whole page",
     },
-    baseReplayId: {
+    baseSimulationId: {
       string: true,
-      description: "Base replay id to diff the final state screenshot against",
+      description: "Base simulation id to diff the final state screenshot against",
+      alias: "baseReplayId",
     },
     diffThreshold: {
       number: true,
@@ -350,16 +352,16 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
     save: {
       boolean: true,
       description:
-        "Adds the replay to the list of test cases in meticulous.json",
+        "Adds the simulation to the list of test cases in meticulous.json",
     },
     padTime: {
       boolean: true,
-      description: "Pad replay time according to recording duration",
+      description: "Pad simulation time according to recording duration",
       default: true,
     },
     networkStubbing: {
       boolean: true,
-      description: "Stub network requests during replay",
+      description: "Stub network requests during simulation",
       default: true,
     },
     moveBeforeClick: {
@@ -368,7 +370,7 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
     },
     cookiesFile: {
       string: true,
-      description: "Path to cookies to inject before replay",
+      description: "Path to cookies to inject before simulation",
     },
   },
   handler: wrapHandler(handler),
