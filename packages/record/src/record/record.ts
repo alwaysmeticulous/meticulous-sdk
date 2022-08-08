@@ -165,4 +165,6 @@ export const recordSession: RecordSessionFn = async ({
   await closePromise.promise;
 
   clearInterval(interval);
+
+  await browser.close();
 };
