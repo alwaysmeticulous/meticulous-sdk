@@ -3,6 +3,7 @@ export interface ReplayOptions {
   diffThreshold?: number;
   diffPixelThreshold?: number;
   cookies?: Record<string, any>[];
+  moveBeforeClick?: boolean;
 }
 
 export interface TestCase {
