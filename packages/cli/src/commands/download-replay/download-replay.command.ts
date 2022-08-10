@@ -22,8 +22,9 @@ const handler: (options: Options) => Promise<void> = async ({
 };
 
 export const downloadReplay: CommandModule<unknown, Options> = {
-  command: "download-replay",
-  describe: "Download a replay from Meticulous",
+  command: "download-simulation",
+  aliases: ["download-replay"],
+  describe: "Download a simulation from Meticulous",
   builder: {
     apiToken: {
       string: true,

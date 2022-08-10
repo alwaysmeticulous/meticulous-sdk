@@ -89,7 +89,8 @@ const handler: (options: Options) => Promise<void> = async ({
 };
 
 export const debugReplay: CommandModule<unknown, Options> = {
-  command: "debug-replay",
+  command: "debug-simulation",
+  aliases: ["debug-replay"],
   describe: "Replay and debug a recorded session",
   builder: {
     apiToken: {
