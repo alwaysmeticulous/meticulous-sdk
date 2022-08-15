@@ -30,6 +30,7 @@ export interface RunAllTestsInParallelOptions {
   diffThreshold: number | null | undefined;
   diffPixelThreshold: number | null | undefined;
   padTime: boolean;
+  shiftTime: boolean;
   networkStubbing: boolean;
   parallelTasks: number | null | undefined;
   deflake: boolean;
@@ -51,6 +52,7 @@ export const runAllTestsInParallel: (
   diffThreshold,
   diffPixelThreshold,
   padTime,
+  shiftTime,
   networkStubbing,
   parallelTasks,
   deflake,
@@ -116,6 +118,7 @@ export const runAllTestsInParallel: (
           diffThreshold,
           diffPixelThreshold,
           padTime,
+          shiftTime,
           networkStubbing,
         },
         testCase,

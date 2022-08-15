@@ -53,6 +53,7 @@ export interface ReplayCommandHandlerOptions {
   save?: boolean | null | undefined;
   exitOnMismatch?: boolean | null | undefined;
   padTime: boolean;
+  shiftTime: boolean;
   networkStubbing: boolean;
   moveBeforeClick?: boolean | null | undefined;
   cookies?: Record<string, any>[];
@@ -77,6 +78,7 @@ export const replayCommandHandler: (
   save,
   exitOnMismatch,
   padTime,
+  shiftTime,
   networkStubbing,
   moveBeforeClick,
   cookies,
@@ -165,6 +167,7 @@ export const replayCommandHandler: (
       },
     },
     padTime,
+    shiftTime,
     screenshot: screenshot || false,
     screenshotSelector: screenshotSelector || "",
     networkStubbing,
@@ -190,7 +193,9 @@ export const replayCommandHandler: (
 
   const endTime = DateTime.utc();
 
-  logger.info(`Simulation time: ${endTime.diff(startTime).as("seconds")} seconds`);
+  logger.info(
+    `Simulation time: ${endTime.diff(startTime).as("seconds")} seconds`
+  );
   logger.info("Sending simulation results to Meticulous");
 
   // 8. Create a Zip archive containing the replay files
@@ -340,7 +345,8 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
     },
     baseSimulationId: {
       string: true,
-      description: "Base simulation id to diff the final state screenshot against",
+      description:
+        "Base simulation id to diff the final state screenshot against",
       alias: "baseReplayId",
     },
     diffThreshold: {
@@ -357,6 +363,12 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
     padTime: {
       boolean: true,
       description: "Pad simulation time according to recording duration",
+      default: true,
+    },
+    shiftTime: {
+      boolean: true,
+      description:
+        "Shift time during simulation to be set as the recording time",
       default: true,
     },
     networkStubbing: {

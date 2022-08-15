@@ -2,6 +2,7 @@ import type {
   BaseReplayEventsDependencies,
   ReplayEventsDependency,
 } from "@alwaysmeticulous/common";
+import { patchDate } from "@alwaysmeticulous/replayer/dist/replayer/replay.utils";
 import { readFile } from "fs/promises";
 import { Page } from "puppeteer";
 
@@ -29,6 +30,7 @@ export interface BootstrapPageOptions {
   page: Page;
   sessionData: any;
   dependencies: ReplayDebuggerDependencies;
+  shiftTime: boolean;
   networkStubbing: boolean;
 }
 
@@ -38,8 +40,14 @@ export const bootstrapPage: (
   page,
   sessionData,
   dependencies,
+  shiftTime,
   networkStubbing,
 }) => {
+  // Shift simulation time by patching the Date class
+  if (shiftTime) {
+    await patchDate({ page, sessionData });
+  }
+
   // Disable the recording snippet
   await page.evaluateOnNewDocument(`
     window["METICULOUS_DISABLED"] = true;

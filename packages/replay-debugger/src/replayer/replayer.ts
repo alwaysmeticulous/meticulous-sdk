@@ -13,6 +13,7 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
   appUrl,
   devTools,
   dependencies,
+  shiftTime,
   networkStubbing,
   moveBeforeClick,
   cookiesFile,
@@ -52,6 +53,7 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
     page,
     sessionData,
     dependencies,
+    shiftTime,
     networkStubbing,
   });
 
