@@ -26,6 +26,7 @@ interface Options {
   diffThreshold?: number | null | undefined;
   diffPixelThreshold?: number | null | undefined;
   padTime: boolean;
+  shiftTime: boolean;
   networkStubbing: boolean;
   githubSummary?: boolean | null | undefined;
   parallelize?: boolean | null | undefined;
@@ -43,6 +44,7 @@ const handler: (options: Options) => Promise<void> = async ({
   diffThreshold,
   diffPixelThreshold,
   padTime,
+  shiftTime,
   networkStubbing,
   githubSummary,
   parallelize,
@@ -91,6 +93,7 @@ const handler: (options: Options) => Promise<void> = async ({
         diffThreshold,
         diffPixelThreshold,
         padTime,
+        shiftTime,
         networkStubbing,
         parallelTasks,
         deflake,
@@ -118,6 +121,7 @@ const handler: (options: Options) => Promise<void> = async ({
         save: false,
         exitOnMismatch: false,
         padTime,
+        shiftTime,
         networkStubbing,
         ...options,
       });
@@ -198,6 +202,12 @@ export const runAllTests: CommandModule<unknown, Options> = {
     padTime: {
       boolean: true,
       description: "Pad replay time according to recording duration",
+      default: true,
+    },
+    shiftTime: {
+      boolean: true,
+      description:
+        "Shift time during simulation to be set as the recording time",
       default: true,
     },
     networkStubbing: {

@@ -17,6 +17,7 @@ interface Options {
   sessionId: string;
   appUrl?: string | null | undefined;
   devTools?: boolean | null | undefined;
+  shiftTime: boolean;
   networkStubbing: boolean;
   moveBeforeClick?: boolean | null | undefined;
   cookiesFile?: string | null | undefined;
@@ -27,6 +28,7 @@ const handler: (options: Options) => Promise<void> = async ({
   sessionId,
   appUrl,
   devTools,
+  shiftTime,
   networkStubbing,
   moveBeforeClick,
   cookiesFile,
@@ -81,6 +83,7 @@ const handler: (options: Options) => Promise<void> = async ({
         location: replayNetworkFile,
       },
     },
+    shiftTime,
     networkStubbing,
     moveBeforeClick: moveBeforeClick || false,
     cookiesFile: cookiesFile || "",
@@ -106,6 +109,12 @@ export const debugReplay: CommandModule<unknown, Options> = {
     devTools: {
       boolean: true,
       description: "Open Chrome Dev Tools",
+    },
+    shiftTime: {
+      boolean: true,
+      description:
+        "Shift time during simulation to be set as the recording time",
+      default: true,
     },
     networkStubbing: {
       boolean: true,

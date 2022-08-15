@@ -32,6 +32,7 @@ export interface ReplayEventsOptions {
   screenshot?: boolean;
   screenshotSelector?: string;
   padTime: boolean;
+  shiftTime: boolean;
   networkStubbing: boolean;
   moveBeforeClick: boolean;
   cookies: Record<string, any>[] | null;

@@ -33,6 +33,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     verbose,
     dependencies,
     padTime,
+    shiftTime,
     networkStubbing,
     moveBeforeClick,
     cookies,
@@ -117,6 +118,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     sessionData,
     verbose: verbose || false,
     dependencies,
+    shiftTime,
     networkStubbing,
     moveBeforeClick,
   });

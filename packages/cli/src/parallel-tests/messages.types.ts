@@ -16,6 +16,7 @@ export interface InitMessage {
       diffThreshold: number | null | undefined;
       diffPixelThreshold: number | null | undefined;
       padTime: boolean;
+      shiftTime: boolean;
       networkStubbing: boolean;
     };
     testCase: TestCase;

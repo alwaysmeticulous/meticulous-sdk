@@ -16,6 +16,7 @@ export interface ReplayDebuggerOptions {
   appUrl: string;
   devTools: boolean;
   dependencies: ReplayDebuggerDependencies;
+  shiftTime: boolean;
   networkStubbing: boolean;
   moveBeforeClick: boolean;
   cookiesFile: string;

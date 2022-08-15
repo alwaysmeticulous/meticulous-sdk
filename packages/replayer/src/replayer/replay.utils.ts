@@ -121,6 +121,7 @@ export interface BootstrapPageOptions {
   sessionData: SessionData;
   verbose: boolean;
   dependencies: ReplayEventsDependencies;
+  shiftTime: boolean;
   networkStubbing: boolean;
   moveBeforeClick: boolean;
 }
@@ -133,6 +134,7 @@ export const bootstrapPage: (
   sessionData,
   verbose,
   dependencies,
+  shiftTime,
   networkStubbing,
   moveBeforeClick,
 }) => {
@@ -141,6 +143,12 @@ export const bootstrapPage: (
   if (verbose) {
     page.on("console", (msg) => logger.debug("PAGE LOG:", msg.text()));
   }
+
+  // Shift simulation time by patching the Date class
+  if (shiftTime) {
+    await patchDate({ page, sessionData });
+  }
+
   // Disable the recording snippet and set up the recording timeline
   await page.evaluateOnNewDocument(`
     window["METICULOUS_DISABLED"] = true;
@@ -497,9 +505,9 @@ export const prepareScreenshotsDir: (tempDir: string) => Promise<void> = async (
   await mkdir(join(tempDir, "screenshots"), { recursive: true });
 };
 
-export const getRrwebRecordingDuration: (
+const getMinMaxRrwebTimestamps: (
   sessionData: SessionData
-) => Duration | null = (sessionData) => {
+) => [DateTime, DateTime] = (sessionData) => {
   const rrwebTimestamps = (sessionData.rrwebEvents as { timestamp?: number }[])
     .map((event) => event.timestamp || NaN)
     .filter((ts) => !isNaN(ts));
@@ -509,6 +517,48 @@ export const getRrwebRecordingDuration: (
   const maxRrwebTimestamp = DateTime.fromMillis(
     Math.max(...rrwebTimestamps)
   ).toUTC();
+  return [minRrwebTimestamp, maxRrwebTimestamp];
+};
+
+export const getRrwebRecordingDuration: (
+  sessionData: SessionData
+) => Duration | null = (sessionData) => {
+  const [minRrwebTimestamp, maxRrwebTimestamp] =
+    getMinMaxRrwebTimestamps(sessionData);
   const rrwebRecordingDuration = maxRrwebTimestamp.diff(minRrwebTimestamp);
   return rrwebRecordingDuration.isValid ? rrwebRecordingDuration : null;
+};
+
+export const patchDate: (options: {
+  page: Page;
+  sessionData: SessionData;
+}) => Promise<void> = async ({ page, sessionData }) => {
+  const [minRrwebTimestamp] = getMinMaxRrwebTimestamps(sessionData);
+  const now = DateTime.now();
+  const shift = minRrwebTimestamp.diff(now).toMillis();
+
+  await page.evaluateOnNewDocument(`
+    window.__meticulous = window.__meticulous || {};
+    window.__meticulous.timeshift = window.__meticulous.timeshift || {};
+    const timeshift = window.__meticulous.timeshift;
+
+    timeshift.OriginalDate = window.Date;
+    timeshift.clockShift = ${shift};
+
+    class ShiftedDate extends timeshift.OriginalDate {
+      constructor(...args) {
+        if (args.length) {
+          return new timeshift.OriginalDate(...args);
+        }
+        return new timeshift.OriginalDate(
+          timeshift.OriginalDate.now() + timeshift.clockShift
+        );
+      }
+    }
+
+    ShiftedDate.now = () => timeshift.OriginalDate.now() + timeshift.clockShift;
+
+    timeshift.ShiftedDate = ShiftedDate;
+    window.Date = ShiftedDate;
+  `);
 };

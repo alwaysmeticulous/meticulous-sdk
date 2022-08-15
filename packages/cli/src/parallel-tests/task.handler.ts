@@ -61,6 +61,7 @@ const main = async () => {
     diffThreshold,
     diffPixelThreshold,
     padTime,
+    shiftTime,
     networkStubbing,
   } = runAllOptions;
   const { sessionId, baseReplayId, options } = testCase;
@@ -82,6 +83,7 @@ const main = async () => {
     save: false,
     exitOnMismatch: false,
     padTime,
+    shiftTime,
     networkStubbing,
     ...options,
   });
