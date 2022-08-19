@@ -67,6 +67,21 @@ export const createReplayDebuggerUI: <T = ReplayableEvent>(
     event: T;
     target: JSHandle;
   }) => {
+    const { type } = event as any;
+    // Special handling for window events.
+    if (type.selector === "window") {
+      if (type === "resize") {
+        const { innerHeight, innerWidth } = event as any;
+        const viewport = { height: innerHeight, width: innerWidth };
+
+        await replayedPage.setViewport(viewport);
+        return;
+      }
+
+      console.log(`Unknown window event ${type}`);
+      return;
+    }
+
     await replayedPage.evaluate(
       (event, target) => {
         (window as any).__meticulous.replayFunctions.simulateEvent({

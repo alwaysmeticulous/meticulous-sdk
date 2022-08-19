@@ -7,7 +7,7 @@ import { appendFile, mkdir, readFile, writeFile } from "fs/promises";
 import log from "loglevel";
 import { DateTime, Duration } from "luxon";
 import { join } from "path";
-import { CoverageEntry, Page } from "puppeteer";
+import { CoverageEntry, Page, Viewport } from "puppeteer";
 import * as rrweb from "rrweb";
 import type { event } from "rrweb/typings/types";
 
@@ -105,15 +105,39 @@ export const getStartUrl: (options: {
   return startRouteUrl.toString();
 };
 
-export const exposeMouseMove: (options: {
-  page: Page;
-}) => Promise<void> = async ({ page }) => {
+const exposeMouseMove: (options: { page: Page }) => Promise<void> = async ({
+  page,
+}) => {
   await page.exposeFunction(
     "__meticulous__replayMouseMove",
     async (x: number, y: number) => {
       await page.mouse.move(x, y);
     }
   );
+};
+
+const exposeSetViewport: (options: { page: Page }) => Promise<void> = async ({
+  page,
+}) => {
+  await page.exposeFunction(
+    "__meticulous__setViewport",
+    async (viewport: Viewport): Promise<void> => {
+      await page.setViewport(viewport);
+    }
+  );
+};
+
+export const exposePuppeteerFunctions: (options: {
+  page: Page;
+  moveBeforeClick: boolean;
+}) => Promise<void> = async ({ page, moveBeforeClick }) => {
+  // This exposes functions to the replayed window. Usually
+  // these will be functions used during replay to modify
+  // puppeteer's state or for special user event handling.
+  await Promise.all([
+    moveBeforeClick && exposeMouseMove({ page }),
+    exposeSetViewport({ page }),
+  ]);
 };
 
 export interface BootstrapPageOptions {
@@ -198,9 +222,7 @@ export const bootstrapPage: (
   const rrweb = await readFile(dependencies.rrweb.location, "utf-8");
   await page.evaluateOnNewDocument(rrweb);
 
-  if (moveBeforeClick) {
-    await exposeMouseMove({ page });
-  }
+  await exposePuppeteerFunctions({ page, moveBeforeClick });
 };
 
 const wrapAndExecute = (block: string) => {
