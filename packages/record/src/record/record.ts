@@ -3,10 +3,10 @@ import {
   RecordSessionFn,
 } from "@alwaysmeticulous/common";
 import { mkdir, readFile, writeFile } from "fs/promises";
+import log from "loglevel";
 import { join } from "path";
 import puppeteer, { Browser, PuppeteerNode } from "puppeteer";
 import { bootstrapPage, defer } from "./record.utils";
-import log from "loglevel";
 
 const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
 const COOKIE_FILENAME = "cookies.json";
