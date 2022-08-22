@@ -1,3 +1,4 @@
+export { createTest } from "./commands/create-test/create-test.command";
 export { debugReplay } from "./commands/debug-replay/debug-replay.command";
 export { downloadReplay } from "./commands/download-replay/download-replay.command";
 export { downloadSession } from "./commands/download-session/download-session.command";
