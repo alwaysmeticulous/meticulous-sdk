@@ -17,7 +17,7 @@ import { fetchAsset } from "../../local-data/replay-assets";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 
-interface Options {
+export interface RecordCommandHandlerOptions {
   apiToken?: string | null | undefined;
   commitSha?: string | null | undefined;
   devTools?: boolean | null | undefined;
@@ -27,9 +27,12 @@ interface Options {
   uploadIntervalMs?: number | null | undefined;
   incognito?: boolean | null | undefined;
   trace?: boolean | null | undefined;
+  onDetectedSession?: (sessionId: string) => void;
 }
 
-const handler: (options: Options) => Promise<void> = async ({
+export const recordCommandHandler: (
+  options: RecordCommandHandlerOptions
+) => Promise<void> = async ({
   apiToken,
   commitSha: commitSha_,
   devTools,
@@ -39,6 +42,7 @@ const handler: (options: Options) => Promise<void> = async ({
   uploadIntervalMs,
   incognito,
   trace,
+  onDetectedSession: onDetectedSession_,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const debugLogger = trace ? await DebugLogger.create() : null;
@@ -107,6 +111,25 @@ const handler: (options: Options) => Promise<void> = async ({
   const recordingCommandId = await getRecordingCommandId(client);
 
   // 5. Start recording
+  const onDetectedSession = (sessionId: string) => {
+    if (onDetectedSession_) {
+      onDetectedSession_(sessionId);
+    }
+
+    postSessionIdNotification(client, sessionId, recordingCommandId).catch(
+      (error) => {
+        logger.error(
+          `Warning: error while notifying session recording ${sessionId}`
+        );
+        logger.error(error);
+        debugLogger?.log(
+          `Warning: error while notifying session recording ${sessionId}`
+        );
+        debugLogger?.log(`${error}`);
+      }
+    );
+  };
+
   await recordSession({
     browser: null,
     project,
@@ -122,27 +145,14 @@ const handler: (options: Options) => Promise<void> = async ({
     incognito,
     cookieDir,
     debugLogger,
-    onDetectedSession: (sessionId) => {
-      postSessionIdNotification(client, sessionId, recordingCommandId).catch(
-        (error) => {
-          logger.error(
-            `Warning: error while notifying session recording ${sessionId}`
-          );
-          logger.error(error);
-          debugLogger?.log(
-            `Warning: error while notifying session recording ${sessionId}`
-          );
-          debugLogger?.log(`${error}`);
-        }
-      );
-    },
+    onDetectedSession,
   }).catch((error) => {
     debugLogger?.log(`${error}`);
     throw error;
   });
 };
 
-export const record: CommandModule<unknown, Options> = {
+export const record: CommandModule<unknown, RecordCommandHandlerOptions> = {
   command: "record",
   describe: "Record a session",
   builder: {
@@ -181,5 +191,5 @@ export const record: CommandModule<unknown, Options> = {
       description: "Enable verbose logging",
     },
   },
-  handler: wrapHandler(handler),
+  handler: wrapHandler(recordCommandHandler),
 };

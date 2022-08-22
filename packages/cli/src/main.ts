@@ -1,5 +1,6 @@
 import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import yargs from "yargs";
+import { createTest } from "./commands/create-test/create-test.command";
 import { debugReplay } from "./commands/debug-replay/debug-replay.command";
 import { downloadReplay } from "./commands/download-replay/download-replay.command";
 import { downloadSession } from "./commands/download-session/download-session.command";
@@ -30,6 +31,7 @@ export const main: () => void = () => {
 
       Meticulous CLI`
     )
+    .command(createTest)
     .command(debugReplay)
     .command(downloadReplay)
     .command(downloadSession)
