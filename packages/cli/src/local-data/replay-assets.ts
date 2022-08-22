@@ -45,7 +45,7 @@ export const saveAssetMetadata: (
 
 export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-  const fetchUrl = `${getSnippetsBaseUrl()}${path}`;
+  const fetchUrl = new URL(path, getSnippetsBaseUrl()).href;
 
   const assetsDir = join(getMeticulousLocalDataDir(), "assets");
 
