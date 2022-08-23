@@ -38,7 +38,7 @@ const handler: (options: Options) => Promise<void> = async ({
   const client = createClient({ apiToken });
 
   // 1. Check session files
-  await getOrFetchRecordedSession(client, sessionId);
+  const session = await getOrFetchRecordedSession(client, sessionId);
   const sessionData = await getOrFetchRecordedSessionData(client, sessionId);
 
   // 3. Load replay assets
@@ -66,6 +66,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
   // 5. Start replay debugger
   const createReplayerParams: Parameters<typeof createReplayer>[0] = {
+    session,
     sessionData,
     appUrl: appUrl || "",
     devTools: devTools || false,

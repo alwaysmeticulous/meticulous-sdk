@@ -9,6 +9,7 @@ import { bootstrapPage, setupPageCookies } from "./debugger.utils";
 import { createReplayDebuggerUI } from "./replay-debugger.ui";
 
 export const createReplayer: CreateReplayDebuggerFn = async ({
+  session,
   sessionData,
   appUrl,
   devTools,
@@ -61,7 +62,7 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
     await setupPageCookies({ page, cookiesFile });
   }
 
-  const startUrl = getStartUrl({ sessionData, appUrl });
+  const startUrl = getStartUrl({ session, sessionData, appUrl });
   logger.debug(`Navigating to ${startUrl}...`);
   const res = await page.goto(startUrl, {
     waitUntil: "domcontentloaded",
