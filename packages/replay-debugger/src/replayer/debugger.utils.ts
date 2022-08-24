@@ -2,7 +2,7 @@ import type {
   BaseReplayEventsDependencies,
   ReplayEventsDependency,
 } from "@alwaysmeticulous/common";
-import { patchDate } from "@alwaysmeticulous/replayer/dist/replayer/replay.utils";
+import { patchDate } from "@alwaysmeticulous/replayer";
 import { readFile } from "fs/promises";
 import { Page } from "puppeteer";
 
