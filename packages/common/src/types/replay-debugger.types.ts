@@ -2,7 +2,7 @@ import {
   BaseReplayEventsDependencies,
   ReplayEventsDependency,
 } from "./replay.types";
-import { SessionData } from "./session.types";
+import { RecordedSession, SessionData } from "./session.types";
 
 export interface ReplayDebuggerDependencies
   extends BaseReplayEventsDependencies {
@@ -12,6 +12,7 @@ export interface ReplayDebuggerDependencies
 }
 
 export interface ReplayDebuggerOptions {
+  session: RecordedSession;
   sessionData: SessionData;
   appUrl: string;
   devTools: boolean;

@@ -129,7 +129,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   }
 
   // Navigate to the URL that the session originated on/from.
-  const startUrl = getStartUrl({ sessionData, appUrl });
+  const startUrl = getStartUrl({ session, sessionData, appUrl });
   logger.debug(`Navigating to ${startUrl}`);
   const res = await page.goto(startUrl, {
     waitUntil: "domcontentloaded",

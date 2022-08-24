@@ -1,5 +1,6 @@
 import {
   METICULOUS_LOGGER_NAME,
+  RecordedSession,
   ReplayEventsDependencies,
   SessionData,
 } from "@alwaysmeticulous/common";
@@ -85,16 +86,20 @@ const getAppUrl: (options: { sessionData: any; appUrl: string }) => string = ({
 };
 
 export const getStartUrl: (options: {
+  session: RecordedSession;
   sessionData: any;
   appUrl: string;
-}) => string = ({ sessionData, appUrl }) => {
+}) => string = ({ session, sessionData, appUrl }) => {
+  // We prefer to use the start URL from the session metadata but default to
+  // startURLs present within the events data for backwards-compatibility.
+  const { startUrl: sessionStartUrl } = session;
   const { startUrl, startURL } = sessionData.userEvents.window;
 
   // Default to the base URL if we did not record startURL (legacy sessions)
   const appUrlObj = new URL(getAppUrl({ sessionData, appUrl }));
   const startRouteUrl =
     appUrlObj.pathname === "/" && !appUrlObj.search && !appUrlObj.hash
-      ? new URL(startUrl || startURL)
+      ? new URL(sessionStartUrl || startUrl || startURL)
       : appUrlObj;
   startRouteUrl.host = appUrlObj.host;
   startRouteUrl.port = appUrlObj.port;
