@@ -56,7 +56,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     browser_ ||
     (await puppeteer.launch({
       defaultViewport,
-      args: [`--window-size=${width},${height}`],
+      args: [`--window-size=${width + 20},${height + 200}`],
       headless: headless || false,
       devtools: devTools || false,
     }));
