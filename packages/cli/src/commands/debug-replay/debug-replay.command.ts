@@ -43,13 +43,11 @@ const handler: (options: Options) => Promise<void> = async ({
 
   // 3. Load replay assets
   const replayDebugger = await fetchAsset(
-    "https://snippet.meticulous.ai/replay/v1/replay-debugger.bundle.js"
+    "replay/v1/replay-debugger.bundle.js"
   );
-  const reanimator = await fetchAsset(
-    "https://snippet.meticulous.ai/replay/v1/reanimator.bundle.js"
-  );
+  const reanimator = await fetchAsset("replay/v1/reanimator.bundle.js");
   const replayNetworkFile = await fetchAsset(
-    "https://snippet.meticulous.ai/replay/v1/replay-network-events.bundle.js"
+    "replay/v1/replay-network-events.bundle.js"
   );
 
   // 4. Load replay-debugger package

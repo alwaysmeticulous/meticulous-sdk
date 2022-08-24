@@ -84,11 +84,9 @@ export const recordCommandHandler: (
   logger.debug(`Commit: ${commitSha}`);
 
   // 3. Load recording snippets
-  const recordingSnippet = await fetchAsset(
-    "https://snippet.meticulous.ai/v1/stagingMeticulousSnippet.js"
-  );
+  const recordingSnippet = await fetchAsset("v1/stagingMeticulousSnippet.js");
   const earlyNetworkRecorderSnippet = await fetchAsset(
-    "https://snippet.meticulous.ai/record/v1/network-recorder.bundle.js"
+    "record/v1/network-recorder.bundle.js"
   );
 
   // 4. Load recording package

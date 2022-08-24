@@ -99,18 +99,12 @@ export const replayCommandHandler: (
   const meticulousSha = await getMeticulousVersion();
 
   // 3. Load replay assets
-  const reanimator = await fetchAsset(
-    "https://snippet.meticulous.ai/replay/v1/reanimator.bundle.js"
-  );
+  const reanimator = await fetchAsset("replay/v1/reanimator.bundle.js");
   const replayNetworkFile = await fetchAsset(
-    "https://snippet.meticulous.ai/replay/v1/replay-network-events.bundle.js"
+    "replay/v1/replay-network-events.bundle.js"
   );
-  const jsReplay = await fetchAsset(
-    "https://snippet.meticulous.ai/replay/v1/replay-only-replayjs-forked.js"
-  );
-  const rrweb = await fetchAsset(
-    "https://snippet.meticulous.ai/replay/v1/rrweb.js"
-  );
+  const jsReplay = await fetchAsset("replay/v1/replay-only-replayjs-forked.js");
+  const rrweb = await fetchAsset("replay/v1/rrweb.js");
 
   // 4. Load replay package
   let replayEvents: ReplayEventsFn;

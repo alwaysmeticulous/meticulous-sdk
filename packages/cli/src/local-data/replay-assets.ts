@@ -6,6 +6,7 @@ import axios from "axios";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import log from "loglevel";
 import { basename, join } from "path";
+import { getSnippetsBaseUrl } from "../config/snippets";
 
 export interface AssetMetadataItem {
   fileName: string;
@@ -42,10 +43,9 @@ export const saveAssetMetadata: (
   await writeFile(assetsFile, JSON.stringify(assetMetadata, null, 2));
 };
 
-export const fetchAsset: (fetchUrl: string) => Promise<string> = async (
-  fetchUrl
-) => {
+export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const fetchUrl = new URL(path, getSnippetsBaseUrl()).href;
 
   const assetsDir = join(getMeticulousLocalDataDir(), "assets");
 
