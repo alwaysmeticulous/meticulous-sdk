@@ -37,5 +37,5 @@ export const takeScreenshot: (
     path: screenshotFile,
     screenshotSelector,
   });
-  logger.info(`Wrote screenshot to ${screenshotFile}`);
+  logger.debug(`Wrote screenshot to ${screenshotFile}`);
 };
