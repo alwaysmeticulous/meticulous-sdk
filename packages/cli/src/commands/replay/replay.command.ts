@@ -18,8 +18,6 @@ import {
 } from "../../api/replay.api";
 import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
-import { readConfig, saveConfig } from "../../config/config";
-import { MeticulousCliConfig } from "../../config/config.types";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
 import {
@@ -36,6 +34,7 @@ import { getCommitSha } from "../../utils/commit-sha.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
+import { addTestCase } from "../../utils/config.utils";
 
 export interface ReplayCommandHandlerOptions {
   apiToken?: string | null | undefined;
@@ -272,19 +271,11 @@ export const replayCommandHandler: (
       );
     }
 
-    const meticulousConfig = await readConfig();
-    const newConfig: MeticulousCliConfig = {
-      ...meticulousConfig,
-      testCases: [
-        ...(meticulousConfig.testCases || []),
-        {
-          title: `${sessionId} | ${replay.id}`,
-          sessionId,
-          baseReplayId: replay.id,
-        },
-      ],
-    };
-    await saveConfig(newConfig);
+    await addTestCase({
+      title: `${sessionId} | ${replay.id}`,
+      sessionId,
+      baseReplayId: replay.id,
+    });
   }
 
   await deleteArchive(archivePath);
