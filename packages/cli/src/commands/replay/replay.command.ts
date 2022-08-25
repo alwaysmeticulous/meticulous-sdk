@@ -45,7 +45,7 @@ export interface ReplayCommandHandlerOptions {
   headless?: boolean | null | undefined;
   devTools?: boolean | null | undefined;
   bypassCSP?: boolean | null | undefined;
-  screenshot?: boolean | null | undefined;
+  screenshot: boolean;
   screenshotSelector?: string | null | undefined;
   baseSimulationId?: string | null | undefined;
   diffThreshold?: number | null | undefined;
@@ -162,7 +162,7 @@ export const replayCommandHandler: (
     },
     padTime,
     shiftTime,
-    screenshot: screenshot || false,
+    screenshot: screenshot,
     screenshotSelector: screenshotSelector || "",
     networkStubbing,
     moveBeforeClick: moveBeforeClick || false,
@@ -331,6 +331,7 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
     screenshot: {
       boolean: true,
       description: "Take a screenshot at the end of simulation",
+      default: true,
     },
     screenshotSelector: {
       string: true,
