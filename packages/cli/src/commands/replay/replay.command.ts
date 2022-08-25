@@ -1,6 +1,7 @@
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
+  Replay,
   ReplayEventsFn,
 } from "@alwaysmeticulous/common";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
@@ -61,7 +62,7 @@ export interface ReplayCommandHandlerOptions {
 
 export const replayCommandHandler: (
   options: ReplayCommandHandlerOptions
-) => Promise<any> = async ({
+) => Promise<Replay> = async ({
   apiToken,
   commitSha: commitSha_,
   sessionId,

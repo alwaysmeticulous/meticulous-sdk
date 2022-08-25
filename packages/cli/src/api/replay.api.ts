@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from "axios";
+import { Replay } from "@alwaysmeticulous/common";
 import { getProject } from "./project.api";
 
 export const getReplay: (
@@ -22,7 +23,7 @@ export const createReplay: (options: {
   sessionId: string;
   meticulousSha: string;
   metadata: { [key: string]: any };
-}) => Promise<any> = async ({
+}) => Promise<Replay> = async ({
   client,
   commitSha,
   sessionId,
