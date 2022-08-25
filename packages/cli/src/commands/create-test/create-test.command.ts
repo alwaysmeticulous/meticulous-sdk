@@ -31,7 +31,6 @@ const handler: (options: Options) => Promise<void> = async ({
   trace,
   // Replay options
   headless,
-  screenshot,
   screenshotSelector,
   padTime,
   shiftTime,
@@ -80,7 +79,7 @@ const handler: (options: Options) => Promise<void> = async ({
     headless,
     devTools,
     bypassCSP,
-    screenshot,
+    screenshot: true,
     screenshotSelector,
     padTime,
     shiftTime,
@@ -135,11 +134,6 @@ export const createTest: CommandModule<unknown, Options> = {
     headless: {
       boolean: true,
       description: "Start browser in headless mode",
-      default: true,
-    },
-    screenshot: {
-      boolean: true,
-      description: "Take a screenshot at the end of simulation",
       default: true,
     },
     screenshotSelector: {
