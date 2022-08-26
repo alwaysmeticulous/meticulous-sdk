@@ -43,3 +43,8 @@ export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<{
   eventsFinishedPromise: Promise<void>;
   writesFinishedPromise: Promise<void>;
 }>;
+
+export interface Replay {
+  id: string;
+  [key: string]: any;
+}

@@ -1,6 +1,8 @@
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { METICULOUS_LOGGER_NAME, Replay } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { CommandModule } from "yargs";
+import chalk from "chalk";
+import inquirer from "inquirer";
 import { wrapHandler } from "../../utils/sentry.utils";
 import {
   recordCommandHandler,
@@ -10,10 +12,65 @@ import {
   replayCommandHandler,
   ReplayCommandHandlerOptions,
 } from "../replay/replay.command";
+import { addTestCase } from "../../utils/config.utils";
 
 interface Options
   extends RecordCommandHandlerOptions,
     ReplayCommandHandlerOptions {}
+
+const handleTestCreation: (
+  replay: Replay,
+  sessionId: string
+) => Promise<void> = async (replay, sessionId) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
+  const validationResponse = await inquirer.prompt<{ value: boolean }>([
+    {
+      type: "confirm",
+      name: "value",
+      message: "Does the end state screenshot match your expectation?",
+      default: true,
+    },
+  ]);
+
+  if (!validationResponse.value) {
+    return;
+  }
+
+  const createTestResponse = await inquirer.prompt<{ value: boolean }>([
+    {
+      type: "confirm",
+      name: "value",
+      message: `Would you like to save this as a test to ${chalk.green(
+        "meticulous.json"
+      )}?`,
+      default: true,
+    },
+  ]);
+
+  if (!createTestResponse.value) {
+    return;
+  }
+
+  const testNameResponse = await inquirer.prompt<{ name: string }>([
+    {
+      type: "input",
+      name: "name",
+      message: "Test name:",
+      default: `${sessionId} | ${replay.id}`,
+    },
+  ]);
+
+  await addTestCase({
+    title: testNameResponse.name,
+    sessionId,
+    baseReplayId: replay.id,
+  });
+
+  logger.info(
+    chalk.bold.white(`Test saved to ${chalk.green("meticulous.json")}.`)
+  );
+};
 
 // The create-test handler combines recording a session and simulating it for
 // validation.
@@ -87,7 +144,9 @@ const handler: (options: Options) => Promise<void> = async ({
     moveBeforeClick,
     cookiesFile,
   };
-  await replayCommandHandler(replayOptions);
+  const replay = await replayCommandHandler(replayOptions);
+
+  await handleTestCreation(replay, lastSessionId);
 };
 
 export const createTest: CommandModule<unknown, Options> = {
