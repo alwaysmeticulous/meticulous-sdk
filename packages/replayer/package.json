@@ -18,8 +18,9 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^1.7.6",
-    "axios": "^0.27.2",
+    "@alwaysmeticulous/common": "^1.7.1",
+    "loglevel": "^1.8.0",
+    "luxon": "^2.4.0",
     "puppeteer": "^14.4.1",
     "rrweb": "^1.1.3"
   },

@@ -22,18 +22,21 @@ export const createReplay: (options: {
   commitSha: string;
   sessionId: string;
   meticulousSha: string;
+  version: "v1" | "v2";
   metadata: { [key: string]: any };
 }) => Promise<Replay> = async ({
   client,
   commitSha,
   sessionId,
   meticulousSha,
+  version,
   metadata,
 }) => {
   const { data } = await client.post("replays", {
     commitSha,
     sessionId,
     meticulousSha,
+    version,
     metadata,
   });
   return data;
