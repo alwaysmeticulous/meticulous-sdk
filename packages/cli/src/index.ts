@@ -1,3 +1,4 @@
+export { bootstrap } from "./commands/bootstrap/bootstrap.command";
 export { createTest } from "./commands/create-test/create-test.command";
 export { debugReplay } from "./commands/debug-replay/debug-replay.command";
 export { downloadReplay } from "./commands/download-replay/download-replay.command";
