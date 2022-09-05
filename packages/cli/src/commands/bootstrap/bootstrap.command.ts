@@ -7,9 +7,9 @@ import { MeticulousCliConfig } from "../../config/config.types";
 import { npmSetScript } from "../../utils/npm-set-script.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 
-interface Options {}
+type Options = Record<string, unknown>;
 
-const handler: (options: Options) => Promise<void> = async ({}) => {
+const handler: (options: Options) => Promise<void> = async () => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   logger.info(`Setting up ${chalk.green("meticulous.json")}...`);

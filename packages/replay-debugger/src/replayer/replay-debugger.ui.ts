@@ -67,9 +67,9 @@ export const createReplayDebuggerUI: <T = ReplayableEvent>(
     event: T;
     target: JSHandle;
   }) => {
-    const { type } = event as any;
+    const { selector, type } = event as any;
     // Special handling for window events.
-    if (type.selector === "window") {
+    if (selector === "window") {
       if (type === "resize") {
         const { innerHeight, innerWidth } = event as any;
         const viewport = { height: innerHeight, width: innerWidth };
