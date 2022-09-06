@@ -24,11 +24,6 @@ jobs:
         with:
           node-version: "16"
 
-      - name: Setup access to NPM registry
-        run: npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Install dependencies
         run: yarn install --frozen-lockfile --non-interactive
 
@@ -37,6 +32,11 @@ jobs:
 
       - name: Build packages
         run: yarn run turbo run build
+
+      - name: Setup access to NPM registry
+        run: npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish packages
         run: yarn run lerna publish from-package --yes --no-verify-access
