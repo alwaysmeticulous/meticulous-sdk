@@ -34,9 +34,11 @@ jobs:
         run: yarn run turbo run build
 
       - name: Setup access to NPM registry
+        if: github.repository == 'alwaysmeticulous/meticulous-sdk'
         run: npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish packages
+        if: github.repository == 'alwaysmeticulous/meticulous-sdk'
         run: yarn run lerna publish from-package --yes --no-verify-access
