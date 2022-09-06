@@ -13,6 +13,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    concurrency: ${{ github.ref }}
 
     steps:
       - name: Checkout repository
