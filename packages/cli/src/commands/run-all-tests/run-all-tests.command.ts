@@ -70,10 +70,9 @@ const handler: (options: Options) => Promise<void> = async ({
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
   const meticulousSha = await getMeticulousVersion();
 
-  const cachedTestRunResults =
-    useCache && commitSha !== "unkwown"
-      ? await getCachedTestRunResults({ client, commitSha })
-      : [];
+  const cachedTestRunResults = useCache
+    ? await getCachedTestRunResults({ client, commitSha })
+    : [];
 
   const testRun = await createTestRun({
     client,

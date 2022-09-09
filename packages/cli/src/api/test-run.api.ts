@@ -1,4 +1,6 @@
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import axios, { AxiosError, AxiosInstance } from "axios";
+import log from "loglevel";
 import { TestCaseResult } from "../config/config.types";
 
 export interface TestRun {
@@ -70,6 +72,13 @@ export const getCachedTestRunResults: (options: {
   client: AxiosInstance;
   commitSha: string;
 }) => Promise<TestCaseResult[]> = async ({ client, commitSha }) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
+  if (!commitSha || commitSha === "unknown") {
+    logger.warn("Test run cache not supported: no commit hash");
+    return [];
+  }
+
   const { data } = await client
     .get(`test-runs/cache?commitSha=${encodeURIComponent(commitSha)}`)
     .catch((error) => {
