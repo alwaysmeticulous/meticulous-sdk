@@ -14,7 +14,7 @@ import {
   TestCase,
   TestCaseResult,
 } from "../config/config.types";
-import { sortResults } from "../utils/run-all-tests.utils";
+import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
 
 export interface RunAllTestsInParallelOptions {
@@ -34,6 +34,7 @@ export interface RunAllTestsInParallelOptions {
   networkStubbing: boolean;
   parallelTasks: number | null | undefined;
   deflake: boolean;
+  cachedTestRunResults: TestCaseResult[];
 }
 
 /** Handler for running Meticulous tests in parallel using child processes */
@@ -56,11 +57,16 @@ export const runAllTestsInParallel: (
   networkStubbing,
   parallelTasks,
   deflake,
+  cachedTestRunResults,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const results: TestCaseResult[] = [];
-  const queue = [...(config.testCases || [])];
+  const results: TestCaseResult[] = [...cachedTestRunResults];
+  const queue = getTestsToRun({
+    testCases: config.testCases || [],
+    cachedTestRunResults,
+  });
+  logger.debug(`QUEUE: ${queue.length}`);
 
   const allTasksDone = defer<void>();
 
