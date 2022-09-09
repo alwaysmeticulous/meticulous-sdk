@@ -66,7 +66,6 @@ export const runAllTestsInParallel: (
     testCases: config.testCases || [],
     cachedTestRunResults,
   });
-  logger.debug(`QUEUE: ${queue.length}`);
 
   const allTasksDone = defer<void>();
 

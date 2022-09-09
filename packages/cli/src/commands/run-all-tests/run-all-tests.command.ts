@@ -34,7 +34,7 @@ interface Options {
   parallelize?: boolean | null | undefined;
   parallelTasks?: number | null | undefined;
   deflake: boolean;
-  cache: boolean;
+  useCache: boolean;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -53,7 +53,7 @@ const handler: (options: Options) => Promise<void> = async ({
   parallelize,
   parallelTasks,
   deflake,
-  cache,
+  useCache,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -71,10 +71,9 @@ const handler: (options: Options) => Promise<void> = async ({
   const meticulousSha = await getMeticulousVersion();
 
   const cachedTestRunResults =
-    cache && commitSha
+    useCache && commitSha
       ? await getCachedTestRunResults({ client, commitSha })
       : [];
-  logger.debug({ cachedTestRunResults });
 
   const testRun = await createTestRun({
     client,
@@ -246,7 +245,7 @@ export const runAllTests: CommandModule<unknown, Options> = {
       description: "Attempt to deflake failing tests",
       default: false,
     },
-    cache: {
+    useCache: {
       boolean: true,
       description: "Use result cache",
       default: false,
