@@ -71,7 +71,7 @@ const handler: (options: Options) => Promise<void> = async ({
   const meticulousSha = await getMeticulousVersion();
 
   const cachedTestRunResults =
-    useCache && commitSha
+    useCache && commitSha !== "unkwown"
       ? await getCachedTestRunResults({ client, commitSha })
       : [];
 
