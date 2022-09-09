@@ -1,4 +1,6 @@
-import axios, { AxiosInstance } from "axios";
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import axios, { AxiosError, AxiosInstance } from "axios";
+import log from "loglevel";
 import { TestCaseResult } from "../config/config.types";
 
 export interface TestRun {
@@ -64,4 +66,28 @@ export const getTestRunUrl = (testRun: TestRun) => {
   const projectName = encodeURIComponent(project.name);
   const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${testRun.id}`;
   return testRunUrl;
+};
+
+export const getCachedTestRunResults: (options: {
+  client: AxiosInstance;
+  commitSha: string;
+}) => Promise<TestCaseResult[]> = async ({ client, commitSha }) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
+  if (!commitSha || commitSha === "unknown") {
+    logger.warn("Test run cache not supported: no commit hash");
+    return [];
+  }
+
+  const { data } = await client
+    .get(`test-runs/cache?commitSha=${encodeURIComponent(commitSha)}`)
+    .catch((error) => {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return { data: null };
+      }
+      throw error;
+    });
+  const results = (data as TestRun | null)?.resultData?.results || [];
+  // Only return passing tests
+  return results.filter(({ result }) => result === "pass");
 };

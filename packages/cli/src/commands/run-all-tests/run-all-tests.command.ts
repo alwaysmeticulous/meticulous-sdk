@@ -4,6 +4,7 @@ import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import {
   createTestRun,
+  getCachedTestRunResults,
   getTestRunUrl,
   putTestRunResults,
 } from "../../api/test-run.api";
@@ -13,6 +14,7 @@ import { deflakeReplayCommandHandler } from "../../deflake-tests/deflake-tests.h
 import { runAllTestsInParallel } from "../../parallel-tests/parallel-tests.handler";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { writeGitHubSummary } from "../../utils/github-summary.utils";
+import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 
@@ -32,6 +34,7 @@ interface Options {
   parallelize?: boolean | null | undefined;
   parallelTasks?: number | null | undefined;
   deflake: boolean;
+  useCache: boolean;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -50,6 +53,7 @@ const handler: (options: Options) => Promise<void> = async ({
   parallelize,
   parallelTasks,
   deflake,
+  useCache,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -65,6 +69,10 @@ const handler: (options: Options) => Promise<void> = async ({
 
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
   const meticulousSha = await getMeticulousVersion();
+
+  const cachedTestRunResults = useCache
+    ? await getCachedTestRunResults({ client, commitSha })
+    : [];
 
   const testRun = await createTestRun({
     client,
@@ -97,12 +105,14 @@ const handler: (options: Options) => Promise<void> = async ({
         networkStubbing,
         parallelTasks,
         deflake,
+        cachedTestRunResults,
       });
       return results;
     }
 
-    const results: TestCaseResult[] = [];
-    for (const testCase of testCases) {
+    const results: TestCaseResult[] = [...cachedTestRunResults];
+    const testsToRun = getTestsToRun({ testCases, cachedTestRunResults });
+    for (const testCase of testsToRun) {
       const { sessionId, baseReplayId, options } = testCase;
       const result = await deflakeReplayCommandHandler({
         testCase: testCase,
@@ -133,7 +143,7 @@ const handler: (options: Options) => Promise<void> = async ({
         resultData: { results },
       });
     }
-    return results;
+    return sortResults({ results, testCases });
   };
 
   const results = await getResults();
@@ -232,6 +242,11 @@ export const runAllTests: CommandModule<unknown, Options> = {
     deflake: {
       boolean: true,
       description: "Attempt to deflake failing tests",
+      default: false,
+    },
+    useCache: {
+      boolean: true,
+      description: "Use result cache",
       default: false,
     },
   },

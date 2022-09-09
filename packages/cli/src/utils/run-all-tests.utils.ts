@@ -25,3 +25,17 @@ export const sortResults: (options: {
 
   return results;
 };
+
+export const getTestsToRun: (options: {
+  testCases: TestCase[];
+  cachedTestRunResults: TestCaseResult[];
+}) => TestCase[] = ({ testCases, cachedTestRunResults }) =>
+  testCases.filter(
+    ({ sessionId, baseReplayId, title }) =>
+      !cachedTestRunResults.find(
+        (cached) =>
+          cached.sessionId === sessionId &&
+          cached.baseReplayId === baseReplayId &&
+          cached.title === title
+      )
+  );
