@@ -54,6 +54,7 @@ export async function bootstrapPage({
         window["METICULOUS_APP_COMMIT_HASH"] = "${appCommitHash}";
         window["METICULOUS_FORCE_RECORDING"] = true;
         window["METICULOUS_UPLOAD_INTERVAL_MS"] = ${uploadIntervalMs};
+        window["METICULOUS_ENABLE_RRWEB"] = true;
         window["METICULOUS_ENABLE_RRWEB_PLUGIN_NODE_DATA"] = true;
       `);
         await frame.evaluate(recordingSnippetFile);
