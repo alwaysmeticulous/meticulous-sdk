@@ -57,6 +57,7 @@ export async function bootstrapPage({
         window["METICULOUS_ENABLE_RRWEB"] = true;
         window["METICULOUS_ENABLE_RRWEB_PLUGIN_NODE_DATA"] = true;
       `);
+      await frame.evaluate("console.log(document.currentScript);");
         await frame.evaluate(recordingSnippetFile);
         return;
       }
