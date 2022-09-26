@@ -51,14 +51,15 @@ export const saveAssetMetadata: (
 export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const fetchUrl = new URL(path, getSnippetsBaseUrl()).href;
+  const assetFileName = basename(new URL(fetchUrl).pathname);
 
   const assetMetadata = await loadAssetMetadata();
   const etag = (await axios.head(fetchUrl)).headers["etag"] || "";
 
-  const entry = assetMetadata.assets.find((item) => item.fetchUrl === fetchUrl);
-  const fileName = entry
-    ? entry.fileName
-    : basename(new URL(fetchUrl).pathname);
+  const entry = assetMetadata.assets.find(
+    (item) => item.fileName === assetFileName
+  );
+  const fileName = assetFileName;
   const filePath = join(await getCreateAssetsDir(), fileName);
 
   if (entry && etag === entry.etag) {
