@@ -18,10 +18,17 @@ export interface AssetMetadata {
   assets: AssetMetadataItem[];
 }
 
-export const loadAssetMetadata: () => Promise<AssetMetadata> = async () => {
-  const assetsDir = join(getMeticulousLocalDataDir(), "assets");
+const ASSETS_FOLDER_NAME = "assets";
+const ASSET_METADATA_FILE_NAME = "assets.json";
+
+export const getCreateAssetsDir: () => Promise<string> = async () => {
+  const assetsDir = join(getMeticulousLocalDataDir(), ASSETS_FOLDER_NAME);
   await mkdir(assetsDir, { recursive: true });
-  const assetsFile = join(assetsDir, `assets.json`);
+  return assetsDir;
+};
+
+export const loadAssetMetadata: () => Promise<AssetMetadata> = async () => {
+  const assetsFile = join(await getCreateAssetsDir(), ASSET_METADATA_FILE_NAME);
 
   const existingMetadata = await readFile(assetsFile)
     .then((data) => JSON.parse(data.toString("utf-8")))
@@ -36,9 +43,7 @@ export const loadAssetMetadata: () => Promise<AssetMetadata> = async () => {
 export const saveAssetMetadata: (
   assetMetadata: AssetMetadata
 ) => Promise<void> = async (assetMetadata) => {
-  const assetsDir = join(getMeticulousLocalDataDir(), "assets");
-  await mkdir(assetsDir, { recursive: true });
-  const assetsFile = join(assetsDir, `assets.json`);
+  const assetsFile = join(await getCreateAssetsDir(), ASSET_METADATA_FILE_NAME);
 
   await writeFile(assetsFile, JSON.stringify(assetMetadata, null, 2));
 };
@@ -47,8 +52,6 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const fetchUrl = new URL(path, getSnippetsBaseUrl()).href;
 
-  const assetsDir = join(getMeticulousLocalDataDir(), "assets");
-
   const assetMetadata = await loadAssetMetadata();
   const etag = (await axios.head(fetchUrl)).headers["etag"] || "";
 
@@ -56,7 +59,7 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const fileName = entry
     ? entry.fileName
     : basename(new URL(fetchUrl).pathname);
-  const filePath = join(assetsDir, fileName);
+  const filePath = join(await getCreateAssetsDir(), fileName);
 
   if (entry && etag === entry.etag) {
     logger.debug(`${fetchUrl} already present`);
