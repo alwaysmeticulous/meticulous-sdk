@@ -65,8 +65,7 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const entry = assetMetadata.assets.find(
     (item) => item.fileName === assetFileName
   );
-  const fileName = assetFileName;
-  const filePath = join(await getOrCreateAssetsDir(), fileName);
+  const filePath = join(await getOrCreateAssetsDir(), assetFileName);
 
   if (entry && etag && etag === entry.etag) {
     logger.debug(`${fetchUrl} already present`);
@@ -80,7 +79,7 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
     entry.etag = etag;
   } else {
     logger.debug(`${fetchUrl} downloaded`);
-    assetMetadata.assets.push({ fileName, etag, fetchUrl });
+    assetMetadata.assets.push({ fileName: assetFileName, etag, fetchUrl });
   }
   await saveAssetMetadata(assetMetadata);
   return filePath;
