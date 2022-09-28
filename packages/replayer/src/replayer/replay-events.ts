@@ -4,7 +4,7 @@ import {
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { DateTime } from "luxon";
-import puppeteer, { Browser } from "puppeteer";
+import puppeteer, { Browser, ResourceType } from "puppeteer";
 import type { event } from "rrweb/typings/types";
 import {
   bootstrapPage,
@@ -19,6 +19,7 @@ import {
   writeOutput,
 } from "./replay.utils";
 import { takeScreenshot } from "./screenshot.utils";
+import { snapshotAssets } from "./snapshotAssets";
 
 export const replayEvents: ReplayEventsFn = async (options) => {
   const {
@@ -112,6 +113,26 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     }
   });
 
+  const startUrl = getStartUrl({ session, sessionData, appUrl });
+  const assetUrlsLoaded: string[] = [];
+  const resourceTypesToSnapshot = new Set<ResourceType>([
+    "document",
+    "font",
+    "image",
+    "stylesheet",
+    "script",
+    "media",
+  ]);
+  page.on("requestfinished", (request) => {
+    const resourceType = request.resourceType();
+    if (
+      resourceTypesToSnapshot.has(resourceType) &&
+      request.url().startsWith(startUrl)
+    ) {
+      assetUrlsLoaded.push(request.url());
+    }
+  });
+
   // Bootstrap page
   await bootstrapPage({
     page,
@@ -129,7 +150,6 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   }
 
   // Navigate to the URL that the session originated on/from.
-  const startUrl = getStartUrl({ session, sessionData, appUrl });
   logger.debug(`Navigating to ${startUrl}`);
   const res = await page.goto(startUrl, {
     waitUntil: "domcontentloaded",
@@ -138,7 +158,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   if (status !== 200) {
     throw new Error(
-      `Expected a 200 status when going to the initial URL of the site. Got a ${status} instead.`
+      `Expected a 200 status when going to the initial URL of the site (${startUrl}). Got a ${status} instead.`
     );
   }
   logger.debug(`Navigated to ${startUrl}`);
@@ -288,6 +308,13 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       logger.debug("Collecting coverage data...");
       const coverageData = await page.coverage.stopJSCoverage();
       logger.debug("Collected coverage data");
+
+      // TODO: Push down into writeOutput
+      snapshotAssets({
+        baseUrl: startUrl,
+        assetUrls: assetUrlsLoaded,
+        tempDir: options.tempDir,
+      });
 
       writeOutput(
         {
