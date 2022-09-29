@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^1.7.6",
+    "axios": "^0.27.2",
     "puppeteer": "^14.4.1",
     "rrweb": "^1.1.3"
   },

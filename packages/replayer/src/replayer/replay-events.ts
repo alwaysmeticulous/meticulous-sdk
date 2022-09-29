@@ -4,7 +4,7 @@ import {
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { DateTime } from "luxon";
-import puppeteer, { Browser, ResourceType } from "puppeteer";
+import puppeteer, { Browser } from "puppeteer";
 import type { event } from "rrweb/typings/types";
 import {
   bootstrapPage,
@@ -19,7 +19,7 @@ import {
   writeOutput,
 } from "./replay.utils";
 import { takeScreenshot } from "./screenshot.utils";
-import { snapshotAssets } from "./snapshotAssets";
+import { isRequestForAsset } from "./snapshotAssets";
 
 export const replayEvents: ReplayEventsFn = async (options) => {
   const {
@@ -113,22 +113,9 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     }
   });
 
-  const startUrl = getStartUrl({ session, sessionData, appUrl });
   const assetUrlsLoaded: string[] = [];
-  const resourceTypesToSnapshot = new Set<ResourceType>([
-    "document",
-    "font",
-    "image",
-    "stylesheet",
-    "script",
-    "media",
-  ]);
-  page.on("requestfinished", (request) => {
-    const resourceType = request.resourceType();
-    if (
-      resourceTypesToSnapshot.has(resourceType) &&
-      request.url().startsWith(startUrl)
-    ) {
+  page.on("requestfinished", (request: puppeteer.HTTPRequest) => {
+    if (isRequestForAsset(request)) {
       assetUrlsLoaded.push(request.url());
     }
   });
@@ -150,6 +137,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   }
 
   // Navigate to the URL that the session originated on/from.
+  const startUrl = getStartUrl({ session, sessionData, appUrl });
   logger.debug(`Navigating to ${startUrl}`);
   const res = await page.goto(startUrl, {
     waitUntil: "domcontentloaded",
@@ -309,16 +297,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       const coverageData = await page.coverage.stopJSCoverage();
       logger.debug("Collected coverage data");
 
-      // TODO: Push down into writeOutput
-      snapshotAssets({
-        baseUrl: startUrl,
-        assetUrls: assetUrlsLoaded,
-        tempDir: options.tempDir,
-      });
-
       writeOutput(
         {
           ...options,
+          baseUrl: startUrl,
+          assetUrls: assetUrlsLoaded,
           results,
           numSuccessRequests: results.numSuccessRequests,
           numFailedRequests: results.numFailedRequests,

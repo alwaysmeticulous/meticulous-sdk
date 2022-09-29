@@ -1,8 +1,21 @@
+import axios from "axios";
 import { createWriteStream } from "fs";
 import { mkdir } from "fs/promises";
-import { get as getHttp, IncomingMessage } from "http";
-import { get as getHttps } from "https";
-import { join, dirname } from "path";
+import { dirname, join } from "path";
+import { HTTPRequest, ResourceType } from "puppeteer";
+import { finished } from "stream";
+import { promisify } from "util";
+
+const resourceTypesToSnapshot = new Set<ResourceType>([
+  "document",
+  "font",
+  "image",
+  "stylesheet",
+  "script",
+  "media",
+]);
+export const isRequestForAsset = (request: HTTPRequest) =>
+  resourceTypesToSnapshot.has(request.resourceType());
 
 export const snapshotAssets = async (opts: {
   tempDir: string;
@@ -14,11 +27,12 @@ export const snapshotAssets = async (opts: {
     recursive: true,
   });
   return Promise.all(
-    opts.assetUrls.map((url) => {
-      const trimmedUrl = url.replace(opts.baseUrl, ""); // TODO: Just replace start
-      downloadFile(url, join(assetsPath, getFilePath(trimmedUrl)));
-      console.log("URL", url);
-    })
+    opts.assetUrls
+      .filter((url) => url.startsWith(opts.baseUrl))
+      .map((url) => {
+        const trimmedUrl = url.substring(opts.baseUrl.length);
+        downloadFile(url, join(assetsPath, getFilePath(trimmedUrl)));
+      })
   );
 };
 
@@ -29,38 +43,15 @@ function getFilePath(trimmedUrl: string) {
   return trimmedUrl;
 }
 
-// TODO: Use lib to download files
+const promisifiedFinished = promisify(finished);
+
 async function downloadFile(url: string, targetFile: string) {
   await mkdir(dirname(targetFile), { recursive: true });
-  return await new Promise((resolve, reject) => {
-    const useHttps = new URL(url).protocol === "https:";
-    const successCallback = (response: IncomingMessage) => {
-      const code = response.statusCode ?? 0;
-
-      if (code >= 400) {
-        return reject(new Error(response.statusMessage));
-      }
-
-      // handle redirects
-      if (code > 300 && code < 400 && !!response.headers.location) {
-        return downloadFile(response.headers.location, targetFile);
-      }
-
-      // save the file to disk
-      const fileWriter = createWriteStream(targetFile).on("finish", () => {
-        resolve({});
-      });
-
-      response.pipe(fileWriter);
-    };
-    const errorCallback = (error: unknown) => {
-      reject(error);
-    };
-
-    if (useHttps) {
-      getHttps(url, successCallback).on("error", errorCallback);
-    } else {
-      getHttp(url, successCallback).on("error", errorCallback);
-    }
-  });
+  const writer = createWriteStream(targetFile);
+  return axios
+    .request({ method: "GET", url: url, responseType: "stream" })
+    .then(async (response) => {
+      response.data.pipe(writer);
+      return promisifiedFinished(writer);
+    });
 }
