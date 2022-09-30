@@ -50,7 +50,7 @@ export async function bootstrapPage({
   await page.evaluateOnNewDocument(earlyNetworkRecorderSnippetFile);
 
   page.on("framenavigated", async (frame) => {
-    if (page.url() !== INITIAL_METICULOUS_DOCS_URL) {
+    if (page.url() === INITIAL_METICULOUS_DOCS_URL) {
       return;
     }
     try {
