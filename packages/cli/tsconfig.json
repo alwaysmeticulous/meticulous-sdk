@@ -8,7 +8,7 @@
     /* Emit */
     "outDir": "./dist",
     "paths": {
-        "*": [ "src/custom-types/*"]
+        "*": [ "./src/custom-types/*"]
     },
   },
   "include": ["src"],
