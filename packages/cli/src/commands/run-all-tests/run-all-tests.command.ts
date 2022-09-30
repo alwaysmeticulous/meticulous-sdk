@@ -63,8 +63,6 @@ const handler: (options: Options) => Promise<void> = async ({
 
   const client = createClient({ apiToken });
 
-  console.log("testsFile", testsFile || undefined);
-
   const config = await readConfig(testsFile || undefined);
   const testCases = config.testCases || [];
 
