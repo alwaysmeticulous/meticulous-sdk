@@ -22,6 +22,7 @@ interface Options {
   apiToken?: string | null | undefined;
   commitSha?: string | null | undefined;
   appUrl?: string | null | undefined;
+  useAssetsSnapshottedInBaseSimulation?: boolean | null | undefined;
   headless?: boolean | null | undefined;
   devTools?: boolean | null | undefined;
   bypassCSP?: boolean | null | undefined;
@@ -35,12 +36,14 @@ interface Options {
   parallelTasks?: number | null | undefined;
   deflake: boolean;
   useCache: boolean;
+  testsFile?: string | null | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   commitSha: commitSha_,
   appUrl,
+  useAssetsSnapshottedInBaseSimulation,
   headless,
   devTools,
   bypassCSP,
@@ -54,12 +57,15 @@ const handler: (options: Options) => Promise<void> = async ({
   parallelTasks,
   deflake,
   useCache,
+  testsFile,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
 
-  const config = await readConfig();
+  console.log("testsFile", testsFile || undefined);
+
+  const config = await readConfig(testsFile || undefined);
   const testCases = config.testCases || [];
 
   if (!testCases.length) {
@@ -133,6 +139,9 @@ const handler: (options: Options) => Promise<void> = async ({
         padTime,
         shiftTime,
         networkStubbing,
+        simulationIdForAssets: useAssetsSnapshottedInBaseSimulation
+          ? baseReplayId
+          : undefined,
         ...options,
       });
       results.push(result);
@@ -186,6 +195,14 @@ export const runAllTests: CommandModule<unknown, Options> = {
     },
     appUrl: {
       string: true,
+    },
+    useAssetsSnapshottedInBaseSimulation: {
+      boolean: true,
+      description:
+        "If present will run each session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.)" +
+        " from the base simulation/replay the test is comparing against. The sessions will then be replayed against those local urls." +
+        " This is an alternative to specifying an appUrl.",
+      conflicts: "appUrl",
     },
     headless: {
       boolean: true,
@@ -248,6 +265,12 @@ export const runAllTests: CommandModule<unknown, Options> = {
       boolean: true,
       description: "Use result cache",
       default: false,
+    },
+    testsFile: {
+      string: true,
+      description:
+        "The path to the meticulous.json file containing the list of tests you want to run." +
+        " If not set a search will be performed to find a meticulous.json file in the current directory or the nearest parent directory.",
     },
   },
   handler: wrapHandler(handler),

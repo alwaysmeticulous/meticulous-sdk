@@ -66,11 +66,17 @@ const validateConfig: (config: MeticulousCliConfig) => MeticulousCliConfig = (
   return { ...rest, testCases: nextTestCases };
 };
 
-export const readConfig: () => Promise<MeticulousCliConfig> = async () => {
-  const filePath = await getConfigFilePath();
+export const readConfig = async (
+  configFilePath?: string
+): Promise<MeticulousCliConfig> => {
+  const filePath = configFilePath ?? (await getConfigFilePath());
   const configStr = await readFile(filePath, "utf-8").catch((error) => {
     // Use an empty config object if there is no config file
-    if (error instanceof Error && (error as any).code === "ENOENT") {
+    if (
+      configFilePath === undefined &&
+      error instanceof Error &&
+      (error as any).code === "ENOENT"
+    ) {
       return "{}";
     }
     throw error;
