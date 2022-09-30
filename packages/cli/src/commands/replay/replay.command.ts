@@ -192,7 +192,7 @@ export const replayCommandHandler: (
 
   await eventsFinishedPromise;
   await writesFinishedPromise;
-  server?.closeServer?.();
+  server?.closeServer();
 
   const endTime = DateTime.utc();
 
