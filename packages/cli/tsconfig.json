@@ -6,7 +6,10 @@
     /* Modules */
     "rootDir": "./src",
     /* Emit */
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "paths": {
+        "*": [ "./src/custom-types/*"]
+    },
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

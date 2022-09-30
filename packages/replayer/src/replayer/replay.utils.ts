@@ -11,6 +11,7 @@ import { join } from "path";
 import { CoverageEntry, Page, Viewport } from "puppeteer";
 import * as rrweb from "rrweb";
 import type { event } from "rrweb/typings/types";
+import { snapshotAssets } from "./snapshot-assets";
 
 export interface IDeferred<T = void> {
   resolve: (value: T) => void;
@@ -381,6 +382,12 @@ interface WriteOutputOpts {
 
   /** Optional. Used for the title of the replay movie HTML file */
   movieName?: string;
+
+  /** URLs of loaded assets that we should snapshot/download */
+  assetUrls: string[];
+
+  /** Base URL of the page that the assets were loaded relative to */
+  baseUrl: string;
 }
 
 export function writeOutput(
@@ -431,6 +438,13 @@ export function writeOutput(
 
   const coverageDirExists = mkdir(coverageDir, {
     recursive: true,
+  });
+
+  // Writes that depend upon snapshotted-assets dir
+  const snapshotAssetsPromise = snapshotAssets({
+    baseUrl: opts.baseUrl,
+    assetUrls: opts.assetUrls,
+    tempDir: opts.tempDir,
   });
 
   // Writes that depend upon coverageDir
@@ -521,6 +535,7 @@ export function writeOutput(
     resultsWritePromise,
     consoleWritePromise,
     rawCoverageWritePromise,
+    snapshotAssetsPromise,
   ]).then(() => {
     opts.promiseThatResolvesOnceWritesFinished.resolve();
   });

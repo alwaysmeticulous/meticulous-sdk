@@ -18,7 +18,7 @@ export const getOrFetchReplay: (
 ) => Promise<any> = async (client, replayId) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const replayDir = join(getMeticulousLocalDataDir(), "replays", replayId);
+  const replayDir = getReplayDir(replayId);
   await mkdir(replayDir, { recursive: true });
   const replayFile = join(replayDir, `${replayId}.json`);
 
@@ -32,7 +32,9 @@ export const getOrFetchReplay: (
 
   const replay = await getReplay(client, replayId);
   if (!replay) {
-    logger.error("Error: Could not retrieve replay. Is the API token correct?");
+    logger.error(
+      `Error: Could not retrieve replay with id "${replayId}". Is the API token correct?`
+    );
     process.exit(1);
   }
 
@@ -47,7 +49,7 @@ export const getOrFetchReplayArchive: (
 ) => Promise<void> = async (client, replayId) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const replayDir = join(getMeticulousLocalDataDir(), "replays", replayId);
+  const replayDir = getReplayDir(replayId);
   await mkdir(replayDir, { recursive: true });
   const replayArchiveFile = join(replayDir, `${replayId}.zip`);
   const paramsFile = join(replayDir, "replayEventsParams.json");
@@ -62,15 +64,15 @@ export const getOrFetchReplayArchive: (
     return;
   }
 
-  const dowloadUrlData = await getReplayDownloadUrl(client, replayId);
-  if (!dowloadUrlData) {
+  const downloadUrlData = await getReplayDownloadUrl(client, replayId);
+  if (!downloadUrlData) {
     logger.error(
       "Error: Could not retrieve replay archive URL. This may be an invalid replay"
     );
     process.exit(1);
   }
 
-  await downloadFile(dowloadUrlData.dowloadUrl, replayArchiveFile);
+  await downloadFile(downloadUrlData.dowloadUrl, replayArchiveFile);
   const zipFile = new Zip(replayArchiveFile);
   zipFile.extractAllTo(replayDir, /*overwrite=*/ true);
   await rm(replayArchiveFile);
@@ -81,7 +83,7 @@ export const getOrFetchReplayArchive: (
 export const readReplayScreenshot: (replayId: string) => Promise<PNG> = async (
   replayId
 ) => {
-  const replayDir = join(getMeticulousLocalDataDir(), "replays", replayId);
+  const replayDir = getReplayDir(replayId);
   const screenshotFile = join(replayDir, "screenshots", "final-state.png");
   const png = await readPng(screenshotFile);
   return png;
@@ -94,3 +96,9 @@ export const readLocalReplayScreenshot: (
   const png = await readPng(screenshotFile);
   return png;
 };
+
+export const getSnapshottedAssetsDir = (replayId: string) =>
+  join(getReplayDir(replayId), "snapshotted-assets");
+
+const getReplayDir = (replayId: string) =>
+  join(getMeticulousLocalDataDir(), "replays", replayId);

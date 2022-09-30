@@ -19,6 +19,7 @@ import {
   writeOutput,
 } from "./replay.utils";
 import { takeScreenshot } from "./screenshot.utils";
+import { isRequestForAsset } from "./snapshot-assets";
 
 export const replayEvents: ReplayEventsFn = async (options) => {
   const {
@@ -112,6 +113,13 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     }
   });
 
+  const assetUrlsLoaded: string[] = [];
+  page.on("requestfinished", (request: puppeteer.HTTPRequest) => {
+    if (isRequestForAsset(request)) {
+      assetUrlsLoaded.push(request.url());
+    }
+  });
+
   // Bootstrap page
   await bootstrapPage({
     page,
@@ -138,7 +146,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   if (status !== 200) {
     throw new Error(
-      `Expected a 200 status when going to the initial URL of the site. Got a ${status} instead.`
+      `Expected a 200 status when going to the initial URL of the site (${startUrl}). Got a ${status} instead.`
     );
   }
   logger.debug(`Navigated to ${startUrl}`);
@@ -292,6 +300,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       writeOutput(
         {
           ...options,
+          baseUrl: new URL(startUrl).origin,
+          assetUrls: assetUrlsLoaded,
           results,
           numSuccessRequests: results.numSuccessRequests,
           numFailedRequests: results.numFailedRequests,

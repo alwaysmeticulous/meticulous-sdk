@@ -36,12 +36,14 @@ import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
 import { addTestCase } from "../../utils/config.utils";
+import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
 
 export interface ReplayCommandHandlerOptions {
   apiToken?: string | null | undefined;
   commitSha?: string | null | undefined;
   sessionId: string;
   appUrl?: string | null | undefined;
+  simulationIdForAssets?: string | null | undefined;
   headless?: boolean | null | undefined;
   devTools?: boolean | null | undefined;
   bypassCSP?: boolean | null | undefined;
@@ -67,6 +69,7 @@ export const replayCommandHandler: (
   commitSha: commitSha_,
   sessionId,
   appUrl,
+  simulationIdForAssets,
   headless,
   devTools,
   bypassCSP,
@@ -98,7 +101,12 @@ export const replayCommandHandler: (
 
   const meticulousSha = await getMeticulousVersion();
 
-  // 3. Load replay assets
+  // 3. If simulationIdForAssets specified then download assets & spin up local server
+  const server = simulationIdForAssets
+    ? await serveAssetsFromSimulation(client, simulationIdForAssets)
+    : undefined;
+
+  // 4. Load replay assets
   const reanimator = await fetchAsset("replay/v1/reanimator.bundle.js");
   const replayNetworkFile = await fetchAsset(
     "replay/v1/replay-network-events.bundle.js"
@@ -106,7 +114,7 @@ export const replayCommandHandler: (
   const jsReplay = await fetchAsset("replay/v1/replay-only-replayjs-forked.js");
   const rrweb = await fetchAsset("replay/v1/rrweb.js");
 
-  // 4. Load replay package
+  // 5. Load replay package
   let replayEvents: ReplayEventsFn;
 
   try {
@@ -132,7 +140,7 @@ export const replayCommandHandler: (
 
   // 6. Create and save replay parameters
   const replayEventsParams: Parameters<typeof replayEvents>[0] = {
-    appUrl: appUrl || "",
+    appUrl: server ? server.url : appUrl || "",
     browser: null,
     tempDir,
     session,
@@ -184,6 +192,7 @@ export const replayCommandHandler: (
 
   await eventsFinishedPromise;
   await writesFinishedPromise;
+  server?.closeServer();
 
   const endTime = DateTime.utc();
 
@@ -307,6 +316,14 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
     },
     appUrl: {
       string: true,
+      description:
+        "The URL to execute the test against. If left absent will use the URL the test was originally recorded against.",
+    },
+    simulationIdForAssets: {
+      string: true,
+      conflicts: "appUrl",
+      description:
+        "If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior simulation, instead of against a URL. An alternative to specifying an app URL.",
     },
     headless: {
       boolean: true,
