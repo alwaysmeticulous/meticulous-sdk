@@ -150,7 +150,6 @@ export const replayCommandHandler: (
   const replayEventsParams: Parameters<typeof replayEvents>[0] = {
     appUrl: appUrl || "",
     browser: null,
-    hold: false, // TODO: Revert before commit
     tempDir,
     session,
     sessionData,
