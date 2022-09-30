@@ -87,9 +87,6 @@ export const replayCommandHandler: (
   cookies,
   cookiesFile,
 }) => {
-  let closeServerIfRunning = () => {
-    /* noop */
-  };
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
@@ -105,14 +102,9 @@ export const replayCommandHandler: (
   const meticulousSha = await getMeticulousVersion();
 
   // 3. If simulationIdForAssets specified then download assets & spin up local server
-  if (simulationIdForAssets) {
-    const result = await serveAssetsFromSimulation(
-      client,
-      simulationIdForAssets
-    );
-    appUrl = result.url;
-    closeServerIfRunning = result.closeServer;
-  }
+  const server = simulationIdForAssets
+    ? await serveAssetsFromSimulation(client, simulationIdForAssets)
+    : undefined;
 
   // 4. Load replay assets
   const reanimator = await fetchAsset("replay/v1/reanimator.bundle.js");
@@ -148,7 +140,7 @@ export const replayCommandHandler: (
 
   // 6. Create and save replay parameters
   const replayEventsParams: Parameters<typeof replayEvents>[0] = {
-    appUrl: appUrl || "",
+    appUrl: server ? server.url : appUrl || "",
     browser: null,
     tempDir,
     session,
@@ -200,7 +192,7 @@ export const replayCommandHandler: (
 
   await eventsFinishedPromise;
   await writesFinishedPromise;
-  closeServerIfRunning();
+  server?.closeServer?.();
 
   const endTime = DateTime.utc();
 
