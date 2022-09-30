@@ -6,11 +6,14 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import log from "loglevel";
 import { join } from "path";
 import puppeteer, { Browser, PuppeteerNode } from "puppeteer";
-import { bootstrapPage, defer } from "./record.utils";
+import {
+  bootstrapPage,
+  defer,
+  INITIAL_METICULOUS_DOCS_URL,
+} from "./record.utils";
 
 const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
 const COOKIE_FILENAME = "cookies.json";
-const INITIAL_PAGE_URL = "https://app.meticulous.ai/docs/recording-a-test"
 
 export const recordSession: RecordSessionFn = async ({
   browser: browser_,
@@ -123,7 +126,7 @@ export const recordSession: RecordSessionFn = async ({
     uploadIntervalMs: uploadIntervalMs || DEFAULT_UPLOAD_INTERVAL_MS,
   });
 
-  page.goto(INITIAL_PAGE_URL)
+  page.goto(INITIAL_METICULOUS_DOCS_URL);
 
   logger.info("Browser ready");
 
