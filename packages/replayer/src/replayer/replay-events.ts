@@ -19,7 +19,7 @@ import {
   writeOutput,
 } from "./replay.utils";
 import { takeScreenshot } from "./screenshot.utils";
-import { isRequestForAsset } from "./snapshotAssets";
+import { isRequestForAsset } from "./snapshot-assets";
 
 export const replayEvents: ReplayEventsFn = async (options) => {
   const {
@@ -300,7 +300,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       writeOutput(
         {
           ...options,
-          baseUrl: startUrl,
+          baseUrl: new URL(startUrl).origin,
           assetUrls: assetUrlsLoaded,
           results,
           numSuccessRequests: results.numSuccessRequests,

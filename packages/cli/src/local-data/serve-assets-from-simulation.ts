@@ -11,7 +11,7 @@ const STARTING_PORT = 9100;
 export async function serveAssetsFromSimulation(
   client: AxiosInstance,
   simulationId: string
-): Promise<string> {
+): Promise<{ url: string; closeServer: () => void }> {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   await getOrFetchReplayArchive(client, simulationId);
@@ -31,7 +31,10 @@ export async function serveAssetsFromSimulation(
   const serverStartupPromise = defer();
 
   const [port] = await findFreePort(STARTING_PORT);
-  app.listen(port, () => serverStartupPromise.resolve());
+  const server = app.listen(port, () => serverStartupPromise.resolve());
 
-  return serverStartupPromise.promise.then(() => `http://localhost:${port}`);
+  return serverStartupPromise.promise.then(() => ({
+    url: `http://localhost:${port}`,
+    closeServer: server.close.bind(server),
+  }));
 }

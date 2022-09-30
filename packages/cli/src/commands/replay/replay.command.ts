@@ -36,7 +36,7 @@ import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
 import { addTestCase } from "../../utils/config.utils";
-import { serveAssetsFromSimulation } from "../../local-data/serveAssetsFromSimulation";
+import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
 
 export interface ReplayCommandHandlerOptions {
   apiToken?: string | null | undefined;
@@ -87,6 +87,9 @@ export const replayCommandHandler: (
   cookies,
   cookiesFile,
 }) => {
+  let closeServerIfRunning = () => {
+    /* noop */
+  };
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
@@ -103,7 +106,12 @@ export const replayCommandHandler: (
 
   // 3. If simulationIdForAssets specified then download assets & spin up local server
   if (simulationIdForAssets) {
-    appUrl = await serveAssetsFromSimulation(client, simulationIdForAssets);
+    const result = await serveAssetsFromSimulation(
+      client,
+      simulationIdForAssets
+    );
+    appUrl = result.url;
+    closeServerIfRunning = result.closeServer;
   }
 
   // 4. Load replay assets
@@ -193,6 +201,7 @@ export const replayCommandHandler: (
 
   await eventsFinishedPromise;
   await writesFinishedPromise;
+  closeServerIfRunning();
 
   const endTime = DateTime.utc();
 

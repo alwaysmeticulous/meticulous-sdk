@@ -11,7 +11,7 @@ import { join } from "path";
 import { CoverageEntry, Page, Viewport } from "puppeteer";
 import * as rrweb from "rrweb";
 import type { event } from "rrweb/typings/types";
-import { snapshotAssets } from "./snapshotAssets";
+import { snapshotAssets } from "./snapshot-assets";
 
 export interface IDeferred<T = void> {
   resolve: (value: T) => void;
