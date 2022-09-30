@@ -30,11 +30,28 @@ export const snapshotAssets = async (opts: {
     opts.assetUrls
       .filter((url) => url.startsWith(opts.baseUrl))
       .map((url) => {
-        const trimmedUrl = url.substring(opts.baseUrl.length);
+        const trimmedUrl = withoutQueryParams(url).substring(
+          opts.baseUrl.length
+        );
         downloadFile(url, join(assetsPath, getFilePath(trimmedUrl)));
       })
   );
 };
+
+// We ignore query params for now
+// It's possible that in future we may get clashes. An example would be if
+// a customer has set up a server that uses query params to fetch different resources:
+// `/get-script?scriptId=main.js` and `/get-script?scriptId=web-worker.js`.
+//
+// It is possible therefore that we may need to update this in future, however it adds
+// a little complexity on the server side (e.g. we'd need to save a mappings.json file that
+// maps from exact URL to the contents of returned resource, and serve requests based on this,
+// and we'd lose the debuggability of a simple folder structure).
+function withoutQueryParams(url: string) {
+  const parsed = new URL(url);
+  parsed.search = "";
+  return parsed.toString();
+}
 
 function getFilePath(trimmedUrl: string) {
   if (trimmedUrl === "" || trimmedUrl.endsWith("/")) {
