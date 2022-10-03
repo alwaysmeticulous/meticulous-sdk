@@ -10,13 +10,13 @@ interface PersonalConfig {
   apiToken?: string;
 }
 
-export const getApiToken: (
+export const getApiToken = (
   apiToken: string | null | undefined
-) => string | undefined = (apiToken_) => {
+): string | undefined => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  if (apiToken_) {
-    return apiToken_;
+  if (apiToken) {
+    return apiToken;
   }
   if (process.env["METICULOUS_API_TOKEN"]) {
     return process.env["METICULOUS_API_TOKEN"];
