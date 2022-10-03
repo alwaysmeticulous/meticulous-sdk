@@ -3,6 +3,9 @@ import { readFile } from "fs/promises";
 import log from "loglevel";
 import { Page } from "puppeteer";
 
+export const INITIAL_METICULOUS_DOCS_URL =
+  "https://app.meticulous.ai/docs/recording-a-test";
+
 export interface IDeferred<T = void> {
   resolve: (value: T) => void;
   reject: () => void;
@@ -47,22 +50,25 @@ export async function bootstrapPage({
   await page.evaluateOnNewDocument(earlyNetworkRecorderSnippetFile);
 
   page.on("framenavigated", async (frame) => {
+    if (page.url() === INITIAL_METICULOUS_DOCS_URL) {
+      return;
+    }
     try {
       if (page.mainFrame() === frame) {
         await frame.evaluate(`
-        window["METICULOUS_RECORDING_TOKEN"] = "${recordingToken}";
-        window["METICULOUS_APP_COMMIT_HASH"] = "${appCommitHash}";
-        window["METICULOUS_FORCE_RECORDING"] = true;
-        window["METICULOUS_UPLOAD_INTERVAL_MS"] = ${uploadIntervalMs};
-        window["METICULOUS_ENABLE_RRWEB_PLUGIN_NODE_DATA"] = true;
-      `);
+          window["METICULOUS_RECORDING_TOKEN"] = "${recordingToken}";
+          window["METICULOUS_APP_COMMIT_HASH"] = "${appCommitHash}";
+          window["METICULOUS_FORCE_RECORDING"] = true;
+          window["METICULOUS_UPLOAD_INTERVAL_MS"] = ${uploadIntervalMs};
+          window["METICULOUS_ENABLE_RRWEB_PLUGIN_NODE_DATA"] = true;
+        `);
         await frame.evaluate(recordingSnippetFile);
         return;
       }
 
       await frame.evaluate(`
-      window.__meticulous?.earlyNetworkRecorder?.polly?.disconnect?.();
-    `);
+        window.__meticulous?.earlyNetworkRecorder?.polly?.disconnect?.();
+      `);
     } catch (error) {
       // Suppress expected errors due to page navigation or tab being closed
       if (
