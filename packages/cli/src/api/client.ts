@@ -21,9 +21,16 @@ export const createClient: (options: ClientOptions) => AxiosInstance = ({
     process.exit(1);
   }
   return axios.create({
-    baseURL: BASE_API_URL,
+    baseURL: getApiUrl(),
     headers: {
       authorization: apiToken,
     },
   });
+};
+
+const getApiUrl = () => {
+  if (process.env["METICULOUS_API_URL"]) {
+    return process.env["METICULOUS_API_URL"];
+  }
+  return BASE_API_URL;
 };
