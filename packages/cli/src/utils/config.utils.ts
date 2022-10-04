@@ -11,3 +11,18 @@ export const addTestCase: (testCase: TestCase) => Promise<void> = async (
   };
   await saveConfig(newConfig);
 };
+
+export const getSimulationIdForAssets = (
+  testCase: TestCase,
+  useAssetsSnapshottedInBaseSimulation: boolean | null | undefined
+): string | undefined => {
+  if (testCase.options?.useAssetsFromReplayId) {
+    return testCase.options.useAssetsFromReplayId;
+  }
+
+  if (useAssetsSnapshottedInBaseSimulation) {
+    return testCase.baseReplayId;
+  }
+
+  return undefined;
+};

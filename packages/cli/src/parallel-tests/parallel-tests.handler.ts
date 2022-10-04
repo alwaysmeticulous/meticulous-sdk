@@ -14,6 +14,7 @@ import {
   TestCase,
   TestCaseResult,
 } from "../config/config.types";
+import { getSimulationIdForAssets } from "../utils/config.utils";
 import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
 
@@ -24,6 +25,7 @@ export interface RunAllTestsInParallelOptions {
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
   appUrl: string | null | undefined;
+  useAssetsSnapshottedInBaseSimulation?: boolean | null | undefined;
   headless: boolean | null | undefined;
   devTools: boolean | null | undefined;
   bypassCSP: boolean | null | undefined;
@@ -47,6 +49,7 @@ export const runAllTestsInParallel: (
   apiToken,
   commitSha,
   appUrl,
+  useAssetsSnapshottedInBaseSimulation,
   headless,
   devTools,
   bypassCSP,
@@ -125,6 +128,10 @@ export const runAllTestsInParallel: (
           padTime,
           shiftTime,
           networkStubbing,
+          simulationIdForAssets: getSimulationIdForAssets(
+            testCase,
+            useAssetsSnapshottedInBaseSimulation
+          ),
         },
         testCase,
         deflake,
