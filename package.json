@@ -6,7 +6,7 @@
   ],
   "scripts": {
     "clean": "lerna run clean",
-    "build": "turbo run build",
+    "build": "lerna run build",
     "format": "lerna run format",
     "lint": "lerna run lint",
     "lint:commit": "lerna run lint:commit",
