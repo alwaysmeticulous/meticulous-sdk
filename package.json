@@ -12,7 +12,8 @@
     "lint:commit": "lerna run lint:commit",
     "lint:fix": "lerna run lint:fix --no-bail",
     "cli": "yarn workspace @alwaysmeticulous/cli cli",
-    "cli:dev": "yarn workspace @alwaysmeticulous/cli cli:dev"
+    "cli:dev": "yarn workspace @alwaysmeticulous/cli cli:dev",
+    "publish": "yarn run lerna version"
   },
   "devDependencies": {
     "@tailwindcss/forms": "0.5.2",
