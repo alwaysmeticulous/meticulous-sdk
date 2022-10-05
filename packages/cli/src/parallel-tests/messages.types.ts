@@ -10,6 +10,7 @@ export interface InitMessage {
       apiToken: string | null | undefined;
       commitSha: string | null | undefined;
       appUrl: string | null | undefined;
+      simulationIdForAssets?: string | null | undefined;
       headless: boolean | null | undefined;
       devTools: boolean | null | undefined;
       bypassCSP: boolean | null | undefined;

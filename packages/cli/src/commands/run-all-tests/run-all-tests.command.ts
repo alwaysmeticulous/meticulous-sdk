@@ -13,6 +13,7 @@ import { TestCaseResult } from "../../config/config.types";
 import { deflakeReplayCommandHandler } from "../../deflake-tests/deflake-tests.handler";
 import { runAllTestsInParallel } from "../../parallel-tests/parallel-tests.handler";
 import { getCommitSha } from "../../utils/commit-sha.utils";
+import { getSimulationIdForAssets } from "../../utils/config.utils";
 import { writeGitHubSummary } from "../../utils/github-summary.utils";
 import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
@@ -99,6 +100,7 @@ const handler: (options: Options) => Promise<void> = async ({
         apiToken,
         commitSha,
         appUrl,
+        useAssetsSnapshottedInBaseSimulation,
         headless,
         devTools,
         bypassCSP,
@@ -137,9 +139,10 @@ const handler: (options: Options) => Promise<void> = async ({
         padTime,
         shiftTime,
         networkStubbing,
-        simulationIdForAssets: useAssetsSnapshottedInBaseSimulation
-          ? baseReplayId
-          : undefined,
+        simulationIdForAssets: getSimulationIdForAssets(
+          testCase,
+          useAssetsSnapshottedInBaseSimulation
+        ),
         ...options,
       });
       results.push(result);

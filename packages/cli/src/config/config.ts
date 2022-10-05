@@ -33,6 +33,7 @@ const validateReplayOptions: (options: ReplayOptions) => ReplayOptions = (
     diffPixelThreshold,
     cookies,
     moveBeforeClick,
+    useAssetsFromReplayId,
   } = prevOptions;
   return {
     ...(screenshotSelector ? { screenshotSelector } : {}),
@@ -40,6 +41,7 @@ const validateReplayOptions: (options: ReplayOptions) => ReplayOptions = (
     ...(diffPixelThreshold ? { diffPixelThreshold } : {}),
     ...(cookies ? { cookies } : {}),
     ...(moveBeforeClick ? { moveBeforeClick } : {}),
+    ...(useAssetsFromReplayId ? { useAssetsFromReplayId } : {}),
   };
 };
 

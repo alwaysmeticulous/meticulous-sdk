@@ -4,6 +4,11 @@ export interface ReplayOptions {
   diffPixelThreshold?: number;
   cookies?: Record<string, any>[];
   moveBeforeClick?: boolean;
+
+  /**
+   * If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior replay, instead of against a URL.
+   */
+  useAssetsFromReplayId?: string;
 }
 
 export interface TestCase {
