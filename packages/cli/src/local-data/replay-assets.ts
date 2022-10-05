@@ -10,7 +10,7 @@ import { getSnippetsBaseUrl } from "../config/snippets";
 
 export interface AssetMetadataItem {
   fileName: string;
-  etag: string | null;
+  etag: string;
   fetchUrl: string;
 }
 
@@ -60,14 +60,14 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const assetFileName = basename(new URL(fetchUrl).pathname);
 
   const assetMetadata = await loadAssetMetadata();
-  const etag = (await axios.head(fetchUrl)).headers["etag"] || null;
+  const etag = (await axios.head(fetchUrl)).headers["etag"] || "";
 
   const entry = assetMetadata.assets.find(
     (item) => item.fileName === assetFileName
   );
   const filePath = join(await getOrCreateAssetsDir(), assetFileName);
 
-  if (entry && etag && etag === entry.etag) {
+  if (entry && etag !== "" && etag === entry.etag) {
     logger.debug(`${fetchUrl} already present`);
     return filePath;
   }
