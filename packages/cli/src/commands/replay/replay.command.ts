@@ -107,12 +107,21 @@ export const replayCommandHandler: (
     : undefined;
 
   // 4. Load replay assets
-  const reanimator = await fetchAsset("replay/v1/reanimator.bundle.js");
-  const replayNetworkFile = await fetchAsset(
-    "replay/v1/replay-network-events.bundle.js"
+  const browserUserInteractions = await fetchAsset(
+    "replay/v2/snippet-user-interactions.bundle.js"
   );
-  const jsReplay = await fetchAsset("replay/v1/replay-only-replayjs-forked.js");
-  const rrweb = await fetchAsset("replay/v1/rrweb.js");
+  const browserPlayback = await fetchAsset(
+    "replay/v2/snippet-playback.bundle.js"
+  );
+  const nodeBrowserContext = await fetchAsset(
+    "replay/v2/node-browser-context.bundle.js"
+  );
+  const nodeNetworkStubbing = await fetchAsset(
+    "replay/v2/node-network-stubbing.bundle.js"
+  );
+  const nodeUserInteractions = await fetchAsset(
+    "replay/v2/node-user-interactions.bundle.js"
+  );
 
   // 5. Load replay package
   let replayEvents: ReplayEventsFn;
@@ -142,7 +151,7 @@ export const replayCommandHandler: (
   const replayEventsParams: Parameters<typeof replayEvents>[0] = {
     appUrl: server ? server.url : appUrl || "",
     browser: null,
-    tempDir,
+    outputDir: tempDir,
     session,
     sessionData,
     recordingId: "manual-replay",
@@ -151,21 +160,25 @@ export const replayCommandHandler: (
     devTools: devTools || false,
     bypassCSP: bypassCSP || false,
     dependencies: {
-      reanimator: {
-        key: "reanimator",
-        location: reanimator,
+      browserUserInteractions: {
+        key: "browserUserInteractions",
+        location: browserUserInteractions,
       },
-      replayNetworkFile: {
-        key: "replayNetworkFile",
-        location: replayNetworkFile,
+      browserPlayback: {
+        key: "browserPlayback",
+        location: browserPlayback,
       },
-      jsReplay: {
-        key: "jsReplay",
-        location: jsReplay,
+      nodeBrowserContext: {
+        key: "nodeBrowserContext",
+        location: nodeBrowserContext,
       },
-      rrweb: {
-        key: "rrweb",
-        location: rrweb,
+      nodeNetworkStubbing: {
+        key: "nodeNetworkStubbing",
+        location: nodeNetworkStubbing,
+      },
+      nodeUserInteractions: {
+        key: "nodeUserInteractions",
+        location: nodeUserInteractions,
       },
     },
     padTime,
@@ -183,15 +196,10 @@ export const replayCommandHandler: (
   );
 
   // 7. Perform replay
-  logger.info("Starting simulation...");
   const startTime = DateTime.utc();
 
-  const { eventsFinishedPromise, writesFinishedPromise } = await replayEvents(
-    replayEventsParams
-  );
+  await replayEvents(replayEventsParams);
 
-  await eventsFinishedPromise;
-  await writesFinishedPromise;
   server?.closeServer();
 
   const endTime = DateTime.utc();
@@ -210,6 +218,7 @@ export const replayCommandHandler: (
     commitSha,
     sessionId,
     meticulousSha,
+    version: "v2",
     metadata: {},
   });
   const uploadUrlData = await getReplayPushUrl(client, replay.id);

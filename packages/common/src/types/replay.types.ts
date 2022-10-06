@@ -10,16 +10,17 @@ export interface BaseReplayEventsDependencies {
 }
 
 export interface ReplayEventsDependencies extends BaseReplayEventsDependencies {
-  reanimator: ReplayEventsDependency<"reanimator">;
-  replayNetworkFile: ReplayEventsDependency<"replayNetworkFile">;
-  jsReplay: ReplayEventsDependency<"jsReplay">;
-  rrweb: ReplayEventsDependency<"rrweb">;
+  browserUserInteractions: ReplayEventsDependency<"browserUserInteractions">;
+  browserPlayback: ReplayEventsDependency<"browserPlayback">;
+  nodeBrowserContext: ReplayEventsDependency<"nodeBrowserContext">;
+  nodeNetworkStubbing: ReplayEventsDependency<"nodeNetworkStubbing">;
+  nodeUserInteractions: ReplayEventsDependency<"nodeUserInteractions">;
 }
 
 export interface ReplayEventsOptions {
   appUrl: string;
   browser: any;
-  tempDir: string;
+  outputDir: string;
   session: RecordedSession;
   sessionData: SessionData;
   recordingId: string;
@@ -39,10 +40,7 @@ export interface ReplayEventsOptions {
   cookiesFile: string;
 }
 
-export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<{
-  eventsFinishedPromise: Promise<void>;
-  writesFinishedPromise: Promise<void>;
-}>;
+export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;
 
 export interface Replay {
   id: string;
