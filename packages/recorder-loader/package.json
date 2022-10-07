@@ -1,0 +1,33 @@
+{
+  "name": "@alwaysmeticulous/recorder-loader",
+  "version": "1.0.0",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "types": "dist/tsc/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "dev": "webpack --config webpack.config.js --mode='development' --watch",
+    "build": "webpack --config webpack.config.js --mode='production'",
+    "format": "prettier --write src",
+    "lint": "eslint src --ext=ts,tsx,js --cache",
+    "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
+    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}
