@@ -18,10 +18,20 @@ export interface AssetMetadata {
   assets: AssetMetadataItem[];
 }
 
-export const loadAssetMetadata: () => Promise<AssetMetadata> = async () => {
-  const assetsDir = join(getMeticulousLocalDataDir(), "assets");
+const ASSETS_FOLDER_NAME = "assets";
+const ASSET_METADATA_FILE_NAME = "assets.json";
+
+export const getOrCreateAssetsDir: () => Promise<string> = async () => {
+  const assetsDir = join(getMeticulousLocalDataDir(), ASSETS_FOLDER_NAME);
   await mkdir(assetsDir, { recursive: true });
-  const assetsFile = join(assetsDir, `assets.json`);
+  return assetsDir;
+};
+
+export const loadAssetMetadata: () => Promise<AssetMetadata> = async () => {
+  const assetsFile = join(
+    await getOrCreateAssetsDir(),
+    ASSET_METADATA_FILE_NAME
+  );
 
   const existingMetadata = await readFile(assetsFile)
     .then((data) => JSON.parse(data.toString("utf-8")))
@@ -36,9 +46,10 @@ export const loadAssetMetadata: () => Promise<AssetMetadata> = async () => {
 export const saveAssetMetadata: (
   assetMetadata: AssetMetadata
 ) => Promise<void> = async (assetMetadata) => {
-  const assetsDir = join(getMeticulousLocalDataDir(), "assets");
-  await mkdir(assetsDir, { recursive: true });
-  const assetsFile = join(assetsDir, `assets.json`);
+  const assetsFile = join(
+    await getOrCreateAssetsDir(),
+    ASSET_METADATA_FILE_NAME
+  );
 
   await writeFile(assetsFile, JSON.stringify(assetMetadata, null, 2));
 };
@@ -46,19 +57,17 @@ export const saveAssetMetadata: (
 export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const fetchUrl = new URL(path, getSnippetsBaseUrl()).href;
-
-  const assetsDir = join(getMeticulousLocalDataDir(), "assets");
+  const assetFileName = basename(new URL(fetchUrl).pathname);
 
   const assetMetadata = await loadAssetMetadata();
   const etag = (await axios.head(fetchUrl)).headers["etag"] || "";
 
-  const entry = assetMetadata.assets.find((item) => item.fetchUrl === fetchUrl);
-  const fileName = entry
-    ? entry.fileName
-    : basename(new URL(fetchUrl).pathname);
-  const filePath = join(assetsDir, fileName);
+  const entry = assetMetadata.assets.find(
+    (item) => item.fileName === assetFileName
+  );
+  const filePath = join(await getOrCreateAssetsDir(), assetFileName);
 
-  if (entry && etag === entry.etag) {
+  if (entry && etag !== "" && etag === entry.etag) {
     logger.debug(`${fetchUrl} already present`);
     return filePath;
   }
@@ -70,7 +79,7 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
     entry.etag = etag;
   } else {
     logger.debug(`${fetchUrl} downloaded`);
-    assetMetadata.assets.push({ fileName, etag, fetchUrl });
+    assetMetadata.assets.push({ fileName: assetFileName, etag, fetchUrl });
   }
   await saveAssetMetadata(assetMetadata);
   return filePath;
