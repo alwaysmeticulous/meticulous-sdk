@@ -7,7 +7,7 @@ export const loadAndStartRecorder: (options: LoaderOptions) => Promise<void> = (
 ) => {
   let abandoned = false;
 
-  return new Promise<void>((resolve) => {
+  return new Promise<void>((resolve, reject) => {
     const maxMsToBlockFor =
       options.maxMsToBlockFor || DEFAULT_MAX_MS_TO_BLOCK_FOR;
 
@@ -55,13 +55,13 @@ export const loadAndStartRecorder: (options: LoaderOptions) => Promise<void> = (
       try {
         window.__meticulous?.initialiseRecorder();
       } catch (Error) {
-        console.error("Meticulous recorder failed to initialise.");
+        reject("Meticulous recorder failed to initialise.");
       }
 
       resolve();
     };
     script.onerror = () => {
-      resolve();
+      reject("Meticulous recorder failed to initialise.");
     };
 
     document.head.appendChild(script);
