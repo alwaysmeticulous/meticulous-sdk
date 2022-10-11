@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "fs/promises";
-import { dirname, join } from "path";
+import path, { dirname, extname, join } from "path";
 import { HTTPRequest, ResourceType } from "puppeteer";
 import { AssetSnapshot } from "./assets.types";
 
@@ -26,7 +26,10 @@ export const snapshotAssets = async (opts: {
         const trimmedUrl = withoutQueryParams(snapshot.url).substring(
           opts.baseUrl.length
         );
-        const targetFile = join(opts.assetsPath, getFilePath(trimmedUrl));
+        const targetFile = join(
+          opts.assetsPath,
+          getFilePath(trimmedUrl, snapshot.contentType)
+        );
         await mkdir(dirname(targetFile), { recursive: true });
 
         const data = await snapshot.data;
@@ -51,8 +54,16 @@ function withoutQueryParams(url: string) {
   return parsed.toString();
 }
 
-function getFilePath(trimmedUrl: string) {
-  if (trimmedUrl === "" || trimmedUrl.endsWith("/")) {
+function getFilePath(trimmedUrl: string, contentType: string | undefined) {
+  const hasHTMLContentType =
+    contentType !== undefined && contentType.indexOf("text/html") > -1;
+  const extension = extname(trimmedUrl);
+  const hasHTMLExtension = extension === "html" || extension === "htm";
+  if (
+    trimmedUrl === "" ||
+    trimmedUrl.endsWith("/") ||
+    (hasHTMLContentType && !hasHTMLExtension)
+  ) {
     return join(trimmedUrl, "index.html");
   }
   return trimmedUrl;
