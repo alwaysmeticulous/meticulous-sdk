@@ -5,8 +5,10 @@ import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { existsSync } from "fs";
 import log from "loglevel";
 import findFreePort from "find-free-port";
+import { Server } from "http";
 
 const STARTING_PORT = 9100;
+const MAX_RETRY_ATTEMPTS = 3;
 
 export async function serveAssetsFromSimulation(
   client: AxiosInstance,
@@ -31,11 +33,35 @@ export async function serveAssetsFromSimulation(
 
   const serverStartupPromise = defer();
 
-  const [port] = await findFreePort(STARTING_PORT);
-  const server = app.listen(port, () => serverStartupPromise.resolve());
+  const { server, port } = await retryUntilFreePortFound((portToTry) =>
+    app.listen(portToTry, () => serverStartupPromise.resolve())
+  );
 
   return serverStartupPromise.promise.then(() => ({
     url: `http://localhost:${port}`,
     closeServer: server.close.bind(server),
   }));
 }
+
+// We retry a few times in case of race conditions (two servers trying to grab same port at same time)
+const retryUntilFreePortFound = async (
+  startServer: (port: number) => Server,
+  attempt = 0
+): Promise<{ server: Server; port: number }> => {
+  // We randomize the port to try to minimize chance of race conditions
+  const [port] = await findFreePort(
+    randomNumberBetween(STARTING_PORT, STARTING_PORT + 1000)
+  );
+
+  try {
+    return { server: startServer(port), port };
+  } catch (err: unknown) {
+    if (attempt < MAX_RETRY_ATTEMPTS) {
+      return retryUntilFreePortFound(startServer, attempt + 1);
+    }
+    throw err;
+  }
+};
+
+const randomNumberBetween = (inclusiveStart: number, exclusiveEnd: number) =>
+  Math.floor(Math.random() * (exclusiveEnd - inclusiveStart) + inclusiveStart);

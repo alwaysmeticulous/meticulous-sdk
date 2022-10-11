@@ -13,7 +13,8 @@
     "lint:fix": "lerna run lint:fix --no-bail",
     "cli": "yarn workspace @alwaysmeticulous/cli cli",
     "cli:dev": "yarn workspace @alwaysmeticulous/cli cli:dev",
-    "prepublish": "yarn run build"
+    "prepublish": "yarn run build",
+    "publish": "lerna version"
   },
   "devDependencies": {
     "@tailwindcss/forms": "0.5.2",
