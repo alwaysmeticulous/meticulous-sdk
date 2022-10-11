@@ -1,33 +1,25 @@
 {
-  "name": "@alwaysmeticulous/common",
+  "name": "@alwaysmeticulous/recorder-loader",
   "version": "2.0.2",
-  "description": "Meticulous common utilities",
   "license": "ISC",
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/tsc/index.d.ts",
   "files": [
     "dist"
   ],
   "scripts": {
     "clean": "rimraf dist",
-    "build": "tsc --build tsconfig.json",
-    "dev": "tsc --build tsconfig.json --watch",
+    "dev": "webpack --config webpack.config.js --mode='development' --watch",
+    "build": "webpack --config webpack.config.js --mode='production'",
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
-  "dependencies": {
-    "loglevel": "^1.8.0",
-    "luxon": "^2.4.0"
-  },
   "author": {
     "name": "The Meticulous Team",
     "email": "eng@meticulous.ai",
     "url": "https://meticulous.ai"
-  },
-  "engines": {
-    "node": ">= 12"
   },
   "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
   "repository": {

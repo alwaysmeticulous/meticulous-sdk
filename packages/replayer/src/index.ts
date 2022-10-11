@@ -1,2 +1,2 @@
-export { replayEvents } from "./replayer/replay-events";
-export { getStartUrl, patchDate } from "./replayer/replay.utils";
+export { replayEvents } from "./replayer";
+export { getStartUrl, patchDate } from "./replay.utils";

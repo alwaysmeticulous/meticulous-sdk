@@ -2,11 +2,11 @@ import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { join } from "path";
 import { Page } from "puppeteer";
-import { prepareScreenshotsDir } from "./replay.utils";
+import { prepareScreenshotsDir } from "./output.utils";
 
 export interface TakeScreenshotOptions {
   page: Page;
-  tempDir: string;
+  outputDir: string;
   screenshotSelector: string;
 }
 
@@ -27,11 +27,11 @@ const screenshotPageOrElement: (options: {
 
 export const takeScreenshot: (
   options: TakeScreenshotOptions
-) => Promise<void> = async ({ page, tempDir, screenshotSelector }) => {
+) => Promise<void> = async ({ page, outputDir, screenshotSelector }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   logger.debug("Taking screenshot");
-  await prepareScreenshotsDir(tempDir);
-  const screenshotFile = join(tempDir, "screenshots", "final-state.png");
+  await prepareScreenshotsDir(outputDir);
+  const screenshotFile = join(outputDir, "screenshots", "final-state.png");
   await screenshotPageOrElement({
     page,
     path: screenshotFile,

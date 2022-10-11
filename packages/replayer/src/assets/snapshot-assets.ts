@@ -1,10 +1,7 @@
-import axios from "axios";
-import { createWriteStream } from "fs";
-import { mkdir } from "fs/promises";
+import { mkdir, writeFile } from "fs/promises";
 import { dirname, join } from "path";
 import { HTTPRequest, ResourceType } from "puppeteer";
-import { finished } from "stream";
-import { promisify } from "util";
+import { AssetSnapshot } from "./assets.types";
 
 const resourceTypesToSnapshot = new Set<ResourceType>([
   "document",
@@ -18,22 +15,23 @@ export const isRequestForAsset = (request: HTTPRequest) =>
   resourceTypesToSnapshot.has(request.resourceType());
 
 export const snapshotAssets = async (opts: {
-  tempDir: string;
+  assetsPath: string;
   baseUrl: string;
-  assetUrls: string[];
+  assetSnapshots: AssetSnapshot[];
 }) => {
-  const assetsPath = join(opts.tempDir, "snapshotted-assets");
-  mkdir(assetsPath, {
-    recursive: true,
-  });
   return Promise.all(
-    opts.assetUrls
-      .filter((url) => url.startsWith(opts.baseUrl))
-      .map((url) => {
-        const trimmedUrl = withoutQueryParams(url).substring(
+    opts.assetSnapshots
+      .filter((snapshot) => snapshot.url.startsWith(opts.baseUrl))
+      .map(async (snapshot) => {
+        const trimmedUrl = withoutQueryParams(snapshot.url).substring(
           opts.baseUrl.length
         );
-        downloadFile(url, join(assetsPath, getFilePath(trimmedUrl)));
+        const targetFile = join(opts.assetsPath, getFilePath(trimmedUrl));
+        await mkdir(dirname(targetFile), { recursive: true });
+
+        const data = await snapshot.data;
+
+        return writeFile(targetFile, data, { flag: "w" });
       })
   );
 };
@@ -58,17 +56,4 @@ function getFilePath(trimmedUrl: string) {
     return join(trimmedUrl, "index.html");
   }
   return trimmedUrl;
-}
-
-const promisifiedFinished = promisify(finished);
-
-async function downloadFile(url: string, targetFile: string) {
-  await mkdir(dirname(targetFile), { recursive: true });
-  const writer = createWriteStream(targetFile);
-  return axios
-    .request({ method: "GET", url: url, responseType: "stream" })
-    .then(async (response) => {
-      response.data.pipe(writer);
-      return promisifiedFinished(writer);
-    });
 }
