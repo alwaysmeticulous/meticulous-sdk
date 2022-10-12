@@ -37,6 +37,7 @@ export interface RunAllTestsInParallelOptions {
   parallelTasks: number | null | undefined;
   deflake: boolean;
   cachedTestRunResults: TestCaseResult[];
+  accelerate: boolean | undefined;
 }
 
 /** Handler for running Meticulous tests in parallel using child processes */
@@ -61,6 +62,7 @@ export const runAllTestsInParallel: (
   parallelTasks,
   deflake,
   cachedTestRunResults,
+  accelerate,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -132,6 +134,7 @@ export const runAllTestsInParallel: (
             testCase,
             useAssetsSnapshottedInBaseSimulation
           ),
+          accelerate,
         },
         testCase,
         deflake,

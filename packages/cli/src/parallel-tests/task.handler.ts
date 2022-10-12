@@ -64,6 +64,7 @@ const main = async () => {
     padTime,
     shiftTime,
     networkStubbing,
+    accelerate,
   } = runAllOptions;
   const { sessionId, baseReplayId, options } = testCase;
 
@@ -87,6 +88,7 @@ const main = async () => {
     padTime,
     shiftTime,
     networkStubbing,
+    accelerate,
     ...options,
   });
   const resultMessage: ResultMessage = {
