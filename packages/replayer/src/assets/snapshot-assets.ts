@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "fs/promises";
-import path, { dirname, extname, join } from "path";
+import { dirname, extname, join } from "path";
 import { HTTPRequest, ResourceType } from "puppeteer";
 import { AssetSnapshot } from "./assets.types";
 
