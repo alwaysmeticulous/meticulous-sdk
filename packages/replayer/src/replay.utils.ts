@@ -196,6 +196,7 @@ export const initializeReplayData: (options: {
     if (response.ok() && isRequestForAsset(response.request())) {
       assetSnapshots.push({
         url: response.request().url(),
+        contentType: response.headers()["content-type"],
         data: response.buffer(),
       });
     }
