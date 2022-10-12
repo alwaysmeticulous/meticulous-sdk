@@ -4,6 +4,7 @@ import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
 import { wrapHandler } from "../../utils/sentry.utils";
+
 interface Options {
   apiToken?: string | null | undefined;
   replayId: string;
