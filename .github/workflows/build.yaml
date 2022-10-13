@@ -1,3 +1,5 @@
+# Workflow to check packages build correctly
+
 name: Build CLI
 
 on:
@@ -12,12 +14,21 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Use Node.js LTS
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
-          node-version: "16"
+          node-version: 16
+          cache: yarn
+
+      - name: Cache turborepo output
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules/.cache/turbo
+            packages/*/.turbo
+          key: ${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile --non-interactive
@@ -26,4 +37,4 @@ jobs:
         run: yarn lint
 
       - name: Build packages
-        run: yarn run turbo run build
+        run: yarn build
