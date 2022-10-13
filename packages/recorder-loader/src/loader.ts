@@ -54,8 +54,8 @@ export const loadAndStartRecorder: (options: LoaderOptions) => Promise<void> = (
 
       try {
         window.__meticulous?.initialiseRecorder();
-      } catch (Error) {
-        reject("Meticulous recorder failed to initialise.");
+      } catch (error) {
+        reject(error);
       }
 
       resolve();
