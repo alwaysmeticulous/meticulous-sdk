@@ -197,7 +197,7 @@ export const initializeReplayData: (options: {
       assetSnapshots.push({
         url: response.request().url(),
         contentType: response.headers()["content-type"],
-        data: response.buffer(),
+        getData: () => response.buffer(),
       });
     }
   });

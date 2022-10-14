@@ -1,4 +1,6 @@
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { mkdir, writeFile } from "fs/promises";
+import log from "loglevel";
 import { dirname, extname, join } from "path";
 import { HTTPRequest, ResourceType } from "puppeteer";
 import { AssetSnapshot } from "./assets.types";
@@ -14,29 +16,69 @@ const resourceTypesToSnapshot = new Set<ResourceType>([
 export const isRequestForAsset = (request: HTTPRequest) =>
   resourceTypesToSnapshot.has(request.resourceType());
 
-export const snapshotAssets = async (opts: {
+interface SnapshotAssetsOpts {
   assetsPath: string;
   baseUrl: string;
   assetSnapshots: AssetSnapshot[];
-}) => {
+}
+
+const TIMEOUT_FOR_FETCHING_ASSET = 5000;
+
+export const snapshotAssets = async (opts: SnapshotAssetsOpts) => {
   return Promise.all(
-    opts.assetSnapshots
+    uniqByRequestUrl(opts.assetSnapshots)
       .filter((snapshot) => snapshot.url.startsWith(opts.baseUrl))
-      .map(async (snapshot) => {
-        const trimmedUrl = withoutQueryParams(snapshot.url).substring(
-          opts.baseUrl.length
-        );
-        const targetFile = join(
-          opts.assetsPath,
-          getFilePath(trimmedUrl, snapshot.contentType)
-        );
-        await mkdir(dirname(targetFile), { recursive: true });
-
-        const data = await snapshot.data;
-
-        return writeFile(targetFile, data, { flag: "w" });
-      })
+      .map((snapshot) => snapshotAssetWithTimeout({ ...opts, snapshot }))
   );
+};
+
+const snapshotAssetWithTimeout = async (
+  opts: SnapshotAssetsOpts & { snapshot: AssetSnapshot }
+) => {
+  const assetPromise = snapshotAsset(opts);
+  const timeLimitedPromise = withTimeout(
+    assetPromise,
+    TIMEOUT_FOR_FETCHING_ASSET,
+    `Timed out snapshotting asset for URL ${opts.snapshot.url}`
+  );
+  return timeLimitedPromise.catch((err) => {
+    // We catch and quietly log any errors since asset snapshots
+    // are non-essential/for debugging purposes: we'd rather they fail to
+    // capture, than the CLI fails altogether.
+    log.debug(`Error fetching asset at URL ${opts.snapshot.url}`, err);
+  });
+};
+
+const snapshotAsset = async (
+  opts: SnapshotAssetsOpts & { snapshot: AssetSnapshot }
+) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const trimmedUrl = withoutQueryParams(opts.snapshot.url).substring(
+    opts.baseUrl.length
+  );
+  const targetFile = join(
+    opts.assetsPath,
+    getFilePath(trimmedUrl, opts.snapshot.contentType)
+  );
+  await mkdir(dirname(targetFile), { recursive: true });
+
+  try {
+    const data = await opts.snapshot.getData();
+    return writeFile(targetFile, data, { flag: "w" });
+  } catch (error: unknown) {
+    // There seems to be no other way to tell apart a cancelled request from a normal one
+    // apart from catching the error when trying to read the data (cancelled requests
+    // seem to still have 200 status etc. in Puppeteer oddly). We ignore this, since we don't
+    // care about snapshotting assets for cancelled requests.
+    if ((error as any)?.name === "ProtocolError") {
+      logger.debug(
+        `ProtocolError when fetching snapshotted asset for URL ${opts.snapshot.url}. Ignoring this, ` +
+          `because it's usually due to cancelled requests.`
+      );
+    } else {
+      throw error;
+    }
+  }
 };
 
 // We ignore query params for now
@@ -68,3 +110,34 @@ function getFilePath(trimmedUrl: string, contentType: string | undefined) {
   }
   return trimmedUrl;
 }
+
+const withTimeout = <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string
+) => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_resolve, reject) => {
+      const cancellationId = setTimeout(
+        () => reject(timeoutMessage),
+        timeoutMs
+      );
+      promise.finally(() => clearTimeout(cancellationId));
+    }),
+  ]);
+};
+
+/**
+ * We only care to snapshot the first response for a given URL
+ */
+const uniqByRequestUrl = (assets: AssetSnapshot[]) => {
+  const requestUrls = new Set<string>();
+  return assets.filter((snapshot) => {
+    if (requestUrls.has(snapshot.url)) {
+      return false;
+    }
+    requestUrls.add(snapshot.url);
+    return true;
+  });
+};
