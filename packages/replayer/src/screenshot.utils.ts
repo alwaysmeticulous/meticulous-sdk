@@ -30,8 +30,8 @@ export const takeScreenshot: (
 ) => Promise<void> = async ({ page, outputDir, screenshotSelector }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   logger.debug("Taking screenshot");
-  await prepareScreenshotsDir(outputDir);
-  const screenshotFile = join(outputDir, "screenshots", "final-state.png");
+  const screenshotsDir = await prepareScreenshotsDir(outputDir);
+  const screenshotFile = join(screenshotsDir, "final-state.png");
   await screenshotPageOrElement({
     page,
     path: screenshotFile,
