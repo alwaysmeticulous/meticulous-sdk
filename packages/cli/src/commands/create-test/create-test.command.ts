@@ -94,6 +94,7 @@ const handler: (options: Options) => Promise<void> = async ({
   networkStubbing,
   moveBeforeClick,
   cookiesFile,
+  accelerate,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -143,6 +144,7 @@ const handler: (options: Options) => Promise<void> = async ({
     networkStubbing,
     moveBeforeClick,
     cookiesFile,
+    accelerate,
   };
   const replay = await replayCommandHandler(replayOptions);
 
@@ -223,6 +225,12 @@ export const createTest: CommandModule<unknown, Options> = {
     cookiesFile: {
       string: true,
       description: "Path to cookies to inject before simulation",
+    },
+    accelerate: {
+      boolean: true,
+      description:
+        "Fast forward through any pauses to replay as fast as possible when replaying for the first time to create the test. Warning: this option is experimental and may be deprecated",
+      default: false,
     },
   },
   handler: wrapHandler(handler),

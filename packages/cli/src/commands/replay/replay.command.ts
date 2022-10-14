@@ -60,6 +60,7 @@ export interface ReplayCommandHandlerOptions {
   moveBeforeClick?: boolean | null | undefined;
   cookies?: Record<string, any>[];
   cookiesFile?: string | null | undefined;
+  accelerate: boolean;
 }
 
 export const replayCommandHandler: (
@@ -86,6 +87,7 @@ export const replayCommandHandler: (
   moveBeforeClick,
   cookies,
   cookiesFile,
+  accelerate,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -189,6 +191,7 @@ export const replayCommandHandler: (
     moveBeforeClick: moveBeforeClick || false,
     cookies: cookies || null,
     cookiesFile: cookiesFile || "",
+    accelerate,
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -379,7 +382,8 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
     },
     padTime: {
       boolean: true,
-      description: "Pad simulation time according to recording duration",
+      description:
+        "Pad simulation time according to recording duration. Please note this option will be ignored if running with the '--accelerate' option.",
       default: true,
     },
     shiftTime: {
@@ -400,6 +404,12 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
     cookiesFile: {
       string: true,
       description: "Path to cookies to inject before simulation",
+    },
+    accelerate: {
+      boolean: true,
+      description:
+        "Fast forward through any pauses to replay as fast as possible. Warning: this option is experimental and may be deprecated",
+      default: false,
     },
   },
   handler: wrapHandler(handler),

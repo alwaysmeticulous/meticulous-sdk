@@ -37,6 +37,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     padTime,
     shiftTime,
     networkStubbing,
+    accelerate,
   } = options;
 
   // Extract replay metadata
@@ -168,12 +169,12 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     logLevel,
     sessionData,
     moveBeforeClick: true,
-    acceleratePlayback: false,
+    acceleratePlayback: accelerate,
     onTimelineEvent,
   });
 
   // Pad replay time according to session duration recorded with rrweb
-  if (padTime) {
+  if (padTime && !accelerate) {
     const rrwebRecordingDuration = getRrwebRecordingDuration(sessionData);
     if (rrwebRecordingDuration) {
       const now = DateTime.utc();

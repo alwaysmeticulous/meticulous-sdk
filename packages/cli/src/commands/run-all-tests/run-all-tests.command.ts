@@ -38,6 +38,7 @@ interface Options {
   deflake: boolean;
   useCache: boolean;
   testsFile?: string | null | undefined;
+  accelerate: boolean;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -59,6 +60,7 @@ const handler: (options: Options) => Promise<void> = async ({
   deflake,
   useCache,
   testsFile,
+  accelerate,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -112,6 +114,7 @@ const handler: (options: Options) => Promise<void> = async ({
         parallelTasks,
         deflake,
         cachedTestRunResults,
+        accelerate,
       });
       return results;
     }
@@ -143,6 +146,7 @@ const handler: (options: Options) => Promise<void> = async ({
           testCase,
           useAssetsSnapshottedInBaseSimulation
         ),
+        accelerate,
         ...options,
       });
       results.push(result);
@@ -233,7 +237,8 @@ export const runAllTests: CommandModule<unknown, Options> = {
     },
     padTime: {
       boolean: true,
-      description: "Pad replay time according to recording duration",
+      description:
+        "Pad replay time according to recording duration. Please note this option will be ignored if running with the '--accelerate' option.",
       default: true,
     },
     shiftTime: {
@@ -276,6 +281,12 @@ export const runAllTests: CommandModule<unknown, Options> = {
       description:
         "The path to the meticulous.json file containing the list of tests you want to run." +
         " If not set a search will be performed to find a meticulous.json file in the current directory or the nearest parent directory.",
+    },
+    accelerate: {
+      boolean: true,
+      description:
+        "Fast forward through any pauses to replay as fast as possible. Warning: this option is experimental and may be deprecated",
+      default: false,
     },
   },
   handler: wrapHandler(handler),
