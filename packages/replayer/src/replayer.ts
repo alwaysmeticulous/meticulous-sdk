@@ -169,7 +169,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     logLevel,
     sessionData,
     moveBeforeClick: true,
-    acceleratePlayback: accelerate ?? false,
+    acceleratePlayback: accelerate,
     onTimelineEvent,
   });
 

@@ -38,7 +38,7 @@ export interface ReplayEventsOptions {
   moveBeforeClick: boolean;
   cookies: Record<string, any>[] | null;
   cookiesFile: string;
-  accelerate?: boolean | undefined;
+  accelerate: boolean;
 }
 
 export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;

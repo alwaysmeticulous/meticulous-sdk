@@ -19,7 +19,7 @@ export interface InitMessage {
       padTime: boolean;
       shiftTime: boolean;
       networkStubbing: boolean;
-      accelerate: boolean | undefined;
+      accelerate: boolean;
     };
     testCase: TestCase;
     deflake: boolean;

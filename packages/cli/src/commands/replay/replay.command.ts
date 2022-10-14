@@ -60,7 +60,7 @@ export interface ReplayCommandHandlerOptions {
   moveBeforeClick?: boolean | null | undefined;
   cookies?: Record<string, any>[];
   cookiesFile?: string | null | undefined;
-  accelerate?: boolean | null | undefined;
+  accelerate: boolean;
 }
 
 export const replayCommandHandler: (
@@ -191,7 +191,7 @@ export const replayCommandHandler: (
     moveBeforeClick: moveBeforeClick || false,
     cookies: cookies || null,
     cookiesFile: cookiesFile || "",
-    accelerate: accelerate ?? undefined,
+    accelerate,
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),

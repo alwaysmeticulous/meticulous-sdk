@@ -38,7 +38,7 @@ interface Options {
   deflake: boolean;
   useCache: boolean;
   testsFile?: string | null | undefined;
-  accelerate?: boolean | null | undefined;
+  accelerate: boolean;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -114,7 +114,7 @@ const handler: (options: Options) => Promise<void> = async ({
         parallelTasks,
         deflake,
         cachedTestRunResults,
-        accelerate: accelerate ?? undefined,
+        accelerate,
       });
       return results;
     }
@@ -146,6 +146,7 @@ const handler: (options: Options) => Promise<void> = async ({
           testCase,
           useAssetsSnapshottedInBaseSimulation
         ),
+        accelerate,
         ...options,
       });
       results.push(result);

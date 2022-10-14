@@ -37,7 +37,7 @@ export interface RunAllTestsInParallelOptions {
   parallelTasks: number | null | undefined;
   deflake: boolean;
   cachedTestRunResults: TestCaseResult[];
-  accelerate: boolean | undefined;
+  accelerate: boolean;
 }
 
 /** Handler for running Meticulous tests in parallel using child processes */
