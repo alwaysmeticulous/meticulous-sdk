@@ -136,9 +136,7 @@ const withTimeout: <T>(
   ]);
 };
 
-/**
- * We only care to snapshot the first response for a given URL
- */
+// We only care to snapshot the first response for a given URL
 const uniqueByRequestUrl: (assets: AssetSnapshot[]) => AssetSnapshot[] = (
   assets
 ) => {
