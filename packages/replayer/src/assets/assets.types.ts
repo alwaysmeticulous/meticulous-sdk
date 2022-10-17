@@ -7,6 +7,6 @@ export interface AssetSnapshotsData {
 
 export interface AssetSnapshot {
   url: string;
-  contentType?: string;
+  contentType: string;
   getData: () => Promise<Buffer>;
 }
