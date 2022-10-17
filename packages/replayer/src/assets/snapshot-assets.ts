@@ -4,6 +4,7 @@ import log from "loglevel";
 import { dirname, extname, join } from "path";
 import { HTTPRequest, ResourceType } from "puppeteer";
 import { AssetSnapshot } from "./assets.types";
+import { Duration } from "luxon";
 
 const resourceTypesToSnapshot = new Set<ResourceType>([
   "document",
@@ -22,7 +23,7 @@ interface SnapshotAssetsOpts {
   assetSnapshots: AssetSnapshot[];
 }
 
-const TIMEOUT_FOR_FETCHING_ASSET = 5000;
+const TIMEOUT_FOR_FETCHING_ASSET = Duration.fromObject({ seconds: 5 });
 
 export const snapshotAssets: (
   options: SnapshotAssetsOpts
@@ -119,15 +120,15 @@ const getFilePath: (
 
 const withTimeout: <T>(
   promise: Promise<T>,
-  timeoutMs: number,
+  timeoutDuration: Duration,
   timeoutMessage: string
-) => Promise<T> = (promise, timeoutMs, timeoutMessage) => {
+) => Promise<T> = (promise, timeoutDuration, timeoutMessage) => {
   return Promise.race([
     promise,
     new Promise<never>((_resolve, reject) => {
       const cancellationId = setTimeout(
         () => reject(timeoutMessage),
-        timeoutMs
+        timeoutDuration.toMillis()
       );
       promise.finally(() => clearTimeout(cancellationId));
     }),
