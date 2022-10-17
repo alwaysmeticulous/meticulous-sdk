@@ -17,7 +17,7 @@ const handler: (options: Options) => Promise<void> = async ({
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const client = createClient({ apiToken });
   const { url } = await serveAssetsFromSimulation(client, replayId);
-  logger.log(`Serving assets at url ${url}`);
+  logger.info(`Serving assets at url ${url}`);
 };
 
 export const serve: CommandModule<unknown, Options> = {
