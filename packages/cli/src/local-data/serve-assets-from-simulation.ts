@@ -9,7 +9,7 @@ import { Server } from "http";
 
 // We must avoid ports blocked by Chrome: https://superuser.com/questions/188058/which-ports-are-considered-unsafe-by-chrome
 const STARTING_PORT = 9100;
-const ENDING_PORT = 10079;
+const ENDING_PORT = 10000;
 const MAX_RETRY_ATTEMPTS = 3;
 
 export async function serveAssetsFromSimulation(
