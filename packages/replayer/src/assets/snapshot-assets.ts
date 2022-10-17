@@ -103,7 +103,7 @@ const withoutQueryParams: (url: string) => string = (url) => {
 
 const getFilePath: (
   trimmedUrl: string,
-  contentType: string | undefined
+  contentType: string
 ) => string = (trimmedUrl, contentType) => {
   const hasHTMLContentType =
     contentType !== undefined && contentType.indexOf("text/html") > -1;
