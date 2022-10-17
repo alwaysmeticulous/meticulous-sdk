@@ -79,9 +79,10 @@ const snapshotAsset: (
         `ProtocolError when fetching snapshotted asset for URL ${snapshot.url}. Ignoring this, ` +
           `because it's usually due to cancelled requests.`
       );
-    } else {
-      throw error;
+      return;
     }
+    
+    throw error;
   }
 };
 
