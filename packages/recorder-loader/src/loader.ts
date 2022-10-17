@@ -2,14 +2,20 @@ import { LoaderOptions } from "./loader.types";
 
 const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2000;
 
-export const loadAndStartRecorder: (options: LoaderOptions) => Promise<void> = (
-  options
-) => {
+export const loadAndStartRecorder: (
+  options: LoaderOptions
+) => Promise<void> = ({
+  projectId,
+  uploadIntervalMs,
+  snapshotLinkedStylesheets,
+  commitHash,
+  maxMsToBlockFor: maxMsToBlockFor_,
+  snippetsBaseUrl,
+}) => {
   let abandoned = false;
 
   return new Promise<void>((resolve, reject) => {
-    const maxMsToBlockFor =
-      options.maxMsToBlockFor || DEFAULT_MAX_MS_TO_BLOCK_FOR;
+    const maxMsToBlockFor = maxMsToBlockFor_ ?? DEFAULT_MAX_MS_TO_BLOCK_FOR;
 
     if (maxMsToBlockFor > 0) {
       setTimeout(() => {
@@ -20,27 +26,26 @@ export const loadAndStartRecorder: (options: LoaderOptions) => Promise<void> = (
 
     const script = document.createElement("script");
     script.type = "text/javascript";
-    const baseSnippetsUrl =
-      options.snippetsBaseUrl || "https://snippet.meticulous.ai";
+    const baseSnippetsUrl = snippetsBaseUrl || "https://snippet.meticulous.ai";
     script.src = new URL(
       "v1/stagingMeticulousSnippetManualInit.js",
       baseSnippetsUrl
     ).href;
 
     // Setup configuration
-    window["METICULOUS_RECORDING_TOKEN"] = options.projectId;
+    window["METICULOUS_RECORDING_TOKEN"] = projectId;
 
-    if (options.uploadIntervalMs) {
-      window["METICULOUS_UPLOAD_INTERVAL_MS"] = options.uploadIntervalMs;
+    if (uploadIntervalMs !== undefined) {
+      window["METICULOUS_UPLOAD_INTERVAL_MS"] = uploadIntervalMs;
     }
 
-    if (options.commitHash) {
-      window["METICULOUS_APP_COMMIT_HASH"] = options.commitHash;
+    if (commitHash !== undefined) {
+      window["METICULOUS_APP_COMMIT_HASH"] = commitHash;
     }
 
-    if (options.snapshotLinkedStylesheets) {
+    if (snapshotLinkedStylesheets !== undefined) {
       window["METICULOUS_SNAPSHOT_LINKED_STYLESHEETS"] =
-        options.snapshotLinkedStylesheets;
+        snapshotLinkedStylesheets;
     }
 
     script.onload = function () {
