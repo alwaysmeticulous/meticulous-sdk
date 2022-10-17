@@ -105,8 +105,7 @@ const getFilePath: (
   trimmedUrl: string,
   contentType: string
 ) => string = (trimmedUrl, contentType) => {
-  const hasHTMLContentType =
-    contentType !== undefined && contentType.indexOf("text/html") > -1;
+  const hasHTMLContentType = contentType.includes("text/html");
   const extension = extname(trimmedUrl);
   const hasHTMLExtension = extension === "html" || extension === "htm";
   if (
