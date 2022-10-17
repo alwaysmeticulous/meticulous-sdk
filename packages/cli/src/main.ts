@@ -45,7 +45,7 @@ export const main: () => void = () => {
     .command(showProject)
     .command(updateTests)
     .command(uploadBuild)
-    .command(serve)
+    .command("serve", false, serve) // This is a debugging command, so we hide it to not pollute the main menu
     .help()
     .strict()
     .demandCommand()
