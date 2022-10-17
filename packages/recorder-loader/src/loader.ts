@@ -38,7 +38,7 @@ export const loadAndStartRecorder: (options: LoaderOptions) => Promise<void> = (
       window["METICULOUS_APP_COMMIT_HASH"] = options.commitHash;
     }
 
-    if (typeof options.snapshotLinkedStylesheets !== "undefined") {
+    if (options.snapshotLinkedStylesheets !== undefined) {
       window["METICULOUS_SNAPSHOT_LINKED_STYLESHEETS"] =
         options.snapshotLinkedStylesheets;
     }
