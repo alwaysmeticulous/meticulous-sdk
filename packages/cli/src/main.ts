@@ -9,6 +9,7 @@ import { record } from "./commands/record/record.command";
 import { replay } from "./commands/replay/replay.command";
 import { runAllTests } from "./commands/run-all-tests/run-all-tests.command";
 import { screenshotDiff } from "./commands/screenshot-diff/screenshot-diff.command";
+import { serve } from "./commands/serve/serve.command";
 import { showProject } from "./commands/show-project/show-project.command";
 import { updateTests } from "./commands/update-tests/update-tests.command";
 import { uploadBuild } from "./commands/upload-build/upload-build.command";
@@ -44,6 +45,7 @@ export const main: () => void = () => {
     .command(showProject)
     .command(updateTests)
     .command(uploadBuild)
+    .command("serve", false, serve) // This is a debugging command, so we hide it to not pollute the main menu
     .help()
     .strict()
     .demandCommand()
