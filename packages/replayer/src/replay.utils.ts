@@ -10,6 +10,7 @@ import { BrowserContext, Page, Viewport } from "puppeteer";
 import { isRequestForAsset } from "./assets/snapshot-assets";
 import {
   ConsoleMessage,
+  OnReplayTimelineEventFn,
   PageError,
   PlaybackEvent,
   ReplayData,
@@ -29,12 +30,14 @@ export const createReplayPage: (options: {
   sessionData: SessionData;
   shiftTime: boolean;
   dependencies: ReplayEventsDependencies;
+  onTimelineEvent: OnReplayTimelineEventFn;
 }) => Promise<Page> = async ({
   context,
   defaultViewport,
   sessionData,
   shiftTime,
   dependencies,
+  onTimelineEvent,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -57,6 +60,9 @@ export const createReplayPage: (options: {
     window.__meticulous.replayTimeline = [];
   `);
 
+  // Setup the timeline event callback
+  await page.exposeFunction("__meticulous_onTimelineEvent", onTimelineEvent);
+
   // Setup the playback snippet (rrweb)
   const playbackFile = await readFile(
     dependencies.browserPlayback.location,
@@ -70,6 +76,13 @@ export const createReplayPage: (options: {
     "utf-8"
   );
   await page.evaluateOnNewDocument(userInteractionsFile);
+
+  // Setup the url-observer snippet
+  const urlObserverFile = await readFile(
+    dependencies.browserUrlObserver.location,
+    "utf-8"
+  );
+  await page.evaluateOnNewDocument(urlObserverFile);
 
   // Collect js coverage data
   await page.coverage.startJSCoverage({ resetOnNavigation: false });

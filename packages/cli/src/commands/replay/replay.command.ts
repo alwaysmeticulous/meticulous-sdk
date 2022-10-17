@@ -115,6 +115,9 @@ export const replayCommandHandler: (
   const browserPlayback = await fetchAsset(
     "replay/v2/snippet-playback.bundle.js"
   );
+  const browserUrlObserver = await fetchAsset(
+    "replay/v2/snippet-url-observer.bundle.js"
+  );
   const nodeBrowserContext = await fetchAsset(
     "replay/v2/node-browser-context.bundle.js"
   );
@@ -169,6 +172,10 @@ export const replayCommandHandler: (
       browserPlayback: {
         key: "browserPlayback",
         location: browserPlayback,
+      },
+      browserUrlObserver: {
+        key: "browserUrlObserver",
+        location: browserUrlObserver,
       },
       nodeBrowserContext: {
         key: "nodeBrowserContext",
