@@ -35,11 +35,11 @@ export const loadAndStartRecorder: (
     // Setup configuration
     window["METICULOUS_RECORDING_TOKEN"] = projectId;
 
-    if (uploadIntervalMs) {
+    if (uploadIntervalMs !== undefined) {
       window["METICULOUS_UPLOAD_INTERVAL_MS"] = uploadIntervalMs;
     }
 
-    if (commitHash) {
+    if (commitHash !== undefined) {
       window["METICULOUS_APP_COMMIT_HASH"] = commitHash;
     }
 
