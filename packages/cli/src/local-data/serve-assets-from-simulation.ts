@@ -7,7 +7,9 @@ import log from "loglevel";
 import findFreePort from "find-free-port";
 import { Server } from "http";
 
+// We must avoid ports blocked by Chrome: https://superuser.com/questions/188058/which-ports-are-considered-unsafe-by-chrome
 const STARTING_PORT = 9100;
+const ENDING_PORT = 10000;
 const MAX_RETRY_ATTEMPTS = 3;
 
 export async function serveAssetsFromSimulation(
@@ -50,7 +52,7 @@ const retryUntilFreePortFound = async (
 ): Promise<{ server: Server; port: number }> => {
   // We randomize the port to try to minimize chance of race conditions
   const [port] = await findFreePort(
-    randomNumberBetween(STARTING_PORT, STARTING_PORT + 1000)
+    randomNumberBetween(STARTING_PORT, ENDING_PORT)
   );
 
   try {
