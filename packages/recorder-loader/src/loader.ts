@@ -57,8 +57,14 @@ export const loadAndStartRecorder: (
         return;
       }
 
+      const initialiseRecorder = window.__meticulous?.initialiseRecorder;
+      if (typeof initialiseRecorder !== "function") {
+        reject("Meticulous recorder failed to initialise.");
+        return;
+      }
+
       try {
-        window.__meticulous?.initialiseRecorder();
+        initialiseRecorder();
       } catch (error) {
         reject(error);
       }
