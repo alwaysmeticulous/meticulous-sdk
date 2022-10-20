@@ -1,3 +1,5 @@
+import type { RecordState } from "@alwaysmeticulous/types";
+
 declare global {
   interface Window {
     // Meticulous snippet configuration
@@ -6,9 +8,7 @@ declare global {
     METICULOUS_SNAPSHOT_LINKED_STYLESHEETS?: boolean;
     METICULOUS_APP_COMMIT_HASH?: string;
 
-    __meticulous?: {
-      initialiseRecorder: () => void;
-    };
+    __meticulous?: RecordState;
   }
 }
 
