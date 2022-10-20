@@ -1,5 +1,5 @@
 export { defer, Deferred, DeferredStatus } from "./defer";
-export { getMeticulousLocalDataDir } from "./local-data/local-data";
+export { getMeticulousLocalDataDir, setMeticulousLocalDataDir } from "./local-data/local-data";
 export { METICULOUS_LOGGER_NAME } from "./logger/console-logger";
 export { DebugLogger } from "./logger/debug-logger";
 export type {

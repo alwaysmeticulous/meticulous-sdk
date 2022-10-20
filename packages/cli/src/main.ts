@@ -1,4 +1,4 @@
-import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
+import { setMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import yargs from "yargs";
 import { bootstrap } from "./commands/bootstrap/bootstrap.command";
 import { createTest } from "./commands/create-test/create-test.command";
@@ -19,7 +19,7 @@ import { initSentry, setOptions } from "./utils/sentry.utils";
 const handleDataDir: (dataDir: string | null | undefined) => void = (
   dataDir
 ) => {
-  getMeticulousLocalDataDir(dataDir);
+  setMeticulousLocalDataDir(dataDir);
 };
 
 export const main: () => void = () => {
