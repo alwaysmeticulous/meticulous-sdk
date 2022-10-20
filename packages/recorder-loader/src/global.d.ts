@@ -1,4 +1,4 @@
-import type { RecordState } from "@alwaysmeticulous/types";
+import type { RecordState } from "@alwaysmeticulous/sdk-bundles-api";
 
 declare global {
   interface Window {

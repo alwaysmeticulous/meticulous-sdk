@@ -17,7 +17,7 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
-    "@alwaysmeticulous/types": "^2.2.2-alpha.0"
+    "@alwaysmeticulous/sdk-bundles-api": "^2.2.2-alpha.0"
   },
   "author": {
     "name": "The Meticulous Team",
