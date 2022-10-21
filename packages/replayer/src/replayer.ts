@@ -6,7 +6,7 @@ import {
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
 import puppeteer, { Browser, Page } from "puppeteer";
-import { writeOutput } from "./output.utils";
+import { prepareScreenshotsDir, writeOutput } from "./output.utils";
 import { OnReplayTimelineEventFn, ReplayMetadata } from "./replay.types";
 import {
   createReplayPage,
@@ -167,8 +167,10 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       moveBeforeClick: boolean;
       virtualTime: VirtualTimeOptions;
       onTimelineEvent: OnReplayTimelineEventFn;
+      screenshotsDir: string;
     }) => Promise<void>;
   const startTime = DateTime.utc();
+  const screenshotsDir = await prepareScreenshotsDir(outputDir);
   await replayUserInteractions({
     page,
     logLevel,
@@ -176,6 +178,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     moveBeforeClick: true,
     virtualTime: accelerate ? { enabled: true } : { enabled: false },
     onTimelineEvent,
+    screenshotsDir,
   });
 
   // Pad replay time according to session duration recorded with rrweb

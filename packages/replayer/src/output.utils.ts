@@ -141,8 +141,10 @@ const writeTimeline: (options: {
   );
 };
 
-export const prepareScreenshotsDir: (
+export const prepareScreenshotsDir = async (
   outputDir: string
-) => Promise<void> = async (outputDir) => {
-  await mkdir(join(outputDir, "screenshots"), { recursive: true });
+): Promise<string> => {
+  const dirName = join(outputDir, "screenshots");
+  await mkdir(dirName, { recursive: true });
+  return dirName;
 };
