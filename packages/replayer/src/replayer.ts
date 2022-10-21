@@ -19,6 +19,10 @@ import { takeScreenshot } from "./screenshot.utils";
 import { ReplayTimelineCollector } from "./timeline/collector";
 import { ReplayTimelineEntry } from "./timeline/timeline.types";
 
+// In future we intend to add new options, but only to the enabled: true case
+// (for example we'll add an optional 'recreatePauses' option)
+type VirtualTimeOptions = { enabled: false } | { enabled: true };
+
 export const replayEvents: ReplayEventsFn = async (options) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const logLevel: LogLevelDesc = logger.getLevel();
@@ -161,7 +165,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       logLevel: LogLevelDesc;
       sessionData: SessionData;
       moveBeforeClick: boolean;
-      useVirtualTime: boolean;
+      virtualTime: VirtualTimeOptions;
       onTimelineEvent: OnReplayTimelineEventFn;
     }) => Promise<void>;
   const startTime = DateTime.utc();
@@ -170,7 +174,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     logLevel,
     sessionData,
     moveBeforeClick: true,
-    useVirtualTime: accelerate,
+    virtualTime: accelerate ? { enabled: false } : { enabled: true },
     onTimelineEvent,
   });
 
