@@ -161,7 +161,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       logLevel: LogLevelDesc;
       sessionData: SessionData;
       moveBeforeClick: boolean;
-      acceleratePlayback: boolean;
+      useVirtualTime: boolean;
       onTimelineEvent: OnReplayTimelineEventFn;
     }) => Promise<void>;
   const startTime = DateTime.utc();
@@ -170,7 +170,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     logLevel,
     sessionData,
     moveBeforeClick: true,
-    acceleratePlayback: accelerate,
+    useVirtualTime: accelerate,
     onTimelineEvent,
   });
 
