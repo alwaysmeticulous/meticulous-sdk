@@ -12,6 +12,7 @@ export interface BaseReplayEventsDependencies {
 export interface ReplayEventsDependencies extends BaseReplayEventsDependencies {
   browserUserInteractions: ReplayEventsDependency<"browserUserInteractions">;
   browserPlayback: ReplayEventsDependency<"browserPlayback">;
+  browserUrlObserver: ReplayEventsDependency<"browserUrlObserver">;
   nodeBrowserContext: ReplayEventsDependency<"nodeBrowserContext">;
   nodeNetworkStubbing: ReplayEventsDependency<"nodeNetworkStubbing">;
   nodeUserInteractions: ReplayEventsDependency<"nodeUserInteractions">;

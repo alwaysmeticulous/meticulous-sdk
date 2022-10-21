@@ -61,7 +61,7 @@ export const writeOutput: (
 const writeAssetSnapshots: (options: {
   outputDir: string;
   assetSnapshotsData: AssetSnapshotsData;
-}) => Promise<void[]> = async ({ outputDir, assetSnapshotsData }) => {
+}) => Promise<void> = async ({ outputDir, assetSnapshotsData }) => {
   const assetsPath = join(outputDir, "snapshotted-assets");
   mkdir(assetsPath, {
     recursive: true,

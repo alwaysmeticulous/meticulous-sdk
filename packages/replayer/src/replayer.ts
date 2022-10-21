@@ -90,6 +90,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     sessionData,
     shiftTime,
     dependencies,
+    onTimelineEvent,
   });
 
   // Calculate start URL based on the one that the session originated on/from.
