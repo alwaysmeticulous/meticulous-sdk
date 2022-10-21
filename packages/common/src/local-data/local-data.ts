@@ -16,7 +16,7 @@ export const setMeticulousLocalDataDir: (
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   if (_localDataDir) {
     logger.warn(
-      `Meticulous local data dir has already been set by a prior call of setMeticulousLocalDataDir `
+      "Meticulous local data dir has already been set by a prior call to setMeticulousLocalDataDir()"
     );
   }
 
