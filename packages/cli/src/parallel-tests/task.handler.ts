@@ -51,45 +51,10 @@ const main = async () => {
   logger.setLevel(logLevel);
   getMeticulousLocalDataDir(dataDir);
 
-  const {
-    apiToken,
-    commitSha,
-    appUrl,
-    simulationIdForAssets,
-    headless,
-    devTools,
-    bypassCSP,
-    diffThreshold,
-    diffPixelThreshold,
-    padTime,
-    shiftTime,
-    networkStubbing,
-    accelerate,
-  } = runAllOptions;
-  const { sessionId, baseReplayId, options } = testCase;
-
   const result = await deflakeReplayCommandHandler({
+    ...runAllOptions,
     testCase,
     deflake,
-    apiToken,
-    commitSha,
-    sessionId,
-    appUrl,
-    simulationIdForAssets,
-    headless,
-    devTools,
-    bypassCSP,
-    screenshot: true,
-    baseSimulationId: baseReplayId,
-    diffThreshold,
-    diffPixelThreshold,
-    save: false,
-    exitOnMismatch: false,
-    padTime,
-    shiftTime,
-    networkStubbing,
-    accelerate,
-    ...options,
   });
   const resultMessage: ResultMessage = {
     kind: "result",

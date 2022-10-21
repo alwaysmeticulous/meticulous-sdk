@@ -5,6 +5,7 @@ import { PNG } from "pngjs";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getDiffUrl, postScreenshotDiffStats } from "../../api/replay.api";
+import { SCREENSHOT_DIFF_OPTIONS } from "../../command-utils/common-options";
 import { CompareImageOptions, compareImages } from "../../image/diff.utils";
 import {
   getOrFetchReplay,
@@ -13,8 +14,6 @@ import {
 } from "../../local-data/replays";
 import { writeScreenshotDiff } from "../../local-data/screenshot-diffs";
 import { wrapHandler } from "../../utils/sentry.utils";
-
-const DEFAULT_MISMATCH_THRESHOLD = 0.01;
 
 export class DiffError extends Error {
   constructor(
@@ -36,8 +35,8 @@ export const diffScreenshots: (options: {
   headReplayId: string;
   baseScreenshot: PNG;
   headScreenshot: PNG;
-  threshold: number | null | undefined;
-  pixelThreshold: number | null | undefined;
+  threshold: number;
+  pixelThreshold: number;
   exitOnMismatch: boolean;
 }) => Promise<void> = async ({
   client,
@@ -45,13 +44,12 @@ export const diffScreenshots: (options: {
   headReplayId,
   baseScreenshot,
   headScreenshot,
-  threshold: threshold_,
+  threshold,
   pixelThreshold,
   exitOnMismatch,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const threshold = threshold_ || DEFAULT_MISMATCH_THRESHOLD;
   const pixelmatchOptions: CompareImageOptions["pixelmatchOptions"] | null =
     pixelThreshold ? { threshold: pixelThreshold } : null;
 
@@ -117,8 +115,8 @@ interface Options {
   apiToken?: string | null | undefined;
   baseSimulationId: string;
   headSimulationId: string;
-  threshold?: number | null | undefined;
-  pixelThreshold?: number | null | undefined;
+  threshold: number;
+  pixelThreshold: number;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -167,12 +165,8 @@ export const screenshotDiff: CommandModule<unknown, Options> = {
       demandOption: true,
       alias: "headReplayId",
     },
-    threshold: {
-      number: true,
-    },
-    pixelThreshold: {
-      number: true,
-    },
+    threshold: SCREENSHOT_DIFF_OPTIONS.diffThreshold,
+    pixelThreshold: SCREENSHOT_DIFF_OPTIONS.diffPixelThreshold,
   },
   handler: wrapHandler(handler),
 };

@@ -19,6 +19,16 @@ import {
 } from "../../api/replay.api";
 import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
+import {
+  PRIMARY_COMMON_REPLAY_OPTIONS,
+  SCREENSHOT_DIFF_OPTIONS,
+  SECONDARY_COMMON_REPLAY_OPTIONS,
+} from "../../command-utils/common-options";
+import {
+  CommonReplayOptions,
+  PerReplayOptions,
+  ScreenshotDiffOptions,
+} from "../../command-utils/common-types";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
 import {
@@ -27,40 +37,35 @@ import {
   readLocalReplayScreenshot,
   readReplayScreenshot,
 } from "../../local-data/replays";
+import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
 import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
 } from "../../local-data/sessions";
 import { getCommitSha } from "../../utils/commit-sha.utils";
+import { addTestCase } from "../../utils/config.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
-import { addTestCase } from "../../utils/config.utils";
-import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
 
-export interface ReplayCommandHandlerOptions {
-  apiToken?: string | null | undefined;
-  commitSha?: string | null | undefined;
-  sessionId: string;
-  appUrl?: string | null | undefined;
-  simulationIdForAssets?: string | null | undefined;
-  headless?: boolean | null | undefined;
-  devTools?: boolean | null | undefined;
-  bypassCSP?: boolean | null | undefined;
+/**
+ * Replay options that can't be specified directly through the meticulous.json test case options,
+ * but are only usable when using the CLI.
+ */
+export interface CLIOnlyReplayOptions extends CommonReplayOptions {
   screenshot: boolean;
-  screenshotSelector?: string | null | undefined;
-  baseSimulationId?: string | null | undefined;
-  diffThreshold?: number | null | undefined;
-  diffPixelThreshold?: number | null | undefined;
   save?: boolean | null | undefined;
   exitOnMismatch?: boolean | null | undefined;
-  padTime: boolean;
-  shiftTime: boolean;
-  networkStubbing: boolean;
-  moveBeforeClick?: boolean | null | undefined;
-  cookies?: Record<string, any>[];
   cookiesFile?: string | null | undefined;
-  accelerate: boolean;
+}
+
+export interface ReplayCommandHandlerOptions
+  extends ScreenshotDiffOptions,
+    CLIOnlyReplayOptions,
+    PerReplayOptions {
+  sessionId: string;
+  baseSimulationId?: string | null | undefined;
+  moveBeforeClick?: boolean;
 }
 
 export const replayCommandHandler: (
@@ -323,12 +328,7 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
   aliases: ["replay"],
   describe: "Simulate (replay) a recorded session",
   builder: {
-    apiToken: {
-      string: true,
-    },
-    commitSha: {
-      string: true,
-    },
+    ...PRIMARY_COMMON_REPLAY_OPTIONS,
     sessionId: {
       string: true,
       demandOption: true,
@@ -343,18 +343,6 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
       conflicts: "appUrl",
       description:
         "If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior simulation, instead of against a URL. An alternative to specifying an app URL.",
-    },
-    headless: {
-      boolean: true,
-      description: "Start browser in headless mode",
-    },
-    devTools: {
-      boolean: true,
-      description: "Open Chrome Dev Tools",
-    },
-    bypassCSP: {
-      boolean: true,
-      description: "Enables bypass CSP in the browser",
     },
     screenshot: {
       boolean: true,
@@ -372,37 +360,10 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
         "Base simulation id to diff the final state screenshot against",
       alias: "baseReplayId",
     },
-    diffThreshold: {
-      number: true,
-      description:
-        "Acceptable maximum proportion of changed pixels, between 0 and 1. If this proportion is exceeded then the test will fail.",
-    },
-    diffPixelThreshold: {
-      number: true,
-      description:
-        "A number between 0 and 1. Color/brightness differences in individual pixels will be ignored if the difference is less than this threshold. A value of 1.0 would accept any difference in color, while a value of 0.0 would accept no difference in color.",
-    },
     save: {
       boolean: true,
       description:
         "Adds the simulation to the list of test cases in meticulous.json",
-    },
-    padTime: {
-      boolean: true,
-      description:
-        "Pad simulation time according to recording duration. Please note this option will be ignored if running with the '--accelerate' option.",
-      default: true,
-    },
-    shiftTime: {
-      boolean: true,
-      description:
-        "Shift time during simulation to be set as the recording time",
-      default: true,
-    },
-    networkStubbing: {
-      boolean: true,
-      description: "Stub network requests during simulation",
-      default: true,
     },
     moveBeforeClick: {
       boolean: true,
@@ -412,12 +373,8 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
       string: true,
       description: "Path to cookies to inject before simulation",
     },
-    accelerate: {
-      boolean: true,
-      description:
-        "Fast forward through any pauses to replay as fast as possible. Warning: this option is experimental and may be deprecated",
-      default: false,
-    },
+    ...SECONDARY_COMMON_REPLAY_OPTIONS,
+    ...SCREENSHOT_DIFF_OPTIONS,
   },
   handler: wrapHandler(handler),
 };

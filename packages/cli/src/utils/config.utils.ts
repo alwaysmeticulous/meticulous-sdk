@@ -16,8 +16,8 @@ export const getSimulationIdForAssets = (
   testCase: TestCase,
   useAssetsSnapshottedInBaseSimulation: boolean | null | undefined
 ): string | undefined => {
-  if (testCase.options?.useAssetsFromReplayId) {
-    return testCase.options.useAssetsFromReplayId;
+  if (testCase.options?.simulationIdForAssets) {
+    return testCase.options.simulationIdForAssets;
   }
 
   if (useAssetsSnapshottedInBaseSimulation) {

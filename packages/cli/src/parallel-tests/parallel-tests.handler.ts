@@ -30,7 +30,7 @@ export interface RunAllTestsInParallelOptions {
   devTools: boolean | null | undefined;
   bypassCSP: boolean | null | undefined;
   diffThreshold: number | null | undefined;
-  diffPixelThreshold: number | null | undefined;
+  diffPixelThreshold: number;
   padTime: boolean;
   shiftTime: boolean;
   networkStubbing: boolean;
@@ -113,6 +113,18 @@ export const runAllTestsInParallel: (
     child.on("message", messageHandler);
 
     // Send test case and arguments to child process
+    const simulationIdForAssets = getSimulationIdForAssets(
+      testCase,
+      useAssetsSnapshottedInBaseSimulation
+    );
+    const testCaseWithOverridesApplied = {
+      ...testCase,
+      options: {
+        ...(testCase.options ?? {}),
+        appUrl,
+        simulationIdForAssets,
+      },
+    };
     const initMessage: InitMessage = {
       kind: "init",
       data: {
@@ -121,22 +133,18 @@ export const runAllTestsInParallel: (
         runAllOptions: {
           apiToken,
           commitSha,
-          appUrl,
           headless,
           devTools,
           bypassCSP,
-          diffThreshold,
+          diffThreshold: diffThreshold ?? undefined,
           diffPixelThreshold,
           padTime,
           shiftTime,
           networkStubbing,
-          simulationIdForAssets: getSimulationIdForAssets(
-            testCase,
-            useAssetsSnapshottedInBaseSimulation
-          ),
           accelerate,
+          screenshot: true,
         },
-        testCase,
+        testCaseWithOverridesApplied,
         deflake,
       },
     };

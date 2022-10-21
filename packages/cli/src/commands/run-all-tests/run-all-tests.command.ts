@@ -8,6 +8,18 @@ import {
   getTestRunUrl,
   putTestRunResults,
 } from "../../api/test-run.api";
+import {
+  COMMON_REPLAY_OPTIONS,
+  DEFAULT_DIFF_PIXEL_THRESHOLD,
+  DEFAULT_MISMATCH_THRESHOLD,
+  PRIMARY_COMMON_REPLAY_OPTIONS,
+  SCREENSHOT_DIFF_OPTIONS,
+  SECONDARY_COMMON_REPLAY_OPTIONS,
+} from "../../command-utils/common-options";
+import {
+  CommonReplayOptions,
+  ScreenshotDiffOptions,
+} from "../../command-utils/common-types";
 import { readConfig } from "../../config/config";
 import { TestCaseResult } from "../../config/config.types";
 import { deflakeReplayCommandHandler } from "../../deflake-tests/deflake-tests.handler";
@@ -19,26 +31,15 @@ import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 
-interface Options {
-  apiToken?: string | null | undefined;
-  commitSha?: string | null | undefined;
+interface Options extends CommonReplayOptions, ScreenshotDiffOptions {
   appUrl?: string | null | undefined;
   useAssetsSnapshottedInBaseSimulation?: boolean | null | undefined;
-  headless?: boolean | null | undefined;
-  devTools?: boolean | null | undefined;
-  bypassCSP?: boolean | null | undefined;
-  diffThreshold?: number | null | undefined;
-  diffPixelThreshold?: number | null | undefined;
-  padTime: boolean;
-  shiftTime: boolean;
-  networkStubbing: boolean;
   githubSummary?: boolean | null | undefined;
   parallelize?: boolean | null | undefined;
   parallelTasks?: number | null | undefined;
   deflake: boolean;
   useCache: boolean;
   testsFile?: string | null | undefined;
-  accelerate: boolean;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -122,32 +123,32 @@ const handler: (options: Options) => Promise<void> = async ({
     const results: TestCaseResult[] = [...cachedTestRunResults];
     const testsToRun = getTestsToRun({ testCases, cachedTestRunResults });
     for (const testCase of testsToRun) {
-      const { sessionId, baseReplayId, options } = testCase;
+      const simulationIdForAssets = getSimulationIdForAssets(
+        testCase,
+        useAssetsSnapshottedInBaseSimulation
+      );
+      const testCaseWithOverridesApplied = {
+        ...testCase,
+        options: {
+          ...(testCase.options ?? {}),
+          appUrl,
+          simulationIdForAssets,
+        },
+      };
       const result = await deflakeReplayCommandHandler({
-        testCase: testCase,
+        testCase: testCaseWithOverridesApplied,
         deflake: deflake || false,
         apiToken,
         commitSha,
-        sessionId,
-        appUrl,
         headless,
         devTools,
         bypassCSP,
-        screenshot: true,
-        baseSimulationId: baseReplayId,
         diffThreshold,
         diffPixelThreshold,
-        save: false,
-        exitOnMismatch: false,
         padTime,
         shiftTime,
         networkStubbing,
-        simulationIdForAssets: getSimulationIdForAssets(
-          testCase,
-          useAssetsSnapshottedInBaseSimulation
-        ),
         accelerate,
-        ...options,
       });
       results.push(result);
       await putTestRunResults({
@@ -192,12 +193,7 @@ export const runAllTests: CommandModule<unknown, Options> = {
   command: "run-all-tests",
   describe: "Run all replay test cases",
   builder: {
-    apiToken: {
-      string: true,
-    },
-    commitSha: {
-      string: true,
-    },
+    ...PRIMARY_COMMON_REPLAY_OPTIONS,
     appUrl: {
       string: true,
     },
@@ -209,48 +205,9 @@ export const runAllTests: CommandModule<unknown, Options> = {
         " This is an alternative to specifying an appUrl.",
       conflicts: "appUrl",
     },
-    headless: {
-      boolean: true,
-      description: "Start browser in headless mode",
-    },
-    devTools: {
-      boolean: true,
-      description: "Open Chrome Dev Tools",
-    },
-    bypassCSP: {
-      boolean: true,
-      description: "Enables bypass CSP in the browser",
-    },
-    diffThreshold: {
-      number: true,
-      description:
-        "Acceptable maximum proportion of changed pixels, between 0 and 1. If this proportion is exceeded then the test will fail.",
-    },
-    diffPixelThreshold: {
-      number: true,
-      description:
-        "A number between 0 and 1. Color/brightness differences in individual pixels will be ignored if the difference is less than this threshold. A value of 1.0 would accept any difference in color, while a value of 0.0 would accept no difference in color.",
-    },
     githubSummary: {
       boolean: true,
       description: "Outputs a summary page for GitHub actions",
-    },
-    padTime: {
-      boolean: true,
-      description:
-        "Pad replay time according to recording duration. Please note this option will be ignored if running with the '--accelerate' option.",
-      default: true,
-    },
-    shiftTime: {
-      boolean: true,
-      description:
-        "Shift time during simulation to be set as the recording time",
-      default: true,
-    },
-    networkStubbing: {
-      boolean: true,
-      description: "Stub network requests during replay",
-      default: true,
     },
     parallelize: {
       boolean: true,
@@ -282,12 +239,8 @@ export const runAllTests: CommandModule<unknown, Options> = {
         "The path to the meticulous.json file containing the list of tests you want to run." +
         " If not set a search will be performed to find a meticulous.json file in the current directory or the nearest parent directory.",
     },
-    accelerate: {
-      boolean: true,
-      description:
-        "Fast forward through any pauses to replay as fast as possible. Warning: this option is experimental and may be deprecated",
-      default: false,
-    },
+    ...SECONDARY_COMMON_REPLAY_OPTIONS,
+    ...SCREENSHOT_DIFF_OPTIONS,
   },
   handler: wrapHandler(handler),
 };

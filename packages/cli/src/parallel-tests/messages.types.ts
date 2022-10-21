@@ -1,4 +1,6 @@
 import log from "loglevel";
+import { ScreenshotDiffOptions } from "../command-utils/common-types";
+import { CLIOnlyReplayOptions } from "../commands/replay/replay.command";
 import { TestCase, TestCaseResult } from "../config/config.types";
 
 export interface InitMessage {
@@ -6,21 +8,7 @@ export interface InitMessage {
   data: {
     logLevel: log.LogLevel[keyof log.LogLevel];
     dataDir: string;
-    runAllOptions: {
-      apiToken: string | null | undefined;
-      commitSha: string | null | undefined;
-      appUrl: string | null | undefined;
-      simulationIdForAssets?: string | null | undefined;
-      headless: boolean | null | undefined;
-      devTools: boolean | null | undefined;
-      bypassCSP: boolean | null | undefined;
-      diffThreshold: number | null | undefined;
-      diffPixelThreshold: number | null | undefined;
-      padTime: boolean;
-      shiftTime: boolean;
-      networkStubbing: boolean;
-      accelerate: boolean;
-    };
+    runAllOptions: CLIOnlyReplayOptions & ScreenshotDiffOptions;
     testCase: TestCase;
     deflake: boolean;
   };
