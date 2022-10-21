@@ -16,6 +16,8 @@ export interface WriteOutputOptions {
   timelineData: ReplayTimelineData;
 }
 
+const METICULOUS_SNIPPET_ORIGIN = "https://snippet.meticulous.ai";
+
 export const writeOutput: (
   options: WriteOutputOptions
 ) => Promise<void> = async ({
@@ -77,11 +79,28 @@ const writeRawCoverageData: (options: {
   outputDir: string;
   coverageData: CoverageEntry[];
 }) => Promise<void> = async ({ outputDir, coverageData }) => {
+  // We already snapshot the assets, so don't need to save the script contents
+  const withoutScriptText = coverageData.map(
+    ({ text: _text, ...rest }) => rest // eslint-disable-line @typescript-eslint/no-unused-vars
+  );
+  const withoutMeticulousScriptCoverage = withoutScriptText.filter(
+    ({ url }) => !isMeticulousSnippetURL(url)
+  );
   await writeFile(
     join(outputDir, "raw-coverage.json"),
-    JSON.stringify(coverageData, null, 2),
+    JSON.stringify(withoutMeticulousScriptCoverage, null, 2),
     "utf-8"
   );
+};
+
+const isMeticulousSnippetURL = (url: string) => {
+  try {
+    return new URL(url).origin === METICULOUS_SNIPPET_ORIGIN;
+  } catch (_error) {
+    // If not parsable as a URL then assume the executed code is not
+    // from the Meticulous snippet
+    return false;
+  }
 };
 
 const writeMetadata: (options: {
