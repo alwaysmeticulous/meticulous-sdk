@@ -3,7 +3,6 @@ import {
   ReplayEventsFn,
   SessionData,
 } from "@alwaysmeticulous/common";
-import { VirtualTimeOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
 import puppeteer, { Browser, Page } from "puppeteer";
@@ -19,6 +18,10 @@ import {
 import { takeScreenshot } from "./screenshot.utils";
 import { ReplayTimelineCollector } from "./timeline/collector";
 import { ReplayTimelineEntry } from "./timeline/timeline.types";
+
+// In future we intend to add new options, but only to the enabled: true case
+// (for example we'll add an optional 'recreatePauses' option)
+type VirtualTimeOptions = { enabled: false } | { enabled: true };
 
 export const replayEvents: ReplayEventsFn = async (options) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
