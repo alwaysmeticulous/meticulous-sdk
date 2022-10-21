@@ -174,7 +174,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     logLevel,
     sessionData,
     moveBeforeClick: true,
-    virtualTime: accelerate ? { enabled: false } : { enabled: true },
+    virtualTime: accelerate ? { enabled: true } : { enabled: false },
     onTimelineEvent,
   });
 
