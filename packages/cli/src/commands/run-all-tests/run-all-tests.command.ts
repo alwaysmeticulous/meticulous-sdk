@@ -19,7 +19,7 @@ import {
 import {
   CommonReplayOptions,
   ScreenshotDiffOptions,
-  TestExpectationOptions,
+  ScreenshotAssertionsOptions,
 } from "../../command-utils/common-types";
 import { readConfig } from "../../config/config";
 import { TestCaseResult } from "../../config/config.types";
@@ -32,7 +32,6 @@ import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 
-// TODO: Types
 interface Options
   extends CommonReplayOptions,
     ScreenshotDiffOptions,
@@ -78,9 +77,10 @@ const handler: (options: Options) => Promise<void> = async ({
     accelerate,
     moveBeforeClick: false, // moveBeforeClick isn't exposed as an option for run-all-tests
   };
-  const expectationOptions: TestExpectationOptions = {
-    screenshotDiffs: { diffPixelThreshold, diffThreshold },
+  const screenshottingOptions: ScreenshotAssertionsOptions = {
+    enabled: true,
     screenshotSelector: undefined, // this is only specified on a test case level
+    diffOptions: { diffPixelThreshold, diffThreshold },
   };
 
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -121,7 +121,7 @@ const handler: (options: Options) => Promise<void> = async ({
         client,
         testRun,
         executionOptions,
-        expectationOptions,
+        screenshottingOptions,
         apiToken,
         commitSha,
         appUrl,
@@ -143,7 +143,7 @@ const handler: (options: Options) => Promise<void> = async ({
           baseReplayId: testCase.baseReplayId,
         }),
         executionOptions,
-        expectationOptions,
+        screenshottingOptions,
         testCase,
         apiToken,
         commitSha,

@@ -58,6 +58,20 @@ export interface ReplayExecutionOptions {
   accelerate: boolean;
   moveBeforeClick: boolean;
 }
+
+export type ScreenshottingOptions =
+  | { enabled: false }
+  | ScreenshottingEnabledOptions;
+
+export interface ScreenshottingEnabledOptions {
+  enabled: true;
+
+  /**
+   * If undefined will screenshot whole window
+   */
+  screenshotSelector: string | undefined;
+}
+
 export interface ReplayEventsOptions {
   /**
    * If undefined then will use the URL the session was recorded against.
@@ -73,8 +87,7 @@ export interface ReplayEventsOptions {
   meticulousSha: string;
   verbose?: boolean;
   dependencies: ReplayEventsDependencies;
-  screenshot: boolean;
-  screenshotSelector: string | undefined;
+  screenshottingOptions: ScreenshottingOptions;
   cookies: Record<string, any>[] | undefined;
   cookiesFile: string | undefined;
 }

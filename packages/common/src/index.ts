@@ -19,5 +19,8 @@ export type {
   ReplayEventsFn,
   ReplayEventsOptions,
   ReplayExecutionOptions,
+  ScreenshottingOptions,
+  ScreenshottingEnabledOptions,
+  ReplayTarget,
 } from "./types/replay.types";
 export type { RecordedSession, SessionData } from "./types/session.types";

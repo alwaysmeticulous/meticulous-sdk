@@ -201,11 +201,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   logger.info("Simulation done!");
 
-  if (options.screenshot) {
+  if (options.screenshottingOptions.enabled) {
     await takeScreenshot({
       page,
       outputDir,
-      screenshotSelector: options.screenshotSelector || "",
+      screenshotSelector: options.screenshottingOptions.screenshotSelector,
     });
   }
 

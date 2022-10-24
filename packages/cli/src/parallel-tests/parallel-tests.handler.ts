@@ -10,7 +10,7 @@ import log from "loglevel";
 import { cpus } from "os";
 import { join } from "path";
 import { putTestRunResults, TestRun } from "../api/test-run.api";
-import { TestExpectationOptions } from "../command-utils/common-types";
+import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
 import {
   MeticulousCliConfig,
   TestCase,
@@ -25,7 +25,7 @@ export interface RunAllTestsInParallelOptions {
   client: AxiosInstance;
   testRun: TestRun;
   executionOptions: ReplayExecutionOptions;
-  expectationOptions: TestExpectationOptions;
+  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
   apiToken: string | undefined;
   commitSha: string;
   appUrl: string | undefined;
@@ -47,7 +47,7 @@ export const runAllTestsInParallel: (
   appUrl,
   useAssetsSnapshottedInBaseSimulation,
   executionOptions,
-  expectationOptions,
+  screenshottingOptions,
   parallelTasks,
   deflake,
   cachedTestRunResults,
@@ -117,7 +117,7 @@ export const runAllTestsInParallel: (
             baseReplayId: testCase.baseReplayId,
           }),
           executionOptions,
-          expectationOptions,
+          screenshottingOptions,
         },
       },
     };

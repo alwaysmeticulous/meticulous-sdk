@@ -6,8 +6,8 @@ import {
 import log from "loglevel";
 import {
   applyTestCaseExecutionOptionOverrides,
-  applyTestCaseExpectationOptionsOverrides,
-  TestExpectationOptions,
+  applyTestCaseScreenshottingOptionsOverrides,
+  ScreenshotAssertionsEnabledOptions,
 } from "../command-utils/common-types";
 import { replayCommandHandler } from "../commands/replay/replay.command";
 import { DiffError } from "../commands/screenshot-diff/screenshot-diff.command";
@@ -19,7 +19,7 @@ const handleReplay: (
   testCase,
   replayTarget,
   executionOptions,
-  expectationOptions,
+  screenshottingOptions,
   apiToken,
   commitSha,
 }) => {
@@ -31,15 +31,14 @@ const handleReplay: (
       executionOptions,
       testCase.options ?? {}
     ),
-    expectationOptions: applyTestCaseExpectationOptionsOverrides(
-      expectationOptions,
+    screenshottingOptions: applyTestCaseScreenshottingOptionsOverrides(
+      screenshottingOptions,
       testCase.options ?? {}
     ),
     apiToken,
     commitSha,
     sessionId: testCase.sessionId,
     baseSimulationId: testCase.baseReplayId,
-    screenshot: true,
     save: false,
     exitOnMismatch: false,
     cookies: undefined,
@@ -76,7 +75,7 @@ export interface DeflakeReplayCommandHandlerOptions
 interface HandleReplayOptions {
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
-  expectationOptions: TestExpectationOptions;
+  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
   testCase: TestCase;
   apiToken: string | undefined;
   commitSha: string;

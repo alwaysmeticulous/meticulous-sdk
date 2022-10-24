@@ -33,7 +33,7 @@ import {
   CommonReplayOptions,
   getReplayTarget,
   ScreenshotDiffOptions,
-  TestExpectationOptions,
+  ScreenshotAssertionsOptions,
 } from "../../command-utils/common-types";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
@@ -59,21 +59,20 @@ export interface ReplayOptions
     AdditionalReplayOptions {
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
-  expectationOptions: TestExpectationOptions;
+  screenshottingOptions: ScreenshotAssertionsOptions;
   exitOnMismatch: boolean;
 }
 
 export const replayCommandHandler = async ({
   replayTarget,
   executionOptions,
-  expectationOptions,
+  screenshottingOptions,
   apiToken,
   sessionId,
   commitSha: commitSha_,
   save,
   exitOnMismatch,
   baseSimulationId: baseReplayId_,
-  screenshot,
   cookies,
   cookiesFile,
 }: ReplayOptions): Promise<Replay> => {
@@ -139,8 +138,6 @@ export const replayCommandHandler = async ({
   );
 
   // 6. Create and save replay parameters
-  // TODO: Wire through
-  // Note: this is an API break, need to set new min peer dependency on replayer
   const replayEventsParams: Parameters<typeof replayEvents>[0] = {
     appUrl,
     replayExecutionOptions: executionOptions,
@@ -178,9 +175,7 @@ export const replayCommandHandler = async ({
         location: nodeUserInteractions,
       },
     },
-
-    screenshot: screenshot,
-    screenshotSelector: expectationOptions.screenshotSelector,
+    screenshottingOptions,
     cookies: cookies,
     cookiesFile: cookiesFile,
   };
@@ -253,7 +248,7 @@ export const replayCommandHandler = async ({
 
   // 12. Diff against base replay screenshot if one is provided
   const baseReplayId = baseReplayId_ || "";
-  if (screenshot && baseReplayId) {
+  if (screenshottingOptions.enabled && baseReplayId) {
     logger.info(
       `Diffing final state screenshot against replay ${baseReplayId}`
     );
@@ -270,14 +265,14 @@ export const replayCommandHandler = async ({
       headReplayId: replay.id,
       baseScreenshot,
       headScreenshot,
-      diffOptions: expectationOptions.screenshotDiffs,
+      diffOptions: screenshottingOptions.diffOptions,
       exitOnMismatch: !!exitOnMismatch,
     });
   }
 
   // 13. Add test case to meticulous.json if --save option is passed
   if (save) {
-    if (!screenshot) {
+    if (!screenshottingOptions.enabled) {
       logger.error(
         "Warning: saving a new test case without screenshot enabled."
       );
@@ -329,6 +324,7 @@ export interface RawReplayCommandHandlerOptions
     ScreenshotDiffOptions,
     ReplayExecutionOptions,
     AdditionalReplayOptions {
+  screenshot: boolean;
   appUrl: string | undefined;
   simulationIdForAssets?: string;
   screenshotSelector: string | undefined;
@@ -340,8 +336,6 @@ interface AdditionalReplayOptions {
   save: boolean | undefined;
 
   baseSimulationId: string | undefined;
-
-  screenshot: boolean;
 
   cookies: Record<string, any>[] | undefined;
   cookiesFile: string | undefined;
@@ -380,20 +374,22 @@ export const rawReplayCommandHandler = ({
     accelerate,
     moveBeforeClick,
   };
-  const expectationOptions: TestExpectationOptions = {
-    screenshotDiffs: { diffPixelThreshold, diffThreshold },
-    screenshotSelector: screenshotSelector ?? undefined,
-  };
+  const screenshottingOptions: ScreenshotAssertionsOptions = screenshot
+    ? {
+        enabled: true,
+        screenshotSelector: screenshotSelector ?? undefined,
+        diffOptions: { diffPixelThreshold, diffThreshold },
+      }
+    : { enabled: false };
   return replayCommandHandler({
     replayTarget: getReplayTarget({ appUrl, simulationIdForAssets }),
     executionOptions,
-    expectationOptions,
+    screenshottingOptions,
     apiToken,
     commitSha,
     cookies,
     cookiesFile,
     sessionId,
-    screenshot,
     baseSimulationId,
     save,
     exitOnMismatch: true,

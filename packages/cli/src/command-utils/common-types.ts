@@ -1,7 +1,10 @@
-import { TestCaseReplayOptions } from "../config/config.types";
-import { ReplayExecutionOptions } from "@alwaysmeticulous/common";
+import {
+  ReplayExecutionOptions,
+  ReplayTarget,
+  ScreenshottingEnabledOptions,
+} from "@alwaysmeticulous/common";
 import defaults from "lodash/defaults";
-import { ReplayTarget } from "@alwaysmeticulous/common/dist/types/replay.types";
+import { TestCaseReplayOptions } from "../config/config.types";
 
 export interface ScreenshotDiffOptions {
   diffThreshold: number;
@@ -18,11 +21,15 @@ export interface CommonReplayOptions {
 }
 
 /**
- * Options that affect how test expectations are evaluated
+ * Options for taking a screenshot and comparing it against a previous screenshot
  */
-export interface TestExpectationOptions {
-  screenshotDiffs: ScreenshotDiffOptions;
-  screenshotSelector: string | undefined;
+export type ScreenshotAssertionsOptions =
+  | { enabled: false }
+  | ScreenshotAssertionsEnabledOptions;
+
+export interface ScreenshotAssertionsEnabledOptions
+  extends ScreenshottingEnabledOptions {
+  diffOptions: ScreenshotDiffOptions;
 }
 
 export const getReplayTarget = ({
@@ -57,24 +64,25 @@ export const applyTestCaseExecutionOptionOverrides = (
   );
 };
 
-export const applyTestCaseExpectationOptionsOverrides = (
-  expectationOptionsFromCliFlags: TestExpectationOptions,
+export const applyTestCaseScreenshottingOptionsOverrides = (
+  screenshottingOptionsFromCliFlags: ScreenshotAssertionsEnabledOptions,
   overridesFromTestCase: TestCaseReplayOptions
-): TestExpectationOptions => {
+): ScreenshotAssertionsEnabledOptions => {
   // Options specified in the test case override those passed as CLI flags
   // (CLI flags set the defaults)
-  const screenshotDiffs: ScreenshotDiffOptions = defaults(
+  const diffOptions: ScreenshotDiffOptions = defaults(
     {},
     {
       diffThreshold: overridesFromTestCase.diffThreshold,
       diffPixelThreshold: overridesFromTestCase.diffPixelThreshold,
     },
-    expectationOptionsFromCliFlags.screenshotDiffs
+    screenshottingOptionsFromCliFlags.diffOptions
   );
   return {
-    screenshotDiffs,
+    enabled: true,
     screenshotSelector:
       overridesFromTestCase.screenshotSelector ??
-      expectationOptionsFromCliFlags.screenshotSelector,
+      screenshottingOptionsFromCliFlags.screenshotSelector,
+    diffOptions,
   };
 };
