@@ -41,7 +41,7 @@ interface Options
   useAssetsSnapshottedInBaseSimulation: boolean;
   githubSummary?: boolean;
   parallelize?: boolean;
-  parallelTasks?: number;
+  parallelTasks?: number | null;
   deflake: boolean;
   useCache: boolean;
   testsFile?: string;
@@ -126,7 +126,7 @@ const handler: (options: Options) => Promise<void> = async ({
         commitSha,
         appUrl,
         useAssetsSnapshottedInBaseSimulation,
-        parallelTasks,
+        parallelTasks: parallelTasks ?? undefined,
         deflake,
         cachedTestRunResults,
       });

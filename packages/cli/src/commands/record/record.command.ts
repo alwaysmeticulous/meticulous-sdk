@@ -22,9 +22,9 @@ export interface RecordCommandHandlerOptions {
   commitSha: string | undefined;
   devTools: boolean | undefined;
   bypassCSP: boolean | undefined;
-  width: number | undefined;
-  height: number | undefined;
-  uploadIntervalMs: number | undefined;
+  width: number | undefined | null;
+  height: number | undefined | null;
+  uploadIntervalMs: number | undefined | null;
   incognito: boolean | undefined;
   trace: boolean | undefined;
   onDetectedSession?: (sessionId: string) => void;
