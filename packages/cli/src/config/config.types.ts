@@ -10,7 +10,6 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
 
   screenshotSelector?: string;
 
-  cookies?: Record<string, any>[];
   moveBeforeClick?: boolean;
 }
 

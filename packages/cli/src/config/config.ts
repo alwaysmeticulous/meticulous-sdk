@@ -31,7 +31,6 @@ const validateReplayOptions: (
     screenshotSelector,
     diffThreshold,
     diffPixelThreshold,
-    cookies,
     moveBeforeClick,
     simulationIdForAssets,
   } = prevOptions;
@@ -39,7 +38,6 @@ const validateReplayOptions: (
     ...(screenshotSelector ? { screenshotSelector } : {}),
     ...(diffThreshold ? { diffThreshold } : {}),
     ...(diffPixelThreshold ? { diffPixelThreshold } : {}),
-    ...(cookies ? { cookies } : {}),
     ...(moveBeforeClick ? { moveBeforeClick } : {}),
     ...(simulationIdForAssets ? { simulationIdForAssets } : {}),
   };
