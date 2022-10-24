@@ -3,15 +3,19 @@ import {
   ReplayExecutionOptions,
   ReplayTarget,
 } from "@alwaysmeticulous/common/dist/types/replay.types";
+import defaults from "lodash/defaults";
 import log from "loglevel";
 import {
-  applyTestCaseExecutionOptionOverrides,
-  applyTestCaseScreenshottingOptionsOverrides,
   ScreenshotAssertionsEnabledOptions,
+  ScreenshotDiffOptions,
 } from "../command-utils/common-types";
 import { replayCommandHandler } from "../commands/replay/replay.command";
 import { DiffError } from "../commands/screenshot-diff/screenshot-diff.command";
-import { TestCase, TestCaseResult } from "../config/config.types";
+import {
+  TestCase,
+  TestCaseReplayOptions,
+  TestCaseResult,
+} from "../config/config.types";
 
 const handleReplay: (
   options: HandleReplayOptions
@@ -98,4 +102,43 @@ export const deflakeReplayCommandHandler: (
   const thirdResult = await handleReplay(otherOptions);
   logger.info(`FLAKE: ${thirdResult.title} => ${thirdResult.result}`);
   return thirdResult;
+};
+
+const applyTestCaseExecutionOptionOverrides = (
+  executionOptionsFromCliFlags: ReplayExecutionOptions,
+  overridesFromTestCase: TestCaseReplayOptions
+) => {
+  // Options specified in the test case override those passed as CLI flags
+  // (CLI flags set the defaults)
+  return defaults(
+    {},
+    {
+      moveBeforeClick: overridesFromTestCase.moveBeforeClick,
+      simulationIdForAssets: overridesFromTestCase.simulationIdForAssets,
+    },
+    executionOptionsFromCliFlags
+  );
+};
+
+const applyTestCaseScreenshottingOptionsOverrides = (
+  screenshottingOptionsFromCliFlags: ScreenshotAssertionsEnabledOptions,
+  overridesFromTestCase: TestCaseReplayOptions
+): ScreenshotAssertionsEnabledOptions => {
+  // Options specified in the test case override those passed as CLI flags
+  // (CLI flags set the defaults)
+  const diffOptions: ScreenshotDiffOptions = defaults(
+    {},
+    {
+      diffThreshold: overridesFromTestCase.diffThreshold,
+      diffPixelThreshold: overridesFromTestCase.diffPixelThreshold,
+    },
+    screenshottingOptionsFromCliFlags.diffOptions
+  );
+  return {
+    enabled: true,
+    screenshotSelector:
+      overridesFromTestCase.screenshotSelector ??
+      screenshottingOptionsFromCliFlags.screenshotSelector,
+    diffOptions,
+  };
 };

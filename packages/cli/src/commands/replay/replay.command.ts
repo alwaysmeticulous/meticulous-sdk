@@ -30,7 +30,6 @@ import {
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 import {
-  getReplayTarget,
   ScreenshotDiffOptions,
   ScreenshotAssertionsOptions,
 } from "../../command-utils/common-types";
@@ -308,7 +307,7 @@ const serveOrGetAppUrl = async (
   return assertNever(replayTarget);
 };
 
-const assertNever = (value: never): any => {
+const assertNever = (value: never): never => {
   throw new Error(
     `Unhandled discriminated union member: ${JSON.stringify(value)}`
   );
@@ -388,6 +387,22 @@ export const rawReplayCommandHandler = ({
     save,
     exitOnMismatch: true,
   });
+};
+
+const getReplayTarget = ({
+  appUrl,
+  simulationIdForAssets,
+}: {
+  appUrl?: string | undefined;
+  simulationIdForAssets?: string | undefined;
+}): ReplayTarget => {
+  if (simulationIdForAssets) {
+    return { type: "snapshotted-assets", simulationIdForAssets };
+  }
+  if (appUrl) {
+    return { type: "url", appUrl };
+  }
+  return { type: "original-recorded-url" };
 };
 
 export const replay: CommandModule<unknown, RawReplayCommandHandlerOptions> = {
