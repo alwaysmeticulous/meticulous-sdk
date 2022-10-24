@@ -18,5 +18,7 @@ export type {
   ReplayEventsDependency,
   ReplayEventsFn,
   ReplayEventsOptions,
+  ResolvedReplayExecutionOptions,
+  ReplayExecutionOptions,
 } from "./types/replay.types";
 export type { RecordedSession, SessionData } from "./types/session.types";

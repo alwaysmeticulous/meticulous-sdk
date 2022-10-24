@@ -1,6 +1,9 @@
 import log from "loglevel";
-import { ScreenshotDiffOptions } from "../command-utils/common-types";
-import { CLIOnlyReplayOptions } from "../commands/replay/replay.command";
+import {
+  CommonReplayOptions,
+  ReplayExecutionOptions,
+  TestExpectationOptions,
+} from "../command-utils/common-types";
 import { TestCase, TestCaseResult } from "../config/config.types";
 
 export interface InitMessage {
@@ -8,7 +11,10 @@ export interface InitMessage {
   data: {
     logLevel: log.LogLevel[keyof log.LogLevel];
     dataDir: string;
-    runAllOptions: CLIOnlyReplayOptions & ScreenshotDiffOptions;
+    runAllOptions: {
+      replayExecution: ReplayExecutionOptions;
+      testExpectations: TestExpectationOptions;
+    } & CommonReplayOptions;
     testCase: TestCase;
     deflake: boolean;
   };

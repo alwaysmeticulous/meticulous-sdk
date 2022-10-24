@@ -1,11 +1,16 @@
-import {
-  PerReplayOptions,
-  ScreenshotDiffOptions,
-} from "../command-utils/common-types";
+import { ScreenshotDiffOptions } from "../command-utils/common-types";
 
-export interface TestCaseReplayOptions
-  extends Partial<PerReplayOptions>,
-    ScreenshotDiffOptions {
+export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
+  appUrl?: string | null | undefined;
+
+  /**
+   * If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior replay, instead of against a URL.
+   */
+  simulationIdForAssets?: string | undefined;
+
+  screenshotSelector?: string;
+
+  cookies?: Record<string, any>[];
   moveBeforeClick?: boolean;
 }
 

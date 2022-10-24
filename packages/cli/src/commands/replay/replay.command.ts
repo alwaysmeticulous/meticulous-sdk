@@ -4,6 +4,7 @@ import {
   Replay,
   ReplayEventsFn,
 } from "@alwaysmeticulous/common";
+import { DEFAULT_REPLAY_EXECUTION_OPTIONS } from "@alwaysmeticulous/common/dist/types/replay.types";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import log from "loglevel";
 import { DateTime } from "luxon";
@@ -27,7 +28,9 @@ import {
 import {
   CommonReplayOptions,
   PerReplayOptions,
+  ReplayExecutionOptions,
   ScreenshotDiffOptions,
+  TestExpectationOptions,
 } from "../../command-utils/common-types";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
@@ -52,17 +55,19 @@ import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
  * Replay options that can't be specified directly through the meticulous.json test case options,
  * but are only usable when using the CLI.
  */
-export interface CLIOnlyReplayOptions extends CommonReplayOptions {
+// TODO: Types
+export interface CLIOnlyReplayOptions
+  extends CommonReplayOptions,
+    Partial<ScreenshotDiffOptions>,
+    ReplayExecutionOptions {
   screenshot: boolean;
   save?: boolean | null | undefined;
   exitOnMismatch?: boolean | null | undefined;
   cookiesFile?: string | null | undefined;
+  screenshotSelector?: string | null | undefined;
 }
 
-export interface ReplayCommandHandlerOptions
-  extends ScreenshotDiffOptions,
-    CLIOnlyReplayOptions,
-    PerReplayOptions {
+export interface ReplayCommandHandlerOptions extends CLIOnlyReplayOptions {
   sessionId: string;
   baseSimulationId?: string | null | undefined;
   moveBeforeClick?: boolean;
@@ -94,6 +99,21 @@ export const replayCommandHandler: (
   cookiesFile,
   accelerate,
 }) => {
+  const replayExecutionOptions: ReplayExecutionOptions = {
+    appUrl,
+    headless,
+    devTools,
+    bypassCSP,
+    padTime,
+    shiftTime,
+    networkStubbing,
+    accelerate,
+  };
+  const testExpectationOptions: TestExpectationOptions = {
+    screenshotDiffs: { diffPixelThreshold, diffThreshold },
+    screenshotSelector: screenshotSelector ?? undefined,
+  };
+
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
@@ -158,17 +178,29 @@ export const replayCommandHandler: (
   );
 
   // 6. Create and save replay parameters
+  // TODO: Wire through
+  // Note: this is an API break, need to set new min peer dependency on replayer
   const replayEventsParams: Parameters<typeof replayEvents>[0] = {
     appUrl: server ? server.url : appUrl || "",
+    replayExecutionOptions: {
+      headless: headless ?? DEFAULT_REPLAY_EXECUTION_OPTIONS.headless,
+      devTools: devTools ?? DEFAULT_REPLAY_EXECUTION_OPTIONS.devTools,
+      bypassCSP: bypassCSP ?? DEFAULT_REPLAY_EXECUTION_OPTIONS.bypassCSP,
+      padTime,
+      shiftTime,
+      networkStubbing,
+      moveBeforeClick:
+        moveBeforeClick || DEFAULT_REPLAY_EXECUTION_OPTIONS.moveBeforeClick,
+      accelerate,
+    },
+
     browser: null,
     outputDir: tempDir,
     session,
     sessionData,
     recordingId: "manual-replay",
     meticulousSha: "meticulousSha",
-    headless: headless || false,
-    devTools: devTools || false,
-    bypassCSP: bypassCSP || false,
+
     dependencies: {
       browserUserInteractions: {
         key: "browserUserInteractions",
@@ -195,15 +227,11 @@ export const replayCommandHandler: (
         location: nodeUserInteractions,
       },
     },
-    padTime,
-    shiftTime,
+
     screenshot: screenshot,
     screenshotSelector: screenshotSelector || "",
-    networkStubbing,
-    moveBeforeClick: moveBeforeClick || false,
     cookies: cookies || null,
     cookiesFile: cookiesFile || "",
-    accelerate,
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),

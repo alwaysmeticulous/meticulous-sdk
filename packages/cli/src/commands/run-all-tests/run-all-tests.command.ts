@@ -18,6 +18,8 @@ import {
 } from "../../command-utils/common-options";
 import {
   CommonReplayOptions,
+  TestExpectationOptions,
+  ReplayExecutionOptions,
   ScreenshotDiffOptions,
 } from "../../command-utils/common-types";
 import { readConfig } from "../../config/config";
@@ -31,7 +33,11 @@ import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 
-interface Options extends CommonReplayOptions, ScreenshotDiffOptions {
+// TODO: Types
+interface Options
+  extends CommonReplayOptions,
+    Partial<ScreenshotDiffOptions>,
+    ReplayExecutionOptions {
   appUrl?: string | null | undefined;
   useAssetsSnapshottedInBaseSimulation?: boolean | null | undefined;
   githubSummary?: boolean | null | undefined;
@@ -63,6 +69,21 @@ const handler: (options: Options) => Promise<void> = async ({
   testsFile,
   accelerate,
 }) => {
+  const replayExecutionOptions: ReplayExecutionOptions = {
+    appUrl,
+    headless,
+    devTools,
+    bypassCSP,
+    padTime,
+    shiftTime,
+    networkStubbing,
+    accelerate,
+  };
+  const testExpectationOptions: TestExpectationOptions = {
+    screenshotDiffs: { diffPixelThreshold, diffThreshold },
+    screenshotSelector: undefined,
+  };
+
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
@@ -100,22 +121,14 @@ const handler: (options: Options) => Promise<void> = async ({
         config,
         client,
         testRun,
+        replayExecutionOptions,
+        testExpectationOptions,
         apiToken,
         commitSha,
-        appUrl,
         useAssetsSnapshottedInBaseSimulation,
-        headless,
-        devTools,
-        bypassCSP,
-        diffThreshold,
-        diffPixelThreshold,
-        padTime,
-        shiftTime,
-        networkStubbing,
         parallelTasks,
         deflake,
         cachedTestRunResults,
-        accelerate,
       });
       return results;
     }

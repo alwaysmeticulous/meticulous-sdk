@@ -10,6 +10,10 @@ import { cpus } from "os";
 import { join } from "path";
 import { putTestRunResults, TestRun } from "../api/test-run.api";
 import {
+  ReplayExecutionOptions,
+  TestExpectationOptions,
+} from "../command-utils/common-types";
+import {
   MeticulousCliConfig,
   TestCase,
   TestCaseResult,
@@ -22,22 +26,14 @@ export interface RunAllTestsInParallelOptions {
   config: MeticulousCliConfig;
   client: AxiosInstance;
   testRun: TestRun;
+  replayExecutionOptions: ReplayExecutionOptions;
+  testExpectationOptions: TestExpectationOptions;
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
-  appUrl: string | null | undefined;
   useAssetsSnapshottedInBaseSimulation?: boolean | null | undefined;
-  headless: boolean | null | undefined;
-  devTools: boolean | null | undefined;
-  bypassCSP: boolean | null | undefined;
-  diffThreshold: number | null | undefined;
-  diffPixelThreshold: number;
-  padTime: boolean;
-  shiftTime: boolean;
-  networkStubbing: boolean;
   parallelTasks: number | null | undefined;
   deflake: boolean;
   cachedTestRunResults: TestCaseResult[];
-  accelerate: boolean;
 }
 
 /** Handler for running Meticulous tests in parallel using child processes */
@@ -49,20 +45,12 @@ export const runAllTestsInParallel: (
   testRun,
   apiToken,
   commitSha,
-  appUrl,
   useAssetsSnapshottedInBaseSimulation,
-  headless,
-  devTools,
-  bypassCSP,
-  diffThreshold,
-  diffPixelThreshold,
-  padTime,
-  shiftTime,
-  networkStubbing,
+  replayExecutionOptions,
+  testExpectationOptions,
   parallelTasks,
   deflake,
   cachedTestRunResults,
-  accelerate,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -133,16 +121,8 @@ export const runAllTestsInParallel: (
         runAllOptions: {
           apiToken,
           commitSha,
-          headless,
-          devTools,
-          bypassCSP,
-          diffThreshold: diffThreshold ?? undefined,
-          diffPixelThreshold,
-          padTime,
-          shiftTime,
-          networkStubbing,
-          accelerate,
-          screenshot: true,
+          replayExecution: replayExecutionOptions,
+          testExpectations: testExpectationOptions,
         },
         testCaseWithOverridesApplied,
         deflake,

@@ -31,27 +31,26 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     outputDir,
     session,
     sessionData,
-    headless,
-    devTools,
+    replayExecutionOptions,
     dependencies,
-    padTime,
-    shiftTime,
-    networkStubbing,
-    accelerate,
   } = options;
 
   // Extract replay metadata
+  const {
+    headless,
+    devTools,
+    shiftTime,
+    networkStubbing,
+    accelerate,
+    padTime,
+  } = replayExecutionOptions;
   const metadata: ReplayMetadata = {
     session,
     options: {
       appUrl,
       outputDir,
-      headless,
-      devTools,
       dependencies,
-      padTime,
-      shiftTime,
-      networkStubbing,
+      ...replayExecutionOptions,
     },
   };
 
@@ -68,8 +67,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
         // including the respective Preflgiht CORS requests which are not handled by the network stubbing layer.
         "--disable-web-security",
       ],
-      headless: headless || false,
-      devtools: devTools || false,
+      headless: headless,
+      devtools: devTools,
     }));
 
   const context = await browser.createIncognitoBrowserContext();
