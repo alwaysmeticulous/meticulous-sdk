@@ -18,7 +18,10 @@ export interface ReplayEventsDependencies extends BaseReplayEventsDependencies {
   nodeUserInteractions: ReplayEventsDependency<"nodeUserInteractions">;
 }
 
-export type ReplayTarget = SnapshottedAssetsReplayTarget | URLReplayTarget;
+export type ReplayTarget =
+  | SnapshottedAssetsReplayTarget
+  | URLReplayTarget
+  | OriginalRecordedURLReplayTarget;
 
 export interface SnapshottedAssetsReplayTarget {
   type: "snapshotted-assets";
@@ -35,7 +38,11 @@ export interface URLReplayTarget {
   /**
    * If absent, and no URL provided in test case either, then will use the URL the session was recorded against.
    */
-  appUrl?: string;
+  appUrl: string;
+}
+
+export interface OriginalRecordedURLReplayTarget {
+  type: "original-recorded-url";
 }
 
 /**

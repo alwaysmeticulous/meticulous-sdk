@@ -8,6 +8,8 @@ import {
   ReplayExecutionOptions,
   ReplayTarget,
 } from "@alwaysmeticulous/common/dist/types/replay.types";
+import { throws } from "assert";
+import { AxiosInstance } from "axios";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import log from "loglevel";
 import { DateTime } from "luxon";
@@ -91,16 +93,7 @@ export const replayCommandHandler = async ({
   const meticulousSha = await getMeticulousVersion();
 
   // 3. If simulationIdForAssets specified then download assets & spin up local server
-  const { appUrl, closeServer } =
-    replayTarget.type === "snapshotted-assets"
-      ? await serveAssetsFromSimulation(
-          client,
-          replayTarget.simulationIdForAssets
-        ).then((server) => ({
-          appUrl: server.url,
-          closeServer: server.closeServer,
-        }))
-      : { appUrl: replayTarget.appUrl, closeServer: undefined };
+  const { appUrl, closeServer } = await serveOrGetAppUrl(client, replayTarget);
 
   // 4. Load replay assets
   const browserUserInteractions = await fetchAsset(
@@ -301,6 +294,35 @@ export const replayCommandHandler = async ({
   await deleteArchive(archivePath);
 
   return replay;
+};
+
+const serveOrGetAppUrl = async (
+  client: AxiosInstance,
+  replayTarget: ReplayTarget
+): Promise<{ appUrl?: string; closeServer?: () => void }> => {
+  if (replayTarget.type === "snapshotted-assets") {
+    const server = await serveAssetsFromSimulation(
+      client,
+      replayTarget.simulationIdForAssets
+    );
+    return {
+      appUrl: server.url,
+      closeServer: server.closeServer,
+    };
+  }
+  if (replayTarget.type === "url") {
+    return { appUrl: replayTarget.appUrl };
+  }
+  if (replayTarget.type === "original-recorded-url") {
+    return {};
+  }
+  return assertNever(replayTarget);
+};
+
+const assertNever = (value: never): any => {
+  throw new Error(
+    `Unhandled discriminated union member: ${JSON.stringify(value)}`
+  );
 };
 
 export interface RawReplayCommandHandlerOptions

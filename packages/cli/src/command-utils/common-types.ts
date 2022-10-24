@@ -38,7 +38,7 @@ export const getReplayTarget = ({
   if (appUrl) {
     return { type: "url", appUrl };
   }
-  return { type: "url" };
+  return { type: "original-recorded-url" };
 };
 
 export const applyTestCaseExecutionOptionOverrides = (

@@ -28,5 +28,5 @@ export const getReplayTargetForTestCase = ({
   if (appUrl) {
     return { type: "url", appUrl };
   }
-  return { type: "url" };
+  return { type: "original-recorded-url" };
 };
