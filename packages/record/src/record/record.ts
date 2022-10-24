@@ -6,11 +6,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import log from "loglevel";
 import { join } from "path";
 import puppeteer, { Browser, PuppeteerNode } from "puppeteer";
-import {
-  bootstrapPage,
-  defer,
-  INITIAL_METICULOUS_DOCS_URL,
-} from "./record.utils";
+import { bootstrapPage, INITIAL_METICULOUS_DOCS_URL } from "./record.utils";
 
 const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
 const COOKIE_FILENAME = "cookies.json";
@@ -114,8 +110,9 @@ export const recordSession: RecordSessionFn = async ({
     }
   }
 
-  const closePromise = defer();
-  page.on("close", () => closePromise.resolve());
+  const closePromise = new Promise<void>((resolve) => {
+    page.on("close", resolve);
+  });
 
   await bootstrapPage({
     page,
@@ -168,7 +165,7 @@ export const recordSession: RecordSessionFn = async ({
     }
   }, 1000);
 
-  await closePromise.promise;
+  await closePromise;
 
   clearInterval(interval);
 

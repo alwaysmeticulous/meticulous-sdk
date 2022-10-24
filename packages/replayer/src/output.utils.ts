@@ -1,4 +1,4 @@
-import { SessionData } from "@alwaysmeticulous/common";
+import { BASE_SNIPPETS_URL, SessionData } from "@alwaysmeticulous/common";
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { ReplayData, ReplayMetadata } from "./replay.types";
@@ -77,11 +77,27 @@ const writeRawCoverageData: (options: {
   outputDir: string;
   coverageData: CoverageEntry[];
 }) => Promise<void> = async ({ outputDir, coverageData }) => {
+  // We already snapshot the assets, so don't need to save the script contents
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const withoutScriptText = coverageData.map(({ text, ...rest }) => rest);
+  const withoutMeticulousScriptCoverage = withoutScriptText.filter(
+    ({ url }) => !isMeticulousSnippetURL(url)
+  );
   await writeFile(
     join(outputDir, "raw-coverage.json"),
-    JSON.stringify(coverageData, null, 2),
+    JSON.stringify(withoutMeticulousScriptCoverage, null, 2),
     "utf-8"
   );
+};
+
+const isMeticulousSnippetURL = (url: string) => {
+  try {
+    return new URL(url).origin === new URL(BASE_SNIPPETS_URL).origin;
+  } catch (_error) {
+    // If not parsable as a URL then assume the executed code is not
+    // from the Meticulous snippet
+    return false;
+  }
 };
 
 const writeMetadata: (options: {
@@ -141,8 +157,10 @@ const writeTimeline: (options: {
   );
 };
 
-export const prepareScreenshotsDir: (
+export const prepareScreenshotsDir = async (
   outputDir: string
-) => Promise<void> = async (outputDir) => {
-  await mkdir(join(outputDir, "screenshots"), { recursive: true });
+): Promise<string> => {
+  const dirName = join(outputDir, "screenshots");
+  await mkdir(dirName, { recursive: true });
+  return dirName;
 };

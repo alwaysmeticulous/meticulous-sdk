@@ -1,5 +1,5 @@
 import {
-  getMeticulousLocalDataDir,
+  setMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
@@ -48,7 +48,7 @@ const main = async () => {
 
   const { logLevel, dataDir, replayOptions } = initMessage.data;
   logger.setLevel(logLevel);
-  getMeticulousLocalDataDir(dataDir);
+  setMeticulousLocalDataDir(dataDir);
 
   const result = await deflakeReplayCommandHandler(replayOptions);
   const resultMessage: ResultMessage = {

@@ -1,6 +1,5 @@
+import { BASE_SNIPPETS_URL } from "@alwaysmeticulous/common";
 import { ConfigurationError } from "../errors/config";
-
-const BASE_SNIPPETS_URL = "https://snippet.meticulous.ai/";
 
 export const getSnippetsBaseUrl = (): string => {
   const baseUrl =

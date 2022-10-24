@@ -1,7 +1,7 @@
 {
-  "name": "@alwaysmeticulous/record",
-  "version": "2.2.2",
-  "description": "The Meticulous toolkit to record user sessions",
+  "name": "@alwaysmeticulous/sdk-bundles-api",
+  "version": "2.3.1",
+  "description": "Meticulous common types",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,10 +16,6 @@
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
-  },
-  "dependencies": {
-    "@alwaysmeticulous/common": "^2.2.0",
-    "puppeteer": "^14.4.1"
   },
   "author": {
     "name": "The Meticulous Team",
