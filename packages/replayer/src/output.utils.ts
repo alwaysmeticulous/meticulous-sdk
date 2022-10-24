@@ -1,4 +1,4 @@
-import { SessionData } from "@alwaysmeticulous/common";
+import { BASE_SNIPPETS_URL, SessionData } from "@alwaysmeticulous/common";
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { ReplayData, ReplayMetadata } from "./replay.types";
@@ -15,8 +15,6 @@ export interface WriteOutputOptions {
   coverageData: CoverageEntry[];
   timelineData: ReplayTimelineData;
 }
-
-const METICULOUS_SNIPPET_ORIGIN = "https://snippet.meticulous.ai";
 
 export const writeOutput: (
   options: WriteOutputOptions
@@ -95,7 +93,7 @@ const writeRawCoverageData: (options: {
 
 const isMeticulousSnippetURL = (url: string) => {
   try {
-    return new URL(url).origin === METICULOUS_SNIPPET_ORIGIN;
+    return new URL(url).origin === new URL(BASE_SNIPPETS_URL).origin;
   } catch (_error) {
     // If not parsable as a URL then assume the executed code is not
     // from the Meticulous snippet
