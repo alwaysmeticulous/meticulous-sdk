@@ -4,13 +4,12 @@ import {
 } from "@alwaysmeticulous/common";
 import Zip from "adm-zip";
 import { AxiosInstance } from "axios";
+import { opendir } from "fs/promises";
 import { access, mkdir, readFile, rm, writeFile } from "fs/promises";
 import log from "loglevel";
 import { join } from "path";
-import { PNG } from "pngjs";
 import { downloadFile } from "../api/download";
 import { getReplay, getReplayDownloadUrl } from "../api/replay.api";
-import { readPng } from "../image/io.utils";
 
 export const getOrFetchReplay: (
   client: AxiosInstance,
@@ -80,21 +79,20 @@ export const getOrFetchReplayArchive: (
   logger.debug(`Exrtracted replay archive in ${replayDir}`);
 };
 
-export const readReplayScreenshot: (replayId: string) => Promise<PNG> = async (
-  replayId
-) => {
-  const replayDir = getReplayDir(replayId);
-  const screenshotFile = join(getScreenshotsDir(replayDir), "final-state.png");
-  const png = await readPng(screenshotFile);
-  return png;
-};
+export const getScreenshotFiles: (
+  screenshotsDirPath: string
+) => Promise<string[]> = async (screenshotsDirPath) => {
+  const screenshotFiles = [];
+  const screenshotsDir = await opendir(screenshotsDirPath);
 
-export const readLocalReplayScreenshot: (
-  tempDir: string
-) => Promise<PNG> = async (tempDir) => {
-  const screenshotFile = join(getScreenshotsDir(tempDir), "final-state.png");
-  const png = await readPng(screenshotFile);
-  return png;
+  for await (const dirEntry of screenshotsDir) {
+    if (dirEntry.isFile() && dirEntry.name.endsWith(".png")) {
+      screenshotFiles.push(dirEntry.name);
+    }
+  }
+
+  // Sort files alphabetically to help when reading results.
+  return screenshotFiles.sort();
 };
 
 export const getSnapshottedAssetsDir = (replayId: string) =>
