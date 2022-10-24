@@ -6,6 +6,7 @@ import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getDiffUrl, postScreenshotDiffStats } from "../../api/replay.api";
 import { SCREENSHOT_DIFF_OPTIONS } from "../../command-utils/common-options";
+import { ScreenshotDiffOptions } from "../../command-utils/common-types";
 import { CompareImageOptions, compareImages } from "../../image/diff.utils";
 import {
   getOrFetchReplay,
@@ -35,8 +36,7 @@ export const diffScreenshots: (options: {
   headReplayId: string;
   baseScreenshot: PNG;
   headScreenshot: PNG;
-  threshold: number;
-  pixelThreshold: number;
+  diffOptions: ScreenshotDiffOptions;
   exitOnMismatch: boolean;
 }) => Promise<void> = async ({
   client,
@@ -44,14 +44,14 @@ export const diffScreenshots: (options: {
   headReplayId,
   baseScreenshot,
   headScreenshot,
-  threshold,
-  pixelThreshold,
+  diffOptions,
   exitOnMismatch,
 }) => {
+  const { diffThreshold, diffPixelThreshold } = diffOptions;
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const pixelmatchOptions: CompareImageOptions["pixelmatchOptions"] | null =
-    pixelThreshold ? { threshold: pixelThreshold } : null;
+    diffPixelThreshold ? { threshold: diffPixelThreshold } : null;
 
   try {
     const { mismatchPixels, mismatchFraction, diff } = compareImages({
@@ -64,9 +64,9 @@ export const diffScreenshots: (options: {
     logger.info(
       `${Math.round(
         mismatchFraction * 100
-      )}% pixel mismatch (threshold is ${Math.round(threshold * 100)}%) => ${
-        mismatchFraction > threshold ? "FAIL!" : "PASS"
-      }`
+      )}% pixel mismatch (threshold is ${Math.round(
+        diffThreshold * 100
+      )}%) => ${mismatchFraction > diffThreshold ? "FAIL!" : "PASS"}`
     );
 
     await writeScreenshotDiff({ baseReplayId, headReplayId, diff });
@@ -83,7 +83,7 @@ export const diffScreenshots: (options: {
       },
     });
 
-    if (mismatchFraction > threshold) {
+    if (mismatchFraction > diffThreshold) {
       logger.info("Screenshots do not match!");
       if (exitOnMismatch) {
         process.exit(1);
@@ -91,7 +91,7 @@ export const diffScreenshots: (options: {
       throw new DiffError("Screenshots do not match!", {
         baseReplayId,
         headReplayId,
-        threshold,
+        threshold: diffThreshold,
         value: mismatchFraction,
       });
     }
@@ -105,7 +105,7 @@ export const diffScreenshots: (options: {
     throw new DiffError(`Error while diffing: ${error}`, {
       baseReplayId,
       headReplayId,
-      threshold,
+      threshold: diffThreshold,
       value: 1,
     });
   }
@@ -142,8 +142,10 @@ const handler: (options: Options) => Promise<void> = async ({
     headReplayId,
     baseScreenshot,
     headScreenshot,
-    threshold,
-    pixelThreshold,
+    diffOptions: {
+      diffThreshold: threshold,
+      diffPixelThreshold: pixelThreshold,
+    },
     exitOnMismatch: true,
   });
 };

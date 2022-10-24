@@ -1,4 +1,7 @@
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import {
+  METICULOUS_LOGGER_NAME,
+  ReplayExecutionOptions,
+} from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
@@ -9,25 +12,21 @@ import {
   putTestRunResults,
 } from "../../api/test-run.api";
 import {
-  COMMON_REPLAY_OPTIONS,
-  DEFAULT_DIFF_PIXEL_THRESHOLD,
-  DEFAULT_MISMATCH_THRESHOLD,
-  PRIMARY_COMMON_REPLAY_OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
-  SECONDARY_COMMON_REPLAY_OPTIONS,
+  COMMON_REPLAY_OPTIONS,
+  OPTIONS,
 } from "../../command-utils/common-options";
 import {
   CommonReplayOptions,
-  TestExpectationOptions,
-  ReplayExecutionOptions,
   ScreenshotDiffOptions,
+  TestExpectationOptions,
 } from "../../command-utils/common-types";
 import { readConfig } from "../../config/config";
 import { TestCaseResult } from "../../config/config.types";
 import { deflakeReplayCommandHandler } from "../../deflake-tests/deflake-tests.handler";
 import { runAllTestsInParallel } from "../../parallel-tests/parallel-tests.handler";
 import { getCommitSha } from "../../utils/commit-sha.utils";
-import { getSimulationIdForAssets } from "../../utils/config.utils";
+import { getReplayTargetForTestCase } from "../../utils/config.utils";
 import { writeGitHubSummary } from "../../utils/github-summary.utils";
 import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
@@ -36,16 +35,16 @@ import { getMeticulousVersion } from "../../utils/version.utils";
 // TODO: Types
 interface Options
   extends CommonReplayOptions,
-    Partial<ScreenshotDiffOptions>,
+    ScreenshotDiffOptions,
     ReplayExecutionOptions {
-  appUrl?: string | null | undefined;
-  useAssetsSnapshottedInBaseSimulation?: boolean | null | undefined;
-  githubSummary?: boolean | null | undefined;
-  parallelize?: boolean | null | undefined;
-  parallelTasks?: number | null | undefined;
+  appUrl: string | undefined;
+  useAssetsSnapshottedInBaseSimulation: boolean;
+  githubSummary?: boolean;
+  parallelize?: boolean;
+  parallelTasks?: number;
   deflake: boolean;
   useCache: boolean;
-  testsFile?: string | null | undefined;
+  testsFile?: string;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -69,8 +68,7 @@ const handler: (options: Options) => Promise<void> = async ({
   testsFile,
   accelerate,
 }) => {
-  const replayExecutionOptions: ReplayExecutionOptions = {
-    appUrl,
+  const executionOptions: ReplayExecutionOptions = {
     headless,
     devTools,
     bypassCSP,
@@ -78,10 +76,11 @@ const handler: (options: Options) => Promise<void> = async ({
     shiftTime,
     networkStubbing,
     accelerate,
+    moveBeforeClick: false, // moveBeforeClick isn't exposed as an option for run-all-tests
   };
-  const testExpectationOptions: TestExpectationOptions = {
+  const expectationOptions: TestExpectationOptions = {
     screenshotDiffs: { diffPixelThreshold, diffThreshold },
-    screenshotSelector: undefined,
+    screenshotSelector: undefined, // this is only specified on a test case level
   };
 
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -121,10 +120,11 @@ const handler: (options: Options) => Promise<void> = async ({
         config,
         client,
         testRun,
-        replayExecutionOptions,
-        testExpectationOptions,
+        executionOptions,
+        expectationOptions,
         apiToken,
         commitSha,
+        appUrl,
         useAssetsSnapshottedInBaseSimulation,
         parallelTasks,
         deflake,
@@ -136,32 +136,18 @@ const handler: (options: Options) => Promise<void> = async ({
     const results: TestCaseResult[] = [...cachedTestRunResults];
     const testsToRun = getTestsToRun({ testCases, cachedTestRunResults });
     for (const testCase of testsToRun) {
-      const simulationIdForAssets = getSimulationIdForAssets(
-        testCase,
-        useAssetsSnapshottedInBaseSimulation
-      );
-      const testCaseWithOverridesApplied = {
-        ...testCase,
-        options: {
-          ...(testCase.options ?? {}),
-          appUrl,
-          simulationIdForAssets,
-        },
-      };
       const result = await deflakeReplayCommandHandler({
-        testCase: testCaseWithOverridesApplied,
-        deflake: deflake || false,
+        replayTarget: getReplayTargetForTestCase({
+          useAssetsSnapshottedInBaseSimulation,
+          appUrl,
+          baseReplayId: testCase.baseReplayId,
+        }),
+        executionOptions,
+        expectationOptions,
+        testCase,
         apiToken,
         commitSha,
-        headless,
-        devTools,
-        bypassCSP,
-        diffThreshold,
-        diffPixelThreshold,
-        padTime,
-        shiftTime,
-        networkStubbing,
-        accelerate,
+        deflake: deflake ?? false,
       });
       results.push(result);
       await putTestRunResults({
@@ -206,7 +192,8 @@ export const runAllTests: CommandModule<unknown, Options> = {
   command: "run-all-tests",
   describe: "Run all replay test cases",
   builder: {
-    ...PRIMARY_COMMON_REPLAY_OPTIONS,
+    apiToken: OPTIONS.apiToken,
+    commitSha: OPTIONS.commitSha,
     appUrl: {
       string: true,
     },
@@ -217,6 +204,7 @@ export const runAllTests: CommandModule<unknown, Options> = {
         " from the base simulation/replay the test is comparing against. The sessions will then be replayed against those local urls." +
         " This is an alternative to specifying an appUrl.",
       conflicts: "appUrl",
+      default: false,
     },
     githubSummary: {
       boolean: true,
@@ -252,7 +240,7 @@ export const runAllTests: CommandModule<unknown, Options> = {
         "The path to the meticulous.json file containing the list of tests you want to run." +
         " If not set a search will be performed to find a meticulous.json file in the current directory or the nearest parent directory.",
     },
-    ...SECONDARY_COMMON_REPLAY_OPTIONS,
+    ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
   },
   handler: wrapHandler(handler),

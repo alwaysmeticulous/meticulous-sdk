@@ -2,6 +2,7 @@ import {
   defer,
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
+  ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import { fork } from "child_process";
@@ -9,16 +10,13 @@ import log from "loglevel";
 import { cpus } from "os";
 import { join } from "path";
 import { putTestRunResults, TestRun } from "../api/test-run.api";
-import {
-  ReplayExecutionOptions,
-  TestExpectationOptions,
-} from "../command-utils/common-types";
+import { TestExpectationOptions } from "../command-utils/common-types";
 import {
   MeticulousCliConfig,
   TestCase,
   TestCaseResult,
 } from "../config/config.types";
-import { getSimulationIdForAssets } from "../utils/config.utils";
+import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
 
@@ -26,12 +24,13 @@ export interface RunAllTestsInParallelOptions {
   config: MeticulousCliConfig;
   client: AxiosInstance;
   testRun: TestRun;
-  replayExecutionOptions: ReplayExecutionOptions;
-  testExpectationOptions: TestExpectationOptions;
-  apiToken: string | null | undefined;
-  commitSha: string | null | undefined;
-  useAssetsSnapshottedInBaseSimulation?: boolean | null | undefined;
-  parallelTasks: number | null | undefined;
+  executionOptions: ReplayExecutionOptions;
+  expectationOptions: TestExpectationOptions;
+  apiToken: string | undefined;
+  commitSha: string;
+  appUrl: string | undefined;
+  useAssetsSnapshottedInBaseSimulation: boolean;
+  parallelTasks: number | undefined;
   deflake: boolean;
   cachedTestRunResults: TestCaseResult[];
 }
@@ -45,9 +44,10 @@ export const runAllTestsInParallel: (
   testRun,
   apiToken,
   commitSha,
+  appUrl,
   useAssetsSnapshottedInBaseSimulation,
-  replayExecutionOptions,
-  testExpectationOptions,
+  executionOptions,
+  expectationOptions,
   parallelTasks,
   deflake,
   cachedTestRunResults,
@@ -101,31 +101,24 @@ export const runAllTestsInParallel: (
     child.on("message", messageHandler);
 
     // Send test case and arguments to child process
-    const simulationIdForAssets = getSimulationIdForAssets(
-      testCase,
-      useAssetsSnapshottedInBaseSimulation
-    );
-    const testCaseWithOverridesApplied = {
-      ...testCase,
-      options: {
-        ...(testCase.options ?? {}),
-        appUrl,
-        simulationIdForAssets,
-      },
-    };
     const initMessage: InitMessage = {
       kind: "init",
       data: {
         logLevel: logger.getLevel(),
         dataDir: getMeticulousLocalDataDir(),
-        runAllOptions: {
+        replayOptions: {
           apiToken,
           commitSha,
-          replayExecution: replayExecutionOptions,
-          testExpectations: testExpectationOptions,
+          testCase,
+          deflake,
+          replayTarget: getReplayTargetForTestCase({
+            useAssetsSnapshottedInBaseSimulation,
+            appUrl,
+            baseReplayId: testCase.baseReplayId,
+          }),
+          executionOptions,
+          expectationOptions,
         },
-        testCaseWithOverridesApplied,
-        deflake,
       },
     };
     child.send(initMessage);

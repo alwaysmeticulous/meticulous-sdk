@@ -1,3 +1,4 @@
+import { ReplayTarget } from "@alwaysmeticulous/common/dist/types/replay.types";
 import { readConfig, saveConfig } from "../config/config";
 import { MeticulousCliConfig, TestCase } from "../config/config.types";
 
@@ -12,17 +13,20 @@ export const addTestCase: (testCase: TestCase) => Promise<void> = async (
   await saveConfig(newConfig);
 };
 
-export const getSimulationIdForAssets = (
-  testCase: TestCase,
-  useAssetsSnapshottedInBaseSimulation: boolean | null | undefined
-): string | undefined => {
-  if (testCase.options?.simulationIdForAssets) {
-    return testCase.options.simulationIdForAssets;
-  }
-
+export const getReplayTargetForTestCase = ({
+  useAssetsSnapshottedInBaseSimulation,
+  appUrl,
+  baseReplayId,
+}: {
+  useAssetsSnapshottedInBaseSimulation: boolean;
+  appUrl: string | undefined;
+  baseReplayId: string;
+}): ReplayTarget => {
   if (useAssetsSnapshottedInBaseSimulation) {
-    return testCase.baseReplayId;
+    return { type: "snapshotted-assets", simulationIdForAssets: baseReplayId };
   }
-
-  return undefined;
+  if (appUrl) {
+    return { type: "url", appUrl };
+  }
+  return { type: "url" };
 };

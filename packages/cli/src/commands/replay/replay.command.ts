@@ -4,7 +4,10 @@ import {
   Replay,
   ReplayEventsFn,
 } from "@alwaysmeticulous/common";
-import { DEFAULT_REPLAY_EXECUTION_OPTIONS } from "@alwaysmeticulous/common/dist/types/replay.types";
+import {
+  ReplayExecutionOptions,
+  ReplayTarget,
+} from "@alwaysmeticulous/common/dist/types/replay.types";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import log from "loglevel";
 import { DateTime } from "luxon";
@@ -21,14 +24,13 @@ import {
 import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
 import {
-  PRIMARY_COMMON_REPLAY_OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
-  SECONDARY_COMMON_REPLAY_OPTIONS,
+  COMMON_REPLAY_OPTIONS,
+  OPTIONS,
 } from "../../command-utils/common-options";
 import {
   CommonReplayOptions,
-  PerReplayOptions,
-  ReplayExecutionOptions,
+  getReplayTarget,
   ScreenshotDiffOptions,
   TestExpectationOptions,
 } from "../../command-utils/common-types";
@@ -51,69 +53,29 @@ import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
 
-/**
- * Replay options that can't be specified directly through the meticulous.json test case options,
- * but are only usable when using the CLI.
- */
-// TODO: Types
-export interface CLIOnlyReplayOptions
+export interface ReplayOptions
   extends CommonReplayOptions,
-    Partial<ScreenshotDiffOptions>,
-    ReplayExecutionOptions {
-  screenshot: boolean;
-  save?: boolean | null | undefined;
-  exitOnMismatch?: boolean | null | undefined;
-  cookiesFile?: string | null | undefined;
-  screenshotSelector?: string | null | undefined;
+    AdditionalReplayOptions {
+  replayTarget: ReplayTarget;
+  executionOptions: ReplayExecutionOptions;
+  expectationOptions: TestExpectationOptions;
+  exitOnMismatch: boolean;
 }
 
-export interface ReplayCommandHandlerOptions extends CLIOnlyReplayOptions {
-  sessionId: string;
-  baseSimulationId?: string | null | undefined;
-  moveBeforeClick?: boolean;
-}
-
-export const replayCommandHandler: (
-  options: ReplayCommandHandlerOptions
-) => Promise<Replay> = async ({
+export const replayCommandHandler = async ({
+  replayTarget,
+  executionOptions,
+  expectationOptions,
   apiToken,
-  commitSha: commitSha_,
   sessionId,
-  appUrl,
-  simulationIdForAssets,
-  headless,
-  devTools,
-  bypassCSP,
-  screenshot,
-  screenshotSelector,
-  baseSimulationId: baseReplayId_,
-  diffThreshold,
-  diffPixelThreshold,
+  commitSha: commitSha_,
   save,
   exitOnMismatch,
-  padTime,
-  shiftTime,
-  networkStubbing,
-  moveBeforeClick,
+  baseSimulationId: baseReplayId_,
+  screenshot,
   cookies,
   cookiesFile,
-  accelerate,
-}) => {
-  const replayExecutionOptions: ReplayExecutionOptions = {
-    appUrl,
-    headless,
-    devTools,
-    bypassCSP,
-    padTime,
-    shiftTime,
-    networkStubbing,
-    accelerate,
-  };
-  const testExpectationOptions: TestExpectationOptions = {
-    screenshotDiffs: { diffPixelThreshold, diffThreshold },
-    screenshotSelector: screenshotSelector ?? undefined,
-  };
-
+}: ReplayOptions): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
@@ -129,9 +91,16 @@ export const replayCommandHandler: (
   const meticulousSha = await getMeticulousVersion();
 
   // 3. If simulationIdForAssets specified then download assets & spin up local server
-  const server = simulationIdForAssets
-    ? await serveAssetsFromSimulation(client, simulationIdForAssets)
-    : undefined;
+  const { appUrl, closeServer } =
+    replayTarget.type === "snapshotted-assets"
+      ? await serveAssetsFromSimulation(
+          client,
+          replayTarget.simulationIdForAssets
+        ).then((server) => ({
+          appUrl: server.url,
+          closeServer: server.closeServer,
+        }))
+      : { appUrl: replayTarget.appUrl, closeServer: undefined };
 
   // 4. Load replay assets
   const browserUserInteractions = await fetchAsset(
@@ -181,18 +150,8 @@ export const replayCommandHandler: (
   // TODO: Wire through
   // Note: this is an API break, need to set new min peer dependency on replayer
   const replayEventsParams: Parameters<typeof replayEvents>[0] = {
-    appUrl: server ? server.url : appUrl || "",
-    replayExecutionOptions: {
-      headless: headless ?? DEFAULT_REPLAY_EXECUTION_OPTIONS.headless,
-      devTools: devTools ?? DEFAULT_REPLAY_EXECUTION_OPTIONS.devTools,
-      bypassCSP: bypassCSP ?? DEFAULT_REPLAY_EXECUTION_OPTIONS.bypassCSP,
-      padTime,
-      shiftTime,
-      networkStubbing,
-      moveBeforeClick:
-        moveBeforeClick || DEFAULT_REPLAY_EXECUTION_OPTIONS.moveBeforeClick,
-      accelerate,
-    },
+    appUrl,
+    replayExecutionOptions: executionOptions,
 
     browser: null,
     outputDir: tempDir,
@@ -229,9 +188,9 @@ export const replayCommandHandler: (
     },
 
     screenshot: screenshot,
-    screenshotSelector: screenshotSelector || "",
-    cookies: cookies || null,
-    cookiesFile: cookiesFile || "",
+    screenshotSelector: expectationOptions.screenshotSelector,
+    cookies: cookies,
+    cookiesFile: cookiesFile,
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -243,7 +202,7 @@ export const replayCommandHandler: (
 
   await replayEvents(replayEventsParams);
 
-  server?.closeServer();
+  closeServer?.();
 
   const endTime = DateTime.utc();
 
@@ -319,8 +278,7 @@ export const replayCommandHandler: (
       headReplayId: replay.id,
       baseScreenshot,
       headScreenshot,
-      threshold: diffThreshold,
-      pixelThreshold: diffPixelThreshold,
+      diffOptions: expectationOptions.screenshotDiffs,
       exitOnMismatch: !!exitOnMismatch,
     });
   }
@@ -345,18 +303,89 @@ export const replayCommandHandler: (
   return replay;
 };
 
-const handler: (options: ReplayCommandHandlerOptions) => Promise<void> = async (
-  options
-) => {
-  await replayCommandHandler({ ...options, exitOnMismatch: true });
+export interface RawReplayCommandHandlerOptions
+  extends CommonReplayOptions,
+    ScreenshotDiffOptions,
+    ReplayExecutionOptions,
+    AdditionalReplayOptions {
+  appUrl: string | undefined;
+  simulationIdForAssets?: string;
+  screenshotSelector: string | undefined;
+}
+
+interface AdditionalReplayOptions {
+  sessionId: string;
+
+  save: boolean | undefined;
+
+  baseSimulationId: string | undefined;
+
+  screenshot: boolean;
+
+  cookies: Record<string, any>[] | undefined;
+  cookiesFile: string | undefined;
+}
+
+export const rawReplayCommandHandler = ({
+  apiToken,
+  commitSha,
+  sessionId,
+  appUrl,
+  simulationIdForAssets,
+  headless,
+  devTools,
+  bypassCSP,
+  screenshot,
+  screenshotSelector,
+  baseSimulationId,
+  diffThreshold,
+  diffPixelThreshold,
+  save,
+  padTime,
+  shiftTime,
+  networkStubbing,
+  moveBeforeClick,
+  cookies,
+  cookiesFile,
+  accelerate,
+}: RawReplayCommandHandlerOptions): Promise<Replay> => {
+  const executionOptions: ReplayExecutionOptions = {
+    headless,
+    devTools,
+    bypassCSP,
+    padTime,
+    shiftTime,
+    networkStubbing,
+    accelerate,
+    moveBeforeClick,
+  };
+  const expectationOptions: TestExpectationOptions = {
+    screenshotDiffs: { diffPixelThreshold, diffThreshold },
+    screenshotSelector: screenshotSelector ?? undefined,
+  };
+  return replayCommandHandler({
+    replayTarget: getReplayTarget({ appUrl, simulationIdForAssets }),
+    executionOptions,
+    expectationOptions,
+    apiToken,
+    commitSha,
+    cookies,
+    cookiesFile,
+    sessionId,
+    screenshot,
+    baseSimulationId,
+    save,
+    exitOnMismatch: true,
+  });
 };
 
-export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
+export const replay: CommandModule<unknown, RawReplayCommandHandlerOptions> = {
   command: "simulate",
   aliases: ["replay"],
   describe: "Simulate (replay) a recorded session",
   builder: {
-    ...PRIMARY_COMMON_REPLAY_OPTIONS,
+    apiToken: OPTIONS.apiToken,
+    commitSha: OPTIONS.commitSha,
     sessionId: {
       string: true,
       demandOption: true,
@@ -396,13 +425,16 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
     moveBeforeClick: {
       boolean: true,
       description: "Simulate mouse movement before clicking",
+      default: false,
     },
     cookiesFile: {
       string: true,
       description: "Path to cookies to inject before simulation",
     },
-    ...SECONDARY_COMMON_REPLAY_OPTIONS,
+    ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
   },
-  handler: wrapHandler(handler),
+  handler: wrapHandler(async (options) => {
+    await rawReplayCommandHandler(options);
+  }),
 };

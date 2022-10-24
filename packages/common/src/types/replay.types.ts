@@ -26,7 +26,7 @@ export interface SnapshottedAssetsReplayTarget {
   /**
    * If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior replay, instead of against a URL.
    */
-  simulationIdForAssets?: string | undefined;
+  simulationIdForAssets: string;
 }
 
 export interface URLReplayTarget {
@@ -35,30 +35,28 @@ export interface URLReplayTarget {
   /**
    * If absent, and no URL provided in test case either, then will use the URL the session was recorded against.
    */
-  appUrl?: string | null | undefined;
+  appUrl?: string;
 }
 
 /**
  * Options that control how a replay is executed.
  */
 export interface ReplayExecutionOptions {
-  headless?: boolean;
-  devTools?: boolean;
-  bypassCSP?: boolean;
-  padTime?: boolean;
-  shiftTime?: boolean;
-  networkStubbing?: boolean;
-  accelerate?: boolean;
-  moveBeforeClick?: boolean;
+  headless: boolean;
+  devTools: boolean;
+  bypassCSP: boolean;
+  padTime: boolean;
+  shiftTime: boolean;
+  networkStubbing: boolean;
+  accelerate: boolean;
+  moveBeforeClick: boolean;
 }
-
-export type ResolvedReplayExecutionOptions = Required<ReplayExecutionOptions>;
 export interface ReplayEventsOptions {
   /**
    * If undefined then will use the URL the session was recorded against.
    */
   appUrl: string | undefined;
-  replayExecutionOptions: ResolvedReplayExecutionOptions;
+  replayExecutionOptions: ReplayExecutionOptions;
 
   browser: any;
   outputDir: string;
@@ -68,10 +66,10 @@ export interface ReplayEventsOptions {
   meticulousSha: string;
   verbose?: boolean;
   dependencies: ReplayEventsDependencies;
-  screenshot?: boolean;
-  screenshotSelector?: string;
-  cookies?: Record<string, any>[];
-  cookiesFile: string;
+  screenshot: boolean;
+  screenshotSelector: string | undefined;
+  cookies: Record<string, any>[] | undefined;
+  cookiesFile: string | undefined;
 }
 
 export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;

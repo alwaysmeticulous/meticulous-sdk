@@ -18,15 +18,15 @@ import { getCommitSha } from "../../utils/commit-sha.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 
 export interface RecordCommandHandlerOptions {
-  apiToken?: string | null | undefined;
-  commitSha?: string | null | undefined;
-  devTools?: boolean | null | undefined;
-  bypassCSP?: boolean | null | undefined;
-  width?: number | null | undefined;
-  height?: number | null | undefined;
-  uploadIntervalMs?: number | null | undefined;
-  incognito?: boolean | null | undefined;
-  trace?: boolean | null | undefined;
+  apiToken: string | undefined;
+  commitSha: string | undefined;
+  devTools: boolean | undefined;
+  bypassCSP: boolean | undefined;
+  width: number | undefined;
+  height: number | undefined;
+  uploadIntervalMs: number | undefined;
+  incognito: boolean | undefined;
+  trace: boolean | undefined;
   onDetectedSession?: (sessionId: string) => void;
 }
 

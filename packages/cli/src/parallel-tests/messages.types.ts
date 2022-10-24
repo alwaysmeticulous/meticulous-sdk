@@ -1,22 +1,13 @@
 import log from "loglevel";
-import {
-  CommonReplayOptions,
-  ReplayExecutionOptions,
-  TestExpectationOptions,
-} from "../command-utils/common-types";
-import { TestCase, TestCaseResult } from "../config/config.types";
+import { TestCaseResult } from "../config/config.types";
+import { DeflakeReplayCommandHandlerOptions } from "../deflake-tests/deflake-tests.handler";
 
 export interface InitMessage {
   kind: "init";
   data: {
     logLevel: log.LogLevel[keyof log.LogLevel];
     dataDir: string;
-    runAllOptions: {
-      replayExecution: ReplayExecutionOptions;
-      testExpectations: TestExpectationOptions;
-    } & CommonReplayOptions;
-    testCase: TestCase;
-    deflake: boolean;
+    replayOptions: DeflakeReplayCommandHandlerOptions;
   };
 }
 

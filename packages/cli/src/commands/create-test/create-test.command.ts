@@ -1,22 +1,26 @@
 import { METICULOUS_LOGGER_NAME, Replay } from "@alwaysmeticulous/common";
-import log from "loglevel";
-import { CommandModule } from "yargs";
 import chalk from "chalk";
 import inquirer from "inquirer";
+import log from "loglevel";
+import { CommandModule } from "yargs";
+import {
+  COMMON_REPLAY_OPTIONS,
+  OPTIONS,
+} from "../../command-utils/common-options";
+import { addTestCase } from "../../utils/config.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import {
   recordCommandHandler,
   RecordCommandHandlerOptions,
 } from "../record/record.command";
 import {
-  replayCommandHandler,
-  ReplayCommandHandlerOptions,
+  rawReplayCommandHandler,
+  RawReplayCommandHandlerOptions,
 } from "../replay/replay.command";
-import { addTestCase } from "../../utils/config.utils";
 
 interface Options
-  extends RecordCommandHandlerOptions,
-    ReplayCommandHandlerOptions {}
+  extends Omit<RecordCommandHandlerOptions, "devTools" | "bypassCSP">,
+    RawReplayCommandHandlerOptions {}
 
 const handleTestCreation: (
   replay: Replay,
@@ -130,7 +134,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
   logger.info("Step 2: validating the new test...");
 
-  const replayOptions: ReplayCommandHandlerOptions = {
+  const replayOptions: RawReplayCommandHandlerOptions = {
     apiToken,
     commitSha,
     sessionId: lastSessionId,
@@ -145,8 +149,16 @@ const handler: (options: Options) => Promise<void> = async ({
     moveBeforeClick,
     cookiesFile,
     accelerate,
+    appUrl: undefined, // we replay against the original recorded URL (TODO: add type: original-recorded-url)
+    save: false, // we handle the saving to meticulous.json ourselves below
+    baseSimulationId: undefined,
+
+    // We haven't yet added command line flags for the below, so we just pass through the defaults
+    cookies: undefined,
+    diffThreshold: OPTIONS.diffThreshold.default,
+    diffPixelThreshold: OPTIONS.diffPixelThreshold.default,
   };
-  const replay = await replayCommandHandler(replayOptions);
+  const replay = await rawReplayCommandHandler(replayOptions);
 
   await handleTestCreation(replay, lastSessionId);
 };
@@ -156,21 +168,8 @@ export const createTest: CommandModule<unknown, Options> = {
   describe: "Create a new test",
   builder: {
     // Common options
-    apiToken: {
-      string: true,
-      demandOption: true,
-    },
-    commitSha: {
-      string: true,
-    },
-    devTools: {
-      boolean: true,
-      description: "Open Chrome Dev Tools",
-    },
-    bypassCSP: {
-      boolean: true,
-      description: "Enables bypass CSP in the browser",
-    },
+    apiToken: OPTIONS.apiToken,
+    commitSha: OPTIONS.commitSha,
     // Record options
     width: {
       number: true,
@@ -192,31 +191,10 @@ export const createTest: CommandModule<unknown, Options> = {
       description: "Enable verbose logging",
     },
     // Replay options
-    headless: {
-      boolean: true,
-      description: "Start browser in headless mode",
-      default: true,
-    },
     screenshotSelector: {
       string: true,
       description:
         "Query selector to screenshot a specific DOM element instead of the whole page",
-    },
-    padTime: {
-      boolean: true,
-      description: "Pad simulation time according to recording duration",
-      default: true,
-    },
-    shiftTime: {
-      boolean: true,
-      description:
-        "Shift time during simulation to be set as the recording time",
-      default: true,
-    },
-    networkStubbing: {
-      boolean: true,
-      description: "Stub network requests during simulation",
-      default: true,
     },
     moveBeforeClick: {
       boolean: true,
@@ -226,11 +204,15 @@ export const createTest: CommandModule<unknown, Options> = {
       string: true,
       description: "Path to cookies to inject before simulation",
     },
+    ...COMMON_REPLAY_OPTIONS,
+    headless: {
+      ...COMMON_REPLAY_OPTIONS.headless,
+      default: true,
+    },
     accelerate: {
-      boolean: true,
+      ...COMMON_REPLAY_OPTIONS.accelerate,
       description:
         "Fast forward through any pauses to replay as fast as possible when replaying for the first time to create the test. Warning: this option is experimental and may be deprecated",
-      default: false,
     },
   },
   handler: wrapHandler(handler),

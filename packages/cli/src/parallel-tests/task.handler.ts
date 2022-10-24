@@ -46,16 +46,11 @@ const main = async () => {
 
   const initMessage = await waitForInitMessage();
 
-  const { logLevel, dataDir, runAllOptions, testCase, deflake } =
-    initMessage.data;
+  const { logLevel, dataDir, replayOptions } = initMessage.data;
   logger.setLevel(logLevel);
   getMeticulousLocalDataDir(dataDir);
 
-  const result = await deflakeReplayCommandHandler({
-    ...runAllOptions,
-    testCase,
-    deflake,
-  });
+  const result = await deflakeReplayCommandHandler(replayOptions);
   const resultMessage: ResultMessage = {
     kind: "result",
     data: {
