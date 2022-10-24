@@ -194,6 +194,8 @@ export const runAllTests: CommandModule<unknown, Options> = {
     commitSha: OPTIONS.commitSha,
     appUrl: {
       string: true,
+      description:
+        "The URL to execute the tests against. If left absent here and in the test cases file, then will use the URL the test was originally recorded against.",
     },
     useAssetsSnapshottedInBaseSimulation: {
       boolean: true,
