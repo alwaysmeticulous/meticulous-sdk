@@ -1,5 +1,6 @@
 import type { LogLevelDesc } from "loglevel";
 import type { Page } from "puppeteer";
+import { ReplayUserInteractionsResult } from "../bundle-to-sdk";
 import { ReplayTimelineEntry } from "./timeline.types";
 
 /** Options for replaying user interaction events */
@@ -15,11 +16,6 @@ export interface ReplayUserInteractionsOptions {
   logLevel: LogLevelDesc;
 }
 
-/** Result of replaying user interactions */
-export type ReplayUserInteractionsResult =
-  | ReplayUserInteractionsResultFull
-  | ReplayUserInteractionsResultShort;
-
 /** Replay function for user interaction events */
 export type ReplayUserInteractionsFn = (
   options: ReplayUserInteractionsOptions
@@ -30,14 +26,3 @@ export type ReplayUserInteractionsFn = (
 export type VirtualTimeOptions = { enabled: false } | { enabled: true };
 
 export type OnReplayTimelineEventFn = (entry: ReplayTimelineEntry) => void;
-
-/** Returned when the recorded session has been fully replayed */
-export interface ReplayUserInteractionsResultFull {
-  length: "full";
-}
-
-/** Returned when the recorded session has been cut short during replay */
-export interface ReplayUserInteractionsResultShort {
-  length: "short";
-  reason: "max events" | "max duration";
-}

@@ -1,11 +1,13 @@
 export { RecordConfig, RecordSettings, RecordState } from "./record";
 export {
-  OnReplayTimelineEventFn,
-  ReplayUserInteractionsFn,
-  ReplayUserInteractionsOptions,
   ReplayUserInteractionsResult,
   ReplayUserInteractionsResultFull,
   ReplayUserInteractionsResultShort,
+} from "./replay/bundle-to-sdk/index";
+export {
+  OnReplayTimelineEventFn,
+  ReplayUserInteractionsFn,
+  ReplayUserInteractionsOptions,
   VirtualTimeOptions,
 } from "./replay/sdk-to-bundle";
 export {
