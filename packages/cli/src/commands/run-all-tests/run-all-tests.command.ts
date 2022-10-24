@@ -12,14 +12,13 @@ import {
   putTestRunResults,
 } from "../../api/test-run.api";
 import {
-  SCREENSHOT_DIFF_OPTIONS,
   COMMON_REPLAY_OPTIONS,
   OPTIONS,
+  SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 import {
-  CommonReplayOptions,
-  ScreenshotDiffOptions,
   ScreenshotAssertionsOptions,
+  ScreenshotDiffOptions,
 } from "../../command-utils/common-types";
 import { readConfig } from "../../config/config";
 import { TestCaseResult } from "../../config/config.types";
@@ -32,10 +31,9 @@ import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 
-interface Options
-  extends CommonReplayOptions,
-    ScreenshotDiffOptions,
-    ReplayExecutionOptions {
+interface Options extends ScreenshotDiffOptions, ReplayExecutionOptions {
+  apiToken: string | undefined;
+  commitSha: string | undefined;
   appUrl: string | undefined;
   useAssetsSnapshottedInBaseSimulation: boolean;
   githubSummary?: boolean;

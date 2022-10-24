@@ -30,7 +30,6 @@ import {
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 import {
-  CommonReplayOptions,
   getReplayTarget,
   ScreenshotDiffOptions,
   ScreenshotAssertionsOptions,
@@ -54,9 +53,7 @@ import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
 
-export interface ReplayOptions
-  extends CommonReplayOptions,
-    AdditionalReplayOptions {
+export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsOptions;
@@ -73,7 +70,6 @@ export const replayCommandHandler = async ({
   save,
   exitOnMismatch,
   baseSimulationId: baseReplayId_,
-  cookies,
   cookiesFile,
 }: ReplayOptions): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -176,7 +172,6 @@ export const replayCommandHandler = async ({
       },
     },
     screenshottingOptions,
-    cookies: cookies,
     cookiesFile: cookiesFile,
   };
   await writeFile(
@@ -320,8 +315,7 @@ const assertNever = (value: never): any => {
 };
 
 export interface RawReplayCommandHandlerOptions
-  extends CommonReplayOptions,
-    ScreenshotDiffOptions,
+  extends ScreenshotDiffOptions,
     ReplayExecutionOptions,
     AdditionalReplayOptions {
   screenshot: boolean;
@@ -331,13 +325,15 @@ export interface RawReplayCommandHandlerOptions
 }
 
 interface AdditionalReplayOptions {
+  apiToken: string | undefined;
+  commitSha: string | undefined;
+
   sessionId: string;
 
   save: boolean | undefined;
 
   baseSimulationId: string | undefined;
 
-  cookies: Record<string, any>[] | undefined;
   cookiesFile: string | undefined;
 }
 
@@ -360,7 +356,6 @@ export const rawReplayCommandHandler = ({
   shiftTime,
   networkStubbing,
   moveBeforeClick,
-  cookies,
   cookiesFile,
   accelerate,
 }: RawReplayCommandHandlerOptions): Promise<Replay> => {
@@ -387,7 +382,6 @@ export const rawReplayCommandHandler = ({
     screenshottingOptions,
     apiToken,
     commitSha,
-    cookies,
     cookiesFile,
     sessionId,
     baseSimulationId,

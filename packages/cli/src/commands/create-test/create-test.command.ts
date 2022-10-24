@@ -154,7 +154,6 @@ const handler: (options: Options) => Promise<void> = async ({
     baseSimulationId: undefined,
 
     // We haven't yet added command line flags for the below, so we just pass through the defaults
-    cookies: undefined,
     diffThreshold: OPTIONS.diffThreshold.default,
     diffPixelThreshold: OPTIONS.diffPixelThreshold.default,
   };

@@ -88,7 +88,6 @@ export interface ReplayEventsOptions {
   verbose?: boolean;
   dependencies: ReplayEventsDependencies;
   screenshottingOptions: ScreenshottingOptions;
-  cookies: Record<string, any>[] | undefined;
   cookiesFile: string | undefined;
 }
 

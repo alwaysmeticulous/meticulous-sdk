@@ -12,15 +12,6 @@ export interface ScreenshotDiffOptions {
 }
 
 /**
- * Replay options that are re-used by all commands that run a replay,
- * including both commands that run all tests and the replay command
- */
-export interface CommonReplayOptions {
-  apiToken: string | undefined;
-  commitSha: string | undefined;
-}
-
-/**
  * Options for taking a screenshot and comparing it against a previous screenshot
  */
 export type ScreenshotAssertionsOptions =

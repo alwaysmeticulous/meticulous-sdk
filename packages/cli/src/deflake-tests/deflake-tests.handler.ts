@@ -41,7 +41,6 @@ const handleReplay: (
     baseSimulationId: testCase.baseReplayId,
     save: false,
     exitOnMismatch: false,
-    cookies: undefined,
     cookiesFile: undefined,
   });
   const result: TestCaseResult = await replayPromise
