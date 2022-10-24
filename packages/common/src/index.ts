@@ -20,3 +20,4 @@ export type {
   ReplayEventsOptions,
 } from "./types/replay.types";
 export type { RecordedSession, SessionData } from "./types/session.types";
+export { BASE_SNIPPETS_URL } from "./constants";
