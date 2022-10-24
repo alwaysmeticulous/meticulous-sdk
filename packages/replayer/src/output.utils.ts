@@ -78,9 +78,8 @@ const writeRawCoverageData: (options: {
   coverageData: CoverageEntry[];
 }) => Promise<void> = async ({ outputDir, coverageData }) => {
   // We already snapshot the assets, so don't need to save the script contents
-  const withoutScriptText = coverageData.map(
-    ({ text: _text, ...rest }) => rest // eslint-disable-line @typescript-eslint/no-unused-vars
-  );
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const withoutScriptText = coverageData.map(({ text, ...rest }) => rest);
   const withoutMeticulousScriptCoverage = withoutScriptText.filter(
     ({ url }) => !isMeticulousSnippetURL(url)
   );
