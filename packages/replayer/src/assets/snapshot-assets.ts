@@ -81,7 +81,7 @@ const snapshotAsset: (
       );
       return;
     }
-    
+
     throw error;
   }
 };
@@ -101,10 +101,10 @@ const withoutQueryParams: (url: string) => string = (url) => {
   return parsed.toString();
 };
 
-const getFilePath: (
-  trimmedUrl: string,
-  contentType: string
-) => string = (trimmedUrl, contentType) => {
+const getFilePath: (trimmedUrl: string, contentType: string) => string = (
+  trimmedUrl,
+  contentType
+) => {
   const hasHTMLContentType = contentType.includes("text/html");
   const extension = extname(trimmedUrl);
   const hasHTMLExtension = extension === "html" || extension === "htm";
