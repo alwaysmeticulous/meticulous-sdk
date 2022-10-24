@@ -50,8 +50,9 @@ export const diffScreenshots: (options: {
   const { diffThreshold, diffPixelThreshold } = diffOptions;
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const pixelmatchOptions: CompareImageOptions["pixelmatchOptions"] | null =
-    diffPixelThreshold ? { threshold: diffPixelThreshold } : null;
+  const pixelmatchOptions: CompareImageOptions["pixelmatchOptions"] = {
+    threshold: diffPixelThreshold,
+  };
 
   try {
     const { mismatchPixels, mismatchFraction, diff } = compareImages({

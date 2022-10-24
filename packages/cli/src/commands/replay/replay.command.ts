@@ -304,12 +304,12 @@ const serveOrGetAppUrl = async (
   if (replayTarget.type === "original-recorded-url") {
     return {};
   }
-  return assertNever(replayTarget);
+  return unknownReplayTargetType(replayTarget);
 };
 
-const assertNever = (value: never): never => {
+const unknownReplayTargetType = (replayTarget: never): never => {
   throw new Error(
-    `Unhandled discriminated union member: ${JSON.stringify(value)}`
+    `Unknown type of replay target: ${JSON.stringify(replayTarget)}`
   );
 };
 
