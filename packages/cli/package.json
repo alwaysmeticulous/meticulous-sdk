@@ -45,9 +45,9 @@
     "@types/lodash": "^4.14.186"
   },
   "peerDependencies": {
-    "@alwaysmeticulous/record": "^1.7.6",
-    "@alwaysmeticulous/replay-debugger": "^1.7.6",
-    "@alwaysmeticulous/replayer": "^1.7.6"
+    "@alwaysmeticulous/record": "^2.2.1",
+    "@alwaysmeticulous/replay-debugger": "^2.2.1",
+    "@alwaysmeticulous/replayer": "^2.2.1"
   },
   "peerDependenciesMeta": {
     "@alwaysmeticulous/record": {

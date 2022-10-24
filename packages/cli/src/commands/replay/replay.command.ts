@@ -8,7 +8,6 @@ import {
   ReplayExecutionOptions,
   ReplayTarget,
 } from "@alwaysmeticulous/common/dist/types/replay.types";
-import { throws } from "assert";
 import { AxiosInstance } from "axios";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import log from "loglevel";
@@ -26,9 +25,9 @@ import {
 import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
 import {
-  SCREENSHOT_DIFF_OPTIONS,
   COMMON_REPLAY_OPTIONS,
   OPTIONS,
+  SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 import {
   CommonReplayOptions,
