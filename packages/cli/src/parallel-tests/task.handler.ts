@@ -1,5 +1,5 @@
 import {
-  getMeticulousLocalDataDir,
+  setMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
@@ -49,7 +49,7 @@ const main = async () => {
   const { logLevel, dataDir, runAllOptions, testCase, deflake } =
     initMessage.data;
   logger.setLevel(logLevel);
-  getMeticulousLocalDataDir(dataDir);
+  setMeticulousLocalDataDir(dataDir);
 
   const {
     apiToken,
