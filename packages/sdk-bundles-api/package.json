@@ -17,6 +17,10 @@
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
+  "devDependencies": {
+    "loglevel": "^1.8.0",
+    "puppeteer": "^14.4.1"
+  },
   "author": {
     "name": "The Meticulous Team",
     "email": "eng@meticulous.ai",

@@ -3,19 +3,19 @@ import {
   ReplayEventsDependencies,
   SessionData,
 } from "@alwaysmeticulous/common";
+import { OnReplayTimelineEventFn } from "@alwaysmeticulous/sdk-bundles-api";
 import { readFile } from "fs/promises";
 import log from "loglevel";
 import { DateTime, Duration } from "luxon";
 import { BrowserContext, Page, Viewport } from "puppeteer";
+import { AssetSnapshot } from "./assets/assets.types";
 import { isRequestForAsset } from "./assets/snapshot-assets";
 import {
   ConsoleMessage,
-  OnReplayTimelineEventFn,
   PageError,
   PlaybackEvent,
   ReplayData,
 } from "./replay.types";
-import { AssetSnapshot } from "./assets/assets.types";
 
 export const getStartingViewport: (sessionData: SessionData) => Viewport = (
   sessionData
