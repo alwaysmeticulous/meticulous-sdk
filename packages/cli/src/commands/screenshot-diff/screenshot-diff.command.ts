@@ -5,7 +5,7 @@ import { PNG } from "pngjs";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getDiffUrl, postScreenshotDiffStats } from "../../api/replay.api";
-import { CompareImageOptions, compareImages } from "../../image/diff.utils";
+import { compareImages } from "../../image/diff.utils";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
@@ -52,14 +52,12 @@ export const diffScreenshots: (options: {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const threshold = threshold_ || DEFAULT_MISMATCH_THRESHOLD;
-  const pixelmatchOptions: CompareImageOptions["pixelmatchOptions"] | null =
-    pixelThreshold ? { threshold: pixelThreshold } : null;
 
   try {
     const { mismatchPixels, mismatchFraction, diff } = compareImages({
       base: baseScreenshot,
       head: headScreenshot,
-      ...(pixelmatchOptions ? pixelmatchOptions : {}),
+      pixelThreshold: pixelThreshold ?? null,
     });
 
     logger.debug({ mismatchPixels, mismatchFraction });
