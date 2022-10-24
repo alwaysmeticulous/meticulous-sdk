@@ -17,6 +17,9 @@ import { fetchAsset } from "../../local-data/replay-assets";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 
+// Note: We use `| undefined` instead of `?` here, despite yargs passing through absent keys for
+// unspecified options. We do this because recordCommandHandler is re-used by create-test
+// and we want to enforce that create-test passes through the full set of options, and does not forget any.
 export interface RecordCommandHandlerOptions {
   apiToken: string | undefined;
   commitSha: string | undefined;

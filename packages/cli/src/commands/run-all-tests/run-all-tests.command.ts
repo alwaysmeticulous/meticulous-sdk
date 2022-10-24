@@ -32,9 +32,9 @@ import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 
 interface Options extends ScreenshotDiffOptions, ReplayExecutionOptions {
-  apiToken: string | undefined;
-  commitSha: string | undefined;
-  appUrl: string | undefined;
+  apiToken?: string;
+  commitSha?: string;
+  appUrl?: string;
   useAssetsSnapshottedInBaseSimulation: boolean;
   githubSummary?: boolean;
   parallelize?: boolean;

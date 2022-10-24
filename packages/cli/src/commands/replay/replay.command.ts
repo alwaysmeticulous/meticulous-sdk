@@ -314,26 +314,26 @@ const assertNever = (value: never): any => {
   );
 };
 
+// Note: We use `| undefined` instead of `?` here, despite yargs passing through absent keys for
+// unspecified options. We do this because rawReplayCommandHandler and replayCommandHandler,
+// which use these typings, are re-used by create-test and other methods and we want to enforce
+// that these methods pass through the full set of options, and do not forget any.
 export interface RawReplayCommandHandlerOptions
   extends ScreenshotDiffOptions,
     ReplayExecutionOptions,
     AdditionalReplayOptions {
   screenshot: boolean;
   appUrl: string | undefined;
-  simulationIdForAssets?: string;
+  simulationIdForAssets: string | undefined;
   screenshotSelector: string | undefined;
 }
 
 interface AdditionalReplayOptions {
   apiToken: string | undefined;
   commitSha: string | undefined;
-
   sessionId: string;
-
   save: boolean | undefined;
-
   baseSimulationId: string | undefined;
-
   cookiesFile: string | undefined;
 }
 

@@ -149,11 +149,15 @@ const handler: (options: Options) => Promise<void> = async ({
     moveBeforeClick,
     cookiesFile,
     accelerate,
-    appUrl: undefined, // we replay against the original recorded URL (TODO: add type: original-recorded-url)
-    save: false, // we handle the saving to meticulous.json ourselves below
-    baseSimulationId: undefined,
 
-    // We haven't yet added command line flags for the below, so we just pass through the defaults
+    save: false, // we handle the saving to meticulous.json ourselves below
+
+    // We replay against the original recorded URL
+    appUrl: undefined,
+    simulationIdForAssets: undefined,
+
+    // We don't try comparing to the original screenshot, so just set these to their defaults
+    baseSimulationId: undefined,
     diffThreshold: OPTIONS.diffThreshold.default,
     diffPixelThreshold: OPTIONS.diffPixelThreshold.default,
   };
