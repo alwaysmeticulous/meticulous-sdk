@@ -193,32 +193,6 @@ export const diffScreenshots: (options: {
         }
       );
     }
-
-    const totalMismatchedFraction = totalMismatchPixels / totalComparedPixels;
-    const overallMismatchOutcome: ComparisonOutcome =
-      totalMismatchedFraction > threshold ? "fail" : "pass";
-
-    logComparisonResultMessage(
-      logger,
-      "Mismatch across all screenshots",
-      overallMismatchOutcome
-    );
-
-    if (overallMismatchOutcome === "fail") {
-      if (exitOnMismatch) {
-        process.exit(1);
-      }
-
-      throw new DiffError(
-        `Total mismatch across screenshots above is ${threshold}!`,
-        {
-          baseReplayId,
-          headReplayId,
-          threshold,
-          value: totalMismatchedFraction,
-        }
-      );
-    }
   } catch (error) {
     if (!(error instanceof DiffError)) {
       logger.error(error);
