@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/sdk-bundles-api",
-  "version": "2.3.1",
+  "version": "2.3.2-alpha.0",
   "description": "Meticulous common types",
   "license": "ISC",
   "main": "dist/index.js",
@@ -20,6 +20,14 @@
   "peerDependencies": {
     "loglevel": "^1.8.0",
     "puppeteer": "^14.4.1"
+  },
+  "peerDependenciesMeta": {
+    "loglevel": {
+      "optional": true
+    },
+    "puppeteer": {
+      "optional": true
+    }
   },
   "author": {
     "name": "The Meticulous Team",
