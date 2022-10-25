@@ -64,7 +64,7 @@ export const diffScreenshots: (options: {
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const threshold = threshold_ || DEFAULT_MISMATCH_THRESHOLD;
+  const threshold = threshold_ ?? DEFAULT_MISMATCH_THRESHOLD;
 
   const baseReplayScreenshots = await getScreenshotFiles(baseScreenshotsDir);
   const headReplayScreenshots = await getScreenshotFiles(headScreenshotsDir);
