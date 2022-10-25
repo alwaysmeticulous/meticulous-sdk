@@ -21,6 +21,14 @@
     "loglevel": "^1.8.0",
     "puppeteer": "^14.4.1"
   },
+  "peerDependenciesMeta": {
+    "loglevel": {
+      "optional": true
+    },
+    "puppeteer": {
+      "optional": true
+    }
+  },
   "author": {
     "name": "The Meticulous Team",
     "email": "eng@meticulous.ai",
