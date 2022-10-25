@@ -242,7 +242,7 @@ const logComparisonResultMessage: (
   message: string,
   outcome: ComparisonOutcome
 ) => void = (logger, message, outcome) => {
-  logger.info(`${message} => ${outcome === "fail" ? "FAIL!" : "PASS"}`);
+  logger.info(`${message} => ${outcome === "pass" ? "PASS" : "FAIL!"}`);
 };
 
 interface Options {
