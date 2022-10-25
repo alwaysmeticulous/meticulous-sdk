@@ -1,4 +1,7 @@
-import { ReplayTimelineData, ReplayTimelineEntry } from "./timeline.types";
+import {
+  ReplayTimelineData,
+  ReplayTimelineEntry,
+} from "@alwaysmeticulous/sdk-bundles-api";
 
 export class ReplayTimelineCollector {
   private readonly entries: ReplayTimelineEntry[];

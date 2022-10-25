@@ -3,12 +3,16 @@ import {
   ReplayEventsFn,
   SessionData,
 } from "@alwaysmeticulous/common";
-import { VirtualTimeOptions } from "@alwaysmeticulous/sdk-bundles-api";
+import {
+  OnReplayTimelineEventFn,
+  ReplayTimelineEntry,
+  VirtualTimeOptions,
+} from "@alwaysmeticulous/sdk-bundles-api";
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
 import puppeteer, { Browser, Page } from "puppeteer";
 import { prepareScreenshotsDir, writeOutput } from "./output.utils";
-import { OnReplayTimelineEventFn, ReplayMetadata } from "./replay.types";
+import { ReplayMetadata } from "./replay.types";
 import {
   createReplayPage,
   getRrwebRecordingDuration,
@@ -18,7 +22,6 @@ import {
 } from "./replay.utils";
 import { takeScreenshot } from "./screenshot.utils";
 import { ReplayTimelineCollector } from "./timeline/collector";
-import { ReplayTimelineEntry } from "./timeline/timeline.types";
 
 export const replayEvents: ReplayEventsFn = async (options) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
