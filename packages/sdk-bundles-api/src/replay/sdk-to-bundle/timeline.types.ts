@@ -2,9 +2,7 @@ export interface ReplayTimelineEntry {
   kind: string;
   start: number;
   end: number;
-  data: {
-    [key: string]: any;
-  };
+  data: unknown;
 }
 
 export type ReplayTimelineData = ReplayTimelineEntry[];

@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/sdk-bundles-api",
-  "version": "2.3.1",
+  "version": "2.3.3",
   "description": "Meticulous common types",
   "license": "ISC",
   "main": "dist/index.js",
@@ -16,6 +16,18 @@
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
+  },
+  "peerDependencies": {
+    "loglevel": "^1.8.0",
+    "puppeteer": "^14.4.1"
+  },
+  "peerDependenciesMeta": {
+    "loglevel": {
+      "optional": true
+    },
+    "puppeteer": {
+      "optional": true
+    }
   },
   "author": {
     "name": "The Meticulous Team",

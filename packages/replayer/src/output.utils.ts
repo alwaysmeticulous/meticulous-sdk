@@ -2,7 +2,7 @@ import { BASE_SNIPPETS_URL, SessionData } from "@alwaysmeticulous/common";
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { ReplayData, ReplayMetadata } from "./replay.types";
-import { ReplayTimelineData } from "./timeline/timeline.types";
+import { ReplayTimelineData } from "@alwaysmeticulous/sdk-bundles-api";
 import { CoverageEntry } from "puppeteer";
 import { AssetSnapshotsData } from "./assets/assets.types";
 import { snapshotAssets } from "./assets/snapshot-assets";

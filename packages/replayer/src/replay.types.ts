@@ -1,6 +1,5 @@
 import { RecordedSession } from "@alwaysmeticulous/common";
 import { ConsoleMessageLocation, ConsoleMessageType } from "puppeteer";
-import { ReplayTimelineEntry } from "./timeline/timeline.types";
 import { AssetSnapshotsData } from "./assets/assets.types";
 
 export interface ReplayMetadata {
@@ -34,5 +33,3 @@ export interface ReplayData {
     pageErrors: PageError[];
   };
 }
-
-export type OnReplayTimelineEventFn = (entry: ReplayTimelineEntry) => void;
