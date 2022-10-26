@@ -139,7 +139,7 @@ const handler: (options: Options) => Promise<void> = async ({
         replayTarget: getReplayTargetForTestCase({
           useAssetsSnapshottedInBaseSimulation,
           appUrl,
-          baseReplayId: testCase.baseReplayId,
+          testCase,
         }),
         executionOptions,
         screenshottingOptions,

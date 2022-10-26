@@ -114,7 +114,7 @@ export const runAllTestsInParallel: (
           replayTarget: getReplayTargetForTestCase({
             useAssetsSnapshottedInBaseSimulation,
             appUrl,
-            baseReplayId: testCase.baseReplayId,
+            testCase,
           }),
           executionOptions,
           screenshottingOptions,

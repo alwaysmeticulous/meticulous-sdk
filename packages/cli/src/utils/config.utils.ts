@@ -16,14 +16,23 @@ export const addTestCase: (testCase: TestCase) => Promise<void> = async (
 export const getReplayTargetForTestCase = ({
   useAssetsSnapshottedInBaseSimulation,
   appUrl,
-  baseReplayId,
+  testCase,
 }: {
   useAssetsSnapshottedInBaseSimulation: boolean;
   appUrl: string | undefined;
-  baseReplayId: string;
+  testCase: TestCase;
 }): ReplayTarget => {
+  if (testCase.options?.simulationIdForAssets != null) {
+    return {
+      type: "snapshotted-assets",
+      simulationIdForAssets: testCase.options?.simulationIdForAssets,
+    };
+  }
   if (useAssetsSnapshottedInBaseSimulation) {
-    return { type: "snapshotted-assets", simulationIdForAssets: baseReplayId };
+    return {
+      type: "snapshotted-assets",
+      simulationIdForAssets: testCase.baseReplayId,
+    };
   }
   if (appUrl) {
     return { type: "url", appUrl };

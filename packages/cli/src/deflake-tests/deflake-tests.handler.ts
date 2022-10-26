@@ -106,7 +106,7 @@ export const deflakeReplayCommandHandler: (
 const applyTestCaseExecutionOptionOverrides = (
   executionOptionsFromCliFlags: ReplayExecutionOptions,
   overridesFromTestCase: TestCaseReplayOptions
-) => {
+): ReplayExecutionOptions => {
   // Options specified in the test case override those passed as CLI flags
   // (CLI flags set the defaults)
   return {
@@ -114,9 +114,6 @@ const applyTestCaseExecutionOptionOverrides = (
     moveBeforeClick:
       overridesFromTestCase.moveBeforeClick ??
       executionOptionsFromCliFlags.moveBeforeClick,
-    simulationIdForAssets:
-      overridesFromTestCase.simulationIdForAssets ??
-      executionOptionsFromCliFlags.simulationIdForAssets,
   };
 };
 
@@ -126,14 +123,14 @@ const applyTestCaseScreenshottingOptionsOverrides = (
 ): ScreenshotAssertionsEnabledOptions => {
   // Options specified in the test case override those passed as CLI flags
   // (CLI flags set the defaults)
-  const diffOptions: ScreenshotDiffOptions = defaults(
-    {},
-    {
-      diffThreshold: overridesFromTestCase.diffThreshold,
-      diffPixelThreshold: overridesFromTestCase.diffPixelThreshold,
-    },
-    screenshottingOptionsFromCliFlags.diffOptions
-  );
+  const diffOptions: ScreenshotDiffOptions = {
+    diffThreshold:
+      overridesFromTestCase.diffThreshold ??
+      screenshottingOptionsFromCliFlags.diffOptions.diffThreshold,
+    diffPixelThreshold:
+      overridesFromTestCase.diffPixelThreshold ??
+      screenshottingOptionsFromCliFlags.diffOptions.diffPixelThreshold,
+  };
   return {
     enabled: true,
     screenshotSelector:
