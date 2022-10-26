@@ -1,21 +1,21 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import log, { Logger } from "loglevel";
+import { basename, join } from "path";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getDiffUrl, postScreenshotDiffStats } from "../../api/replay.api";
 import { CompareImageResult, compareImages } from "../../image/diff.utils";
+import { readPng } from "../../image/io.utils";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
   getReplayDir,
   getScreenshotFiles,
-  getScreenshotsDir,
+  getScreenshotsDir
 } from "../../local-data/replays";
 import { writeScreenshotDiff } from "../../local-data/screenshot-diffs";
 import { wrapHandler } from "../../utils/sentry.utils";
-import { readPng } from "../../image/io.utils";
-import { basename, join } from "path";
 
 const DEFAULT_MISMATCH_THRESHOLD = 0.01;
 
