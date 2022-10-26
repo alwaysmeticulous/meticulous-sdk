@@ -22,8 +22,11 @@ import {
 } from "./replay.utils";
 import { takeScreenshot } from "./screenshot.utils";
 import { ReplayTimelineCollector } from "./timeline/collector";
+import { logAllSpans, startSpan } from "./timing";
 
 export const replayEvents: ReplayEventsFn = async (options) => {
+  const replayEventsSpan = startSpan("replayEvents (inside overall span)");
+
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const logLevel: LogLevelDesc = logger.getLevel();
 
@@ -62,6 +65,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const defaultViewport = getStartingViewport(sessionData);
   const windowWidth = defaultViewport.width + 20;
   const windowHeight = defaultViewport.height + 200;
+  const puppeteerLaunchSpan = startSpan("puppeteerLaunch");
   const browser: Browser =
     browser_ ||
     (await puppeteer.launch({
@@ -75,19 +79,25 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       headless: headless || false,
       devtools: devTools || false,
     }));
+  puppeteerLaunchSpan.finish();
 
+  const createIncognitoBrowserContextSpan = startSpan(
+    "createIncognitoBrowserContext"
+  );
   const context = await browser.createIncognitoBrowserContext();
   (await browser.defaultBrowserContext().pages()).forEach((page) =>
     page.close().catch((error) => {
       logger.error(error);
     })
   );
+  createIncognitoBrowserContextSpan.finish();
 
   const timelineCollector = new ReplayTimelineCollector();
   const onTimelineEvent: OnReplayTimelineEventFn = (
     entry: ReplayTimelineEntry
   ) => timelineCollector.addEntry(entry);
 
+  const createReplayPageSpan = startSpan("createReplayPage");
   const page = await createReplayPage({
     context,
     defaultViewport,
@@ -96,17 +106,26 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     dependencies,
     onTimelineEvent,
   });
+  createReplayPageSpan.finish();
 
   // Calculate start URL based on the one that the session originated on/from.
+  const getStartURLSpan = startSpan("initializeReplayData");
   const startUrl = getStartUrl({ session, sessionData, appUrl });
+  getStartURLSpan.finish();
 
+  const initializeReplayDataSpan = startSpan("initializeReplayData");
   const replayData = await initializeReplayData({ page, startUrl });
+  initializeReplayDataSpan.finish();
 
   // Set-up network stubbing if required
   if (networkStubbing) {
+    const loadNetworkStubbingModuleSpan = startSpan(
+      "loadNetworkStubbingModule"
+    );
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const networkStubbingModule = require(dependencies.nodeNetworkStubbing
       .location);
+    loadNetworkStubbingModuleSpan.finish();
     const setupReplayNetworkStubbing =
       networkStubbingModule.setupReplayNetworkStubbing as (options: {
         page: Page;
@@ -124,26 +143,35 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     });
   }
 
+  const loadBrowserContextModuleSpan = startSpan("loadBrowserContextModule");
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const browserContextModule = require(dependencies.nodeBrowserContext
     .location);
+  loadBrowserContextModuleSpan.finish();
+
   const setupBrowserContextSeeding =
     browserContextModule.setupBrowserContextSeeding as (options: {
       page: Page;
       sessionData: SessionData;
       startUrl: string;
     }) => Promise<void>;
+  const setupBrowserContextSeedingSpan = startSpan(
+    "setupBrowserContextSeeding"
+  );
   await setupBrowserContextSeeding({
     page,
     sessionData,
     startUrl,
   });
+  setupBrowserContextSeedingSpan.finish();
 
   // Navigate to the start URL.
   logger.debug(`Navigating to ${startUrl}`);
+  const gotoStartUrlSpan = startSpan("gotoStartUrlAndWaitForDOMContentLoaded");
   const res = await page.goto(startUrl, {
     waitUntil: "domcontentloaded",
   });
+  gotoStartUrlSpan.finish();
   const status = res && res.status();
 
   if (status !== 200) {
@@ -156,9 +184,13 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   // Start simulating user interaction events
   logger.info("Starting simulation...");
 
+  const loadUserInteractionsModuleSpan = startSpan(
+    "loadUserInteractionsModule"
+  );
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const userInteractionsModule = require(dependencies.nodeUserInteractions
     .location);
+  loadUserInteractionsModuleSpan.finish();
   const replayUserInteractions =
     userInteractionsModule.replayUserInteractions as (options: {
       page: Page;
@@ -171,6 +203,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     }) => Promise<void>;
   const startTime = DateTime.utc();
   const screenshotsDir = await prepareScreenshotsDir(outputDir);
+  const replayUserInteractionsCall = startSpan("replayUserInteractions");
   await replayUserInteractions({
     page,
     logLevel,
@@ -180,6 +213,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     onTimelineEvent,
     screenshotsDir,
   });
+  replayUserInteractionsCall.finish();
 
   // Pad replay time according to session duration recorded with rrweb
   if (padTime && !accelerate) {
@@ -204,7 +238,9 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   }
 
   logger.debug("Collecting coverage data...");
+  const collectCoverageSpan = startSpan("collectCoverage");
   const coverageData = await page.coverage.stopJSCoverage();
+  collectCoverageSpan.finish();
   logger.debug("Collected coverage data");
 
   logger.info("Simulation done!");
@@ -219,6 +255,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   logger.debug("Writing output");
   logger.debug(`Output dir: ${outputDir}`);
+  const writeOutputSpan = startSpan("writeOutput");
   await writeOutput({
     outputDir,
     metadata,
@@ -227,7 +264,13 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     coverageData,
     timelineData: timelineCollector.getEntries(),
   });
+  writeOutputSpan.finish();
 
   logger.debug("Closing browser");
   await browser.close();
+
+  logAllSpans();
+  replayEventsSpan.finish();
+  logAllSpans();
+  logger.info("Updated");
 };
