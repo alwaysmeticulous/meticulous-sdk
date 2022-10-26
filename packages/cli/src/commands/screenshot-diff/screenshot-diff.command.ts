@@ -73,7 +73,7 @@ export const diffScreenshots: (options: {
   // We report any missing base replay screenshots for visibility but don't count it as a difference.
   const missingHeadImages = new Set(
     [...baseReplayScreenshots].filter(
-      (file_) => !headReplayScreenshots.includes(file_)
+      (file) => !headReplayScreenshots.includes(file)
     )
   );
 
