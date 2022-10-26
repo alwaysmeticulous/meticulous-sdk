@@ -426,11 +426,11 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
     },
     maxDurationMs: {
       number: true,
-      description: "Max duration",
+      description: "Maximum duration (in milliseconds) the simulation will run",
     },
     maxEventCount: {
       number: true,
-      description: "Max event count",
+      description: "Maximum number of events the simulation will run",
     },
   },
   handler: wrapHandler(handler),
