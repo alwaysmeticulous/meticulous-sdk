@@ -1,15 +1,18 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
-import log from "loglevel";
-import { PNG } from "pngjs";
+import log, { Logger } from "loglevel";
+import { basename, join } from "path";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getDiffUrl, postScreenshotDiffStats } from "../../api/replay.api";
-import { CompareImageOptions, compareImages } from "../../image/diff.utils";
+import { CompareImageResult, compareImages } from "../../image/diff.utils";
+import { readPng } from "../../image/io.utils";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
-  readReplayScreenshot,
+  getReplayDir,
+  getScreenshotFiles,
+  getScreenshotsDir
 } from "../../local-data/replays";
 import { writeScreenshotDiff } from "../../local-data/screenshot-diffs";
 import { wrapHandler } from "../../utils/sentry.utils";
@@ -23,79 +26,172 @@ export class DiffError extends Error {
       baseReplayId: string;
       headReplayId: string;
       threshold: number;
-      value: number;
+      value?: number;
     }
   ) {
     super(message);
   }
 }
 
+type ComparisonOutcome = "pass" | "fail";
+
+export interface ScreenshotDiffResult {
+  baseScreenshotFile: string;
+  headScreenshotFile: string;
+
+  outcome: ComparisonOutcome;
+  comparisonResult: CompareImageResult;
+}
+
 export const diffScreenshots: (options: {
   client: AxiosInstance;
   baseReplayId: string;
   headReplayId: string;
-  baseScreenshot: PNG;
-  headScreenshot: PNG;
+  baseScreenshotsDir: string;
+  headScreenshotsDir: string;
   threshold: number | null | undefined;
   pixelThreshold: number | null | undefined;
   exitOnMismatch: boolean;
-}) => Promise<void> = async ({
+}) => Promise<ScreenshotDiffResult[]> = async ({
   client,
   baseReplayId,
   headReplayId,
-  baseScreenshot,
-  headScreenshot,
+  baseScreenshotsDir,
+  headScreenshotsDir,
   threshold: threshold_,
   pixelThreshold,
   exitOnMismatch,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const threshold = threshold_ || DEFAULT_MISMATCH_THRESHOLD;
-  const pixelmatchOptions: CompareImageOptions["pixelmatchOptions"] | null =
-    pixelThreshold ? { threshold: pixelThreshold } : null;
+  const threshold = threshold_ ?? DEFAULT_MISMATCH_THRESHOLD;
+
+  const baseReplayScreenshots = await getScreenshotFiles(baseScreenshotsDir);
+  const headReplayScreenshots = await getScreenshotFiles(headScreenshotsDir);
+
+  // Assume base replay screenshots are always a subset of the head replay screenshots.
+  // We report any missing base replay screenshots for visibility but don't count it as a difference.
+  const missingHeadImages = new Set(
+    [...baseReplayScreenshots].filter(
+      (file) => !headReplayScreenshots.includes(file)
+    )
+  );
+
+  let totalMismatchPixels = 0;
+  let totalComparedPixels = 0;
+
+  const comparisonResults: ScreenshotDiffResult[] = [];
 
   try {
-    const { mismatchPixels, mismatchFraction, diff } = compareImages({
-      base: baseScreenshot,
-      head: headScreenshot,
-      ...(pixelmatchOptions ? pixelmatchOptions : {}),
-    });
+    if (missingHeadImages.size > 0) {
+      logComparisonResultMessage(
+        logger,
+        `Head replay is missing screenshots: ${[...missingHeadImages].sort()}`,
+        "fail"
+      );
+      throw new DiffError(
+        `Head replay is missing screenshots: ${[...missingHeadImages].sort()}`,
+        {
+          baseReplayId,
+          headReplayId,
+          threshold,
+        }
+      );
+    }
 
-    logger.debug({ mismatchPixels, mismatchFraction });
-    logger.info(
-      `${Math.round(
-        mismatchFraction * 100
-      )}% pixel mismatch (threshold is ${Math.round(threshold * 100)}%) => ${
-        mismatchFraction > threshold ? "FAIL!" : "PASS"
-      }`
-    );
+    for (const screenshotFileName of headReplayScreenshots) {
+      if (!baseReplayScreenshots.includes(screenshotFileName)) {
+        logger.info(
+          `Screenshot ${screenshotFileName} not present in base replay`
+        );
+        continue;
+      }
 
-    await writeScreenshotDiff({ baseReplayId, headReplayId, diff });
-    const diffUrl = await getDiffUrl(client, baseReplayId, headReplayId);
-    logger.info(`View screenshot diff at ${diffUrl}`);
+      const baseScreenshotFile = join(baseScreenshotsDir, screenshotFileName);
+      const headScreenshotFile = join(headScreenshotsDir, screenshotFileName);
+      const baseScreenshot = await readPng(baseScreenshotFile);
+      const headScreenshot = await readPng(headScreenshotFile);
+
+      const comparisonResult = compareImages({
+        base: baseScreenshot,
+        head: headScreenshot,
+        pixelThreshold: pixelThreshold ?? null,
+      });
+
+      totalMismatchPixels += comparisonResult.mismatchPixels;
+      totalComparedPixels += baseScreenshot.width * baseScreenshot.height;
+
+      logger.debug({
+        screenshotFileName,
+        mismatchPixels: comparisonResult.mismatchPixels,
+        mismatchFraction: comparisonResult.mismatchFraction,
+      });
+
+      await writeScreenshotDiff({
+        baseReplayId,
+        headReplayId,
+        screenshotFileName,
+        diff: comparisonResult.diff,
+      });
+
+      comparisonResults.push({
+        baseScreenshotFile,
+        headScreenshotFile,
+        comparisonResult,
+        outcome:
+          comparisonResult.mismatchFraction > threshold ? "fail" : "pass",
+      });
+    }
 
     await postScreenshotDiffStats(client, {
       baseReplayId,
       headReplayId,
       stats: {
-        width: baseScreenshot.width,
-        height: baseScreenshot.height,
-        mismatchPixels,
+        width: 0,
+        height: 0,
+        mismatchPixels: totalMismatchPixels,
       },
     });
 
-    if (mismatchFraction > threshold) {
-      logger.info("Screenshots do not match!");
+    const diffUrl = await getDiffUrl(client, baseReplayId, headReplayId);
+    logger.info(`View screenshot diff at ${diffUrl}`);
+
+    comparisonResults.forEach((result) => {
+      logComparisonResultMessage(
+        logger,
+        `${Math.round(
+          result.comparisonResult.mismatchFraction * 100
+        )}% pixel mismatch for screenshot ${basename(
+          result.headScreenshotFile
+        )} (threshold is ${Math.round(threshold * 100)}%)`,
+        result.outcome
+      );
+    });
+
+    // Check if individual screenshot mismatch is higher than the threshold.
+    const mismatchingScreenshots = comparisonResults.filter(
+      (result) => result.outcome == "fail"
+    );
+
+    if (mismatchingScreenshots.length) {
+      logger.info(
+        `Screenshots ${mismatchingScreenshots
+          .map((result) => basename(result.headScreenshotFile))
+          .sort()} do not match!`
+      );
       if (exitOnMismatch) {
         process.exit(1);
       }
-      throw new DiffError("Screenshots do not match!", {
-        baseReplayId,
-        headReplayId,
-        threshold,
-        value: mismatchFraction,
-      });
+      throw new DiffError(
+        `Screenshots ${mismatchingScreenshots.map((result) =>
+          basename(result.headScreenshotFile)
+        )} do not match!`,
+        {
+          baseReplayId,
+          headReplayId,
+          threshold,
+        }
+      );
     }
   } catch (error) {
     if (!(error instanceof DiffError)) {
@@ -111,6 +207,16 @@ export const diffScreenshots: (options: {
       value: 1,
     });
   }
+
+  return comparisonResults;
+};
+
+const logComparisonResultMessage: (
+  logger: Logger,
+  message: string,
+  outcome: ComparisonOutcome
+) => void = (logger, message, outcome) => {
+  logger.info(`${message} => ${outcome === "pass" ? "PASS" : "FAIL!"}`);
 };
 
 interface Options {
@@ -135,15 +241,15 @@ const handler: (options: Options) => Promise<void> = async ({
   await getOrFetchReplay(client, headReplayId);
   await getOrFetchReplayArchive(client, headReplayId);
 
-  const baseScreenshot = await readReplayScreenshot(baseReplayId);
-  const headScreenshot = await readReplayScreenshot(headReplayId);
+  const baseScreenshotsDir = getScreenshotsDir(getReplayDir(baseReplayId));
+  const headScreenshotsDir = getScreenshotsDir(getReplayDir(headReplayId));
 
   await diffScreenshots({
     client,
     baseReplayId,
     headReplayId,
-    baseScreenshot,
-    headScreenshot,
+    baseScreenshotsDir,
+    headScreenshotsDir,
     threshold,
     pixelThreshold,
     exitOnMismatch: true,

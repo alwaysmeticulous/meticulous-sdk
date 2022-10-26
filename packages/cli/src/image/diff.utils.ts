@@ -1,12 +1,10 @@
-import pixelmatch from "pixelmatch";
+import pixelmatch, { PixelmatchOptions } from "pixelmatch";
 import { PNG } from "pngjs";
 
 export interface CompareImageOptions {
   base: PNG;
   head: PNG;
-  pixelmatchOptions?: {
-    threshold: number;
-  };
+  pixelThreshold: number | null;
 }
 
 export interface CompareImageResult {
@@ -17,7 +15,10 @@ export interface CompareImageResult {
 
 export const compareImages: (
   options: CompareImageOptions
-) => CompareImageResult = ({ base, head, pixelmatchOptions }) => {
+) => CompareImageResult = ({ base, head, pixelThreshold }) => {
+  const pixelmatchOptions: PixelmatchOptions | null = pixelThreshold
+    ? { threshold: pixelThreshold }
+    : null;
   if (base.width !== head.width || base.height !== head.height) {
     throw new Error("Cannot handle different size yet");
   }

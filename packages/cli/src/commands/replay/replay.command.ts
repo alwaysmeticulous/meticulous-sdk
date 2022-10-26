@@ -24,8 +24,8 @@ import { fetchAsset } from "../../local-data/replay-assets";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
-  readLocalReplayScreenshot,
-  readReplayScreenshot,
+  getReplayDir,
+  getScreenshotsDir,
 } from "../../local-data/replays";
 import {
   getOrFetchRecordedSession,
@@ -270,22 +270,22 @@ export const replayCommandHandler: (
   // 12. Diff against base replay screenshot if one is provided
   const baseReplayId = baseReplayId_ || "";
   if (screenshot && baseReplayId) {
-    logger.info(
-      `Diffing final state screenshot against replay ${baseReplayId}`
-    );
+    logger.info(`Diffing screenshots against replay ${baseReplayId}`);
 
     await getOrFetchReplay(client, baseReplayId);
     await getOrFetchReplayArchive(client, baseReplayId);
 
-    const baseScreenshot = await readReplayScreenshot(baseReplayId);
-    const headScreenshot = await readLocalReplayScreenshot(tempDir);
+    const baseReplayScreenshotsDir = getScreenshotsDir(
+      getReplayDir(baseReplayId)
+    );
+    const headReplayScreenshotsDir = getScreenshotsDir(tempDir);
 
     await diffScreenshots({
       client,
       baseReplayId,
       headReplayId: replay.id,
-      baseScreenshot,
-      headScreenshot,
+      baseScreenshotsDir: baseReplayScreenshotsDir,
+      headScreenshotsDir: headReplayScreenshotsDir,
       threshold: diffThreshold,
       pixelThreshold: diffPixelThreshold,
       exitOnMismatch: !!exitOnMismatch,
