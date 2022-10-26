@@ -30,6 +30,7 @@ import { writeGitHubSummary } from "../../utils/github-summary.utils";
 import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
+import { convertNullsToUndefineds } from "../../command-utils/command-utils";
 
 interface Options extends ScreenshotDiffOptions, ReplayExecutionOptions {
   apiToken?: string;
@@ -243,5 +244,5 @@ export const runAllTests: CommandModule<unknown, Options> = {
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
   },
-  handler: wrapHandler(handler),
+  handler: wrapHandler(convertNullsToUndefineds(handler)),
 };

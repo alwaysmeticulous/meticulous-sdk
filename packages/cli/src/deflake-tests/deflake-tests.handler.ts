@@ -3,7 +3,6 @@ import {
   ReplayExecutionOptions,
   ReplayTarget,
 } from "@alwaysmeticulous/common/dist/types/replay.types";
-import defaults from "lodash/defaults";
 import log from "loglevel";
 import {
   ScreenshotAssertionsEnabledOptions,
@@ -110,14 +109,15 @@ const applyTestCaseExecutionOptionOverrides = (
 ) => {
   // Options specified in the test case override those passed as CLI flags
   // (CLI flags set the defaults)
-  return defaults(
-    {},
-    {
-      moveBeforeClick: overridesFromTestCase.moveBeforeClick,
-      simulationIdForAssets: overridesFromTestCase.simulationIdForAssets,
-    },
-    executionOptionsFromCliFlags
-  );
+  return {
+    ...executionOptionsFromCliFlags,
+    moveBeforeClick:
+      overridesFromTestCase.moveBeforeClick ??
+      executionOptionsFromCliFlags.moveBeforeClick,
+    simulationIdForAssets:
+      overridesFromTestCase.simulationIdForAssets ??
+      executionOptionsFromCliFlags.simulationIdForAssets,
+  };
 };
 
 const applyTestCaseScreenshottingOptionsOverrides = (

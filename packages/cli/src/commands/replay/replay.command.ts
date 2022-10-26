@@ -51,6 +51,7 @@ import { addTestCase } from "../../utils/config.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
+import { convertNullsToUndefineds } from "../../command-utils/command-utils";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
@@ -460,7 +461,9 @@ export const replay: CommandModule<unknown, RawReplayCommandHandlerOptions> = {
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
   },
-  handler: wrapHandler(async (options) => {
-    await rawReplayCommandHandler(options);
-  }),
+  handler: wrapHandler(
+    convertNullsToUndefineds(async (options) => {
+      await rawReplayCommandHandler(options);
+    })
+  ),
 };

@@ -13,6 +13,7 @@ import {
   getRecordingCommandId,
   postSessionIdNotification,
 } from "../../api/session.api";
+import { convertNullsToUndefineds } from "../../command-utils/command-utils";
 import { fetchAsset } from "../../local-data/replay-assets";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
@@ -25,9 +26,9 @@ export interface RecordCommandHandlerOptions {
   commitSha: string | undefined;
   devTools: boolean | undefined;
   bypassCSP: boolean | undefined;
-  width: number | undefined | null;
-  height: number | undefined | null;
-  uploadIntervalMs: number | undefined | null;
+  width: number | undefined;
+  height: number | undefined;
+  uploadIntervalMs: number | undefined;
   incognito: boolean | undefined;
   trace: boolean | undefined;
   onDetectedSession?: (sessionId: string) => void;
@@ -192,5 +193,5 @@ export const record: CommandModule<unknown, RecordCommandHandlerOptions> = {
       description: "Enable verbose logging",
     },
   },
-  handler: wrapHandler(recordCommandHandler),
+  handler: wrapHandler(convertNullsToUndefineds(recordCommandHandler)),
 };
