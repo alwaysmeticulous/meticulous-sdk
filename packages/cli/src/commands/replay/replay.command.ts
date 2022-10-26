@@ -61,6 +61,8 @@ export interface ReplayCommandHandlerOptions {
   cookies?: Record<string, any>[];
   cookiesFile?: string | null | undefined;
   accelerate: boolean;
+  maxDurationMs?: number | null | undefined;
+  maxEventCount?: number | null | undefined;
 }
 
 export const replayCommandHandler: (
@@ -88,6 +90,8 @@ export const replayCommandHandler: (
   cookies,
   cookiesFile,
   accelerate,
+  maxDurationMs,
+  maxEventCount,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -199,6 +203,8 @@ export const replayCommandHandler: (
     cookies: cookies || null,
     cookiesFile: cookiesFile || "",
     accelerate,
+    ...(maxDurationMs != null ? { maxDurationMs } : {}),
+    ...(maxEventCount != null ? { maxEventCount } : {}),
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -417,6 +423,14 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
       description:
         "Fast forward through any pauses to replay as fast as possible. Warning: this option is experimental and may be deprecated",
       default: false,
+    },
+    maxDurationMs: {
+      number: true,
+      description: "Max duration",
+    },
+    maxEventCount: {
+      number: true,
+      description: "Max event count",
     },
   },
   handler: wrapHandler(handler),

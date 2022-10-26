@@ -40,6 +40,8 @@ export interface ReplayEventsOptions {
   cookies: Record<string, any>[] | null;
   cookiesFile: string;
   accelerate: boolean;
+  maxDurationMs?: number;
+  maxEventCount?: number;
 }
 
 export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;
