@@ -27,8 +27,11 @@ import {
 } from "./replay.utils";
 import { takeScreenshot } from "./screenshot.utils";
 import { ReplayTimelineCollector } from "./timeline/collector";
+import { logAllSpans, startSpan } from "./timing";
 
 export const replayEvents: ReplayEventsFn = async (options) => {
+  const replayEventsSpan = startSpan("replayEvents (inside overall span)");
+
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const logLevel: LogLevelDesc = logger.getLevel();
 
@@ -75,6 +78,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const defaultViewport = getStartingViewport(sessionData);
   const windowWidth = defaultViewport.width + 20;
   const windowHeight = defaultViewport.height + 200;
+  const puppeteerLaunchSpan = startSpan("puppeteerLaunch");
   const browser: Browser =
     browser_ ||
     (await launch({
@@ -91,13 +95,18 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       headless: headless,
       devtools: devTools,
     }));
+  puppeteerLaunchSpan.finish();
 
+  const createIncognitoBrowserContextSpan = startSpan(
+    "createIncognitoBrowserContext"
+  );
   const context = await browser.createIncognitoBrowserContext();
   (await browser.defaultBrowserContext().pages()).forEach((page) =>
     page.close().catch((error) => {
       logger.error(error);
     })
   );
+  createIncognitoBrowserContextSpan.finish();
 
   const timelineCollector = new ReplayTimelineCollector();
   const onTimelineEvent: OnReplayTimelineEventFn = (
@@ -107,6 +116,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const virtualTime: VirtualTimeOptions = skipPauses
     ? { enabled: true }
     : { enabled: false };
+  const createReplayPageSpan = startSpan("createReplayPage");
   const page = await createReplayPage({
     context,
     defaultViewport,
@@ -117,21 +127,30 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     bypassCSP,
     virtualTime,
   });
+  createReplayPageSpan.finish();
 
   // Calculate start URL based on the one that the session originated on/from.
   const originalSessionStartUrl = getOriginalSessionStartUrl({
     session,
     sessionData,
   });
+  const getStartURLSpan = startSpan("initializeReplayData");
   const startUrl = getStartUrl({ originalSessionStartUrl, appUrl });
+  getStartURLSpan.finish();
 
+  const initializeReplayDataSpan = startSpan("initializeReplayData");
   const replayData = await initializeReplayData({ page, startUrl });
+  initializeReplayDataSpan.finish();
 
   // Set-up network stubbing if required
   if (networkStubbing) {
+    const loadNetworkStubbingExportsSpan = startSpan(
+      "loadNetworkStubbingExportsSpan"
+    );
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const networkStubbingExports = require(dependencies.nodeNetworkStubbing
       .location);
+    loadNetworkStubbingExportsSpan.finish();
     const setupReplayNetworkStubbing: SetupReplayNetworkStubbingFn =
       networkStubbingExports.setupReplayNetworkStubbing;
     await setupReplayNetworkStubbing({
@@ -144,28 +163,40 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     });
   }
 
+  const loadBrowserContextSeedingExportsSpan = startSpan("loadBrowserContextModule");
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const browserContextSeedingExports = require(dependencies.nodeBrowserContext
     .location);
+  loadBrowserContextSeedingExportsSpan.finish();
   const setupBrowserContextSeeding: SetupBrowserContextSeedingFn =
     browserContextSeedingExports.setupBrowserContextSeeding;
+  const setupBrowserContextSeedingSpan = startSpan(
+    "setupBrowserContextSeeding"
+  );
   await setupBrowserContextSeeding({
     page,
     sessionData,
     startUrl,
   });
+  setupBrowserContextSeedingSpan.finish();
 
+  const loadReplayUserInteractionsExports = startSpan(
+    "loadReplayUserInteractionsExports"
+  );
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const replayUserInteractionsExports = require(dependencies
     .nodeUserInteractions.location);
+  loadReplayUserInteractionsExports.finish();
   const replayUserInteractions: ReplayUserInteractionsFn =
     replayUserInteractionsExports.replayUserInteractions;
 
   // Navigate to the start URL.
   logger.debug(`Navigating to ${startUrl}`);
+  const gotoStartUrlSpan = startSpan("gotoStartUrlAndWaitForDOMContentLoaded");
   const res = await page.goto(startUrl, {
     waitUntil: "domcontentloaded",
   });
+  gotoStartUrlSpan.finish();
   const status = res && res.status();
 
   if (status !== 200) {
@@ -187,6 +218,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       : { enabled: false };
   const sessionDuration = getSessionDuration(sessionData);
   try {
+    const replayUserInteractionsCall = startSpan("replayUserInteractions");
     const replayResult = await replayUserInteractions({
       page,
       logLevel,
@@ -201,6 +233,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       ...(maxDurationMs != null ? { maxDurationMs } : {}),
       ...(maxEventCount != null ? { maxEventCount } : {}),
     });
+    replayUserInteractionsCall.finish();
     logger.debug(`Replay result: ${JSON.stringify(replayResult)}`);
 
     // Pad replay time according to session duration recorded with rrweb
@@ -232,7 +265,9 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   }
 
   logger.debug("Collecting coverage data...");
+  const collectCoverageSpan = startSpan("collectCoverage");
   const coverageData = await page.coverage.stopJSCoverage();
+  collectCoverageSpan.finish();
   logger.debug("Collected coverage data");
 
   logger.info("Simulation done!");
@@ -247,6 +282,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   logger.debug("Writing output");
   logger.debug(`Output dir: ${outputDir}`);
+  const writeOutputSpan = startSpan("writeOutput");
   await writeOutput({
     outputDir,
     metadata,
@@ -255,6 +291,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     coverageData,
     timelineData: timelineCollector.getEntries(),
   });
+  writeOutputSpan.finish();
 
   if (shouldHoldBrowserOpen()) {
     await new Promise(() => {
@@ -264,6 +301,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   logger.debug("Closing browser");
   await browser.close();
+
+  logAllSpans();
+  replayEventsSpan.finish();
+  logAllSpans();
+  logger.info("Updated");
 };
 
 const shouldHoldBrowserOpen = () => {
