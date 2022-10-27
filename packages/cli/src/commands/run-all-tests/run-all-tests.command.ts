@@ -75,6 +75,8 @@ const handler: (options: Options) => Promise<void> = async ({
     networkStubbing,
     accelerate,
     moveBeforeClick: false, // moveBeforeClick isn't exposed as an option for run-all-tests
+    maxDurationMs: undefined, // we don't expose this option
+    maxEventCount: undefined, // we don't expose this option
   };
   const screenshottingOptions: ScreenshotAssertionsOptions = {
     enabled: true,

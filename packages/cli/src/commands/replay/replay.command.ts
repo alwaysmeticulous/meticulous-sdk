@@ -58,8 +58,6 @@ export interface ReplayOptions extends AdditionalReplayOptions {
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsOptions;
   exitOnMismatch: boolean;
-  maxDurationMs?: number | null | undefined;
-  maxEventCount?: number | null | undefined;
 }
 
 export const replayCommandHandler = async ({
@@ -73,8 +71,6 @@ export const replayCommandHandler = async ({
   exitOnMismatch,
   baseSimulationId: baseReplayId_,
   cookiesFile,
-  maxDurationMs,
-  maxEventCount,
 }: ReplayOptions): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -177,8 +173,6 @@ export const replayCommandHandler = async ({
     },
     screenshottingOptions,
     cookiesFile: cookiesFile,
-    ...(maxDurationMs != null ? { maxDurationMs } : {}),
-    ...(maxEventCount != null ? { maxEventCount } : {}),
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -360,6 +354,8 @@ export const rawReplayCommandHandler = ({
   moveBeforeClick,
   cookiesFile,
   accelerate,
+  maxDurationMs,
+  maxEventCount,
 }: RawReplayCommandHandlerOptions): Promise<Replay> => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -370,6 +366,8 @@ export const rawReplayCommandHandler = ({
     networkStubbing,
     accelerate,
     moveBeforeClick,
+    maxDurationMs: maxDurationMs ?? undefined,
+    maxEventCount: maxEventCount ?? undefined,
   };
   const screenshottingOptions: ScreenshotAssertionsOptions = screenshot
     ? {

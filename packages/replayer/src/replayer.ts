@@ -37,8 +37,6 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     sessionData,
     replayExecutionOptions,
     dependencies,
-    maxDurationMs,
-    maxEventCount,
   } = options;
 
   // Extract replay metadata
@@ -49,6 +47,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     networkStubbing,
     accelerate,
     padTime,
+    maxDurationMs,
+    maxEventCount,
   } = replayExecutionOptions;
   const metadata: ReplayMetadata = {
     session,

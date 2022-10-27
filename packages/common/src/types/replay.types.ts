@@ -57,6 +57,8 @@ export interface ReplayExecutionOptions {
   networkStubbing: boolean;
   accelerate: boolean;
   moveBeforeClick: boolean;
+  maxDurationMs: number | undefined;
+  maxEventCount: number | undefined;
 }
 
 export type ScreenshottingOptions =
@@ -89,8 +91,6 @@ export interface ReplayEventsOptions {
   dependencies: ReplayEventsDependencies;
   screenshottingOptions: ScreenshottingOptions;
   cookiesFile: string | undefined;
-  maxDurationMs?: number;
-  maxEventCount?: number;
 }
 
 export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;

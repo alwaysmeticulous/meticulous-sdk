@@ -160,6 +160,10 @@ const handler: (options: Options) => Promise<void> = async ({
     baseSimulationId: undefined,
     diffThreshold: OPTIONS.diffThreshold.default,
     diffPixelThreshold: OPTIONS.diffPixelThreshold.default,
+
+    // We don't expose these options
+    maxDurationMs: undefined,
+    maxEventCount: undefined,
   };
   const replay = await rawReplayCommandHandler(replayOptions);
 
