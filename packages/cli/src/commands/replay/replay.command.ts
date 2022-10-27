@@ -51,7 +51,7 @@ import { addTestCase } from "../../utils/config.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
-import { convertNullsToUndefineds } from "../../command-utils/command-utils";
+import { handleNulls } from "../../command-utils/command-utils";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
@@ -320,10 +320,6 @@ const unknownReplayTargetType = (replayTarget: never): never => {
   );
 };
 
-// Note: We use `| undefined` instead of `?` here, despite yargs passing through absent keys for
-// unspecified options. We do this because rawReplayCommandHandler and replayCommandHandler,
-// which use these typings, are re-used by create-test and other methods and we want to enforce
-// that these methods pass through the full set of options, and do not forget any.
 export interface RawReplayCommandHandlerOptions
   extends ScreenshotDiffOptions,
     ReplayExecutionOptions,
@@ -476,7 +472,7 @@ export const replay: CommandModule<unknown, RawReplayCommandHandlerOptions> = {
     },
   },
   handler: wrapHandler(
-    convertNullsToUndefineds(async (options) => {
+    handleNulls(async (options) => {
       await rawReplayCommandHandler(options);
     })
   ),

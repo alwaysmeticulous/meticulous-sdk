@@ -6,7 +6,7 @@ type UndefinedToNullOrUndefined<T extends object> = {
  * yargs normally passes through undefineds, but passes through nulls for
  * numbers which fail to parse. We convert everything to undefined to standardize.
  */
-export const convertNullsToUndefineds = <T extends object>(
+export const handleNulls = <T extends object>(
   handler: (args: T) => Promise<void>
 ): ((args: UndefinedToNullOrUndefined<T>) => Promise<void>) => {
   return (args: UndefinedToNullOrUndefined<T>) => {
