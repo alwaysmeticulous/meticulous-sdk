@@ -38,8 +38,8 @@ import { fetchAsset } from "../../local-data/replay-assets";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
-  readLocalReplayScreenshot,
-  readReplayScreenshot,
+  getReplayDir,
+  getScreenshotsDir,
 } from "../../local-data/replays";
 import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
 import {
@@ -58,6 +58,8 @@ export interface ReplayOptions extends AdditionalReplayOptions {
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsOptions;
   exitOnMismatch: boolean;
+  maxDurationMs?: number | null | undefined;
+  maxEventCount?: number | null | undefined;
 }
 
 export const replayCommandHandler = async ({
@@ -71,6 +73,8 @@ export const replayCommandHandler = async ({
   exitOnMismatch,
   baseSimulationId: baseReplayId_,
   cookiesFile,
+  maxDurationMs,
+  maxEventCount,
 }: ReplayOptions): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -173,6 +177,8 @@ export const replayCommandHandler = async ({
     },
     screenshottingOptions,
     cookiesFile: cookiesFile,
+    ...(maxDurationMs != null ? { maxDurationMs } : {}),
+    ...(maxEventCount != null ? { maxEventCount } : {}),
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -244,22 +250,22 @@ export const replayCommandHandler = async ({
   // 12. Diff against base replay screenshot if one is provided
   const baseReplayId = baseReplayId_ || "";
   if (screenshottingOptions.enabled && baseReplayId) {
-    logger.info(
-      `Diffing final state screenshot against replay ${baseReplayId}`
-    );
+    logger.info(`Diffing screenshots against replay ${baseReplayId}`);
 
     await getOrFetchReplay(client, baseReplayId);
     await getOrFetchReplayArchive(client, baseReplayId);
 
-    const baseScreenshot = await readReplayScreenshot(baseReplayId);
-    const headScreenshot = await readLocalReplayScreenshot(tempDir);
+    const baseReplayScreenshotsDir = getScreenshotsDir(
+      getReplayDir(baseReplayId)
+    );
+    const headReplayScreenshotsDir = getScreenshotsDir(tempDir);
 
     await diffScreenshots({
       client,
       baseReplayId,
       headReplayId: replay.id,
-      baseScreenshot,
-      headScreenshot,
+      baseScreenshotsDir: baseReplayScreenshotsDir,
+      headScreenshotsDir: headReplayScreenshotsDir,
       diffOptions: screenshottingOptions.diffOptions,
       exitOnMismatch: !!exitOnMismatch,
     });
@@ -460,6 +466,14 @@ export const replay: CommandModule<unknown, RawReplayCommandHandlerOptions> = {
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
+    maxDurationMs: {
+      number: true,
+      description: "Maximum duration (in milliseconds) the simulation will run",
+    },
+    maxEventCount: {
+      number: true,
+      description: "Maximum number of events the simulation will run",
+    },
   },
   handler: wrapHandler(
     convertNullsToUndefineds(async (options) => {

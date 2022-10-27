@@ -6,7 +6,7 @@ import {
 import {
   OnReplayTimelineEventFn,
   ReplayTimelineEntry,
-  VirtualTimeOptions,
+  ReplayUserInteractionsFn,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
@@ -37,6 +37,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     sessionData,
     replayExecutionOptions,
     dependencies,
+    maxDurationMs,
+    maxEventCount,
   } = options;
 
   // Extract replay metadata
@@ -138,6 +140,12 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     startUrl,
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const userInteractionsModule = require(dependencies.nodeUserInteractions
+    .location);
+  const replayUserInteractions =
+    userInteractionsModule.replayUserInteractions as ReplayUserInteractionsFn;
+
   // Navigate to the start URL.
   logger.debug(`Navigating to ${startUrl}`);
   const res = await page.goto(startUrl, {
@@ -155,33 +163,24 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   // Start simulating user interaction events
   logger.info("Starting simulation...");
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const userInteractionsModule = require(dependencies.nodeUserInteractions
-    .location);
-  const replayUserInteractions =
-    userInteractionsModule.replayUserInteractions as (options: {
-      page: Page;
-      logLevel: LogLevelDesc;
-      sessionData: SessionData;
-      moveBeforeClick: boolean;
-      virtualTime: VirtualTimeOptions;
-      onTimelineEvent: OnReplayTimelineEventFn;
-      screenshotsDir: string;
-    }) => Promise<void>;
   const startTime = DateTime.utc();
   const screenshotsDir = await prepareScreenshotsDir(outputDir);
-  await replayUserInteractions({
+  const replayResult = await replayUserInteractions({
     page,
     logLevel,
     sessionData,
     moveBeforeClick: true,
+    acceleratePlayback: false,
     virtualTime: accelerate ? { enabled: true } : { enabled: false },
     onTimelineEvent,
     screenshotsDir,
+    ...(maxDurationMs != null ? { maxDurationMs } : {}),
+    ...(maxEventCount != null ? { maxEventCount } : {}),
   });
+  logger.debug(`Replay result: ${JSON.stringify(replayResult)}`);
 
   // Pad replay time according to session duration recorded with rrweb
-  if (padTime && !accelerate) {
+  if (padTime && !accelerate && replayResult.length === "full") {
     const rrwebRecordingDuration = getRrwebRecordingDuration(sessionData);
     if (rrwebRecordingDuration) {
       const now = DateTime.utc();

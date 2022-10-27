@@ -4,9 +4,7 @@ import { PNG } from "pngjs";
 export interface CompareImageOptions {
   base: PNG;
   head: PNG;
-  pixelmatchOptions?: {
-    threshold: number;
-  };
+  pixelThreshold: number | null;
 }
 
 export interface CompareImageResult {
@@ -17,15 +15,13 @@ export interface CompareImageResult {
 
 export const compareImages: (
   options: CompareImageOptions
-) => CompareImageResult = ({ base, head, pixelmatchOptions }) => {
+) => CompareImageResult = ({ base, head, pixelThreshold }) => {
   if (base.width !== head.width || base.height !== head.height) {
     throw new Error("Cannot handle different size yet");
   }
 
   const { width, height } = base;
   const diff = new PNG({ width, height });
-
-  const threshold = pixelmatchOptions?.threshold || 0.01;
 
   const mismatchPixels = pixelmatch(
     base.data,
@@ -34,7 +30,7 @@ export const compareImages: (
     width,
     height,
     {
-      threshold,
+      threshold: pixelThreshold ?? undefined,
     }
   );
   const mismatchFraction = mismatchPixels / (width * height);
