@@ -5,6 +5,8 @@ import { basename, join } from "path";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getDiffUrl, postScreenshotDiffStats } from "../../api/replay.api";
+import { SCREENSHOT_DIFF_OPTIONS } from "../../command-utils/common-options";
+import { ScreenshotDiffOptions } from "../../command-utils/common-types";
 import { CompareImageResult, compareImages } from "../../image/diff.utils";
 import { readPng } from "../../image/io.utils";
 import {
@@ -12,12 +14,10 @@ import {
   getOrFetchReplayArchive,
   getReplayDir,
   getScreenshotFiles,
-  getScreenshotsDir
+  getScreenshotsDir,
 } from "../../local-data/replays";
 import { writeScreenshotDiff } from "../../local-data/screenshot-diffs";
 import { wrapHandler } from "../../utils/sentry.utils";
-
-const DEFAULT_MISMATCH_THRESHOLD = 0.01;
 
 export class DiffError extends Error {
   constructor(
@@ -49,8 +49,7 @@ export const diffScreenshots: (options: {
   headReplayId: string;
   baseScreenshotsDir: string;
   headScreenshotsDir: string;
-  threshold: number | null | undefined;
-  pixelThreshold: number | null | undefined;
+  diffOptions: ScreenshotDiffOptions;
   exitOnMismatch: boolean;
 }) => Promise<ScreenshotDiffResult[]> = async ({
   client,
@@ -58,13 +57,11 @@ export const diffScreenshots: (options: {
   headReplayId,
   baseScreenshotsDir,
   headScreenshotsDir,
-  threshold: threshold_,
-  pixelThreshold,
+  diffOptions,
   exitOnMismatch,
 }) => {
+  const { diffThreshold, diffPixelThreshold } = diffOptions;
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-
-  const threshold = threshold_ ?? DEFAULT_MISMATCH_THRESHOLD;
 
   const baseReplayScreenshots = await getScreenshotFiles(baseScreenshotsDir);
   const headReplayScreenshots = await getScreenshotFiles(headScreenshotsDir);
@@ -78,7 +75,6 @@ export const diffScreenshots: (options: {
   );
 
   let totalMismatchPixels = 0;
-  let totalComparedPixels = 0;
 
   const comparisonResults: ScreenshotDiffResult[] = [];
 
@@ -94,7 +90,7 @@ export const diffScreenshots: (options: {
         {
           baseReplayId,
           headReplayId,
-          threshold,
+          threshold: diffThreshold,
         }
       );
     }
@@ -115,11 +111,10 @@ export const diffScreenshots: (options: {
       const comparisonResult = compareImages({
         base: baseScreenshot,
         head: headScreenshot,
-        pixelThreshold: pixelThreshold ?? null,
+        pixelThreshold: diffPixelThreshold,
       });
 
       totalMismatchPixels += comparisonResult.mismatchPixels;
-      totalComparedPixels += baseScreenshot.width * baseScreenshot.height;
 
       logger.debug({
         screenshotFileName,
@@ -139,7 +134,7 @@ export const diffScreenshots: (options: {
         headScreenshotFile,
         comparisonResult,
         outcome:
-          comparisonResult.mismatchFraction > threshold ? "fail" : "pass",
+          comparisonResult.mismatchFraction > diffThreshold ? "fail" : "pass",
       });
     }
 
@@ -163,7 +158,7 @@ export const diffScreenshots: (options: {
           result.comparisonResult.mismatchFraction * 100
         )}% pixel mismatch for screenshot ${basename(
           result.headScreenshotFile
-        )} (threshold is ${Math.round(threshold * 100)}%)`,
+        )} (threshold is ${Math.round(diffThreshold * 100)}%)`,
         result.outcome
       );
     });
@@ -189,7 +184,7 @@ export const diffScreenshots: (options: {
         {
           baseReplayId,
           headReplayId,
-          threshold,
+          threshold: diffThreshold,
         }
       );
     }
@@ -203,7 +198,7 @@ export const diffScreenshots: (options: {
     throw new DiffError(`Error while diffing: ${error}`, {
       baseReplayId,
       headReplayId,
-      threshold,
+      threshold: diffThreshold,
       value: 1,
     });
   }
@@ -223,8 +218,8 @@ interface Options {
   apiToken?: string | null | undefined;
   baseSimulationId: string;
   headSimulationId: string;
-  threshold?: number | null | undefined;
-  pixelThreshold?: number | null | undefined;
+  threshold: number;
+  pixelThreshold: number;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -250,8 +245,10 @@ const handler: (options: Options) => Promise<void> = async ({
     headReplayId,
     baseScreenshotsDir,
     headScreenshotsDir,
-    threshold,
-    pixelThreshold,
+    diffOptions: {
+      diffThreshold: threshold,
+      diffPixelThreshold: pixelThreshold,
+    },
     exitOnMismatch: true,
   });
 };
@@ -273,12 +270,8 @@ export const screenshotDiff: CommandModule<unknown, Options> = {
       demandOption: true,
       alias: "headReplayId",
     },
-    threshold: {
-      number: true,
-    },
-    pixelThreshold: {
-      number: true,
-    },
+    threshold: SCREENSHOT_DIFF_OPTIONS.diffThreshold,
+    pixelThreshold: SCREENSHOT_DIFF_OPTIONS.diffPixelThreshold,
   },
   handler: wrapHandler(handler),
 };

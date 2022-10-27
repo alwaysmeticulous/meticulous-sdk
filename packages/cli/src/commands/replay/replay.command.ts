@@ -4,6 +4,11 @@ import {
   Replay,
   ReplayEventsFn,
 } from "@alwaysmeticulous/common";
+import {
+  ReplayExecutionOptions,
+  ReplayTarget,
+} from "@alwaysmeticulous/common/dist/types/replay.types";
+import { AxiosInstance } from "axios";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import log from "loglevel";
 import { DateTime } from "luxon";
@@ -19,6 +24,15 @@ import {
 } from "../../api/replay.api";
 import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
+import {
+  COMMON_REPLAY_OPTIONS,
+  OPTIONS,
+  SCREENSHOT_DIFF_OPTIONS,
+} from "../../command-utils/common-options";
+import {
+  ScreenshotDiffOptions,
+  ScreenshotAssertionsOptions,
+} from "../../command-utils/common-types";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
 import {
@@ -27,72 +41,37 @@ import {
   getReplayDir,
   getScreenshotsDir,
 } from "../../local-data/replays";
+import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
 import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
 } from "../../local-data/sessions";
 import { getCommitSha } from "../../utils/commit-sha.utils";
+import { addTestCase } from "../../utils/config.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
-import { addTestCase } from "../../utils/config.utils";
-import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
+import { handleNulls } from "../../command-utils/command-utils";
 
-export interface ReplayCommandHandlerOptions {
-  apiToken?: string | null | undefined;
-  commitSha?: string | null | undefined;
-  sessionId: string;
-  appUrl?: string | null | undefined;
-  simulationIdForAssets?: string | null | undefined;
-  headless?: boolean | null | undefined;
-  devTools?: boolean | null | undefined;
-  bypassCSP?: boolean | null | undefined;
-  screenshot: boolean;
-  screenshotSelector?: string | null | undefined;
-  baseSimulationId?: string | null | undefined;
-  diffThreshold?: number | null | undefined;
-  diffPixelThreshold?: number | null | undefined;
-  save?: boolean | null | undefined;
-  exitOnMismatch?: boolean | null | undefined;
-  padTime: boolean;
-  shiftTime: boolean;
-  networkStubbing: boolean;
-  moveBeforeClick?: boolean | null | undefined;
-  cookies?: Record<string, any>[];
-  cookiesFile?: string | null | undefined;
-  accelerate: boolean;
-  maxDurationMs?: number | null | undefined;
-  maxEventCount?: number | null | undefined;
+export interface ReplayOptions extends AdditionalReplayOptions {
+  replayTarget: ReplayTarget;
+  executionOptions: ReplayExecutionOptions;
+  screenshottingOptions: ScreenshotAssertionsOptions;
+  exitOnMismatch: boolean;
 }
 
-export const replayCommandHandler: (
-  options: ReplayCommandHandlerOptions
-) => Promise<Replay> = async ({
+export const replayCommandHandler = async ({
+  replayTarget,
+  executionOptions,
+  screenshottingOptions,
   apiToken,
-  commitSha: commitSha_,
   sessionId,
-  appUrl,
-  simulationIdForAssets,
-  headless,
-  devTools,
-  bypassCSP,
-  screenshot,
-  screenshotSelector,
-  baseSimulationId: baseReplayId_,
-  diffThreshold,
-  diffPixelThreshold,
+  commitSha: commitSha_,
   save,
   exitOnMismatch,
-  padTime,
-  shiftTime,
-  networkStubbing,
-  moveBeforeClick,
-  cookies,
+  baseSimulationId: baseReplayId_,
   cookiesFile,
-  accelerate,
-  maxDurationMs,
-  maxEventCount,
-}) => {
+}: ReplayOptions): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
@@ -108,9 +87,7 @@ export const replayCommandHandler: (
   const meticulousSha = await getMeticulousVersion();
 
   // 3. If simulationIdForAssets specified then download assets & spin up local server
-  const server = simulationIdForAssets
-    ? await serveAssetsFromSimulation(client, simulationIdForAssets)
-    : undefined;
+  const { appUrl, closeServer } = await serveOrGetAppUrl(client, replayTarget);
 
   // 4. Load replay assets
   const browserUserInteractions = await fetchAsset(
@@ -158,16 +135,16 @@ export const replayCommandHandler: (
 
   // 6. Create and save replay parameters
   const replayEventsParams: Parameters<typeof replayEvents>[0] = {
-    appUrl: server ? server.url : appUrl || "",
+    appUrl,
+    replayExecutionOptions: executionOptions,
+
     browser: null,
     outputDir: tempDir,
     session,
     sessionData,
     recordingId: "manual-replay",
     meticulousSha: "meticulousSha",
-    headless: headless || false,
-    devTools: devTools || false,
-    bypassCSP: bypassCSP || false,
+
     dependencies: {
       browserUserInteractions: {
         key: "browserUserInteractions",
@@ -194,17 +171,8 @@ export const replayCommandHandler: (
         location: nodeUserInteractions,
       },
     },
-    padTime,
-    shiftTime,
-    screenshot: screenshot,
-    screenshotSelector: screenshotSelector || "",
-    networkStubbing,
-    moveBeforeClick: moveBeforeClick || false,
-    cookies: cookies || null,
-    cookiesFile: cookiesFile || "",
-    accelerate,
-    ...(maxDurationMs != null ? { maxDurationMs } : {}),
-    ...(maxEventCount != null ? { maxEventCount } : {}),
+    screenshottingOptions,
+    cookiesFile: cookiesFile,
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -216,7 +184,7 @@ export const replayCommandHandler: (
 
   await replayEvents(replayEventsParams);
 
-  server?.closeServer();
+  closeServer?.();
 
   const endTime = DateTime.utc();
 
@@ -275,7 +243,7 @@ export const replayCommandHandler: (
 
   // 12. Diff against base replay screenshot if one is provided
   const baseReplayId = baseReplayId_ || "";
-  if (screenshot && baseReplayId) {
+  if (screenshottingOptions.enabled && baseReplayId) {
     logger.info(`Diffing screenshots against replay ${baseReplayId}`);
 
     await getOrFetchReplay(client, baseReplayId);
@@ -292,15 +260,14 @@ export const replayCommandHandler: (
       headReplayId: replay.id,
       baseScreenshotsDir: baseReplayScreenshotsDir,
       headScreenshotsDir: headReplayScreenshotsDir,
-      threshold: diffThreshold,
-      pixelThreshold: diffPixelThreshold,
+      diffOptions: screenshottingOptions.diffOptions,
       exitOnMismatch: !!exitOnMismatch,
     });
   }
 
   // 13. Add test case to meticulous.json if --save option is passed
   if (save) {
-    if (!screenshot) {
+    if (!screenshottingOptions.enabled) {
       logger.error(
         "Warning: saving a new test case without screenshot enabled."
       );
@@ -318,23 +285,134 @@ export const replayCommandHandler: (
   return replay;
 };
 
-const handler: (options: ReplayCommandHandlerOptions) => Promise<void> = async (
-  options
-) => {
-  await replayCommandHandler({ ...options, exitOnMismatch: true });
+const serveOrGetAppUrl = async (
+  client: AxiosInstance,
+  replayTarget: ReplayTarget
+): Promise<{ appUrl?: string; closeServer?: () => void }> => {
+  if (replayTarget.type === "snapshotted-assets") {
+    const server = await serveAssetsFromSimulation(
+      client,
+      replayTarget.simulationIdForAssets
+    );
+    return {
+      appUrl: server.url,
+      closeServer: server.closeServer,
+    };
+  }
+  if (replayTarget.type === "url") {
+    return { appUrl: replayTarget.appUrl };
+  }
+  if (replayTarget.type === "original-recorded-url") {
+    return {};
+  }
+  return unknownReplayTargetType(replayTarget);
 };
 
-export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
+const unknownReplayTargetType = (replayTarget: never): never => {
+  throw new Error(
+    `Unknown type of replay target: ${JSON.stringify(replayTarget)}`
+  );
+};
+
+export interface RawReplayCommandHandlerOptions
+  extends ScreenshotDiffOptions,
+    ReplayExecutionOptions,
+    AdditionalReplayOptions {
+  screenshot: boolean;
+  appUrl: string | undefined;
+  simulationIdForAssets: string | undefined;
+  screenshotSelector: string | undefined;
+}
+
+interface AdditionalReplayOptions {
+  apiToken: string | undefined;
+  commitSha: string | undefined;
+  sessionId: string;
+  save: boolean | undefined;
+  baseSimulationId: string | undefined;
+  cookiesFile: string | undefined;
+}
+
+export const rawReplayCommandHandler = ({
+  apiToken,
+  commitSha,
+  sessionId,
+  appUrl,
+  simulationIdForAssets,
+  headless,
+  devTools,
+  bypassCSP,
+  screenshot,
+  screenshotSelector,
+  baseSimulationId,
+  diffThreshold,
+  diffPixelThreshold,
+  save,
+  padTime,
+  shiftTime,
+  networkStubbing,
+  moveBeforeClick,
+  cookiesFile,
+  accelerate,
+  maxDurationMs,
+  maxEventCount,
+}: RawReplayCommandHandlerOptions): Promise<Replay> => {
+  const executionOptions: ReplayExecutionOptions = {
+    headless,
+    devTools,
+    bypassCSP,
+    padTime,
+    shiftTime,
+    networkStubbing,
+    accelerate,
+    moveBeforeClick,
+    maxDurationMs: maxDurationMs ?? undefined,
+    maxEventCount: maxEventCount ?? undefined,
+  };
+  const screenshottingOptions: ScreenshotAssertionsOptions = screenshot
+    ? {
+        enabled: true,
+        screenshotSelector: screenshotSelector ?? undefined,
+        diffOptions: { diffPixelThreshold, diffThreshold },
+      }
+    : { enabled: false };
+  return replayCommandHandler({
+    replayTarget: getReplayTarget({ appUrl, simulationIdForAssets }),
+    executionOptions,
+    screenshottingOptions,
+    apiToken,
+    commitSha,
+    cookiesFile,
+    sessionId,
+    baseSimulationId,
+    save,
+    exitOnMismatch: true,
+  });
+};
+
+const getReplayTarget = ({
+  appUrl,
+  simulationIdForAssets,
+}: {
+  appUrl?: string | undefined;
+  simulationIdForAssets?: string | undefined;
+}): ReplayTarget => {
+  if (simulationIdForAssets) {
+    return { type: "snapshotted-assets", simulationIdForAssets };
+  }
+  if (appUrl) {
+    return { type: "url", appUrl };
+  }
+  return { type: "original-recorded-url" };
+};
+
+export const replay: CommandModule<unknown, RawReplayCommandHandlerOptions> = {
   command: "simulate",
   aliases: ["replay"],
   describe: "Simulate (replay) a recorded session",
   builder: {
-    apiToken: {
-      string: true,
-    },
-    commitSha: {
-      string: true,
-    },
+    apiToken: OPTIONS.apiToken,
+    commitSha: OPTIONS.commitSha,
     sessionId: {
       string: true,
       demandOption: true,
@@ -349,18 +427,6 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
       conflicts: "appUrl",
       description:
         "If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior simulation, instead of against a URL. An alternative to specifying an app URL.",
-    },
-    headless: {
-      boolean: true,
-      description: "Start browser in headless mode",
-    },
-    devTools: {
-      boolean: true,
-      description: "Open Chrome Dev Tools",
-    },
-    bypassCSP: {
-      boolean: true,
-      description: "Enables bypass CSP in the browser",
     },
     screenshot: {
       boolean: true,
@@ -378,52 +444,22 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
         "Base simulation id to diff the final state screenshot against",
       alias: "baseReplayId",
     },
-    diffThreshold: {
-      number: true,
-      description:
-        "Acceptable maximum proportion of changed pixels, between 0 and 1. If this proportion is exceeded then the test will fail.",
-    },
-    diffPixelThreshold: {
-      number: true,
-      description:
-        "A number between 0 and 1. Color/brightness differences in individual pixels will be ignored if the difference is less than this threshold. A value of 1.0 would accept any difference in color, while a value of 0.0 would accept no difference in color.",
-    },
     save: {
       boolean: true,
       description:
         "Adds the simulation to the list of test cases in meticulous.json",
     },
-    padTime: {
-      boolean: true,
-      description:
-        "Pad simulation time according to recording duration. Please note this option will be ignored if running with the '--accelerate' option.",
-      default: true,
-    },
-    shiftTime: {
-      boolean: true,
-      description:
-        "Shift time during simulation to be set as the recording time",
-      default: true,
-    },
-    networkStubbing: {
-      boolean: true,
-      description: "Stub network requests during simulation",
-      default: true,
-    },
     moveBeforeClick: {
       boolean: true,
       description: "Simulate mouse movement before clicking",
+      default: false,
     },
     cookiesFile: {
       string: true,
       description: "Path to cookies to inject before simulation",
     },
-    accelerate: {
-      boolean: true,
-      description:
-        "Fast forward through any pauses to replay as fast as possible. Warning: this option is experimental and may be deprecated",
-      default: false,
-    },
+    ...COMMON_REPLAY_OPTIONS,
+    ...SCREENSHOT_DIFF_OPTIONS,
     maxDurationMs: {
       number: true,
       description: "Maximum duration (in milliseconds) the simulation will run",
@@ -433,5 +469,9 @@ export const replay: CommandModule<unknown, ReplayCommandHandlerOptions> = {
       description: "Maximum number of events the simulation will run",
     },
   },
-  handler: wrapHandler(handler),
+  handler: wrapHandler(
+    handleNulls(async (options) => {
+      await rawReplayCommandHandler(options);
+    })
+  ),
 };

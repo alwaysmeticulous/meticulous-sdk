@@ -1,4 +1,7 @@
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import {
+  METICULOUS_LOGGER_NAME,
+  ReplayExecutionOptions,
+} from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
@@ -8,37 +11,38 @@ import {
   getTestRunUrl,
   putTestRunResults,
 } from "../../api/test-run.api";
+import {
+  COMMON_REPLAY_OPTIONS,
+  OPTIONS,
+  SCREENSHOT_DIFF_OPTIONS,
+} from "../../command-utils/common-options";
+import {
+  ScreenshotAssertionsOptions,
+  ScreenshotDiffOptions,
+} from "../../command-utils/common-types";
 import { readConfig } from "../../config/config";
 import { TestCaseResult } from "../../config/config.types";
 import { deflakeReplayCommandHandler } from "../../deflake-tests/deflake-tests.handler";
 import { runAllTestsInParallel } from "../../parallel-tests/parallel-tests.handler";
 import { getCommitSha } from "../../utils/commit-sha.utils";
-import { getSimulationIdForAssets } from "../../utils/config.utils";
+import { getReplayTargetForTestCase } from "../../utils/config.utils";
 import { writeGitHubSummary } from "../../utils/github-summary.utils";
 import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
+import { handleNulls } from "../../command-utils/command-utils";
 
-interface Options {
-  apiToken?: string | null | undefined;
-  commitSha?: string | null | undefined;
-  appUrl?: string | null | undefined;
-  useAssetsSnapshottedInBaseSimulation?: boolean | null | undefined;
-  headless?: boolean | null | undefined;
-  devTools?: boolean | null | undefined;
-  bypassCSP?: boolean | null | undefined;
-  diffThreshold?: number | null | undefined;
-  diffPixelThreshold?: number | null | undefined;
-  padTime: boolean;
-  shiftTime: boolean;
-  networkStubbing: boolean;
-  githubSummary?: boolean | null | undefined;
-  parallelize?: boolean | null | undefined;
-  parallelTasks?: number | null | undefined;
+interface Options extends ScreenshotDiffOptions, ReplayExecutionOptions {
+  apiToken?: string;
+  commitSha?: string;
+  appUrl?: string;
+  useAssetsSnapshottedInBaseSimulation: boolean;
+  githubSummary?: boolean;
+  parallelize?: boolean;
+  parallelTasks?: number | null;
   deflake: boolean;
   useCache: boolean;
-  testsFile?: string | null | undefined;
-  accelerate: boolean;
+  testsFile?: string;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -62,6 +66,24 @@ const handler: (options: Options) => Promise<void> = async ({
   testsFile,
   accelerate,
 }) => {
+  const executionOptions: ReplayExecutionOptions = {
+    headless,
+    devTools,
+    bypassCSP,
+    padTime,
+    shiftTime,
+    networkStubbing,
+    accelerate,
+    moveBeforeClick: false, // moveBeforeClick isn't exposed as an option for run-all-tests
+    maxDurationMs: undefined, // we don't expose this option
+    maxEventCount: undefined, // we don't expose this option
+  };
+  const screenshottingOptions: ScreenshotAssertionsOptions = {
+    enabled: true,
+    screenshotSelector: undefined, // this is only specified on a test case level
+    diffOptions: { diffPixelThreshold, diffThreshold },
+  };
+
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
@@ -99,22 +121,15 @@ const handler: (options: Options) => Promise<void> = async ({
         config,
         client,
         testRun,
+        executionOptions,
+        screenshottingOptions,
         apiToken,
         commitSha,
         appUrl,
         useAssetsSnapshottedInBaseSimulation,
-        headless,
-        devTools,
-        bypassCSP,
-        diffThreshold,
-        diffPixelThreshold,
-        padTime,
-        shiftTime,
-        networkStubbing,
-        parallelTasks,
+        parallelTasks: parallelTasks ?? undefined,
         deflake,
         cachedTestRunResults,
-        accelerate,
       });
       return results;
     }
@@ -122,32 +137,18 @@ const handler: (options: Options) => Promise<void> = async ({
     const results: TestCaseResult[] = [...cachedTestRunResults];
     const testsToRun = getTestsToRun({ testCases, cachedTestRunResults });
     for (const testCase of testsToRun) {
-      const { sessionId, baseReplayId, options } = testCase;
       const result = await deflakeReplayCommandHandler({
-        testCase: testCase,
-        deflake: deflake || false,
+        replayTarget: getReplayTargetForTestCase({
+          useAssetsSnapshottedInBaseSimulation,
+          appUrl,
+          testCase,
+        }),
+        executionOptions,
+        screenshottingOptions,
+        testCase,
         apiToken,
         commitSha,
-        sessionId,
-        appUrl,
-        headless,
-        devTools,
-        bypassCSP,
-        screenshot: true,
-        baseSimulationId: baseReplayId,
-        diffThreshold,
-        diffPixelThreshold,
-        save: false,
-        exitOnMismatch: false,
-        padTime,
-        shiftTime,
-        networkStubbing,
-        simulationIdForAssets: getSimulationIdForAssets(
-          testCase,
-          useAssetsSnapshottedInBaseSimulation
-        ),
-        accelerate,
-        ...options,
+        deflake: deflake ?? false,
       });
       results.push(result);
       await putTestRunResults({
@@ -192,14 +193,12 @@ export const runAllTests: CommandModule<unknown, Options> = {
   command: "run-all-tests",
   describe: "Run all replay test cases",
   builder: {
-    apiToken: {
-      string: true,
-    },
-    commitSha: {
-      string: true,
-    },
+    apiToken: OPTIONS.apiToken,
+    commitSha: OPTIONS.commitSha,
     appUrl: {
       string: true,
+      description:
+        "The URL to execute the tests against. If left absent here and in the test cases file, then will use the URL the test was originally recorded against.",
     },
     useAssetsSnapshottedInBaseSimulation: {
       boolean: true,
@@ -208,49 +207,11 @@ export const runAllTests: CommandModule<unknown, Options> = {
         " from the base simulation/replay the test is comparing against. The sessions will then be replayed against those local urls." +
         " This is an alternative to specifying an appUrl.",
       conflicts: "appUrl",
-    },
-    headless: {
-      boolean: true,
-      description: "Start browser in headless mode",
-    },
-    devTools: {
-      boolean: true,
-      description: "Open Chrome Dev Tools",
-    },
-    bypassCSP: {
-      boolean: true,
-      description: "Enables bypass CSP in the browser",
-    },
-    diffThreshold: {
-      number: true,
-      description:
-        "Acceptable maximum proportion of changed pixels, between 0 and 1. If this proportion is exceeded then the test will fail.",
-    },
-    diffPixelThreshold: {
-      number: true,
-      description:
-        "A number between 0 and 1. Color/brightness differences in individual pixels will be ignored if the difference is less than this threshold. A value of 1.0 would accept any difference in color, while a value of 0.0 would accept no difference in color.",
+      default: false,
     },
     githubSummary: {
       boolean: true,
       description: "Outputs a summary page for GitHub actions",
-    },
-    padTime: {
-      boolean: true,
-      description:
-        "Pad replay time according to recording duration. Please note this option will be ignored if running with the '--accelerate' option.",
-      default: true,
-    },
-    shiftTime: {
-      boolean: true,
-      description:
-        "Shift time during simulation to be set as the recording time",
-      default: true,
-    },
-    networkStubbing: {
-      boolean: true,
-      description: "Stub network requests during replay",
-      default: true,
     },
     parallelize: {
       boolean: true,
@@ -282,12 +243,8 @@ export const runAllTests: CommandModule<unknown, Options> = {
         "The path to the meticulous.json file containing the list of tests you want to run." +
         " If not set a search will be performed to find a meticulous.json file in the current directory or the nearest parent directory.",
     },
-    accelerate: {
-      boolean: true,
-      description:
-        "Fast forward through any pauses to replay as fast as possible. Warning: this option is experimental and may be deprecated",
-      default: false,
-    },
+    ...COMMON_REPLAY_OPTIONS,
+    ...SCREENSHOT_DIFF_OPTIONS,
   },
-  handler: wrapHandler(handler),
+  handler: wrapHandler(handleNulls(handler)),
 };

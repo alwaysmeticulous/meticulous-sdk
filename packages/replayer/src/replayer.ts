@@ -35,29 +35,28 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     outputDir,
     session,
     sessionData,
-    headless,
-    devTools,
+    replayExecutionOptions,
     dependencies,
-    padTime,
-    shiftTime,
-    networkStubbing,
-    accelerate,
-    maxDurationMs,
-    maxEventCount,
   } = options;
 
   // Extract replay metadata
+  const {
+    headless,
+    devTools,
+    shiftTime,
+    networkStubbing,
+    accelerate,
+    padTime,
+    maxDurationMs,
+    maxEventCount,
+  } = replayExecutionOptions;
   const metadata: ReplayMetadata = {
     session,
     options: {
       appUrl,
       outputDir,
-      headless,
-      devTools,
       dependencies,
-      padTime,
-      shiftTime,
-      networkStubbing,
+      ...replayExecutionOptions,
     },
   };
 
@@ -74,8 +73,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
         // including the respective Preflgiht CORS requests which are not handled by the network stubbing layer.
         "--disable-web-security",
       ],
-      headless: headless || false,
-      devtools: devTools || false,
+      headless: headless,
+      devtools: devTools,
     }));
 
   const context = await browser.createIncognitoBrowserContext();
@@ -208,11 +207,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   logger.info("Simulation done!");
 
-  if (options.screenshot) {
+  if (options.screenshottingOptions.enabled) {
     await takeScreenshot({
       page,
       outputDir,
-      screenshotSelector: options.screenshotSelector || "",
+      screenshotSelector: options.screenshottingOptions.screenshotSelector,
     });
   }
 

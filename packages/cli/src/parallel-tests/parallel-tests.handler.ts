@@ -2,6 +2,7 @@ import {
   defer,
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
+  ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import { fork } from "child_process";
@@ -9,12 +10,13 @@ import log from "loglevel";
 import { cpus } from "os";
 import { join } from "path";
 import { putTestRunResults, TestRun } from "../api/test-run.api";
+import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
 import {
   MeticulousCliConfig,
   TestCase,
   TestCaseResult,
 } from "../config/config.types";
-import { getSimulationIdForAssets } from "../utils/config.utils";
+import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
 
@@ -22,22 +24,15 @@ export interface RunAllTestsInParallelOptions {
   config: MeticulousCliConfig;
   client: AxiosInstance;
   testRun: TestRun;
-  apiToken: string | null | undefined;
-  commitSha: string | null | undefined;
-  appUrl: string | null | undefined;
-  useAssetsSnapshottedInBaseSimulation?: boolean | null | undefined;
-  headless: boolean | null | undefined;
-  devTools: boolean | null | undefined;
-  bypassCSP: boolean | null | undefined;
-  diffThreshold: number | null | undefined;
-  diffPixelThreshold: number | null | undefined;
-  padTime: boolean;
-  shiftTime: boolean;
-  networkStubbing: boolean;
-  parallelTasks: number | null | undefined;
+  executionOptions: ReplayExecutionOptions;
+  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
+  apiToken: string | undefined;
+  commitSha: string;
+  appUrl: string | undefined;
+  useAssetsSnapshottedInBaseSimulation: boolean;
+  parallelTasks: number | undefined;
   deflake: boolean;
   cachedTestRunResults: TestCaseResult[];
-  accelerate: boolean;
 }
 
 /** Handler for running Meticulous tests in parallel using child processes */
@@ -51,18 +46,11 @@ export const runAllTestsInParallel: (
   commitSha,
   appUrl,
   useAssetsSnapshottedInBaseSimulation,
-  headless,
-  devTools,
-  bypassCSP,
-  diffThreshold,
-  diffPixelThreshold,
-  padTime,
-  shiftTime,
-  networkStubbing,
+  executionOptions,
+  screenshottingOptions,
   parallelTasks,
   deflake,
   cachedTestRunResults,
-  accelerate,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -118,26 +106,19 @@ export const runAllTestsInParallel: (
       data: {
         logLevel: logger.getLevel(),
         dataDir: getMeticulousLocalDataDir(),
-        runAllOptions: {
+        replayOptions: {
           apiToken,
           commitSha,
-          appUrl,
-          headless,
-          devTools,
-          bypassCSP,
-          diffThreshold,
-          diffPixelThreshold,
-          padTime,
-          shiftTime,
-          networkStubbing,
-          simulationIdForAssets: getSimulationIdForAssets(
+          testCase,
+          deflake,
+          replayTarget: getReplayTargetForTestCase({
+            useAssetsSnapshottedInBaseSimulation,
+            appUrl,
             testCase,
-            useAssetsSnapshottedInBaseSimulation
-          ),
-          accelerate,
+          }),
+          executionOptions,
+          screenshottingOptions,
         },
-        testCase,
-        deflake,
       },
     };
     child.send(initMessage);

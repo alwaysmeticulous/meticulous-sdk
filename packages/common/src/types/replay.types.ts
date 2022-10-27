@@ -18,30 +18,79 @@ export interface ReplayEventsDependencies extends BaseReplayEventsDependencies {
   nodeUserInteractions: ReplayEventsDependency<"nodeUserInteractions">;
 }
 
-export interface ReplayEventsOptions {
+export type ReplayTarget =
+  | SnapshottedAssetsReplayTarget
+  | URLReplayTarget
+  | OriginalRecordedURLReplayTarget;
+
+export interface SnapshottedAssetsReplayTarget {
+  type: "snapshotted-assets";
+
+  /**
+   * If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior replay, instead of against a URL.
+   */
+  simulationIdForAssets: string;
+}
+
+export interface URLReplayTarget {
+  type: "url";
+
+  /**
+   * If absent, and no URL provided in test case either, then will use the URL the session was recorded against.
+   */
   appUrl: string;
+}
+
+export interface OriginalRecordedURLReplayTarget {
+  type: "original-recorded-url";
+}
+
+/**
+ * Options that control how a replay is executed.
+ */
+export interface ReplayExecutionOptions {
+  headless: boolean;
+  devTools: boolean;
+  bypassCSP: boolean;
+  padTime: boolean;
+  shiftTime: boolean;
+  networkStubbing: boolean;
+  accelerate: boolean;
+  moveBeforeClick: boolean;
+  maxDurationMs: number | undefined;
+  maxEventCount: number | undefined;
+}
+
+export type ScreenshottingOptions =
+  | { enabled: false }
+  | ScreenshottingEnabledOptions;
+
+export interface ScreenshottingEnabledOptions {
+  enabled: true;
+
+  /**
+   * If undefined will screenshot whole window
+   */
+  screenshotSelector: string | undefined;
+}
+
+export interface ReplayEventsOptions {
+  /**
+   * If undefined then will use the URL the session was recorded against.
+   */
+  appUrl: string | undefined;
+  replayExecutionOptions: ReplayExecutionOptions;
+
   browser: any;
   outputDir: string;
   session: RecordedSession;
   sessionData: SessionData;
   recordingId: string;
   meticulousSha: string;
-  headless?: boolean;
-  devTools?: boolean;
-  bypassCSP?: boolean;
   verbose?: boolean;
   dependencies: ReplayEventsDependencies;
-  screenshot?: boolean;
-  screenshotSelector?: string;
-  padTime: boolean;
-  shiftTime: boolean;
-  networkStubbing: boolean;
-  moveBeforeClick: boolean;
-  cookies: Record<string, any>[] | null;
-  cookiesFile: string;
-  accelerate: boolean;
-  maxDurationMs?: number;
-  maxEventCount?: number;
+  screenshottingOptions: ScreenshottingOptions;
+  cookiesFile: string | undefined;
 }
 
 export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;
