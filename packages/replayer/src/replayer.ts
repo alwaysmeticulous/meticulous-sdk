@@ -6,8 +6,9 @@ import {
 import {
   OnReplayTimelineEventFn,
   ReplayTimelineEntry,
-  VirtualTimeOptions,
+  ReplayUserInteractionsFn,
 } from "@alwaysmeticulous/sdk-bundles-api";
+import { StoryboardOptions } from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
 import puppeteer, { Browser, Page } from "puppeteer";
@@ -35,27 +36,29 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     outputDir,
     session,
     sessionData,
-    headless,
-    devTools,
+    replayExecutionOptions,
     dependencies,
-    padTime,
-    shiftTime,
-    networkStubbing,
-    accelerate,
+    screenshottingOptions,
   } = options;
 
   // Extract replay metadata
+  const {
+    headless,
+    devTools,
+    shiftTime,
+    networkStubbing,
+    accelerate,
+    padTime,
+    maxDurationMs,
+    maxEventCount,
+  } = replayExecutionOptions;
   const metadata: ReplayMetadata = {
     session,
     options: {
       appUrl,
       outputDir,
-      headless,
-      devTools,
       dependencies,
-      padTime,
-      shiftTime,
-      networkStubbing,
+      ...replayExecutionOptions,
     },
   };
 
@@ -72,8 +75,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
         // including the respective Preflgiht CORS requests which are not handled by the network stubbing layer.
         "--disable-web-security",
       ],
-      headless: headless || false,
-      devtools: devTools || false,
+      headless: headless,
+      devtools: devTools,
     }));
 
   const context = await browser.createIncognitoBrowserContext();
@@ -139,6 +142,12 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     startUrl,
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const userInteractionsModule = require(dependencies.nodeUserInteractions
+    .location);
+  const replayUserInteractions =
+    userInteractionsModule.replayUserInteractions as ReplayUserInteractionsFn;
+
   // Navigate to the start URL.
   logger.debug(`Navigating to ${startUrl}`);
   const res = await page.goto(startUrl, {
@@ -156,33 +165,29 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   // Start simulating user interaction events
   logger.info("Starting simulation...");
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const userInteractionsModule = require(dependencies.nodeUserInteractions
-    .location);
-  const replayUserInteractions =
-    userInteractionsModule.replayUserInteractions as (options: {
-      page: Page;
-      logLevel: LogLevelDesc;
-      sessionData: SessionData;
-      moveBeforeClick: boolean;
-      virtualTime: VirtualTimeOptions;
-      onTimelineEvent: OnReplayTimelineEventFn;
-      screenshotsDir: string;
-    }) => Promise<void>;
   const startTime = DateTime.utc();
   const screenshotsDir = await prepareScreenshotsDir(outputDir);
-  await replayUserInteractions({
+  const storyboard: StoryboardOptions =
+    screenshottingOptions.enabled &&
+    screenshottingOptions.storyboardOptions.enabled
+      ? { enabled: true, screenshotsDir }
+      : { enabled: false };
+  const replayResult = await replayUserInteractions({
     page,
     logLevel,
     sessionData,
     moveBeforeClick: true,
+    acceleratePlayback: false,
     virtualTime: accelerate ? { enabled: true } : { enabled: false },
+    storyboard,
     onTimelineEvent,
-    screenshotsDir,
+    ...(maxDurationMs != null ? { maxDurationMs } : {}),
+    ...(maxEventCount != null ? { maxEventCount } : {}),
   });
+  logger.debug(`Replay result: ${JSON.stringify(replayResult)}`);
 
   // Pad replay time according to session duration recorded with rrweb
-  if (padTime && !accelerate) {
+  if (padTime && !accelerate && replayResult.length === "full") {
     const rrwebRecordingDuration = getRrwebRecordingDuration(sessionData);
     if (rrwebRecordingDuration) {
       const now = DateTime.utc();
@@ -209,11 +214,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   logger.info("Simulation done!");
 
-  if (options.screenshot) {
+  if (screenshottingOptions.enabled) {
     await takeScreenshot({
       page,
       outputDir,
-      screenshotSelector: options.screenshotSelector || "",
+      screenshotSelector: screenshottingOptions.screenshotSelector,
     });
   }
 

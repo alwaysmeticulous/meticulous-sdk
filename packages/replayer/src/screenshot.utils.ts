@@ -7,13 +7,13 @@ import { prepareScreenshotsDir } from "./output.utils";
 export interface TakeScreenshotOptions {
   page: Page;
   outputDir: string;
-  screenshotSelector: string;
+  screenshotSelector: string | null;
 }
 
 const screenshotPageOrElement: (options: {
   page: Page;
   path: string;
-  screenshotSelector: string;
+  screenshotSelector: string | null;
 }) => Promise<void> = async ({ page, path, screenshotSelector }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const toScreenshot = screenshotSelector

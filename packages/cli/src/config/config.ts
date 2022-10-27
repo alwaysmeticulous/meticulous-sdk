@@ -2,7 +2,7 @@ import { cosmiconfig } from "cosmiconfig";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { cwd } from "process";
-import { MeticulousCliConfig, ReplayOptions } from "./config.types";
+import { MeticulousCliConfig, TestCaseReplayOptions } from "./config.types";
 
 const METICULOUS_CONFIG_FILE = "meticulous.json";
 
@@ -24,24 +24,22 @@ const getConfigFilePath: () => Promise<string> = async () => {
   return configFilePath;
 };
 
-const validateReplayOptions: (options: ReplayOptions) => ReplayOptions = (
-  prevOptions
-) => {
+const validateReplayOptions: (
+  options: TestCaseReplayOptions
+) => TestCaseReplayOptions = (prevOptions) => {
   const {
     screenshotSelector,
     diffThreshold,
     diffPixelThreshold,
-    cookies,
     moveBeforeClick,
-    useAssetsFromReplayId,
+    simulationIdForAssets,
   } = prevOptions;
   return {
     ...(screenshotSelector ? { screenshotSelector } : {}),
     ...(diffThreshold ? { diffThreshold } : {}),
     ...(diffPixelThreshold ? { diffPixelThreshold } : {}),
-    ...(cookies ? { cookies } : {}),
     ...(moveBeforeClick ? { moveBeforeClick } : {}),
-    ...(useAssetsFromReplayId ? { useAssetsFromReplayId } : {}),
+    ...(simulationIdForAssets ? { simulationIdForAssets } : {}),
   };
 };
 
@@ -75,7 +73,7 @@ export const readConfig = async (
   const configStr = await readFile(filePath, "utf-8").catch((error) => {
     // Use an empty config object if there is no config file
     if (
-      configFilePath === undefined &&
+      configFilePath == null &&
       error instanceof Error &&
       (error as any).code === "ENOENT"
     ) {

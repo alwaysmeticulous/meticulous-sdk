@@ -1,21 +1,23 @@
-export interface ReplayOptions {
-  screenshotSelector?: string;
-  diffThreshold?: number;
-  diffPixelThreshold?: number;
-  cookies?: Record<string, any>[];
-  moveBeforeClick?: boolean;
+import { ScreenshotDiffOptions } from "../command-utils/common-types";
+
+export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
+  appUrl?: string | null | undefined;
 
   /**
    * If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior replay, instead of against a URL.
    */
-  useAssetsFromReplayId?: string;
+  simulationIdForAssets?: string | undefined;
+
+  screenshotSelector?: string;
+
+  moveBeforeClick?: boolean;
 }
 
 export interface TestCase {
   title: string;
   sessionId: string;
   baseReplayId: string;
-  options?: ReplayOptions;
+  options?: TestCaseReplayOptions;
 }
 
 export interface MeticulousCliConfig {

@@ -46,51 +46,11 @@ const main = async () => {
 
   const initMessage = await waitForInitMessage();
 
-  const { logLevel, dataDir, runAllOptions, testCase, deflake } =
-    initMessage.data;
+  const { logLevel, dataDir, replayOptions } = initMessage.data;
   logger.setLevel(logLevel);
   setMeticulousLocalDataDir(dataDir);
 
-  const {
-    apiToken,
-    commitSha,
-    appUrl,
-    simulationIdForAssets,
-    headless,
-    devTools,
-    bypassCSP,
-    diffThreshold,
-    diffPixelThreshold,
-    padTime,
-    shiftTime,
-    networkStubbing,
-    accelerate,
-  } = runAllOptions;
-  const { sessionId, baseReplayId, options } = testCase;
-
-  const result = await deflakeReplayCommandHandler({
-    testCase,
-    deflake,
-    apiToken,
-    commitSha,
-    sessionId,
-    appUrl,
-    simulationIdForAssets,
-    headless,
-    devTools,
-    bypassCSP,
-    screenshot: true,
-    baseSimulationId: baseReplayId,
-    diffThreshold,
-    diffPixelThreshold,
-    save: false,
-    exitOnMismatch: false,
-    padTime,
-    shiftTime,
-    networkStubbing,
-    accelerate,
-    ...options,
-  });
+  const result = await deflakeReplayCommandHandler(replayOptions);
   const resultMessage: ResultMessage = {
     kind: "result",
     data: {
