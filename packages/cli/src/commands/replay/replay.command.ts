@@ -37,6 +37,7 @@ import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
 import { addTestCase } from "../../utils/config.utils";
 import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
+import { spans } from "./timing";
 
 export interface ReplayCommandHandlerOptions {
   apiToken?: string | null | undefined;
@@ -89,13 +90,17 @@ export const replayCommandHandler: (
   cookiesFile,
   accelerate,
 }) => {
+  const timing = spans("replay.command");
+  const overallSpan = timing.start("overall");
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
 
   // 1. Check session files
+  const fetchSessions = timing.start("fetching sessions");
   const session = await getOrFetchRecordedSession(client, sessionId);
   const sessionData = await getOrFetchRecordedSessionData(client, sessionId);
+  fetchSessions.finish();
 
   // 2. Guess commit SHA1
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
@@ -104,11 +109,16 @@ export const replayCommandHandler: (
   const meticulousSha = await getMeticulousVersion();
 
   // 3. If simulationIdForAssets specified then download assets & spin up local server
+  const serveAssetsFromSimulationSpan = timing.start(
+    "serveAssetsFromSimulation"
+  );
   const server = simulationIdForAssets
     ? await serveAssetsFromSimulation(client, simulationIdForAssets)
     : undefined;
+  serveAssetsFromSimulationSpan.finish();
 
   // 4. Load replay assets
+  const loadReplayAssetsSpan = timing.start("Load replay assets");
   const browserUserInteractions = await fetchAsset(
     "replay/v2/snippet-user-interactions.bundle.js"
   );
@@ -127,6 +137,7 @@ export const replayCommandHandler: (
   const nodeUserInteractions = await fetchAsset(
     "replay/v2/node-user-interactions.bundle.js"
   );
+  loadReplayAssetsSpan.finish();
 
   // 5. Load replay package
   let replayEvents: ReplayEventsFn;
@@ -208,7 +219,9 @@ export const replayCommandHandler: (
   // 7. Perform replay
   const startTime = DateTime.utc();
 
+  const replayEventsSpan = timing.start("replayEventsSpan");
   await replayEvents(replayEventsParams);
+  replayEventsSpan.finish();
 
   server?.closeServer();
 
@@ -220,9 +233,12 @@ export const replayCommandHandler: (
   logger.info("Sending simulation results to Meticulous");
 
   // 8. Create a Zip archive containing the replay files
+  const createReplayArchiveSpan = timing.start("createAchriveAndUpload");
   const archivePath = await createReplayArchive(tempDir);
+  createReplayArchiveSpan.finish();
 
   // 9. Get upload URL
+  const getReplayPushUrlSpan = timing.start("getReplayPushUrl");
   const replay = await createReplay({
     client,
     commitSha,
@@ -237,8 +253,10 @@ export const replayCommandHandler: (
     process.exit(1);
   }
   const uploadUrl = uploadUrlData.pushUrl;
+  getReplayPushUrlSpan.finish();
 
   // 10. Send archive to S3
+  const uploadArchiveSpan = timing.start("uploadArchive");
   try {
     await uploadArchive(uploadUrl, archivePath);
   } catch (error) {
@@ -251,6 +269,7 @@ export const replayCommandHandler: (
     logger.error(error);
     process.exit(1);
   }
+  uploadArchiveSpan.finish();
 
   // 11. Report successful upload to Meticulous
   const updatedProjectBuild = await putReplayPushedStatus(
@@ -274,12 +293,15 @@ export const replayCommandHandler: (
       `Diffing final state screenshot against replay ${baseReplayId}`
     );
 
+    const fetchOldArchiveSpan = timing.start("fetchOldArchive");
     await getOrFetchReplay(client, baseReplayId);
     await getOrFetchReplayArchive(client, baseReplayId);
+    fetchOldArchiveSpan.finish();
 
     const baseScreenshot = await readReplayScreenshot(baseReplayId);
     const headScreenshot = await readLocalReplayScreenshot(tempDir);
 
+    const diffScreenshotsSpan = timing.start("diffScreenshots");
     await diffScreenshots({
       client,
       baseReplayId,
@@ -290,6 +312,7 @@ export const replayCommandHandler: (
       pixelThreshold: diffPixelThreshold,
       exitOnMismatch: !!exitOnMismatch,
     });
+    diffScreenshotsSpan.finish();
   }
 
   // 13. Add test case to meticulous.json if --save option is passed
@@ -308,6 +331,10 @@ export const replayCommandHandler: (
   }
 
   await deleteArchive(archivePath);
+
+  timing.logAll();
+  overallSpan.finish();
+  timing.logAll();
 
   return replay;
 };
