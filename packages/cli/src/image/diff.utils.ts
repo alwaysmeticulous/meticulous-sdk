@@ -4,7 +4,15 @@ import { PNG } from "pngjs";
 export interface CompareImageOptions {
   base: PNG;
   head: PNG;
-  pixelThreshold: number | null;
+
+  /**
+   * Maximum colour distance a given pixel is allowed to differ before counting two
+   * pixels as different.
+   *
+   * Measure is based on "Measuring perceived color difference using YIQ NTSC transmission color space
+   * in mobile applications" by Y. Kotsarenko and F. Ramos
+   */
+  pixelThreshold: number;
 }
 
 export interface CompareImageResult {
@@ -30,7 +38,7 @@ export const compareImages: (
     width,
     height,
     {
-      threshold: pixelThreshold ?? undefined,
+      threshold: pixelThreshold,
     }
   );
   const mismatchFraction = mismatchPixels / (width * height);

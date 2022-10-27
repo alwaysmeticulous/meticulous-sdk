@@ -111,7 +111,7 @@ export const diffScreenshots: (options: {
       const comparisonResult = compareImages({
         base: baseScreenshot,
         head: headScreenshot,
-        pixelThreshold: diffPixelThreshold ?? null,
+        pixelThreshold: diffPixelThreshold,
       });
 
       totalMismatchPixels += comparisonResult.mismatchPixels;
