@@ -1,8 +1,5 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import {
-  ReplayExecutionOptions,
-  ReplayTarget,
-} from "@alwaysmeticulous/common/dist/types/replay.types";
+import { ReplayExecutionOptions, ReplayTarget } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import {
   ScreenshotAssertionsEnabledOptions,

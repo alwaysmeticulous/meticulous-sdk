@@ -4,11 +4,8 @@ import {
   Replay,
   ReplayEventsFn,
 } from "@alwaysmeticulous/common";
-import {
-  ReplayExecutionOptions,
-  ReplayTarget,
-  StoryboardOptions,
-} from "@alwaysmeticulous/common/dist/types/replay.types";
+import { StoryboardOptions } from "@alwaysmeticulous/common/dist/types/replay.types";
+import { ReplayExecutionOptions, ReplayTarget } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import log from "loglevel";
