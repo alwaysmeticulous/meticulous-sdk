@@ -63,7 +63,7 @@ const handler: (options: Options) => Promise<void> = async ({
   deflake,
   useCache,
   testsFile,
-  accelerate,
+  skipPauses,
 }) => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -72,7 +72,7 @@ const handler: (options: Options) => Promise<void> = async ({
     padTime,
     shiftTime,
     networkStubbing,
-    accelerate,
+    skipPauses,
     moveBeforeClick: false, // moveBeforeClick isn't exposed as an option for run-all-tests
     maxDurationMs: null, // we don't expose this option
     maxEventCount: null, // we don't expose this option

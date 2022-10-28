@@ -35,7 +35,7 @@ export const OPTIONS = {
   padTime: {
     boolean: true,
     description:
-      "Pad replay time according to recording duration. Please note this option will be ignored if running with the '--accelerate' option.",
+      "Pad replay time according to recording duration. Please note this option will be ignored if running with the '--skipPauses' option.",
     default: true,
   },
   shiftTime: {
@@ -48,7 +48,7 @@ export const OPTIONS = {
     description: "Stub network requests during replay",
     default: true,
   },
-  accelerate: {
+  skipPauses: {
     boolean: true,
     description:
       "Fast forward through any pauses to replay as fast as possible. Warning: this option is experimental and may be deprecated",
@@ -88,5 +88,5 @@ export const COMMON_REPLAY_OPTIONS = {
   padTime: OPTIONS.padTime,
   shiftTime: OPTIONS.shiftTime,
   networkStubbing: OPTIONS.networkStubbing,
-  accelerate: OPTIONS.accelerate,
+  skipPauses: OPTIONS.skipPauses,
 };

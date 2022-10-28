@@ -55,7 +55,7 @@ export interface ReplayExecutionOptions {
   padTime: boolean;
   shiftTime: boolean;
   networkStubbing: boolean;
-  accelerate: boolean;
+  skipPauses: boolean;
   moveBeforeClick: boolean;
   maxDurationMs: number | null;
   maxEventCount: number | null;
