@@ -8,6 +8,7 @@ import {
   ReplayTimelineEntry,
   ReplayUserInteractionsFn,
 } from "@alwaysmeticulous/sdk-bundles-api";
+import { StoryboardOptions } from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
 import puppeteer, { Browser, Page } from "puppeteer";
@@ -37,6 +38,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     sessionData,
     replayExecutionOptions,
     dependencies,
+    screenshottingOptions,
   } = options;
 
   // Extract replay metadata
@@ -165,6 +167,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   const startTime = DateTime.utc();
   const screenshotsDir = await prepareScreenshotsDir(outputDir);
+  const storyboard: StoryboardOptions =
+    screenshottingOptions.enabled &&
+    screenshottingOptions.storyboardOptions.enabled
+      ? { enabled: true, screenshotsDir }
+      : { enabled: false };
   const replayResult = await replayUserInteractions({
     page,
     logLevel,
@@ -172,8 +179,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     moveBeforeClick: true,
     acceleratePlayback: false,
     virtualTime: accelerate ? { enabled: true } : { enabled: false },
+    storyboard,
     onTimelineEvent,
-    screenshotsDir,
     ...(maxDurationMs != null ? { maxDurationMs } : {}),
     ...(maxEventCount != null ? { maxEventCount } : {}),
   });
@@ -207,11 +214,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   logger.info("Simulation done!");
 
-  if (options.screenshottingOptions.enabled) {
+  if (screenshottingOptions.enabled) {
     await takeScreenshot({
       page,
       outputDir,
-      screenshotSelector: options.screenshottingOptions.screenshotSelector,
+      screenshotSelector: screenshottingOptions.screenshotSelector,
     });
   }
 

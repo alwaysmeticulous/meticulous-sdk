@@ -81,6 +81,7 @@ const handler: (options: Options) => Promise<void> = async ({
     enabled: true,
     screenshotSelector: null, // this is only specified on a test case level
     diffOptions: { diffPixelThreshold, diffThreshold },
+    storyboardOptions: { enabled: false }, // we don't expose this option
   };
 
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);

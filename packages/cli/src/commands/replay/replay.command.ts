@@ -7,6 +7,7 @@ import {
 import {
   ReplayExecutionOptions,
   ReplayTarget,
+  StoryboardOptions,
 } from "@alwaysmeticulous/common/dist/types/replay.types";
 import { AxiosInstance } from "axios";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
@@ -323,6 +324,7 @@ export interface RawReplayCommandHandlerOptions
   screenshotSelector: string | null | undefined;
   maxDurationMs: number | null | undefined;
   maxEventCount: number | null | undefined;
+  storyboard: boolean;
 }
 
 interface AdditionalReplayOptions {
@@ -357,6 +359,7 @@ export const rawReplayCommandHandler = ({
   accelerate,
   maxDurationMs,
   maxEventCount,
+  storyboard,
 }: RawReplayCommandHandlerOptions): Promise<Replay> => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -370,11 +373,15 @@ export const rawReplayCommandHandler = ({
     maxDurationMs: maxDurationMs ?? null,
     maxEventCount: maxEventCount ?? null,
   };
+  const storyboardOptions: StoryboardOptions = storyboard
+    ? { enabled: true }
+    : { enabled: false };
   const screenshottingOptions: ScreenshotAssertionsOptions = screenshot
     ? {
         enabled: true,
         screenshotSelector: screenshotSelector ?? null,
         diffOptions: { diffPixelThreshold, diffThreshold },
+        storyboardOptions,
       }
     : { enabled: false };
   return replayCommandHandler({
@@ -471,6 +478,11 @@ export const replay: CommandModule<unknown, RawReplayCommandHandlerOptions> = {
     maxEventCount: {
       number: true,
       description: "Maximum number of events the simulation will run",
+    },
+    storyboard: {
+      boolean: true,
+      description: "Take a storyboard of screenshots during simulation",
+      default: false,
     },
   },
   handler: wrapHandler(async (options) => {
