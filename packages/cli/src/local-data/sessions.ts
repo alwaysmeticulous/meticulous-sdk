@@ -1,11 +1,11 @@
+import { mkdir, readFile, writeFile } from "fs/promises";
+import { join } from "path";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
-import { mkdir, readFile, writeFile } from "fs/promises";
 import log from "loglevel";
-import { join } from "path";
 import { getRecordedSession, getRecordedSessionData } from "../api/session.api";
 import { sanitizeFilename } from "./local-data.utils";
 

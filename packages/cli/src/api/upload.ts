@@ -1,5 +1,5 @@
-import axios from "axios";
 import { readFile } from "fs/promises";
+import axios from "axios";
 
 export const uploadArchive: (
   uploadUrl: string,

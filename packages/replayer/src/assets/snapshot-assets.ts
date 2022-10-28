@@ -1,10 +1,10 @@
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { mkdir, writeFile } from "fs/promises";
-import log from "loglevel";
 import { dirname, extname, join } from "path";
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import log from "loglevel";
+import { Duration } from "luxon";
 import { HTTPRequest, ResourceType } from "puppeteer";
 import { AssetSnapshot } from "./assets.types";
-import { Duration } from "luxon";
 
 const resourceTypesToSnapshot = new Set<ResourceType>([
   "document",

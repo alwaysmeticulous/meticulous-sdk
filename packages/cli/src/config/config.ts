@@ -1,7 +1,7 @@
-import { cosmiconfig } from "cosmiconfig";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { cwd } from "process";
+import { cosmiconfig } from "cosmiconfig";
 import { MeticulousCliConfig, TestCaseReplayOptions } from "./config.types";
 
 const METICULOUS_CONFIG_FILE = "meticulous.json";

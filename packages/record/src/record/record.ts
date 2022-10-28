@@ -1,11 +1,11 @@
+import { mkdir, readFile, writeFile } from "fs/promises";
+import { join } from "path";
 import {
   METICULOUS_LOGGER_NAME,
   RecordSessionFn,
 } from "@alwaysmeticulous/common";
-import { mkdir, readFile, writeFile } from "fs/promises";
 import log from "loglevel";
-import { join } from "path";
-import puppeteer, { Browser, PuppeteerNode } from "puppeteer";
+import puppeteer, { Browser, launch, PuppeteerNode } from "puppeteer";
 import { bootstrapPage, INITIAL_METICULOUS_DOCS_URL } from "./record.utils";
 
 const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
@@ -76,7 +76,7 @@ export const recordSession: RecordSessionFn = async ({
 
   const browser: Browser =
     browser_ ||
-    (await puppeteer.launch({
+    (await launch({
       defaultViewport,
       headless: false,
       devtools: devTools || false,

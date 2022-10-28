@@ -1,11 +1,11 @@
+import { mkdir, readFile, writeFile } from "fs/promises";
+import { basename, join } from "path";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
 import axios from "axios";
-import { mkdir, readFile, writeFile } from "fs/promises";
 import log from "loglevel";
-import { basename, join } from "path";
 import { getSnippetsBaseUrl } from "../config/snippets";
 
 export interface AssetMetadataItem {

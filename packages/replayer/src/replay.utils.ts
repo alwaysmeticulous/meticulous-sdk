@@ -1,10 +1,10 @@
+import { readFile } from "fs/promises";
 import {
   METICULOUS_LOGGER_NAME,
   ReplayEventsDependencies,
   SessionData,
 } from "@alwaysmeticulous/common";
 import { OnReplayTimelineEventFn } from "@alwaysmeticulous/sdk-bundles-api";
-import { readFile } from "fs/promises";
 import log from "loglevel";
 import { DateTime, Duration } from "luxon";
 import { BrowserContext, Page, Viewport } from "puppeteer";

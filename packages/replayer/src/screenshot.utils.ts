@@ -1,6 +1,6 @@
+import { join } from "path";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { join } from "path";
 import { Page } from "puppeteer";
 import { prepareScreenshotsDir } from "./output.utils";
 

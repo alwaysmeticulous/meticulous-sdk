@@ -1,3 +1,4 @@
+import { join } from "path";
 import {
   DebugLogger,
   getMeticulousLocalDataDir,
@@ -5,7 +6,6 @@ import {
   RecordSessionFn,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { join } from "path";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getProject } from "../../api/project.api";

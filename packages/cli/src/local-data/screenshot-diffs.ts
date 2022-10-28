@@ -1,11 +1,11 @@
+import { mkdir } from "fs/promises";
+import { join } from "path";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
-import { mkdir } from "fs/promises";
-import { join } from "path";
-import { PNG } from "pngjs";
 import log from "loglevel";
+import { PNG } from "pngjs";
 import { writePng } from "../image/io.utils";
 
 export const writeScreenshotDiff: (options: {

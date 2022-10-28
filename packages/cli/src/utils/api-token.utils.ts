@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "fs";
+import { homedir } from "os";
+import { join } from "path";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { join } from "path";
-import { homedir } from "os";
 
 const PERSONAL_CONFIG_FILE_PATH = ".meticulous/config.json";
 

@@ -1,5 +1,5 @@
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { exec } from "child_process";
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
 
 const getGitRevParseHead: () => Promise<string> = () => {
