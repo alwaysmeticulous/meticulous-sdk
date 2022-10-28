@@ -153,17 +153,17 @@ const handler: (options: Options) => Promise<void> = async ({
     save: false, // we handle the saving to meticulous.json ourselves below
 
     // We replay against the original recorded URL
-    appUrl: undefined,
-    simulationIdForAssets: undefined,
+    appUrl: null,
+    simulationIdForAssets: null,
 
     // We don't try comparing to the original screenshot, so just set these to their defaults
-    baseSimulationId: undefined,
+    baseSimulationId: null,
     diffThreshold: OPTIONS.diffThreshold.default,
     diffPixelThreshold: OPTIONS.diffPixelThreshold.default,
 
     // We don't expose these options
-    maxDurationMs: undefined,
-    maxEventCount: undefined,
+    maxDurationMs: null,
+    maxEventCount: null,
   };
   const replay = await rawReplayCommandHandler(replayOptions);
 

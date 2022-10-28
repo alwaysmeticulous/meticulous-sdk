@@ -44,7 +44,7 @@ const handleReplay: (
     baseSimulationId: testCase.baseReplayId,
     save: false,
     exitOnMismatch: false,
-    cookiesFile: undefined,
+    cookiesFile: null,
   });
   const result: TestCaseResult = await replayPromise
     .then(
@@ -79,7 +79,7 @@ interface HandleReplayOptions {
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
   testCase: TestCase;
-  apiToken: string | undefined;
+  apiToken: string | null;
   commitSha: string;
 }
 
