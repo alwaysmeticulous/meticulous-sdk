@@ -8,8 +8,7 @@ export interface ReplayUserInteractionsOptions {
   page: Page;
   sessionData: unknown;
   moveBeforeClick: boolean;
-  acceleratePlayback: boolean;
-  virtualTime: VirtualTimeOptions;
+  virtualTime?: VirtualTimeOptions;
   storyboard?: StoryboardOptions;
   maxDurationMs?: number;
   maxEventCount?: number;

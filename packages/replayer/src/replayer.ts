@@ -47,7 +47,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     devTools,
     shiftTime,
     networkStubbing,
-    accelerate,
+    skipPauses,
     padTime,
     maxDurationMs,
     maxEventCount,
@@ -177,8 +177,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     logLevel,
     sessionData,
     moveBeforeClick: true,
-    acceleratePlayback: false,
-    virtualTime: accelerate ? { enabled: true } : { enabled: false },
+    virtualTime: skipPauses ? { enabled: true } : { enabled: false },
     storyboard,
     onTimelineEvent,
     ...(maxDurationMs != null ? { maxDurationMs } : {}),
@@ -187,7 +186,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   logger.debug(`Replay result: ${JSON.stringify(replayResult)}`);
 
   // Pad replay time according to session duration recorded with rrweb
-  if (padTime && !accelerate && replayResult.length === "full") {
+  if (padTime && !skipPauses && replayResult.length === "full") {
     const rrwebRecordingDuration = getRrwebRecordingDuration(sessionData);
     if (rrwebRecordingDuration) {
       const now = DateTime.utc();

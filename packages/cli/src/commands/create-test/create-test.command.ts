@@ -98,7 +98,7 @@ const handler: (options: Options) => Promise<void> = async ({
   networkStubbing,
   moveBeforeClick,
   cookiesFile,
-  accelerate,
+  skipPauses,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -148,7 +148,7 @@ const handler: (options: Options) => Promise<void> = async ({
     networkStubbing,
     moveBeforeClick,
     cookiesFile,
-    accelerate,
+    skipPauses,
 
     save: false, // we handle the saving to meticulous.json ourselves below
 
@@ -217,8 +217,8 @@ export const createTest: CommandModule<unknown, Options> = {
       ...COMMON_REPLAY_OPTIONS.headless,
       default: true,
     },
-    accelerate: {
-      ...COMMON_REPLAY_OPTIONS.accelerate,
+    skipPauses: {
+      ...COMMON_REPLAY_OPTIONS.skipPauses,
       description:
         "Fast forward through any pauses to replay as fast as possible when replaying for the first time to create the test. Warning: this option is experimental and may be deprecated",
     },
