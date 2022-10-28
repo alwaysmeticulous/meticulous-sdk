@@ -3,9 +3,10 @@ import {
   METICULOUS_LOGGER_NAME,
   Replay,
   ReplayEventsFn,
+  ReplayExecutionOptions,
+  ReplayTarget,
 } from "@alwaysmeticulous/common";
 import { StoryboardOptions } from "@alwaysmeticulous/common/dist/types/replay.types";
-import { ReplayExecutionOptions, ReplayTarget } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import log from "loglevel";
