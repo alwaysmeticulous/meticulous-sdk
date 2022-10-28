@@ -57,7 +57,6 @@ export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsOptions;
-  storyboard: boolean;
   exitOnMismatch: boolean;
 }
 
@@ -72,7 +71,6 @@ export const replayCommandHandler = async ({
   exitOnMismatch,
   baseSimulationId: baseReplayId_,
   cookiesFile,
-  storyboard,
 }: ReplayOptions): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -399,7 +397,6 @@ export const rawReplayCommandHandler = ({
     sessionId,
     baseSimulationId,
     save,
-    storyboard,
     exitOnMismatch: true,
   });
 };

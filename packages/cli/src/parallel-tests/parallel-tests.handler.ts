@@ -118,7 +118,6 @@ export const runAllTestsInParallel: (
           }),
           executionOptions,
           screenshottingOptions,
-          storyboard: false, // we don't expose this option
         },
       },
     };

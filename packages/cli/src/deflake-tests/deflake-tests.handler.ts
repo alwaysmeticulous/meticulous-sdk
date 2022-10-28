@@ -23,7 +23,6 @@ const handleReplay: (
   replayTarget,
   executionOptions,
   screenshottingOptions,
-  storyboard,
   apiToken,
   commitSha,
 }) => {
@@ -39,7 +38,6 @@ const handleReplay: (
       screenshottingOptions,
       testCase.options ?? {}
     ),
-    storyboard,
     apiToken,
     commitSha,
     sessionId: testCase.sessionId,
@@ -80,7 +78,6 @@ interface HandleReplayOptions {
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
-  storyboard: boolean;
   testCase: TestCase;
   apiToken: string | null;
   commitSha: string;
