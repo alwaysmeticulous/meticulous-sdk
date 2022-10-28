@@ -12,7 +12,7 @@ interface PersonalConfig {
 
 export const getApiToken = (
   apiToken: string | null | undefined
-): string | undefined => {
+): string | null => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   if (apiToken) {
@@ -36,5 +36,5 @@ export const getApiToken = (
     }
   }
 
-  return undefined;
+  return null;
 };

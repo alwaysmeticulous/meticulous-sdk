@@ -150,7 +150,7 @@ export const patchDate: (options: {
 
 const getAppUrl: (options: {
   sessionData: any;
-  appUrl: string | undefined;
+  appUrl: string | null;
 }) => string = ({ sessionData, appUrl }) => {
   if (!appUrl) {
     const { startUrl, startURL } = sessionData.userEvents.window;
@@ -171,7 +171,7 @@ const getAppUrl: (options: {
 export const getStartUrl: (options: {
   session: any;
   sessionData: any;
-  appUrl: string | undefined;
+  appUrl: string | null;
 }) => string = ({ session, sessionData, appUrl }) => {
   // We prefer to use the start URL from the session metadata but default to
   // startURLs present within the events data for backwards-compatibility.

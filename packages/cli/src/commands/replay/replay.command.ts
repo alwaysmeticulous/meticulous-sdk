@@ -51,7 +51,6 @@ import { addTestCase } from "../../utils/config.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
-import { handleNulls } from "../../command-utils/command-utils";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
@@ -135,7 +134,7 @@ export const replayCommandHandler = async ({
 
   // 6. Create and save replay parameters
   const replayEventsParams: Parameters<typeof replayEvents>[0] = {
-    appUrl,
+    appUrl: appUrl ?? null,
     replayExecutionOptions: executionOptions,
 
     browser: null,
@@ -172,7 +171,7 @@ export const replayCommandHandler = async ({
       },
     },
     screenshottingOptions,
-    cookiesFile: cookiesFile,
+    cookiesFile: cookiesFile ?? null,
   };
   await writeFile(
     join(tempDir, "replayEventsParams.json"),
@@ -316,21 +315,23 @@ const unknownReplayTargetType = (replayTarget: never): never => {
 
 export interface RawReplayCommandHandlerOptions
   extends ScreenshotDiffOptions,
-    ReplayExecutionOptions,
+    Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount">,
     AdditionalReplayOptions {
   screenshot: boolean;
-  appUrl: string | undefined;
-  simulationIdForAssets: string | undefined;
-  screenshotSelector: string | undefined;
+  appUrl: string | null | undefined;
+  simulationIdForAssets: string | null | undefined;
+  screenshotSelector: string | null | undefined;
+  maxDurationMs: number | null | undefined;
+  maxEventCount: number | null | undefined;
 }
 
 interface AdditionalReplayOptions {
-  apiToken: string | undefined;
-  commitSha: string | undefined;
+  apiToken: string | null | undefined;
+  commitSha: string | null | undefined;
   sessionId: string;
-  save: boolean | undefined;
-  baseSimulationId: string | undefined;
-  cookiesFile: string | undefined;
+  save: boolean | null | undefined;
+  baseSimulationId: string | null | undefined;
+  cookiesFile: string | null | undefined;
 }
 
 export const rawReplayCommandHandler = ({
@@ -366,18 +367,21 @@ export const rawReplayCommandHandler = ({
     networkStubbing,
     accelerate,
     moveBeforeClick,
-    maxDurationMs: maxDurationMs ?? undefined,
-    maxEventCount: maxEventCount ?? undefined,
+    maxDurationMs: maxDurationMs ?? null,
+    maxEventCount: maxEventCount ?? null,
   };
   const screenshottingOptions: ScreenshotAssertionsOptions = screenshot
     ? {
         enabled: true,
-        screenshotSelector: screenshotSelector ?? undefined,
+        screenshotSelector: screenshotSelector ?? null,
         diffOptions: { diffPixelThreshold, diffThreshold },
       }
     : { enabled: false };
   return replayCommandHandler({
-    replayTarget: getReplayTarget({ appUrl, simulationIdForAssets }),
+    replayTarget: getReplayTarget({
+      appUrl: appUrl ?? null,
+      simulationIdForAssets: simulationIdForAssets ?? null,
+    }),
     executionOptions,
     screenshottingOptions,
     apiToken,
@@ -394,8 +398,8 @@ const getReplayTarget = ({
   appUrl,
   simulationIdForAssets,
 }: {
-  appUrl?: string | undefined;
-  simulationIdForAssets?: string | undefined;
+  appUrl: string | null;
+  simulationIdForAssets: string | null;
 }): ReplayTarget => {
   if (simulationIdForAssets) {
     return { type: "snapshotted-assets", simulationIdForAssets };
@@ -469,9 +473,7 @@ export const replay: CommandModule<unknown, RawReplayCommandHandlerOptions> = {
       description: "Maximum number of events the simulation will run",
     },
   },
-  handler: wrapHandler(
-    handleNulls(async (options) => {
-      await rawReplayCommandHandler(options);
-    })
-  ),
+  handler: wrapHandler(async (options) => {
+    await rawReplayCommandHandler(options);
+  }),
 };

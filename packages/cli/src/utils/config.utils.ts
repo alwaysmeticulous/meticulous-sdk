@@ -19,7 +19,7 @@ export const getReplayTargetForTestCase = ({
   testCase,
 }: {
   useAssetsSnapshottedInBaseSimulation: boolean;
-  appUrl: string | undefined;
+  appUrl: string | null;
   testCase: TestCase;
 }): ReplayTarget => {
   if (testCase.options?.simulationIdForAssets != null) {
