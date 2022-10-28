@@ -72,7 +72,11 @@ export interface ScreenshottingEnabledOptions {
    * If null will screenshot whole window
    */
   screenshotSelector: string | null;
+
+  storyboardOptions: StoryboardOptions;
 }
+
+export type StoryboardOptions = { enabled: false } | { enabled: true };
 
 export interface ReplayEventsOptions {
   /**

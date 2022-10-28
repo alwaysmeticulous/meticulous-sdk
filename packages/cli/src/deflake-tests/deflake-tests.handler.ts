@@ -137,5 +137,6 @@ const applyTestCaseScreenshottingOptionsOverrides = (
       overridesFromTestCase.screenshotSelector ??
       screenshottingOptionsFromCliFlags.screenshotSelector,
     diffOptions,
+    storyboardOptions: { enabled: false }, // we don't expose this option
   };
 };
