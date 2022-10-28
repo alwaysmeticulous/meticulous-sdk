@@ -37,6 +37,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     sessionData,
     replayExecutionOptions,
     dependencies,
+    screenshottingOptions,
+    storyboardOptions,
   } = options;
 
   // Extract replay metadata
@@ -172,8 +174,10 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     moveBeforeClick: true,
     acceleratePlayback: false,
     virtualTime: accelerate ? { enabled: true } : { enabled: false },
+    storyboard: storyboardOptions.enabled
+      ? { enabled: true, screenshotsDir }
+      : { enabled: false },
     onTimelineEvent,
-    screenshotsDir,
     ...(maxDurationMs != null ? { maxDurationMs } : {}),
     ...(maxEventCount != null ? { maxEventCount } : {}),
   });
@@ -207,11 +211,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   logger.info("Simulation done!");
 
-  if (options.screenshottingOptions.enabled) {
+  if (screenshottingOptions.enabled) {
     await takeScreenshot({
       page,
       outputDir,
-      screenshotSelector: options.screenshottingOptions.screenshotSelector,
+      screenshotSelector: screenshottingOptions.screenshotSelector,
     });
   }
 

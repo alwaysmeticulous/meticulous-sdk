@@ -164,6 +164,7 @@ const handler: (options: Options) => Promise<void> = async ({
     // We don't expose these options
     maxDurationMs: undefined,
     maxEventCount: undefined,
+    storyboard: false,
   };
   const replay = await rawReplayCommandHandler(replayOptions);
 

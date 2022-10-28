@@ -74,6 +74,8 @@ export interface ScreenshottingEnabledOptions {
   screenshotSelector: string | undefined;
 }
 
+export type StoryboardOptions = { enabled: false } | { enabled: true };
+
 export interface ReplayEventsOptions {
   /**
    * If undefined then will use the URL the session was recorded against.
@@ -90,6 +92,7 @@ export interface ReplayEventsOptions {
   verbose?: boolean;
   dependencies: ReplayEventsDependencies;
   screenshottingOptions: ScreenshottingOptions;
+  storyboardOptions: StoryboardOptions;
   cookiesFile: string | undefined;
 }
 

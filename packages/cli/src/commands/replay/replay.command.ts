@@ -57,6 +57,7 @@ export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsOptions;
+  storyboard: boolean;
   exitOnMismatch: boolean;
 }
 
@@ -71,6 +72,7 @@ export const replayCommandHandler = async ({
   exitOnMismatch,
   baseSimulationId: baseReplayId_,
   cookiesFile,
+  storyboard,
 }: ReplayOptions): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -172,6 +174,7 @@ export const replayCommandHandler = async ({
       },
     },
     screenshottingOptions,
+    storyboardOptions: storyboard ? { enabled: true } : { enabled: false },
     cookiesFile: cookiesFile,
   };
   await writeFile(
@@ -322,6 +325,7 @@ export interface RawReplayCommandHandlerOptions
   appUrl: string | undefined;
   simulationIdForAssets: string | undefined;
   screenshotSelector: string | undefined;
+  storyboard: boolean;
 }
 
 interface AdditionalReplayOptions {
@@ -356,6 +360,7 @@ export const rawReplayCommandHandler = ({
   accelerate,
   maxDurationMs,
   maxEventCount,
+  storyboard,
 }: RawReplayCommandHandlerOptions): Promise<Replay> => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -386,6 +391,7 @@ export const rawReplayCommandHandler = ({
     sessionId,
     baseSimulationId,
     save,
+    storyboard,
     exitOnMismatch: true,
   });
 };
@@ -467,6 +473,11 @@ export const replay: CommandModule<unknown, RawReplayCommandHandlerOptions> = {
     maxEventCount: {
       number: true,
       description: "Maximum number of events the simulation will run",
+    },
+    storyboard: {
+      boolean: true,
+      description: "Take a storyboard of screenshots during simulation",
+      default: false,
     },
   },
   handler: wrapHandler(

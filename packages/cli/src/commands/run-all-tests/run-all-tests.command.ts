@@ -145,6 +145,7 @@ const handler: (options: Options) => Promise<void> = async ({
         }),
         executionOptions,
         screenshottingOptions,
+        storyboard: false, // we don't expose this option
         testCase,
         apiToken,
         commitSha,
