@@ -33,8 +33,8 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile --non-interactive
 
-      - name: Lint
-        run: yarn lint
-
       - name: Build packages
         run: yarn build
+
+      - name: Lint
+        run: yarn lint
