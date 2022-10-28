@@ -8,6 +8,7 @@ import {
   ReplayTimelineEntry,
   ReplayUserInteractionsFn,
 } from "@alwaysmeticulous/sdk-bundles-api";
+import { StoryboardOptions } from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
 import puppeteer, { Browser, Page } from "puppeteer";
@@ -38,7 +39,6 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     replayExecutionOptions,
     dependencies,
     screenshottingOptions,
-    storyboardOptions,
   } = options;
 
   // Extract replay metadata
@@ -167,6 +167,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   const startTime = DateTime.utc();
   const screenshotsDir = await prepareScreenshotsDir(outputDir);
+  const storyboard: StoryboardOptions =
+    screenshottingOptions.enabled &&
+    screenshottingOptions.storyboardOptions.enabled
+      ? { enabled: true, screenshotsDir }
+      : { enabled: false };
   const replayResult = await replayUserInteractions({
     page,
     logLevel,
@@ -174,9 +179,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     moveBeforeClick: true,
     acceleratePlayback: false,
     virtualTime: accelerate ? { enabled: true } : { enabled: false },
-    storyboard: storyboardOptions.enabled
-      ? { enabled: true, screenshotsDir }
-      : { enabled: false },
+    storyboard,
     onTimelineEvent,
     ...(maxDurationMs != null ? { maxDurationMs } : {}),
     ...(maxEventCount != null ? { maxEventCount } : {}),

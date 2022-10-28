@@ -26,11 +26,11 @@ export interface RunAllTestsInParallelOptions {
   testRun: TestRun;
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
-  apiToken: string | undefined;
+  apiToken: string | null;
   commitSha: string;
-  appUrl: string | undefined;
+  appUrl: string | null;
   useAssetsSnapshottedInBaseSimulation: boolean;
-  parallelTasks: number | undefined;
+  parallelTasks: number | null;
   deflake: boolean;
   cachedTestRunResults: TestCaseResult[];
 }

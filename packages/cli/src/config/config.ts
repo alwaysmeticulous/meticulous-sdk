@@ -73,7 +73,7 @@ export const readConfig = async (
   const configStr = await readFile(filePath, "utf-8").catch((error) => {
     // Use an empty config object if there is no config file
     if (
-      configFilePath === undefined &&
+      configFilePath == null &&
       error instanceof Error &&
       (error as any).code === "ENOENT"
     ) {

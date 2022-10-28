@@ -46,7 +46,7 @@ const handleReplay: (
     baseSimulationId: testCase.baseReplayId,
     save: false,
     exitOnMismatch: false,
-    cookiesFile: undefined,
+    cookiesFile: null,
   });
   const result: TestCaseResult = await replayPromise
     .then(
@@ -82,7 +82,7 @@ interface HandleReplayOptions {
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
   storyboard: boolean;
   testCase: TestCase;
-  apiToken: string | undefined;
+  apiToken: string | null;
   commitSha: string;
 }
 
@@ -140,5 +140,6 @@ const applyTestCaseScreenshottingOptionsOverrides = (
       overridesFromTestCase.screenshotSelector ??
       screenshottingOptionsFromCliFlags.screenshotSelector,
     diffOptions,
+    storyboardOptions: { enabled: false }, // we don't expose this option
   };
 };

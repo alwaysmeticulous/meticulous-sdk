@@ -30,7 +30,6 @@ import { writeGitHubSummary } from "../../utils/github-summary.utils";
 import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
-import { handleNulls } from "../../command-utils/command-utils";
 
 interface Options extends ScreenshotDiffOptions, ReplayExecutionOptions {
   apiToken?: string;
@@ -75,13 +74,14 @@ const handler: (options: Options) => Promise<void> = async ({
     networkStubbing,
     accelerate,
     moveBeforeClick: false, // moveBeforeClick isn't exposed as an option for run-all-tests
-    maxDurationMs: undefined, // we don't expose this option
-    maxEventCount: undefined, // we don't expose this option
+    maxDurationMs: null, // we don't expose this option
+    maxEventCount: null, // we don't expose this option
   };
   const screenshottingOptions: ScreenshotAssertionsOptions = {
     enabled: true,
-    screenshotSelector: undefined, // this is only specified on a test case level
+    screenshotSelector: null, // this is only specified on a test case level
     diffOptions: { diffPixelThreshold, diffThreshold },
+    storyboardOptions: { enabled: false }, // we don't expose this option
   };
 
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -123,11 +123,11 @@ const handler: (options: Options) => Promise<void> = async ({
         testRun,
         executionOptions,
         screenshottingOptions,
-        apiToken,
+        apiToken: apiToken ?? null,
         commitSha,
-        appUrl,
+        appUrl: appUrl ?? null,
         useAssetsSnapshottedInBaseSimulation,
-        parallelTasks: parallelTasks ?? undefined,
+        parallelTasks: parallelTasks ?? null,
         deflake,
         cachedTestRunResults,
       });
@@ -140,14 +140,14 @@ const handler: (options: Options) => Promise<void> = async ({
       const result = await deflakeReplayCommandHandler({
         replayTarget: getReplayTargetForTestCase({
           useAssetsSnapshottedInBaseSimulation,
-          appUrl,
+          appUrl: appUrl ?? null,
           testCase,
         }),
         executionOptions,
         screenshottingOptions,
         storyboard: false, // we don't expose this option
         testCase,
-        apiToken,
+        apiToken: apiToken ?? null,
         commitSha,
         deflake: deflake ?? false,
       });
@@ -247,5 +247,5 @@ export const runAllTests: CommandModule<unknown, Options> = {
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
   },
-  handler: wrapHandler(handleNulls(handler)),
+  handler: wrapHandler(handler),
 };

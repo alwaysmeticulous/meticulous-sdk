@@ -57,8 +57,8 @@ export interface ReplayExecutionOptions {
   networkStubbing: boolean;
   accelerate: boolean;
   moveBeforeClick: boolean;
-  maxDurationMs: number | undefined;
-  maxEventCount: number | undefined;
+  maxDurationMs: number | null;
+  maxEventCount: number | null;
 }
 
 export type ScreenshottingOptions =
@@ -69,18 +69,20 @@ export interface ScreenshottingEnabledOptions {
   enabled: true;
 
   /**
-   * If undefined will screenshot whole window
+   * If null will screenshot whole window
    */
-  screenshotSelector: string | undefined;
+  screenshotSelector: string | null;
+
+  storyboardOptions: StoryboardOptions;
 }
 
 export type StoryboardOptions = { enabled: false } | { enabled: true };
 
 export interface ReplayEventsOptions {
   /**
-   * If undefined then will use the URL the session was recorded against.
+   * If null then will use the URL the session was recorded against.
    */
-  appUrl: string | undefined;
+  appUrl: string | null;
   replayExecutionOptions: ReplayExecutionOptions;
 
   browser: any;
@@ -92,8 +94,7 @@ export interface ReplayEventsOptions {
   verbose?: boolean;
   dependencies: ReplayEventsDependencies;
   screenshottingOptions: ScreenshottingOptions;
-  storyboardOptions: StoryboardOptions;
-  cookiesFile: string | undefined;
+  cookiesFile: string | null;
 }
 
 export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;
