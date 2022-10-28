@@ -15,7 +15,6 @@ export interface ReplayUserInteractionsOptions {
   maxEventCount?: number;
   onTimelineEvent: OnReplayTimelineEventFn;
   logLevel: LogLevelDesc;
-  // screenshotsDir?: string;
 }
 
 /** Replay function for user interaction events */
