@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { FunctionComponent, useCallback } from "react";
+import { ReplayUserEvents } from "./user-events";
 import { useReplayDebuggerContext } from "src/lib/replay-debugger/replay-debugger.context";
 import { ReplayDebuggerProvider } from "src/lib/replay-debugger/replay-debugger.provider";
-import { ReplayUserEvents } from "./user-events";
 
 const ReplayDebuggerWrapped: FunctionComponent = () => {
   const { state, dispatchEvent } = useReplayDebuggerContext();

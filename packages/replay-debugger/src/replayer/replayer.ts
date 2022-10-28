@@ -4,7 +4,7 @@ import {
 } from "@alwaysmeticulous/common";
 import { getStartUrl } from "@alwaysmeticulous/replayer";
 import log from "loglevel";
-import puppeteer, { Browser } from "puppeteer";
+import { Browser, launch } from "puppeteer";
 import { bootstrapPage, setupPageCookies } from "./debugger.utils";
 import { createReplayDebuggerUI } from "./replay-debugger.ui";
 
@@ -24,7 +24,7 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
   const { width, height } = sessionData.userEvents.window;
   const defaultViewport = { width, height };
 
-  const browser: Browser = await puppeteer.launch({
+  const browser: Browser = await launch({
     defaultViewport,
     args: [`--window-size=${width},${height}`],
     headless: false,

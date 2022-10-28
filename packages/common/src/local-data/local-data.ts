@@ -1,5 +1,5 @@
-import log from "loglevel";
 import { join, normalize } from "path";
+import log from "loglevel";
 import { METICULOUS_LOGGER_NAME } from "../logger/console-logger";
 
 let _localDataDir = "";

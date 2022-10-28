@@ -1,7 +1,7 @@
+import { basename, join } from "path";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import log, { Logger } from "loglevel";
-import { basename, join } from "path";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getDiffUrl, postScreenshotDiffStats } from "../../api/replay.api";

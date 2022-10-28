@@ -1,8 +1,8 @@
 import { appendFile } from "fs/promises";
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import log from "loglevel";
 import { getTestRunUrl, TestRun } from "../api/test-run.api";
 import { TestCaseResult } from "../config/config.types";
-import log from "loglevel";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 
 export const writeGitHubSummary: (options: {
   testRun: TestRun;

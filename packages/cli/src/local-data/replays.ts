@@ -1,13 +1,12 @@
+import { opendir , access, mkdir, readFile, rm, writeFile } from "fs/promises";
+import { join } from "path";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
 import Zip from "adm-zip";
 import { AxiosInstance } from "axios";
-import { opendir } from "fs/promises";
-import { access, mkdir, readFile, rm, writeFile } from "fs/promises";
 import log from "loglevel";
-import { join } from "path";
 import { downloadFile } from "../api/download";
 import { getReplay, getReplayDownloadUrl } from "../api/replay.api";
 

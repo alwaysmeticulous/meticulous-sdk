@@ -1,9 +1,9 @@
+import { readFile } from "fs/promises";
 import type {
   BaseReplayEventsDependencies,
   ReplayEventsDependency,
 } from "@alwaysmeticulous/common";
 import { patchDate } from "@alwaysmeticulous/replayer";
-import { readFile } from "fs/promises";
 import { Page } from "puppeteer";
 
 export interface SetupPageCookiesOptions {

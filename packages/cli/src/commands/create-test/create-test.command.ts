@@ -1,6 +1,6 @@
 import { METICULOUS_LOGGER_NAME, Replay } from "@alwaysmeticulous/common";
 import chalk from "chalk";
-import inquirer from "inquirer";
+import { prompt } from "inquirer";
 import log from "loglevel";
 import { CommandModule } from "yargs";
 import {
@@ -28,7 +28,7 @@ const handleTestCreation: (
 ) => Promise<void> = async (replay, sessionId) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const validationResponse = await inquirer.prompt<{ value: boolean }>([
+  const validationResponse = await prompt<{ value: boolean }>([
     {
       type: "confirm",
       name: "value",
@@ -41,7 +41,7 @@ const handleTestCreation: (
     return;
   }
 
-  const createTestResponse = await inquirer.prompt<{ value: boolean }>([
+  const createTestResponse = await prompt<{ value: boolean }>([
     {
       type: "confirm",
       name: "value",
@@ -56,7 +56,7 @@ const handleTestCreation: (
     return;
   }
 
-  const testNameResponse = await inquirer.prompt<{ name: string }>([
+  const testNameResponse = await prompt<{ name: string }>([
     {
       type: "input",
       name: "name",

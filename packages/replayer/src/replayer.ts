@@ -11,7 +11,7 @@ import {
 import { StoryboardOptions } from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
-import puppeteer, { Browser, Page } from "puppeteer";
+import { Browser, launch, Page } from "puppeteer";
 import { prepareScreenshotsDir, writeOutput } from "./output.utils";
 import { ReplayMetadata } from "./replay.types";
 import {
@@ -67,7 +67,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const windowHeight = defaultViewport.height + 200;
   const browser: Browser =
     browser_ ||
-    (await puppeteer.launch({
+    (await launch({
       defaultViewport: defaultViewport,
       args: [
         `--window-size=${windowWidth},${windowHeight}`,

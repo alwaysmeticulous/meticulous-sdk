@@ -1,3 +1,6 @@
+import { fork } from "child_process";
+import { cpus } from "os";
+import { join } from "path";
 import {
   defer,
   getMeticulousLocalDataDir,
@@ -5,10 +8,7 @@ import {
   ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
-import { fork } from "child_process";
 import log from "loglevel";
-import { cpus } from "os";
-import { join } from "path";
 import { putTestRunResults, TestRun } from "../api/test-run.api";
 import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
 import {

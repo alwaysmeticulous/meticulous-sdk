@@ -1,11 +1,11 @@
-import { AxiosInstance } from "axios";
-import { getOrFetchReplayArchive, getSnapshottedAssetsDir } from "./replays";
-import express from "express";
-import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { existsSync } from "fs";
-import log from "loglevel";
-import findFreePort from "find-free-port";
 import { Server } from "http";
+import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { AxiosInstance } from "axios";
+import express from "express";
+import findFreePort from "find-free-port";
+import log from "loglevel";
+import { getOrFetchReplayArchive, getSnapshottedAssetsDir } from "./replays";
 
 // We must avoid ports blocked by Chrome: https://superuser.com/questions/188058/which-ports-are-considered-unsafe-by-chrome
 const STARTING_PORT = 9100;
@@ -31,6 +31,7 @@ export async function serveAssetsFromSimulation(
   }
 
   const app = express();
+  // eslint-disable-next-line import/no-named-as-default-member
   app.use(express.static(snapshottedAssetsDir));
 
   const serverStartupPromise = defer();

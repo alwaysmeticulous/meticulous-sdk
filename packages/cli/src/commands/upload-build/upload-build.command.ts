@@ -1,3 +1,5 @@
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import log from "loglevel";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import {
@@ -12,10 +14,8 @@ import {
   createArchive,
   deleteArchive,
 } from "../../archive/archive";
-import log from "loglevel";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 
 interface Options {
   apiToken?: string | null | undefined;

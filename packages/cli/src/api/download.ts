@@ -1,7 +1,7 @@
-import axios from "axios";
 import { createWriteStream } from "fs";
 import { finished } from "stream";
 import { promisify } from "util";
+import axios from "axios";
 
 const promisifiedFinished = promisify(finished);
 

@@ -1,3 +1,5 @@
+import { mkdir, mkdtemp, writeFile } from "fs/promises";
+import { join } from "path";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
@@ -10,10 +12,8 @@ import {
   StoryboardOptions,
 } from "@alwaysmeticulous/common/dist/types/replay.types";
 import { AxiosInstance } from "axios";
-import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import log from "loglevel";
 import { DateTime } from "luxon";
-import { join } from "path";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import {

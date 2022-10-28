@@ -1,5 +1,5 @@
-import { Browser, JSHandle, Page } from "puppeteer";
 import { startServer } from "@alwaysmeticulous/replay-debugger-ui";
+import { Browser, JSHandle, Page } from "puppeteer";
 
 export interface ReplayableEvent {
   [key: string]: any;

@@ -1,7 +1,7 @@
-import axios, { AxiosInstance } from "axios";
-import { getApiToken } from "../utils/api-token.utils";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import axios, { AxiosInstance } from "axios";
 import log from "loglevel";
+import { getApiToken } from "../utils/api-token.utils";
 
 const BASE_API_URL = "https://app.meticulous.ai/api/";
 

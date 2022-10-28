@@ -1,8 +1,8 @@
-import { join, resolve, dirname } from "path";
+import { createWriteStream } from "fs";
 import { readdir, mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
+import { join, resolve, dirname } from "path";
 import archiver from "archiver";
-import { createWriteStream } from "fs";
 
 export const checkDistFolder: (dist: string) => Promise<void> = async (
   dist_
