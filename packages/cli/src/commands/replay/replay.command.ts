@@ -4,7 +4,7 @@ import {
   Replay,
   ReplayEventsFn,
   ReplayExecutionOptions,
-  ReplayTarget,
+  ReplayTarget
 } from "@alwaysmeticulous/common";
 import { StoryboardOptions } from "@alwaysmeticulous/common/dist/types/replay.types";
 import { AxiosInstance } from "axios";
@@ -19,18 +19,17 @@ import {
   getReplayCommandId,
   getReplayPushUrl,
   getReplayUrl,
-  putReplayPushedStatus,
+  putReplayPushedStatus
 } from "../../api/replay.api";
 import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
 import {
   COMMON_REPLAY_OPTIONS,
   OPTIONS,
-  SCREENSHOT_DIFF_OPTIONS,
+  SCREENSHOT_DIFF_OPTIONS
 } from "../../command-utils/common-options";
 import {
-  ScreenshotDiffOptions,
-  ScreenshotAssertionsOptions,
+  ScreenshotAssertionsOptions, ScreenshotDiffOptions
 } from "../../command-utils/common-types";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
@@ -38,12 +37,12 @@ import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
   getReplayDir,
-  getScreenshotsDir,
+  getScreenshotsDir
 } from "../../local-data/replays";
 import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
 import {
   getOrFetchRecordedSession,
-  getOrFetchRecordedSessionData,
+  getOrFetchRecordedSessionData
 } from "../../local-data/sessions";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { addTestCase } from "../../utils/config.utils";
