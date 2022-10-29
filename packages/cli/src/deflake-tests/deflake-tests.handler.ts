@@ -1,19 +1,15 @@
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import {
-  ReplayExecutionOptions,
-  ReplayTarget,
-} from "@alwaysmeticulous/common/dist/types/replay.types";
+import { METICULOUS_LOGGER_NAME, ReplayExecutionOptions, ReplayTarget } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import {
   ScreenshotAssertionsEnabledOptions,
-  ScreenshotDiffOptions,
+  ScreenshotDiffOptions
 } from "../command-utils/common-types";
 import { replayCommandHandler } from "../commands/replay/replay.command";
 import { DiffError } from "../commands/screenshot-diff/screenshot-diff.command";
 import {
   TestCase,
   TestCaseReplayOptions,
-  TestCaseResult,
+  TestCaseResult
 } from "../config/config.types";
 
 const handleReplay: (
