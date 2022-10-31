@@ -106,8 +106,8 @@ export interface Replay {
   [key: string]: any;
 }
 
-type NotebookRunId = StringId<"NotebookRunId">;
-type TestRunId = StringId<"TestRunId">;
+export type NotebookRunId = StringId<"NotebookRunId">;
+export type TestRunId = StringId<"TestRunId">;
 
 export type GeneratedBy =
   | GeneratedByNotebookRun
