@@ -1,17 +1,18 @@
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import { join } from "path";
 import {
-  getMeticulousLocalDataDir,
+  GeneratedBy, getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
   Replay,
   ReplayEventsFn,
   ReplayExecutionOptions,
-  ReplayTarget,
+  ReplayTarget
 } from "@alwaysmeticulous/common";
 import { StoryboardOptions } from "@alwaysmeticulous/common/dist/types/replay.types";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { DateTime } from "luxon";
+import { nanoid } from "nanoid";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import {
@@ -19,18 +20,18 @@ import {
   getReplayCommandId,
   getReplayPushUrl,
   getReplayUrl,
-  putReplayPushedStatus,
+  putReplayPushedStatus
 } from "../../api/replay.api";
 import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
 import {
   COMMON_REPLAY_OPTIONS,
   OPTIONS,
-  SCREENSHOT_DIFF_OPTIONS,
+  SCREENSHOT_DIFF_OPTIONS
 } from "../../command-utils/common-options";
 import {
   ScreenshotAssertionsOptions,
-  ScreenshotDiffOptions,
+  ScreenshotDiffOptions
 } from "../../command-utils/common-types";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
@@ -38,20 +39,18 @@ import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
   getReplayDir,
-  getScreenshotsDir,
+  getScreenshotsDir
 } from "../../local-data/replays";
 import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
 import {
   getOrFetchRecordedSession,
-  getOrFetchRecordedSessionData,
+  getOrFetchRecordedSessionData
 } from "../../local-data/sessions";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { addTestCase } from "../../utils/config.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
-import { GeneratedBy } from "@alwaysmeticulous/common";
-import { nanoid } from "nanoid";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
