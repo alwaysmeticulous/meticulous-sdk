@@ -1,9 +1,8 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
+import { buildCommand } from "../../command-utils/command-builder";
 import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
-import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -20,11 +19,12 @@ const handler: (options: Options) => Promise<void> = async ({
   logger.info(`Serving assets at url ${url}`);
 };
 
-export const serve: CommandModule<unknown, Options> = {
-  command: "serve",
-  describe:
-    "Spin up a localhost server to serve the assets that were snapshotted when running a particular replay",
-  builder: {
+export const serve = buildCommand("serve")
+  .details({
+    describe:
+      "Spin up a localhost server to serve the assets that were snapshotted when running a particular replay",
+  })
+  .options({
     apiToken: {
       string: true,
     },
@@ -32,6 +32,5 @@ export const serve: CommandModule<unknown, Options> = {
       string: true,
       demandOption: true,
     },
-  },
-  handler: wrapHandler(handler),
-};
+  })
+  .handler(handler);

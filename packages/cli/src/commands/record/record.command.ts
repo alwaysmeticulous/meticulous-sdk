@@ -6,16 +6,15 @@ import {
   RecordSessionFn,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getProject } from "../../api/project.api";
 import {
   getRecordingCommandId,
   postSessionIdNotification,
 } from "../../api/session.api";
+import { buildCommand } from "../../command-utils/command-builder";
 import { fetchAsset } from "../../local-data/replay-assets";
 import { getCommitSha } from "../../utils/commit-sha.utils";
-import { wrapHandler } from "../../utils/sentry.utils";
 
 export interface RecordCommandHandlerOptions {
   apiToken: string | null | undefined;
@@ -150,10 +149,11 @@ export const recordCommandHandler: (
   });
 };
 
-export const record: CommandModule<unknown, RecordCommandHandlerOptions> = {
-  command: "record",
-  describe: "Record a session",
-  builder: {
+export const record = buildCommand("record")
+  .details({
+    describe: "Record a session",
+  })
+  .options({
     apiToken: {
       string: true,
       demandOption: true,
@@ -188,6 +188,5 @@ export const record: CommandModule<unknown, RecordCommandHandlerOptions> = {
       boolean: true,
       description: "Enable verbose logging",
     },
-  },
-  handler: wrapHandler(recordCommandHandler),
-};
+  })
+  .handler(recordCommandHandler);

@@ -2,9 +2,9 @@ import { basename, join } from "path";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import log, { Logger } from "loglevel";
-import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getDiffUrl, postScreenshotDiffStats } from "../../api/replay.api";
+import { buildCommand } from "../../command-utils/command-builder";
 import { SCREENSHOT_DIFF_OPTIONS } from "../../command-utils/common-options";
 import { ScreenshotDiffOptions } from "../../command-utils/common-types";
 import { CompareImageResult, compareImages } from "../../image/diff.utils";
@@ -17,7 +17,6 @@ import {
   getScreenshotsDir,
 } from "../../local-data/replays";
 import { writeScreenshotDiff } from "../../local-data/screenshot-diffs";
-import { wrapHandler } from "../../utils/sentry.utils";
 
 export class DiffError extends Error {
   constructor(
@@ -253,10 +252,9 @@ const handler: (options: Options) => Promise<void> = async ({
   });
 };
 
-export const screenshotDiff: CommandModule<unknown, Options> = {
-  command: "screenshot-diff",
-  describe: "Diff two replay screenshots",
-  builder: {
+export const screenshotDiff = buildCommand("screenshot-diff")
+  .details({ describe: "Diff two replay screenshots" })
+  .options({
     apiToken: {
       string: true,
     },
@@ -272,6 +270,5 @@ export const screenshotDiff: CommandModule<unknown, Options> = {
     },
     threshold: SCREENSHOT_DIFF_OPTIONS.diffThreshold,
     pixelThreshold: SCREENSHOT_DIFF_OPTIONS.diffPixelThreshold,
-  },
-  handler: wrapHandler(handler),
-};
+  })
+  .handler(handler);

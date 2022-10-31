@@ -13,7 +13,6 @@ import { StoryboardOptions } from "@alwaysmeticulous/common/dist/types/replay.ty
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { DateTime } from "luxon";
-import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import {
   createReplay,
@@ -24,6 +23,7 @@ import {
 } from "../../api/replay.api";
 import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
+import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
   OPTIONS,
@@ -48,7 +48,6 @@ import {
 } from "../../local-data/sessions";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { addTestCase } from "../../utils/config.utils";
-import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
 
@@ -361,7 +360,7 @@ export const rawReplayCommandHandler = ({
   skipPauses,
   maxDurationMs,
   maxEventCount,
-  storyboard
+  storyboard,
 }: RawReplayCommandHandlerOptions): Promise<Replay> => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -421,11 +420,12 @@ export const getReplayTarget = ({
   return { type: "original-recorded-url" };
 };
 
-export const replay: CommandModule<unknown, RawReplayCommandHandlerOptions> = {
-  command: "simulate",
-  aliases: ["replay"],
-  describe: "Simulate (replay) a recorded session",
-  builder: {
+export const replay = buildCommand("simulate")
+  .details({
+    aliases: ["replay"],
+    describe: "Simulate (replay) a recorded session",
+  })
+  .options({
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
     sessionId: {
@@ -488,8 +488,7 @@ export const replay: CommandModule<unknown, RawReplayCommandHandlerOptions> = {
       description: "Take a storyboard of screenshots during simulation",
       default: false,
     },
-  },
-  handler: wrapHandler(async (options) => {
+  })
+  .handler(async (options) => {
     await rawReplayCommandHandler(options);
-  }),
-};
+  });

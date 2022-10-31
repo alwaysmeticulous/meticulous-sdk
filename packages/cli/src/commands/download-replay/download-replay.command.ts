@@ -1,10 +1,9 @@
-import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
+import { buildCommand } from "../../command-utils/command-builder";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
 } from "../../local-data/replays";
-import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -21,11 +20,12 @@ const handler: (options: Options) => Promise<void> = async ({
   await getOrFetchReplayArchive(client, replayId);
 };
 
-export const downloadReplay: CommandModule<unknown, Options> = {
-  command: "download-simulation",
-  aliases: ["download-replay"],
-  describe: "Download a simulation from Meticulous",
-  builder: {
+export const downloadReplay = buildCommand("download-simulation")
+  .details({
+    aliases: ["download-replay"],
+    describe: "Download a simulation from Meticulous",
+  })
+  .options({
     apiToken: {
       string: true,
     },
@@ -33,6 +33,5 @@ export const downloadReplay: CommandModule<unknown, Options> = {
       string: true,
       demandOption: true,
     },
-  },
-  handler: wrapHandler(handler),
-};
+  })
+  .handler(handler);

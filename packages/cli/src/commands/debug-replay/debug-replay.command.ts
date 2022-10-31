@@ -3,14 +3,13 @@ import {
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
+import { buildCommand } from "../../command-utils/command-builder";
 import { fetchAsset } from "../../local-data/replay-assets";
 import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
 } from "../../local-data/sessions";
-import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -90,11 +89,12 @@ const handler: (options: Options) => Promise<void> = async ({
   await createReplayer(createReplayerParams);
 };
 
-export const debugReplay: CommandModule<unknown, Options> = {
-  command: "debug-simulation",
-  aliases: ["debug-replay"],
-  describe: "Replay and debug a recorded session",
-  builder: {
+export const debugReplay = buildCommand("debug-simulation")
+  .details({
+    aliases: ["debug-replay"],
+    describe: "Replay and debug a recorded session",
+  })
+  .options({
     apiToken: {
       string: true,
     },
@@ -128,6 +128,5 @@ export const debugReplay: CommandModule<unknown, Options> = {
       string: true,
       description: "Path to cookies to inject before replay",
     },
-  },
-  handler: wrapHandler(handler),
-};
+  })
+  .handler(handler);
