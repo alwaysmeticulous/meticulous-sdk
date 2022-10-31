@@ -118,6 +118,16 @@ interface GeneratedByNotebookRun {
   machineHostName: string;
 }
 
+type NotebookRunId = StringId<"NotebookRunId">;
+
+export type StringId<FlavorT> = Flavor<string, FlavorT>;
+
+export type Flavor<T, FlavorT> = T & Flavoring<FlavorT>;
+
+export interface Flavoring<FlavorT> {
+  _type?: FlavorT;
+}
+
 interface GeneratedByTestRun {
   type: "testRun";
   testRunId: string;
