@@ -1,4 +1,9 @@
-import { METICULOUS_LOGGER_NAME, ReplayExecutionOptions, ReplayTarget } from "@alwaysmeticulous/common";
+import {
+  GeneratedBy,
+  METICULOUS_LOGGER_NAME,
+  ReplayExecutionOptions,
+  ReplayTarget
+} from "@alwaysmeticulous/common";
 import log from "loglevel";
 import {
   ScreenshotAssertionsEnabledOptions,
@@ -21,6 +26,7 @@ const handleReplay: (
   screenshottingOptions,
   apiToken,
   commitSha,
+  generatedBy,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -41,6 +47,7 @@ const handleReplay: (
     save: false,
     exitOnMismatch: false,
     cookiesFile: null,
+    generatedBy,
   });
   const result: TestCaseResult = await replayPromise
     .then(
@@ -77,6 +84,7 @@ interface HandleReplayOptions {
   testCase: TestCase;
   apiToken: string | null;
   commitSha: string;
+  generatedBy: GeneratedBy;
 }
 
 export const deflakeReplayCommandHandler: (

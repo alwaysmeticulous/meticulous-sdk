@@ -16,6 +16,7 @@ export type {
 } from "./types/replay-debugger.types";
 export type {
   BaseReplayEventsDependencies,
+  GeneratedBy,
   Replay,
   ReplayEventsDependencies,
   ReplayEventsDependency,
