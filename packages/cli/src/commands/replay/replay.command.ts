@@ -13,7 +13,6 @@ import { StoryboardOptions } from "@alwaysmeticulous/common/dist/types/replay.ty
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { DateTime } from "luxon";
-import { nanoid } from "nanoid";
 import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import {
