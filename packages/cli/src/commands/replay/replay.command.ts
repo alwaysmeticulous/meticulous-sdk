@@ -204,7 +204,7 @@ export const replayCommandHandler = async ({
     sessionId,
     meticulousSha,
     version: "v2",
-    metadata: {},
+    metadata: { generatedBy },
   });
   const uploadUrlData = await getReplayPushUrl(client, replay.id);
   if (!uploadUrlData) {
