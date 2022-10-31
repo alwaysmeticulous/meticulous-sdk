@@ -125,5 +125,4 @@ interface GeneratedByTestRun {
 
 interface GeneratedByReplayCommand {
   type: "replayCommand";
-  replayCommandId: string;
 }
