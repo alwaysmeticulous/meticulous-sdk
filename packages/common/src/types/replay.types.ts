@@ -112,9 +112,9 @@ export type GeneratedBy =
 
 interface GeneratedByNotebookRun {
   type: "notebook";
-  notebookRunId: string;
-  notebookRunName: string;
-  notebookRunDate: Date;
+  runId: NotebookRunId;
+  runName: string;
+  runDate: Date;
   machineHostName: string;
 }
 
