@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replay-debugger",
-  "version": "2.5.3",
+  "version": "2.5.4",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -20,7 +20,7 @@
   "dependencies": {
     "@alwaysmeticulous/common": "^2.5.3",
     "@alwaysmeticulous/replay-debugger-ui": "^2.5.0",
-    "@alwaysmeticulous/replayer": "^2.5.3",
+    "@alwaysmeticulous/replayer": "^2.5.4",
     "puppeteer": "^14.4.1",
     "rrweb": "^1.1.3"
   },
