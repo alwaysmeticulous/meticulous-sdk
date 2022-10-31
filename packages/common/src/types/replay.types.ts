@@ -130,7 +130,7 @@ export interface Flavoring<FlavorT> {
 
 interface GeneratedByTestRun {
   type: "testRun";
-  testRunId: string;
+  runId: string;
 }
 
 interface GeneratedByReplayCommand {
