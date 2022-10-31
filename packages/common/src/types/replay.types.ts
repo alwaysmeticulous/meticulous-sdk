@@ -1,3 +1,4 @@
+import { StringId } from "./ids.types";
 import { RecordedSession, SessionData } from "./session.types";
 
 export interface ReplayEventsDependency<Key extends string> {
@@ -105,34 +106,26 @@ export interface Replay {
   [key: string]: any;
 }
 
+type NotebookRunId = StringId<"NotebookRunId">;
+type TestRunId = StringId<"TestRunId">;
+
 export type GeneratedBy =
   | GeneratedByNotebookRun
   | GeneratedByTestRun
   | GeneratedByReplayCommand;
 
-interface GeneratedByNotebookRun {
+export interface GeneratedByNotebookRun {
   type: "notebook";
   runId: NotebookRunId;
   runName: string;
   runDate: Date;
   machineHostName: string;
 }
-
-type NotebookRunId = StringId<"NotebookRunId">;
-
-export type StringId<FlavorT> = Flavor<string, FlavorT>;
-
-export type Flavor<T, FlavorT> = T & Flavoring<FlavorT>;
-
-export interface Flavoring<FlavorT> {
-  _type?: FlavorT;
-}
-
-interface GeneratedByTestRun {
+export interface GeneratedByTestRun {
   type: "testRun";
-  runId: string;
+  runId: TestRunId;
 }
 
-interface GeneratedByReplayCommand {
+export interface GeneratedByReplayCommand {
   type: "replayCommand";
 }
