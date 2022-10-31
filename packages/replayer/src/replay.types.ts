@@ -1,11 +1,10 @@
-import { RecordedSession, GeneratedBy } from "@alwaysmeticulous/common";
+import { RecordedSession } from "@alwaysmeticulous/common";
 import { ConsoleMessageLocation, ConsoleMessageType } from "puppeteer";
 import { AssetSnapshotsData } from "./assets/assets.types";
 
 export interface ReplayMetadata {
   session: RecordedSession;
   options: Record<string, any>;
-  generatedBy: GeneratedBy;
 }
 
 export interface PlaybackEvent {

@@ -95,7 +95,6 @@ export interface ReplayEventsOptions {
   dependencies: ReplayEventsDependencies;
   screenshottingOptions: ScreenshottingOptions;
   cookiesFile: string | null;
-  generatedBy: GeneratedBy;
 }
 
 export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;
@@ -103,36 +102,4 @@ export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;
 export interface Replay {
   id: string;
   [key: string]: any;
-}
-
-export type GeneratedBy =
-  | GeneratedByNotebookRun
-  | GeneratedByTestRun
-  | GeneratedByReplayCommand;
-
-interface GeneratedByNotebookRun {
-  type: "notebook";
-  runId: NotebookRunId;
-  runName: string;
-  runDate: Date;
-  machineHostName: string;
-}
-
-type NotebookRunId = StringId<"NotebookRunId">;
-
-export type StringId<FlavorT> = Flavor<string, FlavorT>;
-
-export type Flavor<T, FlavorT> = T & Flavoring<FlavorT>;
-
-export interface Flavoring<FlavorT> {
-  _type?: FlavorT;
-}
-
-interface GeneratedByTestRun {
-  type: "testRun";
-  runId: string;
-}
-
-interface GeneratedByReplayCommand {
-  type: "replayCommand";
 }

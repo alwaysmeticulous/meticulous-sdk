@@ -155,7 +155,6 @@ const handler: (options: Options) => Promise<void> = async ({
         apiToken: apiToken ?? null,
         commitSha,
         deflake: deflake ?? false,
-        generatedBy: { type: "testRun", runId: testRun.id },
       });
       results.push(result);
       await putTestRunResults({
