@@ -11,15 +11,15 @@ export const buildCommand = (command: string) => {
     details: (
       details: Omit<CommandModule, "command" | "builder" | "handler">
     ) => ({
-      options: <T extends { [key: string]: Options }>(options: T) => ({
+      options: <O extends { [key: string]: Options }>(options: O) => ({
         handler: (
           unwrappedHandler: (
-            args: ArgumentsCamelCase<InferredOptionTypes<T>>
+            args: ArgumentsCamelCase<InferredOptionTypes<O>>
           ) => Promise<void>
-        ): CommandModule<unknown, InferredOptionTypes<T>> => ({
+        ): CommandModule<unknown, InferredOptionTypes<O>> => ({
           command,
           ...details,
-          builder: options as { [key: string]: Options },
+          builder: options,
           handler: wrapHandler(unwrappedHandler),
         }),
       }),
