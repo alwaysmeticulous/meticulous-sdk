@@ -39,7 +39,10 @@ export const writeOutput: (
     outputDir,
     coverageData,
   });
-  const writeSessionDataPromise = writeSessionData({ outputDir, sessionData });
+  const writeSessionDataPromise = writeSessionData({
+    outputDir,
+    sessionData,
+  });
   const writePlaybackDataPromise = writePlaybackData({
     outputDir,
     playbackData,
@@ -115,9 +118,17 @@ const writeSessionData: (options: {
   outputDir: string;
   sessionData: SessionData;
 }) => Promise<void> = async ({ outputDir, sessionData }) => {
+  // We don't _need_ to save the session data, since it's immutable, and we
+  // already store a pointer to the session id. However it's useful for faster
+  // debugging so for now we save a copy of it anyway. Note however that we filter out
+  // the rrwebEvents since the rrweb data size can be significant (in one case 4mb,
+  // or 25% of total zip size).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { rrwebEvents, ...sessionDataWithoutRRWebEvents } = sessionData;
+
   await writeFile(
     join(outputDir, "session-data.json"),
-    JSON.stringify(sessionData, null, 2),
+    JSON.stringify(sessionDataWithoutRRWebEvents, null, 2),
     "utf-8"
   );
 };
