@@ -65,6 +65,12 @@ const handler: (options: Options) => Promise<void> = async ({
   testsFile,
   skipPauses,
 }) => {
+  if (appUrl != null && useAssetsSnapshottedInBaseSimulation) {
+    throw new Error(
+      "Arguments useAssetsSnapshottedInBaseSimulation and appUrl are mutually exclusive"
+    );
+  }
+
   const executionOptions: ReplayExecutionOptions = {
     headless,
     devTools,
@@ -206,7 +212,6 @@ export const runAllTests: CommandModule<unknown, Options> = {
         "If present will run each session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.)" +
         " from the base simulation/replay the test is comparing against. The sessions will then be replayed against those local urls." +
         " This is an alternative to specifying an appUrl.",
-      conflicts: "appUrl",
       default: false,
     },
     githubSummary: {
