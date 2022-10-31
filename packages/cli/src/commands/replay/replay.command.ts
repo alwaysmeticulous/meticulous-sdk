@@ -6,7 +6,7 @@ import {
   Replay,
   ReplayEventsFn,
   ReplayExecutionOptions,
-  ReplayTarget
+  ReplayTarget,
 } from "@alwaysmeticulous/common";
 import { StoryboardOptions } from "@alwaysmeticulous/common/dist/types/replay.types";
 import { AxiosInstance } from "axios";
@@ -19,17 +19,18 @@ import {
   getReplayCommandId,
   getReplayPushUrl,
   getReplayUrl,
-  putReplayPushedStatus
+  putReplayPushedStatus,
 } from "../../api/replay.api";
 import { uploadArchive } from "../../api/upload";
 import { createReplayArchive, deleteArchive } from "../../archive/archive";
 import {
   COMMON_REPLAY_OPTIONS,
   OPTIONS,
-  SCREENSHOT_DIFF_OPTIONS
+  SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 import {
-  ScreenshotAssertionsOptions, ScreenshotDiffOptions
+  ScreenshotAssertionsOptions,
+  ScreenshotDiffOptions,
 } from "../../command-utils/common-types";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
 import { fetchAsset } from "../../local-data/replay-assets";
@@ -37,18 +38,20 @@ import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
   getReplayDir,
-  getScreenshotsDir
+  getScreenshotsDir,
 } from "../../local-data/replays";
 import { serveAssetsFromSimulation } from "../../local-data/serve-assets-from-simulation";
 import {
   getOrFetchRecordedSession,
-  getOrFetchRecordedSessionData
+  getOrFetchRecordedSessionData,
 } from "../../local-data/sessions";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { addTestCase } from "../../utils/config.utils";
 import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
+import { GeneratedBy } from "@alwaysmeticulous/common";
+import { nanoid } from "nanoid";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
@@ -68,6 +71,7 @@ export const replayCommandHandler = async ({
   exitOnMismatch,
   baseSimulationId: baseReplayId_,
   cookiesFile,
+  generatedBy,
 }: ReplayOptions): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -141,6 +145,7 @@ export const replayCommandHandler = async ({
     sessionData,
     recordingId: "manual-replay",
     meticulousSha: "meticulousSha",
+    generatedBy,
 
     dependencies: {
       browserUserInteractions: {
@@ -314,13 +319,14 @@ const unknownReplayTargetType = (replayTarget: never): never => {
 export interface RawReplayCommandHandlerOptions
   extends ScreenshotDiffOptions,
     Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount">,
-    AdditionalReplayOptions {
+    Omit<AdditionalReplayOptions, "generatedBy"> {
   screenshot: boolean;
   appUrl: string | null | undefined;
   simulationIdForAssets: string | null | undefined;
   screenshotSelector: string | null | undefined;
   maxDurationMs: number | null | undefined;
   maxEventCount: number | null | undefined;
+  generatedBy: GeneratedBy | null | undefined;
   storyboard: boolean;
 }
 
@@ -331,6 +337,7 @@ interface AdditionalReplayOptions {
   save: boolean | null | undefined;
   baseSimulationId: string | null | undefined;
   cookiesFile: string | null | undefined;
+  generatedBy: GeneratedBy;
 }
 
 export const rawReplayCommandHandler = ({
@@ -357,6 +364,7 @@ export const rawReplayCommandHandler = ({
   maxDurationMs,
   maxEventCount,
   storyboard,
+  generatedBy,
 }: RawReplayCommandHandlerOptions): Promise<Replay> => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -370,6 +378,9 @@ export const rawReplayCommandHandler = ({
     maxDurationMs: maxDurationMs ?? null,
     maxEventCount: maxEventCount ?? null,
   };
+  const generatedByOption: GeneratedBy = generatedBy
+    ? generatedBy
+    : { type: "replayCommand", replayCommandId: nanoid() };
   const storyboardOptions: StoryboardOptions = storyboard
     ? { enabled: true }
     : { enabled: false };
@@ -395,6 +406,7 @@ export const rawReplayCommandHandler = ({
     baseSimulationId,
     save,
     exitOnMismatch: true,
+    generatedBy: generatedByOption,
   });
 };
 

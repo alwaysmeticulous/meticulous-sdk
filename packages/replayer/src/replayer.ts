@@ -39,6 +39,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     replayExecutionOptions,
     dependencies,
     screenshottingOptions,
+    generatedBy
   } = options;
 
   // Extract replay metadata
@@ -60,6 +61,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       dependencies,
       ...replayExecutionOptions,
     },
+    generatedBy,
   };
 
   const defaultViewport = getStartingViewport(sessionData);
