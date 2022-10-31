@@ -39,7 +39,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     replayExecutionOptions,
     dependencies,
     screenshottingOptions,
-    generatedBy
+    generatedBy,
   } = options;
 
   // Extract replay metadata
@@ -234,6 +234,18 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     timelineData: timelineCollector.getEntries(),
   });
 
+  if (shouldHoldBrowserOpen()) {
+    await new Promise(() => {
+      /* never resolve / wait forever */
+    });
+  }
+
   logger.debug("Closing browser");
   await browser.close();
+};
+
+const shouldHoldBrowserOpen = () => {
+  return (
+    (process.env["METICULOUS_HOLD_BROWSER_OPEN"] ?? "").toLowerCase() === "true"
+  );
 };
