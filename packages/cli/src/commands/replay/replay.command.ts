@@ -405,7 +405,7 @@ export const rawReplayCommandHandler = ({
   });
 };
 
-const getReplayTarget = ({
+export const getReplayTarget = ({
   appUrl,
   simulationIdForAssets,
 }: {
