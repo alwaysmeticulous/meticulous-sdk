@@ -2,13 +2,12 @@ import { METICULOUS_LOGGER_NAME, Replay } from "@alwaysmeticulous/common";
 import chalk from "chalk";
 import { prompt } from "inquirer";
 import log from "loglevel";
-import { CommandModule } from "yargs";
+import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
   OPTIONS,
 } from "../../command-utils/common-options";
 import { addTestCase } from "../../utils/config.utils";
-import { wrapHandler } from "../../utils/sentry.utils";
 import {
   recordCommandHandler,
   RecordCommandHandlerOptions,
@@ -20,7 +19,20 @@ import {
 
 interface Options
   extends Omit<RecordCommandHandlerOptions, "devTools" | "bypassCSP">,
-    RawReplayCommandHandlerOptions {}
+    Omit<
+      RawReplayCommandHandlerOptions,
+      | "screenshot"
+      | "appUrl"
+      | "simulationIdForAssets"
+      | "maxDurationMs"
+      | "maxEventCount"
+      | "storyboard"
+      | "diffThreshold"
+      | "diffPixelThreshold"
+      | "sessionId"
+      | "save"
+      | "baseSimulationId"
+    > {}
 
 const handleTestCreation: (
   replay: Replay,
@@ -171,10 +183,11 @@ const handler: (options: Options) => Promise<void> = async ({
   await handleTestCreation(replay, lastSessionId);
 };
 
-export const createTest: CommandModule<unknown, Options> = {
-  command: "create-test",
-  describe: "Create a new test",
-  builder: {
+export const createTest = buildCommand("create-test")
+  .details({
+    describe: "Create a new test",
+  })
+  .options({
     // Common options
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
@@ -204,10 +217,7 @@ export const createTest: CommandModule<unknown, Options> = {
       description:
         "Query selector to screenshot a specific DOM element instead of the whole page",
     },
-    moveBeforeClick: {
-      boolean: true,
-      description: "Simulate mouse movement before clicking",
-    },
+    moveBeforeClick: OPTIONS.moveBeforeClick,
     cookiesFile: {
       string: true,
       description: "Path to cookies to inject before simulation",
@@ -222,6 +232,5 @@ export const createTest: CommandModule<unknown, Options> = {
       description:
         "Fast forward through any pauses to replay as fast as possible when replaying for the first time to create the test. Warning: this option is experimental and may be deprecated",
     },
-  },
-  handler: wrapHandler(handler),
-};
+  })
+  .handler(handler);

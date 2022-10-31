@@ -1,11 +1,10 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import chalk from "chalk";
 import log from "loglevel";
-import { CommandModule } from "yargs";
+import { buildCommand } from "../../command-utils/command-builder";
 import { readConfig, saveConfig } from "../../config/config";
 import { MeticulousCliConfig } from "../../config/config.types";
 import { npmSetScript } from "../../utils/npm-set-script.utils";
-import { wrapHandler } from "../../utils/sentry.utils";
 
 type Options = Record<string, unknown>;
 
@@ -27,9 +26,9 @@ const handler: (options: Options) => Promise<void> = async () => {
   });
 };
 
-export const bootstrap: CommandModule<unknown, Options> = {
-  command: "bootstrap",
-  describe: "Bootstrap your project to use Meticulous",
-  builder: {},
-  handler: wrapHandler(handler),
-};
+export const bootstrap = buildCommand("bootstrap")
+  .details({
+    describe: "Bootstrap your project to use Meticulous",
+  })
+  .options({})
+  .handler(handler);

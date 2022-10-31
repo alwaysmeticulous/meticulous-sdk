@@ -1,10 +1,9 @@
-import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
+import { buildCommand } from "../../command-utils/command-builder";
 import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
 } from "../../local-data/sessions";
-import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -21,10 +20,11 @@ const handler: (options: Options) => Promise<void> = async ({
   await getOrFetchRecordedSessionData(client, sessionId);
 };
 
-export const downloadSession: CommandModule<unknown, Options> = {
-  command: "download-session",
-  describe: "Download recorded session from Meticulous",
-  builder: {
+export const downloadSession = buildCommand("download-session")
+  .details({
+    describe: "Download recorded session from Meticulous",
+  })
+  .options({
     apiToken: {
       string: true,
     },
@@ -32,6 +32,5 @@ export const downloadSession: CommandModule<unknown, Options> = {
       string: true,
       demandOption: true,
     },
-  },
-  handler: wrapHandler(handler),
-};
+  })
+  .handler(handler);

@@ -1,6 +1,5 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import {
   createProjectBuild,
@@ -14,8 +13,8 @@ import {
   createArchive,
   deleteArchive,
 } from "../../archive/archive";
+import { buildCommand } from "../../command-utils/command-builder";
 import { getCommitSha } from "../../utils/commit-sha.utils";
-import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -96,10 +95,11 @@ const handler: (options: Options) => Promise<void> = async ({
   await deleteArchive(archivePath);
 };
 
-export const uploadBuild: CommandModule<unknown, Options> = {
-  command: "upload-build",
-  describe: "Upload build artifacts to Meticulous",
-  builder: {
+export const uploadBuild = buildCommand("upload-build")
+  .details({
+    describe: "Upload build artifacts to Meticulous",
+  })
+  .options({
     apiToken: {
       string: true,
     },
@@ -110,6 +110,5 @@ export const uploadBuild: CommandModule<unknown, Options> = {
       string: true,
       demandOption: true,
     },
-  },
-  handler: wrapHandler(handler),
-};
+  })
+  .handler(handler);

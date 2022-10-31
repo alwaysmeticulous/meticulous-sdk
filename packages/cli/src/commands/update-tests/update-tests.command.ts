@@ -1,11 +1,10 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import { getTestRun } from "../../api/test-run.api";
+import { buildCommand } from "../../command-utils/command-builder";
 import { readConfig, saveConfig } from "../../config/config";
 import { MeticulousCliConfig, TestCaseResult } from "../../config/config.types";
-import { wrapHandler } from "../../utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -96,10 +95,11 @@ const handler: (options: Options) => Promise<void> = async ({
   await saveConfig(newConfig);
 };
 
-export const updateTests: CommandModule<unknown, Options> = {
-  command: "update-tests",
-  describe: "Updates test cases",
-  builder: {
+export const updateTests = buildCommand("update-tests")
+  .details({
+    describe: "Updates test cases",
+  })
+  .options({
     apiToken: {
       string: true,
     },
@@ -109,6 +109,7 @@ export const updateTests: CommandModule<unknown, Options> = {
       description: "Test run id to fix",
     },
     accept: {
+      string: true,
       array: true,
       description: "Replay ids to accept as valid",
     },
@@ -117,6 +118,5 @@ export const updateTests: CommandModule<unknown, Options> = {
       description: "Accept all failing tests as valid",
       conflicts: "accept",
     },
-  },
-  handler: wrapHandler(handler),
-};
+  })
+  .handler(handler);

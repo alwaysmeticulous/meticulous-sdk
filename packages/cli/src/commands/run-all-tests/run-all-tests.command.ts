@@ -3,7 +3,6 @@ import {
   ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { CommandModule } from "yargs";
 import { createClient } from "../../api/client";
 import {
   createTestRun,
@@ -11,6 +10,7 @@ import {
   getTestRunUrl,
   putTestRunResults,
 } from "../../api/test-run.api";
+import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
   OPTIONS,
@@ -28,20 +28,24 @@ import { getCommitSha } from "../../utils/commit-sha.utils";
 import { getReplayTargetForTestCase } from "../../utils/config.utils";
 import { writeGitHubSummary } from "../../utils/github-summary.utils";
 import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
-import { wrapHandler } from "../../utils/sentry.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 
-interface Options extends ScreenshotDiffOptions, ReplayExecutionOptions {
-  apiToken?: string;
-  commitSha?: string;
-  appUrl?: string;
+interface Options
+  extends ScreenshotDiffOptions,
+    Omit<
+      ReplayExecutionOptions,
+      "moveBeforeClick" | "maxDurationMs" | "maxEventCount"
+    > {
+  apiToken?: string | undefined;
+  commitSha?: string | undefined;
+  appUrl?: string | undefined;
   useAssetsSnapshottedInBaseSimulation: boolean;
-  githubSummary?: boolean;
-  parallelize?: boolean;
-  parallelTasks?: number | null;
+  githubSummary?: boolean | undefined;
+  parallelize?: boolean | undefined;
+  parallelTasks?: number | null | undefined;
   deflake: boolean;
   useCache: boolean;
-  testsFile?: string;
+  testsFile?: string | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -196,10 +200,9 @@ const handler: (options: Options) => Promise<void> = async ({
   }
 };
 
-export const runAllTests: CommandModule<unknown, Options> = {
-  command: "run-all-tests",
-  describe: "Run all replay test cases",
-  builder: {
+export const runAllTests = buildCommand("run-all-tests")
+  .details({ describe: "Run all replay test cases" })
+  .options({
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
     appUrl: {
@@ -251,6 +254,5 @@ export const runAllTests: CommandModule<unknown, Options> = {
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
-  },
-  handler: wrapHandler(handler),
-};
+  } as const)
+  .handler(handler);
