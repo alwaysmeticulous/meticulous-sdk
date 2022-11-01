@@ -26,7 +26,24 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
 
   const browser: Browser = await launch({
     defaultViewport,
-    args: [`--window-size=${width},${height}`],
+    args: [
+      `--window-size=${width},${height}`,
+      "--disable-features=Translate",
+      "--disable-background-timer-throttling",
+      "--disable-renderer-backgrounding",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-breakpad",
+      "--disable-client-side-phishing-detection",
+      "--disable-default-apps",
+      "--disable-dev-shm-usage",
+      "--disable-extensions",
+      "--disable-hang-monitor",
+      "--disable-ipc-flooding-protection",
+      "--disable-notifications",
+      "--disable-prompt-on-repost",
+      "--disable-sync",
+      "--no-first-run",
+    ],
     headless: false,
     devtools: devTools,
   });
