@@ -71,6 +71,11 @@ export const OPTIONS = {
       "A number between 0 and 1. Color/brightness differences in individual pixels will be ignored if the difference is less than this threshold. A value of 1.0 would accept any difference in color, while a value of 0.0 would accept no difference in color.",
     default: 0.01,
   },
+  disableRemoteFonts: {
+    boolean: true,
+    description: "Pass the disable remote fonts flag into chromium",
+    default: false,
+  },
 } as const;
 
 export const SCREENSHOT_DIFF_OPTIONS = {
@@ -89,4 +94,5 @@ export const COMMON_REPLAY_OPTIONS = {
   shiftTime: OPTIONS.shiftTime,
   networkStubbing: OPTIONS.networkStubbing,
   skipPauses: OPTIONS.skipPauses,
+  disableRemoteFonts: OPTIONS.disableRemoteFonts,
 };

@@ -1,6 +1,8 @@
 import {
-  COMMON_CHROMIUM_FLAGS, METICULOUS_LOGGER_NAME, ReplayEventsFn,
-  SessionData
+  COMMON_CHROMIUM_FLAGS,
+  METICULOUS_LOGGER_NAME,
+  ReplayEventsFn,
+  SessionData,
 } from "@alwaysmeticulous/common";
 import {
   OnReplayTimelineEventFn,
@@ -51,6 +53,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     padTime,
     maxDurationMs,
     maxEventCount,
+    disableRemoteFonts,
   } = replayExecutionOptions;
   const metadata: ReplayMetadata = {
     session,
@@ -75,7 +78,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
         // This disables cross-origin security. We need this in order to disable CORS for replayed network requests,
         // including the respective Preflgiht CORS requests which are not handled by the network stubbing layer.
         "--disable-web-security",
-        ...COMMON_CHROMIUM_FLAGS
+        ...COMMON_CHROMIUM_FLAGS,
+        ...(disableRemoteFonts ? ["--disable-remote-fonts"] : []),
       ],
       headless: headless,
       devtools: devTools,

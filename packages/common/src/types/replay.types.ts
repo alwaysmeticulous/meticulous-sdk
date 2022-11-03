@@ -58,6 +58,7 @@ export interface ReplayExecutionOptions {
   networkStubbing: boolean;
   skipPauses: boolean;
   moveBeforeClick: boolean;
+  disableRemoteFonts: boolean;
   maxDurationMs: number | null;
   maxEventCount: number | null;
 }

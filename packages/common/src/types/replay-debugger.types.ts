@@ -20,6 +20,7 @@ export interface ReplayDebuggerOptions {
   shiftTime: boolean;
   networkStubbing: boolean;
   moveBeforeClick: boolean;
+  disableRemoteFonts: boolean;
   cookiesFile: string;
 }
 

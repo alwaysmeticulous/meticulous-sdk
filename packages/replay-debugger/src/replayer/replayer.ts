@@ -18,6 +18,7 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
   networkStubbing,
   moveBeforeClick,
   cookiesFile,
+  disableRemoteFonts
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -28,7 +29,8 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
     defaultViewport,
     args: [
       `--window-size=${width},${height}`,
-      ...COMMON_CHROMIUM_FLAGS
+      ...COMMON_CHROMIUM_FLAGS,
+      ...(disableRemoteFonts ? ["--disable-remote-fonts"] : [])
     ],
     headless: false,
     devtools: devTools,

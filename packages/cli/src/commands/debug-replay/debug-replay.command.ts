@@ -5,6 +5,7 @@ import {
 import log from "loglevel";
 import { createClient } from "../../api/client";
 import { buildCommand } from "../../command-utils/command-builder";
+import { COMMON_REPLAY_OPTIONS } from "../../command-utils/common-options";
 import { fetchAsset } from "../../local-data/replay-assets";
 import {
   getOrFetchRecordedSession,
@@ -20,6 +21,7 @@ interface Options {
   networkStubbing: boolean;
   moveBeforeClick?: boolean | null | undefined;
   cookiesFile?: string | null | undefined;
+  disableRemoteFonts: boolean;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -31,6 +33,7 @@ const handler: (options: Options) => Promise<void> = async ({
   networkStubbing,
   moveBeforeClick,
   cookiesFile,
+  disableRemoteFonts,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -83,6 +86,7 @@ const handler: (options: Options) => Promise<void> = async ({
     },
     shiftTime,
     networkStubbing,
+    disableRemoteFonts,
     moveBeforeClick: moveBeforeClick || false,
     cookiesFile: cookiesFile || "",
   };
@@ -105,21 +109,6 @@ export const debugReplay = buildCommand("debug-simulation")
     appUrl: {
       string: true,
     },
-    devTools: {
-      boolean: true,
-      description: "Open Chrome Dev Tools",
-    },
-    shiftTime: {
-      boolean: true,
-      description:
-        "Shift time during simulation to be set as the recording time",
-      default: true,
-    },
-    networkStubbing: {
-      boolean: true,
-      description: "Stub network requests during replay",
-      default: true,
-    },
     moveBeforeClick: {
       boolean: true,
       description: "Simulate mouse movement before clicking",
@@ -128,5 +117,9 @@ export const debugReplay = buildCommand("debug-simulation")
       string: true,
       description: "Path to cookies to inject before replay",
     },
+    devTools: COMMON_REPLAY_OPTIONS.devTools,
+    shiftTime: COMMON_REPLAY_OPTIONS.shiftTime,
+    networkStubbing: COMMON_REPLAY_OPTIONS.networkStubbing,
+    disableRemoteFonts: COMMON_REPLAY_OPTIONS.disableRemoteFonts,
   })
   .handler(handler);
