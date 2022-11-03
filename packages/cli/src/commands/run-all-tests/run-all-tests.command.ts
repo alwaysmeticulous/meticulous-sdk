@@ -67,6 +67,7 @@ const handler: (options: Options) => Promise<void> = async ({
   deflake,
   useCache,
   testsFile,
+  disableRemoteFonts,
   skipPauses,
 }) => {
   if (appUrl != null && useAssetsSnapshottedInBaseSimulation) {
@@ -82,6 +83,7 @@ const handler: (options: Options) => Promise<void> = async ({
     padTime,
     shiftTime,
     networkStubbing,
+    disableRemoteFonts,
     skipPauses,
     moveBeforeClick: false, // moveBeforeClick isn't exposed as an option for run-all-tests
     maxDurationMs: null, // we don't expose this option

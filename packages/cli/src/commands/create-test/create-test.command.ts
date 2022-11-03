@@ -110,6 +110,7 @@ const handler: (options: Options) => Promise<void> = async ({
   networkStubbing,
   moveBeforeClick,
   cookiesFile,
+  disableRemoteFonts,
   skipPauses,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -157,6 +158,7 @@ const handler: (options: Options) => Promise<void> = async ({
     screenshotSelector,
     padTime,
     shiftTime,
+    disableRemoteFonts,
     networkStubbing,
     moveBeforeClick,
     cookiesFile,

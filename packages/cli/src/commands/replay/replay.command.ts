@@ -357,6 +357,7 @@ export const rawReplayCommandHandler = ({
   networkStubbing,
   moveBeforeClick,
   cookiesFile,
+  disableRemoteFonts,
   skipPauses,
   maxDurationMs,
   maxEventCount,
@@ -371,6 +372,7 @@ export const rawReplayCommandHandler = ({
     networkStubbing,
     skipPauses,
     moveBeforeClick,
+    disableRemoteFonts,
     maxDurationMs: maxDurationMs ?? null,
     maxEventCount: maxEventCount ?? null,
   };

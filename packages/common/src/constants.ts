@@ -16,5 +16,4 @@ export const COMMON_CHROMIUM_FLAGS = [
     "--disable-prompt-on-repost",
     "--disable-sync",
     "--no-first-run",
-    "--disable-remote-fonts"
-]
+];
