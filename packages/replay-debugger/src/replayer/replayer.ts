@@ -1,6 +1,6 @@
 import {
-  CreateReplayDebuggerFn,
-  METICULOUS_LOGGER_NAME,
+  COMMON_CHROMIUM_FLAGS, CreateReplayDebuggerFn,
+  METICULOUS_LOGGER_NAME
 } from "@alwaysmeticulous/common";
 import { getStartUrl } from "@alwaysmeticulous/replayer";
 import log from "loglevel";
@@ -28,21 +28,7 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
     defaultViewport,
     args: [
       `--window-size=${width},${height}`,
-      "--disable-features=Translate",
-      "--disable-background-timer-throttling",
-      "--disable-renderer-backgrounding",
-      "--disable-backgrounding-occluded-windows",
-      "--disable-breakpad",
-      "--disable-client-side-phishing-detection",
-      "--disable-default-apps",
-      "--disable-dev-shm-usage",
-      "--disable-extensions",
-      "--disable-hang-monitor",
-      "--disable-ipc-flooding-protection",
-      "--disable-notifications",
-      "--disable-prompt-on-repost",
-      "--disable-sync",
-      "--no-first-run",
+      ...COMMON_CHROMIUM_FLAGS
     ],
     headless: false,
     devtools: devTools,

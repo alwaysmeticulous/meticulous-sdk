@@ -28,4 +28,4 @@ export type {
   ReplayTarget,
 } from "./types/replay.types";
 export type { RecordedSession, SessionData } from "./types/session.types";
-export { BASE_SNIPPETS_URL } from "./constants";
+export { BASE_SNIPPETS_URL, COMMON_CHROMIUM_FLAGS } from "./constants";
