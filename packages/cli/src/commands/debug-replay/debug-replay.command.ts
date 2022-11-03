@@ -117,6 +117,9 @@ export const debugReplay = buildCommand("debug-simulation")
       string: true,
       description: "Path to cookies to inject before replay",
     },
-    ...COMMON_REPLAY_OPTIONS
+    devTools: COMMON_REPLAY_OPTIONS.devTools,
+    shiftTime: COMMON_REPLAY_OPTIONS.shiftTime,
+    networkStubbing: COMMON_REPLAY_OPTIONS.networkStubbing,
+    disableRemoteFonts: COMMON_REPLAY_OPTIONS.disableRemoteFonts,
   })
   .handler(handler);
