@@ -1,8 +1,12 @@
 import {
-  COMMON_CHROMIUM_FLAGS, CreateReplayDebuggerFn,
-  METICULOUS_LOGGER_NAME
+  COMMON_CHROMIUM_FLAGS,
+  CreateReplayDebuggerFn,
+  METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
-import { getStartUrl } from "@alwaysmeticulous/replayer";
+import {
+  getStartUrl,
+  getOriginalSessionStartUrl,
+} from "@alwaysmeticulous/replayer";
 import log from "loglevel";
 import { Browser, launch } from "puppeteer";
 import { bootstrapPage, setupPageCookies } from "./debugger.utils";
@@ -18,7 +22,7 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
   networkStubbing,
   moveBeforeClick,
   cookiesFile,
-  disableRemoteFonts
+  disableRemoteFonts,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -30,7 +34,7 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
     args: [
       `--window-size=${width},${height}`,
       ...COMMON_CHROMIUM_FLAGS,
-      ...(disableRemoteFonts ? ["--disable-remote-fonts"] : [])
+      ...(disableRemoteFonts ? ["--disable-remote-fonts"] : []),
     ],
     headless: false,
     devtools: devTools,
@@ -67,7 +71,11 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
     await setupPageCookies({ page, cookiesFile });
   }
 
-  const startUrl = getStartUrl({ session, sessionData, appUrl });
+  const originalSessionStartUrl = getOriginalSessionStartUrl({
+    session,
+    sessionData,
+  });
+  const startUrl = getStartUrl({ originalSessionStartUrl, appUrl });
   logger.debug(`Navigating to ${startUrl}...`);
   const res = await page.goto(startUrl, {
     waitUntil: "domcontentloaded",

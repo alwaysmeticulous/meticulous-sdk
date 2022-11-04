@@ -17,6 +17,7 @@ import { prepareScreenshotsDir, writeOutput } from "./output.utils";
 import { ReplayMetadata } from "./replay.types";
 import {
   createReplayPage,
+  getOriginalSessionStartUrl,
   getRrwebRecordingDuration,
   getStartingViewport,
   getStartUrl,
@@ -107,7 +108,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   });
 
   // Calculate start URL based on the one that the session originated on/from.
-  const startUrl = getStartUrl({ session, sessionData, appUrl });
+  const originalSessionStartUrl = getOriginalSessionStartUrl({
+    session,
+    sessionData,
+  });
+  const startUrl = getStartUrl({ originalSessionStartUrl, appUrl });
 
   const replayData = await initializeReplayData({ page, startUrl });
 
@@ -122,6 +127,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
         logLevel: LogLevelDesc;
         sessionData: SessionData;
         startUrl: string;
+        originalSessionStartUrl: string;
         onTimelineEvent: OnReplayTimelineEventFn;
       }) => Promise<void>;
     await setupReplayNetworkStubbing({
@@ -129,6 +135,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       logLevel,
       sessionData,
       startUrl,
+      originalSessionStartUrl: originalSessionStartUrl.toString(),
       onTimelineEvent,
     });
   }

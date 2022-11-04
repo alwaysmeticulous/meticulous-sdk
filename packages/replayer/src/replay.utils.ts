@@ -148,49 +148,60 @@ export const patchDate: (options: {
   `);
 };
 
-const getAppUrl: (options: {
-  sessionData: any;
+export const getStartUrl: (options: {
+  originalSessionStartUrl: URL;
   appUrl: string | null;
-}) => string = ({ sessionData, appUrl }) => {
+}) => string = ({ originalSessionStartUrl, appUrl }) => {
   if (!appUrl) {
-    const { startUrl, startURL } = sessionData.userEvents.window;
-    return startUrl || startURL;
+    return originalSessionStartUrl.toString();
   }
+
+  const parsedAppUrl = parseAppUrl(appUrl);
+
+  const appUrlIsJustOrigin =
+    parsedAppUrl.pathname === "/" && !parsedAppUrl.search && !parsedAppUrl.hash;
+
+  if (!appUrlIsJustOrigin) {
+    return parsedAppUrl.toString();
+  }
+
+  // Use the original URL's path, query string etc., but swap out the origin for the provided one
+  const mergedUrl = new URL(originalSessionStartUrl.toString());
+
+  mergedUrl.host = parsedAppUrl.host;
+  mergedUrl.port = parsedAppUrl.port;
+  mergedUrl.protocol = parsedAppUrl.protocol;
+  mergedUrl.username = parsedAppUrl.username;
+  mergedUrl.password = parsedAppUrl.password;
+
+  return mergedUrl.toString();
+};
+
+const parseAppUrl = (appUrl: string): URL => {
   try {
-    const url = new URL(appUrl);
-    return url.toString();
+    return new URL(appUrl);
   } catch (error) {
     if (error instanceof TypeError) {
       const urlHttps = new URL(`https://${appUrl}`);
-      return urlHttps.toString();
+      return urlHttps;
     }
     throw error;
   }
 };
 
-export const getStartUrl: (options: {
+export const getOriginalSessionStartUrl: (options: {
   session: any;
   sessionData: any;
-  appUrl: string | null;
-}) => string = ({ session, sessionData, appUrl }) => {
+}) => URL = ({ session, sessionData }) => {
   // We prefer to use the start URL from the session metadata but default to
   // startURLs present within the events data for backwards-compatibility.
+  //
+  // Note that sessionData.userEvents.window.startUrl is the URL after 1500ms,
+  // while session.startUrl is the URL straight away
   const { startUrl: sessionStartUrl } = session;
-  const { startUrl, startURL } = sessionData.userEvents.window;
+  const { startUrl } = sessionData.userEvents.window;
 
-  // Default to the base URL if we did not record startURL (legacy sessions)
-  const appUrlObj = new URL(getAppUrl({ sessionData, appUrl }));
-  const startRouteUrl =
-    appUrlObj.pathname === "/" && !appUrlObj.search && !appUrlObj.hash
-      ? new URL(sessionStartUrl || startUrl || startURL)
-      : appUrlObj;
-  startRouteUrl.host = appUrlObj.host;
-  startRouteUrl.port = appUrlObj.port;
-  startRouteUrl.protocol = appUrlObj.protocol;
-  startRouteUrl.username = appUrlObj.username;
-  startRouteUrl.password = appUrlObj.password;
-
-  return startRouteUrl.toString();
+  return new URL(sessionStartUrl || startUrl);
 };
 
 export const initializeReplayData: (options: {
