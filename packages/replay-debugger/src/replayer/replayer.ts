@@ -97,6 +97,21 @@ export const createReplayer: CreateReplayDebuggerFn = async ({
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const browserContextModule = require(dependencies.nodeBrowserContext
+    .location);
+  const setupBrowserContextSeeding =
+    browserContextModule.setupBrowserContextSeeding as (options: {
+      page: Page;
+      sessionData: SessionData;
+      startUrl: string;
+    }) => Promise<void>;
+  await setupBrowserContextSeeding({
+    page,
+    sessionData,
+    startUrl,
+  });
+
   logger.debug(`Navigating to ${startUrl}...`);
   const res = await page.goto(startUrl, {
     waitUntil: "domcontentloaded",

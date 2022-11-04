@@ -47,7 +47,9 @@ const handler: (options: Options) => Promise<void> = async ({
   const browserUserInteractions = await fetchAsset(
     "replay/v2/snippet-user-interactions.bundle.js"
   );
-  const reanimator = await fetchAsset("replay/v1/reanimator.bundle.js");
+  const nodeBrowserContext = await fetchAsset(
+    "replay/v2/node-browser-context.bundle.js"
+  );
   const nodeNetworkStubbing = await fetchAsset(
     "replay/v2/node-network-stubbing.bundle.js"
   );
@@ -75,9 +77,9 @@ const handler: (options: Options) => Promise<void> = async ({
         key: "browserUserInteractions",
         location: browserUserInteractions,
       },
-      reanimator: {
-        key: "reanimator",
-        location: reanimator,
+      nodeBrowserContext: {
+        key: "nodeBrowserContext",
+        location: nodeBrowserContext,
       },
       nodeNetworkStubbing: {
         key: "nodeNetworkStubbing",
