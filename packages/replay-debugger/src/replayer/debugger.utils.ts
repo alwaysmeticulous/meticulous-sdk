@@ -1,8 +1,5 @@
 import { readFile } from "fs/promises";
-import type {
-  BaseReplayEventsDependencies,
-  ReplayEventsDependency,
-} from "@alwaysmeticulous/common";
+import type { ReplayDebuggerDependencies } from "@alwaysmeticulous/common";
 import { patchDate } from "@alwaysmeticulous/replayer";
 import { Page } from "puppeteer";
 
@@ -18,13 +15,6 @@ export const setupPageCookies: (
   const cookies = JSON.parse(cookiesStr) as any[];
   await page.setCookie(...cookies);
 };
-
-export interface ReplayDebuggerDependencies
-  extends BaseReplayEventsDependencies {
-  browserUserInteractions: ReplayEventsDependency<"browserUserInteractions">;
-  reanimator: ReplayEventsDependency<"reanimator">;
-  replayNetworkFile: ReplayEventsDependency<"replayNetworkFile">;
-}
 
 export interface BootstrapPageOptions {
   page: Page;
