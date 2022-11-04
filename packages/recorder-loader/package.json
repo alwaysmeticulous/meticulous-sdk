@@ -2,15 +2,17 @@
   "name": "@alwaysmeticulous/recorder-loader",
   "version": "2.5.0",
   "license": "ISC",
+  "source": "src/index.ts",
   "main": "dist/index.js",
-  "types": "dist/tsc/index.d.ts",
+  "module": "dist/module.js",
+  "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
   "scripts": {
     "clean": "rimraf dist",
-    "dev": "webpack --config webpack.config.js --mode='development' --watch",
-    "build": "webpack --config webpack.config.js --mode='production'",
+    "dev": "parcel watch",
+    "build": "parcel build",
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
