@@ -21,6 +21,7 @@
     "@alwaysmeticulous/common": "^2.5.7",
     "@alwaysmeticulous/replay-debugger-ui": "^2.5.0",
     "@alwaysmeticulous/replayer": "^2.6.0",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.5.0",
     "puppeteer": "^14.4.1",
     "rrweb": "^1.1.3"
   },

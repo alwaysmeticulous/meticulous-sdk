@@ -8,7 +8,7 @@ export interface ReplayDebuggerDependencies
   extends BaseReplayEventsDependencies {
   browserUserInteractions: ReplayEventsDependency<"browserUserInteractions">;
   reanimator: ReplayEventsDependency<"reanimator">;
-  replayNetworkFile: ReplayEventsDependency<"replayNetworkFile">;
+  nodeNetworkStubbing: ReplayEventsDependency<"nodeNetworkStubbing">;
 }
 
 export interface ReplayDebuggerOptions {

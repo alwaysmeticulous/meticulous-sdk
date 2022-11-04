@@ -48,8 +48,8 @@ const handler: (options: Options) => Promise<void> = async ({
     "replay/v2/snippet-user-interactions.bundle.js"
   );
   const reanimator = await fetchAsset("replay/v1/reanimator.bundle.js");
-  const replayNetworkFile = await fetchAsset(
-    "replay/v1/replay-network-events.bundle.js"
+  const nodeNetworkStubbing = await fetchAsset(
+    "replay/v2/node-network-stubbing.bundle.js"
   );
 
   // 4. Load replay-debugger package
@@ -79,9 +79,9 @@ const handler: (options: Options) => Promise<void> = async ({
         key: "reanimator",
         location: reanimator,
       },
-      replayNetworkFile: {
-        key: "replayNetworkFile",
-        location: replayNetworkFile,
+      nodeNetworkStubbing: {
+        key: "nodeNetworkStubbing",
+        location: nodeNetworkStubbing,
       },
     },
     shiftTime,
