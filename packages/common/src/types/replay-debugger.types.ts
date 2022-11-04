@@ -6,7 +6,7 @@ import { RecordedSession, SessionData } from "./session.types";
 
 export interface ReplayDebuggerDependencies
   extends BaseReplayEventsDependencies {
-  replayDebugger: ReplayEventsDependency<"replayDebugger">;
+  browserUserInteractions: ReplayEventsDependency<"browserUserInteractions">;
   reanimator: ReplayEventsDependency<"reanimator">;
   replayNetworkFile: ReplayEventsDependency<"replayNetworkFile">;
 }

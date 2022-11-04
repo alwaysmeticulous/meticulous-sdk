@@ -21,7 +21,7 @@ export const setupPageCookies: (
 
 export interface ReplayDebuggerDependencies
   extends BaseReplayEventsDependencies {
-  replayDebugger: ReplayEventsDependency<"replayDebugger">;
+  browserUserInteractions: ReplayEventsDependency<"browserUserInteractions">;
   reanimator: ReplayEventsDependency<"reanimator">;
   replayNetworkFile: ReplayEventsDependency<"replayNetworkFile">;
 }
@@ -87,6 +87,6 @@ export const bootstrapPage: (
 
   // Inject replay debug snippet
   await page.evaluateOnNewDocument(
-    await readFile(dependencies.replayDebugger.location, "utf-8")
+    await readFile(dependencies.browserUserInteractions.location, "utf-8")
   );
 };
