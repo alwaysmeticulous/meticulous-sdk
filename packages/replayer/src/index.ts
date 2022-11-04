@@ -1,2 +1,6 @@
 export { replayEvents } from "./replayer";
-export { getStartUrl, patchDate } from "./replay.utils";
+export {
+  getStartUrl,
+  getOriginalSessionStartUrl,
+  patchDate,
+} from "./replay.utils";
