@@ -1,3 +1,4 @@
+import { join } from "path";
 import {
   COMMON_CHROMIUM_FLAGS,
   METICULOUS_LOGGER_NAME,
@@ -106,6 +107,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     dependencies,
     onTimelineEvent,
   });
+  await page.tracing.start({ path: join(outputDir, "trace.json") });
+  console.log(`Writing tracing info to ${join(outputDir, "trace.json")}`);
 
   // Calculate start URL based on the one that the session originated on/from.
   const originalSessionStartUrl = getOriginalSessionStartUrl({
@@ -126,6 +129,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
         page: Page;
         logLevel: LogLevelDesc;
         sessionData: SessionData;
+        startUrl: string;
         originalSessionStartUrl: string;
         onTimelineEvent: OnReplayTimelineEventFn;
       }) => Promise<void>;
@@ -133,6 +137,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       page,
       logLevel,
       sessionData,
+      startUrl,
       originalSessionStartUrl: originalSessionStartUrl.toString(),
       onTimelineEvent,
     });
@@ -217,6 +222,10 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       }
     }
   }
+
+  logger.debug("Collecting tracing data...");
+  await page.tracing.stop();
+  logger.debug("Collected tracing data");
 
   logger.debug("Collecting coverage data...");
   const coverageData = await page.coverage.stopJSCoverage();
