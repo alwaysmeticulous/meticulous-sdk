@@ -126,14 +126,14 @@ export const replayEvents: ReplayEventsFn = async (options) => {
         page: Page;
         logLevel: LogLevelDesc;
         sessionData: SessionData;
-        startUrl: string;
+        originalSessionStartUrl: string;
         onTimelineEvent: OnReplayTimelineEventFn;
       }) => Promise<void>;
     await setupReplayNetworkStubbing({
       page,
       logLevel,
       sessionData,
-      startUrl: originalSessionStartUrl.toString(),
+      originalSessionStartUrl: originalSessionStartUrl.toString(),
       onTimelineEvent,
     });
   }
