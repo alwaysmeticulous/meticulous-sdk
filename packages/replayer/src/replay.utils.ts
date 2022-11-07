@@ -31,7 +31,6 @@ export const createReplayPage: (options: {
   shiftTime: boolean;
   dependencies: ReplayEventsDependencies;
   onTimelineEvent: OnReplayTimelineEventFn;
-  bypassCSP: boolean;
 }) => Promise<Page> = async ({
   context,
   defaultViewport,
@@ -39,16 +38,12 @@ export const createReplayPage: (options: {
   shiftTime,
   dependencies,
   onTimelineEvent,
-  bypassCSP,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const page = await context.newPage();
   logger.debug("Created page");
   page.setDefaultNavigationTimeout(120000); // 2 minutes
-  if (bypassCSP) {
-    await page.setBypassCSP(true);
-  }
 
   // Set viewport
   await page.setViewport(defaultViewport);

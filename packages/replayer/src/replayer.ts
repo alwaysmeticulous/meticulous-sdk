@@ -55,7 +55,6 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     maxDurationMs,
     maxEventCount,
     disableRemoteFonts,
-    bypassCSP,
   } = replayExecutionOptions;
   const metadata: ReplayMetadata = {
     session,
@@ -106,7 +105,6 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     shiftTime,
     dependencies,
     onTimelineEvent,
-    bypassCSP,
   });
 
   // Calculate start URL based on the one that the session originated on/from.
