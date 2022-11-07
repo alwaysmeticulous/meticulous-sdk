@@ -50,6 +50,16 @@ export const createReplayPage: (options: {
     await page.setBypassCSP(true);
   }
 
+  // Log any errors/console messages
+  page.on("console", (message) => {
+    logger.debug(
+      "Console message",
+      message.type(),
+      message.text(),
+      ...message.args()
+    );
+  });
+
   // Set viewport
   await page.setViewport(defaultViewport);
 
