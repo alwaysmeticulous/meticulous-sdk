@@ -45,6 +45,16 @@ export const createReplayPage: (options: {
   logger.debug("Created page");
   page.setDefaultNavigationTimeout(120000); // 2 minutes
 
+  // Log any errors/console messages
+  page.on("console", (message) => {
+    logger.debug(
+      "Console message",
+      message.type(),
+      message.text(),
+      ...message.args()
+    );
+  });
+
   // Set viewport
   await page.setViewport(defaultViewport);
 
