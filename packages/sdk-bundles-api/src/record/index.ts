@@ -28,11 +28,6 @@ export interface RecordSettings {
       /** True iff inline CSS stylesheets are to be recorded */
       inlineStylesheet?: boolean;
     };
-    plugins?: {
-      nodeData?: {
-        enabled?: boolean;
-      };
-    };
   };
 }
 
