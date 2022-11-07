@@ -56,6 +56,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     maxEventCount,
     disableRemoteFonts,
     bypassCSP,
+    moveBeforeClick,
   } = replayExecutionOptions;
   const metadata: ReplayMetadata = {
     session,
@@ -191,7 +192,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     page,
     logLevel,
     sessionData,
-    moveBeforeClick: true,
+    moveBeforeClick,
     virtualTime: skipPauses ? { enabled: true } : { enabled: false },
     storyboard,
     onTimelineEvent,

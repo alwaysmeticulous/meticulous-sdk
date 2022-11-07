@@ -57,7 +57,7 @@ export const OPTIONS = {
   moveBeforeClick: {
     boolean: true,
     description: "Simulate mouse movement before clicking",
-    default: false,
+    default: true,
   },
   diffThreshold: {
     number: true,

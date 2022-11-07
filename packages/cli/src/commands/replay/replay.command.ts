@@ -466,11 +466,7 @@ export const replay = buildCommand("simulate")
       description:
         "Adds the simulation to the list of test cases in meticulous.json",
     },
-    moveBeforeClick: {
-      boolean: true,
-      description: "Simulate mouse movement before clicking",
-      default: false,
-    },
+    moveBeforeClick: OPTIONS.moveBeforeClick,
     cookiesFile: {
       string: true,
       description: "Path to cookies to inject before simulation",
