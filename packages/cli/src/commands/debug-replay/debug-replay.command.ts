@@ -44,12 +44,14 @@ const handler: (options: Options) => Promise<void> = async ({
   const sessionData = await getOrFetchRecordedSessionData(client, sessionId);
 
   // 3. Load replay assets
-  const replayDebugger = await fetchAsset(
-    "replay/v1/replay-debugger.bundle.js"
+  const browserUserInteractions = await fetchAsset(
+    "replay/v2/snippet-user-interactions.bundle.js"
   );
-  const reanimator = await fetchAsset("replay/v1/reanimator.bundle.js");
-  const replayNetworkFile = await fetchAsset(
-    "replay/v1/replay-network-events.bundle.js"
+  const nodeBrowserContext = await fetchAsset(
+    "replay/v2/node-browser-context.bundle.js"
+  );
+  const nodeNetworkStubbing = await fetchAsset(
+    "replay/v2/node-network-stubbing.bundle.js"
   );
 
   // 4. Load replay-debugger package
@@ -71,17 +73,17 @@ const handler: (options: Options) => Promise<void> = async ({
     appUrl: appUrl || "",
     devTools: devTools || false,
     dependencies: {
-      replayDebugger: {
-        key: "replayDebugger",
-        location: replayDebugger,
+      browserUserInteractions: {
+        key: "browserUserInteractions",
+        location: browserUserInteractions,
       },
-      reanimator: {
-        key: "reanimator",
-        location: reanimator,
+      nodeBrowserContext: {
+        key: "nodeBrowserContext",
+        location: nodeBrowserContext,
       },
-      replayNetworkFile: {
-        key: "replayNetworkFile",
-        location: replayNetworkFile,
+      nodeNetworkStubbing: {
+        key: "nodeNetworkStubbing",
+        location: nodeNetworkStubbing,
       },
     },
     shiftTime,

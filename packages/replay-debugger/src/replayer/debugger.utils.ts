@@ -1,10 +1,9 @@
 import { readFile } from "fs/promises";
-import type {
-  BaseReplayEventsDependencies,
-  ReplayEventsDependency,
-} from "@alwaysmeticulous/common";
+import type { ReplayDebuggerDependencies } from "@alwaysmeticulous/common";
+import { METICULOUS_LOGGER_NAME, SessionData } from "@alwaysmeticulous/common";
 import { patchDate } from "@alwaysmeticulous/replayer";
-import { Page } from "puppeteer";
+import log from "loglevel";
+import { BrowserContext, Page, Viewport } from "puppeteer";
 
 export interface SetupPageCookiesOptions {
   page: Page;
@@ -19,13 +18,6 @@ export const setupPageCookies: (
   await page.setCookie(...cookies);
 };
 
-export interface ReplayDebuggerDependencies
-  extends BaseReplayEventsDependencies {
-  replayDebugger: ReplayEventsDependency<"replayDebugger">;
-  reanimator: ReplayEventsDependency<"reanimator">;
-  replayNetworkFile: ReplayEventsDependency<"replayNetworkFile">;
-}
-
 export interface BootstrapPageOptions {
   page: Page;
   sessionData: any;
@@ -34,15 +26,28 @@ export interface BootstrapPageOptions {
   networkStubbing: boolean;
 }
 
-export const bootstrapPage: (
-  options: BootstrapPageOptions
-) => Promise<void> = async ({
-  page,
+export const createDebugReplayPage: (options: {
+  context: BrowserContext;
+  defaultViewport: Viewport;
+  sessionData: SessionData;
+  shiftTime: boolean;
+  dependencies: ReplayDebuggerDependencies;
+}) => Promise<Page> = async ({
+  context,
+  defaultViewport,
   sessionData,
-  dependencies,
   shiftTime,
-  networkStubbing,
+  dependencies,
 }) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
+  const page = await context.newPage();
+  logger.debug("Created page");
+  page.setDefaultNavigationTimeout(120000); // 2 minutes
+
+  // Set viewport
+  await page.setViewport(defaultViewport);
+
   // Shift simulation time by patching the Date class
   if (shiftTime) {
     await patchDate({ page, sessionData });
@@ -54,39 +59,12 @@ export const bootstrapPage: (
     window.__meticulous = window.__meticulous || {};
   `);
 
-  await page.evaluateOnNewDocument(
-    `window.sessionData = ${JSON.stringify(sessionData)}`
+  // Setup the user-interactions snippet
+  const userInteractionsFile = await readFile(
+    dependencies.browserUserInteractions.location,
+    "utf-8"
   );
-  try {
-    const { startUrl, startURL } = sessionData.userEvents.window;
-    await page.evaluateOnNewDocument(
-      `window.__meticulousStartURL = "${startUrl || startURL}"`
-    );
-    // TODO: fix this
-    // eslint-disable-next-line no-empty
-  } catch {}
+  await page.evaluateOnNewDocument(userInteractionsFile);
 
-  const reanimatorFile = await readFile(
-    dependencies.reanimator.location,
-    "utf8"
-  );
-  await page.evaluateOnNewDocument(reanimatorFile);
-
-  await page.evaluateOnNewDocument(
-    `window.Reanimator.replay(window['sessionData']['randomEvents'])`
-  );
-
-  if (networkStubbing) {
-    const replayNetworkFile = await readFile(
-      dependencies.replayNetworkFile.location,
-      "utf-8"
-    ); // Bundles PollyJS and supports the replay of network responses
-    await page.evaluateOnNewDocument(replayNetworkFile);
-    await page.evaluateOnNewDocument(`window.setUpPolly()`);
-  }
-
-  // Inject replay debug snippet
-  await page.evaluateOnNewDocument(
-    await readFile(dependencies.replayDebugger.location, "utf-8")
-  );
+  return page;
 };
