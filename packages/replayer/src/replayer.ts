@@ -188,6 +188,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     screenshottingOptions.storyboardOptions.enabled
       ? { enabled: true, screenshotsDir }
       : { enabled: false };
+  const rrwebRecordingDuration = getRrwebRecordingDuration(sessionData);
   const replayResult = await replayUserInteractions({
     page,
     logLevel,
@@ -196,30 +197,33 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     virtualTime: skipPauses ? { enabled: true } : { enabled: false },
     storyboard,
     onTimelineEvent,
+    ...(rrwebRecordingDuration != null
+      ? { sessionDurationMs: rrwebRecordingDuration?.milliseconds }
+      : {}),
     ...(maxDurationMs != null ? { maxDurationMs } : {}),
     ...(maxEventCount != null ? { maxEventCount } : {}),
   });
   logger.debug(`Replay result: ${JSON.stringify(replayResult)}`);
 
   // Pad replay time according to session duration recorded with rrweb
-  if (padTime && !skipPauses && replayResult.length === "full") {
-    const rrwebRecordingDuration = getRrwebRecordingDuration(sessionData);
-    if (rrwebRecordingDuration) {
-      const now = DateTime.utc();
-      const timeToPad = startTime
-        .plus(rrwebRecordingDuration)
-        .diff(now)
-        .toMillis();
-      logger.debug(
-        `Padtime: ${timeToPad} ${rrwebRecordingDuration.toISOTime()}`
-      );
-      if (timeToPad > 0) {
-        await new Promise<void>((resolve) => {
-          setTimeout(() => {
-            resolve();
-          }, timeToPad);
-        });
-      }
+  if (
+    padTime &&
+    !skipPauses &&
+    replayResult.length === "full" &&
+    rrwebRecordingDuration != null
+  ) {
+    const now = DateTime.utc();
+    const timeToPad = startTime
+      .plus(rrwebRecordingDuration)
+      .diff(now)
+      .toMillis();
+    logger.debug(`Padtime: ${timeToPad} ${rrwebRecordingDuration.toISOTime()}`);
+    if (timeToPad > 0) {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          resolve();
+        }, timeToPad);
+      });
     }
   }
 
