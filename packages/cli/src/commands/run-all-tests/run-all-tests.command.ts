@@ -32,10 +32,7 @@ import { getMeticulousVersion } from "../../utils/version.utils";
 
 interface Options
   extends ScreenshotDiffOptions,
-    Omit<
-      ReplayExecutionOptions,
-      "moveBeforeClick" | "maxDurationMs" | "maxEventCount"
-    > {
+    Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount"> {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
   appUrl?: string | undefined;
@@ -69,6 +66,7 @@ const handler: (options: Options) => Promise<void> = async ({
   testsFile,
   disableRemoteFonts,
   skipPauses,
+  moveBeforeClick,
 }) => {
   if (appUrl != null && useAssetsSnapshottedInBaseSimulation) {
     throw new Error(
@@ -85,7 +83,7 @@ const handler: (options: Options) => Promise<void> = async ({
     networkStubbing,
     disableRemoteFonts,
     skipPauses,
-    moveBeforeClick: OPTIONS.moveBeforeClick.default, // moveBeforeClick isn't exposed as an option for run-all-tests
+    moveBeforeClick,
     maxDurationMs: null, // we don't expose this option
     maxEventCount: null, // we don't expose this option
   };
@@ -254,6 +252,7 @@ export const runAllTests = buildCommand("run-all-tests")
         "The path to the meticulous.json file containing the list of tests you want to run." +
         " If not set a search will be performed to find a meticulous.json file in the current directory or the nearest parent directory.",
     },
+    moveBeforeClick: OPTIONS.moveBeforeClick,
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
   } as const)
