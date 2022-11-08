@@ -12,6 +12,7 @@ export interface ReplayUserInteractionsOptions {
   storyboard?: StoryboardOptions;
   maxDurationMs?: number;
   maxEventCount?: number;
+  sessionDurationMs?: number;
   onTimelineEvent: OnReplayTimelineEventFn;
   logLevel: LogLevelDesc;
 }
