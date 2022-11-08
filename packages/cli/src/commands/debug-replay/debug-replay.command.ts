@@ -5,7 +5,10 @@ import {
 import log from "loglevel";
 import { createClient } from "../../api/client";
 import { buildCommand } from "../../command-utils/command-builder";
-import { COMMON_REPLAY_OPTIONS } from "../../command-utils/common-options";
+import {
+  COMMON_REPLAY_OPTIONS,
+  OPTIONS,
+} from "../../command-utils/common-options";
 import { fetchAsset } from "../../local-data/replay-assets";
 import {
   getOrFetchRecordedSession,
@@ -16,10 +19,10 @@ interface Options {
   apiToken?: string | null | undefined;
   sessionId: string;
   appUrl?: string | null | undefined;
-  devTools?: boolean | null | undefined;
+  devTools: boolean;
   shiftTime: boolean;
   networkStubbing: boolean;
-  moveBeforeClick?: boolean | null | undefined;
+  moveBeforeClick: boolean;
   cookiesFile?: string | null | undefined;
   disableRemoteFonts: boolean;
 }
@@ -71,7 +74,7 @@ const handler: (options: Options) => Promise<void> = async ({
     session,
     sessionData,
     appUrl: appUrl || "",
-    devTools: devTools || false,
+    devTools: devTools,
     dependencies: {
       browserUserInteractions: {
         key: "browserUserInteractions",
@@ -89,7 +92,7 @@ const handler: (options: Options) => Promise<void> = async ({
     shiftTime,
     networkStubbing,
     disableRemoteFonts,
-    moveBeforeClick: moveBeforeClick || false,
+    moveBeforeClick: moveBeforeClick,
     cookiesFile: cookiesFile || "",
   };
   await createReplayer(createReplayerParams);
@@ -111,10 +114,7 @@ export const debugReplay = buildCommand("debug-simulation")
     appUrl: {
       string: true,
     },
-    moveBeforeClick: {
-      boolean: true,
-      description: "Simulate mouse movement before clicking",
-    },
+    moveBeforeClick: OPTIONS.moveBeforeClick,
     cookiesFile: {
       string: true,
       description: "Path to cookies to inject before replay",

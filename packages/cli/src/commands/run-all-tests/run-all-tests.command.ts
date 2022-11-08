@@ -85,7 +85,7 @@ const handler: (options: Options) => Promise<void> = async ({
     networkStubbing,
     disableRemoteFonts,
     skipPauses,
-    moveBeforeClick: false, // moveBeforeClick isn't exposed as an option for run-all-tests
+    moveBeforeClick: OPTIONS.moveBeforeClick.default, // moveBeforeClick isn't exposed as an option for run-all-tests
     maxDurationMs: null, // we don't expose this option
     maxEventCount: null, // we don't expose this option
   };
