@@ -122,7 +122,7 @@ const installVirtualEventLoop = (page: Page) =>
     if (installVirtualEventLoop) {
       installVirtualEventLoop();
     } else {
-      console.error("Could not install virtual event loop since window.__meticulous.replayFunctions.installVirtualEventLoop null or undefined");
+      console.error("Could not install virtual event loop since window.__meticulous.replayFunctions.installVirtualEventLoop was null or undefined");
     }
 `);
 
