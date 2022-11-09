@@ -6,6 +6,7 @@ import {
   METICULOUS_LOGGER_NAME,
   Replay,
   ReplayEventsFn,
+  ReplayEventsOptions,
   ReplayExecutionOptions,
   ReplayTarget,
 } from "@alwaysmeticulous/common";
@@ -68,7 +69,7 @@ export const replayCommandHandler = async ({
   commitSha: commitSha_,
   save,
   exitOnMismatch,
-  baseSimulationId: baseReplayId_,
+  baseSimulationId: baseSimulationId_,
   cookiesFile,
   generatedBy,
 }: ReplayOptions): Promise<Replay> => {
@@ -134,7 +135,8 @@ export const replayCommandHandler = async ({
   );
 
   // 6. Create and save replay parameters
-  const replayEventsParams: Parameters<typeof replayEvents>[0] = {
+  const baseSimulationId = baseSimulationId_ ?? null;
+  const replayEventsParams: ReplayEventsOptions = {
     appUrl: appUrl ?? null,
     replayExecutionOptions: executionOptions,
 
@@ -145,6 +147,7 @@ export const replayCommandHandler = async ({
     recordingId: "manual-replay",
     meticulousSha: "meticulousSha",
     generatedBy,
+    baseSimulationId,
 
     dependencies: {
       browserUserInteractions: {
@@ -243,21 +246,20 @@ export const replayCommandHandler = async ({
   logger.info("=======");
 
   // 12. Diff against base replay screenshot if one is provided
-  const baseReplayId = baseReplayId_ || "";
-  if (screenshottingOptions.enabled && baseReplayId) {
-    logger.info(`Diffing screenshots against replay ${baseReplayId}`);
+  if (screenshottingOptions.enabled && baseSimulationId) {
+    logger.info(`Diffing screenshots against simulation ${baseSimulationId}`);
 
-    await getOrFetchReplay(client, baseReplayId);
-    await getOrFetchReplayArchive(client, baseReplayId);
+    await getOrFetchReplay(client, baseSimulationId);
+    await getOrFetchReplayArchive(client, baseSimulationId);
 
     const baseReplayScreenshotsDir = getScreenshotsDir(
-      getReplayDir(baseReplayId)
+      getReplayDir(baseSimulationId)
     );
     const headReplayScreenshotsDir = getScreenshotsDir(tempDir);
 
     await diffScreenshots({
       client,
-      baseReplayId,
+      baseReplayId: baseSimulationId,
       headReplayId: replay.id,
       baseScreenshotsDir: baseReplayScreenshotsDir,
       headScreenshotsDir: headReplayScreenshotsDir,

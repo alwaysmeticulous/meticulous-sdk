@@ -98,6 +98,7 @@ export interface ReplayEventsOptions {
   screenshottingOptions: ScreenshottingOptions;
   cookiesFile: string | null;
   generatedBy: GeneratedBy;
+  baseSimulationId: string | null;
 }
 
 export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;

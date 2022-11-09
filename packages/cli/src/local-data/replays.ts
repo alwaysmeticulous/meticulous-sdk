@@ -1,4 +1,4 @@
-import { opendir , access, mkdir, readFile, rm, writeFile } from "fs/promises";
+import { opendir, access, mkdir, readFile, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import {
   getMeticulousLocalDataDir,
