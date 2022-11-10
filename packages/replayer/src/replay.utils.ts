@@ -97,8 +97,6 @@ export const createReplayPage: (options: {
   );
   await page.evaluateOnNewDocument(userInteractionsFile);
 
-  // If virtual time is enabled then we need to install the virtual event loop before
-  // any customer code runs, since that code may snapshot copies of the setTimeout etc. functions
   if (virtualTime.enabled) {
     await installVirtualEventLoop(page);
   }
