@@ -9,7 +9,10 @@ import {
   ReplayTimelineEntry,
   ReplayUserInteractionsFn,
 } from "@alwaysmeticulous/sdk-bundles-api";
-import { StoryboardOptions } from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
+import {
+  StoryboardOptions,
+  VirtualTimeOptions,
+} from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
 import { Browser, launch, Page } from "puppeteer";
@@ -100,6 +103,9 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     entry: ReplayTimelineEntry
   ) => timelineCollector.addEntry(entry);
 
+  const virtualTime: VirtualTimeOptions = skipPauses
+    ? { enabled: true }
+    : { enabled: false };
   const page = await createReplayPage({
     context,
     defaultViewport,
@@ -108,6 +114,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     dependencies,
     onTimelineEvent,
     bypassCSP,
+    virtualTime,
   });
 
   // Calculate start URL based on the one that the session originated on/from.
@@ -194,7 +201,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     logLevel,
     sessionData,
     moveBeforeClick,
-    virtualTime: skipPauses ? { enabled: true } : { enabled: false },
+    virtualTime,
     storyboard,
     onTimelineEvent,
     ...(rrwebRecordingDuration != null
