@@ -4,7 +4,10 @@ import {
   ReplayEventsDependencies,
   SessionData,
 } from "@alwaysmeticulous/common";
-import { OnReplayTimelineEventFn } from "@alwaysmeticulous/sdk-bundles-api";
+import {
+  OnReplayTimelineEventFn,
+  VirtualTimeOptions,
+} from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { DateTime, Duration } from "luxon";
 import { BrowserContext, Page, Viewport } from "puppeteer";
@@ -32,6 +35,7 @@ export const createReplayPage: (options: {
   dependencies: ReplayEventsDependencies;
   onTimelineEvent: OnReplayTimelineEventFn;
   bypassCSP: boolean;
+  virtualTime: VirtualTimeOptions;
 }) => Promise<Page> = async ({
   context,
   defaultViewport,
@@ -40,6 +44,7 @@ export const createReplayPage: (options: {
   dependencies,
   onTimelineEvent,
   bypassCSP,
+  virtualTime,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -92,6 +97,10 @@ export const createReplayPage: (options: {
   );
   await page.evaluateOnNewDocument(userInteractionsFile);
 
+  if (virtualTime.enabled) {
+    await installVirtualEventLoop(page);
+  }
+
   // Setup the url-observer snippet
   const urlObserverFile = await readFile(
     dependencies.browserUrlObserver.location,
@@ -104,6 +113,16 @@ export const createReplayPage: (options: {
 
   return page;
 };
+
+const installVirtualEventLoop = (page: Page) =>
+  page.evaluateOnNewDocument(`
+    const installVirtualEventLoop = window.__meticulous?.replayFunctions?.installVirtualEventLoop;
+    if (installVirtualEventLoop) {
+      installVirtualEventLoop();
+    } else {
+      console.error("Could not install virtual event loop since window.__meticulous.replayFunctions.installVirtualEventLoop was null or undefined");
+    }
+`);
 
 const getMinMaxRrwebTimestamps: (
   sessionData: SessionData
