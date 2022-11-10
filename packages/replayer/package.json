@@ -19,11 +19,13 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.6.2",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.8.0",
     "loglevel": "^1.8.0",
     "luxon": "^2.4.0",
     "puppeteer": "^14.4.1",
     "rrweb": "^1.1.3"
+  },
+  "devDependencies": {
+    "@alwaysmeticulous/sdk-bundles-api": "^2.8.0"
   },
   "author": {
     "name": "The Meticulous Team",
