@@ -1,0 +1,17 @@
+export {
+  EndStateScreenshot,
+  ReplayDiff,
+  ReplayDiffData,
+  ScreenshotAfterEvent,
+  ScreenshotAssertionsEnabledOptions,
+  ScreenshotAssertionsOptions,
+  ScreenshotDiffOptions,
+  ScreenshotDiffResult,
+  ScreenshotDiffResultCompared,
+  ScreenshotDiffResultDifferentSize,
+  ScreenshotDiffResultMissingBase,
+  ScreenshotDiffResultMissingHead,
+  ScreenshotIdentifier,
+  ScreenshottingEnabledOptions,
+  StoryboardOptions,
+} from "./replay/replay-diff.types";
