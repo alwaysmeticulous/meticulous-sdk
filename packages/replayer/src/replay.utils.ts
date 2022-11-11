@@ -70,7 +70,7 @@ export const createReplayPage: (options: {
   await page.setViewport(defaultViewport);
 
   // Shift simulation time by patching the Date class
-  const [sessionStartTime] = getMinMaxRrwebTimestamps(sessionData);
+  const sessionStartTime = getSessionStartTime(sessionData);
   if (shiftTime) {
     await patchDate({ page, sessionStartTime });
   }
@@ -130,6 +130,18 @@ const installVirtualEventLoop = (page: Page, sessionStartTime: DateTime) => {
   `);
 };
 
+export const getSessionStartTime = (sessionData: SessionData): DateTime =>
+  getMinMaxRrwebTimestamps(sessionData)[0];
+
+export const getRrwebRecordingDuration: (
+  sessionData: SessionData
+) => Duration | null = (sessionData) => {
+  const [minRrwebTimestamp, maxRrwebTimestamp] =
+    getMinMaxRrwebTimestamps(sessionData);
+  const rrwebRecordingDuration = maxRrwebTimestamp.diff(minRrwebTimestamp);
+  return rrwebRecordingDuration.isValid ? rrwebRecordingDuration : null;
+};
+
 const getMinMaxRrwebTimestamps: (
   sessionData: SessionData
 ) => [DateTime, DateTime] = (sessionData) => {
@@ -143,15 +155,6 @@ const getMinMaxRrwebTimestamps: (
     Math.max(...rrwebTimestamps)
   ).toUTC();
   return [minRrwebTimestamp, maxRrwebTimestamp];
-};
-
-export const getRrwebRecordingDuration: (
-  sessionData: SessionData
-) => Duration | null = (sessionData) => {
-  const [minRrwebTimestamp, maxRrwebTimestamp] =
-    getMinMaxRrwebTimestamps(sessionData);
-  const rrwebRecordingDuration = maxRrwebTimestamp.diff(minRrwebTimestamp);
-  return rrwebRecordingDuration.isValid ? rrwebRecordingDuration : null;
 };
 
 export const patchDate: (options: {
