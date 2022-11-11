@@ -7,8 +7,10 @@ import {
   ScreenshotIdentifier,
 } from "@alwaysmeticulous/api";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { createClient } from "../../api/client";
+import { getDiffUrl } from "../../api/replay.api";
 import { buildCommand } from "../../command-utils/command-builder";
 import { SCREENSHOT_DIFF_OPTIONS } from "../../command-utils/common-options";
 import { compareImages } from "../../image/diff.utils";
@@ -23,18 +25,22 @@ import {
 import { writeScreenshotDiff } from "../../local-data/screenshot-diffs";
 
 export const diffScreenshots = async ({
+  client,
   headReplayId,
   baseReplayId,
   headScreenshotsDir,
   baseScreenshotsDir,
   diffOptions,
 }: {
+  client: AxiosInstance;
   baseReplayId: string;
   headReplayId: string;
   baseScreenshotsDir: string;
   headScreenshotsDir: string;
   diffOptions: ScreenshotDiffOptions;
 }): Promise<ScreenshotDiffResult[]> => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   const { diffThreshold, diffPixelThreshold } = diffOptions;
 
   const baseReplayScreenshots = await getScreenshotFiles(baseScreenshotsDir);
@@ -93,67 +99,74 @@ export const diffScreenshots = async ({
           const baseScreenshot = await readPng(baseScreenshotFile);
           const headScreenshot = await readPng(headScreenshotFile);
 
-          try {
-            const comparisonResult = compareImages({
-              base: baseScreenshot,
-              head: headScreenshot,
-              pixelThreshold: diffPixelThreshold,
-            });
-
-            await writeScreenshotDiff({
-              baseReplayId,
-              headReplayId,
-              screenshotFileName,
-              diff: comparisonResult.diff,
-            });
-
+          if (
+            baseScreenshot.width !== baseScreenshot.width ||
+            headScreenshot.height !== headScreenshot.height
+          ) {
             return [
               {
                 identifier,
-                outcome:
-                  comparisonResult.mismatchFraction > diffThreshold
-                    ? "diff"
-                    : "no-diff",
+                outcome: "different-size",
                 headScreenshotFile: `screenshots/${screenshotFileName}`,
                 baseScreenshotFile: `screenshots/${screenshotFileName}`,
-                width: baseScreenshot.width,
-                height: baseScreenshot.height,
-                mismatchPixels: comparisonResult.mismatchPixels,
-                mismatchFraction: comparisonResult.mismatchFraction,
+                baseWidth: baseScreenshot.width,
+                baseHeight: baseScreenshot.height,
+                headWidth: headScreenshot.width,
+                headHeight: headScreenshot.height,
               },
             ];
-          } catch (error) {
-            if (
-              error instanceof Error &&
-              error.message.startsWith("Cannot handle different size")
-            ) {
-              return [
-                {
-                  identifier,
-                  outcome: "different-size",
-                  headScreenshotFile: `screenshots/${screenshotFileName}`,
-                  baseScreenshotFile: `screenshots/${screenshotFileName}`,
-                  baseWidth: baseScreenshot.width,
-                  baseHeight: baseScreenshot.height,
-                  headWidth: headScreenshot.width,
-                  headHeight: headScreenshot.height,
-                },
-              ];
-            }
-            throw error;
           }
+
+          const comparisonResult = compareImages({
+            base: baseScreenshot,
+            head: headScreenshot,
+            pixelThreshold: diffPixelThreshold,
+          });
+
+          await writeScreenshotDiff({
+            baseReplayId,
+            headReplayId,
+            screenshotFileName,
+            diff: comparisonResult.diff,
+          });
+
+          return [
+            {
+              identifier,
+              outcome:
+                comparisonResult.mismatchFraction > diffThreshold
+                  ? "diff"
+                  : "no-diff",
+              headScreenshotFile: `screenshots/${screenshotFileName}`,
+              baseScreenshotFile: `screenshots/${screenshotFileName}`,
+              width: baseScreenshot.width,
+              height: baseScreenshot.height,
+              mismatchPixels: comparisonResult.mismatchPixels,
+              mismatchFraction: comparisonResult.mismatchFraction,
+            },
+          ];
         }
       )
     )
   ).flat();
 
+  const diffUrl = await getDiffUrl(client, baseReplayId, headReplayId);
+  logger.info(`View screenshot diff at ${diffUrl}`);
+
   return [...missingHeadImagesResults, ...headDiffResults];
 };
 
-export const checkScreenshotDiffResult = (
-  results: ScreenshotDiffResult[],
-  diffOptions: ScreenshotDiffOptions
-): void => {
+export const checkScreenshotDiffResult = ({
+  baseReplayId,
+  headReplayId,
+  results,
+  diffOptions,
+}: {
+  baseReplayId: string;
+  headReplayId: string;
+  results: ScreenshotDiffResult[];
+  diffOptions: ScreenshotDiffOptions;
+}): void => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const missingHeadImagesResults = results.filter(
@@ -164,7 +177,10 @@ export const checkScreenshotDiffResult = (
       .map(({ baseScreenshotFile }) => baseScreenshotFile)
       .sort()} => FAIL!`;
     logger.info(message);
-    throw new Error(message);
+    throw new ScreenshotDiffError(message, {
+      baseReplayId,
+      headReplayId,
+    });
   }
 
   const missingBaseImagesResults = results.filter(
@@ -185,7 +201,10 @@ export const checkScreenshotDiffResult = (
         result.headScreenshotFile
       )} have different sizes => FAIL!`;
       logger.info(message);
-      throw new Error(message);
+      throw new ScreenshotDiffError(message, {
+        baseReplayId,
+        headReplayId,
+      });
     }
 
     if (outcome === "diff" || outcome === "no-diff") {
@@ -198,11 +217,26 @@ export const checkScreenshotDiffResult = (
       }`;
       logger.info(message);
       if (outcome === "diff") {
-        throw new Error(message);
+        throw new ScreenshotDiffError(message, {
+          baseReplayId,
+          headReplayId,
+        });
       }
     }
   });
 };
+
+export class ScreenshotDiffError extends Error {
+  constructor(
+    message: string,
+    readonly extras?: {
+      baseReplayId: string;
+      headReplayId: string;
+    }
+  ) {
+    super(message);
+  }
+}
 
 const getScreenshotIdentifier = (
   filename: string
@@ -257,22 +291,27 @@ const handler: (options: Options) => Promise<void> = async ({
   const baseScreenshotsDir = getScreenshotsDir(getReplayDir(baseReplayId));
   const headScreenshotsDir = getScreenshotsDir(getReplayDir(headReplayId));
 
+  const diffOptions: ScreenshotDiffOptions = {
+    diffThreshold: threshold,
+    diffPixelThreshold: pixelThreshold,
+  };
+
   const results = await diffScreenshots({
+    client,
     baseReplayId,
     headReplayId,
     baseScreenshotsDir,
     headScreenshotsDir,
-    diffOptions: {
-      diffThreshold: threshold,
-      diffPixelThreshold: pixelThreshold,
-    },
+    diffOptions,
   });
 
   logger.debug(results);
 
-  checkScreenshotDiffResult(results, {
-    diffThreshold: threshold,
-    diffPixelThreshold: pixelThreshold,
+  checkScreenshotDiffResult({
+    baseReplayId,
+    headReplayId,
+    results,
+    diffOptions,
   });
 };
 
