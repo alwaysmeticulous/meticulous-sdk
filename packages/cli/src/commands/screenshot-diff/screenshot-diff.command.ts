@@ -188,16 +188,6 @@ export const checkScreenshotDiffResult = (
       throw new Error(message);
     }
 
-    // logComparisonResultMessage(
-    //   logger,
-    //   `${Math.round(
-    //     result.comparisonResult.mismatchFraction * 100
-    //   )}% pixel mismatch for screenshot ${basename(
-    //     result.headScreenshotFile
-    //   )} (threshold is ${Math.round(diffThreshold * 100)}%)`,
-    //   result.outcome
-    // );
-
     if (outcome === "diff" || outcome === "no-diff") {
       const mismatch = Math.round(result.mismatchFraction * 100);
       const threshold = Math.round(diffOptions.diffThreshold * 100);
