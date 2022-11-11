@@ -35,11 +35,11 @@ const validateReplayOptions: (
     simulationIdForAssets,
   } = prevOptions;
   return {
-    ...(screenshotSelector ? { screenshotSelector } : {}),
-    ...(diffThreshold ? { diffThreshold } : {}),
-    ...(diffPixelThreshold ? { diffPixelThreshold } : {}),
-    ...(moveBeforeClick ? { moveBeforeClick } : {}),
-    ...(simulationIdForAssets ? { simulationIdForAssets } : {}),
+    ...(screenshotSelector != null ? { screenshotSelector } : {}),
+    ...(diffThreshold != null ? { diffThreshold } : {}),
+    ...(diffPixelThreshold != null ? { diffPixelThreshold } : {}),
+    ...(moveBeforeClick != null ? { moveBeforeClick } : {}),
+    ...(simulationIdForAssets != null ? { simulationIdForAssets } : {}),
   };
 };
 
