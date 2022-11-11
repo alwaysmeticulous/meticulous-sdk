@@ -7,6 +7,7 @@ import {
 import {
   OnReplayTimelineEventFn,
   VirtualTimeOptions,
+  InstallVirtualEventLoopOpts,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { DateTime, Duration } from "luxon";
@@ -115,15 +116,19 @@ export const createReplayPage: (options: {
   return page;
 };
 
-const installVirtualEventLoop = (page: Page, sessionStartTime: DateTime) =>
-  page.evaluateOnNewDocument(`
-    const installVirtualEventLoop = window.__meticulous?.replayFunctions?.installVirtualEventLoop;
-    if (installVirtualEventLoop) {
-      installVirtualEventLoop({ sessionStartTime: ${sessionStartTime.toMillis()} });
-    } else {
-      console.error("Could not install virtual event loop since window.__meticulous.replayFunctions.installVirtualEventLoop was null or undefined");
-    }
-`);
+const installVirtualEventLoop = (page: Page, sessionStartTime: DateTime) => {
+  const opts: InstallVirtualEventLoopOpts = {
+    sessionStartTime: sessionStartTime.toMillis(),
+  };
+  return page.evaluateOnNewDocument(`
+      const installVirtualEventLoop = window.__meticulous?.replayFunctions?.installVirtualEventLoop;
+      if (installVirtualEventLoop) {
+        installVirtualEventLoop(${JSON.stringify(opts)});
+      } else {
+        console.error("Could not install virtual event loop since window.__meticulous.replayFunctions.installVirtualEventLoop was null or undefined");
+      }
+  `);
+};
 
 const getMinMaxRrwebTimestamps: (
   sessionData: SessionData

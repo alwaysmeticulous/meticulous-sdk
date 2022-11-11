@@ -9,6 +9,7 @@ export {
   ReplayUserInteractionsFn,
   ReplayUserInteractionsOptions,
   VirtualTimeOptions,
+  InstallVirtualEventLoopOpts,
 } from "./replay/sdk-to-bundle";
 export {
   ReplayTimelineData,
