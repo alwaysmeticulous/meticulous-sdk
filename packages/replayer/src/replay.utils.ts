@@ -69,8 +69,9 @@ export const createReplayPage: (options: {
   await page.setViewport(defaultViewport);
 
   // Shift simulation time by patching the Date class
+  const [sessionStartTime] = getMinMaxRrwebTimestamps(sessionData);
   if (shiftTime) {
-    await patchDate({ page, sessionData });
+    await patchDate({ page, sessionStartTime });
   }
 
   // Disable the recording snippet and set up the replay timeline
@@ -98,7 +99,7 @@ export const createReplayPage: (options: {
   await page.evaluateOnNewDocument(userInteractionsFile);
 
   if (virtualTime.enabled) {
-    await installVirtualEventLoop(page);
+    await installVirtualEventLoop(page, sessionStartTime);
   }
 
   // Setup the url-observer snippet
@@ -114,11 +115,11 @@ export const createReplayPage: (options: {
   return page;
 };
 
-const installVirtualEventLoop = (page: Page) =>
+const installVirtualEventLoop = (page: Page, sessionStartTime: DateTime) =>
   page.evaluateOnNewDocument(`
     const installVirtualEventLoop = window.__meticulous?.replayFunctions?.installVirtualEventLoop;
     if (installVirtualEventLoop) {
-      installVirtualEventLoop();
+      installVirtualEventLoop({ sessionStartTime: ${sessionStartTime.toMillis()} });
     } else {
       console.error("Could not install virtual event loop since window.__meticulous.replayFunctions.installVirtualEventLoop was null or undefined");
     }
@@ -150,11 +151,10 @@ export const getRrwebRecordingDuration: (
 
 export const patchDate: (options: {
   page: Page;
-  sessionData: SessionData;
-}) => Promise<void> = async ({ page, sessionData }) => {
-  const [minRrwebTimestamp] = getMinMaxRrwebTimestamps(sessionData);
+  sessionStartTime: DateTime;
+}) => Promise<void> = async ({ page, sessionStartTime }) => {
   const now = DateTime.now();
-  const shift = minRrwebTimestamp.diff(now).toMillis();
+  const shift = sessionStartTime.diff(now).toMillis();
 
   await page.evaluateOnNewDocument(`
     window.__meticulous = window.__meticulous || {};
