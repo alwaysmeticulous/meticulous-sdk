@@ -28,7 +28,7 @@ jobs:
           path: |
             node_modules/.cache/turbo
             packages/*/.turbo
-          key: ${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-v2
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile --non-interactive
