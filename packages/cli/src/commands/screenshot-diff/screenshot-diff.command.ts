@@ -2,8 +2,6 @@ import { basename, join } from "path";
 import {
   ScreenshotDiffOptions,
   ScreenshotDiffResult,
-  ScreenshotDiffResultMissingBase,
-  ScreenshotDiffResultMissingHead,
   ScreenshotIdentifier,
 } from "@alwaysmeticulous/api";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
