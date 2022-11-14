@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replayer",
-  "version": "2.10.0",
+  "version": "2.11.0",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -25,7 +25,7 @@
     "rrweb": "^1.1.3"
   },
   "devDependencies": {
-    "@alwaysmeticulous/sdk-bundles-api": "^2.8.0"
+    "@alwaysmeticulous/sdk-bundles-api": "^2.11.0"
   },
   "author": {
     "name": "The Meticulous Team",
