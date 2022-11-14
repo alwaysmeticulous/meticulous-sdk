@@ -2,19 +2,19 @@ import {
   GeneratedBy,
   METICULOUS_LOGGER_NAME,
   ReplayExecutionOptions,
-  ReplayTarget
+  ReplayTarget,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import {
   ScreenshotAssertionsEnabledOptions,
-  ScreenshotDiffOptions
+  ScreenshotDiffOptions,
 } from "../command-utils/common-types";
 import { replayCommandHandler } from "../commands/replay/replay.command";
-import { DiffError } from "../commands/screenshot-diff/screenshot-diff.command";
+import { ScreenshotDiffError } from "../commands/screenshot-diff/screenshot-diff.command";
 import {
   TestCase,
   TestCaseReplayOptions,
-  TestCaseResult
+  TestCaseResult,
 } from "../config/config.types";
 
 const handleReplay: (
@@ -27,6 +27,7 @@ const handleReplay: (
   apiToken,
   commitSha,
   generatedBy,
+  testRunId,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -48,6 +49,7 @@ const handleReplay: (
     exitOnMismatch: false,
     cookiesFile: null,
     generatedBy,
+    testRunId,
   });
   const result: TestCaseResult = await replayPromise
     .then(
@@ -59,7 +61,7 @@ const handleReplay: (
         } as TestCaseResult)
     )
     .catch((error) => {
-      if (error instanceof DiffError && error.extras) {
+      if (error instanceof ScreenshotDiffError && error.extras) {
         return {
           ...testCase,
           headReplayId: error.extras.headReplayId,
@@ -85,6 +87,7 @@ interface HandleReplayOptions {
   apiToken: string | null;
   commitSha: string;
   generatedBy: GeneratedBy;
+  testRunId: string | null;
 }
 
 export const deflakeReplayCommandHandler: (

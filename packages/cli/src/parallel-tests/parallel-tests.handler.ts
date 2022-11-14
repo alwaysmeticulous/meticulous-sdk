@@ -119,6 +119,7 @@ export const runAllTestsInParallel: (
           executionOptions,
           screenshottingOptions,
           generatedBy: { type: "testRun", runId: testRun.id },
+          testRunId: testRun.id,
         },
       },
     };

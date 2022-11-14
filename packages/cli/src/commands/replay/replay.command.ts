@@ -9,11 +9,15 @@ import {
   ReplayExecutionOptions,
   ReplayTarget,
 } from "@alwaysmeticulous/common";
-import { StoryboardOptions } from "@alwaysmeticulous/common/dist/types/replay.types";
+import {
+  ReplayEventsOptions,
+  StoryboardOptions,
+} from "@alwaysmeticulous/common/dist/types/replay.types";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { DateTime } from "luxon";
 import { createClient } from "../../api/client";
+import { createReplayDiff } from "../../api/replay-diff.api";
 import {
   createReplay,
   getReplayCommandId,
@@ -49,7 +53,10 @@ import {
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { addTestCase } from "../../utils/config.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
-import { diffScreenshots } from "../screenshot-diff/screenshot-diff.command";
+import {
+  checkScreenshotDiffResult,
+  diffScreenshots,
+} from "../screenshot-diff/screenshot-diff.command";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
@@ -57,6 +64,7 @@ export interface ReplayOptions extends AdditionalReplayOptions {
   screenshottingOptions: ScreenshotAssertionsOptions;
   exitOnMismatch: boolean;
   generatedBy: GeneratedBy;
+  testRunId: string | null;
 }
 
 export const replayCommandHandler = async ({
@@ -71,6 +79,7 @@ export const replayCommandHandler = async ({
   baseSimulationId: baseReplayId_,
   cookiesFile,
   generatedBy,
+  testRunId,
 }: ReplayOptions): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -134,7 +143,7 @@ export const replayCommandHandler = async ({
   );
 
   // 6. Create and save replay parameters
-  const replayEventsParams: Parameters<typeof replayEvents>[0] = {
+  const replayEventsParams: ReplayEventsOptions = {
     appUrl: appUrl ?? null,
     replayExecutionOptions: executionOptions,
 
@@ -145,6 +154,7 @@ export const replayCommandHandler = async ({
     recordingId: "manual-replay",
     meticulousSha: "meticulousSha",
     generatedBy,
+    testRunId,
 
     dependencies: {
       browserUserInteractions: {
@@ -255,15 +265,40 @@ export const replayCommandHandler = async ({
     );
     const headReplayScreenshotsDir = getScreenshotsDir(tempDir);
 
-    await diffScreenshots({
+    const screenshotDiffResults = await diffScreenshots({
       client,
       baseReplayId,
       headReplayId: replay.id,
       baseScreenshotsDir: baseReplayScreenshotsDir,
       headScreenshotsDir: headReplayScreenshotsDir,
       diffOptions: screenshottingOptions.diffOptions,
-      exitOnMismatch: !!exitOnMismatch,
     });
+
+    const replayDiff = await createReplayDiff({
+      client,
+      headReplayId: replay.id,
+      baseReplayId,
+      testRunId,
+      data: {
+        screenshotAssertionsOptions: screenshottingOptions,
+        screenshotDiffResults,
+      },
+    });
+
+    logger.debug(replayDiff);
+
+    try {
+      checkScreenshotDiffResult({
+        baseReplayId,
+        headReplayId: replay.id,
+        results: screenshotDiffResults,
+        diffOptions: screenshottingOptions.diffOptions,
+      });
+    } catch (error) {
+      if (exitOnMismatch) {
+        throw error;
+      }
+    }
   }
 
   // 13. Add test case to meticulous.json if --save option is passed
@@ -403,6 +438,7 @@ export const rawReplayCommandHandler = ({
     save,
     exitOnMismatch: true,
     generatedBy: generatedByOption,
+    testRunId: null,
   });
 };
 
