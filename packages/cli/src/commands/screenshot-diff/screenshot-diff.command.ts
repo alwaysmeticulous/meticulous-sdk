@@ -163,12 +163,12 @@ export const checkScreenshotDiffResult = ({
 }): void => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const missingHeadImagesResults = results.filter(
-    ({ outcome }) => outcome === "missing-head"
-  ) as ScreenshotDiffResultMissingHead[];
+  const missingHeadImagesResults = results.flatMap((result) =>
+    result.outcome === "missing-head" ? [result] : []
+  );
   if (missingHeadImagesResults.length) {
     const message = `Head replay is missing screenshots: ${missingHeadImagesResults
-      .map(({ baseScreenshotFile }) => baseScreenshotFile)
+      .map(({ baseScreenshotFile }) => basename(baseScreenshotFile))
       .sort()} => FAIL!`;
     logger.info(message);
     throw new ScreenshotDiffError(message, {
@@ -177,9 +177,9 @@ export const checkScreenshotDiffResult = ({
     });
   }
 
-  const missingBaseImagesResults = results.filter(
-    ({ outcome }) => outcome === "missing-base"
-  ) as ScreenshotDiffResultMissingBase[];
+  const missingBaseImagesResults = results.flatMap((result) =>
+    result.outcome === "missing-base" ? [result] : []
+  );
   if (missingHeadImagesResults.length) {
     const message = `Notice: Base replay is missing screenshots: ${missingBaseImagesResults
       .map(({ headScreenshotFile }) => basename(headScreenshotFile))
@@ -202,8 +202,8 @@ export const checkScreenshotDiffResult = ({
     }
 
     if (outcome === "diff" || outcome === "no-diff") {
-      const mismatch = Math.round(result.mismatchFraction * 100);
-      const threshold = Math.round(diffOptions.diffThreshold * 100);
+      const mismatch = (result.mismatchFraction * 100).toFixed(3);
+      const threshold = (diffOptions.diffThreshold * 100).toFixed(3);
       const message = `${mismatch}% pixel mismatch for screenshot ${basename(
         result.headScreenshotFile
       )} (threshold is ${threshold}%) => ${
