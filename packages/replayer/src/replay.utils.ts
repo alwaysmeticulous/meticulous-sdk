@@ -7,6 +7,7 @@ import {
 import {
   OnReplayTimelineEventFn,
   VirtualTimeOptions,
+  InstallVirtualEventLoopOpts,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { DateTime, Duration } from "luxon";
@@ -69,8 +70,9 @@ export const createReplayPage: (options: {
   await page.setViewport(defaultViewport);
 
   // Shift simulation time by patching the Date class
+  const sessionStartTime = getSessionStartTime(sessionData);
   if (shiftTime) {
-    await patchDate({ page, sessionData });
+    await patchDate({ page, sessionStartTime });
   }
 
   // Disable the recording snippet and set up the replay timeline
@@ -98,7 +100,7 @@ export const createReplayPage: (options: {
   await page.evaluateOnNewDocument(userInteractionsFile);
 
   if (virtualTime.enabled) {
-    await installVirtualEventLoop(page);
+    await installVirtualEventLoop(page, sessionStartTime);
   }
 
   // Setup the url-observer snippet
@@ -114,15 +116,31 @@ export const createReplayPage: (options: {
   return page;
 };
 
-const installVirtualEventLoop = (page: Page) =>
-  page.evaluateOnNewDocument(`
-    const installVirtualEventLoop = window.__meticulous?.replayFunctions?.installVirtualEventLoop;
-    if (installVirtualEventLoop) {
-      installVirtualEventLoop();
-    } else {
-      console.error("Could not install virtual event loop since window.__meticulous.replayFunctions.installVirtualEventLoop was null or undefined");
-    }
-`);
+const installVirtualEventLoop = (page: Page, sessionStartTime: DateTime) => {
+  const opts: InstallVirtualEventLoopOpts = {
+    sessionStartTime: sessionStartTime.toMillis(),
+  };
+  return page.evaluateOnNewDocument(`
+      const installVirtualEventLoop = window.__meticulous?.replayFunctions?.installVirtualEventLoop;
+      if (installVirtualEventLoop) {
+        installVirtualEventLoop(${JSON.stringify(opts)});
+      } else {
+        console.error("Could not install virtual event loop since window.__meticulous.replayFunctions.installVirtualEventLoop was null or undefined");
+      }
+  `);
+};
+
+export const getSessionStartTime = (sessionData: SessionData): DateTime =>
+  getMinMaxRrwebTimestamps(sessionData)[0];
+
+export const getRrwebRecordingDuration: (
+  sessionData: SessionData
+) => Duration | null = (sessionData) => {
+  const [minRrwebTimestamp, maxRrwebTimestamp] =
+    getMinMaxRrwebTimestamps(sessionData);
+  const rrwebRecordingDuration = maxRrwebTimestamp.diff(minRrwebTimestamp);
+  return rrwebRecordingDuration.isValid ? rrwebRecordingDuration : null;
+};
 
 const getMinMaxRrwebTimestamps: (
   sessionData: SessionData
@@ -139,22 +157,12 @@ const getMinMaxRrwebTimestamps: (
   return [minRrwebTimestamp, maxRrwebTimestamp];
 };
 
-export const getRrwebRecordingDuration: (
-  sessionData: SessionData
-) => Duration | null = (sessionData) => {
-  const [minRrwebTimestamp, maxRrwebTimestamp] =
-    getMinMaxRrwebTimestamps(sessionData);
-  const rrwebRecordingDuration = maxRrwebTimestamp.diff(minRrwebTimestamp);
-  return rrwebRecordingDuration.isValid ? rrwebRecordingDuration : null;
-};
-
 export const patchDate: (options: {
   page: Page;
-  sessionData: SessionData;
-}) => Promise<void> = async ({ page, sessionData }) => {
-  const [minRrwebTimestamp] = getMinMaxRrwebTimestamps(sessionData);
+  sessionStartTime: DateTime;
+}) => Promise<void> = async ({ page, sessionStartTime }) => {
   const now = DateTime.now();
-  const shift = minRrwebTimestamp.diff(now).toMillis();
+  const shift = sessionStartTime.diff(now).toMillis();
 
   await page.evaluateOnNewDocument(`
     window.__meticulous = window.__meticulous || {};

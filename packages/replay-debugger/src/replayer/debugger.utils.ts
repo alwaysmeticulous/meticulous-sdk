@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import type { ReplayDebuggerDependencies } from "@alwaysmeticulous/common";
 import { METICULOUS_LOGGER_NAME, SessionData } from "@alwaysmeticulous/common";
-import { patchDate } from "@alwaysmeticulous/replayer";
+import { patchDate, getSessionStartTime } from "@alwaysmeticulous/replayer";
 import log from "loglevel";
 import { BrowserContext, Page, Viewport } from "puppeteer";
 
@@ -50,7 +50,8 @@ export const createDebugReplayPage: (options: {
 
   // Shift simulation time by patching the Date class
   if (shiftTime) {
-    await patchDate({ page, sessionData });
+    const sessionStartTime = getSessionStartTime(sessionData);
+    await patchDate({ page, sessionStartTime });
   }
 
   // Disable the recording snippet

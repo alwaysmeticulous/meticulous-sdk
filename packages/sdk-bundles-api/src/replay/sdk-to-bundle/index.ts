@@ -32,3 +32,14 @@ export type StoryboardOptions =
   | { enabled: true; screenshotsDir: string };
 
 export type OnReplayTimelineEventFn = (entry: ReplayTimelineEntry) => void;
+
+export interface InstallVirtualEventLoopOpts {
+  /**
+   * The start time of the original session in ms since unix epoch (Date.now()).
+   *
+   * This is used to ensure that the application code thinks it's running at the same
+   * time as the original session during replay, to minimize differences vs the original
+   * session.
+   */
+  sessionStartTime: number;
+}
