@@ -136,18 +136,28 @@ export const getSessionStartTime = (sessionData: SessionData): DateTime => {
     return rrWebTimeRange.min;
   }
 
-  // Note that the user event timestamp is based on performance.timeOrigin & the offset on the raw event,
-  // which can differ from the time returned by Date.now(). However for old sessions we don't record Date.now()
-  // time
-  const minUserEventTimestamp =
-    sessionData.userEvents?.event_log[0]?.timeStampRaw;
-  if (minUserEventTimestamp == null) {
+  const userEventEventLog = sessionData.userEvents?.event_log ?? [];
+  if (userEventEventLog.length === 0) {
     const logger = log.getLogger(METICULOUS_LOGGER_NAME);
     logger.warn(
       "No user or rrweb events, so cannot accurately determine start timestamp. Using current Date instead, however this will be unstable"
     );
     return DateTime.now().toUTC();
   }
+
+  // event.timeStamp differs from event.timeStampRaw in that (a) it is relative to the start of the session,
+  // (b) it has been adjusted to subtract the time between constructing the recorder and calling.start().
+  //
+  // By subtracting event.timeStamp from event.timeStampRaw we get the performance.timeOrigin plus the
+  // the time between constructing the recorder and calling.start(), in other words: the time at which recording
+  // started.
+  //
+  // Note that performance.timeOrigin uses monotonic clock time, which can differ by multiple hours
+  // from the time returned by Date.now(). We may in future want to record a dedicated
+  // session start time to ensure we fully accuractly recreate the original values returned by the
+  // Date.now() calls.
+  const minUserEventTimestamp =
+    userEventEventLog[0]?.timeStampRaw - userEventEventLog[0]?.timeStamp;
   return DateTime.fromMillis(minUserEventTimestamp).toUTC();
 };
 
