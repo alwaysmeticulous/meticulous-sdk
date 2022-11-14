@@ -130,8 +130,29 @@ const installVirtualEventLoop = (page: Page, sessionStartTime: DateTime) => {
   `);
 };
 
-export const getSessionStartTime = (sessionData: SessionData): DateTime =>
-  getMinMaxRrwebTimestamps(sessionData)[0];
+export const getSessionStartTime = (sessionData: SessionData): DateTime => {
+  const minRrWebTimestamp = getMinMaxRrwebTimestamps(sessionData)[0];
+
+  // RRWeb recording is not enabled for all customers. If there are no rrweb events
+  // then the timestamp returned will be invalid
+  if (minRrWebTimestamp.isValid) {
+    return minRrWebTimestamp;
+  }
+
+  // Note that the user event timestamp is based on performance.timeOrigin & the offset on the raw event,
+  // which can differ from the time returned by Date.now(). However for old sessions we don't record Date.now()
+  // time
+  const minUserEventTimestamp =
+    sessionData.userEvents?.event_log[0]?.timeStampRaw;
+  if (minUserEventTimestamp == null) {
+    const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+    logger.warn(
+      "No user or rr web events, so cannot accurately determine start timestamp. Using current Date instead, however this will be unstable"
+    );
+    return DateTime.now().toUTC();
+  }
+  return DateTime.fromMillis(minUserEventTimestamp).toUTC();
+};
 
 export const getRrwebRecordingDuration: (
   sessionData: SessionData
