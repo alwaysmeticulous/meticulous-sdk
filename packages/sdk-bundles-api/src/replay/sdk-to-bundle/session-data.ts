@@ -8,7 +8,7 @@ export interface SessionData {
   };
 
   pollyHAR: {
-    pollyHAR?: Record<`Meticulous_${string}`, { log: HarLog }>;
+    pollyHAR?: { [recordingId: `Meticulous_${string}`]: { log: HarLog } };
   };
 
   randomEvents: {
