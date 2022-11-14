@@ -12,7 +12,6 @@ import { screenshotDiff } from "./commands/screenshot-diff/screenshot-diff.comma
 import { serve } from "./commands/serve/serve.command";
 import { showProject } from "./commands/show-project/show-project.command";
 import { updateTests } from "./commands/update-tests/update-tests.command";
-import { uploadBuild } from "./commands/upload-build/upload-build.command";
 import { initLogger, setLogLevel } from "./utils/logger.utils";
 import { initSentry, setOptions } from "./utils/sentry.utils";
 
@@ -44,7 +43,6 @@ export const main: () => void = () => {
     .command(screenshotDiff)
     .command(showProject)
     .command(updateTests)
-    .command(uploadBuild)
     .command("serve", false, serve) // This is a debugging command, so we hide it to not pollute the main menu
     .help()
     .strict()
