@@ -157,7 +157,7 @@ export const getSessionStartTime = (sessionData: SessionData): DateTime => {
   // session start time to ensure we fully accuractly recreate the original values returned by the
   // Date.now() calls.
   const minUserEventTimestamp =
-    userEventEventLog[0]?.timeStampRaw - userEventEventLog[0]?.timeStamp;
+    userEventEventLog[0].timeStampRaw - userEventEventLog[0].timeStamp;
   return DateTime.fromMillis(minUserEventTimestamp).toUTC();
 };
 
