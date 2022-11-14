@@ -68,86 +68,80 @@ export const diffScreenshots = async ({
     ];
   });
 
+  const diffAgainstBase = async (
+    screenshotFileName: string
+  ): Promise<ScreenshotDiffResult[]> => {
+    const identifier = getScreenshotIdentifier(screenshotFileName);
+
+    if (identifier == null) {
+      return [];
+    }
+
+    if (!baseReplayScreenshots.includes(screenshotFileName)) {
+      return [
+        {
+          identifier,
+          outcome: "missing-base",
+          headScreenshotFile: `screenshots/${screenshotFileName}`,
+        },
+      ];
+    }
+
+    const baseScreenshotFile = join(baseScreenshotsDir, screenshotFileName);
+    const headScreenshotFile = join(headScreenshotsDir, screenshotFileName);
+    const baseScreenshot = await readPng(baseScreenshotFile);
+    const headScreenshot = await readPng(headScreenshotFile);
+
+    if (
+      baseScreenshot.width !== baseScreenshot.width ||
+      headScreenshot.height !== headScreenshot.height
+    ) {
+      return [
+        {
+          identifier,
+          outcome: "different-size",
+          headScreenshotFile: `screenshots/${screenshotFileName}`,
+          baseScreenshotFile: `screenshots/${screenshotFileName}`,
+          baseWidth: baseScreenshot.width,
+          baseHeight: baseScreenshot.height,
+          headWidth: headScreenshot.width,
+          headHeight: headScreenshot.height,
+        },
+      ];
+    }
+
+    const comparisonResult = compareImages({
+      base: baseScreenshot,
+      head: headScreenshot,
+      pixelThreshold: diffPixelThreshold,
+    });
+
+    await writeScreenshotDiff({
+      baseReplayId,
+      headReplayId,
+      screenshotFileName,
+      diff: comparisonResult.diff,
+    });
+
+    return [
+      {
+        identifier,
+        outcome:
+          comparisonResult.mismatchFraction > diffThreshold
+            ? "diff"
+            : "no-diff",
+        headScreenshotFile: `screenshots/${screenshotFileName}`,
+        baseScreenshotFile: `screenshots/${screenshotFileName}`,
+        width: baseScreenshot.width,
+        height: baseScreenshot.height,
+        mismatchPixels: comparisonResult.mismatchPixels,
+        mismatchFraction: comparisonResult.mismatchFraction,
+      },
+    ];
+  };
+
   const headDiffResults = (
-    await Promise.all(
-      headReplayScreenshots.map(
-        async (screenshotFileName): Promise<ScreenshotDiffResult[]> => {
-          const identifier = getScreenshotIdentifier(screenshotFileName);
-
-          if (identifier == null) {
-            return [];
-          }
-
-          if (!baseReplayScreenshots.includes(screenshotFileName)) {
-            return [
-              {
-                identifier,
-                outcome: "missing-base",
-                headScreenshotFile: `screenshots/${screenshotFileName}`,
-              },
-            ];
-          }
-
-          const baseScreenshotFile = join(
-            baseScreenshotsDir,
-            screenshotFileName
-          );
-          const headScreenshotFile = join(
-            headScreenshotsDir,
-            screenshotFileName
-          );
-          const baseScreenshot = await readPng(baseScreenshotFile);
-          const headScreenshot = await readPng(headScreenshotFile);
-
-          if (
-            baseScreenshot.width !== baseScreenshot.width ||
-            headScreenshot.height !== headScreenshot.height
-          ) {
-            return [
-              {
-                identifier,
-                outcome: "different-size",
-                headScreenshotFile: `screenshots/${screenshotFileName}`,
-                baseScreenshotFile: `screenshots/${screenshotFileName}`,
-                baseWidth: baseScreenshot.width,
-                baseHeight: baseScreenshot.height,
-                headWidth: headScreenshot.width,
-                headHeight: headScreenshot.height,
-              },
-            ];
-          }
-
-          const comparisonResult = compareImages({
-            base: baseScreenshot,
-            head: headScreenshot,
-            pixelThreshold: diffPixelThreshold,
-          });
-
-          await writeScreenshotDiff({
-            baseReplayId,
-            headReplayId,
-            screenshotFileName,
-            diff: comparisonResult.diff,
-          });
-
-          return [
-            {
-              identifier,
-              outcome:
-                comparisonResult.mismatchFraction > diffThreshold
-                  ? "diff"
-                  : "no-diff",
-              headScreenshotFile: `screenshots/${screenshotFileName}`,
-              baseScreenshotFile: `screenshots/${screenshotFileName}`,
-              width: baseScreenshot.width,
-              height: baseScreenshot.height,
-              mismatchPixels: comparisonResult.mismatchPixels,
-              mismatchFraction: comparisonResult.mismatchFraction,
-            },
-          ];
-        }
-      )
-    )
+    await Promise.all(headReplayScreenshots.map(diffAgainstBase))
   ).flat();
 
   const diffUrl = await getDiffUrl(client, baseReplayId, headReplayId);
