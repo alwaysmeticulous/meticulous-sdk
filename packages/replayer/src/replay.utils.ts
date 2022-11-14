@@ -131,12 +131,9 @@ const installVirtualEventLoop = (page: Page, sessionStartTime: DateTime) => {
 };
 
 export const getSessionStartTime = (sessionData: SessionData): DateTime => {
-  const minRrWebTimestamp = getMinMaxRrwebTimestamps(sessionData)[0];
-
-  // RRWeb recording is not enabled for all customers. If there are no rrweb events
-  // then the timestamp returned will be invalid
-  if (minRrWebTimestamp.isValid) {
-    return minRrWebTimestamp;
+  const rrWebTimeRange = getMinMaxRrwebTimestamps(sessionData);
+  if (rrWebTimeRange != null) {
+    return rrWebTimeRange.min;
   }
 
   // Note that the user event timestamp is based on performance.timeOrigin & the offset on the raw event,
@@ -147,35 +144,60 @@ export const getSessionStartTime = (sessionData: SessionData): DateTime => {
   if (minUserEventTimestamp == null) {
     const logger = log.getLogger(METICULOUS_LOGGER_NAME);
     logger.warn(
-      "No user or rr web events, so cannot accurately determine start timestamp. Using current Date instead, however this will be unstable"
+      "No user or rrweb events, so cannot accurately determine start timestamp. Using current Date instead, however this will be unstable"
     );
     return DateTime.now().toUTC();
   }
   return DateTime.fromMillis(minUserEventTimestamp).toUTC();
 };
 
-export const getRrwebRecordingDuration: (
+export const getSessionDuration: (
   sessionData: SessionData
 ) => Duration | null = (sessionData) => {
-  const [minRrwebTimestamp, maxRrwebTimestamp] =
-    getMinMaxRrwebTimestamps(sessionData);
-  const rrwebRecordingDuration = maxRrwebTimestamp.diff(minRrwebTimestamp);
-  return rrwebRecordingDuration.isValid ? rrwebRecordingDuration : null;
+  const rrWebTimeRange = getMinMaxRrwebTimestamps(sessionData);
+  const rrWebDuration =
+    rrWebTimeRange != null ? rrWebTimeRange.max.diff(rrWebTimeRange.min) : null;
+
+  if (rrWebDuration != null && rrWebDuration.isValid) {
+    return rrWebDuration;
+  }
+
+  const userEventEventLog = sessionData.userEvents?.event_log ?? [];
+
+  // The replayer uses the event timeStamps to work out how long to wait before replaying each event.
+  // We want the amount of time we pad at the end to be consistent with this, and so we use the same
+  // timestamps.
+  //
+  // event.timeStamp differs from event.timeStampRaw in that (a) it is relative to the start of the session,
+  // (b) it has been adjusted to subtract the time between constructing the recorder and calling.start().
+  const maxUserEventTimestamp =
+    userEventEventLog[userEventEventLog.length - 1]?.timeStamp;
+
+  if (maxUserEventTimestamp == null) {
+    return null; // Cannot calculate the duration if no user events or rrweb events
+  }
+
+  return Duration.fromMillis(maxUserEventTimestamp);
 };
 
-const getMinMaxRrwebTimestamps: (
+const getMinMaxRrwebTimestamps = (
   sessionData: SessionData
-) => [DateTime, DateTime] = (sessionData) => {
+): { min: DateTime; max: DateTime } | null => {
   const rrwebTimestamps = (sessionData.rrwebEvents as { timestamp?: number }[])
     .map((event) => event.timestamp || NaN)
     .filter((ts) => !isNaN(ts));
+
+  if (rrwebTimestamps.length === 0) {
+    return null;
+  }
+
   const minRrwebTimestamp = DateTime.fromMillis(
     Math.min(...rrwebTimestamps)
   ).toUTC();
   const maxRrwebTimestamp = DateTime.fromMillis(
     Math.max(...rrwebTimestamps)
   ).toUTC();
-  return [minRrwebTimestamp, maxRrwebTimestamp];
+  return { min: minRrwebTimestamp, max: maxRrwebTimestamp };
 };
 
 export const patchDate: (options: {
