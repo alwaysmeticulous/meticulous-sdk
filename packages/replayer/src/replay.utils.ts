@@ -132,7 +132,7 @@ const installVirtualEventLoop = (page: Page, sessionStartTime: DateTime) => {
 
 export const getSessionStartTime = (sessionData: SessionData): DateTime => {
   const rrWebTimeRange = getMinMaxRrwebTimestamps(sessionData);
-  if (rrWebTimeRange != null) {
+  if (rrWebTimeRange != null && rrWebTimeRange.min.isValid) {
     return rrWebTimeRange.min;
   }
 
