@@ -130,31 +130,84 @@ const installVirtualEventLoop = (page: Page, sessionStartTime: DateTime) => {
   `);
 };
 
-export const getSessionStartTime = (sessionData: SessionData): DateTime =>
-  getMinMaxRrwebTimestamps(sessionData)[0];
+export const getSessionStartTime = (sessionData: SessionData): DateTime => {
+  const rrWebTimeRange = getMinMaxRrwebTimestamps(sessionData);
+  if (rrWebTimeRange != null && rrWebTimeRange.min.isValid) {
+    return rrWebTimeRange.min;
+  }
 
-export const getRrwebRecordingDuration: (
-  sessionData: SessionData
-) => Duration | null = (sessionData) => {
-  const [minRrwebTimestamp, maxRrwebTimestamp] =
-    getMinMaxRrwebTimestamps(sessionData);
-  const rrwebRecordingDuration = maxRrwebTimestamp.diff(minRrwebTimestamp);
-  return rrwebRecordingDuration.isValid ? rrwebRecordingDuration : null;
+  const userEventEventLog = sessionData.userEvents?.event_log ?? [];
+  if (userEventEventLog.length === 0) {
+    const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+    logger.warn(
+      "No user or rrweb events, so cannot accurately determine start timestamp. Using current Date instead, however this will be unstable"
+    );
+    return DateTime.now().toUTC();
+  }
+
+  // event.timeStamp differs from event.timeStampRaw in that (a) it is relative to the start of the session,
+  // (b) it has been adjusted to subtract the time between constructing the recorder and calling.start().
+  //
+  // By subtracting event.timeStamp from event.timeStampRaw we get the performance.timeOrigin plus the
+  // the time between constructing the recorder and calling.start(), in other words: the time at which recording
+  // started.
+  //
+  // Note that performance.timeOrigin uses monotonic clock time, which can differ by multiple hours
+  // from the time returned by Date.now(). We may in future want to record a dedicated
+  // session start time to ensure we fully accuractly recreate the original values returned by the
+  // Date.now() calls.
+  const minUserEventTimestamp =
+    userEventEventLog[0].timeStampRaw - userEventEventLog[0].timeStamp;
+  return DateTime.fromMillis(minUserEventTimestamp).toUTC();
 };
 
-const getMinMaxRrwebTimestamps: (
+export const getSessionDuration: (
   sessionData: SessionData
-) => [DateTime, DateTime] = (sessionData) => {
+) => Duration | null = (sessionData) => {
+  const rrWebTimeRange = getMinMaxRrwebTimestamps(sessionData);
+  const rrWebDuration =
+    rrWebTimeRange != null ? rrWebTimeRange.max.diff(rrWebTimeRange.min) : null;
+
+  if (rrWebDuration != null && rrWebDuration.isValid) {
+    return rrWebDuration;
+  }
+
+  const userEventEventLog = sessionData.userEvents?.event_log ?? [];
+
+  // The replayer uses the event timeStamps to work out how long to wait before replaying each event.
+  // We want the amount of time we pad at the end to be consistent with this, and so we use the same
+  // timestamps.
+  //
+  // event.timeStamp differs from event.timeStampRaw in that (a) it is relative to the start of the session,
+  // (b) it has been adjusted to subtract the time between constructing the recorder and calling.start().
+  const maxUserEventTimestamp =
+    userEventEventLog[userEventEventLog.length - 1]?.timeStamp;
+
+  if (maxUserEventTimestamp == null) {
+    return null; // Cannot calculate the duration if no user events or rrweb events
+  }
+
+  return Duration.fromMillis(maxUserEventTimestamp);
+};
+
+const getMinMaxRrwebTimestamps = (
+  sessionData: SessionData
+): { min: DateTime; max: DateTime } | null => {
   const rrwebTimestamps = (sessionData.rrwebEvents as { timestamp?: number }[])
     .map((event) => event.timestamp || NaN)
     .filter((ts) => !isNaN(ts));
+
+  if (rrwebTimestamps.length === 0) {
+    return null;
+  }
+
   const minRrwebTimestamp = DateTime.fromMillis(
     Math.min(...rrwebTimestamps)
   ).toUTC();
   const maxRrwebTimestamp = DateTime.fromMillis(
     Math.max(...rrwebTimestamps)
   ).toUTC();
-  return [minRrwebTimestamp, maxRrwebTimestamp];
+  return { min: minRrwebTimestamp, max: maxRrwebTimestamp };
 };
 
 export const patchDate: (options: {

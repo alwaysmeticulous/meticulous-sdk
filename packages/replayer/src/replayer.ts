@@ -21,7 +21,7 @@ import { ReplayMetadata } from "./replay.types";
 import {
   createReplayPage,
   getOriginalSessionStartUrl,
-  getRrwebRecordingDuration,
+  getSessionDuration,
   getStartingViewport,
   getStartUrl,
   initializeReplayData,
@@ -195,7 +195,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     screenshottingOptions.storyboardOptions.enabled
       ? { enabled: true, screenshotsDir }
       : { enabled: false };
-  const rrwebRecordingDuration = getRrwebRecordingDuration(sessionData);
+  const sessionDuration = getSessionDuration(sessionData);
   const replayResult = await replayUserInteractions({
     page,
     logLevel,
@@ -204,8 +204,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     virtualTime,
     storyboard,
     onTimelineEvent,
-    ...(rrwebRecordingDuration != null
-      ? { sessionDurationMs: rrwebRecordingDuration?.milliseconds }
+    ...(sessionDuration != null
+      ? { sessionDurationMs: sessionDuration?.milliseconds }
       : {}),
     ...(maxDurationMs != null ? { maxDurationMs } : {}),
     ...(maxEventCount != null ? { maxEventCount } : {}),
@@ -217,14 +217,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     padTime &&
     !skipPauses &&
     replayResult.length === "full" &&
-    rrwebRecordingDuration != null
+    sessionDuration != null
   ) {
     const now = DateTime.utc();
-    const timeToPad = startTime
-      .plus(rrwebRecordingDuration)
-      .diff(now)
-      .toMillis();
-    logger.debug(`Padtime: ${timeToPad} ${rrwebRecordingDuration.toISOTime()}`);
+    const timeToPad = startTime.plus(sessionDuration).diff(now).toMillis();
+    logger.debug(`Padtime: ${timeToPad} ${sessionDuration.toISOTime()}`);
     if (timeToPad > 0) {
       await new Promise<void>((resolve) => {
         setTimeout(() => {
