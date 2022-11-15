@@ -1,10 +1,20 @@
 export interface ReplayableEvent {
   selector: string;
   altSelectors?: {
+    /**
+     * Selector chain that doesn't use ids e.g. `div:nth-child(4) > div.app-jfa3aaj.main > div.app-container`
+     */
     classesOnly: string;
+
+    /**
+     * Selector chain that only uses element name and n-th child e.g. `div:nth-child(4) > div:nth-child(1) > div:nth-child(2)`
+     */
     traversal: string;
   };
 
+  /**
+   * e.g. 'click' or 'focus'
+   */
   type: string;
 
   clientX?: number;
@@ -27,5 +37,4 @@ export interface ReplayableEvent {
    * Please note that since this timestamp is computed using `performance.timeOrigin` it may differ by multiple hours from timestamps recorded using `Date.now()`.
    */
   timeStampRaw: number;
-  retries?: number;
 }
