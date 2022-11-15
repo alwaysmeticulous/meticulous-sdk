@@ -1,5 +1,6 @@
+import { SessionData } from "@alwaysmeticulous/sdk-bundles-api";
 import { StringId } from "./ids.types";
-import { RecordedSession, SessionData } from "./session.types";
+import { RecordedSession } from "./session.types";
 
 export interface ReplayEventsDependency<Key extends string> {
   key: Key;

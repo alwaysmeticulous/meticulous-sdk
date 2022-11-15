@@ -2,12 +2,12 @@ import {
   COMMON_CHROMIUM_FLAGS,
   METICULOUS_LOGGER_NAME,
   ReplayEventsFn,
-  SessionData,
 } from "@alwaysmeticulous/common";
 import {
   OnReplayTimelineEventFn,
   ReplayTimelineEntry,
   ReplayUserInteractionsFn,
+  SessionData,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import {
   StoryboardOptions,

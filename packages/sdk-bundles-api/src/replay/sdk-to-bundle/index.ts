@@ -1,7 +1,7 @@
 import type { LogLevelDesc } from "loglevel";
 import type { Page } from "puppeteer";
 import { ReplayUserInteractionsResult } from "../bundle-to-sdk";
-import { ReplayTimelineEntry } from "./timeline.types";
+import { ReplayTimelineEntry } from "../bundle-to-sdk/timeline.types";
 
 /** Options for replaying user interaction events */
 export interface ReplayUserInteractionsOptions {
