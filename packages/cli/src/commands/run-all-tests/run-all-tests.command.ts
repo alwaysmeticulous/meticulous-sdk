@@ -160,6 +160,7 @@ const handler: (options: Options) => Promise<void> = async ({
         commitSha,
         deflake: deflake ?? false,
         generatedBy: { type: "testRun", runId: testRun.id },
+        testRunId: testRun.id,
       });
       results.push(result);
       await putTestRunResults({

@@ -7,6 +7,7 @@ import {
 import {
   OnReplayTimelineEventFn,
   VirtualTimeOptions,
+  InstallVirtualEventLoopOpts,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { DateTime, Duration } from "luxon";
@@ -69,8 +70,9 @@ export const createReplayPage: (options: {
   await page.setViewport(defaultViewport);
 
   // Shift simulation time by patching the Date class
+  const sessionStartTime = getSessionStartTime(sessionData);
   if (shiftTime) {
-    await patchDate({ page, sessionData });
+    await patchDate({ page, sessionStartTime });
   }
 
   // Disable the recording snippet and set up the replay timeline
@@ -98,7 +100,7 @@ export const createReplayPage: (options: {
   await page.evaluateOnNewDocument(userInteractionsFile);
 
   if (virtualTime.enabled) {
-    await installVirtualEventLoop(page);
+    await installVirtualEventLoop(page, sessionStartTime);
   }
 
   // Setup the url-observer snippet
@@ -114,47 +116,106 @@ export const createReplayPage: (options: {
   return page;
 };
 
-const installVirtualEventLoop = (page: Page) =>
-  page.evaluateOnNewDocument(`
-    const installVirtualEventLoop = window.__meticulous?.replayFunctions?.installVirtualEventLoop;
-    if (installVirtualEventLoop) {
-      installVirtualEventLoop();
-    } else {
-      console.error("Could not install virtual event loop since window.__meticulous.replayFunctions.installVirtualEventLoop was null or undefined");
-    }
-`);
+const installVirtualEventLoop = (page: Page, sessionStartTime: DateTime) => {
+  const opts: InstallVirtualEventLoopOpts = {
+    sessionStartTime: sessionStartTime.toMillis(),
+  };
+  return page.evaluateOnNewDocument(`
+      const installVirtualEventLoop = window.__meticulous?.replayFunctions?.installVirtualEventLoop;
+      if (installVirtualEventLoop) {
+        installVirtualEventLoop(${JSON.stringify(opts)});
+      } else {
+        console.error("Could not install virtual event loop since window.__meticulous.replayFunctions.installVirtualEventLoop was null or undefined");
+      }
+  `);
+};
 
-const getMinMaxRrwebTimestamps: (
+export const getSessionStartTime = (sessionData: SessionData): DateTime => {
+  const rrWebTimeRange = getMinMaxRrwebTimestamps(sessionData);
+  if (rrWebTimeRange != null && rrWebTimeRange.min.isValid) {
+    return rrWebTimeRange.min;
+  }
+
+  const userEventEventLog = sessionData.userEvents?.event_log ?? [];
+  if (userEventEventLog.length === 0) {
+    const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+    logger.warn(
+      "No user or rrweb events, so cannot accurately determine start timestamp. Using current Date instead, however this will be unstable"
+    );
+    return DateTime.now().toUTC();
+  }
+
+  // event.timeStamp differs from event.timeStampRaw in that (a) it is relative to the start of the session,
+  // (b) it has been adjusted to subtract the time between constructing the recorder and calling.start().
+  //
+  // By subtracting event.timeStamp from event.timeStampRaw we get the performance.timeOrigin plus the
+  // the time between constructing the recorder and calling.start(), in other words: the time at which recording
+  // started.
+  //
+  // Note that performance.timeOrigin uses monotonic clock time, which can differ by multiple hours
+  // from the time returned by Date.now(). We may in future want to record a dedicated
+  // session start time to ensure we fully accuractly recreate the original values returned by the
+  // Date.now() calls.
+  const minUserEventTimestamp =
+    userEventEventLog[0].timeStampRaw - userEventEventLog[0].timeStamp;
+  return DateTime.fromMillis(minUserEventTimestamp).toUTC();
+};
+
+export const getSessionDuration: (
   sessionData: SessionData
-) => [DateTime, DateTime] = (sessionData) => {
+) => Duration | null = (sessionData) => {
+  const rrWebTimeRange = getMinMaxRrwebTimestamps(sessionData);
+  const rrWebDuration =
+    rrWebTimeRange != null ? rrWebTimeRange.max.diff(rrWebTimeRange.min) : null;
+
+  if (rrWebDuration != null && rrWebDuration.isValid) {
+    return rrWebDuration;
+  }
+
+  const userEventEventLog = sessionData.userEvents?.event_log ?? [];
+
+  // The replayer uses the event timeStamps to work out how long to wait before replaying each event.
+  // We want the amount of time we pad at the end to be consistent with this, and so we use the same
+  // timestamps.
+  //
+  // event.timeStamp differs from event.timeStampRaw in that (a) it is relative to the start of the session,
+  // (b) it has been adjusted to subtract the time between constructing the recorder and calling.start().
+  const maxUserEventTimestamp =
+    userEventEventLog[userEventEventLog.length - 1]?.timeStamp;
+
+  if (maxUserEventTimestamp == null) {
+    return null; // Cannot calculate the duration if no user events or rrweb events
+  }
+
+  return Duration.fromMillis(maxUserEventTimestamp);
+};
+
+const getMinMaxRrwebTimestamps = (
+  sessionData: SessionData
+): { min: DateTime; max: DateTime } | null => {
   const rrwebTimestamps = (sessionData.rrwebEvents as { timestamp?: number }[])
     .map((event) => event.timestamp || NaN)
     .filter((ts) => !isNaN(ts));
+
+  if (rrwebTimestamps.length === 0) {
+    return null;
+  }
+
   const minRrwebTimestamp = DateTime.fromMillis(
     Math.min(...rrwebTimestamps)
   ).toUTC();
   const maxRrwebTimestamp = DateTime.fromMillis(
     Math.max(...rrwebTimestamps)
   ).toUTC();
-  return [minRrwebTimestamp, maxRrwebTimestamp];
-};
-
-export const getRrwebRecordingDuration: (
-  sessionData: SessionData
-) => Duration | null = (sessionData) => {
-  const [minRrwebTimestamp, maxRrwebTimestamp] =
-    getMinMaxRrwebTimestamps(sessionData);
-  const rrwebRecordingDuration = maxRrwebTimestamp.diff(minRrwebTimestamp);
-  return rrwebRecordingDuration.isValid ? rrwebRecordingDuration : null;
+  return { min: minRrwebTimestamp, max: maxRrwebTimestamp };
 };
 
 export const patchDate: (options: {
   page: Page;
-  sessionData: SessionData;
-}) => Promise<void> = async ({ page, sessionData }) => {
-  const [minRrwebTimestamp] = getMinMaxRrwebTimestamps(sessionData);
+  sessionStartTime: DateTime;
+}) => Promise<void> = async ({ page, sessionStartTime }) => {
   const now = DateTime.now();
-  const shift = minRrwebTimestamp.diff(now).toMillis();
+  const shift = sessionStartTime.diff(now).toMillis();
 
   await page.evaluateOnNewDocument(`
     window.__meticulous = window.__meticulous || {};

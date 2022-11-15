@@ -9,4 +9,3 @@ export { runAllTests } from "./commands/run-all-tests/run-all-tests.command";
 export { screenshotDiff } from "./commands/screenshot-diff/screenshot-diff.command";
 export { showProject } from "./commands/show-project/show-project.command";
 export { updateTests } from "./commands/update-tests/update-tests.command";
-export { uploadBuild } from "./commands/upload-build/upload-build.command";
