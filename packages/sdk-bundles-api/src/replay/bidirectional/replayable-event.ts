@@ -3,7 +3,6 @@ export interface ReplayableEvent {
   altSelectors?: {
     classesOnly: string;
     traversal: string;
-    [key: string]: string;
   };
 
   type: string;
