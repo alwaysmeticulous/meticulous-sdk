@@ -7,7 +7,3 @@ export interface RecordedSession {
   abandoned: boolean;
   recordingToken: string;
 }
-
-export interface SessionData {
-  [key: string]: any;
-}

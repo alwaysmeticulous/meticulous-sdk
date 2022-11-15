@@ -2,12 +2,12 @@ import { readFile } from "fs/promises";
 import {
   METICULOUS_LOGGER_NAME,
   ReplayEventsDependencies,
-  SessionData,
 } from "@alwaysmeticulous/common";
 import {
   OnReplayTimelineEventFn,
   VirtualTimeOptions,
   InstallVirtualEventLoopOpts,
+  SessionData,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { DateTime, Duration } from "luxon";

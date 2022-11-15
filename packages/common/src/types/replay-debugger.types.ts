@@ -1,8 +1,9 @@
+import { SessionData } from "@alwaysmeticulous/sdk-bundles-api";
 import {
   BaseReplayEventsDependencies,
   ReplayEventsDependency,
 } from "./replay.types";
-import { RecordedSession, SessionData } from "./session.types";
+import { RecordedSession } from "./session.types";
 
 export interface ReplayDebuggerDependencies
   extends BaseReplayEventsDependencies {

@@ -1,7 +1,8 @@
 import { readFile } from "fs/promises";
 import type { ReplayDebuggerDependencies } from "@alwaysmeticulous/common";
-import { METICULOUS_LOGGER_NAME, SessionData } from "@alwaysmeticulous/common";
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { patchDate, getSessionStartTime } from "@alwaysmeticulous/replayer";
+import { SessionData } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { BrowserContext, Page, Viewport } from "puppeteer";
 

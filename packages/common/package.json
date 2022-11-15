@@ -21,6 +21,9 @@
     "loglevel": "^1.8.0",
     "luxon": "^2.4.0"
   },
+  "devDependencies": {
+    "@alwaysmeticulous/sdk-bundles-api": "^2.11.0"
+  },
   "author": {
     "name": "The Meticulous Team",
     "email": "eng@meticulous.ai",

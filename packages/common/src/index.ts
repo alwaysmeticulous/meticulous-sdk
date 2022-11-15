@@ -27,5 +27,5 @@ export type {
   ScreenshottingEnabledOptions,
   ReplayTarget,
 } from "./types/replay.types";
-export type { RecordedSession, SessionData } from "./types/session.types";
+export type { RecordedSession } from "./types/session.types";
 export { BASE_SNIPPETS_URL, COMMON_CHROMIUM_FLAGS } from "./constants";
