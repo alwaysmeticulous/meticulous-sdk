@@ -145,14 +145,11 @@ export const getSessionStartTime = (sessionData: SessionData): DateTime => {
     return DateTime.now().toUTC();
   }
 
-  // event.timeStamp differs from event.timeStampRaw in that (a) it is relative to the start of the session,
-  // (b) it has been adjusted to subtract the time between constructing the recorder and calling.start().
-  //
   // By subtracting event.timeStamp from event.timeStampRaw we get the performance.timeOrigin plus the
   // the time between constructing the recorder and calling.start(), in other words: the time at which recording
   // started.
   //
-  // Note that performance.timeOrigin uses monotonic clock time, which can differ by multiple hours
+  // Note that minUserEventTimestamp uses monotonic clock time, which can differ by multiple hours
   // from the time returned by Date.now(). We may in future want to record a dedicated
   // session start time to ensure we fully accuractly recreate the original values returned by the
   // Date.now() calls.
@@ -177,9 +174,6 @@ export const getSessionDuration: (
   // The replayer uses the event timeStamps to work out how long to wait before replaying each event.
   // We want the amount of time we pad at the end to be consistent with this, and so we use the same
   // timestamps.
-  //
-  // event.timeStamp differs from event.timeStampRaw in that (a) it is relative to the start of the session,
-  // (b) it has been adjusted to subtract the time between constructing the recorder and calling.start().
   const maxUserEventTimestamp =
     userEventEventLog[userEventEventLog.length - 1]?.timeStamp;
 
