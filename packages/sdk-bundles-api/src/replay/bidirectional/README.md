@@ -1,6 +1,6 @@
 ### APIs used for messages sent from the replay and record bundles to the SDK
 
-This folder contains APIs used both for messages sent from the Metic SDK to the bundle, and for messages sent from the bundle to Metic SDK.
+This folder contains APIs used both for messages sent from the Meticulous SDK to the bundle, and for messages sent from the bundle to Meticulous SDK.
 
 Since new bundles may be used by old SDKs we have to be careful of changes to these types to preserve backwards compatibility.
 
