@@ -196,39 +196,49 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       ? { enabled: true, screenshotsDir }
       : { enabled: false };
   const sessionDuration = getSessionDuration(sessionData);
-  const replayResult = await replayUserInteractions({
-    page,
-    logLevel,
-    sessionData,
-    moveBeforeClick,
-    virtualTime,
-    storyboard,
-    onTimelineEvent,
-    ...(sessionDuration != null
-      ? { sessionDurationMs: sessionDuration?.milliseconds }
-      : {}),
-    ...(maxDurationMs != null ? { maxDurationMs } : {}),
-    ...(maxEventCount != null ? { maxEventCount } : {}),
-  });
-  logger.debug(`Replay result: ${JSON.stringify(replayResult)}`);
+  try {
+    const replayResult = await replayUserInteractions({
+      page,
+      logLevel,
+      sessionData,
+      moveBeforeClick,
+      virtualTime,
+      storyboard,
+      onTimelineEvent,
+      ...(sessionDuration != null
+        ? { sessionDurationMs: sessionDuration?.milliseconds }
+        : {}),
+      ...(maxDurationMs != null ? { maxDurationMs } : {}),
+      ...(maxEventCount != null ? { maxEventCount } : {}),
+    });
+    logger.debug(`Replay result: ${JSON.stringify(replayResult)}`);
 
-  // Pad replay time according to session duration recorded with rrweb
-  if (
-    padTime &&
-    !skipPauses &&
-    replayResult.length === "full" &&
-    sessionDuration != null
-  ) {
-    const now = DateTime.utc();
-    const timeToPad = startTime.plus(sessionDuration).diff(now).toMillis();
-    logger.debug(`Padtime: ${timeToPad} ${sessionDuration.toISOTime()}`);
-    if (timeToPad > 0) {
-      await new Promise<void>((resolve) => {
-        setTimeout(() => {
-          resolve();
-        }, timeToPad);
-      });
+    // Pad replay time according to session duration recorded with rrweb
+    if (
+      padTime &&
+      !skipPauses &&
+      replayResult.length === "full" &&
+      sessionDuration != null
+    ) {
+      const now = DateTime.utc();
+      const timeToPad = startTime.plus(sessionDuration).diff(now).toMillis();
+      logger.debug(`Padtime: ${timeToPad} ${sessionDuration.toISOTime()}`);
+      if (timeToPad > 0) {
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, timeToPad);
+        });
+      }
     }
+  } catch (error: unknown) {
+    logger.error("Error thrown during replay", error);
+    onTimelineEvent({
+      kind: "fatalError",
+      start: new Date().getTime(),
+      end: new Date().getTime(),
+      data: serializeError(error),
+    });
   }
 
   logger.debug("Collecting coverage data...");
@@ -270,4 +280,16 @@ const shouldHoldBrowserOpen = () => {
   return (
     (process.env["METICULOUS_HOLD_BROWSER_OPEN"] ?? "").toLowerCase() === "true"
   );
+};
+
+const serializeError = (
+  error: unknown
+): { message: string | null; stack: string | null } => {
+  if (error == null) {
+    return { message: null, stack: null };
+  }
+  return {
+    message: (error as any).message ?? error.toString(),
+    stack: (error as any).stack ?? null,
+  };
 };
