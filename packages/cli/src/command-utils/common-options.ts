@@ -76,11 +76,25 @@ export const OPTIONS = {
     description: "Pass the disable remote fonts flag into chromium",
     default: false,
   },
+  maxDurationMs: {
+    number: true,
+    description: "Maximum duration (in milliseconds) the simulation will run",
+  },
+  maxEventCount: {
+    number: true,
+    description: "Maximum number of events the simulation will run",
+  },
+  storyboard: {
+    boolean: true,
+    description: "Take a storyboard of screenshots during simulation",
+    default: false,
+  },
 } as const;
 
 export const SCREENSHOT_DIFF_OPTIONS = {
   diffThreshold: OPTIONS.diffThreshold,
   diffPixelThreshold: OPTIONS.diffPixelThreshold,
+  storyboard: OPTIONS.storyboard,
 };
 
 /**
@@ -95,4 +109,6 @@ export const COMMON_REPLAY_OPTIONS = {
   networkStubbing: OPTIONS.networkStubbing,
   skipPauses: OPTIONS.skipPauses,
   disableRemoteFonts: OPTIONS.disableRemoteFonts,
+  maxDurationMs: OPTIONS.maxDurationMs,
+  maxEventCount: OPTIONS.maxEventCount,
 };

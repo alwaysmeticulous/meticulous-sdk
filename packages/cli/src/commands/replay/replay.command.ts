@@ -509,19 +509,6 @@ export const replay = buildCommand("simulate")
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
-    maxDurationMs: {
-      number: true,
-      description: "Maximum duration (in milliseconds) the simulation will run",
-    },
-    maxEventCount: {
-      number: true,
-      description: "Maximum number of events the simulation will run",
-    },
-    storyboard: {
-      boolean: true,
-      description: "Take a storyboard of screenshots during simulation",
-      default: false,
-    },
   })
   .handler(async (options) => {
     await rawReplayCommandHandler(options);
