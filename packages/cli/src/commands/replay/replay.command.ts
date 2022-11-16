@@ -6,13 +6,11 @@ import {
   METICULOUS_LOGGER_NAME,
   Replay,
   ReplayEventsFn,
+  ReplayEventsOptions,
   ReplayExecutionOptions,
   ReplayTarget,
-} from "@alwaysmeticulous/common";
-import {
-  ReplayEventsOptions,
   StoryboardOptions,
-} from "@alwaysmeticulous/common/dist/types/replay.types";
+} from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { DateTime } from "luxon";
@@ -296,8 +294,9 @@ export const replayCommandHandler = async ({
       });
     } catch (error) {
       if (exitOnMismatch) {
-        throw error;
+        process.exit(1);
       }
+      throw error;
     }
   }
 
