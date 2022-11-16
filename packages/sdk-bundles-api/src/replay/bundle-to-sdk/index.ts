@@ -16,7 +16,7 @@ export interface ReplayUserInteractionsResultShort {
 }
 
 /**
- * Returned when a fatal error was thrown during replay, that cut the replay short
+ * Returned when a fatal error was thrown during replay that cut the replay short
  * (for example the page was navigated while trying to evaluate javascript).
  */
 export interface ReplayUserInteractionsResultError {
