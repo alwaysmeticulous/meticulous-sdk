@@ -1,6 +1,7 @@
 import {
   METICULOUS_LOGGER_NAME,
   ReplayExecutionOptions,
+  StoryboardOptions,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { createClient } from "../../api/client";
@@ -43,6 +44,9 @@ interface Options
   deflake: boolean;
   useCache: boolean;
   testsFile?: string | undefined;
+  maxDurationMs: number | null | undefined;
+  maxEventCount: number | null | undefined;
+  storyboard: boolean;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -67,6 +71,9 @@ const handler: (options: Options) => Promise<void> = async ({
   disableRemoteFonts,
   skipPauses,
   moveBeforeClick,
+  maxDurationMs,
+  maxEventCount,
+  storyboard,
 }) => {
   if (appUrl != null && useAssetsSnapshottedInBaseSimulation) {
     throw new Error(
@@ -84,14 +91,17 @@ const handler: (options: Options) => Promise<void> = async ({
     disableRemoteFonts,
     skipPauses,
     moveBeforeClick,
-    maxDurationMs: null, // we don't expose this option
-    maxEventCount: null, // we don't expose this option
+    maxDurationMs: maxDurationMs ?? null,
+    maxEventCount: maxEventCount ?? null,
   };
+  const storyboardOptions: StoryboardOptions = storyboard
+    ? { enabled: true }
+    : { enabled: false };
   const screenshottingOptions: ScreenshotAssertionsOptions = {
     enabled: true,
     screenshotSelector: null, // this is only specified on a test case level
     diffOptions: { diffPixelThreshold, diffThreshold },
-    storyboardOptions: { enabled: false }, // we don't expose this option
+    storyboardOptions,
   };
 
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);

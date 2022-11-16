@@ -6,13 +6,11 @@ import {
   METICULOUS_LOGGER_NAME,
   Replay,
   ReplayEventsFn,
+  ReplayEventsOptions,
   ReplayExecutionOptions,
   ReplayTarget,
-} from "@alwaysmeticulous/common";
-import {
-  ReplayEventsOptions,
   StoryboardOptions,
-} from "@alwaysmeticulous/common/dist/types/replay.types";
+} from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { DateTime } from "luxon";
@@ -296,8 +294,9 @@ export const replayCommandHandler = async ({
       });
     } catch (error) {
       if (exitOnMismatch) {
-        throw error;
+        process.exit(1);
       }
+      throw error;
     }
   }
 
@@ -509,19 +508,6 @@ export const replay = buildCommand("simulate")
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
-    maxDurationMs: {
-      number: true,
-      description: "Maximum duration (in milliseconds) the simulation will run",
-    },
-    maxEventCount: {
-      number: true,
-      description: "Maximum number of events the simulation will run",
-    },
-    storyboard: {
-      boolean: true,
-      description: "Take a storyboard of screenshots during simulation",
-      default: false,
-    },
   })
   .handler(async (options) => {
     await rawReplayCommandHandler(options);

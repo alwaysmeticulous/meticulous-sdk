@@ -18,6 +18,7 @@ export type {
   BaseReplayEventsDependencies,
   GeneratedBy,
   Replay,
+  StoryboardOptions,
   ReplayEventsDependencies,
   ReplayEventsDependency,
   ReplayEventsFn,
