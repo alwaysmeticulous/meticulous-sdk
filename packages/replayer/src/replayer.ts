@@ -289,7 +289,7 @@ const serializeError = (
     return { message: null, stack: null };
   }
   return {
-    message: (error as any).message ?? (error as any).toString?.(),
+    message: (error as any).message ?? (error as any).toString?.() ?? null,
     stack: (error as any).stack ?? null,
   };
 };
