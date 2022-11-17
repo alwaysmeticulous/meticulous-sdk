@@ -288,8 +288,11 @@ const serializeError = (
   if (error == null) {
     return { message: null, stack: null };
   }
-  return {
-    message: (error as any).message ?? (error as any).toString?.() ?? null,
-    stack: (error as any).stack ?? null,
-  };
+  const message =
+    toStringOrNull((error as any).message) ?? toStringOrNull(error);
+  const stack = toStringOrNull((error as any).stack);
+  return { message, stack };
 };
+
+const toStringOrNull = (value: unknown): string | null =>
+  value != null ? `${value}` : null;
