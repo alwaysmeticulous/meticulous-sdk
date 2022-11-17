@@ -128,11 +128,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   // Set-up network stubbing if required
   if (networkStubbing) {
-    const setupReplayNetworkStubbing =
-      loadFunctionFromScript<SetupReplayNetworkStubbingFn>(
-        dependencies.nodeNetworkStubbing.location,
-        "setupReplayNetworkStubbing"
-      );
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const networkStubbingExports = require(dependencies.nodeNetworkStubbing
+      .location);
+    const setupReplayNetworkStubbing: SetupReplayNetworkStubbingFn =
+      networkStubbingExports.setupReplayNetworkStubbing;
     await setupReplayNetworkStubbing({
       page,
       logLevel,
@@ -143,22 +143,22 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     });
   }
 
-  const setupBrowserContextSeeding =
-    loadFunctionFromScript<SetupBrowserContextSeedingFn>(
-      dependencies.nodeBrowserContext.location,
-      "setupBrowserContextSeeding"
-    );
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const browserContextSeedingExports = require(dependencies.nodeBrowserContext
+    .location);
+  const setupBrowserContextSeeding: SetupBrowserContextSeedingFn =
+    browserContextSeedingExports.setupBrowserContextSeeding;
   await setupBrowserContextSeeding({
     page,
     sessionData,
     startUrl,
   });
 
-  const replayUserInteractions =
-    loadFunctionFromScript<ReplayUserInteractionsFn>(
-      dependencies.nodeUserInteractions.location,
-      "replayUserInteractions"
-    );
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const replayUserInteractionsExports = require(dependencies
+    .nodeUserInteractions.location);
+  const replayUserInteractions: ReplayUserInteractionsFn =
+    replayUserInteractionsExports.replayUserInteractions;
 
   // Navigate to the start URL.
   logger.debug(`Navigating to ${startUrl}`);
