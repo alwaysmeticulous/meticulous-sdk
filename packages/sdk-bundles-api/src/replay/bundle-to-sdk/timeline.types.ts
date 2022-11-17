@@ -29,6 +29,17 @@ export interface ErrorTimelineEntry extends GenericReplayTimelineEntry {
   };
 }
 
+/**
+ * An error that cut the replay short.
+ */
+export interface FatalErrorTimelineEntry extends GenericReplayTimelineEntry {
+  kind: "fatalError";
+  data: {
+    message: string | null;
+    stack: string | null;
+  };
+}
+
 export interface UrlChangeTimelineEntry extends GenericReplayTimelineEntry {
   kind: "urlChange";
   data: {
@@ -74,6 +85,7 @@ export interface JsReplaySimulateEvent {
 
 export type ReplayTimelineEntry =
   | ErrorTimelineEntry
+  | FatalErrorTimelineEntry
   | UrlChangeTimelineEntry
   | PollyTimelineEntry
   | JsReplayTimelineEntry;
