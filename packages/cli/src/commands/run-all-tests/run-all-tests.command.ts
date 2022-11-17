@@ -24,6 +24,7 @@ import {
 import { readConfig } from "../../config/config";
 import { TestCaseResult } from "../../config/config.types";
 import { deflakeReplayCommandHandler } from "../../deflake-tests/deflake-tests.handler";
+import { loadReplayEventsDependencies } from "../../local-data/replay-assets";
 import { runAllTestsInParallel } from "../../parallel-tests/parallel-tests.handler";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { getReplayTargetForTestCase } from "../../utils/config.utils";
@@ -123,6 +124,8 @@ const handler: (options: Options) => Promise<void> = async ({
     ? await getCachedTestRunResults({ client, commitSha })
     : [];
 
+  const replayEventsDependencies = await loadReplayEventsDependencies();
+
   const testRun = await createTestRun({
     client,
     commitSha,
@@ -150,6 +153,7 @@ const handler: (options: Options) => Promise<void> = async ({
         parallelTasks: parallelTasks ?? null,
         deflake,
         cachedTestRunResults,
+        replayEventsDependencies,
       });
       return results;
     }
@@ -171,6 +175,7 @@ const handler: (options: Options) => Promise<void> = async ({
         deflake: deflake ?? false,
         generatedBy: { type: "testRun", runId: testRun.id },
         testRunId: testRun.id,
+        replayEventsDependencies,
       });
       results.push(result);
       await putTestRunResults({

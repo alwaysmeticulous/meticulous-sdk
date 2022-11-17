@@ -14,8 +14,7 @@ import {
 import { SetupBrowserContextSeedingFn } from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
-import { Browser, launch, Page } from "puppeteer";
-import { loadFunctionFromScript } from "./load-function-from-script";
+import { Browser, launch } from "puppeteer";
 import { prepareScreenshotsDir, writeOutput } from "./output.utils";
 import { ReplayMetadata } from "./replay.types";
 import {
