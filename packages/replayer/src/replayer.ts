@@ -231,7 +231,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
         });
       }
     }
-  } catch (error: unknown) {
+  } catch (error) {
     logger.error("Error thrown during replay", error);
     onTimelineEvent({
       kind: "fatalError",
