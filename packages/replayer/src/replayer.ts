@@ -7,15 +7,15 @@ import {
   OnReplayTimelineEventFn,
   ReplayTimelineEntry,
   ReplayUserInteractionsFn,
-  SessionData,
-} from "@alwaysmeticulous/sdk-bundles-api";
-import {
+  SetupReplayNetworkStubbingFn,
   StoryboardOptions,
   VirtualTimeOptions,
-} from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
+} from "@alwaysmeticulous/sdk-bundles-api";
+import { SetupBrowserContextSeedingFn } from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
 import { Browser, launch, Page } from "puppeteer";
+import { loadFunctionFromScript } from "./load-function-from-script";
 import { prepareScreenshotsDir, writeOutput } from "./output.utils";
 import { ReplayMetadata } from "./replay.types";
 import {
@@ -128,18 +128,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   // Set-up network stubbing if required
   if (networkStubbing) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const networkStubbingModule = require(dependencies.nodeNetworkStubbing
-      .location);
     const setupReplayNetworkStubbing =
-      networkStubbingModule.setupReplayNetworkStubbing as (options: {
-        page: Page;
-        logLevel: LogLevelDesc;
-        sessionData: SessionData;
-        startUrl: string;
-        originalSessionStartUrl: string;
-        onTimelineEvent: OnReplayTimelineEventFn;
-      }) => Promise<void>;
+      loadFunctionFromScript<SetupReplayNetworkStubbingFn>(
+        dependencies.nodeNetworkStubbing.location,
+        "setupReplayNetworkStubbing"
+      );
     await setupReplayNetworkStubbing({
       page,
       logLevel,
@@ -150,26 +143,22 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const browserContextModule = require(dependencies.nodeBrowserContext
-    .location);
   const setupBrowserContextSeeding =
-    browserContextModule.setupBrowserContextSeeding as (options: {
-      page: Page;
-      sessionData: SessionData;
-      startUrl: string;
-    }) => Promise<void>;
+    loadFunctionFromScript<SetupBrowserContextSeedingFn>(
+      dependencies.nodeBrowserContext.location,
+      "setupBrowserContextSeeding"
+    );
   await setupBrowserContextSeeding({
     page,
     sessionData,
     startUrl,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const userInteractionsModule = require(dependencies.nodeUserInteractions
-    .location);
   const replayUserInteractions =
-    userInteractionsModule.replayUserInteractions as ReplayUserInteractionsFn;
+    loadFunctionFromScript<ReplayUserInteractionsFn>(
+      dependencies.nodeUserInteractions.location,
+      "replayUserInteractions"
+    );
 
   // Navigate to the start URL.
   logger.debug(`Navigating to ${startUrl}`);
