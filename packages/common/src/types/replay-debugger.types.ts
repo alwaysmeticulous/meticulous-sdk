@@ -1,4 +1,4 @@
-import { SessionData } from "@alwaysmeticulous/sdk-bundles-api";
+import { SessionData } from "@alwaysmeticulous/api";
 import {
   BaseReplayEventsDependencies,
   ReplayEventsDependency,

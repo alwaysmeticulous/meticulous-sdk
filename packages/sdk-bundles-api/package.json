@@ -17,6 +17,9 @@
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
+  "devDependencies": {
+    "@alwaysmeticulous/api": "^2.10.0"
+  },
   "peerDependencies": {
     "loglevel": "^1.8.0",
     "puppeteer": "^14.4.1"

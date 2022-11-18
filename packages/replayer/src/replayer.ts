@@ -1,3 +1,4 @@
+import { ReplayTimelineEntry } from "@alwaysmeticulous/api";
 import {
   COMMON_CHROMIUM_FLAGS,
   METICULOUS_LOGGER_NAME,
@@ -5,7 +6,6 @@ import {
 } from "@alwaysmeticulous/common";
 import {
   OnReplayTimelineEventFn,
-  ReplayTimelineEntry,
   ReplayUserInteractionsFn,
   SetupReplayNetworkStubbingFn,
   StoryboardOptions,

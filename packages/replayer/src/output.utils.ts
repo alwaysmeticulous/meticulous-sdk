@@ -1,10 +1,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
+import { SessionData, ReplayTimelineData } from "@alwaysmeticulous/api";
 import { BASE_SNIPPETS_URL } from "@alwaysmeticulous/common";
-import {
-  ReplayTimelineData,
-  SessionData,
-} from "@alwaysmeticulous/sdk-bundles-api";
 import { CoverageEntry } from "puppeteer";
 import { AssetSnapshotsData } from "./assets/assets.types";
 import { snapshotAssets } from "./assets/snapshot-assets";
