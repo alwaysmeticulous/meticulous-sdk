@@ -115,16 +115,6 @@ const getBaseReplayIdsBySessionId = async ({
     client,
     commitSha: baseCommitSha,
   });
-
-  if (baseTestRun?.status === "Running") {
-    // Note: for now we just ignore results that haven't completed yet, but in future we may want to block
-    // on the test run completely (poll until it's complete, or timed out).
-    const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-    logger.warn(
-      `Test run (${baseTestRun.id}) on base commit (${baseCommitSha}) is still running. This means some comparisons may be skipped.`
-    );
-  }
-
   const baseReplays = baseTestRun?.resultData?.results ?? [];
   const baseReplayIdBySessionId: Record<string, string> = {};
   // If there are multiple replays for a given session we take the last in the list
