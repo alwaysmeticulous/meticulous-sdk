@@ -1,6 +1,7 @@
 import {
   GeneratedBy,
   METICULOUS_LOGGER_NAME,
+  ReplayEventsDependencies,
   ReplayExecutionOptions,
   ReplayTarget,
 } from "@alwaysmeticulous/common";
@@ -28,6 +29,7 @@ const handleReplay: (
   commitSha,
   generatedBy,
   testRunId,
+  replayEventsDependencies,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -50,6 +52,7 @@ const handleReplay: (
     cookiesFile: null,
     generatedBy,
     testRunId,
+    replayEventsDependencies,
   });
   const result: TestCaseResult = await replayPromise
     .then(
@@ -88,6 +91,7 @@ interface HandleReplayOptions {
   commitSha: string;
   generatedBy: GeneratedBy;
   testRunId: string | null;
+  replayEventsDependencies: ReplayEventsDependencies;
 }
 
 export const deflakeReplayCommandHandler: (

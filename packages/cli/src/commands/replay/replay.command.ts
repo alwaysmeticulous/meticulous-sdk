@@ -5,6 +5,7 @@ import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
   Replay,
+  ReplayEventsDependencies,
   ReplayEventsFn,
   ReplayEventsOptions,
   ReplayExecutionOptions,
@@ -36,7 +37,7 @@ import {
   ScreenshotDiffOptions,
 } from "../../command-utils/common-types";
 import { sanitizeFilename } from "../../local-data/local-data.utils";
-import { fetchAsset } from "../../local-data/replay-assets";
+import { loadReplayEventsDependencies } from "../../local-data/replay-assets";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
@@ -63,6 +64,7 @@ export interface ReplayOptions extends AdditionalReplayOptions {
   exitOnMismatch: boolean;
   generatedBy: GeneratedBy;
   testRunId: string | null;
+  replayEventsDependencies: ReplayEventsDependencies;
 }
 
 export const replayCommandHandler = async ({
@@ -78,6 +80,7 @@ export const replayCommandHandler = async ({
   cookiesFile,
   generatedBy,
   testRunId,
+  replayEventsDependencies,
 }: ReplayOptions): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -96,27 +99,7 @@ export const replayCommandHandler = async ({
   // 3. If simulationIdForAssets specified then download assets & spin up local server
   const { appUrl, closeServer } = await serveOrGetAppUrl(client, replayTarget);
 
-  // 4. Load replay assets
-  const browserUserInteractions = await fetchAsset(
-    "replay/v2/snippet-user-interactions.bundle.js"
-  );
-  const browserPlayback = await fetchAsset(
-    "replay/v2/snippet-playback.bundle.js"
-  );
-  const browserUrlObserver = await fetchAsset(
-    "replay/v2/snippet-url-observer.bundle.js"
-  );
-  const nodeBrowserContext = await fetchAsset(
-    "replay/v2/node-browser-context.bundle.js"
-  );
-  const nodeNetworkStubbing = await fetchAsset(
-    "replay/v2/node-network-stubbing.bundle.js"
-  );
-  const nodeUserInteractions = await fetchAsset(
-    "replay/v2/node-user-interactions.bundle.js"
-  );
-
-  // 5. Load replay package
+  // 4. Load replay package
   let replayEvents: ReplayEventsFn;
 
   try {
@@ -154,32 +137,7 @@ export const replayCommandHandler = async ({
     generatedBy,
     testRunId,
 
-    dependencies: {
-      browserUserInteractions: {
-        key: "browserUserInteractions",
-        location: browserUserInteractions,
-      },
-      browserPlayback: {
-        key: "browserPlayback",
-        location: browserPlayback,
-      },
-      browserUrlObserver: {
-        key: "browserUrlObserver",
-        location: browserUrlObserver,
-      },
-      nodeBrowserContext: {
-        key: "nodeBrowserContext",
-        location: nodeBrowserContext,
-      },
-      nodeNetworkStubbing: {
-        key: "nodeNetworkStubbing",
-        location: nodeNetworkStubbing,
-      },
-      nodeUserInteractions: {
-        key: "nodeUserInteractions",
-        location: nodeUserInteractions,
-      },
-    },
+    dependencies: replayEventsDependencies,
     screenshottingOptions,
     cookiesFile: cookiesFile ?? null,
   };
@@ -371,7 +329,7 @@ interface AdditionalReplayOptions {
   cookiesFile: string | null | undefined;
 }
 
-export const rawReplayCommandHandler = ({
+export const rawReplayCommandHandler = async ({
   apiToken,
   commitSha,
   sessionId,
@@ -422,6 +380,7 @@ export const rawReplayCommandHandler = ({
         storyboardOptions,
       }
     : { enabled: false };
+  const replayEventsDependencies = await loadReplayEventsDependencies();
   return replayCommandHandler({
     replayTarget: getReplayTarget({
       appUrl: appUrl ?? null,
@@ -438,6 +397,7 @@ export const rawReplayCommandHandler = ({
     exitOnMismatch: true,
     generatedBy: generatedByOption,
     testRunId: null,
+    replayEventsDependencies,
   });
 };
 

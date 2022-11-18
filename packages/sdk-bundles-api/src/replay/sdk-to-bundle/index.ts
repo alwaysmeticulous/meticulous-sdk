@@ -2,6 +2,7 @@ import type { LogLevelDesc } from "loglevel";
 import type { Page } from "puppeteer";
 import { ReplayUserInteractionsResult } from "../bundle-to-sdk";
 import { ReplayTimelineEntry } from "../bundle-to-sdk/timeline.types";
+import { SessionData } from "./session-data";
 
 /** Options for replaying user interaction events */
 export interface ReplayUserInteractionsOptions {
@@ -32,6 +33,29 @@ export type StoryboardOptions =
   | { enabled: true; screenshotsDir: string };
 
 export type OnReplayTimelineEventFn = (entry: ReplayTimelineEntry) => void;
+
+export interface NetworkStubbingOptions {
+  page: Page;
+  logLevel: LogLevelDesc;
+  sessionData: SessionData;
+  startUrl: string;
+  originalSessionStartUrl: string;
+  onTimelineEvent: OnReplayTimelineEventFn;
+}
+
+export type SetupReplayNetworkStubbingFn = (
+  options: NetworkStubbingOptions
+) => Promise<void>;
+
+export interface BrowserContextSeedingOptions {
+  page: Page;
+  sessionData: SessionData;
+  startUrl: string;
+}
+
+export type SetupBrowserContextSeedingFn = (
+  options: BrowserContextSeedingOptions
+) => Promise<void>;
 
 export interface InstallVirtualEventLoopOpts {
   /**

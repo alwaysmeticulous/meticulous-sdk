@@ -5,6 +5,7 @@ import {
   defer,
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
+  ReplayEventsDependencies,
   ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
@@ -33,6 +34,7 @@ export interface RunAllTestsInParallelOptions {
   parallelTasks: number | null;
   deflake: boolean;
   cachedTestRunResults: TestCaseResult[];
+  replayEventsDependencies: ReplayEventsDependencies;
 }
 
 /** Handler for running Meticulous tests in parallel using child processes */
@@ -51,6 +53,7 @@ export const runAllTestsInParallel: (
   parallelTasks,
   deflake,
   cachedTestRunResults,
+  replayEventsDependencies,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -120,6 +123,7 @@ export const runAllTestsInParallel: (
           screenshottingOptions,
           generatedBy: { type: "testRun", runId: testRun.id },
           testRunId: testRun.id,
+          replayEventsDependencies,
         },
       },
     };

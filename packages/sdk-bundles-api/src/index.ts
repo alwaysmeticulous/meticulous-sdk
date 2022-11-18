@@ -10,6 +10,11 @@ export {
   ReplayUserInteractionsOptions,
   VirtualTimeOptions,
   InstallVirtualEventLoopOpts,
+  SetupReplayNetworkStubbingFn,
+  NetworkStubbingOptions,
+  StoryboardOptions,
+  BrowserContextSeedingOptions,
+  SetupBrowserContextSeedingFn,
 } from "./replay/sdk-to-bundle";
 export {
   SessionData,
