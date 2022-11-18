@@ -59,7 +59,7 @@ const validateConfig: (config: MeticulousCliConfig) => MeticulousCliConfig = (
       title: title || `${rest.sessionId} | ${rest.baseReplayId}`,
       ...rest,
     }))
-    .filter(({ sessionId, baseReplayId }) => sessionId && baseReplayId);
+    .filter(({ sessionId }) => sessionId);
 
   return { ...rest, testCases: nextTestCases };
 };
