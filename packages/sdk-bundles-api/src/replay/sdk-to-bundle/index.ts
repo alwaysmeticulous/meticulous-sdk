@@ -1,10 +1,8 @@
+import { SessionData, ReplayTimelineEntry } from "@alwaysmeticulous/api";
 import type { LogLevelDesc } from "loglevel";
 import type { Page } from "puppeteer";
 import { ReplayUserInteractionsResult } from "../bundle-to-sdk";
-import { ReplayTimelineEntry } from "../bundle-to-sdk/timeline.types";
-import { SessionData } from "./session-data";
 
-/** Options for replaying user interaction events */
 export interface ReplayUserInteractionsOptions {
   page: Page;
   sessionData: unknown;

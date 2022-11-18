@@ -1,3 +1,4 @@
+import { SessionData } from "@alwaysmeticulous/api";
 import {
   COMMON_CHROMIUM_FLAGS,
   CreateReplayDebuggerFn,
@@ -7,10 +8,7 @@ import {
   getStartUrl,
   getOriginalSessionStartUrl,
 } from "@alwaysmeticulous/replayer";
-import {
-  OnReplayTimelineEventFn,
-  SessionData,
-} from "@alwaysmeticulous/sdk-bundles-api";
+import { OnReplayTimelineEventFn } from "@alwaysmeticulous/sdk-bundles-api";
 import log, { LogLevelDesc } from "loglevel";
 import { Browser, launch, Page } from "puppeteer";
 import { createDebugReplayPage, setupPageCookies } from "./debugger.utils";
