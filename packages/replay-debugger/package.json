@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replay-debugger",
-  "version": "2.12.1",
+  "version": "2.13.0",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -18,14 +18,14 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.12.1",
+    "@alwaysmeticulous/common": "^2.13.0",
     "@alwaysmeticulous/replay-debugger-ui": "^2.5.0",
-    "@alwaysmeticulous/replayer": "^2.12.1",
+    "@alwaysmeticulous/replayer": "^2.13.0",
     "puppeteer": "^14.4.1",
     "rrweb": "^1.1.3"
   },
   "devDependencies": {
-    "@alwaysmeticulous/sdk-bundles-api": "^2.12.0"
+    "@alwaysmeticulous/sdk-bundles-api": "^2.13.0"
   },
   "author": {
     "name": "The Meticulous Team",
