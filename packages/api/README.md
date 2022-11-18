@@ -3,7 +3,7 @@
 This packages contains type definitions that are persisted in the database or S3 and also used in the SDK.
 
 Types that are both stored in the database and sent from the bundle to the SDK or
-from the SDK to the bundle live in the sdk-bundle-api sub-folder. This folder is split into two sub-folders:
+from the SDK to the bundle live in the sdk-bundle-api sub-folder. This folder is split into three sub-folders:
 
 - The sdk-to-bundle sub-folder contains types sent from the SDK to the bundle
 - The bundle-to-sdk sub-folder contains types sent from the bundle to the SDK
