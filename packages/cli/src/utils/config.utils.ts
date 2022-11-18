@@ -29,6 +29,11 @@ export const getReplayTargetForTestCase = ({
     };
   }
   if (useAssetsSnapshottedInBaseSimulation) {
+    if (testCase.baseReplayId == null) {
+      throw new Error(
+        `--useAssetsSnapshottedInBaseSimulation flag set, but test case "${testCase.title}" does not have a baseReplayId.`
+      );
+    }
     return {
       type: "snapshotted-assets",
       simulationIdForAssets: testCase.baseReplayId,

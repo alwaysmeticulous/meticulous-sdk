@@ -29,6 +29,12 @@ export interface RunAllTestsInParallelOptions {
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
   apiToken: string | null;
   commitSha: string;
+
+  /**
+   * The base commit to compare test results against for test cases that don't have a baseReplayId specified.
+   */
+  baseCommitSha: string | null;
+
   appUrl: string | null;
   useAssetsSnapshottedInBaseSimulation: boolean;
   parallelTasks: number | null;
@@ -46,6 +52,7 @@ export const runAllTestsInParallel: (
   testRun,
   apiToken,
   commitSha,
+  baseCommitSha,
   appUrl,
   useAssetsSnapshottedInBaseSimulation,
   executionOptions,
@@ -58,9 +65,11 @@ export const runAllTestsInParallel: (
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const results: TestCaseResult[] = [...cachedTestRunResults];
-  const queue = getTestsToRun({
+  const queue = await getTestsToRun({
+    client,
     testCases: config.testCases || [],
     cachedTestRunResults,
+    baseCommitSha,
   });
 
   const allTasksDone = defer<void>();

@@ -37,6 +37,7 @@ interface Options
     Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount"> {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
+  baseCommitSha?: string | undefined;
   appUrl?: string | undefined;
   useAssetsSnapshottedInBaseSimulation: boolean;
   githubSummary?: boolean | undefined;
@@ -53,6 +54,7 @@ interface Options
 const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   commitSha: commitSha_,
+  baseCommitSha,
   appUrl,
   useAssetsSnapshottedInBaseSimulation,
   headless,
@@ -154,12 +156,18 @@ const handler: (options: Options) => Promise<void> = async ({
         deflake,
         cachedTestRunResults,
         replayEventsDependencies,
+        baseCommitSha: baseCommitSha ?? null,
       });
       return results;
     }
 
     const results: TestCaseResult[] = [...cachedTestRunResults];
-    const testsToRun = getTestsToRun({ testCases, cachedTestRunResults });
+    const testsToRun = await getTestsToRun({
+      testCases,
+      cachedTestRunResults,
+      client,
+      baseCommitSha: baseCommitSha ?? null,
+    });
     for (const testCase of testsToRun) {
       const result = await deflakeReplayCommandHandler({
         replayTarget: getReplayTargetForTestCase({
@@ -221,6 +229,11 @@ export const runAllTests = buildCommand("run-all-tests")
   .options({
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
+    baseCommitSha: {
+      string: true,
+      description:
+        "The base commit to compare test results against for test cases that don't have a baseReplayId specified.",
+    },
     appUrl: {
       string: true,
       description:

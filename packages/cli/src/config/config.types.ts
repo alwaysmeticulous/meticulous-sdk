@@ -16,7 +16,7 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
 export interface TestCase {
   title: string;
   sessionId: string;
-  baseReplayId: string;
+  baseReplayId?: string;
   options?: TestCaseReplayOptions;
 }
 
