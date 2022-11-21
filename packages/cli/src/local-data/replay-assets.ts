@@ -82,7 +82,7 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const entry = assetMetadata.assets.find(
     (item) => item.fileName === assetFileName
   );
-  const filePath = join(await getOrCreateAssetsDir(), basename(assetFileName));
+  const filePath = join(await getOrCreateAssetsDir(), assetFileName);
 
   if (entry && etag !== "" && etag === entry.etag) {
     logger.debug(`${fetchUrl} already present`);
