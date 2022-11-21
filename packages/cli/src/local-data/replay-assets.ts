@@ -74,7 +74,7 @@ export const loadReplayEventsDependencies =
 export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const fetchUrl = new URL(path, getSnippetsBaseUrl()).href;
-  const assetFileName = basename(new URL(fetchUrl).pathname);
+  const assetFileName = `${basename(new URL(fetchUrl).pathname, ".js")}.cjs`;
 
   const assetMetadata = await loadAssetMetadata();
   const etag = (await axios.head(fetchUrl)).headers["etag"] || "";
@@ -82,10 +82,7 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const entry = assetMetadata.assets.find(
     (item) => item.fileName === assetFileName
   );
-  const filePath = join(
-    await getOrCreateAssetsDir(),
-    `${basename(assetFileName, ".js")}.cjs`
-  );
+  const filePath = join(await getOrCreateAssetsDir(), basename(assetFileName));
 
   if (entry && etag !== "" && etag === entry.etag) {
     logger.debug(`${fetchUrl} already present`);
