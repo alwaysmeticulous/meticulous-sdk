@@ -57,6 +57,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     maxDurationMs,
     maxEventCount,
     disableRemoteFonts,
+    noSandbox,
     bypassCSP,
     moveBeforeClick,
   } = replayExecutionOptions;
@@ -85,6 +86,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
         "--disable-web-security",
         ...COMMON_CHROMIUM_FLAGS,
         ...(disableRemoteFonts ? ["--disable-remote-fonts"] : []),
+        ...(noSandbox ? ["--no-sandbox"] : []),
       ],
       headless: headless,
       devtools: devTools,

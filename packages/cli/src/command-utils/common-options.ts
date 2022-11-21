@@ -76,6 +76,11 @@ export const OPTIONS = {
     description: "Pass the disable remote fonts flag into chromium",
     default: false,
   },
+  noSandbox: {
+    boolean: true,
+    description: "Pass the no sandbox flag into chromium",
+    default: false,
+  },
   maxDurationMs: {
     number: true,
     description: "Maximum duration (in milliseconds) the simulation will run",
@@ -109,6 +114,7 @@ export const COMMON_REPLAY_OPTIONS = {
   networkStubbing: OPTIONS.networkStubbing,
   skipPauses: OPTIONS.skipPauses,
   disableRemoteFonts: OPTIONS.disableRemoteFonts,
+  noSandbox: OPTIONS.noSandbox,
   maxDurationMs: OPTIONS.maxDurationMs,
   maxEventCount: OPTIONS.maxEventCount,
 };

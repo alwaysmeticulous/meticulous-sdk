@@ -350,6 +350,7 @@ export const rawReplayCommandHandler = async ({
   moveBeforeClick,
   cookiesFile,
   disableRemoteFonts,
+  noSandbox,
   skipPauses,
   maxDurationMs,
   maxEventCount,
@@ -365,6 +366,7 @@ export const rawReplayCommandHandler = async ({
     skipPauses,
     moveBeforeClick,
     disableRemoteFonts,
+    noSandbox,
     maxDurationMs: maxDurationMs ?? null,
     maxEventCount: maxEventCount ?? null,
   };
