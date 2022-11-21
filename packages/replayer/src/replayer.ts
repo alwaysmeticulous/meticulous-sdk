@@ -85,6 +85,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
         "--disable-web-security",
         ...COMMON_CHROMIUM_FLAGS,
         ...(disableRemoteFonts ? ["--disable-remote-fonts"] : []),
+        ...(disableRemoteFonts ? ["--no-sandbox"] : []),
       ],
       headless: headless,
       devtools: devTools,

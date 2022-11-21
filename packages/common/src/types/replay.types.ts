@@ -60,6 +60,7 @@ export interface ReplayExecutionOptions {
   skipPauses: boolean;
   moveBeforeClick: boolean;
   disableRemoteFonts: boolean;
+  noSandbox: boolean;
   maxDurationMs: number | null;
   maxEventCount: number | null;
 }
