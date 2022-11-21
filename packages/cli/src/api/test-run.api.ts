@@ -68,10 +68,15 @@ export const getTestRunUrl = (testRun: TestRun) => {
   return testRunUrl;
 };
 
-export const getCachedTestRunResults: (options: {
+export interface GetLatestTestRunResultsOptions {
   client: AxiosInstance;
   commitSha: string;
-}) => Promise<TestCaseResult[]> = async ({ client, commitSha }) => {
+}
+
+export const getCachedTestRunResults = async ({
+  client,
+  commitSha,
+}: GetLatestTestRunResultsOptions): Promise<TestCaseResult[]> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   if (!commitSha || commitSha === "unknown") {
@@ -79,6 +84,18 @@ export const getCachedTestRunResults: (options: {
     return [];
   }
 
+  const results =
+    (await getLatestTestRunResults({ client, commitSha }))?.resultData
+      ?.results ?? [];
+
+  // Only return passing tests
+  return results.filter(({ result }) => result === "pass");
+};
+
+export const getLatestTestRunResults = async ({
+  client,
+  commitSha,
+}: GetLatestTestRunResultsOptions): Promise<TestRun | null> => {
   const { data } = await client
     .get(`test-runs/cache?commitSha=${encodeURIComponent(commitSha)}`)
     .catch((error) => {
@@ -87,7 +104,5 @@ export const getCachedTestRunResults: (options: {
       }
       throw error;
     });
-  const results = (data as TestRun | null)?.resultData?.results || [];
-  // Only return passing tests
-  return results.filter(({ result }) => result === "pass");
+  return (data as TestRun | null) ?? null;
 };
