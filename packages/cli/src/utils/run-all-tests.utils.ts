@@ -61,11 +61,7 @@ export const getTestsToRun = async ({
     (testCase) => testCase.baseReplayId == null
   );
   const testCasesWithBaseReplayId = uncachedTestCases.flatMap(
-    (testCase): TestCase[] =>
-      // Note: explictly setting the baseReplayId is required for typescript to be happy with types
-      testCase.baseReplayId == null
-        ? []
-        : [{ ...testCase, baseReplayId: testCase.baseReplayId }]
+    (testCase): TestCase[] => (testCase.baseReplayId == null ? [] : [testCase])
   );
 
   if (testCasesMissingBaseReplayId.length === 0) {
@@ -89,8 +85,7 @@ export const getTestsToRun = async ({
 
   return uncachedTestCases.flatMap((test) => {
     if (test.baseReplayId != null) {
-      // Note: explictly setting the baseReplayId is required for typescript to be happy with types
-      return [{ ...test, baseReplayId: test.baseReplayId }];
+      return [test];
     }
     const baseReplayId = baseReplayIdBySessionId[test.sessionId];
     if (baseReplayId == null) {
@@ -98,7 +93,7 @@ export const getTestsToRun = async ({
       logger.warn(
         `Skipping comparisons for test "${test.title}" since no result to compare against stored for base commit ${baseCommitSha}`
       );
-      return test;
+      return [test];
     }
     return [{ ...test, baseReplayId }];
   });
