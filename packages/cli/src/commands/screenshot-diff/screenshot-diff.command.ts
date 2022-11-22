@@ -248,7 +248,7 @@ const getScreenshotIdentifier = (
     if (match && eventNumber != null && !isNaN(eventNumber)) {
       return {
         type: "after-event",
-        eventNumber: eventNumber,
+        eventNumber,
       };
     }
   }
