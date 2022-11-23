@@ -49,7 +49,7 @@ const handler: (options: Options) => Promise<void> = async ({
   networkStubbing,
   githubSummary,
   parallelize,
-  parallelTasks: _parallelTasks,
+  parallelTasks: parrelelTasks_,
   deflake,
   useCache,
   testsFile,
@@ -85,7 +85,7 @@ const handler: (options: Options) => Promise<void> = async ({
     storyboardOptions,
   };
 
-  const parrelelTasks = parallelize ? _parallelTasks : 1;
+  const parrelelTasks = parallelize ? parrelelTasks_ : 1;
   const result = await runAllTests({
     testsFile: testsFile ?? null,
     executionOptions,
