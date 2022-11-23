@@ -98,7 +98,7 @@ const handler: (options: Options) => Promise<void> = async ({
   await createReplayer(createReplayerParams);
 };
 
-export const debugReplay = buildCommand("debug-simulation")
+export const debugReplayCommand = buildCommand("debug-simulation")
   .details({
     aliases: ["debug-replay"],
     describe: "Replay and debug a recorded session",

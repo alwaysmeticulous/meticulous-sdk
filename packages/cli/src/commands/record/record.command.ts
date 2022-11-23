@@ -149,7 +149,7 @@ export const recordCommandHandler: (
   });
 };
 
-export const record = buildCommand("record")
+export const recordCommand = buildCommand("record")
   .details({
     describe: "Record a session",
   })

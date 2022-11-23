@@ -19,7 +19,7 @@ const handler: (options: Options) => Promise<void> = async ({
   logger.info(`Serving assets at url ${url}`);
 };
 
-export const serve = buildCommand("serve")
+export const serveCommand = buildCommand("serve")
   .details({
     describe:
       "Spin up a localhost server to serve the assets that were snapshotted when running a particular replay",

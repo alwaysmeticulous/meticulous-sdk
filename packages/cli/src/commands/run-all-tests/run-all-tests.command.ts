@@ -226,7 +226,7 @@ const handler: (options: Options) => Promise<void> = async ({
   }
 };
 
-export const runAllTests = buildCommand("run-all-tests")
+export const runAllTestsCommand = buildCommand("run-all-tests")
   .details({ describe: "Run all replay test cases" })
   .options({
     apiToken: OPTIONS.apiToken,
