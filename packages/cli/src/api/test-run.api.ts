@@ -3,9 +3,11 @@ import axios, { AxiosError, AxiosInstance } from "axios";
 import log from "loglevel";
 import { TestCaseResult } from "../config/config.types";
 
+export type TestRunStatus = "Running" | "Success" | "Failure";
+
 export interface TestRun {
   id: string;
-  status: "Running" | "Success" | "Failure";
+  status: TestRunStatus;
   resultData?: {
     results: TestCaseResult[];
     [key: string]: any;

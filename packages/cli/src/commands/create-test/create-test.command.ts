@@ -187,7 +187,7 @@ const handler: (options: Options) => Promise<void> = async ({
   await handleTestCreation(replay, lastSessionId);
 };
 
-export const createTest = buildCommand("create-test")
+export const createTestCommand = buildCommand("create-test")
   .details({
     describe: "Create a new test",
   })

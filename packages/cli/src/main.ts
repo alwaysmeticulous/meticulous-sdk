@@ -1,17 +1,17 @@
 import { setMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import yargs from "yargs";
-import { bootstrap } from "./commands/bootstrap/bootstrap.command";
-import { createTest } from "./commands/create-test/create-test.command";
-import { debugReplay } from "./commands/debug-replay/debug-replay.command";
-import { downloadReplay } from "./commands/download-replay/download-replay.command";
-import { downloadSession } from "./commands/download-session/download-session.command";
-import { record } from "./commands/record/record.command";
-import { replay } from "./commands/replay/replay.command";
-import { runAllTests } from "./commands/run-all-tests/run-all-tests.command";
-import { screenshotDiff } from "./commands/screenshot-diff/screenshot-diff.command";
-import { serve } from "./commands/serve/serve.command";
-import { showProject } from "./commands/show-project/show-project.command";
-import { updateTests } from "./commands/update-tests/update-tests.command";
+import { bootstrapCommand } from "./commands/bootstrap/bootstrap.command";
+import { createTestCommand } from "./commands/create-test/create-test.command";
+import { debugReplayCommand } from "./commands/debug-replay/debug-replay.command";
+import { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
+import { downloadSessionCommand } from "./commands/download-session/download-session.command";
+import { recordCommand } from "./commands/record/record.command";
+import { replayCommand } from "./commands/replay/replay.command";
+import { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.command";
+import { screenshotDiffCommand } from "./commands/screenshot-diff/screenshot-diff.command";
+import { serveCommand } from "./commands/serve/serve.command";
+import { showProjectCommand } from "./commands/show-project/show-project.command";
+import { updateTestsCommand } from "./commands/update-tests/update-tests.command";
 import { initLogger, setLogLevel } from "./utils/logger.utils";
 import { initSentry, setOptions } from "./utils/sentry.utils";
 
@@ -32,18 +32,18 @@ export const main: () => void = () => {
 
       Meticulous CLI`
     )
-    .command(bootstrap)
-    .command(createTest)
-    .command(debugReplay)
-    .command(downloadReplay)
-    .command(downloadSession)
-    .command(record)
-    .command(replay)
-    .command(runAllTests)
-    .command(screenshotDiff)
-    .command(showProject)
-    .command(updateTests)
-    .command("serve", false, serve) // This is a debugging command, so we hide it to not pollute the main menu
+    .command(bootstrapCommand)
+    .command(createTestCommand)
+    .command(debugReplayCommand)
+    .command(downloadReplayCommand)
+    .command(downloadSessionCommand)
+    .command(recordCommand)
+    .command(replayCommand)
+    .command(runAllTestsCommand)
+    .command(screenshotDiffCommand)
+    .command(showProjectCommand)
+    .command(updateTestsCommand)
+    .command("serve", false, serveCommand) // This is a debugging command, so we hide it to not pollute the main menu
     .help()
     .strict()
     .demandCommand()
