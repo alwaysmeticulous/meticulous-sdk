@@ -1,12 +1,13 @@
 import { appendFile } from "fs/promises";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
+import { getTestRunUrl, TestRun } from "../api/test-run.api";
 import { TestCaseResult } from "../config/config.types";
 
 export const writeGitHubSummary: (options: {
-  testRunUrl: string;
+  testRun: TestRun;
   results: TestCaseResult[];
-}) => Promise<void> = async ({ testRunUrl, results }) => {
+}) => Promise<void> = async ({ testRun, results }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const summaryFile = process.env["GITHUB_STEP_SUMMARY"] || "";
 
@@ -16,6 +17,8 @@ export const writeGitHubSummary: (options: {
     );
     return;
   }
+
+  const testRunUrl = getTestRunUrl(testRun);
 
   const summary = `# Test Results
 
