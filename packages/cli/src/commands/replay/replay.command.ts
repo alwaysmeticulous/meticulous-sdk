@@ -419,7 +419,7 @@ export const getReplayTarget = ({
   return { type: "original-recorded-url" };
 };
 
-export const replayCommand = buildCommand("simulate")
+export const replay = buildCommand("simulate")
   .details({
     aliases: ["replay"],
     describe: "Simulate (replay) a recorded session",

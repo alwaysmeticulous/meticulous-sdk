@@ -95,7 +95,7 @@ const handler: (options: Options) => Promise<void> = async ({
   await saveConfig(newConfig);
 };
 
-export const updateTestsCommand = buildCommand("update-tests")
+export const updateTests = buildCommand("update-tests")
   .details({
     describe: "Updates test cases",
   })

@@ -307,7 +307,7 @@ const handler: (options: Options) => Promise<void> = async ({
   });
 };
 
-export const screenshotDiffCommand = buildCommand("screenshot-diff")
+export const screenshotDiff = buildCommand("screenshot-diff")
   .details({ describe: "Diff two replay screenshots" })
   .options({
     apiToken: {

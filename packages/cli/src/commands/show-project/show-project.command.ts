@@ -19,7 +19,7 @@ const handler: (options: Options) => Promise<void> = async ({ apiToken }) => {
   logger.info(project);
 };
 
-export const showProjectCommand = buildCommand("show-project")
+export const showProject = buildCommand("show-project")
   .details({
     describe: "Shows project linked with current API token",
   })

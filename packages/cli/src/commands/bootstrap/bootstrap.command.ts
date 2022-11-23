@@ -26,7 +26,7 @@ const handler: (options: Options) => Promise<void> = async () => {
   });
 };
 
-export const bootstrapCommand = buildCommand("bootstrap")
+export const bootstrap = buildCommand("bootstrap")
   .details({
     describe: "Bootstrap your project to use Meticulous",
   })
