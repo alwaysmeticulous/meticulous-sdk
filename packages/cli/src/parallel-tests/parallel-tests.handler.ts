@@ -74,6 +74,11 @@ export const runAllTestsInParallel: (
     cachedTestRunResults,
     baseCommitSha,
   });
+  const progress: TestRunProgress = {
+    runningTestCases: queue.length,
+    failedTestCases: 0,
+    passedTestCases: 0,
+  };
 
   const allTasksDone = defer<void>();
 
@@ -155,15 +160,10 @@ export const runAllTestsInParallel: (
         --inProgress;
 
         results.push(result);
-        onTestFinished?.({
-          failedTestCases: results.filter(
-            (testCase) => testCase.result === "fail"
-          ).length,
-          passedTestCases: results.filter(
-            (testCase) => testCase.result === "pass"
-          ).length,
-          runningTestCases: queue.length + inProgress,
-        });
+        progress.failedTestCases += result.result === "fail" ? 1 : 0;
+        progress.passedTestCases += result.result === "pass" ? 1 : 0;
+        --progress.runningTestCases;
+        onTestFinished?.(progress);
         putTestRunResults({
           client,
           testRunId: testRun.id,

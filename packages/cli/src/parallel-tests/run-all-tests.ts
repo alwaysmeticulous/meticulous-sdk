@@ -165,6 +165,11 @@ export const runAllTests = async ({
       client,
       baseCommitSha: baseCommitSha ?? null,
     });
+    const progress: TestRunProgress = {
+      runningTestCases: testRun.length,
+      failedTestCases: 0,
+      passedTestCases: 0,
+    };
     for (const testCase of testsToRun) {
       const result = await deflakeReplayCommandHandler({
         replayTarget: getReplayTargetForTestCase({
@@ -183,14 +188,14 @@ export const runAllTests = async ({
         replayEventsDependencies,
       });
       results.push(result);
+      progress.failedTestCases += result.result === "fail" ? 1 : 0;
+      progress.passedTestCases += result.result === "pass" ? 1 : 0;
+      --progress.runningTestCases;
       onTestFinished?.({
         id: testRun.id,
         url: testRunUrl,
         status: "Running",
-        progress: {
-          ...getResultCounts(results),
-          runningTestCases: testsToRun.length - results.length,
-        },
+        progress,
       });
       await putTestRunResults({
         client,
@@ -232,17 +237,13 @@ export const runAllTests = async ({
       id: testRun.id,
       status: overallStatus,
       progress: {
-        ...getResultCounts(results),
+        passedTestCases: results.filter(({ result }) => result === "pass")
+          .length,
+        failedTestCases: results.filter(({ result }) => result === "fail")
+          .length,
         runningTestCases: 0,
       },
     },
     testCaseResults: results,
   };
 };
-
-const getResultCounts = (
-  results: TestCaseResult[]
-): Omit<TestRunProgress, "runningTestCases"> => ({
-  passedTestCases: results.filter(({ result }) => result === "pass").length,
-  failedTestCases: results.filter(({ result }) => result === "fail").length,
-});
