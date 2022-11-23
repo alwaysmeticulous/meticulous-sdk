@@ -162,7 +162,7 @@ export const runAllTestsInParallel: (
           passedTestCases: results.filter(
             (testCase) => testCase.result === "pass"
           ).length,
-          runningTestCases: queue.length,
+          runningTestCases: queue.length + inProgress,
         });
         putTestRunResults({
           client,

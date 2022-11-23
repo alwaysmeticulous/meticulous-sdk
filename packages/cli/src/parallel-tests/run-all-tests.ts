@@ -183,6 +183,15 @@ export const runAllTests = async ({
         replayEventsDependencies,
       });
       results.push(result);
+      onTestFinished?.({
+        id: testRun.id,
+        url: testRunUrl,
+        status: "Running",
+        progress: {
+          ...getResultCounts(results),
+          runningTestCases: testsToRun.length - results.length,
+        },
+      });
       await putTestRunResults({
         client,
         testRunId: testRun.id,
@@ -223,13 +232,17 @@ export const runAllTests = async ({
       id: testRun.id,
       status: overallStatus,
       progress: {
-        passedTestCases: results.filter(({ result }) => result === "pass")
-          .length,
-        failedTestCases: results.filter(({ result }) => result === "fail")
-          .length,
+        ...getResultCounts(results),
         runningTestCases: 0,
       },
     },
     testCaseResults: results,
   };
 };
+
+const getResultCounts = (
+  results: TestCaseResult[]
+): Omit<TestRunProgress, "runningTestCases"> => ({
+  passedTestCases: results.filter(({ result }) => result === "pass").length,
+  failedTestCases: results.filter(({ result }) => result === "fail").length,
+});
