@@ -20,7 +20,7 @@ import {
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
-
+import { TestRunProgress } from "./run-all-tests.types";
 export interface RunAllTestsInParallelOptions {
   config: MeticulousCliConfig;
   client: AxiosInstance;
@@ -41,6 +41,8 @@ export interface RunAllTestsInParallelOptions {
   deflake: boolean;
   cachedTestRunResults: TestCaseResult[];
   replayEventsDependencies: ReplayEventsDependencies;
+
+  onTestFinished?: (progress: TestRunProgress) => void;
 }
 
 /** Handler for running Meticulous tests in parallel using child processes */
@@ -61,6 +63,7 @@ export const runAllTestsInParallel: (
   deflake,
   cachedTestRunResults,
   replayEventsDependencies,
+  onTestFinished,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -152,6 +155,15 @@ export const runAllTestsInParallel: (
         --inProgress;
 
         results.push(result);
+        onTestFinished?.({
+          failedTestCases: results.filter(
+            (testCase) => testCase.result === "fail"
+          ).length,
+          passedTestCases: results.filter(
+            (testCase) => testCase.result === "pass"
+          ).length,
+          runningTestCases: queue.length,
+        });
         putTestRunResults({
           client,
           testRunId: testRun.id,
