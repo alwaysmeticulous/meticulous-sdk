@@ -9,7 +9,6 @@ import {
   getCachedTestRunResults,
   getTestRunUrl,
   putTestRunResults,
-  TestRunStatus,
 } from "../api/test-run.api";
 import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
 import { readConfig } from "../config/config";
@@ -22,7 +21,6 @@ import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
 import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
 import { getMeticulousVersion } from "../utils/version.utils";
-import { TestRunProgress } from "./run-all-tests.types";
 
 export interface Options {
   testsFile: string | null;
@@ -49,20 +47,15 @@ export interface Options {
   useCache: boolean;
 
   githubSummary: boolean;
-
-  onTestRunCreated?: (testRun: TestRun & { status: "Running" }) => void;
-  onTestFinished?: (testRun: TestRun & { status: "Running" }) => void;
 }
+
 export interface RunAllTestsResult {
-  testRun: TestRun & { status: "Success" | "Failure" };
+  testRun: {
+    id: string;
+    url: string;
+    status: "Success" | "Failure";
+  };
   testCaseResults: TestCaseResult[];
-}
-
-export interface TestRun {
-  id: string;
-  url: string;
-  status: TestRunStatus;
-  progress: TestRunProgress;
 }
 
 export const runAllTests = async ({
@@ -78,8 +71,6 @@ export const runAllTests = async ({
   deflake,
   useCache,
   githubSummary,
-  onTestRunCreated,
-  onTestFinished,
 }: Options): Promise<RunAllTestsResult> => {
   if (appUrl != null && useAssetsSnapshottedInBaseSimulation) {
     throw new Error(
@@ -115,16 +106,6 @@ export const runAllTests = async ({
   });
 
   const testRunUrl = getTestRunUrl(testRun);
-  onTestRunCreated?.({
-    id: testRun.id,
-    url: testRunUrl,
-    status: "Running",
-    progress: {
-      failedTestCases: 0,
-      passedTestCases: 0,
-      runningTestCases: testCases.length,
-    },
-  });
   logger.info("");
   logger.info(`Test run URL: ${testRunUrl}`);
   logger.info("");
@@ -146,14 +127,6 @@ export const runAllTests = async ({
         cachedTestRunResults,
         replayEventsDependencies,
         baseCommitSha: baseCommitSha ?? null,
-        onTestFinished: (progress) => {
-          onTestFinished?.({
-            id: testRun.id,
-            url: testRunUrl,
-            status: "Running",
-            progress,
-          });
-        },
       });
       return results;
     }
@@ -218,18 +191,7 @@ export const runAllTests = async ({
   }
 
   return {
-    testRun: {
-      url: testRunUrl,
-      id: testRun.id,
-      status: overallStatus,
-      progress: {
-        passedTestCases: results.filter(({ result }) => result === "pass")
-          .length,
-        failedTestCases: results.filter(({ result }) => result === "fail")
-          .length,
-        runningTestCases: 0,
-      },
-    },
+    testRun: { url: testRunUrl, id: testRun.id, status: overallStatus },
     testCaseResults: results,
   };
 };
