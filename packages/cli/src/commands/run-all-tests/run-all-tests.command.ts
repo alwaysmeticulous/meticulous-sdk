@@ -1,16 +1,7 @@
 import {
-  METICULOUS_LOGGER_NAME,
   ReplayExecutionOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/common";
-import log from "loglevel";
-import { createClient } from "../../api/client";
-import {
-  createTestRun,
-  getCachedTestRunResults,
-  getTestRunUrl,
-  putTestRunResults,
-} from "../../api/test-run.api";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
@@ -21,17 +12,7 @@ import {
   ScreenshotAssertionsOptions,
   ScreenshotDiffOptions,
 } from "../../command-utils/common-types";
-import { readConfig } from "../../config/config";
-import { TestCaseResult } from "../../config/config.types";
-import { deflakeReplayCommandHandler } from "../../deflake-tests/deflake-tests.handler";
-import { loadReplayEventsDependencies } from "../../local-data/replay-assets";
-import { runAllTestsInParallel } from "../../parallel-tests/parallel-tests.handler";
 import { runAllTests } from "../../parallel-tests/run-all-tests";
-import { getCommitSha } from "../../utils/commit-sha.utils";
-import { getReplayTargetForTestCase } from "../../utils/config.utils";
-import { writeGitHubSummary } from "../../utils/github-summary.utils";
-import { getTestsToRun, sortResults } from "../../utils/run-all-tests.utils";
-import { getMeticulousVersion } from "../../utils/version.utils";
 
 interface Options
   extends ScreenshotDiffOptions,
