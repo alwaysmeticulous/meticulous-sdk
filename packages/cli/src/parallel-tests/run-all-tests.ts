@@ -13,7 +13,7 @@ import {
 } from "../api/test-run.api";
 import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
 import { readConfig } from "../config/config";
-import { TestCaseResult } from "../config/config.types";
+import { DetailedTestCaseResult } from "../config/config.types";
 import { deflakeReplayCommandHandler } from "../deflake-tests/deflake-tests.handler";
 import { loadReplayEventsDependencies } from "../local-data/replay-assets";
 import { runAllTestsInParallel } from "../parallel-tests/parallel-tests.handler";
@@ -55,7 +55,7 @@ export interface Options {
 }
 export interface RunAllTestsResult {
   testRun: TestRun & { status: "Success" | "Failure" };
-  testCaseResults: TestCaseResult[];
+  testCaseResults: DetailedTestCaseResult[];
 }
 
 export interface TestRun {
@@ -158,7 +158,7 @@ export const runAllTests = async ({
       return results;
     }
 
-    const results: TestCaseResult[] = [...cachedTestRunResults];
+    const results: DetailedTestCaseResult[] = [...cachedTestRunResults];
     const testsToRun = await getTestsToRun({
       testCases,
       cachedTestRunResults,
@@ -215,7 +215,12 @@ export const runAllTests = async ({
     client,
     testRunId: testRun.id,
     status: overallStatus,
-    resultData: { results },
+    resultData: {
+      results: results.map(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        ({ screenshotDiffResults, ...coreResult }) => coreResult
+      ),
+    },
   });
 
   logger.info("");

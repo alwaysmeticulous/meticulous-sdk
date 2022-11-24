@@ -13,6 +13,7 @@ import log from "loglevel";
 import { putTestRunResults, TestRun } from "../api/test-run.api";
 import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
 import {
+  DetailedTestCaseResult,
   MeticulousCliConfig,
   TestCase,
   TestCaseResult,
@@ -39,7 +40,7 @@ export interface RunAllTestsInParallelOptions {
   useAssetsSnapshottedInBaseSimulation: boolean;
   parallelTasks: number | null;
   deflake: boolean;
-  cachedTestRunResults: TestCaseResult[];
+  cachedTestRunResults: DetailedTestCaseResult[];
   replayEventsDependencies: ReplayEventsDependencies;
 
   onTestFinished?: (progress: TestRunProgress) => void;
@@ -48,7 +49,7 @@ export interface RunAllTestsInParallelOptions {
 /** Handler for running Meticulous tests in parallel using child processes */
 export const runAllTestsInParallel: (
   options: RunAllTestsInParallelOptions
-) => Promise<TestCaseResult[]> = async ({
+) => Promise<DetailedTestCaseResult[]> = async ({
   config,
   client,
   testRun,
@@ -67,7 +68,7 @@ export const runAllTestsInParallel: (
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const results: TestCaseResult[] = [...cachedTestRunResults];
+  const results: DetailedTestCaseResult[] = [...cachedTestRunResults];
   const queue = await getTestsToRun({
     client,
     testCases: config.testCases || [],
@@ -90,7 +91,7 @@ export const runAllTestsInParallel: (
 
   // Starts running a test case in a child process
   const startTask = (testCase: TestCase) => {
-    const deferredResult = defer<TestCaseResult>();
+    const deferredResult = defer<DetailedTestCaseResult>();
     const child = fork(taskHandler, [], { stdio: "inherit" });
 
     const messageHandler = (message: unknown) => {
@@ -149,10 +150,13 @@ export const runAllTestsInParallel: (
     // Handle task completion
     deferredResult.promise
       .catch(() => {
-        const result: TestCaseResult = {
+        // If it threw an error then it's something fatal, rather than just a failed diff
+        // (it resolves successfully on a failed diff)
+        const result: DetailedTestCaseResult = {
           ...testCase,
           headReplayId: "",
           result: "fail",
+          screenshotDiffResults: [],
         };
         return result;
       })

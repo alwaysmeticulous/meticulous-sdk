@@ -11,16 +11,13 @@ import {
   ScreenshotDiffOptions,
 } from "../command-utils/common-types";
 import { replayCommandHandler } from "../commands/replay/replay.command";
-import { ScreenshotDiffError } from "../commands/screenshot-diff/screenshot-diff.command";
 import {
+  DetailedTestCaseResult,
   TestCase,
   TestCaseReplayOptions,
-  TestCaseResult,
 } from "../config/config.types";
 
-const handleReplay: (
-  options: HandleReplayOptions
-) => Promise<TestCaseResult> = async ({
+const handleReplay = async ({
   testCase,
   replayTarget,
   executionOptions,
@@ -30,51 +27,41 @@ const handleReplay: (
   generatedBy,
   testRunId,
   replayEventsDependencies,
-}) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-
-  const replayPromise = replayCommandHandler({
-    replayTarget,
-    executionOptions: applyTestCaseExecutionOptionOverrides(
-      executionOptions,
-      testCase.options ?? {}
-    ),
-    screenshottingOptions: applyTestCaseScreenshottingOptionsOverrides(
-      screenshottingOptions,
-      testCase.options ?? {}
-    ),
-    apiToken,
-    commitSha,
-    sessionId: testCase.sessionId,
-    baseSimulationId: testCase.baseReplayId,
-    save: false,
-    exitOnMismatch: false,
-    cookiesFile: null,
-    generatedBy,
-    testRunId,
-    replayEventsDependencies,
-  });
-  const result: TestCaseResult = await replayPromise
-    .then(
-      (replay) =>
-        ({
-          ...testCase,
-          headReplayId: replay.id,
-          result: "pass",
-        } as TestCaseResult)
-    )
-    .catch((error) => {
-      if (error instanceof ScreenshotDiffError && error.extras) {
-        return {
-          ...testCase,
-          headReplayId: error.extras.headReplayId,
-          result: "fail",
-        };
-      }
-      logger.error(error);
-      return { ...testCase, headReplayId: "", result: "fail" };
+}: HandleReplayOptions): Promise<DetailedTestCaseResult> => {
+  const { replay, screenshotDiffResults, screenshotDiffError } =
+    await replayCommandHandler({
+      replayTarget,
+      executionOptions: applyTestCaseExecutionOptionOverrides(
+        executionOptions,
+        testCase.options ?? {}
+      ),
+      screenshottingOptions: applyTestCaseScreenshottingOptionsOverrides(
+        screenshottingOptions,
+        testCase.options ?? {}
+      ),
+      apiToken,
+      commitSha,
+      sessionId: testCase.sessionId,
+      baseSimulationId: testCase.baseReplayId,
+      save: false,
+      cookiesFile: null,
+      generatedBy,
+      testRunId,
+      replayEventsDependencies,
     });
-  return result;
+
+  if (screenshotDiffResults == null) {
+    throw new Error(
+      `replayCommandHandler returned a null screenshotDiffResults, but was called with screenshottingOptions.enabled = true`
+    );
+  }
+
+  return {
+    ...testCase,
+    headReplayId: replay.id,
+    result: screenshotDiffError == null ? "pass" : "fail",
+    screenshotDiffResults,
+  };
 };
 
 export interface DeflakeReplayCommandHandlerOptions
@@ -94,9 +81,10 @@ interface HandleReplayOptions {
   replayEventsDependencies: ReplayEventsDependencies;
 }
 
-export const deflakeReplayCommandHandler: (
-  options: DeflakeReplayCommandHandlerOptions
-) => Promise<TestCaseResult> = async ({ deflake, ...otherOptions }) => {
+export const deflakeReplayCommandHandler = async ({
+  deflake,
+  ...otherOptions
+}: DeflakeReplayCommandHandlerOptions): Promise<DetailedTestCaseResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const firstResult = await handleReplay(otherOptions);

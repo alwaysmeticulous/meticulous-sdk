@@ -158,7 +158,7 @@ export const checkScreenshotDiffResult = ({
   headReplayId: string;
   results: ScreenshotDiffResult[];
   diffOptions: ScreenshotDiffOptions;
-}): void => {
+}): ScreenshotDiffError | null => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const missingHeadImagesResults = results.flatMap((result) =>
@@ -169,7 +169,7 @@ export const checkScreenshotDiffResult = ({
       .map(({ baseScreenshotFile }) => basename(baseScreenshotFile))
       .sort()} => FAIL!`;
     logger.info(message);
-    throw new ScreenshotDiffError(message, {
+    return new ScreenshotDiffError(message, {
       baseReplayId,
       headReplayId,
     });
@@ -193,7 +193,7 @@ export const checkScreenshotDiffResult = ({
         result.headScreenshotFile
       )} have different sizes => FAIL!`;
       logger.info(message);
-      throw new ScreenshotDiffError(message, {
+      return new ScreenshotDiffError(message, {
         baseReplayId,
         headReplayId,
       });
@@ -209,13 +209,15 @@ export const checkScreenshotDiffResult = ({
       }`;
       logger.info(message);
       if (outcome === "diff") {
-        throw new ScreenshotDiffError(message, {
+        return new ScreenshotDiffError(message, {
           baseReplayId,
           headReplayId,
         });
       }
     }
   });
+
+  return null;
 };
 
 export class ScreenshotDiffError extends Error {

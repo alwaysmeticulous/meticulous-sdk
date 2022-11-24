@@ -1,5 +1,5 @@
 import log from "loglevel";
-import { TestCaseResult } from "../config/config.types";
+import { DetailedTestCaseResult } from "../config/config.types";
 import { DeflakeReplayCommandHandlerOptions } from "../deflake-tests/deflake-tests.handler";
 
 export interface InitMessage {
@@ -14,6 +14,6 @@ export interface InitMessage {
 export interface ResultMessage {
   kind: "result";
   data: {
-    result: TestCaseResult;
+    result: DetailedTestCaseResult;
   };
 }

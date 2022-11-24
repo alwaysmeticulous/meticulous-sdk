@@ -2,14 +2,18 @@ import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { getLatestTestRunResults } from "../api/test-run.api";
-import { TestCase, TestCaseResult } from "../config/config.types";
+import {
+  DetailedTestCaseResult,
+  TestCase,
+  TestCaseResult,
+} from "../config/config.types";
 
 export const sortResults: (options: {
-  results: TestCaseResult[];
+  results: DetailedTestCaseResult[];
   testCases: TestCase[];
-}) => TestCaseResult[] = ({ results: unsorted_, testCases }) => {
+}) => DetailedTestCaseResult[] = ({ results: unsorted_, testCases }) => {
   const unsorted = [...unsorted_];
-  const results: TestCaseResult[] = [];
+  const results: DetailedTestCaseResult[] = [];
 
   testCases.forEach(({ title, baseReplayId, sessionId }) => {
     const idx = unsorted.findIndex(

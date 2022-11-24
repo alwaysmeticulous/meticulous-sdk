@@ -1,6 +1,10 @@
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import { join } from "path";
 import {
+  ScreenshotAssertionsEnabledOptions,
+  ScreenshotDiffResult,
+} from "@alwaysmeticulous/api";
+import {
   GeneratedBy,
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
@@ -55,16 +59,22 @@ import { getMeticulousVersion } from "../../utils/version.utils";
 import {
   checkScreenshotDiffResult,
   diffScreenshots,
+  ScreenshotDiffError,
 } from "../screenshot-diff/screenshot-diff.command";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsOptions;
-  exitOnMismatch: boolean;
   generatedBy: GeneratedBy;
   testRunId: string | null;
   replayEventsDependencies: ReplayEventsDependencies;
+}
+
+export interface ReplayResult {
+  replay: Replay;
+  screenshotDiffResults: ScreenshotDiffResult[] | null;
+  screenshotDiffError: ScreenshotDiffError | null;
 }
 
 export const replayCommandHandler = async ({
@@ -75,13 +85,12 @@ export const replayCommandHandler = async ({
   sessionId,
   commitSha: commitSha_,
   save,
-  exitOnMismatch,
   baseSimulationId: baseReplayId_,
   cookiesFile,
   generatedBy,
   testRunId,
   replayEventsDependencies,
-}: ReplayOptions): Promise<Replay> => {
+}: ReplayOptions): Promise<ReplayResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
@@ -163,119 +172,148 @@ export const replayCommandHandler = async ({
   // 8. Create a Zip archive containing the replay files
   const archivePath = await createReplayArchive(tempDir);
 
-  // 9. Get upload URL
-  const replay = await createReplay({
-    client,
-    commitSha,
-    sessionId,
-    meticulousSha,
-    version: "v2",
-    metadata: { generatedBy },
-  });
-  const uploadUrlData = await getReplayPushUrl(client, replay.id);
-  if (!uploadUrlData) {
-    logger.error("Error: Could not get a push URL from the Meticulous API");
-    process.exit(1);
-  }
-  const uploadUrl = uploadUrlData.pushUrl;
-
-  // 10. Send archive to S3
   try {
-    await uploadArchive(uploadUrl, archivePath);
-  } catch (error) {
-    await putReplayPushedStatus(
+    // 9. Get upload URL
+    const replay = await createReplay({
+      client,
+      commitSha,
+      sessionId,
+      meticulousSha,
+      version: "v2",
+      metadata: { generatedBy },
+    });
+    const uploadUrlData = await getReplayPushUrl(client, replay.id);
+    if (!uploadUrlData) {
+      logger.error("Error: Could not get a push URL from the Meticulous API");
+      process.exit(1);
+    }
+    const uploadUrl = uploadUrlData.pushUrl;
+
+    // 10. Send archive to S3
+    try {
+      await uploadArchive(uploadUrl, archivePath);
+    } catch (error) {
+      await putReplayPushedStatus(
+        client,
+        replay.id,
+        "failure",
+        replayCommandId
+      ).catch(logger.error);
+      logger.error(error);
+      process.exit(1);
+    }
+
+    // 11. Report successful upload to Meticulous
+    const updatedProjectBuild = await putReplayPushedStatus(
       client,
       replay.id,
-      "failure",
+      "success",
       replayCommandId
-    ).catch(logger.error);
-    logger.error(error);
-    process.exit(1);
-  }
-
-  // 11. Report successful upload to Meticulous
-  const updatedProjectBuild = await putReplayPushedStatus(
-    client,
-    replay.id,
-    "success",
-    replayCommandId
-  );
-  logger.info("Simulation artifacts successfully sent to Meticulous");
-  logger.debug(updatedProjectBuild);
-
-  const replayUrl = getReplayUrl(replay);
-  logger.info("=======");
-  logger.info(`View simulation at: ${replayUrl}`);
-  logger.info("=======");
-
-  // 12. Diff against base replay screenshot if one is provided
-  const baseReplayId = baseReplayId_ || "";
-  if (screenshottingOptions.enabled && baseReplayId) {
-    logger.info(`Diffing screenshots against replay ${baseReplayId}`);
-
-    await getOrFetchReplay(client, baseReplayId);
-    await getOrFetchReplayArchive(client, baseReplayId);
-
-    const baseReplayScreenshotsDir = getScreenshotsDir(
-      getReplayDir(baseReplayId)
     );
-    const headReplayScreenshotsDir = getScreenshotsDir(tempDir);
+    logger.info("Simulation artifacts successfully sent to Meticulous");
+    logger.debug(updatedProjectBuild);
 
-    const screenshotDiffResults = await diffScreenshots({
-      client,
-      baseReplayId,
-      headReplayId: replay.id,
-      baseScreenshotsDir: baseReplayScreenshotsDir,
-      headScreenshotsDir: headReplayScreenshotsDir,
-      diffOptions: screenshottingOptions.diffOptions,
-    });
+    const replayUrl = getReplayUrl(replay);
+    logger.info("=======");
+    logger.info(`View simulation at: ${replayUrl}`);
+    logger.info("=======");
 
-    const replayDiff = await createReplayDiff({
-      client,
-      headReplayId: replay.id,
-      baseReplayId,
-      testRunId,
-      data: {
-        screenshotAssertionsOptions: screenshottingOptions,
-        screenshotDiffResults,
-      },
-    });
+    // 12. Diff against base replay screenshot if one is provided
+    const { screenshotDiffResults, screenshotDiffError } =
+      screenshottingOptions.enabled && baseReplayId_
+        ? await computeAndSafeDiff({
+            client,
+            baseReplayId: baseReplayId_ ?? "",
+            headReplayId: replay.id,
+            tempDir,
+            screenshottingOptions,
+            testRunId,
+          })
+        : { screenshotDiffResults: null, screenshotDiffError: null };
 
-    logger.debug(replayDiff);
-
-    try {
-      checkScreenshotDiffResult({
-        baseReplayId,
-        headReplayId: replay.id,
-        results: screenshotDiffResults,
-        diffOptions: screenshottingOptions.diffOptions,
-      });
-    } catch (error) {
-      if (exitOnMismatch) {
-        process.exit(1);
+    // 13. Add test case to meticulous.json if --save option is passed
+    if (save) {
+      if (!screenshottingOptions.enabled) {
+        logger.error(
+          "Warning: saving a new test case without screenshot enabled."
+        );
       }
-      throw error;
-    }
-  }
 
-  // 13. Add test case to meticulous.json if --save option is passed
-  if (save) {
-    if (!screenshottingOptions.enabled) {
-      logger.error(
-        "Warning: saving a new test case without screenshot enabled."
-      );
+      await addTestCase({
+        title: `${sessionId} | ${replay.id}`,
+        sessionId,
+        baseReplayId: replay.id,
+      });
     }
 
-    await addTestCase({
-      title: `${sessionId} | ${replay.id}`,
-      sessionId,
-      baseReplayId: replay.id,
-    });
+    return { replay, screenshotDiffResults, screenshotDiffError };
+  } finally {
+    await deleteArchive(archivePath);
   }
+};
 
-  await deleteArchive(archivePath);
+interface ComputeAndSaveDiffOptions {
+  client: AxiosInstance;
+  testRunId: string | null;
+  baseReplayId: string;
+  headReplayId: string;
+  tempDir: string;
+  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
+}
 
-  return replay;
+const computeAndSafeDiff = async ({
+  client,
+  baseReplayId,
+  tempDir,
+  headReplayId,
+  screenshottingOptions,
+  testRunId,
+}: ComputeAndSaveDiffOptions): Promise<{
+  screenshotDiffResults: ScreenshotDiffResult[];
+  screenshotDiffError: ScreenshotDiffError | null;
+}> => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
+  logger.info(`Diffing screenshots against replay ${baseReplayId}`);
+
+  await getOrFetchReplay(client, baseReplayId);
+  await getOrFetchReplayArchive(client, baseReplayId);
+
+  const baseReplayScreenshotsDir = getScreenshotsDir(
+    getReplayDir(baseReplayId)
+  );
+  const headReplayScreenshotsDir = getScreenshotsDir(tempDir);
+
+  const screenshotDiffResults = await diffScreenshots({
+    client,
+    baseReplayId,
+    headReplayId,
+    baseScreenshotsDir: baseReplayScreenshotsDir,
+    headScreenshotsDir: headReplayScreenshotsDir,
+    diffOptions: screenshottingOptions.diffOptions,
+  });
+
+  const replayDiff = await createReplayDiff({
+    client,
+    headReplayId,
+    baseReplayId,
+    testRunId,
+    data: {
+      screenshotAssertionsOptions: screenshottingOptions,
+      screenshotDiffResults,
+    },
+  });
+
+  logger.debug(replayDiff);
+
+  const screenshotDiffError = checkScreenshotDiffResult({
+    baseReplayId,
+    headReplayId,
+    results: screenshotDiffResults,
+    diffOptions: screenshottingOptions.diffOptions,
+  });
+
+  return { screenshotDiffResults, screenshotDiffError };
 };
 
 const serveOrGetAppUrl = async (
@@ -383,7 +421,7 @@ export const rawReplayCommandHandler = async ({
       }
     : { enabled: false };
   const replayEventsDependencies = await loadReplayEventsDependencies();
-  return replayCommandHandler({
+  const { replay, screenshotDiffError } = await replayCommandHandler({
     replayTarget: getReplayTarget({
       appUrl: appUrl ?? null,
       simulationIdForAssets: simulationIdForAssets ?? null,
@@ -396,11 +434,16 @@ export const rawReplayCommandHandler = async ({
     sessionId,
     baseSimulationId,
     save,
-    exitOnMismatch: true,
     generatedBy: generatedByOption,
     testRunId: null,
     replayEventsDependencies,
   });
+
+  if (screenshotDiffError != null) {
+    process.exit(1);
+  }
+
+  return replay;
 };
 
 export const getReplayTarget = ({

@@ -1,7 +1,8 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import axios, { AxiosError, AxiosInstance } from "axios";
+import { restoreDefaultPrompts } from "inquirer";
 import log from "loglevel";
-import { TestCaseResult } from "../config/config.types";
+import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
 
 export type TestRunStatus = "Running" | "Success" | "Failure";
 
@@ -78,7 +79,7 @@ export interface GetLatestTestRunResultsOptions {
 export const getCachedTestRunResults = async ({
   client,
   commitSha,
-}: GetLatestTestRunResultsOptions): Promise<TestCaseResult[]> => {
+}: GetLatestTestRunResultsOptions): Promise<DetailedTestCaseResult[]> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   if (!commitSha || commitSha === "unknown") {
@@ -91,7 +92,12 @@ export const getCachedTestRunResults = async ({
       ?.results ?? [];
 
   // Only return passing tests
-  return results.filter(({ result }) => result === "pass");
+  return (
+    results
+      .filter(({ result }) => result === "pass")
+      // If it passed it can't have any screenshot diffs:
+      .map((result) => ({ ...result, screenshotDiffResults: [] }))
+  );
 };
 
 export const getLatestTestRunResults = async ({
