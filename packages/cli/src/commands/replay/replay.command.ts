@@ -221,7 +221,7 @@ export const replayCommandHandler = async ({
     // 12. Diff against base replay screenshot if one is provided
     const { screenshotDiffResults, screenshotDiffError } =
       screenshottingOptions.enabled && baseReplayId_
-        ? await computeAndSafeDiff({
+        ? await computeAndSaveDiff({
             client,
             baseReplayId: baseReplayId_ ?? "",
             headReplayId: replay.id,
@@ -261,7 +261,7 @@ interface ComputeAndSaveDiffOptions {
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
 }
 
-const computeAndSafeDiff = async ({
+const computeAndSaveDiff = async ({
   client,
   baseReplayId,
   tempDir,

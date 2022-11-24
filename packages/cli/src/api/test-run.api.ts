@@ -1,6 +1,5 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import axios, { AxiosError, AxiosInstance } from "axios";
-import { restoreDefaultPrompts } from "inquirer";
 import log from "loglevel";
 import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
 
