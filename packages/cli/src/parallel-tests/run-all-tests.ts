@@ -212,7 +212,7 @@ export const runAllTests = async ({
 
     const results: DetailedTestCaseResult[] = [];
     const progress: TestRunProgress = {
-      runningTestCases: testRun.length,
+      runningTestCases: testsToRun.length,
       failedTestCases: 0,
       passedTestCases: 0,
     };
