@@ -13,6 +13,7 @@ import {
   ReplayTarget,
   StoryboardOptions,
 } from "@alwaysmeticulous/common";
+import * as Sentry from "@sentry/node";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { DateTime } from "luxon";
@@ -48,7 +49,6 @@ import { addTestCase } from "../../utils/config.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { ScreenshotDiffsSummary } from "../screenshot-diff/screenshot-diff.command";
 import { computeAndSaveDiff } from "./utils/compute-and-save-diff";
-import { spans } from "./timing";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
@@ -79,14 +79,16 @@ export const replayCommandHandler = async ({
   testRunId,
   replayEventsDependencies,
 }: ReplayOptions): Promise<ReplayResult> => {
-  const timing = spans("replay.command");
-  const overallSpan = timing.start("overall");
+  const transaction = Sentry.startTransaction({
+    name: "replay.command_handler",
+  });
+  Sentry.getCurrentHub().configureScope((scope) => scope.setSpan(transaction));
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
 
   // 1. Check session files
-  const fetchSessions = timing.start("fetching sessions");
+  const fetchSessions = transaction.startChild({ op: "fetchingSessions" });
   const session = await getOrFetchRecordedSession(client, sessionId);
   const sessionData = await getOrFetchRecordedSessionData(client, sessionId);
   fetchSessions.finish();
@@ -98,7 +100,9 @@ export const replayCommandHandler = async ({
   const meticulousSha = await getMeticulousVersion();
 
   // 3. If simulationIdForAssets specified then download assets & spin up local server
-  const serveOrGetAppUrlSpan = timing.start("serveOrGetAppUrl");
+  const serveOrGetAppUrlSpan = transaction.startChild({
+    op: "serveOrGetAppUrl",
+  });
   const { appUrl, closeServer } = await serveOrGetAppUrl(client, replayTarget);
   serveOrGetAppUrlSpan.finish();
 
@@ -152,9 +156,10 @@ export const replayCommandHandler = async ({
   // 7. Perform replay
   const startTime = DateTime.utc();
 
-  const replayEventsSpan = timing.start("replayEventsSpan");
-  await replayEvents(replayEventsParams);
-  replayEventsSpan.finish();
+  await replayEvents({
+    ...replayEventsParams,
+    parentPerformanceSpan: transaction.startChild({ op: "replayEvents" }),
+  });
 
   closeServer?.();
 
@@ -166,13 +171,17 @@ export const replayCommandHandler = async ({
   logger.info("Sending simulation results to Meticulous");
 
   // 8. Create a Zip archive containing the replay files
-  const createReplayArchiveSpan = timing.start("createAchriveAndUpload");
+  const createReplayArchiveSpan = transaction.startChild({
+    op: "createArchiveAndUpload",
+  });
   const archivePath = await createReplayArchive(tempDir);
   createReplayArchiveSpan.finish();
 
   try {
     // 9. Get upload URL
-     const getReplayPushUrlSpan = timing.start("getReplayPushUrl");
+    const getReplayPushUrlSpan = transaction.startChild({
+      op: "getReplayPushUrl",
+    });
     const replay = await createReplay({
       client,
       commitSha,
@@ -190,7 +199,7 @@ export const replayCommandHandler = async ({
     getReplayPushUrlSpan.finish();
 
     // 10. Send archive to S3
-    const uploadArchiveSpan = timing.start("uploadArchive");
+    const uploadArchiveSpan = transaction.startChild({ op: "uploadArchive" });
     try {
       await uploadArchive(uploadUrl, archivePath);
     } catch (error) {
@@ -221,7 +230,7 @@ export const replayCommandHandler = async ({
     logger.info("=======");
 
     // 12. Diff against base replay screenshot if one is provided
-    const computeAndSaveDiffSpan = timing.start("computeAndSaveDiff");
+    const computeAndSaveDiffSpan = transaction.startChild({ op: "computeAndSaveDiff" });
     const { screenshotDiffResults, screenshotDiffsSummary } =
       screenshottingOptions.enabled && baseReplayId_
         ? await computeAndSaveDiff({
@@ -256,9 +265,7 @@ export const replayCommandHandler = async ({
     return { replay, screenshotDiffResults, screenshotDiffsSummary };
   } finally {
     await deleteArchive(archivePath);
-    timing.logAll();
-    overallSpan.finish();
-    timing.logAll();
+    transaction.finish();
   }
 };
 

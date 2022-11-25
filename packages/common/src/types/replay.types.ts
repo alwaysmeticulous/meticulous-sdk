@@ -1,4 +1,5 @@
 import { SessionData } from "@alwaysmeticulous/api";
+import { Span } from "@sentry/types";
 import { StringId } from "./ids.types";
 import { RecordedSession } from "./session.types";
 
@@ -101,6 +102,8 @@ export interface ReplayEventsOptions {
   cookiesFile: string | null;
   generatedBy: GeneratedBy;
   testRunId: string | null;
+
+  parentPerformanceSpan?: Span;
 }
 
 export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;
