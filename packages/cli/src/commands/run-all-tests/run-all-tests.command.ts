@@ -99,7 +99,7 @@ const handler: (options: Options) => Promise<void> = async ({
     executionOptions,
     screenshottingOptions,
     apiToken: apiToken ?? null,
-    commitSha: commitSha ?? null,
+    commitSha,
     baseCommitSha: baseCommitSha ?? null,
     appUrl: appUrl ?? null,
     useAssetsSnapshottedInBaseSimulation,
