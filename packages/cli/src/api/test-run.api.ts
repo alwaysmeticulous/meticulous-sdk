@@ -1,7 +1,7 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import axios, { AxiosError, AxiosInstance } from "axios";
 import log from "loglevel";
-import { TestCaseResult } from "../config/config.types";
+import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
 
 export type TestRunStatus = "Running" | "Success" | "Failure";
 

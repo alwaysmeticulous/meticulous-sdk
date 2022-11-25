@@ -1,3 +1,4 @@
+import { ScreenshotDiffResult } from "@alwaysmeticulous/api";
 import { ScreenshotDiffOptions } from "../command-utils/common-types";
 
 export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
@@ -27,4 +28,8 @@ export interface MeticulousCliConfig {
 export interface TestCaseResult extends TestCase {
   headReplayId: string;
   result: "pass" | "fail";
+}
+
+export interface DetailedTestCaseResult extends TestCaseResult {
+  screenshotDiffResults: ScreenshotDiffResult[];
 }

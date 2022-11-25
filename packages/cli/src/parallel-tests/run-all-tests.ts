@@ -6,18 +6,16 @@ import log from "loglevel";
 import { createClient } from "../api/client";
 import {
   createTestRun,
-  getCachedTestRunResults,
   getTestRunUrl,
   putTestRunResults,
   TestRunStatus,
 } from "../api/test-run.api";
 import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
 import { readConfig } from "../config/config";
-import { TestCaseResult } from "../config/config.types";
+import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
 import { deflakeReplayCommandHandler } from "../deflake-tests/deflake-tests.handler";
 import { loadReplayEventsDependencies } from "../local-data/replay-assets";
 import { runAllTestsInParallel } from "../parallel-tests/parallel-tests.handler";
-import { getCommitSha } from "../utils/commit-sha.utils";
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
 import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
@@ -29,7 +27,7 @@ export interface Options {
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
   apiToken: string | null;
-  commitSha: string | null;
+  commitSha: string;
 
   /**
    * The base commit to compare test results against for test cases that don't have a baseReplayId specified.
@@ -46,16 +44,21 @@ export interface Options {
    */
   parallelTasks: number | null;
   deflake: boolean;
-  useCache: boolean;
 
   githubSummary: boolean;
 
+  /**
+   * If provided it will incorportate the cachedTestRunResults in any calls to store
+   * test run results in the BE, but won't include the cachedTestRunResults in the returned
+   * RunAllTestsResult.
+   */
+  cachedTestRunResults?: TestCaseResult[];
   onTestRunCreated?: (testRun: TestRun & { status: "Running" }) => void;
   onTestFinished?: (testRun: TestRun & { status: "Running" }) => void;
 }
 export interface RunAllTestsResult {
   testRun: TestRun & { status: "Success" | "Failure" };
-  testCaseResults: TestCaseResult[];
+  testCaseResults: DetailedTestCaseResult[];
 }
 
 export interface TestRun {
@@ -65,10 +68,14 @@ export interface TestRun {
   progress: TestRunProgress;
 }
 
+/**
+ * Runs all the test cases in the provided file.
+ * @returns The results of the tests that were executed (note that this does not include results from any cachedTestRunResults passed in)
+ */
 export const runAllTests = async ({
   testsFile,
   apiToken,
-  commitSha: commitSha_,
+  commitSha,
   baseCommitSha,
   appUrl,
   useAssetsSnapshottedInBaseSimulation,
@@ -76,10 +83,10 @@ export const runAllTests = async ({
   screenshottingOptions,
   parallelTasks,
   deflake,
-  useCache,
+  cachedTestRunResults: cachedTestRunResults_,
   githubSummary,
   onTestRunCreated,
-  onTestFinished,
+  onTestFinished: onTestFinished_,
 }: Options): Promise<RunAllTestsResult> => {
   if (appUrl != null && useAssetsSnapshottedInBaseSimulation) {
     throw new Error(
@@ -90,20 +97,27 @@ export const runAllTests = async ({
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
+  const cachedTestRunResults = cachedTestRunResults_ ?? [];
 
   const config = await readConfig(testsFile || undefined);
-  const testCases = config.testCases || [];
+  const allTestCases = config.testCases || [];
 
-  if (!testCases.length) {
+  if (!allTestCases.length) {
     throw new Error("Error! No test case defined");
   }
 
-  const commitSha = (await getCommitSha(commitSha_)) || "unknown";
-  const meticulousSha = await getMeticulousVersion();
+  // Only run the uncached test cases
+  const testCases = allTestCases.filter(
+    ({ sessionId, baseReplayId, title }) =>
+      !cachedTestRunResults.find(
+        (cached) =>
+          cached.sessionId === sessionId &&
+          cached.baseReplayId === baseReplayId &&
+          cached.title === title
+      )
+  );
 
-  const cachedTestRunResults = useCache
-    ? await getCachedTestRunResults({ client, commitSha })
-    : [];
+  const meticulousSha = await getMeticulousVersion();
 
   const replayEventsDependencies = await loadReplayEventsDependencies();
 
@@ -121,7 +135,7 @@ export const runAllTests = async ({
     status: "Running",
     progress: {
       failedTestCases: 0,
-      passedTestCases: 0,
+      passedTestCases: cachedTestRunResults.length,
       runningTestCases: testCases.length,
     },
   });
@@ -129,12 +143,59 @@ export const runAllTests = async ({
   logger.info(`Test run URL: ${testRunUrl}`);
   logger.info("");
 
+  const testsToRun = await getTestsToRun({
+    testCases,
+    client,
+    baseCommitSha: baseCommitSha ?? null,
+  });
+
+  const storeTestRunResults = async (
+    status: TestRunStatus,
+    resultsSoFar: DetailedTestCaseResult[]
+  ) => {
+    const resultsToSendToBE = [
+      ...cachedTestRunResults,
+      ...resultsSoFar.map(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        ({ screenshotDiffResults, ...result }) => result
+      ),
+    ];
+    try {
+      await putTestRunResults({
+        client,
+        testRunId: testRun.id,
+        status,
+        resultData: {
+          results: resultsToSendToBE,
+        },
+      });
+    } catch (error) {
+      logger.error(`Error while pushing partial results: ${error}`);
+    }
+  };
+
+  const onTestFinished = async (
+    progress: TestRunProgress,
+    resultsSoFar: DetailedTestCaseResult[]
+  ) => {
+    onTestFinished_?.({
+      id: testRun.id,
+      url: testRunUrl,
+      status: "Running",
+      progress: {
+        ...progress,
+        passedTestCases: progress.passedTestCases + cachedTestRunResults.length,
+      },
+    });
+    await storeTestRunResults("Running", resultsSoFar);
+  };
+
   const getResults = async () => {
     if (parallelTasks == null || parallelTasks > 1) {
       const results = await runAllTestsInParallel({
         config,
-        client,
         testRun,
+        testsToRun,
         executionOptions,
         screenshottingOptions,
         apiToken,
@@ -143,30 +204,15 @@ export const runAllTests = async ({
         useAssetsSnapshottedInBaseSimulation,
         parallelTasks,
         deflake,
-        cachedTestRunResults,
         replayEventsDependencies,
-        baseCommitSha,
-        onTestFinished: (progress) => {
-          onTestFinished?.({
-            id: testRun.id,
-            url: testRunUrl,
-            status: "Running",
-            progress,
-          });
-        },
+        onTestFinished,
       });
       return results;
     }
 
-    const results: TestCaseResult[] = [...cachedTestRunResults];
-    const testsToRun = await getTestsToRun({
-      testCases,
-      cachedTestRunResults,
-      client,
-      baseCommitSha: baseCommitSha ?? null,
-    });
+    const results: DetailedTestCaseResult[] = [];
     const progress: TestRunProgress = {
-      runningTestCases: testRun.length,
+      runningTestCases: testsToRun.length,
       failedTestCases: 0,
       passedTestCases: 0,
     };
@@ -191,18 +237,7 @@ export const runAllTests = async ({
       progress.failedTestCases += result.result === "fail" ? 1 : 0;
       progress.passedTestCases += result.result === "pass" ? 1 : 0;
       --progress.runningTestCases;
-      onTestFinished?.({
-        id: testRun.id,
-        url: testRunUrl,
-        status: "Running",
-        progress,
-      });
-      await putTestRunResults({
-        client,
-        testRunId: testRun.id,
-        status: "Running",
-        resultData: { results },
-      });
+      await onTestFinished(progress, results);
     }
     return sortResults({ results, testCases });
   };
@@ -211,12 +246,7 @@ export const runAllTests = async ({
 
   const runAllFailure = results.find(({ result }) => result === "fail");
   const overallStatus = runAllFailure ? "Failure" : "Success";
-  await putTestRunResults({
-    client,
-    testRunId: testRun.id,
-    status: overallStatus,
-    resultData: { results },
-  });
+  await storeTestRunResults(overallStatus, results);
 
   logger.info("");
   logger.info("Results");

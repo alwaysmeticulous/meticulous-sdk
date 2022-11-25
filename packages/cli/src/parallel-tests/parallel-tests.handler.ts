@@ -8,72 +8,60 @@ import {
   ReplayEventsDependencies,
   ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
-import { AxiosInstance } from "axios";
 import log from "loglevel";
-import { putTestRunResults, TestRun } from "../api/test-run.api";
+import { TestRun } from "../api/test-run.api";
 import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
 import {
+  DetailedTestCaseResult,
   MeticulousCliConfig,
   TestCase,
-  TestCaseResult,
 } from "../config/config.types";
 import { getReplayTargetForTestCase } from "../utils/config.utils";
-import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
+import { sortResults } from "../utils/run-all-tests.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
 import { TestRunProgress } from "./run-all-tests.types";
 export interface RunAllTestsInParallelOptions {
   config: MeticulousCliConfig;
-  client: AxiosInstance;
   testRun: TestRun;
+  testsToRun: TestCase[];
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
   apiToken: string | null;
   commitSha: string;
 
-  /**
-   * The base commit to compare test results against for test cases that don't have a baseReplayId specified.
-   */
-  baseCommitSha: string | null;
-
   appUrl: string | null;
   useAssetsSnapshottedInBaseSimulation: boolean;
   parallelTasks: number | null;
   deflake: boolean;
-  cachedTestRunResults: TestCaseResult[];
   replayEventsDependencies: ReplayEventsDependencies;
 
-  onTestFinished?: (progress: TestRunProgress) => void;
+  onTestFinished?: (
+    progress: TestRunProgress,
+    resultsSoFar: DetailedTestCaseResult[]
+  ) => Promise<void>;
 }
 
 /** Handler for running Meticulous tests in parallel using child processes */
 export const runAllTestsInParallel: (
   options: RunAllTestsInParallelOptions
-) => Promise<TestCaseResult[]> = async ({
+) => Promise<DetailedTestCaseResult[]> = async ({
   config,
-  client,
   testRun,
+  testsToRun: queue,
   apiToken,
   commitSha,
-  baseCommitSha,
   appUrl,
   useAssetsSnapshottedInBaseSimulation,
   executionOptions,
   screenshottingOptions,
   parallelTasks,
   deflake,
-  cachedTestRunResults,
   replayEventsDependencies,
   onTestFinished,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const results: TestCaseResult[] = [...cachedTestRunResults];
-  const queue = await getTestsToRun({
-    client,
-    testCases: config.testCases || [],
-    cachedTestRunResults,
-    baseCommitSha,
-  });
+  const results: DetailedTestCaseResult[] = [];
   const progress: TestRunProgress = {
     runningTestCases: queue.length,
     failedTestCases: 0,
@@ -90,7 +78,7 @@ export const runAllTestsInParallel: (
 
   // Starts running a test case in a child process
   const startTask = (testCase: TestCase) => {
-    const deferredResult = defer<TestCaseResult>();
+    const deferredResult = defer<DetailedTestCaseResult>();
     const child = fork(taskHandler, [], { stdio: "inherit" });
 
     const messageHandler = (message: unknown) => {
@@ -149,10 +137,13 @@ export const runAllTestsInParallel: (
     // Handle task completion
     deferredResult.promise
       .catch(() => {
-        const result: TestCaseResult = {
+        // If it threw an error then it's something fatal, rather than just a failed diff
+        // (it resolves successfully on a failed diff)
+        const result: DetailedTestCaseResult = {
           ...testCase,
           headReplayId: "",
           result: "fail",
+          screenshotDiffResults: [],
         };
         return result;
       })
@@ -163,21 +154,11 @@ export const runAllTestsInParallel: (
         progress.failedTestCases += result.result === "fail" ? 1 : 0;
         progress.passedTestCases += result.result === "pass" ? 1 : 0;
         --progress.runningTestCases;
-        onTestFinished?.(progress);
-        putTestRunResults({
-          client,
-          testRunId: testRun.id,
-          status: "Running",
-          resultData: { results },
-        })
-          .catch((error) => {
-            logger.error(`Error while pushing partial results: ${error}`);
-          })
-          .then(() => {
-            if (results.length === (config.testCases?.length || 0)) {
-              allTasksDone.resolve();
-            }
-          });
+        onTestFinished?.(progress, results).then(() => {
+          if (results.length === (config.testCases?.length || 0)) {
+            allTasksDone.resolve();
+          }
+        });
 
         process.nextTick(checkNextTask);
       });

@@ -148,7 +148,7 @@ export const diffScreenshots = async ({
   return [...missingHeadImagesResults, ...headDiffResults];
 };
 
-export const checkScreenshotDiffResult = ({
+export const summarizeDifferences = ({
   baseReplayId,
   headReplayId,
   results,
@@ -158,7 +158,7 @@ export const checkScreenshotDiffResult = ({
   headReplayId: string;
   results: ScreenshotDiffResult[];
   diffOptions: ScreenshotDiffOptions;
-}): void => {
+}): ScreenshotDiffsSummary => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const missingHeadImagesResults = results.flatMap((result) =>
@@ -169,10 +169,12 @@ export const checkScreenshotDiffResult = ({
       .map(({ baseScreenshotFile }) => basename(baseScreenshotFile))
       .sort()} => FAIL!`;
     logger.info(message);
-    throw new ScreenshotDiffError(message, {
+    return {
+      hasDiffs: true,
+      summaryMessage: message,
       baseReplayId,
       headReplayId,
-    });
+    };
   }
 
   const missingBaseImagesResults = results.flatMap((result) =>
@@ -193,10 +195,12 @@ export const checkScreenshotDiffResult = ({
         result.headScreenshotFile
       )} have different sizes => FAIL!`;
       logger.info(message);
-      throw new ScreenshotDiffError(message, {
+      return {
+        hasDiffs: true,
+        summaryMessage: message,
         baseReplayId,
         headReplayId,
-      });
+      };
     }
 
     if (outcome === "diff" || outcome === "no-diff") {
@@ -209,25 +213,32 @@ export const checkScreenshotDiffResult = ({
       }`;
       logger.info(message);
       if (outcome === "diff") {
-        throw new ScreenshotDiffError(message, {
+        return {
+          hasDiffs: true,
+          summaryMessage: message,
           baseReplayId,
           headReplayId,
-        });
+        };
       }
     }
   });
+
+  return { hasDiffs: false };
 };
 
-export class ScreenshotDiffError extends Error {
-  constructor(
-    message: string,
-    readonly extras?: {
-      baseReplayId: string;
-      headReplayId: string;
-    }
-  ) {
-    super(message);
-  }
+export type ScreenshotDiffsSummary =
+  | HasDiffsScreenshotDiffsResult
+  | NoDiffsScreenshotDiffsResult;
+
+export interface HasDiffsScreenshotDiffsResult {
+  hasDiffs: true;
+  summaryMessage: string;
+  baseReplayId: string;
+  headReplayId: string;
+}
+
+export interface NoDiffsScreenshotDiffsResult {
+  hasDiffs: false;
 }
 
 const getScreenshotIdentifier = (
@@ -299,12 +310,16 @@ const handler: (options: Options) => Promise<void> = async ({
 
   logger.debug(results);
 
-  checkScreenshotDiffResult({
+  const diffSummary = summarizeDifferences({
     baseReplayId,
     headReplayId,
     results,
     diffOptions,
   });
+
+  if (diffSummary.hasDiffs) {
+    process.exit(1);
+  }
 };
 
 export const screenshotDiffCommand = buildCommand("screenshot-diff")

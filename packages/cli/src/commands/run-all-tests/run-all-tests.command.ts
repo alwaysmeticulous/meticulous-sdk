@@ -2,6 +2,8 @@ import {
   ReplayExecutionOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/common";
+import { createClient } from "../../api/client";
+import { getCachedTestRunResults } from "../../api/test-run.api";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
@@ -13,6 +15,7 @@ import {
   ScreenshotDiffOptions,
 } from "../../command-utils/common-types";
 import { runAllTests } from "../../parallel-tests/run-all-tests";
+import { getCommitSha } from "../../utils/commit-sha.utils";
 
 interface Options
   extends ScreenshotDiffOptions,
@@ -35,7 +38,7 @@ interface Options
 
 const handler: (options: Options) => Promise<void> = async ({
   apiToken,
-  commitSha,
+  commitSha: commitSha_,
   baseCommitSha,
   appUrl,
   useAssetsSnapshottedInBaseSimulation,
@@ -86,22 +89,27 @@ const handler: (options: Options) => Promise<void> = async ({
   };
 
   const parrelelTasks = parallelize ? parrelelTasks_ : 1;
-  const result = await runAllTests({
+  const commitSha = (await getCommitSha(commitSha_)) || "unknown";
+  const client = createClient({ apiToken });
+  const cachedTestRunResults = useCache
+    ? await getCachedTestRunResults({ client, commitSha })
+    : [];
+  const { testRun } = await runAllTests({
     testsFile: testsFile ?? null,
     executionOptions,
     screenshottingOptions,
     apiToken: apiToken ?? null,
-    commitSha: commitSha ?? null,
+    commitSha,
     baseCommitSha: baseCommitSha ?? null,
     appUrl: appUrl ?? null,
     useAssetsSnapshottedInBaseSimulation,
     parallelTasks: parrelelTasks ?? null,
     deflake,
-    useCache,
+    cachedTestRunResults,
     githubSummary,
   });
 
-  if (result.testRun.status === "Failure") {
+  if (testRun.status === "Failure") {
     process.exit(1);
   }
 };
