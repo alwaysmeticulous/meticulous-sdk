@@ -78,7 +78,7 @@ export interface GetLatestTestRunResultsOptions {
 export const getCachedTestRunResults = async ({
   client,
   commitSha,
-}: GetLatestTestRunResultsOptions): Promise<DetailedTestCaseResult[]> => {
+}: GetLatestTestRunResultsOptions): Promise<TestCaseResult[]> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   if (!commitSha || commitSha === "unknown") {
@@ -91,12 +91,7 @@ export const getCachedTestRunResults = async ({
       ?.results ?? [];
 
   // Only return passing tests
-  return (
-    results
-      .filter(({ result }) => result === "pass")
-      // If it passed it can't have any screenshot diffs:
-      .map((result) => ({ ...result, screenshotDiffResults: [] }))
-  );
+  return results.filter(({ result }) => result === "pass");
 };
 
 export const getLatestTestRunResults = async ({

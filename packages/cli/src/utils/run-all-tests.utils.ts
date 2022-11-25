@@ -2,11 +2,7 @@ import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { getLatestTestRunResults } from "../api/test-run.api";
-import {
-  DetailedTestCaseResult,
-  TestCase,
-  TestCaseResult,
-} from "../config/config.types";
+import { DetailedTestCaseResult, TestCase } from "../config/config.types";
 
 export const sortResults: (options: {
   results: DetailedTestCaseResult[];
@@ -37,7 +33,6 @@ export const sortResults: (options: {
 export interface GetTestsToRunOptions {
   client: AxiosInstance;
   testCases: TestCase[];
-  cachedTestRunResults: TestCaseResult[];
 
   /**
    * The base commit to compare test results against for test cases that don't have a baseReplayId specified.
@@ -47,25 +42,14 @@ export interface GetTestsToRunOptions {
 
 export const getTestsToRun = async ({
   testCases,
-  cachedTestRunResults,
   client,
   baseCommitSha,
 }: GetTestsToRunOptions): Promise<TestCase[]> => {
-  const uncachedTestCases = testCases.filter(
-    ({ sessionId, baseReplayId, title }) =>
-      !cachedTestRunResults.find(
-        (cached) =>
-          cached.sessionId === sessionId &&
-          cached.baseReplayId === baseReplayId &&
-          cached.title === title
-      )
-  );
-
-  const testCasesMissingBaseReplayId = uncachedTestCases.filter(
+  const testCasesMissingBaseReplayId = testCases.filter(
     (testCase) => testCase.baseReplayId == null
   );
-  const testCasesWithBaseReplayId = uncachedTestCases.flatMap(
-    (testCase): TestCase[] => (testCase.baseReplayId == null ? [] : [testCase])
+  const testCasesWithBaseReplayId = testCases.flatMap((testCase): TestCase[] =>
+    testCase.baseReplayId == null ? [] : [testCase]
   );
 
   if (testCasesMissingBaseReplayId.length === 0) {
@@ -87,7 +71,7 @@ export const getTestsToRun = async ({
     baseCommitSha,
   });
 
-  return uncachedTestCases.flatMap((test) => {
+  return testCases.flatMap((test) => {
     if (test.baseReplayId != null) {
       return [test];
     }
