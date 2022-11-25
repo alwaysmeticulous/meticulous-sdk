@@ -28,7 +28,7 @@ const handleReplay = async ({
   testRunId,
   replayEventsDependencies,
 }: HandleReplayOptions): Promise<DetailedTestCaseResult> => {
-  const { replay, screenshotDiffResults, screenshotDiffError } =
+  const { replay, screenshotDiffResults, screenshotDiffsSummary } =
     await replayCommandHandler({
       replayTarget,
       executionOptions: applyTestCaseExecutionOptionOverrides(
@@ -59,7 +59,7 @@ const handleReplay = async ({
   return {
     ...testCase,
     headReplayId: replay.id,
-    result: screenshotDiffError == null ? "pass" : "fail",
+    result: screenshotDiffsSummary.hasDiffs ? "pass" : "fail",
     screenshotDiffResults,
   };
 };

@@ -13,9 +13,9 @@ import {
   getScreenshotsDir,
 } from "../../../local-data/replays";
 import {
-  checkScreenshotDiffResult,
+  summarizeDifferences,
   diffScreenshots,
-  ScreenshotDiffError,
+  ScreenshotDiffsSummary,
 } from "../../screenshot-diff/screenshot-diff.command";
 
 export interface ComputeAndSaveDiffOptions {
@@ -36,7 +36,7 @@ export const computeAndSaveDiff = async ({
   testRunId,
 }: ComputeAndSaveDiffOptions): Promise<{
   screenshotDiffResults: ScreenshotDiffResult[];
-  screenshotDiffError: ScreenshotDiffError | null;
+  screenshotDiffsSummary: ScreenshotDiffsSummary;
 }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -72,12 +72,12 @@ export const computeAndSaveDiff = async ({
 
   logger.debug(replayDiff);
 
-  const screenshotDiffError = checkScreenshotDiffResult({
+  const screenshotDiffsSummary = summarizeDifferences({
     baseReplayId,
     headReplayId,
     results: screenshotDiffResults,
     diffOptions: screenshottingOptions.diffOptions,
   });
 
-  return { screenshotDiffResults, screenshotDiffError };
+  return { screenshotDiffResults, screenshotDiffsSummary };
 };

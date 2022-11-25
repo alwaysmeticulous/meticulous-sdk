@@ -46,7 +46,7 @@ import {
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { addTestCase } from "../../utils/config.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
-import { ScreenshotDiffError } from "../screenshot-diff/screenshot-diff.command";
+import { ScreenshotDiffsSummary } from "../screenshot-diff/screenshot-diff.command";
 import { computeAndSaveDiff } from "./utils/compute-and-save-diff";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
@@ -61,7 +61,7 @@ export interface ReplayOptions extends AdditionalReplayOptions {
 export interface ReplayResult {
   replay: Replay;
   screenshotDiffResults: ScreenshotDiffResult[] | null;
-  screenshotDiffError: ScreenshotDiffError | null;
+  screenshotDiffsSummary: ScreenshotDiffsSummary;
 }
 
 export const replayCommandHandler = async ({
@@ -206,7 +206,7 @@ export const replayCommandHandler = async ({
     logger.info("=======");
 
     // 12. Diff against base replay screenshot if one is provided
-    const { screenshotDiffResults, screenshotDiffError } =
+    const { screenshotDiffResults, screenshotDiffsSummary } =
       screenshottingOptions.enabled && baseReplayId_
         ? await computeAndSaveDiff({
             client,
@@ -216,7 +216,10 @@ export const replayCommandHandler = async ({
             screenshottingOptions,
             testRunId,
           })
-        : { screenshotDiffResults: null, screenshotDiffError: null };
+        : {
+            screenshotDiffResults: null,
+            screenshotDiffsSummary: { hasDiffs: false as const },
+          };
 
     // 13. Add test case to meticulous.json if --save option is passed
     if (save) {
@@ -233,7 +236,7 @@ export const replayCommandHandler = async ({
       });
     }
 
-    return { replay, screenshotDiffResults, screenshotDiffError };
+    return { replay, screenshotDiffResults, screenshotDiffsSummary };
   } finally {
     await deleteArchive(archivePath);
   }
@@ -344,7 +347,7 @@ export const rawReplayCommandHandler = async ({
       }
     : { enabled: false };
   const replayEventsDependencies = await loadReplayEventsDependencies();
-  const { replay, screenshotDiffError } = await replayCommandHandler({
+  const { replay, screenshotDiffsSummary } = await replayCommandHandler({
     replayTarget: getReplayTarget({
       appUrl: appUrl ?? null,
       simulationIdForAssets: simulationIdForAssets ?? null,
@@ -362,7 +365,7 @@ export const rawReplayCommandHandler = async ({
     replayEventsDependencies,
   });
 
-  if (screenshotDiffError != null) {
+  if (screenshotDiffsSummary.hasDiffs) {
     process.exit(1);
   }
 
