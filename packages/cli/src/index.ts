@@ -11,6 +11,7 @@ export { showProjectCommand } from "./commands/show-project/show-project.command
 export { updateTestsCommand } from "./commands/update-tests/update-tests.command";
 export {
   runAllTests,
-  TestRun,
   RunAllTestsResult,
+  TestRun,
 } from "./parallel-tests/run-all-tests";
+export { initLogger, setLogLevel } from "./utils/logger.utils";
