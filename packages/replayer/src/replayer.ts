@@ -320,7 +320,6 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   await browser.close();
 
   parentPerformanceSpan?.finish();
-  logger.info("Updated");
 };
 
 const shouldHoldBrowserOpen = () => {
