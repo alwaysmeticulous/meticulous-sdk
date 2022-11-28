@@ -33,7 +33,6 @@ export interface TestRunArguments {
   executionOptions?: unknown;
   screenshottingOptions?: unknown;
 
-  apiToken?: string | null;
   commitSha?: string;
   baseCommitSha?: string | null;
   appUrl?: string | null;
@@ -62,7 +61,7 @@ export interface TestRunGitHubPullRequestContext {
   title: string;
 
   /** Pull request number */
-  number: string;
+  number: number;
 
   /** Pull request URL (web page) */
   htmlUrl: string;
