@@ -6,6 +6,16 @@ const SENTRY_DSN =
   "https://10c6a6c9f5434786b37fb81b01323798@o914390.ingest.sentry.io/6435232";
 const SENTRY_FLUSH_TIMEOUT = Duration.fromObject({ seconds: 1 });
 
+const getTracesSampleRate: () => number = () => {
+  if (
+    (process.env["METICULOUS_TELEMETRY_ENABLED"] ?? "true").toLowerCase() ==
+    "true"
+  ) {
+    return 1.0;
+  }
+  return 0.0;
+};
+
 export const initSentry: (meticulousVersion: string) => void = (
   meticulousVersion
 ) => {
@@ -13,7 +23,7 @@ export const initSentry: (meticulousVersion: string) => void = (
     dsn: SENTRY_DSN,
     release: meticulousVersion,
 
-    tracesSampleRate: 1.0,
+    tracesSampleRate: getTracesSampleRate(),
   });
 
   addExtensionMethods();
