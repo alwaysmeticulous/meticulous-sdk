@@ -81,6 +81,8 @@ export const replayCommandHandler = async ({
 }: ReplayOptions): Promise<ReplayResult> => {
   const transaction = Sentry.startTransaction({
     name: "replay.command_handler",
+    description: "Handle the replay command",
+    op: "replay.command_handler",
   });
   Sentry.getCurrentHub().configureScope((scope) => scope.setSpan(transaction));
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
