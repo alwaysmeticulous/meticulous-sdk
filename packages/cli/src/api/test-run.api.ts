@@ -1,7 +1,8 @@
+import { TestRunConfigData } from "@alwaysmeticulous/api";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import axios, { AxiosError, AxiosInstance } from "axios";
 import log from "loglevel";
-import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
+import { TestCaseResult } from "../config/config.types";
 
 export type TestRunStatus = "Running" | "Success" | "Failure";
 
@@ -34,7 +35,7 @@ export const createTestRun: (options: {
   client: AxiosInstance;
   commitSha: string;
   meticulousSha: string;
-  configData: { [key: string]: any };
+  configData: TestRunConfigData;
 }) => Promise<TestRun> = async ({
   client,
   commitSha,

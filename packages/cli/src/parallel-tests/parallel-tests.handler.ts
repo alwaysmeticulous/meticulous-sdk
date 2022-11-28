@@ -1,6 +1,7 @@
 import { fork } from "child_process";
 import { cpus } from "os";
 import { join } from "path";
+import { TestCase } from "@alwaysmeticulous/api";
 import {
   defer,
   getMeticulousLocalDataDir,
@@ -14,12 +15,12 @@ import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-type
 import {
   DetailedTestCaseResult,
   MeticulousCliConfig,
-  TestCase,
 } from "../config/config.types";
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { sortResults } from "../utils/run-all-tests.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
 import { TestRunProgress } from "./run-all-tests.types";
+
 export interface RunAllTestsInParallelOptions {
   config: MeticulousCliConfig;
   testRun: TestRun;

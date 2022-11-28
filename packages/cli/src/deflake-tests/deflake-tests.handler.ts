@@ -1,3 +1,5 @@
+import { TestCase } from "@alwaysmeticulous/api";
+import { TestCaseReplayOptions } from "@alwaysmeticulous/api/dist/replay/test-run.types";
 import {
   GeneratedBy,
   METICULOUS_LOGGER_NAME,
@@ -11,11 +13,7 @@ import {
   ScreenshotDiffOptions,
 } from "../command-utils/common-types";
 import { replayCommandHandler } from "../commands/replay/replay.command";
-import {
-  DetailedTestCaseResult,
-  TestCase,
-  TestCaseReplayOptions,
-} from "../config/config.types";
+import { DetailedTestCaseResult } from "../config/config.types";
 
 const handleReplay = async ({
   testCase,

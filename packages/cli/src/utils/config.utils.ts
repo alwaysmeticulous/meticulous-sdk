@@ -1,6 +1,7 @@
+import { TestCase } from "@alwaysmeticulous/api";
 import { ReplayTarget } from "@alwaysmeticulous/common/dist/types/replay.types";
 import { readConfig, saveConfig } from "../config/config";
-import { MeticulousCliConfig, TestCase } from "../config/config.types";
+import { MeticulousCliConfig } from "../config/config.types";
 
 export const addTestCase: (testCase: TestCase) => Promise<void> = async (
   testCase

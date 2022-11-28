@@ -1,8 +1,9 @@
+import { TestCase } from "@alwaysmeticulous/api";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { getLatestTestRunResults } from "../api/test-run.api";
-import { DetailedTestCaseResult, TestCase } from "../config/config.types";
+import { DetailedTestCaseResult } from "../config/config.types";
 
 export const sortResults: (options: {
   results: DetailedTestCaseResult[];

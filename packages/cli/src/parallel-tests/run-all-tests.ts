@@ -1,3 +1,4 @@
+import { TestRunEnvironment } from "@alwaysmeticulous/api";
 import {
   METICULOUS_LOGGER_NAME,
   ReplayExecutionOptions,
@@ -19,6 +20,7 @@ import { runAllTestsInParallel } from "../parallel-tests/parallel-tests.handler"
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
 import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
+import { getEnvironment } from "../utils/test-run-environment.utils";
 import { getMeticulousVersion } from "../utils/version.utils";
 import { TestRunProgress } from "./run-all-tests.types";
 
@@ -53,6 +55,12 @@ export interface Options {
    * RunAllTestsResult.
    */
   cachedTestRunResults?: TestCaseResult[];
+
+  /**
+   * Captured environment for this run
+   */
+  environment?: TestRunEnvironment;
+
   onTestRunCreated?: (testRun: TestRun & { status: "Running" }) => void;
   onTestFinished?: (testRun: TestRun & { status: "Running" }) => void;
 }
@@ -85,6 +93,7 @@ export const runAllTests = async ({
   deflake,
   cachedTestRunResults: cachedTestRunResults_,
   githubSummary,
+  environment,
   onTestRunCreated,
   onTestFinished: onTestFinished_,
 }: Options): Promise<RunAllTestsResult> => {
@@ -125,7 +134,22 @@ export const runAllTests = async ({
     client,
     commitSha,
     meticulousSha,
-    configData: config,
+    configData: {
+      ...config,
+      arguments: {
+        executionOptions,
+        screenshottingOptions,
+        apiToken,
+        commitSha,
+        baseCommitSha,
+        appUrl,
+        useAssetsSnapshottedInBaseSimulation,
+        parallelTasks,
+        deflake,
+        githubSummary,
+      },
+      environment: getEnvironment(environment),
+    },
   });
 
   const testRunUrl = getTestRunUrl(testRun);
