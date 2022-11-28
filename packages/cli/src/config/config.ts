@@ -1,8 +1,9 @@
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { cwd } from "process";
+import { TestCaseReplayOptions } from "@alwaysmeticulous/api";
 import { cosmiconfig } from "cosmiconfig";
-import { MeticulousCliConfig, TestCaseReplayOptions } from "./config.types";
+import { MeticulousCliConfig } from "./config.types";
 
 const METICULOUS_CONFIG_FILE = "meticulous.json";
 

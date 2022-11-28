@@ -16,27 +16,34 @@ export {
   StoryboardOptions,
 } from "./replay/replay-diff.types";
 export {
-  SessionData,
-  WindowData,
-  Cookie,
-  UrlHistoryEvent,
-} from "./sdk-bundle-api/sdk-to-bundle/session-data";
+  TestCase,
+  TestCaseReplayOptions,
+  TestRunArguments,
+  TestRunConfigData,
+  TestRunEnvironment,
+} from "./replay/test-run.types";
+export { ReplayableEvent } from "./sdk-bundle-api/bidirectional/replayable-event";
 export {
-  HarLog,
+  ErrorTimelineEntry,
+  FailedFindEntryFnEvent,
+  JsReplayReachedMaxDurationEvent,
+  JsReplaySimulateEvent,
+  JsReplayTimelineEntry,
+  PollyTimelineEntry,
+  ReplayTimelineData,
+  ReplayTimelineEntry,
+  SuccessfulFindEntryFnEvent,
+  UrlChangeTimelineEntry,
+} from "./sdk-bundle-api/bundle-to-sdk/timeline.types";
+export {
   HarEntry,
+  HarLog,
   HarRequest,
   HarResponse,
 } from "./sdk-bundle-api/sdk-to-bundle/har-log";
-export { ReplayableEvent } from "./sdk-bundle-api/bidirectional/replayable-event";
 export {
-  ReplayTimelineData,
-  ReplayTimelineEntry,
-  ErrorTimelineEntry,
-  UrlChangeTimelineEntry,
-  PollyTimelineEntry,
-  FailedFindEntryFnEvent,
-  SuccessfulFindEntryFnEvent,
-  JsReplayTimelineEntry,
-  JsReplayReachedMaxDurationEvent,
-  JsReplaySimulateEvent,
-} from "./sdk-bundle-api/bundle-to-sdk/timeline.types";
+  Cookie,
+  SessionData,
+  UrlHistoryEvent,
+  WindowData,
+} from "./sdk-bundle-api/sdk-to-bundle/session-data";
