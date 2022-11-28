@@ -57,7 +57,7 @@ const handleReplay = async ({
   return {
     ...testCase,
     headReplayId: replay.id,
-    result: screenshotDiffsSummary.hasDiffs ? "pass" : "fail",
+    result: screenshotDiffsSummary.hasDiffs ? "fail" : "pass",
     screenshotDiffResults,
   };
 };
