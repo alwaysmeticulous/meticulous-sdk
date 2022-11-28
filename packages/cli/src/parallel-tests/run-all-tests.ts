@@ -139,7 +139,6 @@ export const runAllTests = async ({
       arguments: {
         executionOptions,
         screenshottingOptions,
-        apiToken,
         commitSha,
         baseCommitSha,
         appUrl,
