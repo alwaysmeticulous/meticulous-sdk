@@ -13,6 +13,7 @@ import {
   ReplayTarget,
   StoryboardOptions,
 } from "@alwaysmeticulous/common";
+import * as Sentry from "@sentry/node";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { DateTime } from "luxon";
@@ -78,13 +79,21 @@ export const replayCommandHandler = async ({
   testRunId,
   replayEventsDependencies,
 }: ReplayOptions): Promise<ReplayResult> => {
+  const transaction = Sentry.startTransaction({
+    name: "replay.command_handler",
+    description: "Handle the replay command",
+    op: "replay.command_handler",
+  });
+  Sentry.getCurrentHub().configureScope((scope) => scope.setSpan(transaction));
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
 
   // 1. Check session files
+  const fetchSessions = transaction.startChild({ op: "fetchingSessions" });
   const session = await getOrFetchRecordedSession(client, sessionId);
   const sessionData = await getOrFetchRecordedSessionData(client, sessionId);
+  fetchSessions.finish();
 
   // 2. Guess commit SHA1
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
@@ -93,7 +102,11 @@ export const replayCommandHandler = async ({
   const meticulousSha = await getMeticulousVersion();
 
   // 3. If simulationIdForAssets specified then download assets & spin up local server
+  const serveOrGetAppUrlSpan = transaction.startChild({
+    op: "serveOrGetAppUrl",
+  });
   const { appUrl, closeServer } = await serveOrGetAppUrl(client, replayTarget);
+  serveOrGetAppUrlSpan.finish();
 
   // 4. Load replay package
   let replayEvents: ReplayEventsFn;
@@ -145,7 +158,10 @@ export const replayCommandHandler = async ({
   // 7. Perform replay
   const startTime = DateTime.utc();
 
-  await replayEvents(replayEventsParams);
+  await replayEvents({
+    ...replayEventsParams,
+    parentPerformanceSpan: transaction.startChild({ op: "replayEvents" }),
+  });
 
   closeServer?.();
 
@@ -157,10 +173,17 @@ export const replayCommandHandler = async ({
   logger.info("Sending simulation results to Meticulous");
 
   // 8. Create a Zip archive containing the replay files
+  const createReplayArchiveSpan = transaction.startChild({
+    op: "createArchiveAndUpload",
+  });
   const archivePath = await createReplayArchive(tempDir);
+  createReplayArchiveSpan.finish();
 
   try {
     // 9. Get upload URL
+    const getReplayPushUrlSpan = transaction.startChild({
+      op: "getReplayPushUrl",
+    });
     const replay = await createReplay({
       client,
       commitSha,
@@ -175,8 +198,10 @@ export const replayCommandHandler = async ({
       process.exit(1);
     }
     const uploadUrl = uploadUrlData.pushUrl;
+    getReplayPushUrlSpan.finish();
 
     // 10. Send archive to S3
+    const uploadArchiveSpan = transaction.startChild({ op: "uploadArchive" });
     try {
       await uploadArchive(uploadUrl, archivePath);
     } catch (error) {
@@ -189,6 +214,7 @@ export const replayCommandHandler = async ({
       logger.error(error);
       process.exit(1);
     }
+    uploadArchiveSpan.finish();
 
     // 11. Report successful upload to Meticulous
     const updatedProjectBuild = await putReplayPushedStatus(
@@ -206,6 +232,7 @@ export const replayCommandHandler = async ({
     logger.info("=======");
 
     // 12. Diff against base replay screenshot if one is provided
+    const computeAndSaveDiffSpan = transaction.startChild({ op: "computeAndSaveDiff" });
     const { screenshotDiffResults, screenshotDiffsSummary } =
       screenshottingOptions.enabled && baseReplayId_
         ? await computeAndSaveDiff({
@@ -220,6 +247,7 @@ export const replayCommandHandler = async ({
             screenshotDiffResults: null,
             screenshotDiffsSummary: { hasDiffs: false as const },
           };
+    computeAndSaveDiffSpan.finish();
 
     // 13. Add test case to meticulous.json if --save option is passed
     if (save) {
@@ -239,6 +267,7 @@ export const replayCommandHandler = async ({
     return { replay, screenshotDiffResults, screenshotDiffsSummary };
   } finally {
     await deleteArchive(archivePath);
+    transaction.finish();
   }
 };
 
