@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "2.18.1",
+  "version": "2.19.0",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
@@ -24,7 +24,7 @@
     "cli:dev": "ts-node src/main.ts"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.16.0",
+    "@alwaysmeticulous/common": "^2.19.0",
     "@sentry/node": "^7.21.1",
     "@sentry/tracing": "^7.21.1",
     "adm-zip": "^0.5.9",
@@ -41,7 +41,7 @@
     "yargs": "^17.5.1"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.14.0",
+    "@alwaysmeticulous/api": "^2.19.0",
     "@types/express": "^4.17.14"
   },
   "peerDependencies": {
