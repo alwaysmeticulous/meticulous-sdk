@@ -5,6 +5,7 @@ import {
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { createClient } from "../api/client";
+import { createReplayDiff } from "../api/replay-diff.api";
 import {
   createTestRun,
   getTestRunUrl,
@@ -217,6 +218,19 @@ export const runAllTests = async ({
         passedTestCases: progress.passedTestCases + cachedTestRunResults.length,
       },
     });
+    const newResult = resultsSoFar.at(-1);
+    if (newResult?.baseReplayId != null) {
+      await createReplayDiff({
+        client,
+        headReplayId: newResult.headReplayId,
+        baseReplayId: newResult.baseReplayId,
+        testRunId: null,
+        data: {
+          screenshotAssertionsOptions: screenshottingOptions,
+          screenshotDiffResults: newResult.screenshotDiffResults,
+        },
+      });
+    }
     await storeTestRunResults("Running", resultsSoFar);
   };
 

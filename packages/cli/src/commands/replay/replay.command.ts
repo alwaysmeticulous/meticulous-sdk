@@ -18,6 +18,7 @@ import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { DateTime } from "luxon";
 import { createClient } from "../../api/client";
+import { createReplayDiff } from "../../api/replay-diff.api";
 import {
   createReplay,
   getReplayCommandId,
@@ -48,7 +49,7 @@ import { getCommitSha } from "../../utils/commit-sha.utils";
 import { addTestCase } from "../../utils/config.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { ScreenshotDiffsSummary } from "../screenshot-diff/screenshot-diff.command";
-import { computeAndSaveDiff } from "./utils/compute-and-save-diff";
+import { computeDiff } from "./utils/compute-diff";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
@@ -80,7 +81,6 @@ export const replayCommandHandler = async ({
   apiToken,
   sessionId,
   commitSha: commitSha_,
-  save,
   baseSimulationId: baseReplayId_,
   cookiesFile,
   generatedBy,
@@ -240,39 +240,25 @@ export const replayCommandHandler = async ({
     logger.info("=======");
 
     // 12. Diff against base replay screenshot if one is provided
-    const computeAndSaveDiffSpan = transaction.startChild({
-      op: "computeAndSaveDiff",
+    const computeDiffSpan = transaction.startChild({
+      op: "computeDiff",
     });
     const { screenshotDiffResults, screenshotDiffsSummary } =
       screenshottingOptions.enabled && baseReplayId_
-        ? await computeAndSaveDiff({
+        ? await computeDiff({
             client,
             baseReplayId: baseReplayId_ ?? "",
             headReplayId: replay.id,
             tempDir,
             screenshottingOptions,
-            testRunId,
           })
         : {
             screenshotDiffResults: [],
             screenshotDiffsSummary: { hasDiffs: false as const },
           };
-    computeAndSaveDiffSpan.finish();
+    computeDiffSpan.finish();
 
     // 13. Add test case to meticulous.json if --save option is passed
-    if (save) {
-      if (!screenshottingOptions.enabled) {
-        logger.error(
-          "Warning: saving a new test case without screenshot enabled."
-        );
-      }
-
-      await addTestCase({
-        title: `${sessionId} | ${replay.id}`,
-        sessionId,
-        baseReplayId: replay.id,
-      });
-    }
 
     return { replay, screenshotDiffResults, screenshotDiffsSummary };
   } finally {
@@ -321,13 +307,13 @@ export interface RawReplayCommandHandlerOptions
   maxDurationMs: number | null | undefined;
   maxEventCount: number | null | undefined;
   storyboard: boolean;
+  save: boolean | null | undefined;
 }
 
 interface AdditionalReplayOptions {
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
   sessionId: string;
-  save: boolean | null | undefined;
   baseSimulationId: string | null | undefined;
   cookiesFile: string | null | undefined;
 }
@@ -386,25 +372,58 @@ export const rawReplayCommandHandler = async ({
       }
     : { enabled: false };
   const replayEventsDependencies = await loadReplayEventsDependencies();
-  const { replay, screenshotDiffsSummary } = await replayCommandHandler({
-    replayTarget: getReplayTarget({
-      appUrl: appUrl ?? null,
-      simulationIdForAssets: simulationIdForAssets ?? null,
-    }),
-    executionOptions,
-    screenshottingOptions,
-    apiToken,
-    commitSha,
-    cookiesFile,
-    sessionId,
-    baseSimulationId,
-    save,
-    generatedBy: generatedByOption,
-    testRunId: null,
-    replayEventsDependencies,
-  });
+  const { replay, screenshotDiffsSummary, screenshotDiffResults } =
+    await replayCommandHandler({
+      replayTarget: getReplayTarget({
+        appUrl: appUrl ?? null,
+        simulationIdForAssets: simulationIdForAssets ?? null,
+      }),
+      executionOptions,
+      screenshottingOptions,
+      apiToken,
+      commitSha,
+      cookiesFile,
+      sessionId,
+      baseSimulationId,
+      generatedBy: generatedByOption,
+      testRunId: null,
+      replayEventsDependencies,
+    });
+
+  if (save) {
+    if (!screenshottingOptions.enabled) {
+      const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+      logger.error(
+        "Warning: saving a new test case without screenshot enabled."
+      );
+    }
+
+    await addTestCase({
+      title: `${sessionId} | ${replay.id}`,
+      sessionId,
+      baseReplayId: replay.id,
+    });
+  }
 
   if (screenshotDiffsSummary.hasDiffs) {
+    const client = createClient({ apiToken });
+    if (baseSimulationId == null) {
+      throw new Error(
+        "baseSimulationId must have been defined if there are diffs, but was null-ish"
+      );
+    }
+
+    // Store the diff
+    await createReplayDiff({
+      client,
+      headReplayId: replay.id,
+      baseReplayId: baseSimulationId,
+      testRunId: null,
+      data: {
+        screenshotAssertionsOptions: screenshottingOptions,
+        screenshotDiffResults,
+      },
+    });
     process.exit(1);
   }
 

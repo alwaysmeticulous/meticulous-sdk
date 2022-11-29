@@ -5,7 +5,6 @@ import {
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
-import { createReplayDiff } from "../../../api/replay-diff.api";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
@@ -13,27 +12,25 @@ import {
   getScreenshotsDir,
 } from "../../../local-data/replays";
 import {
-  summarizeDifferences,
   diffScreenshots,
   ScreenshotDiffsSummary,
+  summarizeDifferences,
 } from "../../screenshot-diff/screenshot-diff.command";
 
 export interface ComputeAndSaveDiffOptions {
   client: AxiosInstance;
-  testRunId: string | null;
   baseReplayId: string;
   headReplayId: string;
   tempDir: string;
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
 }
 
-export const computeAndSaveDiff = async ({
+export const computeDiff = async ({
   client,
   baseReplayId,
   tempDir,
   headReplayId,
   screenshottingOptions,
-  testRunId,
 }: ComputeAndSaveDiffOptions): Promise<{
   screenshotDiffResults: ScreenshotDiffResult[];
   screenshotDiffsSummary: ScreenshotDiffsSummary;
@@ -58,19 +55,6 @@ export const computeAndSaveDiff = async ({
     headScreenshotsDir: headReplayScreenshotsDir,
     diffOptions: screenshottingOptions.diffOptions,
   });
-
-  const replayDiff = await createReplayDiff({
-    client,
-    headReplayId,
-    baseReplayId,
-    testRunId,
-    data: {
-      screenshotAssertionsOptions: screenshottingOptions,
-      screenshotDiffResults,
-    },
-  });
-
-  logger.debug(replayDiff);
 
   const screenshotDiffsSummary = summarizeDifferences({
     baseReplayId,
