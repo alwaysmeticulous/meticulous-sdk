@@ -112,5 +112,23 @@ export interface ScreenshotDiffResultCompared {
 export interface ScreenshotDiffResultFlake {
   outcome: "flake";
 
-  individualDiffs: Array<Omit<ScreenshotDiffResult, "identifier">>;
+  /**
+   * The original diff. Can be any outcome but for 'no-diff'.
+   */
+  diffToBaseScreenshot: Omit<ScreenshotDiffResult, "identifier">;
+
+  /**
+   * The diffs created by retrying taking the head screenshot and comparing
+   * it to the original head screenshot. At least one of these will have an
+   * outcome other than no-diff, hence why this failure is marked as a flake.
+   *
+   * Note that in the context of these diffs base means the original head screenshot taken,
+   * and head means the new head screenshot taken.
+   */
+  diffsToHeadScreenshotOnRetries: Array<
+    Omit<
+      ScreenshotDiffResult | { outcome: "missing-base-and-head" },
+      "identifier"
+    >
+  >;
 }
