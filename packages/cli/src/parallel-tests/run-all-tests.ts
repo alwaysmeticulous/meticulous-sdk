@@ -50,7 +50,7 @@ export interface Options {
    * and mark them as a flake if the screenshot generated on one of the retryed replays differs from that
    * in the first replay.
    */
-  maxRetriesOnFailure?: number;
+  maxRetriesOnFailure: number;
 
   githubSummary: boolean;
 
@@ -234,7 +234,7 @@ export const runAllTests = async ({
     deflake,
     replayEventsDependencies,
     onTestFinished,
-    maxRetriesOnFailure: maxRetriesOnFailure ?? 1,
+    maxRetriesOnFailure,
   });
 
   const runAllFailure = results.find(({ result }) => result === "fail");
