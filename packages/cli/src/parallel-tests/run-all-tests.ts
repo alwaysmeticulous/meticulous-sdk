@@ -45,6 +45,13 @@ export interface Options {
   parallelTasks: number | null;
   deflake: boolean;
 
+  /**
+   * If set to a value greater than 1 then will re-run any replays that give a screenshot diff
+   * and mark them as a flake if the screenshot generated on one of the retryed replays differs from that
+   * in the first replay.
+   */
+  maxRetriesOnFailure?: number;
+
   githubSummary: boolean;
 
   /**
@@ -89,6 +96,7 @@ export const runAllTests = async ({
   screenshottingOptions,
   parallelTasks,
   deflake,
+  maxRetriesOnFailure,
   cachedTestRunResults: cachedTestRunResults_,
   githubSummary,
   environment,
@@ -226,7 +234,7 @@ export const runAllTests = async ({
     deflake,
     replayEventsDependencies,
     onTestFinished,
-    maxRetriesOnFailure: 1, // TODO
+    maxRetriesOnFailure: maxRetriesOnFailure ?? 1,
   });
 
   const runAllFailure = results.find(({ result }) => result === "fail");
