@@ -187,7 +187,7 @@ export const summarizeDifferences = ({
     logger.info(message);
   }
 
-  results.forEach((result) => {
+  const diffs = results.flatMap((result) => {
     const { outcome } = result;
 
     if (outcome === "different-size") {
@@ -195,12 +195,14 @@ export const summarizeDifferences = ({
         result.headScreenshotFile
       )} have different sizes => FAIL!`;
       logger.info(message);
-      return {
-        hasDiffs: true,
-        summaryMessage: message,
-        baseReplayId,
-        headReplayId,
-      };
+      return [
+        {
+          hasDiffs: true,
+          summaryMessage: message,
+          baseReplayId,
+          headReplayId,
+        },
+      ];
     }
 
     if (outcome === "diff" || outcome === "no-diff") {
@@ -213,17 +215,21 @@ export const summarizeDifferences = ({
       }`;
       logger.info(message);
       if (outcome === "diff") {
-        return {
-          hasDiffs: true,
-          summaryMessage: message,
-          baseReplayId,
-          headReplayId,
-        };
+        return [
+          {
+            hasDiffs: true,
+            summaryMessage: message,
+            baseReplayId,
+            headReplayId,
+          },
+        ];
       }
     }
+
+    return [];
   });
 
-  return { hasDiffs: false };
+  return diffs.length > 0 ? diffs[0] : { hasDiffs: false };
 };
 
 export type ScreenshotDiffsSummary =

@@ -48,12 +48,6 @@ const handleReplay = async ({
       replayEventsDependencies,
     });
 
-  if (screenshotDiffResults == null) {
-    throw new Error(
-      `replayCommandHandler returned a null screenshotDiffResults, but was called with screenshottingOptions.enabled = true`
-    );
-  }
-
   return {
     ...testCase,
     headReplayId: replay.id,

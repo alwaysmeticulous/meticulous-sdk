@@ -61,7 +61,15 @@ export interface ReplayOptions extends AdditionalReplayOptions {
 
 export interface ReplayResult {
   replay: Replay;
-  screenshotDiffResults: ScreenshotDiffResult[] | null;
+
+  /**
+   * Empty if screenshottingOptions.enabled was false.
+   */
+  screenshotDiffResults: ScreenshotDiffResult[];
+
+  /**
+   * Returned as { hasDiffs: false } if screenshottingOptions.enabled was false.
+   */
   screenshotDiffsSummary: ScreenshotDiffsSummary;
 }
 
@@ -232,7 +240,9 @@ export const replayCommandHandler = async ({
     logger.info("=======");
 
     // 12. Diff against base replay screenshot if one is provided
-    const computeAndSaveDiffSpan = transaction.startChild({ op: "computeAndSaveDiff" });
+    const computeAndSaveDiffSpan = transaction.startChild({
+      op: "computeAndSaveDiff",
+    });
     const { screenshotDiffResults, screenshotDiffsSummary } =
       screenshottingOptions.enabled && baseReplayId_
         ? await computeAndSaveDiff({
@@ -244,7 +254,7 @@ export const replayCommandHandler = async ({
             testRunId,
           })
         : {
-            screenshotDiffResults: null,
+            screenshotDiffResults: [],
             screenshotDiffsSummary: { hasDiffs: false as const },
           };
     computeAndSaveDiffSpan.finish();
