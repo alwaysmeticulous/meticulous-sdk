@@ -29,6 +29,7 @@ interface Options
   parallelize: boolean;
   parallelTasks?: number | null | undefined;
   deflake: boolean;
+  maxRetriesOnFailure: number;
   useCache: boolean;
   testsFile?: string | undefined;
   maxDurationMs: number | null | undefined;
@@ -54,6 +55,7 @@ const handler: (options: Options) => Promise<void> = async ({
   parallelize,
   parallelTasks: parrelelTasks_,
   deflake,
+  maxRetriesOnFailure,
   useCache,
   testsFile,
   disableRemoteFonts,
@@ -105,6 +107,7 @@ const handler: (options: Options) => Promise<void> = async ({
     useAssetsSnapshottedInBaseSimulation,
     parallelTasks: parrelelTasks ?? null,
     deflake,
+    maxRetriesOnFailure,
     cachedTestRunResults,
     githubSummary,
   });
