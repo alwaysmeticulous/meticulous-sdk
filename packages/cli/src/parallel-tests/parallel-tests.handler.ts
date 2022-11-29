@@ -18,6 +18,7 @@ import {
 } from "../config/config.types";
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { sortResults } from "../utils/run-all-tests.utils";
+import { mergeResults, TestCaseResults } from "./merge-test-results";
 import { InitMessage, ResultMessage } from "./messages.types";
 import { TestRunProgress } from "./run-all-tests.types";
 
@@ -69,7 +70,7 @@ export const runAllTestsInParallel: (
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   let nextId = 0;
-  const queue: RerunnableTestCase[] = testsToRun.map((test) => ({
+  let queue: RerunnableTestCase[] = testsToRun.map((test) => ({
     ...test,
     id: ++nextId,
   }));
@@ -78,7 +79,10 @@ export const runAllTestsInParallel: (
    * Stores multiple results for a given test id if the test has been re-executed
    * multiple times to check for flakes.
    */
-  const resultsByTestId = new Map<number, DetailedTestCaseResult[]>();
+  const resultsByTestId = new Map<
+    number,
+    TestCaseResults & { isFinal: boolean }
+  >();
   /**
    * Results that have been fully checked for flakes, at most one per test case.
    */
@@ -171,31 +175,64 @@ export const runAllTestsInParallel: (
         return result;
       })
       .then(async (result) => {
+        const resultsForTestCase = resultsByTestId.get(id);
+        if (resultsForTestCase != null && resultsForTestCase.isFinal) {
+          // This test has already been declared as flakey, and we can ignore the result. It was from
+          // an already executing test that we weren't able to cancel
+          process.nextTick(checkNextTask);
+          return;
+        }
+
         --inProgress;
 
         if (result.result === "fail" && !resultsByTestId.has(id)) {
-          // TODO: For perf may want to cancel the tasks off the queue if and when we
-          // find out all screenshots are either a pass or a flake
           queue.push(
             ...Array.from(new Array(maxRetriesOnFailure)).map(() => ({
+              ...testCase,
               id,
-              testCase,
+              baseReplayId: result.headReplayId,
             }))
           );
         }
 
-        const resultsForTestCase = [...(resultsByTestId.get(id) ?? []), result];
-        resultsByTestId.set(id, resultsForTestCase);
+        const comparisonToBaseReplay =
+          resultsForTestCase == null
+            ? result
+            : resultsForTestCase.comparisonToBaseReplay;
+        const comparisonsToFirstHeadReplay =
+          resultsForTestCase == null
+            ? []
+            : [...resultsForTestCase.comparisonsToFirstHeadReplay, result];
+
+        const newMergedResult = mergeResults({
+          comparisonToBaseReplay,
+          comparisonsToFirstHeadReplay,
+        });
+
+        // Our work is done for this test case if the first result was a pass,
+        // we've performed all the retries, or one of the retries already proved
+        // the result as flakey
         const isFinalResult =
-          resultsForTestCase[0].result === "pass" ||
-          resultsForTestCase.length === maxRetriesOnFailure + 1;
+          comparisonToBaseReplay.result === "pass" ||
+          comparisonsToFirstHeadReplay.length === maxRetriesOnFailure ||
+          newMergedResult.result === "flake";
+
+        resultsByTestId.set(id, {
+          comparisonToBaseReplay,
+          comparisonsToFirstHeadReplay,
+          isFinal: isFinalResult,
+        });
+
         if (isFinalResult) {
-          const mergedResult = mergeResults(resultsForTestCase);
-          finalResults.push(mergedResult);
+          // Cancel any replays that are still scheduled
+          queue = queue.filter(({ id }) => id !== id);
+
+          finalResults.push(newMergedResult);
           --progress.runningTestCases;
-          progress.failedTestCases += mergedResult.result === "fail" ? 1 : 0;
-          progress.flakedTestCases += mergedResult.result === "flake" ? 1 : 0;
-          progress.passedTestCases += mergedResult.result === "pass" ? 1 : 0;
+          progress.failedTestCases += newMergedResult.result === "fail" ? 1 : 0;
+          progress.flakedTestCases +=
+            newMergedResult.result === "flake" ? 1 : 0;
+          progress.passedTestCases += newMergedResult.result === "pass" ? 1 : 0;
           onTestFinished?.(progress, finalResults).then(() => {
             if (queue.length === 0 && inProgress === 0) {
               allTasksDone.resolve();
@@ -232,23 +269,4 @@ export const runAllTestsInParallel: (
     results: finalResults,
     testCases: config.testCases || [],
   });
-};
-
-const mergeResults = (
-  resultsForTestCase: DetailedTestCaseResult[]
-): DetailedTestCaseResult => {
-  // TODO: This is wrong, this merge needs to happen at the screenshot diff level
-  return resultsForTestCase.reduce(
-    (
-      mergedResult: DetailedTestCaseResult,
-      nextResult: DetailedTestCaseResult
-    ) => ({
-      ...mergedResult,
-      result:
-        nextResult.result !== mergedResult.result
-          ? "flake"
-          : mergedResult.result,
-    }),
-    resultsForTestCase[0]
-  );
 };

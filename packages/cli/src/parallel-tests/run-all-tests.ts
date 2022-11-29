@@ -158,6 +158,7 @@ export const runAllTests = async ({
     status: "Running",
     progress: {
       failedTestCases: 0,
+      flakedTestCases: 0,
       passedTestCases: cachedTestRunResults.length,
       runningTestCases: testCases.length,
     },

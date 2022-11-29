@@ -44,6 +44,7 @@ export type ScreenshotDiffResult = {
   | ScreenshotDiffResultMissingHead
   | ScreenshotDiffResultDifferentSize
   | ScreenshotDiffResultCompared
+  | ScreenshotDiffResultFlake
 );
 
 export type ScreenshotIdentifier = EndStateScreenshot | ScreenshotAfterEvent;
@@ -101,4 +102,15 @@ export interface ScreenshotDiffResultCompared {
   height: number;
   mismatchPixels: number;
   mismatchFraction: number;
+}
+
+/**
+ * The base screenshot differed from the head screenshot, but when the head
+ * screenshot was retaken one or more additional times at least one of those
+ * new head screenshots differed from the first head screenshot.
+ */
+export interface ScreenshotDiffResultFlake {
+  outcome: "flake";
+
+  individualDiffs: Array<Omit<ScreenshotDiffResult, "identifier">>;
 }
