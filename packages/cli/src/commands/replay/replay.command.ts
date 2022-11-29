@@ -81,7 +81,7 @@ export const replayCommandHandler = async ({
   sessionId,
   commitSha: commitSha_,
   save,
-  baseSimulationId: baseReplayId_,
+  baseSimulationId: baseReplayId,
   cookiesFile,
   generatedBy,
   testRunId,
@@ -244,10 +244,10 @@ export const replayCommandHandler = async ({
       op: "computeAndSaveDiff",
     });
     const { screenshotDiffResults, screenshotDiffsSummary } =
-      screenshottingOptions.enabled && baseReplayId_
+      screenshottingOptions.enabled && baseReplayId
         ? await computeAndSaveDiff({
             client,
-            baseReplayId: baseReplayId_ ?? "",
+            baseReplayId,
             headReplayId: replay.id,
             tempDir,
             screenshottingOptions,
