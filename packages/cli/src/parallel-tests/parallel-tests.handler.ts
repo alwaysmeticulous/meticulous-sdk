@@ -233,7 +233,7 @@ export const runAllTestsInParallel: (
           progress.failedTestCases += mergedResult.result === "fail" ? 1 : 0;
           progress.flakedTestCases += mergedResult.result === "flake" ? 1 : 0;
           progress.passedTestCases += mergedResult.result === "pass" ? 1 : 0;
-          onTestFinished?.(progress, finalResults).then(() => {
+          await onTestFinished?.(progress, finalResults).then(() => {
             if (queue.length === 0 && inProgress === 0) {
               allTasksDone.resolve();
             }
@@ -256,6 +256,11 @@ export const runAllTestsInParallel: (
     }
     ++inProgress;
 
+    if (resultsByTestId.has(testCase.id)) {
+      const testTitle =
+        testCase.title != null ? `'${testCase.title}'` : `#${testCase.id + 1}`;
+      logger.info(`Test ${testTitle} failed. Retrying to check for flakes...`);
+    }
     startTask(testCase);
 
     process.nextTick(checkNextTask);

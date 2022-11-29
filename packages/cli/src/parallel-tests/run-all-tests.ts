@@ -224,7 +224,7 @@ export const runAllTests = async ({
         client,
         headReplayId: newResult.headReplayId,
         baseReplayId: newResult.baseReplayId,
-        testRunId: null,
+        testRunId: testRun.id,
         data: {
           screenshotAssertionsOptions: screenshottingOptions,
           screenshotDiffResults: newResult.screenshotDiffResults,
