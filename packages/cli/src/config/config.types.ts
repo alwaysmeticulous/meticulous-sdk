@@ -6,9 +6,13 @@ export interface MeticulousCliConfig {
 
 export interface TestCaseResult extends TestCase {
   headReplayId: string;
-  result: "pass" | "fail";
+  result: "pass" | "fail" | "flake";
 }
 
 export interface DetailedTestCaseResult extends TestCaseResult {
+  screenshotDiffResults: ScreenshotDiffResult[];
+}
+
+export interface DetailedTestCaseReRunResult {
   screenshotDiffResults: ScreenshotDiffResult[];
 }

@@ -36,10 +36,16 @@ export interface RunAllTestsInParallelOptions {
   deflake: boolean;
   replayEventsDependencies: ReplayEventsDependencies;
 
+  maxRetriesOnFailure: number;
+
   onTestFinished?: (
     progress: TestRunProgress,
     resultsSoFar: DetailedTestCaseResult[]
   ) => Promise<void>;
+}
+
+interface RerunnableTestCase extends TestCase {
+  id: number;
 }
 
 /** Handler for running Meticulous tests in parallel using child processes */
@@ -48,7 +54,7 @@ export const runAllTestsInParallel: (
 ) => Promise<DetailedTestCaseResult[]> = async ({
   config,
   testRun,
-  testsToRun: queue,
+  testsToRun,
   apiToken,
   commitSha,
   appUrl,
@@ -57,15 +63,30 @@ export const runAllTestsInParallel: (
   screenshottingOptions,
   parallelTasks,
   deflake,
+  maxRetriesOnFailure,
   replayEventsDependencies,
   onTestFinished,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  let nextId = 0;
+  const queue: RerunnableTestCase[] = testsToRun.map((test) => ({
+    ...test,
+    id: ++nextId,
+  }));
 
-  const results: DetailedTestCaseResult[] = [];
+  /**
+   * Stores multiple results for a given test id if the test has been re-executed
+   * multiple times to check for flakes.
+   */
+  const resultsByTestId = new Map<number, DetailedTestCaseResult[]>();
+  /**
+   * Results that have been fully checked for flakes, at most one per test case.
+   */
+  const finalResults: DetailedTestCaseResult[] = [];
   const progress: TestRunProgress = {
     runningTestCases: queue.length,
     failedTestCases: 0,
+    flakedTestCases: 0,
     passedTestCases: 0,
   };
 
@@ -78,7 +99,8 @@ export const runAllTestsInParallel: (
   const taskHandler = join(__dirname, "task.handler.js");
 
   // Starts running a test case in a child process
-  const startTask = (testCase: TestCase) => {
+  const startTask = (rerunnableTestCase: RerunnableTestCase) => {
+    const { id, ...testCase } = rerunnableTestCase;
     const deferredResult = defer<DetailedTestCaseResult>();
     const child = fork(taskHandler, [], { stdio: "inherit" });
 
@@ -151,15 +173,35 @@ export const runAllTestsInParallel: (
       .then(async (result) => {
         --inProgress;
 
-        results.push(result);
-        progress.failedTestCases += result.result === "fail" ? 1 : 0;
-        progress.passedTestCases += result.result === "pass" ? 1 : 0;
-        --progress.runningTestCases;
-        onTestFinished?.(progress, results).then(() => {
-          if (results.length === (config.testCases?.length || 0)) {
-            allTasksDone.resolve();
-          }
-        });
+        if (result.result === "fail" && !resultsByTestId.has(id)) {
+          // TODO: For perf may want to cancel the tasks off the queue if and when we
+          // find out all screenshots are either a pass or a flake
+          queue.push(
+            ...Array.from(new Array(maxRetriesOnFailure)).map(() => ({
+              id,
+              testCase,
+            }))
+          );
+        }
+
+        const resultsForTestCase = [...(resultsByTestId.get(id) ?? []), result];
+        resultsByTestId.set(id, resultsForTestCase);
+        const isFinalResult =
+          resultsForTestCase[0].result === "pass" ||
+          resultsForTestCase.length === maxRetriesOnFailure + 1;
+        if (isFinalResult) {
+          const mergedResult = mergeResults(resultsForTestCase);
+          finalResults.push(mergedResult);
+          --progress.runningTestCases;
+          progress.failedTestCases += mergedResult.result === "fail" ? 1 : 0;
+          progress.flakedTestCases += mergedResult.result === "flake" ? 1 : 0;
+          progress.passedTestCases += mergedResult.result === "pass" ? 1 : 0;
+          onTestFinished?.(progress, finalResults).then(() => {
+            if (queue.length === 0 && inProgress === 0) {
+              allTasksDone.resolve();
+            }
+          });
+        }
 
         process.nextTick(checkNextTask);
       });
@@ -186,5 +228,27 @@ export const runAllTestsInParallel: (
 
   await allTasksDone.promise;
 
-  return sortResults({ results, testCases: config.testCases || [] });
+  return sortResults({
+    results: finalResults,
+    testCases: config.testCases || [],
+  });
+};
+
+const mergeResults = (
+  resultsForTestCase: DetailedTestCaseResult[]
+): DetailedTestCaseResult => {
+  // TODO: This is wrong, this merge needs to happen at the screenshot diff level
+  return resultsForTestCase.reduce(
+    (
+      mergedResult: DetailedTestCaseResult,
+      nextResult: DetailedTestCaseResult
+    ) => ({
+      ...mergedResult,
+      result:
+        nextResult.result !== mergedResult.result
+          ? "flake"
+          : mergedResult.result,
+    }),
+    resultsForTestCase[0]
+  );
 };

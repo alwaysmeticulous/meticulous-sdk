@@ -213,59 +213,22 @@ export const runAllTests = async ({
     await storeTestRunResults("Running", resultsSoFar);
   };
 
-  const getResults = async () => {
-    if (parallelTasks == null || parallelTasks > 1) {
-      const results = await runAllTestsInParallel({
-        config,
-        testRun,
-        testsToRun,
-        executionOptions,
-        screenshottingOptions,
-        apiToken,
-        commitSha,
-        appUrl,
-        useAssetsSnapshottedInBaseSimulation,
-        parallelTasks,
-        deflake,
-        replayEventsDependencies,
-        onTestFinished,
-      });
-      return results;
-    }
-
-    const results: DetailedTestCaseResult[] = [];
-    const progress: TestRunProgress = {
-      runningTestCases: testsToRun.length,
-      failedTestCases: 0,
-      passedTestCases: 0,
-    };
-    for (const testCase of testsToRun) {
-      const result = await deflakeReplayCommandHandler({
-        replayTarget: getReplayTargetForTestCase({
-          useAssetsSnapshottedInBaseSimulation,
-          appUrl,
-          testCase,
-        }),
-        executionOptions,
-        screenshottingOptions,
-        testCase,
-        apiToken,
-        commitSha,
-        deflake,
-        generatedBy: { type: "testRun", runId: testRun.id },
-        testRunId: testRun.id,
-        replayEventsDependencies,
-      });
-      results.push(result);
-      progress.failedTestCases += result.result === "fail" ? 1 : 0;
-      progress.passedTestCases += result.result === "pass" ? 1 : 0;
-      --progress.runningTestCases;
-      await onTestFinished(progress, results);
-    }
-    return sortResults({ results, testCases });
-  };
-
-  const results = await getResults();
+  const results = await runAllTestsInParallel({
+    config,
+    testRun,
+    testsToRun,
+    executionOptions,
+    screenshottingOptions,
+    apiToken,
+    commitSha,
+    appUrl,
+    useAssetsSnapshottedInBaseSimulation,
+    parallelTasks,
+    deflake,
+    replayEventsDependencies,
+    onTestFinished,
+    maxRetriesOnFailure: 1, // TODO
+  });
 
   const runAllFailure = results.find(({ result }) => result === "fail");
   const overallStatus = runAllFailure ? "Failure" : "Success";
@@ -290,6 +253,8 @@ export const runAllTests = async ({
       id: testRun.id,
       status: overallStatus,
       progress: {
+        flakedTestCases: results.filter(({ result }) => result === "flake")
+          .length,
         passedTestCases: results.filter(({ result }) => result === "pass")
           .length,
         failedTestCases: results.filter(({ result }) => result === "fail")
