@@ -7,13 +7,13 @@ export const sanitizeFilename: (filename: string) => string = (filename) => {
 
 type ReleaseLock = () => Promise<void>;
 
+// We create a lock file so that if multiple processes try downloading at the same
+// time they don't interfere with each other. The second process to run will
+// wait for the first process to complete, and then return straight away because
+// it'll notice the file already exists.
 export const waitToAcquireLockOnFile = (
   filePath: string
 ): Promise<ReleaseLock> => {
-  // Create a lock file so that if multiple processes try downloading at the same
-  // time they don't interfere with each other. The second process to run will
-  // wait for the first process to complete, and then return straight away because
-  // it'll notice the file already exists.
   return lock(filePath, {
     retries: LOCK_RETRY_OPTIONS,
   });
@@ -22,10 +22,6 @@ export const waitToAcquireLockOnFile = (
 export const waitToAcquireLockOnDirectory = (
   directoryPath: string
 ): Promise<ReleaseLock> => {
-  // Create a lock file so that if multiple processes try downloading at the same
-  // time they don't interfere with each other. The second process to run will
-  // wait for the first process to complete, and then return straight away because
-  // it'll notice the files required already exist.
   return lock(directoryPath, {
     retries: LOCK_RETRY_OPTIONS,
     lockfilePath: join(directoryPath, "dir.lock"),
