@@ -18,7 +18,3 @@ export interface TestCaseResult extends TestCase {
 export interface DetailedTestCaseResult extends TestCaseResult {
   screenshotDiffResults: ScreenshotDiffResult[];
 }
-
-export interface DetailedTestCaseReRunResult {
-  screenshotDiffResults: ScreenshotDiffResult[];
-}

@@ -26,10 +26,6 @@ const handleReplay = async ({
   testRunId,
   replayEventsDependencies,
 }: HandleReplayOptions): Promise<DetailedTestCaseResult> => {
-  // TODO: Do the upload of the screenshot diffs at the run-all-tests level,
-  // and in the rawReplayCommandHandler, and only store the final merged result
-  //
-  // (also move some of the logging out / add more informative logging)
   const { replay, screenshotDiffResults, screenshotDiffsSummary } =
     await replayCommandHandler({
       replayTarget,
