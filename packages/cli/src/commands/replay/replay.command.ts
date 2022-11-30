@@ -58,6 +58,7 @@ export interface ReplayOptions extends AdditionalReplayOptions {
   generatedBy: GeneratedBy;
   testRunId: string | null;
   replayEventsDependencies: ReplayEventsDependencies;
+  suppressScreenshotDiffLogging: boolean;
 }
 
 export interface ReplayResult {
@@ -86,6 +87,7 @@ export const replayCommandHandler = async ({
   generatedBy,
   testRunId,
   replayEventsDependencies,
+  suppressScreenshotDiffLogging,
 }: ReplayOptions): Promise<ReplayResult> => {
   const transaction = Sentry.startTransaction({
     name: "replay.command_handler",
@@ -243,6 +245,14 @@ export const replayCommandHandler = async ({
     const computeDiffSpan = transaction.startChild({
       op: "computeDiff",
     });
+    const computeDiffsLogger = log.getLogger(
+      `METICULOUS_LOGGER_NAME/compute-diffs`
+    );
+    if (suppressScreenshotDiffLogging) {
+      computeDiffsLogger.setLevel("ERROR", false);
+    } else {
+      computeDiffsLogger.setLevel(logger.getLevel(), false);
+    }
     const { screenshotDiffResults, screenshotDiffsSummary } =
       screenshottingOptions.enabled && baseReplayId
         ? await computeDiff({
@@ -251,6 +261,7 @@ export const replayCommandHandler = async ({
             headReplayId: replay.id,
             tempDir,
             screenshottingOptions,
+            logger: computeDiffsLogger,
           })
         : {
             screenshotDiffResults: [],
@@ -386,6 +397,7 @@ export const rawReplayCommandHandler = async ({
       generatedBy: generatedByOption,
       testRunId: null,
       replayEventsDependencies,
+      suppressScreenshotDiffLogging: false,
     });
 
   // Add test case to meticulous.json if --save option is passed

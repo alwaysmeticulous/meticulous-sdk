@@ -29,6 +29,7 @@ export const diffScreenshots = async ({
   headScreenshotsDir,
   baseScreenshotsDir,
   diffOptions,
+  logger,
 }: {
   client: AxiosInstance;
   baseReplayId: string;
@@ -36,9 +37,8 @@ export const diffScreenshots = async ({
   baseScreenshotsDir: string;
   headScreenshotsDir: string;
   diffOptions: ScreenshotDiffOptions;
+  logger: log.Logger;
 }): Promise<ScreenshotDiffResult[]> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-
   const { diffThreshold, diffPixelThreshold } = diffOptions;
 
   const baseReplayScreenshots = await getScreenshotFiles(baseScreenshotsDir);
@@ -153,14 +153,14 @@ export const summarizeDifferences = ({
   headReplayId,
   results,
   diffOptions,
+  logger,
 }: {
   baseReplayId: string;
   headReplayId: string;
   results: ScreenshotDiffResult[];
   diffOptions: ScreenshotDiffOptions;
+  logger: log.Logger;
 }): ScreenshotDiffsSummary => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-
   const missingHeadImagesResults = results.flatMap((result) =>
     result.outcome === "missing-head" ? [result] : []
   );
@@ -312,6 +312,7 @@ const handler: (options: Options) => Promise<void> = async ({
     baseScreenshotsDir,
     headScreenshotsDir,
     diffOptions,
+    logger,
   });
 
   logger.debug(results);
@@ -321,6 +322,7 @@ const handler: (options: Options) => Promise<void> = async ({
     headReplayId,
     results,
     diffOptions,
+    logger,
   });
 
   if (diffSummary.hasDiffs) {

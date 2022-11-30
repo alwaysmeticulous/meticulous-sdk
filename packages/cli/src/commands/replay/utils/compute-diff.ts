@@ -23,6 +23,7 @@ export interface ComputeAndSaveDiffOptions {
   headReplayId: string;
   tempDir: string;
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
+  logger: log.Logger;
 }
 
 export const computeDiff = async ({
@@ -31,12 +32,11 @@ export const computeDiff = async ({
   tempDir,
   headReplayId,
   screenshottingOptions,
+  logger,
 }: ComputeAndSaveDiffOptions): Promise<{
   screenshotDiffResults: ScreenshotDiffResult[];
   screenshotDiffsSummary: ScreenshotDiffsSummary;
 }> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-
   logger.info(`Diffing screenshots against replay ${baseReplayId}`);
 
   await getOrFetchReplay(client, baseReplayId);
@@ -54,6 +54,7 @@ export const computeDiff = async ({
     baseScreenshotsDir: baseReplayScreenshotsDir,
     headScreenshotsDir: headReplayScreenshotsDir,
     diffOptions: screenshottingOptions.diffOptions,
+    logger,
   });
 
   const screenshotDiffsSummary = summarizeDifferences({
@@ -61,6 +62,7 @@ export const computeDiff = async ({
     headReplayId,
     results: screenshotDiffResults,
     diffOptions: screenshottingOptions.diffOptions,
+    logger,
   });
 
   return { screenshotDiffResults, screenshotDiffsSummary };

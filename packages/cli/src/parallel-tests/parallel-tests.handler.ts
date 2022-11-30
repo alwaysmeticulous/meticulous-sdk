@@ -138,6 +138,7 @@ export const runAllTestsInParallel: (
     child.on("message", messageHandler);
 
     // Send test case and arguments to child process
+    const isRetry = resultsByTestId.has(id);
     const initMessage: InitMessage = {
       kind: "init",
       data: {
@@ -158,6 +159,7 @@ export const runAllTestsInParallel: (
           generatedBy: { type: "testRun", runId: testRun.id },
           testRunId: testRun.id,
           replayEventsDependencies,
+          suppressScreenshotDiffLogging: isRetry,
         },
       },
     };
@@ -178,6 +180,22 @@ export const runAllTestsInParallel: (
       })
       .then(async (result) => {
         const resultsForTestCase = resultsByTestId.get(id);
+        if (resultsForTestCase != null) {
+          const nameOfTest = testName({ id, ...testCase });
+          if (result.result === "pass") {
+            logger.info(
+              `Retried taking screenshots for failed test ${nameOfTest}, but got the same results`
+            );
+          } else {
+            const numDifferingScreenshots = result.screenshotDiffResults.filter(
+              (result) => result.outcome !== "no-diff"
+            ).length;
+            logger.info(
+              `Retried taking screenshots for failed test ${nameOfTest}, and ${numDifferingScreenshots} screenshots came out different. Results for these screenshots are assumed to be flakes, and so will be ignored.`
+            );
+          }
+        }
+
         if (
           resultsForTestCase != null &&
           resultsForTestCase.currentResult.result === "flake"
@@ -190,7 +208,7 @@ export const runAllTestsInParallel: (
 
         --inProgress;
 
-        if (result.result === "fail" && !resultsByTestId.has(id)) {
+        if (result.result === "fail" && resultsForTestCase == null) {
           queue.push(
             ...Array.from(new Array(maxRetriesOnFailure)).map(() => ({
               ...testCase,
@@ -257,9 +275,9 @@ export const runAllTestsInParallel: (
     ++inProgress;
 
     if (resultsByTestId.has(testCase.id)) {
-      const testTitle =
-        testCase.title != null ? `'${testCase.title}'` : `#${testCase.id + 1}`;
-      logger.info(`Test ${testTitle} failed. Retrying to check for flakes...`);
+      logger.info(
+        `Test ${testName(testCase)} failed. Retrying to check for flakes...`
+      );
     }
     startTask(testCase);
 
@@ -275,3 +293,6 @@ export const runAllTestsInParallel: (
     testCases: config.testCases || [],
   });
 };
+
+const testName = (testCase: RerunnableTestCase) =>
+  testCase.title != null ? `'${testCase.title}'` : `#${testCase.id + 1}`;

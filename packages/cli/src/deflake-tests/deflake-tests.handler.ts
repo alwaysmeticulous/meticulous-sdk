@@ -25,6 +25,7 @@ const handleReplay = async ({
   generatedBy,
   testRunId,
   replayEventsDependencies,
+  suppressScreenshotDiffLogging,
 }: HandleReplayOptions): Promise<DetailedTestCaseResult> => {
   const { replay, screenshotDiffResults, screenshotDiffsSummary } =
     await replayCommandHandler({
@@ -45,6 +46,7 @@ const handleReplay = async ({
       generatedBy,
       testRunId,
       replayEventsDependencies,
+      suppressScreenshotDiffLogging,
     });
 
   return {
@@ -70,6 +72,7 @@ interface HandleReplayOptions {
   generatedBy: GeneratedBy;
   testRunId: string | null;
   replayEventsDependencies: ReplayEventsDependencies;
+  suppressScreenshotDiffLogging: boolean;
 }
 
 export const deflakeReplayCommandHandler = async ({
