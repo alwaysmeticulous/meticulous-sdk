@@ -29,6 +29,7 @@ interface Options
   parallelize: boolean;
   parallelTasks?: number | null | undefined;
   deflake: boolean;
+  maxRetriesOnFailure: number;
   useCache: boolean;
   testsFile?: string | undefined;
   maxDurationMs: number | null | undefined;
@@ -54,6 +55,7 @@ const handler: (options: Options) => Promise<void> = async ({
   parallelize,
   parallelTasks: parrelelTasks_,
   deflake,
+  maxRetriesOnFailure,
   useCache,
   testsFile,
   disableRemoteFonts,
@@ -105,6 +107,7 @@ const handler: (options: Options) => Promise<void> = async ({
     useAssetsSnapshottedInBaseSimulation,
     parallelTasks: parrelelTasks ?? null,
     deflake,
+    maxRetriesOnFailure,
     cachedTestRunResults,
     githubSummary,
   });
@@ -162,6 +165,12 @@ export const runAllTestsCommand = buildCommand("run-all-tests")
       boolean: true,
       description: "Attempt to deflake failing tests",
       default: false,
+    },
+    maxRetriesOnFailure: {
+      number: true,
+      description:
+        "If set to a value greater than 0 then will re-run any replays that give a screenshot diff and mark them as a flake if the screenshot generated on one of the retryed replays differs from that in the first replay.",
+      default: 0,
     },
     useCache: {
       boolean: true,

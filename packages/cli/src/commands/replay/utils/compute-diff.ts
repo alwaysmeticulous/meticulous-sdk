@@ -5,7 +5,6 @@ import {
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
-import { createReplayDiff } from "../../../api/replay-diff.api";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
@@ -13,33 +12,31 @@ import {
   getScreenshotsDir,
 } from "../../../local-data/replays";
 import {
-  summarizeDifferences,
   diffScreenshots,
   ScreenshotDiffsSummary,
+  summarizeDifferences,
 } from "../../screenshot-diff/screenshot-diff.command";
 
 export interface ComputeAndSaveDiffOptions {
   client: AxiosInstance;
-  testRunId: string | null;
   baseReplayId: string;
   headReplayId: string;
   tempDir: string;
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
+  logger: log.Logger;
 }
 
-export const computeAndSaveDiff = async ({
+export const computeDiff = async ({
   client,
   baseReplayId,
   tempDir,
   headReplayId,
   screenshottingOptions,
-  testRunId,
+  logger,
 }: ComputeAndSaveDiffOptions): Promise<{
   screenshotDiffResults: ScreenshotDiffResult[];
   screenshotDiffsSummary: ScreenshotDiffsSummary;
 }> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-
   logger.info(`Diffing screenshots against replay ${baseReplayId}`);
 
   await getOrFetchReplay(client, baseReplayId);
@@ -57,26 +54,15 @@ export const computeAndSaveDiff = async ({
     baseScreenshotsDir: baseReplayScreenshotsDir,
     headScreenshotsDir: headReplayScreenshotsDir,
     diffOptions: screenshottingOptions.diffOptions,
+    logger,
   });
-
-  const replayDiff = await createReplayDiff({
-    client,
-    headReplayId,
-    baseReplayId,
-    testRunId,
-    data: {
-      screenshotAssertionsOptions: screenshottingOptions,
-      screenshotDiffResults,
-    },
-  });
-
-  logger.debug(replayDiff);
 
   const screenshotDiffsSummary = summarizeDifferences({
     baseReplayId,
     headReplayId,
     results: screenshotDiffResults,
     diffOptions: screenshottingOptions.diffOptions,
+    logger,
   });
 
   return { screenshotDiffResults, screenshotDiffsSummary };

@@ -5,6 +5,7 @@ import {
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { createClient } from "../api/client";
+import { createReplayDiff } from "../api/replay-diff.api";
 import {
   createTestRun,
   getTestRunUrl,
@@ -14,12 +15,10 @@ import {
 import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
 import { readConfig } from "../config/config";
 import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
-import { deflakeReplayCommandHandler } from "../deflake-tests/deflake-tests.handler";
 import { loadReplayEventsDependencies } from "../local-data/replay-assets";
 import { runAllTestsInParallel } from "../parallel-tests/parallel-tests.handler";
-import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
-import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
+import { getTestsToRun } from "../utils/run-all-tests.utils";
 import { getEnvironment } from "../utils/test-run-environment.utils";
 import { getMeticulousVersion } from "../utils/version.utils";
 import { TestRunProgress } from "./run-all-tests.types";
@@ -46,6 +45,13 @@ export interface Options {
    */
   parallelTasks: number | null;
   deflake: boolean;
+
+  /**
+   * If set to a value greater than 1 then will re-run any replays that give a screenshot diff
+   * and mark them as a flake if the screenshot generated on one of the retryed replays differs from that
+   * in the first replay.
+   */
+  maxRetriesOnFailure: number;
 
   githubSummary: boolean;
 
@@ -91,6 +97,7 @@ export const runAllTests = async ({
   screenshottingOptions,
   parallelTasks,
   deflake,
+  maxRetriesOnFailure,
   cachedTestRunResults: cachedTestRunResults_,
   githubSummary,
   environment,
@@ -100,6 +107,12 @@ export const runAllTests = async ({
   if (appUrl != null && useAssetsSnapshottedInBaseSimulation) {
     throw new Error(
       "Arguments useAssetsSnapshottedInBaseSimulation and appUrl are mutually exclusive"
+    );
+  }
+
+  if (deflake && maxRetriesOnFailure > 1) {
+    throw new Error(
+      "Arguments deflake and maxRetriesOnFailure are mutually exclusive"
     );
   }
 
@@ -158,6 +171,7 @@ export const runAllTests = async ({
     status: "Running",
     progress: {
       failedTestCases: 0,
+      flakedTestCases: 0,
       passedTestCases: cachedTestRunResults.length,
       runningTestCases: testCases.length,
     },
@@ -210,62 +224,38 @@ export const runAllTests = async ({
         passedTestCases: progress.passedTestCases + cachedTestRunResults.length,
       },
     });
+    const newResult = resultsSoFar.at(-1);
+    if (newResult?.baseReplayId != null) {
+      await createReplayDiff({
+        client,
+        headReplayId: newResult.headReplayId,
+        baseReplayId: newResult.baseReplayId,
+        testRunId: testRun.id,
+        data: {
+          screenshotAssertionsOptions: screenshottingOptions,
+          screenshotDiffResults: newResult.screenshotDiffResults,
+        },
+      });
+    }
     await storeTestRunResults("Running", resultsSoFar);
   };
 
-  const getResults = async () => {
-    if (parallelTasks == null || parallelTasks > 1) {
-      const results = await runAllTestsInParallel({
-        config,
-        testRun,
-        testsToRun,
-        executionOptions,
-        screenshottingOptions,
-        apiToken,
-        commitSha,
-        appUrl,
-        useAssetsSnapshottedInBaseSimulation,
-        parallelTasks,
-        deflake,
-        replayEventsDependencies,
-        onTestFinished,
-      });
-      return results;
-    }
-
-    const results: DetailedTestCaseResult[] = [];
-    const progress: TestRunProgress = {
-      runningTestCases: testsToRun.length,
-      failedTestCases: 0,
-      passedTestCases: 0,
-    };
-    for (const testCase of testsToRun) {
-      const result = await deflakeReplayCommandHandler({
-        replayTarget: getReplayTargetForTestCase({
-          useAssetsSnapshottedInBaseSimulation,
-          appUrl,
-          testCase,
-        }),
-        executionOptions,
-        screenshottingOptions,
-        testCase,
-        apiToken,
-        commitSha,
-        deflake,
-        generatedBy: { type: "testRun", runId: testRun.id },
-        testRunId: testRun.id,
-        replayEventsDependencies,
-      });
-      results.push(result);
-      progress.failedTestCases += result.result === "fail" ? 1 : 0;
-      progress.passedTestCases += result.result === "pass" ? 1 : 0;
-      --progress.runningTestCases;
-      await onTestFinished(progress, results);
-    }
-    return sortResults({ results, testCases });
-  };
-
-  const results = await getResults();
+  const results = await runAllTestsInParallel({
+    config,
+    testRun,
+    testsToRun,
+    executionOptions,
+    screenshottingOptions,
+    apiToken,
+    commitSha,
+    appUrl,
+    useAssetsSnapshottedInBaseSimulation,
+    parallelTasks,
+    deflake,
+    replayEventsDependencies,
+    onTestFinished,
+    maxRetriesOnFailure,
+  });
 
   const runAllFailure = results.find(({ result }) => result === "fail");
   const overallStatus = runAllFailure ? "Failure" : "Success";
@@ -290,6 +280,8 @@ export const runAllTests = async ({
       id: testRun.id,
       status: overallStatus,
       progress: {
+        flakedTestCases: results.filter(({ result }) => result === "flake")
+          .length,
         passedTestCases: results.filter(({ result }) => result === "pass")
           .length,
         failedTestCases: results.filter(({ result }) => result === "fail")
