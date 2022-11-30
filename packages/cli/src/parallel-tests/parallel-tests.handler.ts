@@ -309,11 +309,11 @@ const getNewMergedResult = (
         result: "fail",
         screenshotDiffResults: [],
       };
-    } else {
-      // In this case the newResult is our first head replay, our first result,
-      // so lets initialize the mergedResult to this
-      return newResult;
     }
+
+    // In this case the newResult is our first head replay, our first result,
+    // so lets initialize the mergedResult to this
+    return newResult;
   }
 
   // If currentMergedResult is not null then newResult is a retry, containing comparison screenshots to our original head replay
@@ -321,10 +321,10 @@ const getNewMergedResult = (
     // In this case newResult is a retry of the head replay, but it failed fatally (not just a failed diff, but failed to even run)
     // So we just ignore this retry
     return currentMergedResult;
-  } else {
-    return mergeResults({
-      currentResult: currentMergedResult,
-      comparisonToHeadReplay: newResult,
-    });
   }
+
+  return mergeResults({
+    currentResult: currentMergedResult,
+    comparisonToHeadReplay: newResult,
+  });
 };
