@@ -1,4 +1,4 @@
-import { access, mkdir, opendir, readFile, rm, writeFile } from "fs/promises";
+import { mkdir, opendir, readFile, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import {
   getMeticulousLocalDataDir,
@@ -10,6 +10,7 @@ import log from "loglevel";
 import { downloadFile } from "../api/download";
 import { getReplay, getReplayDownloadUrl } from "../api/replay.api";
 import {
+  fileExists,
   waitToAcquireLockOnDirectory,
   waitToAcquireLockOnFile,
 } from "./local-data.utils";
@@ -92,11 +93,6 @@ export const getOrFetchReplayArchive: (
     await releaseLock();
   }
 };
-
-const fileExists = (filePath: string) =>
-  access(filePath)
-    .then(() => true)
-    .catch(() => false);
 
 export const getScreenshotFiles: (
   screenshotsDirPath: string
