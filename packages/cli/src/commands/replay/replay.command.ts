@@ -258,8 +258,6 @@ export const replayCommandHandler = async ({
           };
     computeDiffSpan.finish();
 
-    // 13. Add test case to meticulous.json if --save option is passed
-
     return { replay, screenshotDiffResults, screenshotDiffsSummary };
   } finally {
     await deleteArchive(archivePath);
@@ -390,6 +388,7 @@ export const rawReplayCommandHandler = async ({
       replayEventsDependencies,
     });
 
+  // Add test case to meticulous.json if --save option is passed
   if (save) {
     if (!screenshottingOptions.enabled) {
       const logger = log.getLogger(METICULOUS_LOGGER_NAME);
