@@ -15,13 +15,13 @@ type ReleaseLock = () => Promise<void>;
 export const waitToAcquireLockOnFile = async (
   filePath: string
 ): Promise<ReleaseLock> => {
-  // In many cases the file doesn't exist yet, and can't exist yet
-  // (need to download the data, and creating an empty file is risky if the process crashes)
-  // However proper-lockfile requires as to pass a file or directory as the first arg. This path is just used
-  // for it to resolve symlinks in the path correctly, and to detect if the same process tries taking
-  // out multiple locks on the same path. It just needs to be calculated as something
-  // that's unique to the file, and gives the same path for a given file everytime. So we create our
+  // In many cases the file doesn't exist yet, and can't exist yet (need to download the data, and creating an
+  // empty file beforehand is risky if the process crashes, and a second process tries reading the empty file).
+  // However proper-lockfile requires us to pass a file or directory as the first arg. This path is just used
+  // to detect if the same process tries taking out multiple locks on the same file. It just needs to be calculated
+  // as something that's unique to the file, and gives the same path for a given file everytime. So we create our
   // own lock-target directory for this purpose (directory not file since mkdir is guaranteed to be synchronous).
+  // The path needs to actually exist, since proper-lockfile resolves symlinks on it.
   const lockDirectory = `${filePath}.lock-target`;
   await mkdir(lockDirectory, { recursive: true });
 
