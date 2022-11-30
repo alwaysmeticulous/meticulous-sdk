@@ -1,4 +1,4 @@
-import { join } from "path";
+import { dirname, join } from "path";
 import { lock, LockOptions } from "proper-lockfile";
 
 export const sanitizeFilename: (filename: string) => string = (filename) => {
@@ -14,8 +14,13 @@ type ReleaseLock = () => Promise<void>;
 export const waitToAcquireLockOnFile = (
   filePath: string
 ): Promise<ReleaseLock> => {
-  return lock(filePath, {
+  // The first argument, the file argument to lock is just used
+  // to resolve symlinks. Since we don't create any symlinks within
+  // our download directories we can safely pass the directory name here.
+  // This avoids issues if the file does not exist yet.
+  return lock(dirname(filePath), {
     retries: LOCK_RETRY_OPTIONS,
+    lockfilePath: `${filePath}.lock`,
   });
 };
 
