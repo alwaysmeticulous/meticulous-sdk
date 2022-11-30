@@ -110,6 +110,12 @@ export const runAllTests = async ({
     );
   }
 
+  if (deflake && maxRetriesOnFailure > 1) {
+    throw new Error(
+      "Arguments deflake and maxRetriesOnFailure are mutually exclusive"
+    );
+  }
+
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
