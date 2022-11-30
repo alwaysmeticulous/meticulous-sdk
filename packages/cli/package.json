@@ -38,12 +38,14 @@
     "inquirer": "^8.2.4",
     "luxon": "^2.4.0",
     "pixelmatch": "^5.3.0",
+    "proper-lockfile": "^4.1.2",
     "pngjs": "^6.0.0",
     "yargs": "^17.5.1"
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.19.1",
-    "@types/express": "^4.17.14"
+    "@types/express": "^4.17.14",
+    "@types/proper-lockfile": "^4.1.2"
   },
   "peerDependencies": {
     "@alwaysmeticulous/record": "^2.3.3",

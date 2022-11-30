@@ -1,3 +1,4 @@
+import { fstat } from "fs";
 import { opendir, access, mkdir, readFile, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import {
@@ -7,6 +8,7 @@ import {
 import Zip from "adm-zip";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
+import { lock, unlock } from "proper-lockfile";
 import { downloadFile } from "../api/download";
 import { getReplay, getReplayDownloadUrl } from "../api/replay.api";
 
@@ -48,35 +50,61 @@ export const getOrFetchReplayArchive: (
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const replayDir = getReplayDir(replayId);
+  const lockfilePath = join(replayDir, "dir.lock");
   await mkdir(replayDir, { recursive: true });
-  const replayArchiveFile = join(replayDir, `${replayId}.zip`);
-  const paramsFile = join(replayDir, "replayEventsParams.json");
 
-  // Check if "replayEventsParams.json" exists. If yes, we assume the replay
-  // zip archive has been downloaded and extracted.
-  const paramsFileExists = await access(paramsFile)
+  // Create a lock file so that if multiple processes try downloading at the same
+  // time they don't interfere with each other. The second process to run will
+  // wait for the first process to complete, and then return straight away because
+  // it'll notice the replayEventsParams.json file exists.
+  const releaseLock = await lock(replayDir, {
+    retries: {
+      retries: 1000, // We want to keep on retrying till we get the maxRetryTime, so we set this to a high value
+      factor: 1.05,
+      minTimeout: 500,
+      maxTimeout: 2000,
+      // Wait a maximum of 120s for the other process to finish downloading and extracting the file
+      maxRetryTime: 120 * 1000,
+      randomize: true,
+    },
+    lockfilePath,
+  });
+
+  try {
+    const replayArchiveFile = join(replayDir, `${replayId}.zip`);
+    const paramsFile = join(replayDir, "replayEventsParams.json");
+
+    // Check if "replayEventsParams.json" exists. If yes, we assume the replay
+    // zip archive has been downloaded and extracted.
+    if (await fileExists(paramsFile)) {
+      logger.debug(`Replay archive already downloaded at ${replayDir}`);
+      return;
+    }
+
+    const downloadUrlData = await getReplayDownloadUrl(client, replayId);
+    if (!downloadUrlData) {
+      logger.error(
+        "Error: Could not retrieve replay archive URL. This may be an invalid replay"
+      );
+      process.exit(1);
+    }
+
+    await downloadFile(downloadUrlData.dowloadUrl, replayArchiveFile);
+
+    const zipFile = new Zip(replayArchiveFile);
+    zipFile.extractAllTo(replayDir, /*overwrite=*/ true);
+    await rm(replayArchiveFile);
+
+    logger.debug(`Extracted replay archive in ${replayDir}`);
+  } finally {
+    await releaseLock();
+  }
+};
+
+const fileExists = (filePath: string) =>
+  access(filePath)
     .then(() => true)
     .catch(() => false);
-  if (paramsFileExists) {
-    logger.debug(`Replay archive already downloaded at ${replayDir}`);
-    return;
-  }
-
-  const downloadUrlData = await getReplayDownloadUrl(client, replayId);
-  if (!downloadUrlData) {
-    logger.error(
-      "Error: Could not retrieve replay archive URL. This may be an invalid replay"
-    );
-    process.exit(1);
-  }
-
-  await downloadFile(downloadUrlData.dowloadUrl, replayArchiveFile);
-  const zipFile = new Zip(replayArchiveFile);
-  zipFile.extractAllTo(replayDir, /*overwrite=*/ true);
-  await rm(replayArchiveFile);
-
-  logger.debug(`Exrtracted replay archive in ${replayDir}`);
-};
 
 export const getScreenshotFiles: (
   screenshotsDirPath: string
