@@ -167,20 +167,10 @@ export const runAllTestsInParallel: (
 
     // Handle task completion
     deferredResult.promise
-      .catch(() => {
-        // If it threw an error then it's something fatal, rather than just a failed diff
-        // (it resolves successfully on a failed diff)
-        const result: DetailedTestCaseResult = {
-          ...testCase,
-          headReplayId: "",
-          result: "fail",
-          screenshotDiffResults: [],
-        };
-        return result;
-      })
+      .catch(() => null)
       .then(async (result) => {
         const resultsForTestCase = resultsByTestId.get(id);
-        if (resultsForTestCase != null) {
+        if (resultsForTestCase != null && result != null) {
           logRetrySummary(testName({ id, ...testCase }), result);
         }
 
@@ -196,7 +186,7 @@ export const runAllTestsInParallel: (
 
         --inProgress;
 
-        if (result.result === "fail" && resultsForTestCase == null) {
+        if (result?.result === "fail" && resultsForTestCase == null) {
           queue.push(
             ...Array.from(new Array(maxRetriesOnFailure)).map(() => ({
               ...testCase,
@@ -206,13 +196,12 @@ export const runAllTestsInParallel: (
           );
         }
 
-        const mergedResult =
-          resultsForTestCase != null
-            ? mergeResults({
-                currentResult: resultsForTestCase.currentResult,
-                comparisonToHeadReplay: result,
-              })
-            : result;
+        const mergedResult = getNewMergedResult(
+          testCase,
+          resultsForTestCase?.currentResult ?? null,
+          result
+        );
+
         const numberOfRetriesExecuted =
           resultsForTestCase == null
             ? 0
@@ -303,3 +292,39 @@ const logRetrySummary = (
 
 const testName = (testCase: RerunnableTestCase) =>
   testCase.title != null ? `'${testCase.title}'` : `#${testCase.id + 1}`;
+
+const getNewMergedResult = (
+  testCase: TestCase,
+  currentMergedResult: DetailedTestCaseResult | null,
+  newResult: DetailedTestCaseResult | null
+): DetailedTestCaseResult => {
+  // If currentMergedResult is null then this is our first try, our original head replay
+  if (currentMergedResult == null) {
+    if (newResult == null) {
+      // This means our original head replay failed fatally (not just a failed diff, but failed to even run)
+      // In this case we just return it as result = fail, with no screenshot diffs
+      return {
+        ...testCase,
+        headReplayId: "",
+        result: "fail",
+        screenshotDiffResults: [],
+      };
+    } else {
+      // In this case the newResult is our first head replay, our first result,
+      // so lets initialize the mergedResult to this
+      return newResult;
+    }
+  }
+
+  // If currentMergedResult is not null then newResult is a retry, containing comparison screenshots to our original head replay
+  if (newResult == null) {
+    // In this case newResult is a retry of the head replay, but it failed fatally (not just a failed diff, but failed to even run)
+    // So we just ignore this retry
+    return currentMergedResult;
+  } else {
+    return mergeResults({
+      currentResult: currentMergedResult,
+      comparisonToHeadReplay: newResult,
+    });
+  }
+};
