@@ -19,8 +19,8 @@ export const mergeResults = ({
   currentResult,
   comparisonToHeadReplay,
 }: ResultsToMerge): DetailedTestCaseResult => {
-  // The other results all compare to the first result, so if any of them
-  // show a diff on the screenshots that originally failed then we have a flake
+  // If any of the screenshots diffs in comparisonToHeadReplay show a diff against one
+  // of the screenshots that orignally failed in currentResult then we have a flake
   // on our hands
   const retryDiffById = new Map<
     ScreenshotIdentifierHash,
