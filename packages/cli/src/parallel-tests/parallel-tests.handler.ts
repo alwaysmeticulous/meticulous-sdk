@@ -81,12 +81,12 @@ export const runAllTestsInParallel: (
   }));
 
   /**
-   * Stores multiple results for a given test id if the test has been re-executed
-   * multiple times to check for flakes.
+   * The current results, which may still be being updated if we're re-running a test
+   * to check for flakes.
    */
   const resultsByTestId = new Map<number, TestCaseResults>();
   /**
-   * Results that have been fully checked for flakes, at most one per test case.
+   * Results that have been fully checked for flakes. At most one per test case.
    */
   const finalResults: DetailedTestCaseResult[] = [];
   const progress: TestRunProgress = {
@@ -181,19 +181,7 @@ export const runAllTestsInParallel: (
       .then(async (result) => {
         const resultsForTestCase = resultsByTestId.get(id);
         if (resultsForTestCase != null) {
-          const nameOfTest = testName({ id, ...testCase });
-          if (result.result === "pass") {
-            logger.info(
-              `Retried taking screenshots for failed test ${nameOfTest}, but got the same results`
-            );
-          } else {
-            const numDifferingScreenshots = result.screenshotDiffResults.filter(
-              (result) => result.outcome !== "no-diff"
-            ).length;
-            logger.info(
-              `Retried taking screenshots for failed test ${nameOfTest}, and ${numDifferingScreenshots} screenshots came out different. Results for these screenshots are assumed to be flakes, and so will be ignored.`
-            );
-          }
+          logRetrySummary(testName({ id, ...testCase }), result);
         }
 
         if (
@@ -292,6 +280,25 @@ export const runAllTestsInParallel: (
     results: finalResults,
     testCases: config.testCases || [],
   });
+};
+
+const logRetrySummary = (
+  nameOfTest: string,
+  retryResult: DetailedTestCaseResult
+) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  if (retryResult.result === "pass") {
+    logger.info(
+      `Retried taking screenshots for failed test ${nameOfTest}, but got the same results`
+    );
+  } else {
+    const numDifferingScreenshots = retryResult.screenshotDiffResults.filter(
+      (result) => result.outcome !== "no-diff"
+    ).length;
+    logger.info(
+      `Retried taking screenshots for failed test ${nameOfTest}, and ${numDifferingScreenshots} screenshots came out different. Results for these screenshots are assumed to be flakes, and so will be ignored.`
+    );
+  }
 };
 
 const testName = (testCase: RerunnableTestCase) =>
