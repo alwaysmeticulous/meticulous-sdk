@@ -34,6 +34,7 @@ export const getOrFetchRecordedSession: (
       logger.error(
         "Error: Could not retrieve session. Is the API token correct?"
       );
+      await releaseLock();
       process.exit(1);
     }
 
@@ -41,7 +42,7 @@ export const getOrFetchRecordedSession: (
     logger.debug(`Wrote session to ${sessionFile}`);
     return session;
   } finally {
-    releaseLock();
+    await releaseLock();
   }
 };
 
