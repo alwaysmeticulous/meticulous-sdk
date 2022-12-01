@@ -30,14 +30,14 @@ export const getOrFetchReplay = async (
     downloadJson: () => getReplay(client, replayId),
   });
 
-    if (!replay) {
-      logger.error(
-        `Error: Could not retrieve replay with id "${replayId}". Is the API token correct?`
-      );
-      process.exit(1);
-    }
+  if (!replay) {
+    logger.error(
+      `Error: Could not retrieve replay with id "${replayId}". Is the API token correct?`
+    );
+    process.exit(1);
+  }
 
-    return replay;
+  return replay;
 };
 
 export const getOrFetchReplayArchive = async (
