@@ -67,7 +67,7 @@ const reportHandlerError: (error: unknown) => Promise<void> = async (error) => {
   logger.error(error instanceof Error ? error.message : error);
   logger.info("");
   logger.info(
-    "Tip: run `meticulous help <command>` for help on a particular command, or `meticulous help` for a list of the available commands."
+    "Tip: run `meticulous <command> --help` for help on a particular command, or `meticulous --help` for a list of the available commands."
   );
   Sentry.captureException(error);
   await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
