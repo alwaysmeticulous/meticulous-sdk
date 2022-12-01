@@ -1,4 +1,4 @@
-import { mkdir, rmdir, access, readFile, writeFile } from "fs/promises";
+import { mkdir, rmdir, access, readFile, writeFile, rm } from "fs/promises";
 import { dirname, join } from "path";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
@@ -81,12 +81,10 @@ const waitToAcquireLockOnFile = async (
     });
     return async () => {
       // Clean up our directory _before_ releasing the lock
-      // We check if it exists first, because if we're just coming out of
+      // Note: it may have already been deleted: if we're just coming out of
       // a lock released by someone else then they will have already deleted
       // the directory
-      if (await fileExists(lockDirectory)) {
-        await rmdir(lockDirectory);
-      }
+      await rm(lockDirectory, { recursive: true, force: true });
       await releaseLock();
     };
   } catch (err) {
