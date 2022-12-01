@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "2.19.3",
+  "version": "2.20.0",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
@@ -25,7 +25,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.19.1",
+    "@alwaysmeticulous/common": "^2.20.0",
     "@sentry/node": "^7.21.1",
     "@sentry/tracing": "^7.21.1",
     "adm-zip": "^0.5.9",
@@ -38,12 +38,12 @@
     "inquirer": "^8.2.4",
     "luxon": "^2.4.0",
     "pixelmatch": "^5.3.0",
-    "proper-lockfile": "^4.1.2",
     "pngjs": "^6.0.0",
+    "proper-lockfile": "^4.1.2",
     "yargs": "^17.5.1"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.19.1",
+    "@alwaysmeticulous/api": "^2.20.0",
     "@types/express": "^4.17.14",
     "@types/proper-lockfile": "^4.1.2"
   },

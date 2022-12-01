@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/sdk-bundles-api",
-  "version": "2.19.1",
+  "version": "2.20.0",
   "description": "Meticulous common types",
   "license": "ISC",
   "main": "dist/index.js",
@@ -18,7 +18,7 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.19.1"
+    "@alwaysmeticulous/api": "^2.20.0"
   },
   "peerDependencies": {
     "loglevel": "^1.8.0",
