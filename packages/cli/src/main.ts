@@ -27,7 +27,7 @@ export const main: () => void = async () => {
   const meticulousVersion = await getMeticulousVersion();
   initSentry(meticulousVersion);
 
-  const promise = yargs
+  yargs
     .scriptName("meticulous")
     .usage(
       `$0 <command>
@@ -64,13 +64,6 @@ export const main: () => void = async () => {
       (argv) => handleDataDir(argv.dataDir),
       (argv) => setOptions(argv),
     ]).argv;
-
-  if (promise instanceof Promise) {
-    promise.catch((error) => {
-      console.error(error);
-      process.exit(1);
-    });
-  }
 };
 
 main();

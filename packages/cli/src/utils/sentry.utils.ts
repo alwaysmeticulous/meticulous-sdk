@@ -1,5 +1,7 @@
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { addExtensionMethods } from "@sentry/tracing";
+import log from "loglevel";
 import { Duration } from "luxon";
 
 const SENTRY_DSN =
@@ -33,13 +35,6 @@ export const setOptions: (options: any) => void = (options) => {
   Sentry.setContext("invoke-options", options);
 };
 
-export const reportHandlerError: (error: any) => Promise<void> = async (
-  error
-) => {
-  Sentry.captureException(error);
-  await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
-};
-
 export const wrapHandler = function wrapHandler_<T>(
   handler: (args: T) => Promise<void>
 ): (args: T) => Promise<void> {
@@ -57,7 +52,9 @@ export const wrapHandler = function wrapHandler_<T>(
         if (transaction !== undefined) {
           transaction.setStatus("unknown_error");
         }
-        throw error;
+
+        // Don't display the help text which can obscure the error
+        process.exit(1);
       })
       .finally(() => {
         const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
@@ -66,4 +63,11 @@ export const wrapHandler = function wrapHandler_<T>(
         }
       });
   };
+};
+
+const reportHandlerError: (error: unknown) => Promise<void> = async (error) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  logger.error(error instanceof Error ? error.message : error);
+  Sentry.captureException(error);
+  await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 };
