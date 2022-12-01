@@ -44,6 +44,7 @@ export const wrapHandler = function wrapHandler_<T>(
         const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
         if (transaction !== undefined) {
           transaction.setStatus("ok");
+          transaction.finish();
         }
       })
       .catch(async (error) => {
@@ -51,23 +52,23 @@ export const wrapHandler = function wrapHandler_<T>(
         const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
         if (transaction !== undefined) {
           transaction.setStatus("unknown_error");
+          transaction.finish();
         }
 
         // Don't display the help text which can obscure the error
         process.exit(1);
-      })
-      .finally(() => {
-        const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
-        if (transaction !== undefined) {
-          transaction.finish();
-        }
       });
   };
 };
 
 const reportHandlerError: (error: unknown) => Promise<void> = async (error) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  logger.info("");
   logger.error(error instanceof Error ? error.message : error);
+  logger.info("");
+  logger.info(
+    "Tip: run `meticulous help <command>` for help on a particular command, or `meticulous help` for a list of the available commands."
+  );
   Sentry.captureException(error);
   await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 };
