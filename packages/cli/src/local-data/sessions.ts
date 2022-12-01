@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
+import { SessionData } from "@alwaysmeticulous/api";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
@@ -7,83 +7,58 @@ import {
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { getRecordedSession, getRecordedSessionData } from "../api/session.api";
-import { sanitizeFilename, waitToAcquireLockOnFile } from "./local-data.utils";
+import { getOrDownloadJsonFile, sanitizeFilename } from "./local-data.utils";
 
-export const getOrFetchRecordedSession: (
+export const getOrFetchRecordedSession = async (
   client: AxiosInstance,
   sessionId: string
-) => Promise<any> = async (client, sessionId) => {
+): Promise<any> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const sessionsDir = join(getMeticulousLocalDataDir(), "sessions");
-  await mkdir(sessionsDir, { recursive: true });
-  const sessionFile = join(sessionsDir, `${sanitizeFilename(sessionId)}.json`);
-  const releaseLock = await waitToAcquireLockOnFile(sessionFile);
+  const sessionFile = join(
+    getMeticulousLocalDataDir(),
+    "sessions",
+    `${sanitizeFilename(sessionId)}.json`
+  );
 
-  try {
-    const existingSession = await readFile(sessionFile)
-      .then((data) => JSON.parse(data.toString("utf-8")))
-      .catch(() => null);
-    if (existingSession) {
-      logger.debug(`Reading session from local copy in ${sessionFile}`);
-      return existingSession;
-    }
-
-    const session = await getRecordedSession(client, sessionId);
-    if (!session) {
-      logger.error(
-        "Error: Could not retrieve session. Is the API token correct?"
-      );
-      await releaseLock();
-      process.exit(1);
-    }
-
-    await writeFile(sessionFile, JSON.stringify(session, null, 2));
-    logger.debug(`Wrote session to ${sessionFile}`);
-    return session;
-  } finally {
-    await releaseLock();
+  const session = await getOrDownloadJsonFile({
+    filePath: sessionFile,
+    dataDescription: "session",
+    downloadJson: () => getRecordedSession(client, sessionId),
+  });
+  if (!session) {
+    logger.error(
+      "Error: Could not retrieve session. Is the API token correct?"
+    );
+    process.exit(1);
   }
+
+  return session;
 };
 
-export const getOrFetchRecordedSessionData: (
+export const getOrFetchRecordedSessionData = async (
   client: AxiosInstance,
   sessionId: string
-) => Promise<any> = async (client, sessionId) => {
+): Promise<SessionData> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const sessionsDir = join(getMeticulousLocalDataDir(), "sessions");
-  await mkdir(sessionsDir, { recursive: true });
-  const sessionDataFile = join(
-    sessionsDir,
+  const sessionFile = join(
+    getMeticulousLocalDataDir(),
+    "sessions",
     `${sanitizeFilename(sessionId)}_data.json`
   );
-  const releaseLock = await waitToAcquireLockOnFile(sessionDataFile);
 
-  try {
-    const existingSessionData = await readFile(sessionDataFile)
-      .then((data) => JSON.parse(data.toString("utf-8")))
-      .catch(() => null);
-    if (existingSessionData) {
-      logger.debug(
-        `Reading session data from local copy in ${sessionDataFile}`
-      );
-      return existingSessionData;
-    }
-
-    const sessionData = await getRecordedSessionData(client, sessionId);
-    if (!sessionData) {
-      logger.error(
-        "Error: Could not retrieve session data. This may be an invalid session"
-      );
-      await releaseLock();
-      process.exit(1);
-    }
-
-    await writeFile(sessionDataFile, JSON.stringify(sessionData, null, 2));
-    logger.debug(`Wrote session data to ${sessionDataFile}`);
-    return sessionData;
-  } finally {
-    await releaseLock();
+  const sessionData = await getOrDownloadJsonFile({
+    filePath: sessionFile,
+    dataDescription: "session data",
+    downloadJson: () => getRecordedSessionData(client, sessionId),
+  });
+  if (!sessionData) {
+    logger.error(
+      "Error: Could not retrieve session data. This may be an invalid session"
+    );
+    process.exit(1);
   }
+
+  return sessionData;
 };

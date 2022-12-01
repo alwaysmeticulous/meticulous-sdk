@@ -1,5 +1,7 @@
-import { mkdir, rmdir, access } from "fs/promises";
-import { join } from "path";
+import { mkdir, rmdir, access, readFile, writeFile } from "fs/promises";
+import { dirname, join } from "path";
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import log from "loglevel";
 import { lock, LockOptions } from "proper-lockfile";
 
 export const sanitizeFilename: (filename: string) => string = (filename) => {
@@ -8,11 +10,58 @@ export const sanitizeFilename: (filename: string) => string = (filename) => {
 
 type ReleaseLock = () => Promise<void>;
 
-// We create a lock file so that if multiple processes try downloading at the same
-// time they don't interfere with each other. The second process to run will
-// wait for the first process to complete, and then return straight away because
-// it'll notice the file already exists.
-export const waitToAcquireLockOnFile = async (
+export interface LoadOrDownloadJsonFileOptions<T> {
+  filePath: string;
+  downloadJson: () => Promise<T | null>;
+
+  /**
+   * For debug messages e.g. 'session' or 'session data'
+   */
+  dataDescription: string;
+}
+
+/**
+ * Returns the JSON.parse'd contents of the file at the given path. If the file
+ * doesn't exist yet then it downloads the object, writes it to the file, and returns it.
+ *
+ * Handles concurrent processes trying to download to the same file at the same time.
+ */
+export const getOrDownloadJsonFile = async <T>({
+  filePath,
+  downloadJson,
+  dataDescription,
+}: LoadOrDownloadJsonFileOptions<T>): Promise<T | null> => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
+  await mkdir(dirname(filePath), { recursive: true });
+
+  // We create a lock file so that if multiple processes try downloading at the same
+  // time they don't interfere with each other. The second process to run will
+  // wait for the first process to complete, and then return straight away because
+  // it'll notice the file already exists.
+  const releaseLock = await waitToAcquireLockOnFile(filePath);
+
+  try {
+    const existingData = await readFile(filePath)
+      .then((data) => JSON.parse(data.toString("utf-8")))
+      .catch(() => null);
+    if (existingData) {
+      logger.debug(`Reading ${dataDescription} from local copy in ${filePath}`);
+      return existingData;
+    }
+
+    const downloadedData = await downloadJson();
+    if (downloadedData) {
+      await writeFile(filePath, JSON.stringify(downloadedData, null, 2));
+      logger.debug(`Wrote ${dataDescription} to ${filePath}`);
+    }
+    return downloadedData;
+  } finally {
+    await releaseLock();
+  }
+};
+
+const waitToAcquireLockOnFile = async (
   filePath: string
 ): Promise<ReleaseLock> => {
   // In many cases the file doesn't exist yet, and can't exist yet (need to download the data, and creating an

@@ -1,8 +1,9 @@
-import { mkdir, opendir, readFile, rm, writeFile } from "fs/promises";
+import { mkdir, opendir, rm } from "fs/promises";
 import { join } from "path";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
+  Replay,
 } from "@alwaysmeticulous/common";
 import Zip from "adm-zip";
 import { AxiosInstance } from "axios";
@@ -11,51 +12,38 @@ import { downloadFile } from "../api/download";
 import { getReplay, getReplayDownloadUrl } from "../api/replay.api";
 import {
   fileExists,
+  getOrDownloadJsonFile,
   waitToAcquireLockOnDirectory,
-  waitToAcquireLockOnFile,
 } from "./local-data.utils";
 
-export const getOrFetchReplay: (
+export const getOrFetchReplay = async (
   client: AxiosInstance,
   replayId: string
-) => Promise<any> = async (client, replayId) => {
+): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const replayDir = getReplayDir(replayId);
-  await mkdir(replayDir, { recursive: true });
-  const replayFile = join(replayDir, `${replayId}.json`);
-  const releaseLock = await waitToAcquireLockOnFile(replayFile);
+  const replayFile = join(getReplayDir(replayId), `${replayId}.json`);
 
-  try {
-    const existingReplay = await readFile(replayFile)
-      .then((data) => JSON.parse(data.toString("utf-8")))
-      .catch(() => null);
-    if (existingReplay) {
-      logger.debug(`Reading replay from local copy in ${replayFile}`);
-      return existingReplay;
-    }
+  const replay = await getOrDownloadJsonFile({
+    filePath: replayFile,
+    dataDescription: "replay",
+    downloadJson: () => getReplay(client, replayId),
+  });
 
-    const replay = await getReplay(client, replayId);
     if (!replay) {
       logger.error(
         `Error: Could not retrieve replay with id "${replayId}". Is the API token correct?`
       );
-      await releaseLock();
       process.exit(1);
     }
 
-    await writeFile(replayFile, JSON.stringify(replay, null, 2));
-    logger.debug(`Wrote replay to ${replayFile}`);
     return replay;
-  } finally {
-    await releaseLock();
-  }
 };
 
-export const getOrFetchReplayArchive: (
+export const getOrFetchReplayArchive = async (
   client: AxiosInstance,
   replayId: string
-) => Promise<void> = async (client, replayId) => {
+): Promise<void> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const replayDir = getReplayDir(replayId);
