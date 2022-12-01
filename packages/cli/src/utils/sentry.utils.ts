@@ -1,5 +1,7 @@
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { addExtensionMethods } from "@sentry/tracing";
+import log from "loglevel";
 import { Duration } from "luxon";
 
 const SENTRY_DSN =
@@ -33,13 +35,6 @@ export const setOptions: (options: any) => void = (options) => {
   Sentry.setContext("invoke-options", options);
 };
 
-export const reportHandlerError: (error: any) => Promise<void> = async (
-  error
-) => {
-  Sentry.captureException(error);
-  await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
-};
-
 export const wrapHandler = function wrapHandler_<T>(
   handler: (args: T) => Promise<void>
 ): (args: T) => Promise<void> {
@@ -49,6 +44,7 @@ export const wrapHandler = function wrapHandler_<T>(
         const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
         if (transaction !== undefined) {
           transaction.setStatus("ok");
+          transaction.finish();
         }
       })
       .catch(async (error) => {
@@ -56,14 +52,23 @@ export const wrapHandler = function wrapHandler_<T>(
         const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
         if (transaction !== undefined) {
           transaction.setStatus("unknown_error");
-        }
-        throw error;
-      })
-      .finally(() => {
-        const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
-        if (transaction !== undefined) {
           transaction.finish();
         }
+
+        // Don't display the help text which can obscure the error
+        process.exit(1);
       });
   };
+};
+
+const reportHandlerError: (error: unknown) => Promise<void> = async (error) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  logger.info("");
+  logger.error(error instanceof Error ? error.message : error);
+  logger.info("");
+  logger.info(
+    "Tip: run `meticulous <command> --help` for help on a particular command, or `meticulous --help` for a list of the available commands."
+  );
+  Sentry.captureException(error);
+  await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 };

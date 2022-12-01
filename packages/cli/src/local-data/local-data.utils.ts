@@ -1,4 +1,4 @@
-import { mkdir, rmdir, access, readFile, writeFile, rm } from "fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "fs/promises";
 import { dirname, join } from "path";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
