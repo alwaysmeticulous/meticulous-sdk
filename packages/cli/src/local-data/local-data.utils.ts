@@ -1,7 +1,8 @@
-import { mkdir, rmdir, access, readFile, writeFile } from "fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "fs/promises";
 import { dirname, join } from "path";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
+import { Duration } from "luxon";
 import { lock, LockOptions } from "proper-lockfile";
 
 export const sanitizeFilename: (filename: string) => string = (filename) => {
@@ -81,16 +82,14 @@ const waitToAcquireLockOnFile = async (
     });
     return async () => {
       // Clean up our directory _before_ releasing the lock
-      // We check if it exists first, because if we're just coming out of
+      // Note: it may have already been deleted: if we're just coming out of
       // a lock released by someone else then they will have already deleted
       // the directory
-      if (await fileExists(lockDirectory)) {
-        await rmdir(lockDirectory);
-      }
+      await rm(lockDirectory, { recursive: true, force: true });
       await releaseLock();
     };
   } catch (err) {
-    await rmdir(lockDirectory);
+    await rm(lockDirectory, { recursive: true, force: true });
     throw err;
   }
 };
@@ -109,8 +108,6 @@ export const waitToAcquireLockOnDirectory = (
   });
 };
 
-const ONE_SECOND_IN_MS = 1_000;
-
 const LOCK_RETRY_OPTIONS: LockOptions["retries"] = {
   // We want to keep on retrying till we get the maxRetryTime, so we set retries, which is a maximum, to a high value
   retries: 1000,
@@ -118,7 +115,7 @@ const LOCK_RETRY_OPTIONS: LockOptions["retries"] = {
   minTimeout: 500,
   maxTimeout: 2000,
   // Wait a maximum of 120s for the other process to finish downloading and/or extracting
-  maxRetryTime: 120 * ONE_SECOND_IN_MS,
+  maxRetryTime: Duration.fromObject({ minutes: 2 }).as("milliseconds"),
   // Randomize so processes are less likely to clash on their retries
   randomize: true,
 };
