@@ -2,10 +2,10 @@ import { Replay } from "@alwaysmeticulous/common";
 import axios, { AxiosInstance } from "axios";
 import { getProject } from "./project.api";
 
-export const getReplay: (
+export const getReplay = async (
   client: AxiosInstance,
   replayId: string
-) => Promise<any> = async (client, replayId) => {
+): Promise<Replay> => {
   const { data } = await client.get(`replays/${replayId}`).catch((error) => {
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 404) {

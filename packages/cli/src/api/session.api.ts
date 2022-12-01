@@ -1,9 +1,10 @@
+import { SessionData } from "@alwaysmeticulous/api";
 import axios, { AxiosInstance } from "axios";
 
-export const getRecordedSession: (
+export const getRecordedSession = async (
   client: AxiosInstance,
   sessionId: string
-) => Promise<any> = async (client, sessionId) => {
+): Promise<any> => {
   const { data } = await client.get(`sessions/${sessionId}`).catch((error) => {
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 404) {
@@ -15,10 +16,10 @@ export const getRecordedSession: (
   return data;
 };
 
-export const getRecordedSessionData: (
+export const getRecordedSessionData = async (
   client: AxiosInstance,
   sessionId: string
-) => Promise<any> = async (client, sessionId) => {
+): Promise<SessionData> => {
   const { data } = await client
     .get(`sessions/${sessionId}/data`)
     .catch((error) => {

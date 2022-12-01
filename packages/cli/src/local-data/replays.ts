@@ -1,34 +1,35 @@
-import { opendir, access, mkdir, readFile, rm, writeFile } from "fs/promises";
+import { mkdir, opendir, rm } from "fs/promises";
 import { join } from "path";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
+  Replay,
 } from "@alwaysmeticulous/common";
 import Zip from "adm-zip";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { downloadFile } from "../api/download";
 import { getReplay, getReplayDownloadUrl } from "../api/replay.api";
+import {
+  fileExists,
+  getOrDownloadJsonFile,
+  waitToAcquireLockOnDirectory,
+} from "./local-data.utils";
 
-export const getOrFetchReplay: (
+export const getOrFetchReplay = async (
   client: AxiosInstance,
   replayId: string
-) => Promise<any> = async (client, replayId) => {
+): Promise<Replay> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const replayDir = getReplayDir(replayId);
-  await mkdir(replayDir, { recursive: true });
-  const replayFile = join(replayDir, `${replayId}.json`);
+  const replayFile = join(getReplayDir(replayId), `${replayId}.json`);
 
-  const existingReplay = await readFile(replayFile)
-    .then((data) => JSON.parse(data.toString("utf-8")))
-    .catch(() => null);
-  if (existingReplay) {
-    logger.debug(`Reading replay from local copy in ${replayFile}`);
-    return existingReplay;
-  }
+  const replay = await getOrDownloadJsonFile({
+    filePath: replayFile,
+    dataDescription: "replay",
+    downloadJson: () => getReplay(client, replayId),
+  });
 
-  const replay = await getReplay(client, replayId);
   if (!replay) {
     logger.error(
       `Error: Could not retrieve replay with id "${replayId}". Is the API token correct?`
@@ -36,46 +37,49 @@ export const getOrFetchReplay: (
     process.exit(1);
   }
 
-  await writeFile(replayFile, JSON.stringify(replay, null, 2));
-  logger.debug(`Wrote replay to ${replayFile}`);
   return replay;
 };
 
-export const getOrFetchReplayArchive: (
+export const getOrFetchReplayArchive = async (
   client: AxiosInstance,
   replayId: string
-) => Promise<void> = async (client, replayId) => {
+): Promise<void> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const replayDir = getReplayDir(replayId);
   await mkdir(replayDir, { recursive: true });
-  const replayArchiveFile = join(replayDir, `${replayId}.zip`);
-  const paramsFile = join(replayDir, "replayEventsParams.json");
+  const releaseLock = await waitToAcquireLockOnDirectory(replayDir);
 
-  // Check if "replayEventsParams.json" exists. If yes, we assume the replay
-  // zip archive has been downloaded and extracted.
-  const paramsFileExists = await access(paramsFile)
-    .then(() => true)
-    .catch(() => false);
-  if (paramsFileExists) {
-    logger.debug(`Replay archive already downloaded at ${replayDir}`);
-    return;
+  try {
+    const replayArchiveFile = join(replayDir, `${replayId}.zip`);
+    const paramsFile = join(replayDir, "replayEventsParams.json");
+
+    // Check if "replayEventsParams.json" exists. If yes, we assume the replay
+    // zip archive has been downloaded and extracted.
+    if (await fileExists(paramsFile)) {
+      logger.debug(`Replay archive already downloaded at ${replayDir}`);
+      return;
+    }
+
+    const downloadUrlData = await getReplayDownloadUrl(client, replayId);
+    if (!downloadUrlData) {
+      logger.error(
+        "Error: Could not retrieve replay archive URL. This may be an invalid replay"
+      );
+      await releaseLock();
+      process.exit(1);
+    }
+
+    await downloadFile(downloadUrlData.dowloadUrl, replayArchiveFile);
+
+    const zipFile = new Zip(replayArchiveFile);
+    zipFile.extractAllTo(replayDir, /*overwrite=*/ true);
+    await rm(replayArchiveFile);
+
+    logger.debug(`Extracted replay archive in ${replayDir}`);
+  } finally {
+    await releaseLock();
   }
-
-  const downloadUrlData = await getReplayDownloadUrl(client, replayId);
-  if (!downloadUrlData) {
-    logger.error(
-      "Error: Could not retrieve replay archive URL. This may be an invalid replay"
-    );
-    process.exit(1);
-  }
-
-  await downloadFile(downloadUrlData.dowloadUrl, replayArchiveFile);
-  const zipFile = new Zip(replayArchiveFile);
-  zipFile.extractAllTo(replayDir, /*overwrite=*/ true);
-  await rm(replayArchiveFile);
-
-  logger.debug(`Exrtracted replay archive in ${replayDir}`);
 };
 
 export const getScreenshotFiles: (
