@@ -5,6 +5,8 @@ export {
   ReplayUserInteractionsResultShort,
 } from "./replay/bundle-to-sdk/index";
 export {
+  BootstrapReplayUserInteractionsFn,
+  BootstrapReplayUserInteractionsOptions,
   OnReplayTimelineEventFn,
   ReplayUserInteractionsFn,
   ReplayUserInteractionsOptions,
