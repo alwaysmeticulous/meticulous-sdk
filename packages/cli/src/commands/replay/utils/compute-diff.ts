@@ -2,7 +2,6 @@ import {
   ScreenshotAssertionsEnabledOptions,
   ScreenshotDiffResult,
 } from "@alwaysmeticulous/api";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import {
