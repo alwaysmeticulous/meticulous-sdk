@@ -5,6 +5,7 @@ import {
   ReplayEventsFn,
 } from "@alwaysmeticulous/common";
 import {
+  BootstrapReplayUserInteractionsFn,
   OnReplayTimelineEventFn,
   ReplayUserInteractionsFn,
   SetupReplayNetworkStubbingFn,
@@ -148,6 +149,26 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const replayData = await initializeReplayData({ page, startUrl });
   initializeReplayDataSpan?.finish();
 
+  const loadReplayUserInteractionsExports = parentPerformanceSpan?.startChild({
+    op: "loadReplayUserInteractionsExports",
+  });
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const replayUserInteractionsExports = require(dependencies
+    .nodeUserInteractions.location);
+  loadReplayUserInteractionsExports?.finish();
+
+  const boostrapUserInteractions: BootstrapReplayUserInteractionsFn =
+    replayUserInteractionsExports.boostrapUserInteractions;
+
+  let replayUserInteractions: ReplayUserInteractionsFn;
+  if (typeof boostrapUserInteractions === "function") {
+    await page.setRequestInterception(true);
+    replayUserInteractions = await boostrapUserInteractions({ page, logLevel });
+  } else {
+    replayUserInteractions =
+      replayUserInteractionsExports.replayUserInteractions;
+  }
+
   // Set-up network stubbing if required
   if (networkStubbing) {
     const loadNetworkStubbingExportsSpan = parentPerformanceSpan?.startChild({
@@ -188,16 +209,6 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     startUrl,
   });
   setupBrowserContextSeedingSpan?.finish();
-
-  const loadReplayUserInteractionsExports = parentPerformanceSpan?.startChild({
-    op: "loadReplayUserInteractionsExports",
-  });
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const replayUserInteractionsExports = require(dependencies
-    .nodeUserInteractions.location);
-  loadReplayUserInteractionsExports?.finish();
-  const replayUserInteractions: ReplayUserInteractionsFn =
-    replayUserInteractionsExports.replayUserInteractions;
 
   // Navigate to the start URL.
   logger.debug(`Navigating to ${startUrl}`);

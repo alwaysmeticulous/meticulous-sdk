@@ -21,6 +21,15 @@ export type ReplayUserInteractionsFn = (
   options: ReplayUserInteractionsOptions
 ) => Promise<ReplayUserInteractionsResult>;
 
+export interface BootstrapReplayUserInteractionsOptions {
+  page: Page;
+  logLevel: LogLevelDesc;
+}
+
+export type BootstrapReplayUserInteractionsFn = (
+  options: BootstrapReplayUserInteractionsOptions
+) => Promise<ReplayUserInteractionsFn>;
+
 // In future we intend to add new options, but only to the enabled: true case
 // (for example we'll add an optional 'recreatePauses' option)
 export type VirtualTimeOptions = { enabled: false } | { enabled: true };
