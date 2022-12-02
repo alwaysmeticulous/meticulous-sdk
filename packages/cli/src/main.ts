@@ -11,6 +11,7 @@ import { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.comma
 import { screenshotDiffCommand } from "./commands/screenshot-diff/screenshot-diff.command";
 import { serveCommand } from "./commands/serve/serve.command";
 import { showProjectCommand } from "./commands/show-project/show-project.command";
+import { showTestRunCommand } from "./commands/show-test-run/show-test-run.command";
 import { updateTestsCommand } from "./commands/update-tests/update-tests.command";
 import { initLogger, setLogLevel } from "./utils/logger.utils";
 import { initSentry, setOptions } from "./utils/sentry.utils";
@@ -44,6 +45,7 @@ export const main: () => void = async () => {
     .command(runAllTestsCommand)
     .command(screenshotDiffCommand)
     .command(showProjectCommand)
+    .command(showTestRunCommand)
     .command(updateTestsCommand)
     .command("serve", false, serveCommand) // This is a debugging command, so we hide it to not pollute the main menu
     .help()

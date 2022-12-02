@@ -3,6 +3,7 @@ export { createTestCommand } from "./commands/create-test/create-test.command";
 export { debugReplayCommand } from "./commands/debug-replay/debug-replay.command";
 export { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
 export { downloadSessionCommand } from "./commands/download-session/download-session.command";
+export { showTestRunCommand } from "./commands/show-test-run/show-test-run.command";
 export { recordCommand } from "./commands/record/record.command";
 export { replayCommand } from "./commands/replay/replay.command";
 export { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.command";
