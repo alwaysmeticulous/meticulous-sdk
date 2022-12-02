@@ -14,6 +14,8 @@ export {
   ScreenshotIdentifier,
   ScreenshottingEnabledOptions,
   StoryboardOptions,
+  ScreenshotDiffResultMissingBaseAndHead,
+  SingleTryScreenshotDiffResult,
 } from "./replay/replay-diff.types";
 export {
   TestCase,

@@ -2,6 +2,7 @@ import {
   ScreenshotDiffResult,
   ScreenshotIdentifier,
 } from "@alwaysmeticulous/api";
+import { SingleTryScreenshotDiffResult } from "@alwaysmeticulous/api/dist/replay/replay-diff.types";
 import { logger } from "@sentry/utils";
 import { DetailedTestCaseResult } from "../config/config.types";
 
@@ -70,6 +71,12 @@ export const mergeResults = ({
         return currentDiff; // no difference, both screenshots were missing
       }
 
+      if (diffWhenRetrying.outcome === "flake") {
+        throw new Error(
+          "Expected diffs when retrying and comparing to the original head screenshot to be first-try diffs, but got a flake."
+        );
+      }
+
       if (currentDiff.outcome === "flake") {
         return {
           ...currentDiff,
@@ -105,8 +112,10 @@ export const mergeResults = ({
   };
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const withoutIdentifier = ({ identifier, ...rest }: ScreenshotDiffResult) =>
+const withoutIdentifier = ({
+  identifier, // eslint-disable-line @typescript-eslint/no-unused-vars
+  ...rest
+}: { identifier: ScreenshotIdentifier } & SingleTryScreenshotDiffResult) =>
   rest;
 
 type ScreenshotIdentifierHash = string;

@@ -1,6 +1,8 @@
 import {
   ScreenshotDiffResult,
   ScreenshotIdentifier,
+  ScreenshotDiffResultMissingBaseAndHead,
+  SingleTryScreenshotDiffResult,
 } from "@alwaysmeticulous/api";
 import { DetailedTestCaseResult } from "../../config/config.types";
 import { mergeResults } from "../merge-test-results";
@@ -172,9 +174,9 @@ const flake = (
   return {
     identifier: id(eventNumber),
     outcome: "flake",
-    diffToBaseScreenshot: withoutIdentifier(diffToBaseScreenshot),
+    diffToBaseScreenshot: asSingleTryDiff(diffToBaseScreenshot),
     diffsToHeadScreenshotOnRetries:
-      diffsToHeadScreenshotOnRetries.map(withoutIdentifier),
+      diffsToHeadScreenshotOnRetries.map(asRetryDiff),
   };
 };
 
@@ -214,7 +216,33 @@ const differentSize = (eventNumber?: number): ScreenshotDiffResult => {
   };
 };
 
-const withoutIdentifier = <T extends { identifier: unknown }>({
+const asSingleTryDiff = ({
   identifier, // eslint-disable-line @typescript-eslint/no-unused-vars
   ...rest
-}: T): Omit<T, "identifier"> => rest;
+}: ScreenshotDiffResult): SingleTryScreenshotDiffResult => {
+  if (rest.outcome === "flake") {
+    throw new Error("Must not be a diff with a flake outcome");
+  }
+  return rest;
+};
+
+type AnyScreenshotDiff =
+  | ScreenshotDiffResult
+  | {
+      identifier: ScreenshotIdentifier;
+      outcome: "missing-base-and-head";
+    };
+
+type RetryDiff =
+  | SingleTryScreenshotDiffResult
+  | ScreenshotDiffResultMissingBaseAndHead;
+
+const asRetryDiff = ({
+  identifier, // eslint-disable-line @typescript-eslint/no-unused-vars
+  ...rest
+}: AnyScreenshotDiff): RetryDiff => {
+  if (rest.outcome === "flake") {
+    throw new Error("Must not be a diff with a flake outcome");
+  }
+  return rest;
+};
