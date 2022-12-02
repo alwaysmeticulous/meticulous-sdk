@@ -3,7 +3,11 @@ export const BASE_SNIPPETS_URL = "https://snippet.meticulous.ai/";
 // Many comments directly from Chromium source
 // https://source.chromium.org/chromium/chromium/src/+/main:content/public/common/content_switches.cc
 export const COMMON_CHROMIUM_FLAGS = [
-  "--disable-features=Translate",
+  // WebFontsCacheAwareTimeoutAdaption - font request interception caching might trigger
+  // a double requestPaused CDP event which triggers "request" Puppeteer event to be emitted twice
+  // which breaks tracking of in-flight requests. See https://bugs.chromium.org/p/chromium/issues/detail?id=1196004 and
+  // https://github.com/puppeteer/puppeteer/issues/7475.
+  "--disable-features=Translate,WebFontsCacheAwareTimeoutAdaption",
   // Disable task throttling of timer tasks from background pages.
   "--disable-background-timer-throttling",
   // Prevent renderer process backgrounding when set.
