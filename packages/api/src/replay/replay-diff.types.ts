@@ -36,16 +36,16 @@ export interface ScreenshotDiffOptions {
   diffPixelThreshold: number;
 }
 
-/** Represents the result of comparing two screenshots */
-export type ScreenshotDiffResult = {
-  identifier: ScreenshotIdentifier;
-} & (
+export type SingleTryScreenshotDiffResult =
   | ScreenshotDiffResultMissingBase
   | ScreenshotDiffResultMissingHead
   | ScreenshotDiffResultDifferentSize
-  | ScreenshotDiffResultCompared
-  | ScreenshotDiffResultFlake
-);
+  | ScreenshotDiffResultCompared;
+
+/** Represents the result of comparing two screenshots */
+export type ScreenshotDiffResult = {
+  identifier: ScreenshotIdentifier;
+} & (SingleTryScreenshotDiffResult | ScreenshotDiffResultFlake);
 
 export type ScreenshotIdentifier = EndStateScreenshot | ScreenshotAfterEvent;
 
@@ -72,6 +72,10 @@ export interface ScreenshotDiffResultMissingHead {
 
   /** Relative path to the replay archive */
   baseScreenshotFile: string;
+}
+
+export interface ScreenshotDiffResultMissingBaseAndHead {
+  outcome: "missing-base-and-head";
 }
 
 export interface ScreenshotDiffResultDifferentSize {
@@ -115,7 +119,7 @@ export interface ScreenshotDiffResultFlake {
   /**
    * The original diff. Can be any outcome but for 'no-diff'.
    */
-  diffToBaseScreenshot: Omit<ScreenshotDiffResult, "identifier">;
+  diffToBaseScreenshot: SingleTryScreenshotDiffResult;
 
   /**
    * The diffs created by retrying taking the head screenshot and comparing
@@ -126,9 +130,6 @@ export interface ScreenshotDiffResultFlake {
    * and head means the new head screenshot taken.
    */
   diffsToHeadScreenshotOnRetries: Array<
-    Omit<
-      ScreenshotDiffResult | { outcome: "missing-base-and-head" },
-      "identifier"
-    >
+    SingleTryScreenshotDiffResult | ScreenshotDiffResultMissingBaseAndHead
   >;
 }
