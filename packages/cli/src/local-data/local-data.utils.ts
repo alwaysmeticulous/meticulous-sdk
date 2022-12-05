@@ -72,26 +72,18 @@ const waitToAcquireLockOnFile = async (
   // as something that's unique to the file, and gives the same path for a given file everytime. So we create our
   // own lock-target directory for this purpose (directory not file since mkdir is guaranteed to be synchronous).
   // The path needs to actually exist, since proper-lockfile resolves symlinks on it.
+  //
+  // Note: we don't delete the lock directory afterwards because doing so without creating race-conditions is tricky
   const lockDirectory = `${filePath}.lock-target`;
   await mkdir(lockDirectory, { recursive: true });
 
-  try {
-    const releaseLock = await lock(lockDirectory, {
-      retries: LOCK_RETRY_OPTIONS,
-      lockfilePath: `${filePath}.lock`,
-    });
-    return async () => {
-      // Clean up our directory _before_ releasing the lock
-      // Note: it may have already been deleted: if we're just coming out of
-      // a lock released by someone else then they will have already deleted
-      // the directory
-      await rm(lockDirectory, { recursive: true, force: true });
-      await releaseLock();
-    };
-  } catch (err) {
-    await rm(lockDirectory, { recursive: true, force: true });
-    throw err;
-  }
+  const releaseLock = await lock(lockDirectory, {
+    retries: LOCK_RETRY_OPTIONS,
+    lockfilePath: `${filePath}.lock`,
+  });
+  return async () => {
+    await releaseLock();
+  };
 };
 
 export const fileExists = (filePath: string) =>
