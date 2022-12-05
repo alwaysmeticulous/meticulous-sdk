@@ -236,6 +236,15 @@ export const runAllTestsInParallel: (
         }
 
         process.nextTick(checkNextTask);
+      })
+      .catch((err) => {
+        logger.error(
+          `Error processing result of completed task for test '${testName({
+            id,
+            ...testCase,
+          })}'`,
+          err
+        );
       });
   };
 
