@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replayer",
-  "version": "2.20.3",
+  "version": "2.20.4",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -18,7 +18,7 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.20.3",
+    "@alwaysmeticulous/common": "^2.20.4",
     "loglevel": "^1.8.0",
     "luxon": "^2.4.0",
     "puppeteer": "^14.4.1",
