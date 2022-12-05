@@ -169,6 +169,8 @@ export const runAllTestsInParallel: (
     deferredResult.promise
       .catch(() => null)
       .then(async (result) => {
+        --inProgress;
+
         const resultsForTestCase = resultsByTestId.get(id);
         if (resultsForTestCase != null && result != null) {
           logRetrySummary(testName({ id, ...testCase }), result);
@@ -183,8 +185,6 @@ export const runAllTestsInParallel: (
           process.nextTick(checkNextTask);
           return;
         }
-
-        --inProgress;
 
         if (result?.result === "fail" && resultsForTestCase == null) {
           queue.push(
@@ -236,6 +236,15 @@ export const runAllTestsInParallel: (
         }
 
         process.nextTick(checkNextTask);
+      })
+      .catch((err) => {
+        logger.error(
+          `Error processing result of completed task for test '${testName({
+            id,
+            ...testCase,
+          })}'`,
+          err
+        );
       });
   };
 
