@@ -2,16 +2,11 @@ import { cpus } from "os";
 import { TestCase } from "@alwaysmeticulous/api";
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import {
-  DetailedTestCaseResult,
-  MeticulousCliConfig,
-} from "../config/config.types";
-import { sortResults } from "../utils/run-all-tests.utils";
+import { DetailedTestCaseResult } from "../config/config.types";
 import { mergeResults } from "./merge-test-results";
 import { TestRunProgress } from "./run-all-tests.types";
 
 export interface RunAllTestsInParallelOptions {
-  config: MeticulousCliConfig;
   testsToRun: TestCase[];
   parallelTasks: number | null;
   maxRetriesOnFailure: number;
@@ -41,7 +36,6 @@ interface TestCaseResults {
 export const runAllTestsInParallel: (
   options: RunAllTestsInParallelOptions
 ) => Promise<DetailedTestCaseResult[]> = async ({
-  config,
   testsToRun,
   parallelTasks,
   maxRetriesOnFailure,
@@ -199,10 +193,7 @@ export const runAllTestsInParallel: (
 
   await allTasksDone.promise;
 
-  return sortResults({
-    results: finalResults,
-    testCases: config.testCases || [],
-  });
+  return finalResults;
 };
 
 const logRetrySummary = (

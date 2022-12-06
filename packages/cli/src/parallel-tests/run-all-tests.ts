@@ -20,7 +20,7 @@ import { loadReplayEventsDependencies } from "../local-data/replay-assets";
 import { runAllTestsInParallel } from "../parallel-tests/parallel-tests.handler";
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
-import { getTestsToRun } from "../utils/run-all-tests.utils";
+import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
 import { getEnvironment } from "../utils/test-run-environment.utils";
 import { getMeticulousVersion } from "../utils/version.utils";
 import { executeTestInChildProcess } from "./execute-test-in-child-process";
@@ -249,7 +249,6 @@ export const runAllTests = async ({
   };
 
   const results = await runAllTestsInParallel({
-    config,
     testsToRun,
     parallelTasks,
     maxRetriesOnFailure,
@@ -284,16 +283,21 @@ export const runAllTests = async ({
     onTestFailedToRun: onProgressUpdated,
   });
 
-  const runAllFailure = results.find(({ result }) => result === "fail");
+  const sortedResults = sortResults({
+    results: results,
+    testCases: config.testCases || [],
+  });
+
+  const runAllFailure = sortedResults.find(({ result }) => result === "fail");
   const overallStatus = runAllFailure ? "Failure" : "Success";
-  await storeTestRunResults(overallStatus, results);
+  await storeTestRunResults(overallStatus, sortedResults);
 
   logger.info("");
   logger.info("Results");
   logger.info("=======");
   logger.info(`URL: ${testRunUrl}`);
   logger.info("=======");
-  results.forEach(({ title, result }) => {
+  sortedResults.forEach(({ title, result }) => {
     logger.info(`${title} => ${result}`);
   });
 
@@ -307,15 +311,16 @@ export const runAllTests = async ({
       id: testRun.id,
       status: overallStatus,
       progress: {
-        flakedTestCases: results.filter(({ result }) => result === "flake")
+        flakedTestCases: sortedResults.filter(
+          ({ result }) => result === "flake"
+        ).length,
+        passedTestCases: sortedResults.filter(({ result }) => result === "pass")
           .length,
-        passedTestCases: results.filter(({ result }) => result === "pass")
-          .length,
-        failedTestCases: results.filter(({ result }) => result === "fail")
+        failedTestCases: sortedResults.filter(({ result }) => result === "fail")
           .length,
         runningTestCases: 0,
       },
     },
-    testCaseResults: results,
+    testCaseResults: sortedResults,
   };
 };
