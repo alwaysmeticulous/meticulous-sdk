@@ -1,6 +1,4 @@
-import { fork } from "child_process";
 import { cpus } from "os";
-import { join } from "path";
 import { TestCase } from "@alwaysmeticulous/api";
 import {
   defer,
@@ -18,8 +16,9 @@ import {
 } from "../config/config.types";
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { sortResults } from "../utils/run-all-tests.utils";
+import { executeReplayInChildProgress } from "./execute-replay-in-child-process";
 import { mergeResults } from "./merge-test-results";
-import { InitMessage, ResultMessage } from "./messages.types";
+import { InitMessage } from "./messages.types";
 import { TestRunProgress } from "./run-all-tests.types";
 
 export interface RunAllTestsInParallelOptions {
@@ -104,42 +103,9 @@ export const runAllTestsInParallel: (
   const maxTasks = parallelTasks ?? Math.max(cpus().length, 1);
   logger.debug(`Running with ${maxTasks} maximum tasks in parallel`);
 
-  const taskHandler = join(__dirname, "task.handler.js");
-
   // Starts running a test case in a child process
   const startTask = (rerunnableTestCase: RerunnableTestCase) => {
     const { id, ...testCase } = rerunnableTestCase;
-    const deferredResult = defer<DetailedTestCaseResult>();
-    const child = fork(taskHandler, [], { stdio: "inherit" });
-
-    const messageHandler = (message: unknown) => {
-      if (
-        message &&
-        typeof message === "object" &&
-        (message as any)["kind"] === "result"
-      ) {
-        const resultMessage = message as ResultMessage;
-        deferredResult.resolve(resultMessage.data.result);
-        child.off("message", messageHandler);
-      }
-    };
-
-    child.on("error", (error) => {
-      if (deferredResult.getState() === "pending") {
-        deferredResult.reject(error);
-      }
-    });
-    child.on("exit", (code) => {
-      if (code) {
-        logger.debug(`child exited with code: ${code}`);
-      }
-      if (deferredResult.getState() === "pending") {
-        deferredResult.reject(new Error("No result"));
-      }
-    });
-    child.on("message", messageHandler);
-
-    // Send test case and arguments to child process
     const isRetry = resultsByTestId.has(id);
     const initMessage: InitMessage = {
       kind: "init",
@@ -165,10 +131,9 @@ export const runAllTestsInParallel: (
         },
       },
     };
-    child.send(initMessage);
 
     // Handle task completion
-    deferredResult.promise
+    executeReplayInChildProgress(initMessage)
       .catch(() => null)
       .then(async (result) => {
         const resultsForTestCase = resultsByTestId.get(id);
