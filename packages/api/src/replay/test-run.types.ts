@@ -86,3 +86,22 @@ export interface TestRunGitHubPushContext {
   /** Git ref (usually /refs/head/<branch>) */
   ref: string;
 }
+
+export interface TestRunGitHubWorkflowDispatchContext {
+  type: "github";
+  event: "workflow-dispatch";
+
+  /** Git ref (usually /refs/head/<branch>) */
+  ref: string;
+
+  /** Workflow dispatch inputs */
+  inputs: {
+    [key: string]: unknown;
+  };
+
+  /** Resolved base commit hash */
+  baseSha: string;
+
+  /** Resolved head commit hash */
+  headSha: string;
+}
