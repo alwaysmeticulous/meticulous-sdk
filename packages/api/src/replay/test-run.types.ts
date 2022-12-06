@@ -51,7 +51,8 @@ export interface TestRunEnvironment {
 
 export type TestRunGitHubContext =
   | TestRunGitHubPullRequestContext
-  | TestRunGitHubPushContext;
+  | TestRunGitHubPushContext
+  | TestRunGitHubWorkflowDispatchContext;
 
 export interface TestRunGitHubPullRequestContext {
   type: "github";
