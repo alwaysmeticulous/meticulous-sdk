@@ -1,11 +1,14 @@
-import {
-  ScreenshotDiffResult,
-  ScreenshotIdentifier,
-  ScreenshotDiffResultMissingBaseAndHead,
-  SingleTryScreenshotDiffResult,
-} from "@alwaysmeticulous/api";
-import { DetailedTestCaseResult } from "../../config/config.types";
 import { mergeResults } from "../merge-test-results";
+import {
+  diff,
+  differentSize,
+  flake,
+  missingBase,
+  missingBaseAndHead,
+  missingHead,
+  noDiff,
+  testResult,
+} from "./mock-test-results";
 
 describe("mergeResults", () => {
   it("keeps the result as a failure when all retried screenshots are 'identical'", () => {
@@ -119,130 +122,3 @@ describe("mergeResults", () => {
     );
   });
 });
-
-const id = (eventNumber = 0): ScreenshotIdentifier => ({
-  type: "after-event",
-  eventNumber,
-});
-
-const testResult = (
-  result: "pass" | "fail" | "flake",
-  screenshotDiffResults: ScreenshotDiffResult[]
-): DetailedTestCaseResult => {
-  return {
-    sessionId: "mock-session-id",
-    headReplayId: "mock-head-replay-id",
-    result,
-    screenshotDiffResults,
-  };
-};
-
-const diff = (eventNumber?: number): ScreenshotDiffResult => {
-  return {
-    identifier: id(eventNumber),
-    outcome: "diff",
-    headScreenshotFile: "mock-head-file",
-    baseScreenshotFile: "mock-base-file",
-    width: 1920,
-    height: 1080,
-    mismatchFraction: 0.01,
-    mismatchPixels: 1000,
-  };
-};
-
-const noDiff = (eventNumber?: number): ScreenshotDiffResult => {
-  return {
-    identifier: id(eventNumber),
-    outcome: "no-diff",
-    headScreenshotFile: "mock-head-file",
-    baseScreenshotFile: "mock-base-file",
-    width: 1920,
-    height: 1080,
-    mismatchFraction: 0.01,
-    mismatchPixels: 1000,
-  };
-};
-
-const flake = (
-  eventNumber: number,
-  diffToBaseScreenshot: ScreenshotDiffResult,
-  diffsToHeadScreenshotOnRetries: Array<
-    | ScreenshotDiffResult
-    | { identifier: ScreenshotIdentifier; outcome: "missing-base-and-head" }
-  >
-): ScreenshotDiffResult => {
-  return {
-    identifier: id(eventNumber),
-    outcome: "flake",
-    diffToBaseScreenshot: asSingleTryDiff(diffToBaseScreenshot),
-    diffsToHeadScreenshotOnRetries:
-      diffsToHeadScreenshotOnRetries.map(asRetryDiff),
-  };
-};
-
-const missingBase = (eventNumber?: number): ScreenshotDiffResult => {
-  return {
-    identifier: id(eventNumber),
-    outcome: "missing-base",
-    headScreenshotFile: "mock-head-file",
-  };
-};
-
-const missingHead = (eventNumber?: number): ScreenshotDiffResult => {
-  return {
-    identifier: id(eventNumber),
-    outcome: "missing-head",
-    baseScreenshotFile: "mock-base-file",
-  };
-};
-
-const missingBaseAndHead = (eventNumber?: number) => {
-  return {
-    identifier: id(eventNumber),
-    outcome: "missing-base-and-head",
-  } as const;
-};
-
-const differentSize = (eventNumber?: number): ScreenshotDiffResult => {
-  return {
-    identifier: id(eventNumber),
-    outcome: "different-size",
-    baseScreenshotFile: "mock-base-file",
-    headScreenshotFile: "mock-head-file",
-    baseWidth: 1920,
-    baseHeight: 1080,
-    headWidth: 10,
-    headHeight: 5,
-  };
-};
-
-const asSingleTryDiff = ({
-  identifier, // eslint-disable-line @typescript-eslint/no-unused-vars
-  ...rest
-}: ScreenshotDiffResult): SingleTryScreenshotDiffResult => {
-  if (rest.outcome === "flake") {
-    throw new Error("Must not be a diff with a flake outcome");
-  }
-  return rest;
-};
-
-type AnyScreenshotDiff =
-  | ScreenshotDiffResult
-  | {
-      identifier: ScreenshotIdentifier;
-      outcome: "missing-base-and-head";
-    };
-
-type RetryDiff =
-  | SingleTryScreenshotDiffResult
-  | ScreenshotDiffResultMissingBaseAndHead;
-
-const asRetryDiff = ({
-  identifier, // eslint-disable-line @typescript-eslint/no-unused-vars
-  ...rest
-}: AnyScreenshotDiff): RetryDiff => {
-  if (rest.outcome === "flake") {
-    throw new Error("Must not be a diff with a flake outcome");
-  }
-  return rest;
-};

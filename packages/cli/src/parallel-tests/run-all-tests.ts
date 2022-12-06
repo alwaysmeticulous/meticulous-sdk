@@ -1,5 +1,6 @@
 import { TestRunEnvironment } from "@alwaysmeticulous/api";
 import {
+  getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
   ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
@@ -17,10 +18,13 @@ import { readConfig } from "../config/config";
 import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
 import { loadReplayEventsDependencies } from "../local-data/replay-assets";
 import { runAllTestsInParallel } from "../parallel-tests/parallel-tests.handler";
+import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
-import { getTestsToRun } from "../utils/run-all-tests.utils";
+import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
 import { getEnvironment } from "../utils/test-run-environment.utils";
 import { getMeticulousVersion } from "../utils/version.utils";
+import { executeTestInChildProcess } from "./execute-test-in-child-process";
+import { InitMessage } from "./messages.types";
 import { TestRunProgress } from "./run-all-tests.types";
 
 export interface Options {
@@ -211,10 +215,7 @@ export const runAllTests = async ({
     }
   };
 
-  const onTestFinished = async (
-    progress: TestRunProgress,
-    resultsSoFar: DetailedTestCaseResult[]
-  ) => {
+  const onProgressUpdated = async (progress: TestRunProgress) => {
     onTestFinished_?.({
       id: testRun.id,
       url: testRunUrl,
@@ -224,6 +225,13 @@ export const runAllTests = async ({
         passedTestCases: progress.passedTestCases + cachedTestRunResults.length,
       },
     });
+  };
+
+  const onTestFinished = async (
+    progress: TestRunProgress,
+    resultsSoFar: DetailedTestCaseResult[]
+  ) => {
+    onProgressUpdated(progress);
     const newResult = resultsSoFar.at(-1);
     if (newResult?.baseReplayId != null) {
       await createReplayDiff({
@@ -241,32 +249,55 @@ export const runAllTests = async ({
   };
 
   const results = await runAllTestsInParallel({
-    config,
-    testRun,
     testsToRun,
-    executionOptions,
-    screenshottingOptions,
-    apiToken,
-    commitSha,
-    appUrl,
-    useAssetsSnapshottedInBaseSimulation,
     parallelTasks,
-    deflake,
-    replayEventsDependencies,
-    onTestFinished,
     maxRetriesOnFailure,
+    executeTest: (testCase, isRetry) => {
+      const initMessage: InitMessage = {
+        kind: "init",
+        data: {
+          logLevel: logger.getLevel(),
+          dataDir: getMeticulousLocalDataDir(),
+          replayOptions: {
+            apiToken,
+            commitSha,
+            testCase,
+            deflake,
+            replayTarget: getReplayTargetForTestCase({
+              useAssetsSnapshottedInBaseSimulation,
+              appUrl,
+              testCase,
+            }),
+            executionOptions,
+            screenshottingOptions,
+            generatedBy: { type: "testRun", runId: testRun.id },
+            testRunId: testRun.id,
+            replayEventsDependencies,
+            suppressScreenshotDiffLogging: isRetry,
+          },
+        },
+      };
+      return executeTestInChildProcess(initMessage);
+    },
+    onTestFinished,
+    onTestFailedToRun: onProgressUpdated,
   });
 
-  const runAllFailure = results.find(({ result }) => result === "fail");
+  const sortedResults = sortResults({
+    results: results,
+    testCases: config.testCases || [],
+  });
+
+  const runAllFailure = sortedResults.find(({ result }) => result === "fail");
   const overallStatus = runAllFailure ? "Failure" : "Success";
-  await storeTestRunResults(overallStatus, results);
+  await storeTestRunResults(overallStatus, sortedResults);
 
   logger.info("");
   logger.info("Results");
   logger.info("=======");
   logger.info(`URL: ${testRunUrl}`);
   logger.info("=======");
-  results.forEach(({ title, result }) => {
+  sortedResults.forEach(({ title, result }) => {
     logger.info(`${title} => ${result}`);
   });
 
@@ -280,15 +311,16 @@ export const runAllTests = async ({
       id: testRun.id,
       status: overallStatus,
       progress: {
-        flakedTestCases: results.filter(({ result }) => result === "flake")
+        flakedTestCases: sortedResults.filter(
+          ({ result }) => result === "flake"
+        ).length,
+        passedTestCases: sortedResults.filter(({ result }) => result === "pass")
           .length,
-        passedTestCases: results.filter(({ result }) => result === "pass")
-          .length,
-        failedTestCases: results.filter(({ result }) => result === "fail")
+        failedTestCases: sortedResults.filter(({ result }) => result === "fail")
           .length,
         runningTestCases: 0,
       },
     },
-    testCaseResults: results,
+    testCaseResults: sortedResults,
   };
 };

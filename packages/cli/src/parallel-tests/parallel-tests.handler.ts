@@ -1,48 +1,26 @@
-import { fork } from "child_process";
 import { cpus } from "os";
-import { join } from "path";
 import { TestCase } from "@alwaysmeticulous/api";
-import {
-  defer,
-  getMeticulousLocalDataDir,
-  METICULOUS_LOGGER_NAME,
-  ReplayEventsDependencies,
-  ReplayExecutionOptions,
-} from "@alwaysmeticulous/common";
+import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { TestRun } from "../api/test-run.api";
-import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
-import {
-  DetailedTestCaseResult,
-  MeticulousCliConfig,
-} from "../config/config.types";
-import { getReplayTargetForTestCase } from "../utils/config.utils";
-import { sortResults } from "../utils/run-all-tests.utils";
+import { DetailedTestCaseResult } from "../config/config.types";
 import { mergeResults } from "./merge-test-results";
-import { InitMessage, ResultMessage } from "./messages.types";
 import { TestRunProgress } from "./run-all-tests.types";
 
 export interface RunAllTestsInParallelOptions {
-  config: MeticulousCliConfig;
-  testRun: TestRun;
   testsToRun: TestCase[];
-  executionOptions: ReplayExecutionOptions;
-  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
-  apiToken: string | null;
-  commitSha: string;
-
-  appUrl: string | null;
-  useAssetsSnapshottedInBaseSimulation: boolean;
   parallelTasks: number | null;
-  deflake: boolean;
-  replayEventsDependencies: ReplayEventsDependencies;
-
   maxRetriesOnFailure: number;
+
+  executeTest: (
+    testCase: TestCase,
+    isRetry: boolean
+  ) => Promise<DetailedTestCaseResult>;
 
   onTestFinished?: (
     progress: TestRunProgress,
     resultsSoFar: DetailedTestCaseResult[]
   ) => Promise<void>;
+  onTestFailedToRun?: (progress: TestRunProgress) => Promise<void>;
 }
 
 interface RerunnableTestCase extends TestCase {
@@ -58,20 +36,12 @@ interface TestCaseResults {
 export const runAllTestsInParallel: (
   options: RunAllTestsInParallelOptions
 ) => Promise<DetailedTestCaseResult[]> = async ({
-  config,
-  testRun,
   testsToRun,
-  apiToken,
-  commitSha,
-  appUrl,
-  useAssetsSnapshottedInBaseSimulation,
-  executionOptions,
-  screenshottingOptions,
   parallelTasks,
-  deflake,
   maxRetriesOnFailure,
-  replayEventsDependencies,
+  executeTest,
   onTestFinished,
+  onTestFailedToRun,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   let nextId = 0;
@@ -89,7 +59,7 @@ export const runAllTestsInParallel: (
    * Results that have been fully checked for flakes. At most one per test case.
    */
   const finalResults: DetailedTestCaseResult[] = [];
-  const progress: TestRunProgress = {
+  let progress: TestRunProgress = {
     runningTestCases: queue.length,
     failedTestCases: 0,
     flakedTestCases: 0,
@@ -102,75 +72,15 @@ export const runAllTestsInParallel: (
   const maxTasks = parallelTasks ?? Math.max(cpus().length, 1);
   logger.debug(`Running with ${maxTasks} maximum tasks in parallel`);
 
-  const taskHandler = join(__dirname, "task.handler.js");
-
   // Starts running a test case in a child process
   const startTask = (rerunnableTestCase: RerunnableTestCase) => {
     const { id, ...testCase } = rerunnableTestCase;
-    const deferredResult = defer<DetailedTestCaseResult>();
-    const child = fork(taskHandler, [], { stdio: "inherit" });
-
-    const messageHandler = (message: unknown) => {
-      if (
-        message &&
-        typeof message === "object" &&
-        (message as any)["kind"] === "result"
-      ) {
-        const resultMessage = message as ResultMessage;
-        deferredResult.resolve(resultMessage.data.result);
-        child.off("message", messageHandler);
-      }
-    };
-
-    child.on("error", (error) => {
-      if (deferredResult.getState() === "pending") {
-        deferredResult.reject(error);
-      }
-    });
-    child.on("exit", (code) => {
-      if (code) {
-        logger.debug(`child exited with code: ${code}`);
-      }
-      if (deferredResult.getState() === "pending") {
-        deferredResult.reject(new Error("No result"));
-      }
-    });
-    child.on("message", messageHandler);
-
-    // Send test case and arguments to child process
     const isRetry = resultsByTestId.has(id);
-    const initMessage: InitMessage = {
-      kind: "init",
-      data: {
-        logLevel: logger.getLevel(),
-        dataDir: getMeticulousLocalDataDir(),
-        replayOptions: {
-          apiToken,
-          commitSha,
-          testCase,
-          deflake,
-          replayTarget: getReplayTargetForTestCase({
-            useAssetsSnapshottedInBaseSimulation,
-            appUrl,
-            testCase,
-          }),
-          executionOptions,
-          screenshottingOptions,
-          generatedBy: { type: "testRun", runId: testRun.id },
-          testRunId: testRun.id,
-          replayEventsDependencies,
-          suppressScreenshotDiffLogging: isRetry,
-        },
-      },
-    };
-    child.send(initMessage);
 
     // Handle task completion
-    deferredResult.promise
+    executeTest(testCase, isRetry)
       .catch(() => null)
       .then(async (result) => {
-        --inProgress;
-
         const resultsForTestCase = resultsByTestId.get(id);
         if (resultsForTestCase != null && result != null) {
           logRetrySummary(testName({ id, ...testCase }), result);
@@ -182,11 +92,11 @@ export const runAllTestsInParallel: (
         ) {
           // This test has already been declared as flakey, and we can ignore this result. This result
           // was from an already executing test that we weren't able to cancel.
-          process.nextTick(checkNextTask);
           return;
         }
 
         if (result?.result === "fail" && resultsForTestCase == null) {
+          // Let's auto-retry to see if this failure persists
           queue.push(
             ...Array.from(new Array(maxRetriesOnFailure)).map(() => ({
               ...testCase,
@@ -196,8 +106,14 @@ export const runAllTestsInParallel: (
           );
         }
 
+        if (result == null && resultsForTestCase?.currentResult == null) {
+          // This means our original head replay failed fatally (not just a failed diff, but failed to even run)
+          progress = updateProgress(progress, "fail");
+          await onTestFailedToRun?.(progress);
+          return;
+        }
+
         const mergedResult = getNewMergedResult(
-          testCase,
           resultsForTestCase?.currentResult ?? null,
           result
         );
@@ -207,6 +123,11 @@ export const runAllTestsInParallel: (
             ? 0
             : resultsForTestCase.numberOfRetriesExecuted + 1;
 
+        resultsByTestId.set(id, {
+          currentResult: mergedResult,
+          numberOfRetriesExecuted,
+        });
+
         // Our work is done for this test case if the first result was a pass,
         // we've performed all the retries, or one of the retries already proved
         // the result as flakey
@@ -214,28 +135,14 @@ export const runAllTestsInParallel: (
           mergedResult.result !== "fail" ||
           numberOfRetriesExecuted === maxRetriesOnFailure;
 
-        resultsByTestId.set(id, {
-          currentResult: mergedResult,
-          numberOfRetriesExecuted,
-        });
-
         if (isFinalResult) {
           // Cancel any replays that are still scheduled
-          queue = queue.filter(({ id }) => id !== id);
+          queue = queue.filter((otherReplay) => otherReplay.id !== id);
 
           finalResults.push(mergedResult);
-          --progress.runningTestCases;
-          progress.failedTestCases += mergedResult.result === "fail" ? 1 : 0;
-          progress.flakedTestCases += mergedResult.result === "flake" ? 1 : 0;
-          progress.passedTestCases += mergedResult.result === "pass" ? 1 : 0;
-          await onTestFinished?.(progress, finalResults).then(() => {
-            if (queue.length === 0 && inProgress === 0) {
-              allTasksDone.resolve();
-            }
-          });
+          progress = updateProgress(progress, mergedResult.result);
+          await onTestFinished?.(progress, finalResults);
         }
-
-        process.nextTick(checkNextTask);
       })
       .catch((err) => {
         logger.error(
@@ -245,6 +152,18 @@ export const runAllTestsInParallel: (
           })}'`,
           err
         );
+      })
+      .finally(() => {
+        // We only decrement inProgress at the very end,
+        // otherwise another promise may call allTasksDone.resolve() while
+        // we're still saving results
+        --inProgress;
+
+        if (queue.length === 0 && inProgress === 0) {
+          allTasksDone.resolve();
+        }
+
+        process.nextTick(checkNextTask);
       });
   };
 
@@ -274,10 +193,7 @@ export const runAllTestsInParallel: (
 
   await allTasksDone.promise;
 
-  return sortResults({
-    results: finalResults,
-    testCases: config.testCases || [],
-  });
+  return finalResults;
 };
 
 const logRetrySummary = (
@@ -303,21 +219,15 @@ const testName = (testCase: RerunnableTestCase) =>
   testCase.title != null ? `'${testCase.title}'` : `#${testCase.id + 1}`;
 
 const getNewMergedResult = (
-  testCase: TestCase,
   currentMergedResult: DetailedTestCaseResult | null,
   newResult: DetailedTestCaseResult | null
 ): DetailedTestCaseResult => {
   // If currentMergedResult is null then this is our first try, our original head replay
   if (currentMergedResult == null) {
     if (newResult == null) {
-      // This means our original head replay failed fatally (not just a failed diff, but failed to even run)
-      // In this case we just return it as result = fail, with no screenshot diffs
-      return {
-        ...testCase,
-        headReplayId: "",
-        result: "fail",
-        screenshotDiffResults: [],
-      };
+      throw new Error(
+        "Expected either newResult to be non-null or currentMergedResult to be non-null, but both were null. This case should be handled before getNewMergedResult is called"
+      );
     }
 
     // In this case the newResult is our first head replay, our first result,
@@ -336,4 +246,16 @@ const getNewMergedResult = (
     currentResult: currentMergedResult,
     comparisonToHeadReplay: newResult,
   });
+};
+
+const updateProgress = (
+  progress: TestRunProgress,
+  newResult: "pass" | "fail" | "flake"
+): TestRunProgress => {
+  return {
+    runningTestCases: progress.runningTestCases - 1,
+    failedTestCases: progress.failedTestCases + (newResult === "fail" ? 1 : 0),
+    flakedTestCases: progress.flakedTestCases + (newResult === "flake" ? 1 : 0),
+    passedTestCases: progress.passedTestCases + (newResult === "pass" ? 1 : 0),
+  };
 };
