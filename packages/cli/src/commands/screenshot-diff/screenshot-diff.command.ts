@@ -91,8 +91,8 @@ export const diffScreenshots = async ({
     const headScreenshot = await readPng(headScreenshotFile);
 
     if (
-      baseScreenshot.width !== baseScreenshot.width ||
-      headScreenshot.height !== headScreenshot.height
+      baseScreenshot.width !== headScreenshot.width ||
+      baseScreenshot.height !== headScreenshot.height
     ) {
       return [
         {

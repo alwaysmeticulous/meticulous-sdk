@@ -211,10 +211,7 @@ export const runAllTests = async ({
     }
   };
 
-  const onTestFinished = async (
-    progress: TestRunProgress,
-    resultsSoFar: DetailedTestCaseResult[]
-  ) => {
+  const onProgressUpdated = async (progress: TestRunProgress) => {
     onTestFinished_?.({
       id: testRun.id,
       url: testRunUrl,
@@ -224,6 +221,13 @@ export const runAllTests = async ({
         passedTestCases: progress.passedTestCases + cachedTestRunResults.length,
       },
     });
+  };
+
+  const onTestFinished = async (
+    progress: TestRunProgress,
+    resultsSoFar: DetailedTestCaseResult[]
+  ) => {
+    onProgressUpdated(progress);
     const newResult = resultsSoFar.at(-1);
     if (newResult?.baseReplayId != null) {
       await createReplayDiff({
@@ -254,6 +258,7 @@ export const runAllTests = async ({
     deflake,
     replayEventsDependencies,
     onTestFinished,
+    onTestFailedToRun: onProgressUpdated,
     maxRetriesOnFailure,
   });
 
