@@ -5,7 +5,7 @@ import log from "loglevel";
 import { DetailedTestCaseResult } from "../config/config.types";
 import { InitMessage, ResultMessage } from "./messages.types";
 
-export const executeReplayInChildProgress = (
+export const executeTestInChildProcess = (
   initMessage: InitMessage
 ): Promise<DetailedTestCaseResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);

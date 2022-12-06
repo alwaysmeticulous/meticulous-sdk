@@ -1,5 +1,6 @@
 import { TestRunEnvironment } from "@alwaysmeticulous/api";
 import {
+  getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
   ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
@@ -17,10 +18,13 @@ import { readConfig } from "../config/config";
 import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
 import { loadReplayEventsDependencies } from "../local-data/replay-assets";
 import { runAllTestsInParallel } from "../parallel-tests/parallel-tests.handler";
+import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
 import { getTestsToRun } from "../utils/run-all-tests.utils";
 import { getEnvironment } from "../utils/test-run-environment.utils";
 import { getMeticulousVersion } from "../utils/version.utils";
+import { executeTestInChildProcess } from "./execute-test-in-child-process";
+import { InitMessage } from "./messages.types";
 import { TestRunProgress } from "./run-all-tests.types";
 
 export interface Options {
@@ -246,20 +250,38 @@ export const runAllTests = async ({
 
   const results = await runAllTestsInParallel({
     config,
-    testRun,
     testsToRun,
-    executionOptions,
-    screenshottingOptions,
-    apiToken,
-    commitSha,
-    appUrl,
-    useAssetsSnapshottedInBaseSimulation,
     parallelTasks,
-    deflake,
-    replayEventsDependencies,
+    maxRetriesOnFailure,
+    executeTest: (testCase, isRetry) => {
+      const initMessage: InitMessage = {
+        kind: "init",
+        data: {
+          logLevel: logger.getLevel(),
+          dataDir: getMeticulousLocalDataDir(),
+          replayOptions: {
+            apiToken,
+            commitSha,
+            testCase,
+            deflake,
+            replayTarget: getReplayTargetForTestCase({
+              useAssetsSnapshottedInBaseSimulation,
+              appUrl,
+              testCase,
+            }),
+            executionOptions,
+            screenshottingOptions,
+            generatedBy: { type: "testRun", runId: testRun.id },
+            testRunId: testRun.id,
+            replayEventsDependencies,
+            suppressScreenshotDiffLogging: isRetry,
+          },
+        },
+      };
+      return executeTestInChildProcess(initMessage);
+    },
     onTestFinished,
     onTestFailedToRun: onProgressUpdated,
-    maxRetriesOnFailure,
   });
 
   const runAllFailure = results.find(({ result }) => result === "fail");

@@ -1,42 +1,25 @@
 import { cpus } from "os";
 import { TestCase } from "@alwaysmeticulous/api";
-import {
-  defer,
-  getMeticulousLocalDataDir,
-  METICULOUS_LOGGER_NAME,
-  ReplayEventsDependencies,
-  ReplayExecutionOptions,
-} from "@alwaysmeticulous/common";
+import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { TestRun } from "../api/test-run.api";
-import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
 import {
   DetailedTestCaseResult,
   MeticulousCliConfig,
 } from "../config/config.types";
-import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { sortResults } from "../utils/run-all-tests.utils";
-import { executeReplayInChildProgress } from "./execute-replay-in-child-process";
 import { mergeResults } from "./merge-test-results";
-import { InitMessage } from "./messages.types";
 import { TestRunProgress } from "./run-all-tests.types";
 
 export interface RunAllTestsInParallelOptions {
   config: MeticulousCliConfig;
-  testRun: TestRun;
   testsToRun: TestCase[];
-  executionOptions: ReplayExecutionOptions;
-  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
-  apiToken: string | null;
-  commitSha: string;
-
-  appUrl: string | null;
-  useAssetsSnapshottedInBaseSimulation: boolean;
   parallelTasks: number | null;
-  deflake: boolean;
-  replayEventsDependencies: ReplayEventsDependencies;
-
   maxRetriesOnFailure: number;
+
+  executeTest: (
+    testCase: TestCase,
+    isRetry: boolean
+  ) => Promise<DetailedTestCaseResult>;
 
   onTestFinished?: (
     progress: TestRunProgress,
@@ -59,18 +42,10 @@ export const runAllTestsInParallel: (
   options: RunAllTestsInParallelOptions
 ) => Promise<DetailedTestCaseResult[]> = async ({
   config,
-  testRun,
   testsToRun,
-  apiToken,
-  commitSha,
-  appUrl,
-  useAssetsSnapshottedInBaseSimulation,
-  executionOptions,
-  screenshottingOptions,
   parallelTasks,
-  deflake,
   maxRetriesOnFailure,
-  replayEventsDependencies,
+  executeTest,
   onTestFinished,
   onTestFailedToRun,
 }) => {
@@ -107,33 +82,9 @@ export const runAllTestsInParallel: (
   const startTask = (rerunnableTestCase: RerunnableTestCase) => {
     const { id, ...testCase } = rerunnableTestCase;
     const isRetry = resultsByTestId.has(id);
-    const initMessage: InitMessage = {
-      kind: "init",
-      data: {
-        logLevel: logger.getLevel(),
-        dataDir: getMeticulousLocalDataDir(),
-        replayOptions: {
-          apiToken,
-          commitSha,
-          testCase,
-          deflake,
-          replayTarget: getReplayTargetForTestCase({
-            useAssetsSnapshottedInBaseSimulation,
-            appUrl,
-            testCase,
-          }),
-          executionOptions,
-          screenshottingOptions,
-          generatedBy: { type: "testRun", runId: testRun.id },
-          testRunId: testRun.id,
-          replayEventsDependencies,
-          suppressScreenshotDiffLogging: isRetry,
-        },
-      },
-    };
 
     // Handle task completion
-    executeReplayInChildProgress(initMessage)
+    executeTest(testCase, isRetry)
       .catch(() => null)
       .then(async (result) => {
         const resultsForTestCase = resultsByTestId.get(id);
