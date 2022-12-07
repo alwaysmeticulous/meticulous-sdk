@@ -23,7 +23,7 @@ export interface ReplayUserInteractionsOptions {
    * If present then will be called before executing each next user event,
    * and will wait for the completion of the returned promise before continuing.
    */
-  onBeforeUserEvent?: (options: BeforeUserEventOptions) => Promise<void>;
+  onBeforeUserEvent?: OnBeforeUserEventFn;
 }
 
 /** Replay function for user interaction events */
@@ -50,6 +50,10 @@ export type StoryboardOptions =
   | { enabled: true; screenshotsDir: string };
 
 export type OnReplayTimelineEventFn = (entry: ReplayTimelineEntry) => void;
+
+export type OnBeforeUserEventFn = (
+  options: BeforeUserEventOptions
+) => Promise<void>;
 
 export interface NetworkStubbingOptions {
   page: Page;
