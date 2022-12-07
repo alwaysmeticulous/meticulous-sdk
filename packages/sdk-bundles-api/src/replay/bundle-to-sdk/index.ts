@@ -13,3 +13,7 @@ export interface ReplayUserInteractionsResultShort {
   length: "short";
   reason: "max events" | "max duration";
 }
+
+export interface BeforeUserEventOptions {
+  userEventIndex: number;
+}
