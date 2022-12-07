@@ -90,6 +90,11 @@ export interface ReplayEventsOptions {
   appUrl: string | null;
   replayExecutionOptions: ReplayExecutionOptions;
 
+  /**
+   * Run in debugger mode, which allows the user to step through the replay event by event.
+   */
+  enableStepThroughDebugger: boolean;
+
   browser: any;
   outputDir: string;
   session: RecordedSession;

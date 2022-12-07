@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.21.1",
+    "@alwaysmeticulous/replay-debugger-ui": "^2.5.0",
     "loglevel": "^1.8.0",
     "luxon": "^2.4.0",
     "puppeteer": "^14.4.1",
