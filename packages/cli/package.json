@@ -49,14 +49,10 @@
   },
   "peerDependencies": {
     "@alwaysmeticulous/record": "^2.3.3",
-    "@alwaysmeticulous/replay-debugger": "^2.3.3",
     "@alwaysmeticulous/replayer": "^2.5.1"
   },
   "peerDependenciesMeta": {
     "@alwaysmeticulous/record": {
-      "optional": true
-    },
-    "@alwaysmeticulous/replay-debugger": {
       "optional": true
     },
     "@alwaysmeticulous/replayer": {

@@ -4,7 +4,6 @@ export {
 } from "./api/test-run.api";
 export { bootstrapCommand } from "./commands/bootstrap/bootstrap.command";
 export { createTestCommand } from "./commands/create-test/create-test.command";
-export { debugReplayCommand } from "./commands/debug-replay/debug-replay.command";
 export { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
 export { downloadSessionCommand } from "./commands/download-session/download-session.command";
 export { recordCommand } from "./commands/record/record.command";

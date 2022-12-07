@@ -2,7 +2,6 @@ import { setMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import yargs from "yargs";
 import { bootstrapCommand } from "./commands/bootstrap/bootstrap.command";
 import { createTestCommand } from "./commands/create-test/create-test.command";
-import { debugReplayCommand } from "./commands/debug-replay/debug-replay.command";
 import { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
 import { downloadSessionCommand } from "./commands/download-session/download-session.command";
 import { recordCommand } from "./commands/record/record.command";
@@ -36,7 +35,6 @@ export const main: () => void = async () => {
     )
     .command(bootstrapCommand)
     .command(createTestCommand)
-    .command(debugReplayCommand)
     .command(downloadReplayCommand)
     .command(downloadSessionCommand)
     .command(recordCommand)
