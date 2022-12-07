@@ -57,16 +57,6 @@ export const getTestsToRun = async ({
     return testCasesWithBaseReplayId;
   }
 
-  if (baseCommitSha == null) {
-    const namesOfInvalidTests = testCasesMissingBaseReplayId
-      .map((test) => `"${test.title}"`)
-      .join(", ");
-    throw new Error(
-      `The following test cases are missing a baseReplayId: ${namesOfInvalidTests}.` +
-        " Please either run with the --baseCommitSha option, or add a baseReplayId to all test cases."
-    );
-  }
-
   const baseReplayIdBySessionId = await getBaseReplayIdsBySessionId({
     client,
     baseCommitSha,
@@ -93,8 +83,11 @@ const getBaseReplayIdsBySessionId = async ({
   baseCommitSha,
 }: {
   client: AxiosInstance;
-  baseCommitSha: string;
+  baseCommitSha: string | null;
 }): Promise<Record<string, string>> => {
+  if (!baseCommitSha) {
+    return {};
+  }
   const baseTestRun = await getLatestTestRunResults({
     client,
     commitSha: baseCommitSha,
