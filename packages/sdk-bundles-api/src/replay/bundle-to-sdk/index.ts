@@ -15,5 +15,8 @@ export interface ReplayUserInteractionsResultShort {
 }
 
 export interface BeforeUserEventOptions {
+  /**
+   * The index of the next event in sessionData.userEvents.event_log
+   */
   userEventIndex: number;
 }
