@@ -181,6 +181,7 @@ const handler: (options: Options) => Promise<void> = async ({
     maxDurationMs: null,
     maxEventCount: null,
     storyboard: false,
+    essentialFeaturesOnly: false,
   };
   const replay = await rawReplayCommandHandler(replayOptions);
 

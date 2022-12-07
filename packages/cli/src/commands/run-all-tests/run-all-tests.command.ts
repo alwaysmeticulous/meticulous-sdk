@@ -65,6 +65,7 @@ const handler: (options: Options) => Promise<void> = async ({
   maxDurationMs,
   maxEventCount,
   storyboard,
+  essentialFeaturesOnly,
 }) => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -79,6 +80,7 @@ const handler: (options: Options) => Promise<void> = async ({
     moveBeforeClick,
     maxDurationMs: maxDurationMs ?? null,
     maxEventCount: maxEventCount ?? null,
+    essentialFeaturesOnly,
   };
   const storyboardOptions: StoryboardOptions = storyboard
     ? { enabled: true }

@@ -353,6 +353,7 @@ export const rawReplayCommandHandler = async ({
   maxDurationMs,
   maxEventCount,
   storyboard,
+  essentialFeaturesOnly,
 }: RawReplayCommandHandlerOptions): Promise<Replay> => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -367,6 +368,7 @@ export const rawReplayCommandHandler = async ({
     noSandbox,
     maxDurationMs: maxDurationMs ?? null,
     maxEventCount: maxEventCount ?? null,
+    essentialFeaturesOnly,
   };
   const generatedByOption: GeneratedBy = { type: "replayCommand" };
   const storyboardOptions: StoryboardOptions = storyboard

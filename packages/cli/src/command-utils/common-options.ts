@@ -94,6 +94,12 @@ export const OPTIONS = {
     description: "Take a storyboard of screenshots during simulation",
     default: false,
   },
+  essentialFeaturesOnly: {
+    boolean: true,
+    description:
+      "Disable any features that are non-essential for running tests/executing replays. This includes disabling recording a video of the replay, for playback in the web app. This flag is useful to reduce noise when debugging.",
+    default: false,
+  },
 } as const;
 
 export const SCREENSHOT_DIFF_OPTIONS = {
@@ -117,4 +123,5 @@ export const COMMON_REPLAY_OPTIONS = {
   noSandbox: OPTIONS.noSandbox,
   maxDurationMs: OPTIONS.maxDurationMs,
   maxEventCount: OPTIONS.maxEventCount,
+  essentialFeaturesOnly: OPTIONS.essentialFeaturesOnly,
 };

@@ -64,6 +64,14 @@ export interface ReplayExecutionOptions {
   noSandbox: boolean;
   maxDurationMs: number | null;
   maxEventCount: number | null;
+
+  /**
+   * If true disables any features that are non-essential for running tests/executing replays.
+   * This includes disabling recording a video of the replay, for playback in the web app.
+   *
+   * This flag is useful to reduce noise when debugging.
+   */
+  essentialFeaturesOnly: boolean;
 }
 
 export type ScreenshottingOptions =
