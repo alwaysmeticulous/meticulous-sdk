@@ -23,6 +23,9 @@ type OnBeforeUserEventCallback = (
   options: BeforeUserEventOptions
 ) => Promise<void>;
 
+// openStepThroughDebuggerUI returns a OnBeforeUserEventCallback, which the replay code
+// calls before each next event, and blocks on the returned promise. We use this to pause
+// the execution until the user OKs it to continue to a certain event.
 export const openStepThroughDebuggerUI = async ({
   browser,
   replayedPage,
