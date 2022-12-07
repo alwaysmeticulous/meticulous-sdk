@@ -43,32 +43,35 @@ export const openStepThroughDebuggerUI = async ({
    * if the page has already replayed all the so-far-requested user events.
    */
   let targetIndex = 0;
-  const state: ReplayDebuggerState = {
+  let state: ReplayDebuggerState = {
     events: replayableEvents,
     index: 0,
     loading: false,
   };
 
-  const setState = async () => {
+  const setState = async (newState: Partial<ReplayDebuggerState>) => {
+    state = { ...state, ...newState };
     await debuggerPage.evaluate((state) => {
       (window as any).__meticulous__replayDebuggerSetState(state);
     }, state as any);
   };
 
   const onReady = async () => {
-    await setState();
+    await setState(state);
   };
 
   let advanceToNextEvent: (() => void) | null = null;
-  const onBeforeNextEvent = ({ userEventIndex }: BeforeUserEventOptions) => {
-    state.loading = userEventIndex < targetIndex;
-    state.index = Math.max(
-      0,
-      Math.min(state.events.length - 1, userEventIndex)
-    );
+  const onBeforeNextEvent = async ({
+    userEventIndex,
+  }: BeforeUserEventOptions) => {
+    await setState({
+      loading: userEventIndex < targetIndex,
+      index: Math.max(0, Math.min(state.events.length - 1, userEventIndex)),
+    });
 
     if (state.index < targetIndex) {
-      return Promise.resolve(); // keep going
+      advanceToNextEvent = null;
+      return; // keep going
     }
 
     return new Promise<void>((resolve) => {
@@ -78,17 +81,16 @@ export const openStepThroughDebuggerUI = async ({
 
   const onPlayNextEvent = async () => {
     targetIndex = state.index + 1;
-    state.loading = true;
-    await setState();
+    await setState({ loading: true });
     advanceToNextEvent?.();
   };
 
-  const onAdvanceToIndex = (newTargetIndex: number) => {
+  const onAdvanceToIndex = async (newTargetIndex: number) => {
     if (newTargetIndex <= state.index) {
       return; // Do nothing
     }
     targetIndex = newTargetIndex;
-    state.loading = true;
+    await setState({ loading: true });
     advanceToNextEvent?.();
   };
 
