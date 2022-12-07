@@ -3,6 +3,7 @@ export {
   ReplayUserInteractionsResult,
   ReplayUserInteractionsResultFull,
   ReplayUserInteractionsResultShort,
+  BeforeUserEventOptions,
 } from "./replay/bundle-to-sdk/index";
 export {
   BootstrapReplayUserInteractionsFn,
