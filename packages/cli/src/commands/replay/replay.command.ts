@@ -90,6 +90,15 @@ export const replayCommandHandler = async ({
   debugger: enableStepThroughDebugger,
   suppressScreenshotDiffLogging,
 }: ReplayOptions): Promise<ReplayResult> => {
+  if (
+    executionOptions.headless === true &&
+    enableStepThroughDebugger === true
+  ) {
+    throw new Error(
+      "Cannot run with both --debugger flag and --headless flag at the same time."
+    );
+  }
+
   const transaction = Sentry.startTransaction({
     name: "replay.command_handler",
     description: "Handle the replay command",
