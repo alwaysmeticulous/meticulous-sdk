@@ -28,6 +28,14 @@
     "@alwaysmeticulous/api": "^2.23.1",
     "@alwaysmeticulous/sdk-bundles-api": "^2.23.1"
   },
+  "peerDependencies": {
+    "@alwaysmeticulous/replay-debugger-ui": "^2.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@alwaysmeticulous/replay-debugger-ui": {
+      "optional": true
+    }
+  },
   "author": {
     "name": "The Meticulous Team",
     "email": "eng@meticulous.ai",

@@ -47,6 +47,7 @@ const handleReplay = async ({
       testRunId,
       replayEventsDependencies,
       suppressScreenshotDiffLogging,
+      debugger: false,
     });
 
   return {

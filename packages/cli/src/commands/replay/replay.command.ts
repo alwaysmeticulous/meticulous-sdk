@@ -87,8 +87,18 @@ export const replayCommandHandler = async ({
   generatedBy,
   testRunId,
   replayEventsDependencies,
+  debugger: enableStepThroughDebugger,
   suppressScreenshotDiffLogging,
 }: ReplayOptions): Promise<ReplayResult> => {
+  if (
+    executionOptions.headless === true &&
+    enableStepThroughDebugger === true
+  ) {
+    throw new Error(
+      "Cannot run with both --debugger flag and --headless flag at the same time."
+    );
+  }
+
   const transaction = Sentry.startTransaction({
     name: "replay.command_handler",
     description: "Handle the replay command",
@@ -157,6 +167,7 @@ export const replayCommandHandler = async ({
     testRunId,
 
     dependencies: replayEventsDependencies,
+    enableStepThroughDebugger,
     screenshottingOptions,
     cookiesFile: cookiesFile ?? null,
   };
@@ -325,6 +336,7 @@ interface AdditionalReplayOptions {
   sessionId: string;
   baseSimulationId: string | null | undefined;
   cookiesFile: string | null | undefined;
+  debugger: boolean;
 }
 
 export const rawReplayCommandHandler = async ({
@@ -353,6 +365,7 @@ export const rawReplayCommandHandler = async ({
   maxDurationMs,
   maxEventCount,
   storyboard,
+  debugger: enableStepThroughDebugger,
 }: RawReplayCommandHandlerOptions): Promise<Replay> => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -397,6 +410,7 @@ export const rawReplayCommandHandler = async ({
       generatedBy: generatedByOption,
       testRunId: null,
       replayEventsDependencies,
+      debugger: enableStepThroughDebugger,
       suppressScreenshotDiffLogging: false,
     });
 
@@ -500,6 +514,12 @@ export const replayCommand = buildCommand("simulate")
       boolean: true,
       description:
         "Adds the simulation to the list of test cases in meticulous.json",
+    },
+    debugger: {
+      boolean: true,
+      description:
+        "Opens a step through debugger to advance through the replay event by event",
+      default: false,
     },
     moveBeforeClick: OPTIONS.moveBeforeClick,
     cookiesFile: {
