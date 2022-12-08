@@ -1,6 +1,7 @@
 import { ReplayableEvent } from "@alwaysmeticulous/api";
-import { startServer } from "@alwaysmeticulous/replay-debugger-ui";
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { BeforeUserEventOptions } from "@alwaysmeticulous/sdk-bundles-api";
+import log from "loglevel";
 import { Browser, Page } from "puppeteer";
 
 export interface ReplayDebuggerState {
@@ -32,7 +33,7 @@ export const openStepThroughDebuggerUI = async ({
   replayableEvents,
 }: ReplayDebuggerUIOptions): Promise<OnBeforeUserEventCallback> => {
   // Start the UI server
-  const uiServer = await startServer();
+  const uiServer = await startUiServer();
 
   // Create page for the debugger UI
   const debuggerPage = await browser.defaultBrowserContext().newPage();
@@ -175,4 +176,30 @@ export const openStepThroughDebuggerUI = async ({
   });
 
   return onBeforeNextEvent;
+};
+
+interface Server {
+  close: () => void;
+}
+
+type StartServerFn = () => Server;
+
+const startUiServer = async (): Promise<Server> => {
+  try {
+    const replayDebuggerUi =
+      await require("@alwaysmeticulous/replay-debugger-ui");
+    const startServerFn = replayDebuggerUi.startServer as StartServerFn;
+    return startServerFn();
+  } catch (error) {
+    const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+    logger.error(
+      "Error: could not import @alwaysmeticulous/replay-debugger-ui"
+    );
+    logger.error(error);
+    logger.error("");
+    logger.error(
+      "Please make sure you've installed or added a dependency on '@alwaysmeticulous/replay-debugger-ui'. It is not installed automatically, and is required to use the '--debugger' flag."
+    );
+    throw error;
+  }
 };

@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.22.0",
-    "@alwaysmeticulous/replay-debugger-ui": "^2.5.0",
     "loglevel": "^1.8.0",
     "luxon": "^2.4.0",
     "puppeteer": "^14.4.1",
@@ -28,6 +27,14 @@
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.21.1",
     "@alwaysmeticulous/sdk-bundles-api": "^2.22.0"
+  },
+  "peerDependencies": {
+    "@alwaysmeticulous/replay-debugger-ui": "^2.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@alwaysmeticulous/replay-debugger-ui": {
+      "optional": true
+    }
   },
   "author": {
     "name": "The Meticulous Team",
