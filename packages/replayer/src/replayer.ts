@@ -64,6 +64,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     noSandbox,
     bypassCSP,
     moveBeforeClick,
+    essentialFeaturesOnly,
   } = replayExecutionOptions;
   const metadata: ReplayMetadata = {
     session,
@@ -131,6 +132,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     onTimelineEvent,
     bypassCSP,
     virtualTime,
+    essentialFeaturesOnly,
   });
   createReplayPageSpan?.finish();
 
@@ -304,7 +306,9 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const collectCoverageSpan = parentPerformanceSpan?.startChild({
     op: "collectCoverage",
   });
-  const coverageData = await page.coverage.stopJSCoverage();
+  const coverageData = essentialFeaturesOnly
+    ? []
+    : await page.coverage.stopJSCoverage();
   collectCoverageSpan?.finish();
   logger.debug("Collected coverage data");
 

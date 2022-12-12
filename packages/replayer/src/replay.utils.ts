@@ -28,7 +28,7 @@ export const getStartingViewport: (sessionData: SessionData) => Viewport = (
   return { width, height };
 };
 
-export const createReplayPage: (options: {
+export interface CreateReplayPageOptions {
   context: BrowserContext;
   defaultViewport: Viewport;
   sessionData: SessionData;
@@ -37,7 +37,10 @@ export const createReplayPage: (options: {
   onTimelineEvent: OnReplayTimelineEventFn;
   bypassCSP: boolean;
   virtualTime: VirtualTimeOptions;
-}) => Promise<Page> = async ({
+  essentialFeaturesOnly: boolean;
+}
+
+export const createReplayPage = async ({
   context,
   defaultViewport,
   sessionData,
@@ -46,7 +49,8 @@ export const createReplayPage: (options: {
   onTimelineEvent,
   bypassCSP,
   virtualTime,
-}) => {
+  essentialFeaturesOnly,
+}: CreateReplayPageOptions): Promise<Page> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const page = await context.newPage();
@@ -86,11 +90,13 @@ export const createReplayPage: (options: {
   await page.exposeFunction("__meticulous_onTimelineEvent", onTimelineEvent);
 
   // Setup the playback snippet (rrweb)
-  const playbackFile = await readFile(
-    dependencies.browserPlayback.location,
-    "utf-8"
-  );
-  await page.evaluateOnNewDocument(playbackFile);
+  if (!essentialFeaturesOnly) {
+    const playbackFile = await readFile(
+      dependencies.browserPlayback.location,
+      "utf-8"
+    );
+    await page.evaluateOnNewDocument(playbackFile);
+  }
 
   // Setup the user-interactions snippet
   const userInteractionsFile = await readFile(
@@ -104,14 +110,16 @@ export const createReplayPage: (options: {
   }
 
   // Setup the url-observer snippet
-  const urlObserverFile = await readFile(
-    dependencies.browserUrlObserver.location,
-    "utf-8"
-  );
-  await page.evaluateOnNewDocument(urlObserverFile);
+  if (!essentialFeaturesOnly) {
+    const urlObserverFile = await readFile(
+      dependencies.browserUrlObserver.location,
+      "utf-8"
+    );
+    await page.evaluateOnNewDocument(urlObserverFile);
 
-  // Collect js coverage data
-  await page.coverage.startJSCoverage({ resetOnNavigation: false });
+    // Collect js coverage data
+    await page.coverage.startJSCoverage({ resetOnNavigation: false });
+  }
 
   return page;
 };
