@@ -16,6 +16,7 @@ import { SetupBrowserContextSeedingFn } from "@alwaysmeticulous/sdk-bundles-api/
 import log, { LogLevelDesc } from "loglevel";
 import { DateTime } from "luxon";
 import { Browser, launch } from "puppeteer";
+import { openStepThroughDebuggerUI } from "./debugger/replay-debugger.ui";
 import { prepareScreenshotsDir, writeOutput } from "./output.utils";
 import { ReplayMetadata } from "./replay.types";
 import {
@@ -46,6 +47,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     screenshottingOptions,
     generatedBy,
     parentPerformanceSpan,
+    enableStepThroughDebugger,
   } = options;
 
   // Extract replay metadata
@@ -241,6 +243,15 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       ? { enabled: true, screenshotsDir }
       : { enabled: false };
   const sessionDuration = getSessionDuration(sessionData);
+
+  const onBeforeUserEvent = enableStepThroughDebugger
+    ? await openStepThroughDebuggerUI({
+        browser,
+        replayedPage: page,
+        replayableEvents: sessionData.userEvents.event_log,
+      })
+    : null;
+
   try {
     const replayUserInteractionsCall = parentPerformanceSpan?.startChild({
       op: "replayUserInteractions",
@@ -253,6 +264,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       virtualTime,
       storyboard,
       onTimelineEvent,
+      ...(onBeforeUserEvent != null ? { onBeforeUserEvent } : {}),
       ...(sessionDuration != null
         ? { sessionDurationMs: sessionDuration?.milliseconds }
         : {}),

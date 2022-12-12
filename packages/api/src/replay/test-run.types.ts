@@ -100,9 +100,6 @@ export interface TestRunGitHubWorkflowDispatchContext {
     [key: string]: unknown;
   };
 
-  /** Resolved base commit hash */
-  baseSha: string;
-
   /** Resolved head commit hash */
   headSha: string;
 }

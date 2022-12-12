@@ -32,6 +32,7 @@ interface Options
       | "sessionId"
       | "save"
       | "baseSimulationId"
+      | "debugger"
     > {}
 
 const handleTestCreation: (
@@ -182,6 +183,7 @@ const handler: (options: Options) => Promise<void> = async ({
     maxEventCount: null,
     storyboard: false,
     essentialFeaturesOnly: false,
+    debugger: false,
   };
   const replay = await rawReplayCommandHandler(replayOptions);
 
