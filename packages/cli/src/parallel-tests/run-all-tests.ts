@@ -168,6 +168,7 @@ export const runAllTests = async ({
     meticulousSha,
     configData: {
       ...config,
+      testCases: allTestCases,
       arguments: {
         executionOptions,
         screenshottingOptions,
