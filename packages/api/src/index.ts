@@ -1,3 +1,5 @@
+export { Organization } from "./organization.types";
+export { Project, ProjectConfigurationData } from "./project.types";
 export {
   EndStateScreenshot,
   ReplayDiff,
@@ -10,12 +12,12 @@ export {
   ScreenshotDiffResultCompared,
   ScreenshotDiffResultDifferentSize,
   ScreenshotDiffResultMissingBase,
+  ScreenshotDiffResultMissingBaseAndHead,
   ScreenshotDiffResultMissingHead,
   ScreenshotIdentifier,
   ScreenshottingEnabledOptions,
-  StoryboardOptions,
-  ScreenshotDiffResultMissingBaseAndHead,
   SingleTryScreenshotDiffResult,
+  StoryboardOptions,
 } from "./replay/replay-diff.types";
 export {
   TestCase,
