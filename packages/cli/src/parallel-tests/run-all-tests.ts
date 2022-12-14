@@ -6,6 +6,7 @@ import {
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { createClient } from "../api/client";
+import { getProject } from "../api/project.api";
 import { createReplayDiff } from "../api/replay-diff.api";
 import {
   createTestRun,
@@ -20,7 +21,11 @@ import { loadReplayEventsDependencies } from "../local-data/replay-assets";
 import { runAllTestsInParallel } from "../parallel-tests/parallel-tests.handler";
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
-import { getTestsToRun, sortResults } from "../utils/run-all-tests.utils";
+import {
+  getTestsToRun,
+  mergeTestCases,
+  sortResults,
+} from "../utils/run-all-tests.utils";
 import { getEnvironment } from "../utils/test-run-environment.utils";
 import { getMeticulousVersion } from "../utils/version.utils";
 import { executeTestInChildProcess } from "./execute-test-in-child-process";
@@ -123,10 +128,20 @@ export const runAllTests = async ({
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
+
+  const project = await getProject(client);
+  if (!project) {
+    logger.error("Could not retrieve project data. Is the API token correct?");
+    process.exit(1);
+  }
+
   const cachedTestRunResults = cachedTestRunResults_ ?? [];
 
   const config = await readConfig(testsFile || undefined);
-  const allTestCases = config.testCases || [];
+  const allTestCases = mergeTestCases(
+    project.configurationData.testCases,
+    config.testCases
+  );
 
   if (!allTestCases.length) {
     throw new Error("Error! No test case defined");

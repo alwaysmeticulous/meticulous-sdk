@@ -1,15 +1,18 @@
+import { Project } from "@alwaysmeticulous/api";
 import axios, { AxiosInstance } from "axios";
 
-export const getProject: (client: AxiosInstance) => Promise<any> = async (
-  client
-) => {
-  const { data } = await client.get("projects/token-info").catch((error) => {
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 404) {
-        return { data: null };
+export const getProject: (
+  client: AxiosInstance
+) => Promise<Project | null> = async (client) => {
+  const { data } = await client
+    .get<Project>("projects/token-info")
+    .catch((error) => {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          return { data: null };
+        }
       }
-    }
-    throw error;
-  });
+      throw error;
+    });
   return data;
 };

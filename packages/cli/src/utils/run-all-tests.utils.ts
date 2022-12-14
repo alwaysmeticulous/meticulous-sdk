@@ -5,6 +5,25 @@ import log from "loglevel";
 import { getLatestTestRunResults } from "../api/test-run.api";
 import { DetailedTestCaseResult } from "../config/config.types";
 
+export const mergeTestCases = (
+  ...testSuites: (TestCase[] | null | undefined)[]
+): TestCase[] => {
+  const seenSessionIds = new Set<string>();
+
+  return testSuites.flatMap((testSuite) => {
+    if (testSuite == null) {
+      return [];
+    }
+    return testSuite.flatMap((testCase) => {
+      if (seenSessionIds.has(testCase.sessionId)) {
+        return [];
+      }
+      seenSessionIds.add(testCase.sessionId);
+      return [testCase];
+    });
+  });
+};
+
 export const sortResults: (options: {
   results: DetailedTestCaseResult[];
   testCases: TestCase[];
