@@ -8,9 +8,6 @@ import { DetailedTestCaseResult } from "../config/config.types";
 export const mergeTestCases = (
   ...testSuites: (TestCase[] | null | undefined)[]
 ): TestCase[] => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-  logger.debug(testSuites.length);
-
   const seenSessionIds = new Set<string>();
 
   return testSuites.flatMap((testSuite) => {
@@ -25,12 +22,6 @@ export const mergeTestCases = (
       return [testCase];
     });
   });
-
-  // testSuites.forEach((arr) => {
-  //   logger.debug(arr);
-  // });
-
-  // return [];
 };
 
 export const sortResults: (options: {
