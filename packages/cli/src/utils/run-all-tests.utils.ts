@@ -14,13 +14,11 @@ export const mergeTestCases = (
     if (testSuite == null) {
       return [];
     }
-    return testSuite.flatMap((testCase) => {
-      if (seenSessionIds.has(testCase.sessionId)) {
-        return [];
-      }
-      seenSessionIds.add(testCase.sessionId);
-      return [testCase];
-    });
+    const newTestCases = testSuite.filter(
+      (testCase) => !seenSessionIds.has(testCase.sessionId)
+    );
+    testSuite.forEach((testCase) => seenSessionIds.add(testCase.sessionId));
+    return newTestCases;
   });
 };
 
