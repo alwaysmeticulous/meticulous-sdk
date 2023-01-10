@@ -132,6 +132,7 @@ export const replayCommandHandler = async ({
   let replayEvents: ReplayEventsFn;
 
   try {
+    logger.debug("Loading replayer package...");
     const replayer = await require("@alwaysmeticulous/replayer");
     replayEvents = replayer.replayEvents;
   } catch (error) {
@@ -141,9 +142,11 @@ export const replayCommandHandler = async ({
   }
 
   // Report replay start
+  logger.debug("Reporting replay started...");
   const replayCommandId = await getReplayCommandId(client, sessionId);
 
   // 5. Create replay directory
+  logger.debug("Creating directory to store replay output...");
   await mkdir(join(getMeticulousLocalDataDir(), "replays"), {
     recursive: true,
   });
@@ -153,6 +156,7 @@ export const replayCommandHandler = async ({
   );
 
   // 6. Create and save replay parameters
+  logger.debug("Snapshotting replay parameters...");
   const replayEventsParams: ReplayEventsOptions = {
     appUrl: appUrl ?? null,
     replayExecutionOptions: executionOptions,
@@ -177,6 +181,7 @@ export const replayCommandHandler = async ({
   );
 
   // 7. Perform replay
+  logger.debug("Beggining replay...");
   const startTime = DateTime.utc();
 
   await replayEvents({
