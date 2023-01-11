@@ -1,5 +1,9 @@
 export { RecordConfig, RecordSettings, RecordState } from "./record";
 export {
+  MeticulousWindowConfig,
+  NetworkResponseSanitizer,
+} from "./record/record-settings";
+export {
   ReplayUserInteractionsResult,
   ReplayUserInteractionsResultFull,
   ReplayUserInteractionsResultShort,

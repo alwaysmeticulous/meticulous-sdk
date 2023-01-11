@@ -1,3 +1,5 @@
+import { NetworkResponseSanitizer } from "@alwaysmeticulous/sdk-bundles-api";
+
 export interface LoaderOptions {
   projectId: string;
   uploadIntervalMs?: number;
@@ -6,4 +8,9 @@ export interface LoaderOptions {
 
   maxMsToBlockFor?: number;
   snippetsBaseUrl?: string;
+
+  /**
+   * Optional. Allows sanitizing network responses before they are sent to Meticulous's servers.
+   */
+  responseSanitizers?: NetworkResponseSanitizer[];
 }
