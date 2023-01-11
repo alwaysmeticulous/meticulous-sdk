@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "loglevel": "^1.8.0",
-    "luxon": "^2.4.0"
+    "luxon": "^3.2.1"
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.25.0",
