@@ -19,6 +19,7 @@ export interface SessionData {
 
   cookies: Cookie[];
   urlHistory: UrlHistoryEvent[];
+  urlPatternHistory: UrlPatternHistoryEvent[];
   rrwebEvents: unknown[];
   recording_token: string;
   datetime_first_payload: string;
@@ -41,6 +42,11 @@ export interface Cookie {
 
 export interface UrlHistoryEvent {
   url: string;
+  timestamp: number;
+}
+
+export interface UrlPatternHistoryEvent {
+  urlPattern: string;
   timestamp: number;
 }
 
