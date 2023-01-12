@@ -1,3 +1,4 @@
+import { MeticulousWindowConfig } from "@alwaysmeticulous/sdk-bundles-api";
 import { LoaderOptions } from "./loader.types";
 
 const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2000;
@@ -11,6 +12,7 @@ export const loadAndStartRecorder: (
   commitHash,
   maxMsToBlockFor: maxMsToBlockFor_,
   snippetsBaseUrl,
+  responseSanitizers,
 }) => {
   let abandoned = false;
 
@@ -33,19 +35,24 @@ export const loadAndStartRecorder: (
     ).href;
 
     // Setup configuration
-    window["METICULOUS_RECORDING_TOKEN"] = projectId;
+    const typedWindow = window as MeticulousWindowConfig;
+    typedWindow.METICULOUS_RECORDING_TOKEN = projectId;
 
     if (uploadIntervalMs !== undefined) {
-      window["METICULOUS_UPLOAD_INTERVAL_MS"] = uploadIntervalMs;
+      typedWindow.METICULOUS_UPLOAD_INTERVAL_MS = uploadIntervalMs;
     }
 
     if (commitHash !== undefined) {
-      window["METICULOUS_APP_COMMIT_HASH"] = commitHash;
+      typedWindow.METICULOUS_APP_COMMIT_HASH = commitHash;
     }
 
     if (snapshotLinkedStylesheets !== undefined) {
-      window["METICULOUS_SNAPSHOT_LINKED_STYLESHEETS"] =
+      typedWindow.METICULOUS_SNAPSHOT_LINKED_STYLESHEETS =
         snapshotLinkedStylesheets;
+    }
+
+    if (responseSanitizers != null && responseSanitizers.length > 0) {
+      typedWindow.METICULOUS_NETWORK_RESPONSE_SANITIZERS = responseSanitizers;
     }
 
     script.onload = function () {
