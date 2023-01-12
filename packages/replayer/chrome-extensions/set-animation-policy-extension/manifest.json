@@ -1,0 +1,16 @@
+{
+  "name": "Set Animation Policy",
+  "action": {},
+  "manifest_version": 3,
+  "version": "0.1",
+  "description": "Pauses all animations",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "accessibilityFeatures.read",
+    "accessibilityFeatures.modify"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

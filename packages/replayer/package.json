@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "clean": "rimraf dist",
-    "build": "tsc --build tsconfig.json",
+    "build": "tsc --build tsconfig.json && cp -r chrome-extensions/* dist/",
     "dev": "tsc --build tsconfig.json --watch",
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",

@@ -25,7 +25,6 @@ export const COMMON_CHROMIUM_FLAGS = [
   // work-around this issue (a temporary directory will always be used to create
   // anonymous shared memory files).
   "--disable-dev-shm-usage",
-  "--disable-extensions",
   // Suppresses hang monitor dialogs in renderer processes.
   // This may allow slow unload handlers on a page to prevent the tab from closing,
   // but the Task Manager can be used to terminate the offending process in this case.

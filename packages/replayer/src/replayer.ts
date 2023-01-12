@@ -1,3 +1,4 @@
+import { join } from "path";
 import { ReplayTimelineEntry } from "@alwaysmeticulous/api";
 import {
   COMMON_CHROMIUM_FLAGS,
@@ -83,6 +84,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const puppeteerLaunchSpan = parentPerformanceSpan?.startChild({
     op: "puppeteerLaunch",
   });
+  const pathToExtension = join(__dirname, "set-animation-policy-extension");
   const browser: Browser =
     browser_ ||
     (await launch({
@@ -95,22 +97,19 @@ export const replayEvents: ReplayEventsFn = async (options) => {
         ...COMMON_CHROMIUM_FLAGS,
         ...(disableRemoteFonts ? ["--disable-remote-fonts"] : []),
         ...(noSandbox ? ["--no-sandbox"] : []),
+        `--disable-extensions-except=${pathToExtension}`,
+        `--load-extension=${pathToExtension}`,
       ],
       headless: headless,
       devtools: devTools,
     }));
   puppeteerLaunchSpan?.finish();
 
-  const createIncognitoBrowserContextSpan = parentPerformanceSpan?.startChild({
-    op: "createIncognitoBrowserContext",
+  const createBrowserContextSpan = parentPerformanceSpan?.startChild({
+    op: "createBrowserContext",
   });
-  const context = await browser.createIncognitoBrowserContext();
-  (await browser.defaultBrowserContext().pages()).forEach((page) =>
-    page.close().catch((error) => {
-      logger.error(error);
-    })
-  );
-  createIncognitoBrowserContextSpan?.finish();
+  const context = await browser.defaultBrowserContext();
+  createBrowserContextSpan?.finish();
 
   const timelineCollector = new ReplayTimelineCollector();
   const onTimelineEvent: OnReplayTimelineEventFn = (
