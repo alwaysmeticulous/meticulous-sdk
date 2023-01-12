@@ -40,8 +40,16 @@ export interface Cookie {
 }
 
 export interface UrlHistoryEvent {
-  url: string;
   timestamp: number;
+
+  url: string;
+
+  /**
+   * Some frameworks, like next.js expose the router's current URL's pattern e.g. '/projects/[organizationName]/[projectName]'.
+   *
+   * If so, we include the pattern here.
+   */
+  urlPattern?: string;
 }
 
 export type LocalStorageEntry = { key: string; value: string };
