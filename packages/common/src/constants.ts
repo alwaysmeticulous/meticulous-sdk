@@ -44,4 +44,7 @@ export const COMMON_CHROMIUM_FLAGS = [
   // Skip First Run tasks, like importing history or bookmarks.
   // See https://www.chromium.org/developers/design-documents/first-run-customizations/
   "--no-first-run",
+  // Disable image animations (including SVG animations).
+  // See https://chromium.googlesource.com/chromium/src/+/23d6a478c76d5e31c8bb47fa31bd53f619b536bd/third_party/WebKit/Source/platform/graphics/ImageAnimationPolicy.h
+  "--blink-settings=imageAnimationPolicy=2",
 ];
