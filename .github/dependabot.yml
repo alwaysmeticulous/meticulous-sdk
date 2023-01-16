@@ -6,3 +6,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # Parcel deps need to all be bumped at once in sync
+      - dependency-name: "@parcel/*"
+      # We have 3rd party deps that depend on chalk 4, if we bumped to chalk 5 it'd required shipping two versions
+      - dependency-name: "chalk"
+        update-types: ["version-update:semver-major"]
