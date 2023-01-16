@@ -13,7 +13,6 @@ import { showProjectCommand } from "./commands/show-project/show-project.command
 import { updateTestsCommand } from "./commands/update-tests/update-tests.command";
 import { initLogger, setLogLevel } from "./utils/logger.utils";
 import { initSentry, setOptions } from "./utils/sentry.utils";
-import { getMeticulousVersion } from "./utils/version.utils";
 
 const handleDataDir: (dataDir: string | null | undefined) => void = (
   dataDir
@@ -23,8 +22,7 @@ const handleDataDir: (dataDir: string | null | undefined) => void = (
 
 export const main: () => void = async () => {
   initLogger();
-  const meticulousVersion = await getMeticulousVersion();
-  initSentry(meticulousVersion);
+  await initSentry();
 
   yargs
     .scriptName("meticulous")

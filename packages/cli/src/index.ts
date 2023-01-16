@@ -18,3 +18,4 @@ export {
   TestRun,
 } from "./parallel-tests/run-all-tests";
 export { initLogger, setLogLevel } from "./utils/logger.utils";
+export { initSentry } from "./utils/sentry.utils";
