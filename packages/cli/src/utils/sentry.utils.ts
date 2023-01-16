@@ -13,7 +13,7 @@ const getTracesSampleRate: () => number = () => {
   return parseFloat(process.env["METICULOUS_TELEMETRY_SAMPLE_RATE"] ?? "1.0");
 };
 
-export const initSentry: () => void = async () => {
+export const initSentry: () => Promise<Sentry.Hub> = async () => {
   const meticulousVersion = await getMeticulousVersion();
 
   Sentry.init({
@@ -24,6 +24,8 @@ export const initSentry: () => void = async () => {
   });
 
   addExtensionMethods();
+
+  return Sentry.getCurrentHub();
 };
 
 export const setOptions: (options: any) => void = (options) => {
