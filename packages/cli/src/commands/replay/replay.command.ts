@@ -99,11 +99,19 @@ export const replayCommandHandler = async ({
     );
   }
 
-  const transaction = Sentry.startTransaction({
+  const rootTransaction = Sentry.getCurrentHub().getScope()?.getTransaction();
+  const handlerSpanContext = {
     name: "replay.command_handler",
     description: "Handle the replay command",
     op: "replay.command_handler",
-  });
+  };
+  let transaction: Sentry.Span;
+  if (rootTransaction) {
+    transaction = rootTransaction.startChild(handlerSpanContext);
+  } else {
+    transaction = Sentry.startTransaction(handlerSpanContext);
+  }
+
   Sentry.getCurrentHub().configureScope((scope) => scope.setSpan(transaction));
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
