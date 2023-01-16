@@ -51,8 +51,8 @@ export const OPTIONS = {
   skipPauses: {
     boolean: true,
     description:
-      "Fast forward through any pauses to replay as fast as possible. Warning: this option is experimental and may be deprecated",
-    default: false,
+      "Fast forward through any pauses to replay as fast as possible.",
+    default: true,
   },
   moveBeforeClick: {
     boolean: true,
