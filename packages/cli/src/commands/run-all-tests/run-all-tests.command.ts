@@ -155,7 +155,7 @@ export const runAllTestsCommand = buildCommand("run-all-tests")
     parallelTasks: {
       number: true,
       description:
-        "Number of tasks to run in parallel (if not set a default value is used based on the number of CPUs)",
+        "Number of tasks to run in parallel (defaults to two per CPU)",
       coerce: (value: number | null | undefined) => {
         if (typeof value === "number" && value <= 0) {
           return null;

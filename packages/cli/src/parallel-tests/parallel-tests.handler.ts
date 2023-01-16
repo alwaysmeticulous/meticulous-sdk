@@ -69,7 +69,8 @@ export const runAllTestsInParallel: (
   const allTasksDone = defer<void>();
 
   let inProgress = 0;
-  const maxTasks = parallelTasks ?? Math.max(cpus().length, 1);
+  // Average run time when testing on a 16 core machine: 16 parallel tasks @ 56s, 32 parallel tasks @ 52.5s
+  const maxTasks = parallelTasks ?? Math.max(cpus().length, 1) * 2;
   logger.debug(`Running with ${maxTasks} maximum tasks in parallel`);
 
   // Starts running a test case in a child process
