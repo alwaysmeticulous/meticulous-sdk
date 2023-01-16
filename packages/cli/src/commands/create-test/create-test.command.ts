@@ -237,7 +237,7 @@ export const createTestCommand = buildCommand("create-test")
     skipPauses: {
       ...COMMON_REPLAY_OPTIONS.skipPauses,
       description:
-        "Fast forward through any pauses to replay as fast as possible when replaying for the first time to create the test. Warning: this option is experimental and may be deprecated",
+        "Fast forward through any pauses to replay as fast as possible when replaying for the first time to create the test.",
     },
   })
   .handler(handler);
