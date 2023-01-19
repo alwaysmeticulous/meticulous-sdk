@@ -1,1 +1,1 @@
-export { loadAndStartRecorder } from "./loader";
+export { loadAndStartRecorder, tryLoadAndStartRecorder } from "./loader";

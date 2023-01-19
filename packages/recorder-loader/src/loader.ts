@@ -1,11 +1,21 @@
 import { MeticulousWindowConfig } from "@alwaysmeticulous/sdk-bundles-api";
 import { LoaderOptions } from "./loader.types";
 
-const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2000;
+const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2_000;
 
-export const loadAndStartRecorder: (
+/**
+ * Load and start the Meticulous Recorder
+ */
+export const tryLoadAndStartRecorder = async (
   options: LoaderOptions
-) => Promise<void> = ({
+): Promise<void> => {
+  // Try to load the recorder and silence any initialisation error.
+  await unsafeLoadAndStartRecorder(options).catch((error) => {
+    console.error(error);
+  });
+};
+
+const unsafeLoadAndStartRecorder = ({
   projectId,
   uploadIntervalMs,
   snapshotLinkedStylesheets,
@@ -13,7 +23,7 @@ export const loadAndStartRecorder: (
   maxMsToBlockFor: maxMsToBlockFor_,
   snippetsBaseUrl,
   responseSanitizers,
-}) => {
+}: LoaderOptions): Promise<void> => {
   let abandoned = false;
 
   return new Promise<void>((resolve, reject) => {
@@ -85,3 +95,10 @@ export const loadAndStartRecorder: (
     document.head.appendChild(script);
   });
 };
+
+/**
+ * @deprecated Use `tryLoadAndStartRecorder` instead.
+ *
+ * Load and start the Meticulous Recorder
+ */
+export const loadAndStartRecorder = unsafeLoadAndStartRecorder;
