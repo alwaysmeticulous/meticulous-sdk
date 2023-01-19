@@ -157,14 +157,13 @@ export const replayCommandHandler = async ({
 
   // 6. Create and save replay parameters
   logger.debug("Snapshotting replay parameters...");
-  const replayEventsParams: ReplayEventsOptions = {
+  const replayEventsParams: Omit<ReplayEventsOptions, "sessionData"> = {
     appUrl: appUrl ?? null,
     replayExecutionOptions: executionOptions,
 
     browser: null,
     outputDir: tempDir,
     session,
-    sessionData,
     recordingId: "manual-replay",
     meticulousSha: "meticulousSha",
     generatedBy,
@@ -186,6 +185,7 @@ export const replayCommandHandler = async ({
 
   await replayEvents({
     ...replayEventsParams,
+    sessionData,
     parentPerformanceSpan: transaction.startChild({ op: "replayEvents" }),
   });
 
