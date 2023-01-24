@@ -21,6 +21,7 @@ export const initSentry: () => Promise<Sentry.Hub> = async () => {
     release: meticulousVersion,
 
     tracesSampleRate: getTracesSampleRate(),
+    environment: __filename.endsWith(".ts") ? "development" : "production",
   });
 
   addExtensionMethods();
