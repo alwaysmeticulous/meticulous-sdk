@@ -10,7 +10,12 @@ export const executeTestInChildProcess = (
 ): Promise<DetailedTestCaseResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
-  const taskHandler = join(__dirname, "task.handler.js");
+  const isTypeScript = __filename.endsWith(".ts");
+
+  const taskHandler = join(
+    __dirname,
+    `task.handler${isTypeScript ? ".ts" : ".js"}`
+  );
 
   const deferredResult = defer<DetailedTestCaseResult>();
   const child = fork(taskHandler, [], { stdio: "inherit" });
