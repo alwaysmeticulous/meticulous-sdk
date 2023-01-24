@@ -1,11 +1,12 @@
 import {
-  setMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
+  setMeticulousLocalDataDir,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { Duration } from "luxon";
 import { deflakeReplayCommandHandler } from "../deflake-tests/deflake-tests.handler";
 import { initLogger } from "../utils/logger.utils";
+import { initSentry } from "../utils/sentry.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
 
 const INIT_TIMEOUT = Duration.fromObject({ second: 1 });
@@ -37,6 +38,7 @@ const waitForInitMessage: () => Promise<InitMessage> = () => {
 
 const main = async () => {
   initLogger();
+  await initSentry();
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   if (!process.send) {
