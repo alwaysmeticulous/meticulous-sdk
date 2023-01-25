@@ -13,14 +13,16 @@ const getTracesSampleRate: () => number = () => {
   return parseFloat(process.env["METICULOUS_TELEMETRY_SAMPLE_RATE"] ?? "1.0");
 };
 
-export const initSentry: () => Promise<Sentry.Hub> = async () => {
+export const initSentry: (
+  tracesSampleRateOverride?: number
+) => Promise<Sentry.Hub> = async (tracesSampleRateOverride) => {
   const meticulousVersion = await getMeticulousVersion();
 
   Sentry.init({
     dsn: SENTRY_DSN,
     release: meticulousVersion,
 
-    tracesSampleRate: getTracesSampleRate(),
+    tracesSampleRate: tracesSampleRateOverride ?? getTracesSampleRate(),
     environment: __filename.endsWith(".ts") ? "development" : "production",
   });
 
