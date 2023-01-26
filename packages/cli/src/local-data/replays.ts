@@ -19,7 +19,7 @@ import {
 export const getOrFetchReplay = async (
   client: AxiosInstance,
   replayId: string
-): Promise<Replay> => {
+): Promise<{ fileName: string; data: Replay }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const replayFile = join(getReplayDir(replayId), `${replayId}.json`);
@@ -37,13 +37,13 @@ export const getOrFetchReplay = async (
     process.exit(1);
   }
 
-  return replay;
+  return { fileName: replayFile, data: replay };
 };
 
 export const getOrFetchReplayArchive = async (
   client: AxiosInstance,
   replayId: string
-): Promise<void> => {
+): Promise<{ fileName: string }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const replayDir = getReplayDir(replayId);
@@ -58,7 +58,7 @@ export const getOrFetchReplayArchive = async (
     // zip archive has been downloaded and extracted.
     if (await fileExists(paramsFile)) {
       logger.debug(`Replay archive already downloaded at ${replayDir}`);
-      return;
+      return { fileName: replayDir };
     }
 
     const downloadUrlData = await getReplayDownloadUrl(client, replayId);
@@ -77,6 +77,7 @@ export const getOrFetchReplayArchive = async (
     await rm(replayArchiveFile);
 
     logger.debug(`Extracted replay archive in ${replayDir}`);
+    return { fileName: replayDir };
   } finally {
     await releaseLock();
   }
