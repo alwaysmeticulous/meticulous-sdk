@@ -1,3 +1,5 @@
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import log from "loglevel";
 import { createClient } from "../../api/client";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
@@ -14,10 +16,19 @@ const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   sessionId,
 }) => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const client = createClient({ apiToken });
 
-  await getOrFetchRecordedSession(client, sessionId);
-  await getOrFetchRecordedSessionData(client, sessionId);
+  const { fileName: sessionMetadataFileName } = await getOrFetchRecordedSession(
+    client,
+    sessionId
+  );
+  logger.info(`Downloaded session metadata to: ${sessionMetadataFileName}`);
+  const { fileName: sessionFileName } = await getOrFetchRecordedSessionData(
+    client,
+    sessionId
+  );
+  logger.info(`Downloaded session data to: ${sessionFileName}`);
 };
 
 export const downloadSessionCommand = buildCommand("download-session")

@@ -12,7 +12,7 @@ import { getOrDownloadJsonFile, sanitizeFilename } from "./local-data.utils";
 export const getOrFetchRecordedSession = async (
   client: AxiosInstance,
   sessionId: string
-): Promise<any> => {
+): Promise<{ fileName: string; data: any }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const sessionFile = join(
@@ -33,13 +33,13 @@ export const getOrFetchRecordedSession = async (
     process.exit(1);
   }
 
-  return session;
+  return { fileName: sessionFile, data: session };
 };
 
 export const getOrFetchRecordedSessionData = async (
   client: AxiosInstance,
   sessionId: string
-): Promise<SessionData> => {
+): Promise<{ fileName: string; data: SessionData }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const sessionFile = join(
@@ -60,5 +60,5 @@ export const getOrFetchRecordedSessionData = async (
     process.exit(1);
   }
 
-  return sessionData;
+  return { fileName: sessionFile, data: sessionData };
 };

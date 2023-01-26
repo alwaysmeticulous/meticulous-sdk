@@ -119,8 +119,11 @@ export const replayCommandHandler = async ({
 
   // 1. Check session files
   const fetchSessions = transaction.startChild({ op: "fetchingSessions" });
-  const session = await getOrFetchRecordedSession(client, sessionId);
-  const sessionData = await getOrFetchRecordedSessionData(client, sessionId);
+  const { data: session } = await getOrFetchRecordedSession(client, sessionId);
+  const { data: sessionData } = await getOrFetchRecordedSessionData(
+    client,
+    sessionId
+  );
   fetchSessions.finish();
 
   // 2. Guess commit SHA1
