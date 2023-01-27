@@ -26,7 +26,7 @@
     "@types/jest": "^27.0.3",
     "@types/jquery": "^3.5.14",
     "@types/luxon": "^3.2.0",
-    "@types/node": "^16.11.41",
+    "@types/node": "^18.11.18",
     "@types/pixelmatch": "^5.2.4",
     "@types/pngjs": "^6.0.1",
     "@types/react": "^18.0.14",
