@@ -10,7 +10,7 @@
     "dist"
   ],
   "scripts": {
-    "clean": "rimraf dist",
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
     "dev": "parcel watch",
     "build": "parcel build",
     "format": "prettier --write src",

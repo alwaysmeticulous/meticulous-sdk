@@ -13,7 +13,7 @@
     "meticulous": "bin/meticulous"
   },
   "scripts": {
-    "clean": "rimraf dist",
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
     "build": "tsc --build tsconfig.json",
     "dev": "tsc --build tsconfig.json --watch",
     "format": "prettier --write src",
