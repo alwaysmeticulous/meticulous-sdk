@@ -50,6 +50,7 @@ import { addTestCase } from "../../utils/config.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
 import { ScreenshotDiffsSummary } from "../screenshot-diff/screenshot-diff.command";
 import { computeDiff } from "./utils/compute-diff";
+import { exitEarlyIfSkipUploadEnvVarSet } from "./utils/exit-early-if-skip-upload-env-var-set";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
@@ -207,6 +208,9 @@ export const replayCommandHandler = async ({
   logger.info(
     `Simulation time: ${endTime.diff(startTime).as("seconds")} seconds`
   );
+
+  exitEarlyIfSkipUploadEnvVarSet(baseReplayId);
+
   logger.info("Sending simulation results to Meticulous");
 
   // 8. Create a Zip archive containing the replay files
