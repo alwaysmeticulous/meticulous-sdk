@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     /* Projects */
-    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
+    "tsBuildInfoFile": "tsconfig.tsbuildinfo",
     /* Modules */
     "rootDir": "./scripts",
     /* Emit */
