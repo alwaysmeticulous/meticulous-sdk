@@ -2,11 +2,12 @@ import {
   METICULOUS_LOGGER_NAME,
   setMeticulousLocalDataDir,
 } from "@alwaysmeticulous/common";
+import * as Sentry from "@sentry/node";
 import log from "loglevel";
 import { Duration } from "luxon";
 import { deflakeReplayCommandHandler } from "../deflake-tests/deflake-tests.handler";
 import { initLogger } from "../utils/logger.utils";
-import { initSentry } from "../utils/sentry.utils";
+import { initSentry, SENTRY_FLUSH_TIMEOUT } from "../utils/sentry.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
 
 const INIT_TIMEOUT = Duration.fromObject({ second: 1 });
@@ -62,9 +63,15 @@ const main = async () => {
 
   process.send(resultMessage);
   process.disconnect();
+
+  await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 };
 
-main().catch((error) => {
+main().catch(async (error) => {
   console.error(error);
+
+  Sentry.captureException(error);
+  await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
+
   process.exit(1);
 });
