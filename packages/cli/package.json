@@ -35,7 +35,7 @@
     "cosmiconfig": "^8.0.0",
     "express": "^4.18.1",
     "find-free-port": "^2.0.0",
-    "inquirer": "^8.2.4",
+    "inquirer": "^9.1.4",
     "luxon": "^3.2.1",
     "pixelmatch": "^5.3.0",
     "pngjs": "^6.0.0",
