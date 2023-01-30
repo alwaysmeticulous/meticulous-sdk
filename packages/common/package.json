@@ -24,7 +24,7 @@
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.26.0",
     "@alwaysmeticulous/sdk-bundles-api": "^2.26.0",
-    "@sentry/types": "^7.21.1"
+    "@sentry/types": "^7.34.0"
   },
   "author": {
     "name": "The Meticulous Team",
