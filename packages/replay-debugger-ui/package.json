@@ -23,7 +23,7 @@
     "serve": "serve -p 3005 -s out"
   },
   "dependencies": {
-    "serve": "^13.0.2"
+    "serve": "^14.2.0"
   },
   "devDependencies": {
     "@headlessui/react": "^1.6.5",
