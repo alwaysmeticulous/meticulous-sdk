@@ -2,7 +2,7 @@
 // want to lock ourselves into PollyJS. Instead we expose just the subset
 // of the types that we actually need/use.
 export interface HarLog {
-  log: HarEntry[];
+  entries: HarEntry[];
 }
 
 export interface HarEntry {
