@@ -10,6 +10,11 @@ export interface HarEntry {
   startedDateTime: string;
   request: HarRequest;
   response: HarResponse;
+
+  /**
+   * Time in ms between request started and response received.
+   */
+  time: number;
 }
 
 export interface HarRequest {
