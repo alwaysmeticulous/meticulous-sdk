@@ -10,7 +10,7 @@
     "out"
   ],
   "scripts": {
-    "clean": "rimraf dist .next out",
+    "clean": "rimraf dist .next out tsconfig.tsbuildinfo",
     "build:next": "next build",
     "build:next-export": "next export",
     "build:scripts": "tsc -p tsconfig.scripts.json",
