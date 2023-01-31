@@ -1,15 +1,25 @@
 import {
-  CursorClickIcon,
-  DownloadIcon,
-  FastForwardIcon,
+  ArrowDownTrayIcon,
+  // CursorClickIcon,
+  // DownloadIcon,
+  // FastForwardIcon,
+  // FingerPrintIcon,
+  // PencilAltIcon,
+  // PlayIcon,
+  // ReplyIcon,
+  // SwitchVerticalIcon,
+  // UploadIcon,
+  // XIcon,
+  ArrowsUpDownIcon,
+  ArrowUpTrayIcon,
+  ArrowUturnLeftIcon,
+  CursorArrowRaysIcon,
   FingerPrintIcon,
-  PencilAltIcon,
+  ForwardIcon,
+  PencilSquareIcon,
   PlayIcon,
-  ReplyIcon,
-  SwitchVerticalIcon,
-  UploadIcon,
-  XIcon,
-} from "@heroicons/react/solid";
+  XMarkIcon,
+} from "@heroicons/react/20/solid";
 import cx from "classnames";
 import { Duration } from "luxon";
 import { FunctionComponent, useCallback, useEffect, useRef } from "react";
@@ -37,18 +47,18 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
   const Icon = (() => {
     switch (eventType) {
       case "scroll":
-        return SwitchVerticalIcon;
+        return ArrowsUpDownIcon;
       case "focusin":
       case "focus":
-        return DownloadIcon;
+        return ArrowDownTrayIcon;
       case "focusout":
       case "blur":
-        return UploadIcon;
+        return ArrowUpTrayIcon;
       case "tap":
       case "click":
       case "mouseup":
       case "mousedown":
-        return CursorClickIcon;
+        return CursorArrowRaysIcon;
       case "touchstart":
       case "touchend":
       case "touchmove":
@@ -58,7 +68,7 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
       case "keydown":
       case "keyup":
       case "input":
-        return PencilAltIcon;
+        return PencilSquareIcon;
       default:
         return null;
     }
@@ -179,7 +189,7 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
             title="Jump to this event"
           >
             <span className="sr-only">Jump to this event</span>
-            <ReplyIcon
+            <ArrowUturnLeftIcon
               className={cx("w-5", "h-5", "-scale-x-100", "rotate-90")}
               aria-hidden="true"
             />
@@ -230,7 +240,7 @@ const EndOfReplayItem: FunctionComponent<{ current?: boolean }> = ({
           "text-violet-800"
         )}
       >
-        <XIcon className={cx("w-5", "h-5")} aria-hidden="true" />
+        <XMarkIcon className={cx("w-5", "h-5")} aria-hidden="true" />
       </div>
       <div className={cx("ml-2", "self-center")}>
         <button
@@ -257,7 +267,7 @@ const EndOfReplayItem: FunctionComponent<{ current?: boolean }> = ({
           title="Jump to first event"
         >
           <span className="sr-only">Jump to first event</span>
-          <FastForwardIcon
+          <ForwardIcon
             className={cx("w-5", "h-5", "rotate-180")}
             aria-hidden="true"
           />
