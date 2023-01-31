@@ -21,7 +21,7 @@
     "@alwaysmeticulous/common": "^2.29.1",
     "loglevel": "^1.8.0",
     "luxon": "^3.2.1",
-    "puppeteer": "^14.4.1",
+    "puppeteer": "^19.6.2",
     "rrweb": "^1.1.3"
   },
   "devDependencies": {
