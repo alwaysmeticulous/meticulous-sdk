@@ -26,8 +26,8 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.30.0",
-    "@sentry/node": "^7.34.0",
-    "@sentry/tracing": "^7.34.0",
+    "@sentry/node": "^7.36.0",
+    "@sentry/tracing": "^7.36.0",
     "adm-zip": "^0.5.9",
     "archiver": "^5.3.1",
     "axios": "^1.2.6",
