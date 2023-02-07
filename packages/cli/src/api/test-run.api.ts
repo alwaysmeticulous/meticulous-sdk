@@ -3,18 +3,7 @@ import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import axios, { AxiosError, AxiosInstance } from "axios";
 import log from "loglevel";
 import { TestCaseResult } from "../config/config.types";
-
-export type TestRunStatus = "Running" | "Success" | "Failure";
-
-export interface TestRun {
-  id: string;
-  status: TestRunStatus;
-  resultData?: {
-    results: TestCaseResult[];
-    [key: string]: any;
-  };
-  [key: string]: any;
-}
+import { TestRun, TestRunStatus } from "./types";
 
 export const getTestRun: (options: {
   client: AxiosInstance;
@@ -53,7 +42,7 @@ export const createTestRun: (options: {
 export const putTestRunResults: (options: {
   client: AxiosInstance;
   testRunId: string;
-  status: "Running" | "Success" | "Failure";
+  status: TestRunStatus;
   resultData: { [key: string]: any };
 }) => Promise<TestRun> = async ({ client, testRunId, status, resultData }) => {
   const { data } = await client.put(`test-runs/${testRunId}/results`, {

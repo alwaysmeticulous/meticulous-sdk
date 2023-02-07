@@ -12,8 +12,8 @@ import {
   createTestRun,
   getTestRunUrl,
   putTestRunResults,
-  TestRunStatus,
 } from "../api/test-run.api";
+import { TestRun, TestRunStatus } from "../api/types";
 import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
 import { readConfig } from "../config/config";
 import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
@@ -31,6 +31,14 @@ import { getMeticulousVersion } from "../utils/version.utils";
 import { executeTestInChildProcess } from "./execute-test-in-child-process";
 import { InitMessage } from "./messages.types";
 import { TestRunProgress } from "./run-all-tests.types";
+
+export type RunAllTestsTestRun = Pick<
+  TestRun,
+  "id" | "url" | "status" | "project"
+> & {
+  progress: TestRunProgress;
+  url: string;
+};
 
 export interface Options {
   testsFile: string | null;
@@ -76,19 +84,16 @@ export interface Options {
    */
   environment?: TestRunEnvironment;
 
-  onTestRunCreated?: (testRun: TestRun & { status: "Running" }) => void;
-  onTestFinished?: (testRun: TestRun & { status: "Running" }) => void;
+  onTestRunCreated?: (
+    testRun: RunAllTestsTestRun & { status: "Running" }
+  ) => void;
+  onTestFinished?: (
+    testRun: RunAllTestsTestRun & { status: "Running" }
+  ) => void;
 }
 export interface RunAllTestsResult {
-  testRun: TestRun & { status: "Success" | "Failure" };
+  testRun: RunAllTestsTestRun & { status: "Success" | "Failure" };
   testCaseResults: DetailedTestCaseResult[];
-}
-
-export interface TestRun {
-  id: string;
-  url: string;
-  status: TestRunStatus;
-  progress: TestRunProgress;
 }
 
 /**
@@ -188,6 +193,7 @@ export const runAllTests = async ({
   onTestRunCreated?.({
     id: testRun.id,
     url: testRunUrl,
+    project: testRun.project,
     status: "Running",
     progress: {
       failedTestCases: 0,
@@ -235,6 +241,7 @@ export const runAllTests = async ({
     onTestFinished_?.({
       id: testRun.id,
       url: testRunUrl,
+      project: testRun.project,
       status: "Running",
       progress: {
         ...progress,
@@ -318,13 +325,14 @@ export const runAllTests = async ({
   });
 
   if (githubSummary) {
-    await writeGitHubSummary({ testRunUrl, results });
+    await writeGitHubSummary({ testRunUrl: testRunUrl, results });
   }
 
   return {
     testRun: {
       url: testRunUrl,
       id: testRun.id,
+      project: testRun.project,
       status: overallStatus,
       progress: {
         flakedTestCases: sortedResults.filter(

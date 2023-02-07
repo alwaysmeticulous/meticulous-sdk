@@ -15,7 +15,9 @@ export { updateTestsCommand } from "./commands/update-tests/update-tests.command
 export {
   runAllTests,
   RunAllTestsResult,
-  TestRun,
+  // Exported as `TestRun` as well to maintain backward compatibility.
+  RunAllTestsTestRun as TestRun,
+  RunAllTestsTestRun,
 } from "./parallel-tests/run-all-tests";
 export { initLogger, setLogLevel } from "./utils/logger.utils";
 export { initSentry } from "./utils/sentry.utils";
