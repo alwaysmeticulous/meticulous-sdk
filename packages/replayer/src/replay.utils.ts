@@ -38,6 +38,7 @@ export interface CreateReplayPageOptions {
   bypassCSP: boolean;
   virtualTime: VirtualTimeOptions;
   essentialFeaturesOnly: boolean;
+  userAgent?: string;
 }
 
 export const createReplayPage = async ({
@@ -50,6 +51,7 @@ export const createReplayPage = async ({
   bypassCSP,
   virtualTime,
   essentialFeaturesOnly,
+  userAgent,
 }: CreateReplayPageOptions): Promise<Page> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -58,6 +60,10 @@ export const createReplayPage = async ({
   page.setDefaultNavigationTimeout(120000); // 2 minutes
   if (bypassCSP) {
     await page.setBypassCSP(true);
+  }
+
+  if (userAgent) {
+    await page.setUserAgent(userAgent);
   }
 
   // Log any errors/console messages
@@ -390,4 +396,8 @@ const exposeOnEmitPlaybackEvent: (options: {
       events.push(event);
     }
   );
+};
+
+export const getUserAgentOverride: () => string | undefined = () => {
+  return process.env["METICULOUS_USER_AGENT_OVERRIDE"];
 };
