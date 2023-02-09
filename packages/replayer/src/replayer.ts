@@ -25,6 +25,7 @@ import {
   getSessionDuration,
   getStartingViewport,
   getStartUrl,
+  getUserAgentOverride,
   initializeReplayData,
 } from "./replay.utils";
 import { takeScreenshot } from "./screenshot.utils";
@@ -123,6 +124,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const createReplayPageSpan = parentPerformanceSpan?.startChild({
     op: "createReplayPage",
   });
+
+  const userAgentOverride = getUserAgentOverride();
   const page = await createReplayPage({
     context,
     defaultViewport,
@@ -133,6 +136,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     bypassCSP,
     virtualTime,
     essentialFeaturesOnly,
+    ...(userAgentOverride ? { userAgent: userAgentOverride } : {}),
   });
   createReplayPageSpan?.finish();
 
