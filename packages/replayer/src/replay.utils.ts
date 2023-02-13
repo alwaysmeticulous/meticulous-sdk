@@ -5,9 +5,9 @@ import {
   ReplayEventsDependencies,
 } from "@alwaysmeticulous/common";
 import {
+  InstallVirtualEventLoopOpts,
   OnReplayTimelineEventFn,
   VirtualTimeOptions,
-  InstallVirtualEventLoopOpts,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { DateTime, Duration } from "luxon";
@@ -116,13 +116,22 @@ export const createReplayPage = async ({
   }
 
   // Setup the url-observer snippet
-  if (!essentialFeaturesOnly) {
-    const urlObserverFile = await readFile(
-      dependencies.browserUrlObserver.location,
-      "utf-8"
-    );
-    await page.evaluateOnNewDocument(urlObserverFile);
+  const urlObserverFile = await readFile(
+    dependencies.browserUrlObserver.location,
+    "utf-8"
+  );
+  await page.evaluateOnNewDocument(urlObserverFile);
 
+  if (!essentialFeaturesOnly) {
+    await page.evaluateOnNewDocument(`
+      const urlObserverStartListening = window.__meticulous?.urlObserver?.startListening;
+      if(urlObserverStartListening) {
+        urlObserverStartListening();
+      }
+    `);
+  }
+
+  if (!essentialFeaturesOnly) {
     // Collect js coverage data
     await page.coverage.startJSCoverage({ resetOnNavigation: false });
   }
