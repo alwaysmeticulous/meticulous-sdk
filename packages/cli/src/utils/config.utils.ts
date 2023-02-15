@@ -40,6 +40,16 @@ export const getReplayTargetForTestCase = ({
       simulationIdForAssets: testCase.baseReplayId,
     };
   }
+
+  if (testCase.options?.appUrl) {
+    if (appUrl) {
+      throw new Error(
+        `Test cases "${testCase.title}" has an "appUrl" option but --appUrl is also provided.`
+      );
+    }
+
+    return { type: "url", appUrl: testCase.options.appUrl };
+  }
   if (appUrl) {
     return { type: "url", appUrl };
   }
