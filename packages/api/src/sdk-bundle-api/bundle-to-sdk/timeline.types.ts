@@ -40,6 +40,36 @@ export interface FatalErrorTimelineEntry extends GenericReplayTimelineEntry {
   };
 }
 
+/**
+ * Timed out waiting for something but continued anyway. This means the replay was still successful, but may be flakey.
+ */
+export interface TimeoutTimelineEntry extends GenericReplayTimelineEntry {
+  kind: "timeoutError";
+  data: {
+    timeoutInMs: number;
+    message: string | null;
+    stack: string | null;
+  };
+}
+
+export interface FontsTimeoutTimelineEntry extends TimeoutTimelineEntry {
+  data: {
+    waitedFor: "fonts";
+  } & TimeoutTimelineEntry["data"];
+}
+
+export interface NetworkResponsesTimeoutTimelineEntry
+  extends TimeoutTimelineEntry {
+  data: {
+    waitedFor: "network-responses";
+
+    /**
+     * The urls we timed out waiting for.
+     */
+    urls?: string[];
+  } & TimeoutTimelineEntry["data"];
+}
+
 export interface UrlChangeTimelineEntry extends GenericReplayTimelineEntry {
   kind: "urlChange";
   data: {
@@ -86,6 +116,8 @@ export interface JsReplaySimulateEvent {
 export type ReplayTimelineEntry =
   | ErrorTimelineEntry
   | FatalErrorTimelineEntry
+  | FontsTimeoutTimelineEntry
+  | NetworkResponsesTimeoutTimelineEntry
   | UrlChangeTimelineEntry
   | PollyTimelineEntry
   | JsReplayTimelineEntry;
