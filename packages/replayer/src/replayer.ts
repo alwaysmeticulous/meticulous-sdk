@@ -148,7 +148,13 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const getStartURLSpan = parentPerformanceSpan?.startChild({
     op: "initializeReplayData",
   });
-  const startUrl = getStartUrl({ originalSessionStartUrl, appUrl });
+  const { startUrl, postNavigationPageFn, checkForStatusCode } =
+    await getStartUrl({
+      session,
+      sessionData,
+      appUrl,
+      logger,
+    });
   getStartURLSpan?.finish();
 
   const initializeReplayDataSpan = parentPerformanceSpan?.startChild({
@@ -229,12 +235,17 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   gotoStartUrlSpan?.finish();
   const status = res && res.status();
 
-  if (status !== 200) {
+  if (checkForStatusCode && status !== 200) {
     throw new Error(
       `Expected a 200 status when going to the initial URL of the site (${startUrl}). Got a ${status} instead.`
     );
   }
   logger.debug(`Navigated to ${startUrl}`);
+
+  if (postNavigationPageFn) {
+    logger.debug("Running post navigation function...");
+    await postNavigationPageFn(page);
+  }
 
   // Start simulating user interaction events
   logger.info("Starting simulation...");

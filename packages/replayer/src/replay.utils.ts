@@ -5,21 +5,29 @@ import {
   ReplayEventsDependencies,
 } from "@alwaysmeticulous/common";
 import {
+  InstallVirtualEventLoopOpts,
   OnReplayTimelineEventFn,
   VirtualTimeOptions,
-  InstallVirtualEventLoopOpts,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { DateTime, Duration } from "luxon";
+import type { Router } from "next/router";
 import { BrowserContext, Page, Viewport } from "puppeteer";
 import { AssetSnapshot } from "./assets/assets.types";
 import { isRequestForAsset } from "./assets/snapshot-assets";
+import { getNextJs404PageUrl, isSSRPage } from "./next/utils";
 import {
   ConsoleMessage,
   PageError,
   PlaybackEvent,
   ReplayData,
 } from "./replay.types";
+
+interface NextJsWindow {
+  next?: {
+    router?: Router;
+  };
+}
 
 export const getStartingViewport: (sessionData: SessionData) => Viewport = (
   sessionData
@@ -251,7 +259,7 @@ export const patchDate: (options: {
   `);
 };
 
-export const getStartUrl: (options: {
+const _getStartUrl: (options: {
   originalSessionStartUrl: URL;
   appUrl: string | null;
 }) => string = ({ originalSessionStartUrl, appUrl }) => {
@@ -278,6 +286,48 @@ export const getStartUrl: (options: {
   mergedUrl.password = parsedAppUrl.password;
 
   return mergedUrl.toString();
+};
+
+export const getStartUrl: (options: {
+  logger: log.Logger;
+  session: any;
+  sessionData: SessionData;
+  appUrl: string | null;
+}) => Promise<{
+  startUrl: string;
+  postNavigationPageFn?: (page: Page) => Promise<void>;
+  checkForStatusCode: boolean;
+}> = async ({ session, sessionData, appUrl }) => {
+  const originalSessionStartUrl = getOriginalSessionStartUrl({
+    session,
+    sessionData,
+  });
+
+  const startUrl = _getStartUrl({ originalSessionStartUrl, appUrl });
+  const isNextSSRPage = isSSRPage(sessionData);
+
+  // Check if the session started on a Next.JS SSR page. If so, we start simulation the session on a 404 page.
+  // We then redirect to the original start URL via a `window.next.router.replace` call.
+  // This should cause Next to make a `_next/data` request to fetch the server side props for the original start URL
+  // instead of making a full page navigation request. This is important because we don't want to hit the SSR page
+  // during simulation and instead use the recorded server-side props.
+  // Note: This doesn't handle SSGed pages at the moment but can be extended to do so as SSG page props are also recorded.
+  if (!isNextSSRPage) {
+    return { startUrl, checkForStatusCode: true };
+  }
+
+  const next404StartUrl = getNextJs404PageUrl(startUrl);
+  const postNavigationPageFn = async (page: Page) => {
+    await page.evaluate((_startUrl: URL) => {
+      (window as NextJsWindow)?.next?.router?.replace(_startUrl);
+    }, startUrl);
+  };
+
+  return {
+    startUrl: next404StartUrl,
+    postNavigationPageFn,
+    checkForStatusCode: false,
+  };
 };
 
 const parseAppUrl = (appUrl: string): URL => {
