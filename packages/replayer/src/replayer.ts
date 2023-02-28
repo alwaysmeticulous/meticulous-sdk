@@ -146,7 +146,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     sessionData,
   });
   const getStartURLSpan = parentPerformanceSpan?.startChild({
-    op: "initializeReplayData",
+    op: "getStartUrl",
   });
   const { startUrl, postNavigationPageFn, checkForStatusCode } =
     await getStartUrl({
