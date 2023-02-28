@@ -2606,10 +2606,15 @@
     "@sentry/utils" "7.36.0"
     tslib "^1.9.3"
 
-"@sentry/types@7.36.0", "@sentry/types@^7.36.0":
+"@sentry/types@7.36.0":
   version "7.36.0"
   resolved "https://registry.yarnpkg.com/@sentry/types/-/types-7.36.0.tgz#205baaf7332ff55d1fb35413cbde16dea4168520"
   integrity sha512-uvfwUn3okAWSZ948D/xqBrkc3Sn6TeHUgi3+p/dTTNGAXXskzavgfgQ4rSW7f3YD4LL+boZojpoIARVLodMGuA==
+
+"@sentry/types@^7.36.0":
+  version "7.39.0"
+  resolved "https://registry.yarnpkg.com/@sentry/types/-/types-7.39.0.tgz#06c51d94ebb3446615f109352648d4b8c0b35ad0"
+  integrity sha512-5Y83Y8O3dT5zT2jTKEIPMcpn5lUm05KRMaCXuw0sRsv4r9TbBUKeqiSU1LjowT8rB/XNy8m7DHav8+NmogPaJw==
 
 "@sentry/utils@7.36.0":
   version "7.36.0"
