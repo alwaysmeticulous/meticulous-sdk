@@ -25,6 +25,7 @@ export interface SessionData {
   hostname: string;
   abandoned: boolean;
 
+  requestsBeforeNetworkRecordingStarted?: EarlyRequest[];
   applicationSpecificData?: ApplicationSpecificData;
 }
 
@@ -66,4 +67,11 @@ export interface ApplicationSpecificData {
     gsp?: boolean;
     scriptLoader?: Record<string, unknown>;
   };
+}
+
+export interface EarlyRequest {
+  url: string;
+  initiatorType: "fetch" | "xmlhttprequest";
+  startTime: number;
+  duration: number;
 }
