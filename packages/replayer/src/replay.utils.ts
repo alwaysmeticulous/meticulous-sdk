@@ -124,13 +124,22 @@ export const createReplayPage = async ({
   }
 
   // Setup the url-observer snippet
-  if (!essentialFeaturesOnly) {
-    const urlObserverFile = await readFile(
-      dependencies.browserUrlObserver.location,
-      "utf-8"
-    );
-    await page.evaluateOnNewDocument(urlObserverFile);
+  const urlObserverFile = await readFile(
+    dependencies.browserUrlObserver.location,
+    "utf-8"
+  );
+  await page.evaluateOnNewDocument(urlObserverFile);
 
+  if (!essentialFeaturesOnly) {
+    await page.evaluateOnNewDocument(`
+      const urlObserverStartListening = window.__meticulous?.urlObserver?.startListening;
+      if(urlObserverStartListening) {
+        urlObserverStartListening();
+      }
+    `);
+  }
+
+  if (!essentialFeaturesOnly) {
     // Collect js coverage data
     await page.coverage.startJSCoverage({ resetOnNavigation: false });
   }
