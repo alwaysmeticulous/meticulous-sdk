@@ -24,6 +24,8 @@ export interface SessionData {
   datetime_first_payload: string;
   hostname: string;
   abandoned: boolean;
+
+  applicationSpecificData?: ApplicationSpecificData;
 }
 
 export interface WindowData {
@@ -53,3 +55,15 @@ export interface UrlHistoryEvent {
 }
 
 export type LocalStorageEntry = { key: string; value: string };
+
+export interface ApplicationSpecificData {
+  nextJs?: {
+    props?: Record<string, unknown>;
+    page?: string;
+    query?: Record<string, string>;
+    buildId?: string;
+    isFallback?: boolean;
+    gsp?: boolean;
+    scriptLoader?: Record<string, unknown>;
+  };
+}
