@@ -188,6 +188,8 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
       </div>
       <div className={cx("ml-2", "my-auto", "flex-1")}>{eventType}</div>
       <div className={cx("my-auto", "text-sm", "font-medium", "text-zinc-600")}>
+        Event Index: {index}
+        {" | "}
         <time dateTime={timeTick.toISO()}>
           {timeTick.toFormat("mm:ss.SSS")}
         </time>
