@@ -1,4 +1,4 @@
-import { SessionData, ReplayTimelineEntry } from "@alwaysmeticulous/api";
+import { SessionData, SDKReplayTimelineEntry } from "@alwaysmeticulous/api";
 import type { LogLevelDesc } from "loglevel";
 import type { Page } from "puppeteer";
 import {
@@ -49,7 +49,7 @@ export type StoryboardOptions =
   | { enabled: false }
   | { enabled: true; screenshotsDir: string };
 
-export type OnReplayTimelineEventFn = (entry: ReplayTimelineEntry) => void;
+export type OnReplayTimelineEventFn = (entry: SDKReplayTimelineEntry) => void;
 
 export type OnBeforeUserEventFn = (
   options: BeforeUserEventOptions

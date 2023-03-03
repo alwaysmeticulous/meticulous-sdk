@@ -1,4 +1,4 @@
-import { ReplayTimelineEntry } from "@alwaysmeticulous/api";
+import { SDKReplayTimelineEntry } from "@alwaysmeticulous/api";
 import {
   COMMON_CHROMIUM_FLAGS,
   METICULOUS_LOGGER_NAME,
@@ -115,7 +115,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   const timelineCollector = new ReplayTimelineCollector();
   const onTimelineEvent: OnReplayTimelineEventFn = (
-    entry: ReplayTimelineEntry
+    entry: SDKReplayTimelineEntry
   ) => timelineCollector.addEntry(entry);
 
   const virtualTime: VirtualTimeOptions = skipPauses
