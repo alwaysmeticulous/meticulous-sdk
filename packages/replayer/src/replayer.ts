@@ -267,10 +267,10 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       })
     : null;
 
+  const replayUserInteractionsCall = parentPerformanceSpan?.startChild({
+    op: "replayUserInteractions",
+  });
   try {
-    const replayUserInteractionsCall = parentPerformanceSpan?.startChild({
-      op: "replayUserInteractions",
-    });
     const replayResult = await replayUserInteractions({
       page,
       logLevel,
@@ -286,7 +286,6 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       ...(maxDurationMs != null ? { maxDurationMs } : {}),
       ...(maxEventCount != null ? { maxEventCount } : {}),
     });
-    replayUserInteractionsCall?.finish();
     logger.debug(`Replay result: ${JSON.stringify(replayResult)}`);
 
     // Pad replay time according to session duration recorded with rrweb
@@ -321,6 +320,8 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       end: new Date().getTime(),
       data: serializeError(error),
     });
+  } finally {
+    replayUserInteractionsCall?.finish();
   }
 
   logger.debug("Collecting coverage data...");
