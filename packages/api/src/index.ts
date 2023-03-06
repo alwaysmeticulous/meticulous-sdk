@@ -28,16 +28,8 @@ export {
 } from "./replay/test-run.types";
 export { ReplayableEvent } from "./sdk-bundle-api/bidirectional/replayable-event";
 export {
-  ErrorTimelineEntry,
-  FailedFindEntryFnEvent,
-  JsReplayReachedMaxDurationEvent,
-  JsReplaySimulateEvent,
-  JsReplayTimelineEntry,
-  PollyTimelineEntry,
-  ReplayTimelineData,
-  ReplayTimelineEntry,
-  SuccessfulFindEntryFnEvent,
-  UrlChangeTimelineEntry,
+  SDKReplayTimelineEntry,
+  SDKReplayTimelineData,
 } from "./sdk-bundle-api/bundle-to-sdk/timeline.types";
 export {
   HarEntry,

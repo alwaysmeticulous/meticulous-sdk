@@ -1,16 +1,19 @@
-import { ReplayTimelineData, ReplayTimelineEntry } from "@alwaysmeticulous/api";
+import {
+  SDKReplayTimelineData,
+  SDKReplayTimelineEntry,
+} from "@alwaysmeticulous/api";
 
 export class ReplayTimelineCollector {
-  private readonly entries: ReplayTimelineEntry[];
+  private readonly entries: SDKReplayTimelineEntry[];
   constructor() {
     this.entries = [];
   }
 
-  addEntry(entry: ReplayTimelineEntry): void {
+  addEntry(entry: SDKReplayTimelineEntry): void {
     this.entries.push(entry);
   }
 
-  getEntries(): ReplayTimelineData {
+  getEntries(): SDKReplayTimelineData {
     return this.entries;
   }
 }

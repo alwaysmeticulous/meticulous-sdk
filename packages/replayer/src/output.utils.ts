@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
-import { SessionData, ReplayTimelineData } from "@alwaysmeticulous/api";
+import { SessionData, SDKReplayTimelineData } from "@alwaysmeticulous/api";
 import { BASE_SNIPPETS_URL } from "@alwaysmeticulous/common";
 import { CoverageEntry } from "puppeteer";
 import { AssetSnapshotsData } from "./assets/assets.types";
@@ -13,7 +13,7 @@ export interface WriteOutputOptions {
   sessionData: SessionData;
   replayData: ReplayData;
   coverageData: CoverageEntry[];
-  timelineData: ReplayTimelineData;
+  timelineData: SDKReplayTimelineData;
 }
 
 export const writeOutput: (
@@ -159,7 +159,7 @@ const writeLogs: (options: {
 
 const writeTimeline: (options: {
   outputDir: string;
-  timelineData: ReplayTimelineData;
+  timelineData: SDKReplayTimelineData;
 }) => Promise<void> = async ({ outputDir, timelineData }) => {
   await writeFile(
     join(outputDir, "timeline.json"),
