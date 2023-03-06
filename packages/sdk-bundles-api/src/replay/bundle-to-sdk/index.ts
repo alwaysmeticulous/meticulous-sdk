@@ -11,7 +11,7 @@ export interface ReplayUserInteractionsResultFull {
 /** Returned when the recorded session has been cut short during replay */
 export interface ReplayUserInteractionsResultShort {
   length: "short";
-  reason: "max events" | "max duration" | "full page navigation";
+  reason: "max events" | "max duration" | "full page navigation" | "error";
 }
 
 export interface BeforeUserEventOptions {

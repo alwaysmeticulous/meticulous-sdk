@@ -8,6 +8,7 @@ import {
   BootstrapReplayUserInteractionsFn,
   OnReplayTimelineEventFn,
   ReplayUserInteractionsFn,
+  ReplayUserInteractionsResult,
   SetupReplayNetworkStubbingFn,
   StoryboardOptions,
   VirtualTimeOptions,
@@ -270,8 +271,9 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const replayUserInteractionsCall = parentPerformanceSpan?.startChild({
     op: "replayUserInteractions",
   });
+  let replayResult: ReplayUserInteractionsResult;
   try {
-    const replayResult = await replayUserInteractions({
+    replayResult = await replayUserInteractions({
       page,
       logLevel,
       sessionData,
@@ -307,6 +309,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       }
     }
   } catch (error) {
+    replayResult = { length: "short", reason: "error" };
     logger.error("Error thrown during replay", error);
 
     if (error instanceof Error && error.name === "MeticulousTimeoutError") {
@@ -336,7 +339,13 @@ export const replayEvents: ReplayEventsFn = async (options) => {
 
   logger.info("Simulation done!");
 
-  if (screenshottingOptions.enabled) {
+  const replayFinishedAtDeterministicState =
+    replayResult.length === "full" ||
+    (replayResult.length === "short" &&
+      (replayResult.reason === "max events" ||
+        replayResult.reason === "max duration"));
+
+  if (screenshottingOptions.enabled && replayFinishedAtDeterministicState) {
     await takeScreenshot({
       page,
       outputDir,
