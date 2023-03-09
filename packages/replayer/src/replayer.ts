@@ -272,6 +272,7 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     op: "replayUserInteractions",
   });
   let replayResult: ReplayUserInteractionsResult;
+  let browserHasFrozen = false;
   try {
     replayResult = await replayUserInteractions({
       page,
@@ -312,6 +313,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     replayResult = { length: "short", reason: "error" };
     logger.error("Error thrown during replay", error);
 
+    if (error instanceof Error && error.name === "MeticulousTimeoutError") {
+      // If we hit a timeout error it's sometimes because the browser has fully frozen: this means we won't be able to extract coverage logs, screenshot etc.
+      browserHasFrozen = true;
+    }
+
     onTimelineEvent({
       kind: "fatalError",
       start: new Date().getTime(),
@@ -326,9 +332,10 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   const collectCoverageSpan = parentPerformanceSpan?.startChild({
     op: "collectCoverage",
   });
-  const coverageData = essentialFeaturesOnly
-    ? []
-    : await page.coverage.stopJSCoverage();
+  const coverageData =
+    essentialFeaturesOnly || browserHasFrozen
+      ? []
+      : await page.coverage.stopJSCoverage();
   collectCoverageSpan?.finish();
   logger.debug("Collected coverage data");
 
