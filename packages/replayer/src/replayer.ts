@@ -312,11 +312,6 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     replayResult = { length: "short", reason: "error" };
     logger.error("Error thrown during replay", error);
 
-    if (error instanceof Error && error.name === "MeticulousTimeoutError") {
-      await browser.close();
-      throw error;
-    }
-
     onTimelineEvent({
       kind: "fatalError",
       start: new Date().getTime(),
