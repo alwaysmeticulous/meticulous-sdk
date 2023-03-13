@@ -347,7 +347,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
       (replayResult.reason === "max events" ||
         replayResult.reason === "max duration"));
 
-  if (screenshottingOptions.enabled && replayFinishedAtDeterministicState) {
+  if (
+    screenshottingOptions.enabled &&
+    replayFinishedAtDeterministicState &&
+    !browserHasFrozen
+  ) {
     await takeScreenshot({
       page,
       outputDir,
