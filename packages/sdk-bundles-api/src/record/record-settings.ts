@@ -26,5 +26,17 @@ export interface NetworkResponseSanitizer {
    * at replay time. For example, if you want to sanitize email addresses, replace them with a dummy email address
    * of a current format. That will ensure that the email address will still pass any validation the application may have.
    */
-  sanitizeBody: (body: string) => string;
+  sanitizeBody: (body: string, metadata: NetworkResponseMetadata) => string;
+}
+
+export interface NetworkResponseMetadata {
+  /**
+   * Milliseconds since unix epoch when the request was sent
+   */
+  requestStartedAt: number;
+
+  /**
+   * Milliseconds since unix epoch when the response was received
+   */
+  responseReceivedAt: number;
 }
