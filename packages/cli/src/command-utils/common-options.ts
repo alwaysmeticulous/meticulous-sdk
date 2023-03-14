@@ -92,7 +92,7 @@ export const OPTIONS = {
   storyboard: {
     boolean: true,
     description: "Take a storyboard of screenshots during simulation",
-    default: false,
+    default: true,
   },
   essentialFeaturesOnly: {
     boolean: true,

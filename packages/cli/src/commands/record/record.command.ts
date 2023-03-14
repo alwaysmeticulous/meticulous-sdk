@@ -156,7 +156,7 @@ export const recordCommand = buildCommand("record")
   .options({
     apiToken: {
       string: true,
-      demandOption: true,
+      demandOption: false,
     },
     commitSha: {
       string: true,
