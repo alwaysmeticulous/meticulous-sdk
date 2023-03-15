@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.34.0",
-    "puppeteer": "^14.4.1"
+    "puppeteer": "^19.7.5"
   },
   "author": {
     "name": "The Meticulous Team",
