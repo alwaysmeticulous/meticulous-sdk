@@ -38,7 +38,7 @@
     "inquirer": "^8.2.4",
     "luxon": "^3.2.1",
     "pixelmatch": "^5.3.0",
-    "pngjs": "^6.0.0",
+    "pngjs": "^7.0.0",
     "proper-lockfile": "^4.1.2",
     "yargs": "^17.5.1"
   },
