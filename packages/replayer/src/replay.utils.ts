@@ -327,9 +327,12 @@ export const getStartUrl: (options: {
 
   const next404StartUrl = getNextJs404PageUrl(startUrl);
   const postNavigationPageFn = async (page: Page) => {
-    await page.evaluate((_startUrl: URL) => {
-      (window as NextJsWindow)?.next?.router?.replace(_startUrl);
-    }, startUrl);
+    await page.evaluate<string[], (startUrl: string) => void>(
+      (_startUrl: string) => {
+        (window as NextJsWindow)?.next?.router?.replace(_startUrl);
+      },
+      startUrl
+    );
   };
 
   return {
