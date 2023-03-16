@@ -22,7 +22,9 @@ export const testResult = (
     sessionId: testCase?.sessionId ?? "mock-session-id",
     headReplayId: "mock-head-replay-id",
     result,
-    screenshotDiffResults,
+    screenshotDiffResultsByBaseReplayId: new Map([
+      ["mock-base-replay-id", screenshotDiffResults],
+    ]),
   };
 };
 

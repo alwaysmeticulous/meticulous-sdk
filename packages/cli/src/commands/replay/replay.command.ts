@@ -18,7 +18,6 @@ import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { DateTime } from "luxon";
 import { createClient } from "../../api/client";
-import { createReplayDiff } from "../../api/replay-diff.api";
 import {
   createReplay,
   getReplayCommandId,
@@ -46,9 +45,7 @@ import {
   getOrFetchRecordedSessionData,
 } from "../../local-data/sessions";
 import { getCommitSha } from "../../utils/commit-sha.utils";
-import { addTestCase } from "../../utils/config.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
-import { ScreenshotDiffsSummary } from "../screenshot-diff/screenshot-diff.command";
 import { computeDiff } from "./utils/compute-diff";
 import { exitEarlyIfSkipUploadEnvVarSet } from "./utils/exit-early-if-skip-upload-env-var-set";
 
@@ -68,12 +65,7 @@ export interface ReplayResult {
   /**
    * Empty if screenshottingOptions.enabled was false.
    */
-  screenshotDiffResults: ScreenshotDiffResult[];
-
-  /**
-   * Returned as { hasDiffs: false } if screenshottingOptions.enabled was false.
-   */
-  screenshotDiffsSummary: ScreenshotDiffsSummary;
+  screenshotDiffResultsByBaseReplayId: Map<string, ScreenshotDiffResult[]>;
 }
 
 export const replayCommandHandler = async ({
@@ -83,7 +75,7 @@ export const replayCommandHandler = async ({
   apiToken,
   sessionId,
   commitSha: commitSha_,
-  baseSimulationId: baseReplayId,
+  baseTestRunId,
   cookiesFile,
   generatedBy,
   testRunId,
@@ -209,7 +201,7 @@ export const replayCommandHandler = async ({
     `Simulation time: ${endTime.diff(startTime).as("seconds")} seconds`
   );
 
-  exitEarlyIfSkipUploadEnvVarSet(baseReplayId);
+  exitEarlyIfSkipUploadEnvVarSet(baseTestRunId);
 
   logger.info("Sending simulation results to Meticulous");
 
@@ -284,23 +276,22 @@ export const replayCommandHandler = async ({
     } else {
       computeDiffsLogger.setLevel(logger.getLevel(), false);
     }
-    const { screenshotDiffResults, screenshotDiffsSummary } =
-      screenshottingOptions.enabled && baseReplayId
+
+    const screenshotDiffResultsByBaseReplayId =
+      screenshottingOptions.enabled && baseTestRunId
         ? await computeDiff({
             client,
-            baseReplayId,
+            baseTestRunId,
+            sessionId: replay.sessionId,
             headReplayId: replay.id,
             tempDir,
             screenshottingOptions,
             logger: computeDiffsLogger,
           })
-        : {
-            screenshotDiffResults: [],
-            screenshotDiffsSummary: { hasDiffs: false as const },
-          };
+        : new Map<string, ScreenshotDiffResult[]>();
     computeDiffSpan.finish();
 
-    return { replay, screenshotDiffResults, screenshotDiffsSummary };
+    return { replay, screenshotDiffResultsByBaseReplayId };
   } finally {
     await deleteArchive(archivePath);
     transaction.finish();
@@ -339,7 +330,7 @@ const unknownReplayTargetType = (replayTarget: never): never => {
 export interface RawReplayCommandHandlerOptions
   extends ScreenshotDiffOptions,
     Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount">,
-    AdditionalReplayOptions {
+    Omit<AdditionalReplayOptions, "baseTestRunId"> {
   screenshot: boolean;
   appUrl: string | null | undefined;
   simulationIdForAssets: string | null | undefined;
@@ -347,14 +338,13 @@ export interface RawReplayCommandHandlerOptions
   maxDurationMs: number | null | undefined;
   maxEventCount: number | null | undefined;
   storyboard: boolean;
-  save: boolean | null | undefined;
 }
 
 interface AdditionalReplayOptions {
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
   sessionId: string;
-  baseSimulationId: string | null | undefined;
+  baseTestRunId: string | null | undefined;
   cookiesFile: string | null | undefined;
   debugger: boolean;
 }
@@ -370,10 +360,8 @@ export const rawReplayCommandHandler = async ({
   bypassCSP,
   screenshot,
   screenshotSelector,
-  baseSimulationId,
   diffThreshold,
   diffPixelThreshold,
-  save,
   padTime,
   shiftTime,
   networkStubbing,
@@ -416,63 +404,24 @@ export const rawReplayCommandHandler = async ({
       }
     : { enabled: false };
   const replayEventsDependencies = await loadReplayEventsDependencies();
-  const { replay, screenshotDiffsSummary, screenshotDiffResults } =
-    await replayCommandHandler({
-      replayTarget: getReplayTarget({
-        appUrl: appUrl ?? null,
-        simulationIdForAssets: simulationIdForAssets ?? null,
-      }),
-      executionOptions,
-      screenshottingOptions,
-      apiToken,
-      commitSha,
-      cookiesFile,
-      sessionId,
-      baseSimulationId,
-      generatedBy: generatedByOption,
-      testRunId: null,
-      replayEventsDependencies,
-      debugger: enableStepThroughDebugger,
-      suppressScreenshotDiffLogging: false,
-    });
-
-  // Add test case to meticulous.json if --save option is passed
-  if (save) {
-    if (!screenshottingOptions.enabled) {
-      const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-      logger.error(
-        "Warning: saving a new test case without screenshot enabled."
-      );
-    }
-
-    await addTestCase({
-      title: `${sessionId} | ${replay.id}`,
-      sessionId,
-      baseReplayId: replay.id,
-    });
-  }
-
-  if (screenshotDiffsSummary.hasDiffs) {
-    const client = createClient({ apiToken });
-    if (baseSimulationId == null) {
-      throw new Error(
-        "baseSimulationId must have been defined if there are diffs, but was null-ish"
-      );
-    }
-
-    // Store the diff
-    await createReplayDiff({
-      client,
-      headReplayId: replay.id,
-      baseReplayId: baseSimulationId,
-      testRunId: null,
-      data: {
-        screenshotAssertionsOptions: screenshottingOptions,
-        screenshotDiffResults,
-      },
-    });
-    process.exit(1);
-  }
+  const { replay } = await replayCommandHandler({
+    replayTarget: getReplayTarget({
+      appUrl: appUrl ?? null,
+      simulationIdForAssets: simulationIdForAssets ?? null,
+    }),
+    executionOptions,
+    screenshottingOptions,
+    apiToken,
+    commitSha,
+    cookiesFile,
+    sessionId,
+    generatedBy: generatedByOption,
+    baseTestRunId: null,
+    testRunId: null,
+    replayEventsDependencies,
+    debugger: enableStepThroughDebugger,
+    suppressScreenshotDiffLogging: false,
+  });
 
   return replay;
 };
@@ -525,17 +474,6 @@ export const replayCommand = buildCommand("simulate")
       string: true,
       description:
         "Query selector to screenshot a specific DOM element instead of the whole page",
-    },
-    baseSimulationId: {
-      string: true,
-      description:
-        "Base simulation id to diff the final state screenshot against",
-      alias: "baseReplayId",
-    },
-    save: {
-      boolean: true,
-      description:
-        "Adds the simulation to the list of test cases in meticulous.json",
     },
     debugger: {
       boolean: true,

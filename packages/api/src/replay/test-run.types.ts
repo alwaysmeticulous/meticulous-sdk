@@ -11,7 +11,7 @@ export interface TestRunConfigData {
 export interface TestCase {
   sessionId: string;
   title?: string;
-  baseReplayId?: string;
+  baseTestRunId?: string;
   options?: TestCaseReplayOptions;
 }
 

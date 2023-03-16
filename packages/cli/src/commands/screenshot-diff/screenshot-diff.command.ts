@@ -2,7 +2,6 @@ import { basename, join } from "path";
 import {
   ScreenshotDiffOptions,
   ScreenshotDiffResult,
-  ScreenshotIdentifier,
 } from "@alwaysmeticulous/api";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
@@ -21,13 +20,17 @@ import {
   getScreenshotsDir,
 } from "../../local-data/replays";
 import { writeScreenshotDiff } from "../../local-data/screenshot-diffs";
+import { getScreenshotIdentifier } from "./utils/get-screenshot-identifier";
+import { hasNotableDifferences } from "./utils/has-notable-differences";
 
 export const diffScreenshots = async ({
   client,
   headReplayId,
   baseReplayId,
-  headScreenshotsDir,
   baseScreenshotsDir,
+  headScreenshotsDir,
+  baseReplayScreenshots,
+  headReplayScreenshots,
   diffOptions,
   logger,
 }: {
@@ -36,18 +39,17 @@ export const diffScreenshots = async ({
   headReplayId: string;
   baseScreenshotsDir: string;
   headScreenshotsDir: string;
+  baseReplayScreenshots: string[];
+  headReplayScreenshots: string[];
   diffOptions: ScreenshotDiffOptions;
   logger: log.Logger;
 }): Promise<ScreenshotDiffResult[]> => {
   const { diffThreshold, diffPixelThreshold } = diffOptions;
 
-  const baseReplayScreenshots = await getScreenshotFiles(baseScreenshotsDir);
-  const headReplayScreenshots = await getScreenshotFiles(headScreenshotsDir);
+  const headReplayScreenshotsSet = new Set(headReplayScreenshots);
 
   const missingHeadImages = new Set(
-    baseReplayScreenshots.filter(
-      (file) => !headReplayScreenshots.includes(file)
-    )
+    baseReplayScreenshots.filter((file) => !headReplayScreenshotsSet.has(file))
   );
 
   const missingHeadImagesResults: ScreenshotDiffResult[] = Array.from(
@@ -148,19 +150,15 @@ export const diffScreenshots = async ({
   return [...missingHeadImagesResults, ...headDiffResults];
 };
 
-export const summarizeDifferences = ({
-  baseReplayId,
-  headReplayId,
+export const logDifferences = ({
   results,
   diffOptions,
   logger,
 }: {
-  baseReplayId: string;
-  headReplayId: string;
   results: ScreenshotDiffResult[];
   diffOptions: ScreenshotDiffOptions;
   logger: log.Logger;
-}): ScreenshotDiffsSummary => {
+}) => {
   const missingHeadImagesResults = results.flatMap((result) =>
     result.outcome === "missing-head" ? [result] : []
   );
@@ -169,12 +167,6 @@ export const summarizeDifferences = ({
       .map(({ baseScreenshotFile }) => basename(baseScreenshotFile))
       .sort()} => FAIL!`;
     logger.info(message);
-    return {
-      hasDiffs: true,
-      summaryMessage: message,
-      baseReplayId,
-      headReplayId,
-    };
   }
 
   const missingBaseImagesResults = results.flatMap((result) =>
@@ -187,7 +179,7 @@ export const summarizeDifferences = ({
     logger.info(message);
   }
 
-  const diffs = results.flatMap((result) => {
+  results.forEach((result) => {
     const { outcome } = result;
 
     if (outcome === "different-size") {
@@ -195,14 +187,6 @@ export const summarizeDifferences = ({
         result.headScreenshotFile
       )} have different sizes => FAIL!`;
       logger.info(message);
-      return [
-        {
-          hasDiffs: true,
-          summaryMessage: message,
-          baseReplayId,
-          headReplayId,
-        },
-      ];
     }
 
     if (outcome === "diff" || outcome === "no-diff") {
@@ -214,22 +198,8 @@ export const summarizeDifferences = ({
         outcome === "no-diff" ? "PASS" : "FAIL!"
       }`;
       logger.info(message);
-      if (outcome === "diff") {
-        return [
-          {
-            hasDiffs: true,
-            summaryMessage: message,
-            baseReplayId,
-            headReplayId,
-          },
-        ];
-      }
     }
-
-    return [];
   });
-
-  return diffs.length > 0 ? diffs[0] : { hasDiffs: false };
 };
 
 export type ScreenshotDiffsSummary =
@@ -246,32 +216,6 @@ export interface HasDiffsScreenshotDiffsResult {
 export interface NoDiffsScreenshotDiffsResult {
   hasDiffs: false;
 }
-
-const getScreenshotIdentifier = (
-  filename: string
-): ScreenshotIdentifier | undefined => {
-  const name = basename(filename);
-
-  if (name === "final-state.png") {
-    return {
-      type: "end-state",
-    };
-  }
-
-  if (name.startsWith("screenshot-after-event")) {
-    const match = name.match(/^(?:.*)-(\d+)[.]png$/);
-    const eventNumber = match ? parseInt(match[1], 10) : undefined;
-
-    if (match && eventNumber != null && !isNaN(eventNumber)) {
-      return {
-        type: "after-event",
-        eventNumber,
-      };
-    }
-  }
-
-  return undefined;
-};
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -305,27 +249,30 @@ const handler: (options: Options) => Promise<void> = async ({
     diffPixelThreshold: pixelThreshold,
   };
 
+  const baseReplayScreenshots = await getScreenshotFiles(baseScreenshotsDir);
+  const headReplayScreenshots = await getScreenshotFiles(headScreenshotsDir);
+
   const results = await diffScreenshots({
     client,
     baseReplayId,
     headReplayId,
     baseScreenshotsDir,
     headScreenshotsDir,
+    baseReplayScreenshots,
+    headReplayScreenshots,
     diffOptions,
     logger,
   });
 
   logger.debug(results);
 
-  const diffSummary = summarizeDifferences({
-    baseReplayId,
-    headReplayId,
+  logDifferences({
     results,
     diffOptions,
     logger,
   });
 
-  if (diffSummary.hasDiffs) {
+  if (hasNotableDifferences(results)) {
     process.exit(1);
   }
 };

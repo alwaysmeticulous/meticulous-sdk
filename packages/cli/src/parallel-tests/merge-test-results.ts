@@ -4,6 +4,7 @@ import {
 } from "@alwaysmeticulous/api";
 import { SingleTryScreenshotDiffResult } from "@alwaysmeticulous/api/dist/replay/replay-diff.types";
 import { logger } from "@sentry/utils";
+import stringify from "fast-json-stable-stringify";
 import { DetailedTestCaseResult } from "../config/config.types";
 
 export interface ResultsToMerge {
@@ -16,6 +17,10 @@ export interface ResultsToMerge {
   comparisonToHeadReplay: DetailedTestCaseResult;
 }
 
+export type ScreenshotDiffResultWithBaseReplayId = ScreenshotDiffResult & {
+  baseReplayId: string;
+};
+
 export const mergeResults = ({
   currentResult,
   comparisonToHeadReplay,
@@ -27,7 +32,7 @@ export const mergeResults = ({
     ScreenshotIdentifierHash,
     ScreenshotDiffResult
   >();
-  comparisonToHeadReplay.screenshotDiffResults.forEach((result) => {
+  flattenScreenshotDiffResults(comparisonToHeadReplay).forEach((result) => {
     const hash = hashScreenshotIdentifier(result.identifier);
     if (retryDiffById.has(hash)) {
       throw new Error(
@@ -36,67 +41,68 @@ export const mergeResults = ({
     }
     retryDiffById.set(hash, result);
   });
-  const newScreenshotDiffResults = currentResult.screenshotDiffResults.map(
-    (currentDiff): ScreenshotDiffResult => {
-      if (currentDiff.outcome === "no-diff") {
-        return currentDiff;
-      }
-      const hash = hashScreenshotIdentifier(currentDiff.identifier);
-      const diffWhenRetrying = retryDiffById.get(hash);
+  const newScreenshotDiffResults = flattenScreenshotDiffResults(
+    currentResult
+  ).map((currentDiff): ScreenshotDiffResultWithBaseReplayId => {
+    if (currentDiff.outcome === "no-diff") {
+      return currentDiff;
+    }
+    const hash = hashScreenshotIdentifier(currentDiff.identifier);
+    const diffWhenRetrying = retryDiffById.get(hash);
 
-      // diffWhenRetrying is null in the case that there is a base screenshot for the base replay,
-      // but the first replay on head did not generate a head screenshot (got 'missing-head'),
-      // and the replay of that did not generate a head screenshot either (if the first replay on head
-      // did generate a screenshot, then diffWhenRetrying.outcome would be 'missing-head' instead)
-      if (diffWhenRetrying == null) {
-        const diffToBaseScreenshotOutcome =
-          currentDiff.outcome === "flake"
-            ? currentDiff.diffToBaseScreenshot.outcome
-            : currentDiff.outcome;
-        if (diffToBaseScreenshotOutcome !== "missing-head") {
-          throw new Error(`Expected to find a screenshot comparison for ${hash}, but none was found. The screenshot must
+    // diffWhenRetrying is null in the case that there is a base screenshot for the base replay,
+    // but the first replay on head did not generate a head screenshot (got 'missing-head'),
+    // and the replay of that did not generate a head screenshot either (if the first replay on head
+    // did generate a screenshot, then diffWhenRetrying.outcome would be 'missing-head' instead)
+    if (diffWhenRetrying == null) {
+      const diffToBaseScreenshotOutcome =
+        currentDiff.outcome === "flake"
+          ? currentDiff.diffToBaseScreenshot.outcome
+          : currentDiff.outcome;
+      if (diffToBaseScreenshotOutcome !== "missing-head") {
+        throw new Error(`Expected to find a screenshot comparison for ${hash}, but none was found. The screenshot must
             have existed in the orginal replay, since the orginal comparison outcome was not '${diffToBaseScreenshotOutcome}'.`);
-        }
-        if (currentDiff.outcome === "flake") {
-          // Original comparison had missing-head, so we re-ran to check if it was flakey. In this case
-          // we got the same result.
-          return {
-            ...currentDiff,
-            diffsToHeadScreenshotOnRetries: [
-              ...currentDiff.diffsToHeadScreenshotOnRetries,
-              { outcome: "missing-base-and-head" },
-            ],
-          };
-        }
-        return currentDiff; // no difference, both screenshots were missing
       }
-
-      if (diffWhenRetrying.outcome === "flake") {
-        throw new Error(
-          "Expected diffs when retrying and comparing to the original head screenshot to be first-try diffs, but got a flake."
-        );
-      }
-
       if (currentDiff.outcome === "flake") {
+        // Original comparison had missing-head, so we re-ran to check if it was flakey. In this case
+        // we got the same result.
         return {
           ...currentDiff,
           diffsToHeadScreenshotOnRetries: [
             ...currentDiff.diffsToHeadScreenshotOnRetries,
-            withoutIdentifier(diffWhenRetrying),
+            { outcome: "missing-base-and-head" },
           ],
         };
-      } else if (diffWhenRetrying?.outcome === "no-diff") {
-        return currentDiff;
-      } else {
-        return {
-          identifier: currentDiff.identifier,
-          outcome: "flake",
-          diffToBaseScreenshot: withoutIdentifier(currentDiff),
-          diffsToHeadScreenshotOnRetries: [withoutIdentifier(diffWhenRetrying)],
-        };
       }
+      return currentDiff; // no difference, both screenshots were missing
     }
-  );
+
+    if (diffWhenRetrying.outcome === "flake") {
+      throw new Error(
+        "Expected diffs when retrying and comparing to the original head screenshot to be first-try diffs, but got a flake."
+      );
+    }
+
+    if (currentDiff.outcome === "flake") {
+      return {
+        ...currentDiff,
+        diffsToHeadScreenshotOnRetries: [
+          ...currentDiff.diffsToHeadScreenshotOnRetries,
+          withoutIdentifier(diffWhenRetrying),
+        ],
+      };
+    } else if (diffWhenRetrying?.outcome === "no-diff") {
+      return currentDiff;
+    } else {
+      return {
+        baseReplayId: currentDiff.baseReplayId,
+        identifier: currentDiff.identifier,
+        outcome: "flake",
+        diffToBaseScreenshot: withoutIdentifier(currentDiff),
+        diffsToHeadScreenshotOnRetries: [withoutIdentifier(diffWhenRetrying)],
+      };
+    }
+  });
 
   const noLongerHasFailures = newScreenshotDiffResults.every(
     ({ outcome }) => outcome === "flake" || outcome === "no-diff"
@@ -108,8 +114,33 @@ export const mergeResults = ({
       currentResult.result === "fail" && noLongerHasFailures
         ? "flake"
         : currentResult.result,
-    screenshotDiffResults: newScreenshotDiffResults,
+    screenshotDiffResultsByBaseReplayId: groupScreenshotDiffResults(
+      newScreenshotDiffResults
+    ),
   };
+};
+
+const flattenScreenshotDiffResults = (
+  testCaseResult: DetailedTestCaseResult
+): ScreenshotDiffResultWithBaseReplayId[] => {
+  return [
+    ...testCaseResult.screenshotDiffResultsByBaseReplayId.entries(),
+  ].flatMap(([baseReplayId, diffs]) => {
+    return diffs.map((diff) => ({ ...diff, baseReplayId }));
+  });
+};
+
+const groupScreenshotDiffResults = (
+  results: ScreenshotDiffResultWithBaseReplayId[]
+): Map<string, ScreenshotDiffResult[]> => {
+  const groupedResults = new Map<string, ScreenshotDiffResult[]>();
+  results.forEach((result) => {
+    const resultsForBaseReplayId =
+      groupedResults.get(result.baseReplayId) ?? [];
+    resultsForBaseReplayId.push(result);
+    groupedResults.set(result.baseReplayId, resultsForBaseReplayId);
+  });
+  return groupedResults;
 };
 
 const withoutIdentifier = ({
@@ -133,7 +164,7 @@ const hashScreenshotIdentifier = (
     // The identifier is probably from a newer version of the bundle script
     // and we're on an old version of the CLI. Our best bet is to stringify it
     // and use that as a hash.
-    return JSON.stringify(identifier);
+    return stringify(identifier);
   }
 };
 

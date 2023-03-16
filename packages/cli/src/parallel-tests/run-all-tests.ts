@@ -1,4 +1,4 @@
-import { TestRunEnvironment } from "@alwaysmeticulous/api";
+import { TestCase, TestRunEnvironment } from "@alwaysmeticulous/api";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
@@ -10,6 +10,7 @@ import { getProject } from "../api/project.api";
 import { createReplayDiff } from "../api/replay-diff.api";
 import {
   createTestRun,
+  getLatestTestRunId,
   getTestRunUrl,
   putTestRunResults,
 } from "../api/test-run.api";
@@ -21,11 +22,7 @@ import { loadReplayEventsDependencies } from "../local-data/replay-assets";
 import { runAllTestsInParallel } from "../parallel-tests/parallel-tests.handler";
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
-import {
-  getTestsToRun,
-  mergeTestCases,
-  sortResults,
-} from "../utils/run-all-tests.utils";
+import { mergeTestCases, sortResults } from "../utils/run-all-tests.utils";
 import { getEnvironment } from "../utils/test-run-environment.utils";
 import { getMeticulousVersion } from "../utils/version.utils";
 import { executeTestInChildProcess } from "./execute-test-in-child-process";
@@ -154,11 +151,11 @@ export const runAllTests = async ({
 
   // Only run the uncached test cases
   const testCases = allTestCases.filter(
-    ({ sessionId, baseReplayId, title }) =>
+    ({ sessionId, baseTestRunId, title }) =>
       !cachedTestRunResults.find(
         (cached) =>
           cached.sessionId === sessionId &&
-          cached.baseReplayId === baseReplayId &&
+          cached.baseTestRunId === baseTestRunId &&
           cached.title === title
       )
   );
@@ -206,11 +203,27 @@ export const runAllTests = async ({
   logger.info(`Test run URL: ${testRunUrl}`);
   logger.info("");
 
-  const testsToRun = await getTestsToRun({
-    testCases,
-    client,
-    baseCommitSha: baseCommitSha ?? null,
+  const defaultBaseTestRunId =
+    baseCommitSha != null
+      ? await getLatestTestRunId({
+          client,
+          commitSha: baseCommitSha,
+        })
+      : null;
+
+  const testsToRun: TestCase[] = testCases.map((test) => {
+    if (test.baseTestRunId != null || defaultBaseTestRunId == null) {
+      return test;
+    }
+    return { ...test, baseTestRunId: defaultBaseTestRunId };
   });
+  testsToRun
+    .filter((test) => test.baseTestRunId == null)
+    .forEach((test) => {
+      logger.warn(
+        `Skipping comparisons for test "${test.title}" since no result to compare against stored for base commit ${baseCommitSha}`
+      );
+    });
 
   const storeTestRunResults = async (
     status: TestRunStatus,
@@ -220,7 +233,7 @@ export const runAllTests = async ({
       ...cachedTestRunResults,
       ...resultsSoFar.map(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        ({ screenshotDiffResults, ...result }) => result
+        ({ screenshotDiffResultsByBaseReplayId, ...result }) => result
       ),
     ];
     try {
@@ -256,17 +269,22 @@ export const runAllTests = async ({
   ) => {
     onProgressUpdated(progress);
     const newResult = resultsSoFar.at(-1);
-    if (newResult?.baseReplayId != null) {
-      await createReplayDiff({
-        client,
-        headReplayId: newResult.headReplayId,
-        baseReplayId: newResult.baseReplayId,
-        testRunId: testRun.id,
-        data: {
-          screenshotAssertionsOptions: screenshottingOptions,
-          screenshotDiffResults: newResult.screenshotDiffResults,
-        },
-      });
+    if (newResult != null) {
+      for (const [
+        baseReplayId,
+        screenshotDiffResults,
+      ] of newResult.screenshotDiffResultsByBaseReplayId.entries()) {
+        await createReplayDiff({
+          client,
+          headReplayId: newResult.headReplayId,
+          baseReplayId: baseReplayId,
+          testRunId: testRun.id,
+          data: {
+            screenshotAssertionsOptions: screenshottingOptions,
+            screenshotDiffResults,
+          },
+        });
+      }
     }
     await storeTestRunResults("Running", resultsSoFar);
   };
@@ -295,6 +313,7 @@ export const runAllTests = async ({
             screenshottingOptions,
             generatedBy: { type: "testRun", runId: testRun.id },
             testRunId: testRun.id,
+            baseTestRunId: testCase.baseTestRunId ?? null,
             replayEventsDependencies,
             suppressScreenshotDiffLogging: isRetry,
           },
