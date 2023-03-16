@@ -30,7 +30,7 @@ export const mergeResults = ({
   // on our hands
   const retryDiffById = new Map<
     ScreenshotIdentifierHash,
-    ScreenshotDiffResult
+    ScreenshotDiffResultWithBaseReplayId
   >();
   flattenScreenshotDiffResults(comparisonToHeadReplay).forEach((result) => {
     const hash = hashScreenshotIdentifier(result.identifier);
@@ -88,7 +88,7 @@ export const mergeResults = ({
         ...currentDiff,
         diffsToHeadScreenshotOnRetries: [
           ...currentDiff.diffsToHeadScreenshotOnRetries,
-          withoutIdentifier(diffWhenRetrying),
+          withoutIdentifiers(diffWhenRetrying),
         ],
       };
     } else if (diffWhenRetrying?.outcome === "no-diff") {
@@ -98,8 +98,8 @@ export const mergeResults = ({
         baseReplayId: currentDiff.baseReplayId,
         identifier: currentDiff.identifier,
         outcome: "flake",
-        diffToBaseScreenshot: withoutIdentifier(currentDiff),
-        diffsToHeadScreenshotOnRetries: [withoutIdentifier(diffWhenRetrying)],
+        diffToBaseScreenshot: withoutIdentifiers(currentDiff),
+        diffsToHeadScreenshotOnRetries: [withoutIdentifiers(diffWhenRetrying)],
       };
     }
   });
@@ -134,20 +134,24 @@ const groupScreenshotDiffResults = (
   results: ScreenshotDiffResultWithBaseReplayId[]
 ): Map<string, ScreenshotDiffResult[]> => {
   const groupedResults = new Map<string, ScreenshotDiffResult[]>();
-  results.forEach((result) => {
-    const resultsForBaseReplayId =
-      groupedResults.get(result.baseReplayId) ?? [];
+  results.forEach(({ baseReplayId, ...result }) => {
+    const resultsForBaseReplayId = groupedResults.get(baseReplayId) ?? [];
     resultsForBaseReplayId.push(result);
-    groupedResults.set(result.baseReplayId, resultsForBaseReplayId);
+    groupedResults.set(baseReplayId, resultsForBaseReplayId);
   });
   return groupedResults;
 };
 
-const withoutIdentifier = ({
-  identifier, // eslint-disable-line @typescript-eslint/no-unused-vars
+const withoutIdentifiers = ({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  identifier: _identifier,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  baseReplayId: _baseReplayId,
   ...rest
-}: { identifier: ScreenshotIdentifier } & SingleTryScreenshotDiffResult) =>
-  rest;
+}: {
+  identifier: ScreenshotIdentifier;
+  baseReplayId: string;
+} & SingleTryScreenshotDiffResult) => rest;
 
 type ScreenshotIdentifierHash = string;
 
