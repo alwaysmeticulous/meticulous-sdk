@@ -34,6 +34,6 @@ export interface FatalErrorTimelineEntry extends GenericReplayTimelineEntry {
  * The Meticulous BE code internally uses additional timeline entries, but these
  * types are stored seperately.
  */
-export type SDKReplayTimelineEntry = FatalErrorTimelineEntry | unknown;
+export type SDKReplayTimelineEntry = FatalErrorTimelineEntry;
 
 export type SDKReplayTimelineData = SDKReplayTimelineEntry[];
