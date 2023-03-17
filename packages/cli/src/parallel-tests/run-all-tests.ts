@@ -251,10 +251,9 @@ export const runAllTests = async ({
     onProgressUpdated(progress);
     const newResult = resultsSoFar.at(-1);
     if (newResult != null) {
-      for (const [
-        baseReplayId,
-        screenshotDiffResults,
-      ] of newResult.screenshotDiffResultsByBaseReplayId.entries()) {
+      for (const [baseReplayId, screenshotDiffResults] of Object.entries(
+        newResult.screenshotDiffResultsByBaseReplayId
+      )) {
         await createReplayDiff({
           client,
           headReplayId: newResult.headReplayId,

@@ -65,7 +65,7 @@ export interface ReplayResult {
   /**
    * Empty if screenshottingOptions.enabled was false.
    */
-  screenshotDiffResultsByBaseReplayId: Map<string, ScreenshotDiffResult[]>;
+  screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffResult[]>;
 }
 
 export const replayCommandHandler = async ({
@@ -282,13 +282,13 @@ export const replayCommandHandler = async ({
         ? await computeDiff({
             client,
             baseTestRunId,
-            sessionId: replay.sessionId,
+            sessionId,
             headReplayId: replay.id,
             tempDir,
             screenshottingOptions,
             logger: computeDiffsLogger,
           })
-        : new Map<string, ScreenshotDiffResult[]>();
+        : {};
     computeDiffSpan.finish();
 
     return { replay, screenshotDiffResultsByBaseReplayId };

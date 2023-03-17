@@ -8,21 +8,21 @@ export type ScreenshotDiffResultWithBaseReplayId = ScreenshotDiffResult & {
 export const flattenScreenshotDiffResults = (
   testCaseResult: DetailedTestCaseResult
 ): ScreenshotDiffResultWithBaseReplayId[] => {
-  return [
-    ...testCaseResult.screenshotDiffResultsByBaseReplayId.entries(),
-  ].flatMap(([baseReplayId, diffs]) => {
+  return Object.entries(
+    testCaseResult.screenshotDiffResultsByBaseReplayId
+  ).flatMap(([baseReplayId, diffs]) => {
     return diffs.map((diff) => ({ ...diff, baseReplayId }));
   });
 };
 
 export const groupScreenshotDiffResults = (
   results: ScreenshotDiffResultWithBaseReplayId[]
-): Map<string, ScreenshotDiffResult[]> => {
-  const groupedResults = new Map<string, ScreenshotDiffResult[]>();
+): Record<string, ScreenshotDiffResult[]> => {
+  const groupedResults: Record<string, ScreenshotDiffResult[]> = {};
   results.forEach(({ baseReplayId, ...result }) => {
-    const resultsForBaseReplayId = groupedResults.get(baseReplayId) ?? [];
+    const resultsForBaseReplayId = groupedResults[baseReplayId] ?? [];
     resultsForBaseReplayId.push(result);
-    groupedResults.set(baseReplayId, resultsForBaseReplayId);
+    groupedResults[baseReplayId] = resultsForBaseReplayId;
   });
   return groupedResults;
 };

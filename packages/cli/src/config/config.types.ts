@@ -16,5 +16,5 @@ export interface TestCaseResult extends TestCase {
 }
 
 export interface DetailedTestCaseResult extends TestCaseResult {
-  screenshotDiffResultsByBaseReplayId: Map<string, ScreenshotDiffResult[]>;
+  screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffResult[]>;
 }

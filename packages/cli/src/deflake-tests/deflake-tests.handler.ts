@@ -52,7 +52,7 @@ const handleReplay = async ({
       debugger: false,
     });
   const result = hasNotableDifferences(
-    [...screenshotDiffResultsByBaseReplayId.values()].flat()
+    Object.values(screenshotDiffResultsByBaseReplayId).flat()
   )
     ? "fail"
     : "pass";

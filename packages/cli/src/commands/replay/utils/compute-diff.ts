@@ -38,7 +38,9 @@ export const computeDiff = async ({
   headReplayId,
   screenshottingOptions,
   logger,
-}: ComputeAndSaveDiffOptions): Promise<Map<string, ScreenshotDiffResult[]>> => {
+}: ComputeAndSaveDiffOptions): Promise<
+  Record<string, ScreenshotDiffResult[]>
+> => {
   logger.info(
     `Diffing screenshots against replays of session ${sessionId} in test run ${baseTestRunId}`
   );
@@ -68,10 +70,10 @@ export const computeDiff = async ({
   const headReplayScreenshots = await getScreenshotFiles(
     headReplayScreenshotsDir
   );
-  const screenshotDiffResultsByBaseReplayId: Map<
+  const screenshotDiffResultsByBaseReplayId: Record<
     string,
     ScreenshotDiffResult[]
-  > = new Map();
+  > = {};
 
   for (const baseReplayId of screenshotIdentifiersByBaseReplayId.keys()) {
     const baseReplayScreenshotsDir = getScreenshotsDir(
@@ -94,11 +96,11 @@ export const computeDiff = async ({
       diffOptions: screenshottingOptions.diffOptions,
       logger,
     });
-    screenshotDiffResultsByBaseReplayId.set(baseReplayId, resultsForBaseReplay);
+    screenshotDiffResultsByBaseReplayId[baseReplayId] = resultsForBaseReplay;
   }
 
   logDifferences({
-    results: [...screenshotDiffResultsByBaseReplayId.values()].flat(),
+    results: Object.values(screenshotDiffResultsByBaseReplayId).flat(),
     diffOptions: screenshottingOptions.diffOptions,
     logger,
   });

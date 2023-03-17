@@ -14,6 +14,7 @@
     "test": "lerna run test",
     "cli": "yarn workspace @alwaysmeticulous/cli cli",
     "cli:dev": "yarn workspace @alwaysmeticulous/cli cli:dev",
+    "cli:dev-localhost": "yarn workspace @alwaysmeticulous/cli cli:dev-localhost",
     "publish": "lerna version"
   },
   "devDependencies": {

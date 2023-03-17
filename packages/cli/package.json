@@ -22,6 +22,7 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
     "cli": "node dist/main.js",
     "cli:dev": "ts-node src/main.ts",
+    "cli:dev-localhost": "METICULOUS_API_URL=http://localhost:3001/api/ ts-node src/main.ts",
     "test": "jest"
   },
   "dependencies": {
