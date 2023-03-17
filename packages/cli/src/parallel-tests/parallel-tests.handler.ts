@@ -5,6 +5,7 @@ import log from "loglevel";
 import { DetailedTestCaseResult } from "../config/config.types";
 import { mergeResults } from "./merge-test-results";
 import { TestRunProgress } from "./run-all-tests.types";
+import { flattenScreenshotDiffResults } from "./screenshot-diff-results.utils";
 
 export interface RunAllTestsInParallelOptions {
   testsToRun: TestCase[];
@@ -207,9 +208,9 @@ const logRetrySummary = (
       `Retried taking screenshots for failed test ${nameOfTest}, but got the same results`
     );
   } else {
-    const numDifferingScreenshots = retryResult.screenshotDiffResults.filter(
-      (result) => result.outcome !== "no-diff"
-    ).length;
+    const numDifferingScreenshots = flattenScreenshotDiffResults(
+      retryResult
+    ).filter((result) => result.outcome !== "no-diff").length;
     logger.info(
       `Retried taking screenshots for failed test ${nameOfTest}, and ${numDifferingScreenshots} screenshots came out different. Results for these screenshots are assumed to be flakes, and so will be ignored.`
     );

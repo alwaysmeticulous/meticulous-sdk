@@ -206,7 +206,7 @@ describe("runAllTestsInParallel", () => {
 const testCase = (num: number): TestCase => ({
   sessionId: "mock-session-id",
   title: `${num}`,
-  baseReplayId: "mock-base-replay-id",
+  baseTestRunId: "mock-base-test-run-id",
 });
 
 const expectPromiseToNotHaveResolved = async (promise: Promise<unknown>) => {

@@ -3,9 +3,9 @@ import { Server } from "http";
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
 import express from "express";
-import findFreePort from "find-free-port";
 import log from "loglevel";
 import { getOrFetchReplayArchive, getSnapshottedAssetsDir } from "./replays";
+import findFreePort from "find-free-port";
 
 // We must avoid ports blocked by Chrome: https://superuser.com/questions/188058/which-ports-are-considered-unsafe-by-chrome
 const STARTING_PORT = 9100;
@@ -24,7 +24,7 @@ export async function serveAssetsFromSimulation(
   if (!existsSync(snapshottedAssetsDir)) {
     logger.error(
       `No snapshotted assets found for simulation '${simulationId}'.` +
-        " Please re-run without the --simulationIdForAssets or --useAssetsSnapshottedInBaseSimulation flag." +
+        " Please re-run without the --simulationIdForAssets flag." +
         " You can optionally specify an --appUrl to run the simulation against."
     );
     process.exit(1);

@@ -24,7 +24,6 @@ interface Options
   commitSha?: string | undefined;
   baseCommitSha?: string | undefined;
   appUrl?: string | undefined;
-  useAssetsSnapshottedInBaseSimulation: boolean;
   githubSummary: boolean;
   parallelize: boolean;
   parallelTasks?: number | null | undefined;
@@ -35,6 +34,7 @@ interface Options
   maxDurationMs: number | null | undefined;
   maxEventCount: number | null | undefined;
   storyboard: boolean;
+  baseTestRunId?: string | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -42,7 +42,6 @@ const handler: (options: Options) => Promise<void> = async ({
   commitSha: commitSha_,
   baseCommitSha,
   appUrl,
-  useAssetsSnapshottedInBaseSimulation,
   headless,
   devTools,
   bypassCSP,
@@ -66,6 +65,7 @@ const handler: (options: Options) => Promise<void> = async ({
   maxEventCount,
   storyboard,
   essentialFeaturesOnly,
+  baseTestRunId,
 }) => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -105,8 +105,8 @@ const handler: (options: Options) => Promise<void> = async ({
     apiToken: apiToken ?? null,
     commitSha,
     baseCommitSha: baseCommitSha ?? null,
+    baseTestRunId: baseTestRunId ?? null,
     appUrl: appUrl ?? null,
-    useAssetsSnapshottedInBaseSimulation,
     parallelTasks: parrelelTasks ?? null,
     deflake,
     maxRetriesOnFailure,
@@ -133,14 +133,6 @@ export const runAllTestsCommand = buildCommand("run-all-tests")
       string: true,
       description:
         "The URL to execute the tests against. If left absent here and in the test cases file, then will use the URL the test was originally recorded against.",
-    },
-    useAssetsSnapshottedInBaseSimulation: {
-      boolean: true,
-      description:
-        "If present will run each session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.)" +
-        " from the base simulation/replay the test is comparing against. The sessions will then be replayed against those local urls." +
-        " This is an alternative to specifying an appUrl.",
-      default: false,
     },
     githubSummary: {
       boolean: true,
@@ -184,6 +176,10 @@ export const runAllTestsCommand = buildCommand("run-all-tests")
       description:
         "The path to the meticulous.json file containing the list of tests you want to run." +
         " If not set a search will be performed to find a meticulous.json file in the current directory or the nearest parent directory.",
+    },
+    baseTestRunId: {
+      string: true,
+      description: "The id of a test run to compare screenshots against.",
     },
     moveBeforeClick: OPTIONS.moveBeforeClick,
     ...COMMON_REPLAY_OPTIONS,

@@ -6,6 +6,11 @@ import { SingleTryScreenshotDiffResult } from "@alwaysmeticulous/api/dist/replay
 import { logger } from "@sentry/utils";
 import stringify from "fast-json-stable-stringify";
 import { DetailedTestCaseResult } from "../config/config.types";
+import {
+  flattenScreenshotDiffResults,
+  groupScreenshotDiffResults,
+  ScreenshotDiffResultWithBaseReplayId,
+} from "./screenshot-diff-results.utils";
 
 export interface ResultsToMerge {
   currentResult: DetailedTestCaseResult;
@@ -16,10 +21,6 @@ export interface ResultsToMerge {
    */
   comparisonToHeadReplay: DetailedTestCaseResult;
 }
-
-export type ScreenshotDiffResultWithBaseReplayId = ScreenshotDiffResult & {
-  baseReplayId: string;
-};
 
 export const mergeResults = ({
   currentResult,
@@ -118,28 +119,6 @@ export const mergeResults = ({
       newScreenshotDiffResults
     ),
   };
-};
-
-const flattenScreenshotDiffResults = (
-  testCaseResult: DetailedTestCaseResult
-): ScreenshotDiffResultWithBaseReplayId[] => {
-  return [
-    ...testCaseResult.screenshotDiffResultsByBaseReplayId.entries(),
-  ].flatMap(([baseReplayId, diffs]) => {
-    return diffs.map((diff) => ({ ...diff, baseReplayId }));
-  });
-};
-
-const groupScreenshotDiffResults = (
-  results: ScreenshotDiffResultWithBaseReplayId[]
-): Map<string, ScreenshotDiffResult[]> => {
-  const groupedResults = new Map<string, ScreenshotDiffResult[]>();
-  results.forEach(({ baseReplayId, ...result }) => {
-    const resultsForBaseReplayId = groupedResults.get(baseReplayId) ?? [];
-    resultsForBaseReplayId.push(result);
-    groupedResults.set(baseReplayId, resultsForBaseReplayId);
-  });
-  return groupedResults;
 };
 
 const withoutIdentifiers = ({
