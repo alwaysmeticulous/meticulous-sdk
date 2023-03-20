@@ -41,4 +41,5 @@ export interface TestRun {
 export interface ScreenshotLocator {
   replayId: string;
   screenshotIdentifier: ScreenshotIdentifier;
+  screenshotUrl: string;
 }

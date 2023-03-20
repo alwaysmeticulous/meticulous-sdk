@@ -1,3 +1,5 @@
+import { mkdir } from "fs/promises";
+import { basename, join } from "path";
 import {
   ScreenshotAssertionsEnabledOptions,
   ScreenshotDiffResult,
@@ -6,11 +8,10 @@ import {
 import { AxiosInstance } from "axios";
 import stringify from "fast-json-stable-stringify";
 import log from "loglevel";
-import { getBaseScreenshotLocators } from "../../../api/test-run.api";
+import { downloadFile } from "../../../api/download";
+import { getBaseScreenshots } from "../../../api/test-run.api";
+import { ScreenshotLocator } from "../../../api/types";
 import {
-  getOrFetchReplay,
-  getOrFetchReplayArchive,
-  getReplayDir,
   getScreenshotFiles,
   getScreenshotsDir,
 } from "../../../local-data/replays";
@@ -45,26 +46,23 @@ export const computeDiff = async ({
     `Diffing screenshots against replays of session ${sessionId} in test run ${baseTestRunId}`
   );
 
-  const baseScreenshotLocators = await getBaseScreenshotLocators({
+  const baseScreenshotsDir = join(
+    getScreenshotsDir(tempDir),
+    "base-screenshots"
+  );
+  await mkdir(baseScreenshotsDir, { recursive: true });
+  const baseScreenshots = await getBaseScreenshots({
     client,
     testRunId: baseTestRunId,
     sessionId,
   });
-  const screenshotIdentifiersByBaseReplayId = new Map<
-    string,
-    ScreenshotIdentifier[]
-  >();
-  baseScreenshotLocators.forEach(({ replayId, screenshotIdentifier }) => {
-    const screenshotIdentifiers =
-      screenshotIdentifiersByBaseReplayId.get(replayId) ?? [];
-    screenshotIdentifiers.push(screenshotIdentifier);
-    screenshotIdentifiersByBaseReplayId.set(replayId, screenshotIdentifiers);
-  });
 
-  for (const baseReplayId of screenshotIdentifiersByBaseReplayId.keys()) {
-    await getOrFetchReplay(client, baseReplayId);
-    await getOrFetchReplayArchive(client, baseReplayId);
-  }
+  const screenshotIdentifiersByBaseReplayId =
+    groupByBaseReplayId(baseScreenshots);
+  await downloadScreenshots(baseScreenshots, baseScreenshotsDir);
+  logger.debug(
+    `Downloaded ${baseScreenshots.length} base screenshots to ${baseScreenshotsDir}}`
+  );
 
   const headReplayScreenshotsDir = getScreenshotsDir(tempDir);
   const headReplayScreenshots = await getScreenshotFiles(
@@ -75,21 +73,19 @@ export const computeDiff = async ({
     ScreenshotDiffResult[]
   > = {};
 
+  // Diff the screenshots for each base replay
   for (const baseReplayId of screenshotIdentifiersByBaseReplayId.keys()) {
-    const baseReplayScreenshotsDir = getScreenshotsDir(
-      getReplayDir(baseReplayId)
-    );
     const baseScreenshotIdentifiers =
       screenshotIdentifiersByBaseReplayId.get(baseReplayId) ?? [];
     const baseReplayScreenshots = await getFilteredScreenshotFiles(
-      baseReplayScreenshotsDir,
+      baseScreenshotsDir,
       baseScreenshotIdentifiers
     );
     const resultsForBaseReplay = await diffScreenshots({
       client,
       baseReplayId,
       headReplayId,
-      baseScreenshotsDir: baseReplayScreenshotsDir,
+      baseScreenshotsDir: baseScreenshotsDir,
       headScreenshotsDir: headReplayScreenshotsDir,
       headReplayScreenshots,
       baseReplayScreenshots,
@@ -108,7 +104,47 @@ export const computeDiff = async ({
   return screenshotDiffResultsByBaseReplayId;
 };
 
-export const getFilteredScreenshotFiles = async (
+const groupByBaseReplayId = (screenshots: ScreenshotLocator[]) => {
+  const screenshotIdentifiersByBaseReplayId = new Map<
+    string,
+    ScreenshotIdentifier[]
+  >();
+  screenshots.forEach(({ replayId, screenshotIdentifier }) => {
+    const screenshotIdentifiers =
+      screenshotIdentifiersByBaseReplayId.get(replayId) ?? [];
+    screenshotIdentifiers.push(screenshotIdentifier);
+    screenshotIdentifiersByBaseReplayId.set(replayId, screenshotIdentifiers);
+  });
+  return screenshotIdentifiersByBaseReplayId;
+};
+
+const downloadScreenshots = async (
+  screenshots: ScreenshotLocator[],
+  directory: string
+) => {
+  // Download in batches of 20
+  const screenshotBatches = chunk(screenshots, 20);
+  for (const screenshotBatch of screenshotBatches) {
+    const screenshotDownloads = screenshotBatch.map((screenshot) => {
+      const filePath = join(
+        directory,
+        basename(new URL(screenshot.screenshotUrl).pathname)
+      );
+      return downloadFile(screenshot.screenshotUrl, filePath);
+    });
+    await Promise.all(screenshotDownloads);
+  }
+};
+
+const chunk = <T>(array: T[], size: number) => {
+  const chunkedArray = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunkedArray.push(array.slice(i, i + size));
+  }
+  return chunkedArray;
+};
+
+const getFilteredScreenshotFiles = async (
   screenshotsDirPath: string,
   screenshotIdentifiers: ScreenshotIdentifier[]
 ): Promise<string[]> => {

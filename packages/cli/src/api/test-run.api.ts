@@ -111,7 +111,7 @@ export interface GetBaseScreenshotLocatorsOptions {
   sessionId: string;
 }
 
-export const getBaseScreenshotLocators = async ({
+export const getBaseScreenshots = async ({
   client,
   testRunId,
   sessionId,
@@ -120,7 +120,7 @@ export const getBaseScreenshotLocators = async ({
     .get(
       `test-runs/${encodeURIComponent(
         testRunId
-      )}/base-screenshot-locators?sessionId=${encodeURIComponent(sessionId)}}`
+      )}/base-screenshots?sessionId=${encodeURIComponent(sessionId)}`
     )
     .catch((error) => {
       if (error instanceof AxiosError && error.response?.status === 404) {
