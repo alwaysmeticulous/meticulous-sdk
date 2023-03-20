@@ -1,7 +1,4 @@
-import {
-  ScreenshotDiffResult,
-  ScreenshotIdentifier,
-} from "@alwaysmeticulous/api";
+import { ScreenshotIdentifier } from "@alwaysmeticulous/api";
 import { SingleTryScreenshotDiffResult } from "@alwaysmeticulous/api/dist/replay/replay-diff.types";
 import { logger } from "@sentry/utils";
 import stringify from "fast-json-stable-stringify";
