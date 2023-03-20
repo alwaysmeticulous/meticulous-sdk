@@ -132,7 +132,7 @@ export const recordSession: RecordSessionFn = async ({
   const sessionIds: string[] = [];
   const interval = setInterval(async () => {
     try {
-      const sessionId = await page.evaluate(
+      const sessionId = await page.evaluate<never, () => string | undefined>(
         "window?.__meticulous?.config?.sessionId"
       );
       if (sessionId && !sessionIds.find((id) => id === sessionId)) {

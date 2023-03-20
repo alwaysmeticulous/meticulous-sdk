@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/sdk-bundles-api",
-  "version": "2.34.0",
+  "version": "2.36.0",
   "description": "Meticulous common types",
   "license": "ISC",
   "main": "dist/index.js",
@@ -18,11 +18,11 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.34.0"
+    "@alwaysmeticulous/api": "^2.36.0"
   },
   "peerDependencies": {
     "loglevel": "^1.8.0",
-    "puppeteer": "^14.4.1"
+    "puppeteer": "^19.7.5"
   },
   "peerDependenciesMeta": {
     "loglevel": {

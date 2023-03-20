@@ -16,13 +16,21 @@ const screenshotPageOrElement: (options: {
   screenshotSelector: string | null;
 }) => Promise<void> = async ({ page, path, screenshotSelector }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-  const toScreenshot = screenshotSelector
-    ? await page.$(screenshotSelector)
-    : page;
+
+  if (!screenshotSelector) {
+    await page.screenshot({ path });
+    return;
+  }
+
+  const toScreenshot = await page.$(screenshotSelector);
   if (!toScreenshot) {
     logger.warn(`Error: could not find element (${screenshotSelector})`);
+
+    await page.screenshot({ path });
+    return;
   }
-  await (toScreenshot || page).screenshot({ path });
+
+  await toScreenshot.screenshot({ path });
 };
 
 export const takeScreenshot: (
