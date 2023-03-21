@@ -15,11 +15,9 @@ export const addTestCase: (testCase: TestCase) => Promise<void> = async (
 };
 
 export const getReplayTargetForTestCase = ({
-  useAssetsSnapshottedInBaseSimulation,
   appUrl,
   testCase,
 }: {
-  useAssetsSnapshottedInBaseSimulation: boolean;
   appUrl: string | null;
   testCase: TestCase;
 }): ReplayTarget => {
@@ -27,17 +25,6 @@ export const getReplayTargetForTestCase = ({
     return {
       type: "snapshotted-assets",
       simulationIdForAssets: testCase.options?.simulationIdForAssets,
-    };
-  }
-  if (useAssetsSnapshottedInBaseSimulation) {
-    if (testCase.baseReplayId == null) {
-      throw new Error(
-        `--useAssetsSnapshottedInBaseSimulation flag set, but test case "${testCase.title}" does not have a baseReplayId.`
-      );
-    }
-    return {
-      type: "snapshotted-assets",
-      simulationIdForAssets: testCase.baseReplayId,
     };
   }
 

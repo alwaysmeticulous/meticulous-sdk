@@ -13,6 +13,7 @@ import {
   ScreenshotDiffOptions,
 } from "../command-utils/common-types";
 import { replayCommandHandler } from "../commands/replay/replay.command";
+import { hasNotableDifferences } from "../commands/screenshot-diff/utils/has-notable-differences";
 import { DetailedTestCaseResult } from "../config/config.types";
 
 const handleReplay = async ({
@@ -26,8 +27,9 @@ const handleReplay = async ({
   testRunId,
   replayEventsDependencies,
   suppressScreenshotDiffLogging,
+  baseTestRunId,
 }: HandleReplayOptions): Promise<DetailedTestCaseResult> => {
-  const { replay, screenshotDiffResults, screenshotDiffsSummary } =
+  const { replay, screenshotDiffResultsByBaseReplayId } =
     await replayCommandHandler({
       replayTarget,
       executionOptions: applyTestCaseExecutionOptionOverrides(
@@ -41,7 +43,7 @@ const handleReplay = async ({
       apiToken,
       commitSha,
       sessionId: testCase.sessionId,
-      baseSimulationId: testCase.baseReplayId,
+      baseTestRunId,
       cookiesFile: null,
       generatedBy,
       testRunId,
@@ -49,12 +51,16 @@ const handleReplay = async ({
       suppressScreenshotDiffLogging,
       debugger: false,
     });
-
+  const result = hasNotableDifferences(
+    Object.values(screenshotDiffResultsByBaseReplayId).flat()
+  )
+    ? "fail"
+    : "pass";
   return {
     ...testCase,
     headReplayId: replay.id,
-    result: screenshotDiffsSummary.hasDiffs ? "fail" : "pass",
-    screenshotDiffResults,
+    result,
+    screenshotDiffResultsByBaseReplayId,
   };
 };
 
@@ -72,6 +78,7 @@ interface HandleReplayOptions {
   commitSha: string;
   generatedBy: GeneratedBy;
   testRunId: string | null;
+  baseTestRunId: string | null;
   replayEventsDependencies: ReplayEventsDependencies;
   suppressScreenshotDiffLogging: boolean;
 }

@@ -3,7 +3,7 @@ import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import axios, { AxiosError, AxiosInstance } from "axios";
 import log from "loglevel";
 import { TestCaseResult } from "../config/config.types";
-import { TestRun, TestRunStatus } from "./types";
+import { ScreenshotLocator, TestRun, TestRunStatus } from "./types";
 
 export const getTestRun: (options: {
   client: AxiosInstance;
@@ -84,7 +84,7 @@ export const getCachedTestRunResults = async ({
   return results.filter(({ result }) => result === "pass");
 };
 
-export const getLatestTestRunResults = async ({
+const getLatestTestRunResults = async ({
   client,
   commitSha,
 }: GetLatestTestRunResultsOptions): Promise<TestRun | null> => {
@@ -97,4 +97,36 @@ export const getLatestTestRunResults = async ({
       throw error;
     });
   return (data as TestRun | null) ?? null;
+};
+
+export const getLatestTestRunId = async (
+  opts: GetLatestTestRunResultsOptions
+): Promise<string | null> => {
+  return (await getLatestTestRunResults(opts))?.id ?? null;
+};
+
+export interface GetBaseScreenshotLocatorsOptions {
+  client: AxiosInstance;
+  testRunId: string;
+  sessionId: string;
+}
+
+export const getBaseScreenshots = async ({
+  client,
+  testRunId,
+  sessionId,
+}: GetBaseScreenshotLocatorsOptions): Promise<ScreenshotLocator[]> => {
+  const { data } = await client
+    .get(
+      `test-runs/${encodeURIComponent(
+        testRunId
+      )}/base-screenshots?sessionId=${encodeURIComponent(sessionId)}`
+    )
+    .catch((error) => {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return { data: null };
+      }
+      throw error;
+    });
+  return (data as ScreenshotLocator[]) ?? [];
 };

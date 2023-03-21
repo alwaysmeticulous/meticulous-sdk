@@ -81,7 +81,6 @@ const handleTestCreation: (
   await addTestCase({
     title: testNameResponse.name,
     sessionId,
-    baseReplayId: replay.id,
   });
 
   logger.info(
@@ -167,14 +166,11 @@ const handler: (options: Options) => Promise<void> = async ({
     cookiesFile,
     skipPauses,
 
-    save: false, // we handle the saving to meticulous.json ourselves below
-
     // We replay against the original recorded URL
     appUrl: null,
     simulationIdForAssets: null,
 
     // We don't try comparing to the original screenshot, so just set these to their defaults
-    baseSimulationId: null,
     diffThreshold: OPTIONS.diffThreshold.default,
     diffPixelThreshold: OPTIONS.diffPixelThreshold.default,
 

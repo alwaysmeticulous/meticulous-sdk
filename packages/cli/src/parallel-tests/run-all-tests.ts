@@ -1,15 +1,17 @@
-import { TestRunEnvironment } from "@alwaysmeticulous/api";
+import { TestCase, TestRunEnvironment } from "@alwaysmeticulous/api";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
   ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
+import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { createClient } from "../api/client";
 import { getProject } from "../api/project.api";
 import { createReplayDiff } from "../api/replay-diff.api";
 import {
   createTestRun,
+  getLatestTestRunId,
   getTestRunUrl,
   putTestRunResults,
 } from "../api/test-run.api";
@@ -21,11 +23,7 @@ import { loadReplayEventsDependencies } from "../local-data/replay-assets";
 import { runAllTestsInParallel } from "../parallel-tests/parallel-tests.handler";
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
-import {
-  getTestsToRun,
-  mergeTestCases,
-  sortResults,
-} from "../utils/run-all-tests.utils";
+import { mergeTestCases, sortResults } from "../utils/run-all-tests.utils";
 import { getEnvironment } from "../utils/test-run-environment.utils";
 import { getMeticulousVersion } from "../utils/version.utils";
 import { executeTestInChildProcess } from "./execute-test-in-child-process";
@@ -53,7 +51,6 @@ export interface Options {
   baseCommitSha: string | null;
 
   appUrl: string | null;
-  useAssetsSnapshottedInBaseSimulation: boolean;
 
   /**
    * If null runs in parralel with a sensible number of parrelel tasks for the given machine.
@@ -84,6 +81,8 @@ export interface Options {
    */
   environment?: TestRunEnvironment;
 
+  baseTestRunId: string | null;
+
   onTestRunCreated?: (
     testRun: RunAllTestsTestRun & { status: "Running" }
   ) => void;
@@ -106,7 +105,6 @@ export const runAllTests = async ({
   commitSha,
   baseCommitSha,
   appUrl,
-  useAssetsSnapshottedInBaseSimulation,
   executionOptions,
   screenshottingOptions,
   parallelTasks,
@@ -115,15 +113,10 @@ export const runAllTests = async ({
   cachedTestRunResults: cachedTestRunResults_,
   githubSummary,
   environment,
+  baseTestRunId,
   onTestRunCreated,
   onTestFinished: onTestFinished_,
 }: Options): Promise<RunAllTestsResult> => {
-  if (appUrl != null && useAssetsSnapshottedInBaseSimulation) {
-    throw new Error(
-      "Arguments useAssetsSnapshottedInBaseSimulation and appUrl are mutually exclusive"
-    );
-  }
-
   if (deflake && maxRetriesOnFailure > 1) {
     throw new Error(
       "Arguments deflake and maxRetriesOnFailure are mutually exclusive"
@@ -154,11 +147,11 @@ export const runAllTests = async ({
 
   // Only run the uncached test cases
   const testCases = allTestCases.filter(
-    ({ sessionId, baseReplayId, title }) =>
+    ({ sessionId, baseTestRunId, title }) =>
       !cachedTestRunResults.find(
         (cached) =>
           cached.sessionId === sessionId &&
-          cached.baseReplayId === baseReplayId &&
+          cached.baseTestRunId === baseTestRunId &&
           cached.title === title
       )
   );
@@ -180,7 +173,6 @@ export const runAllTests = async ({
         commitSha,
         baseCommitSha,
         appUrl,
-        useAssetsSnapshottedInBaseSimulation,
         parallelTasks,
         deflake,
         githubSummary,
@@ -206,10 +198,12 @@ export const runAllTests = async ({
   logger.info(`Test run URL: ${testRunUrl}`);
   logger.info("");
 
-  const testsToRun = await getTestsToRun({
-    testCases,
+  const testsToRun = await getTestCasesWithBaseTestRunId({
+    baseCommitSha,
+    baseTestRunId: baseTestRunId ?? null,
     client,
-    baseCommitSha: baseCommitSha ?? null,
+    logger,
+    testCases,
   });
 
   const storeTestRunResults = async (
@@ -220,7 +214,7 @@ export const runAllTests = async ({
       ...cachedTestRunResults,
       ...resultsSoFar.map(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        ({ screenshotDiffResults, ...result }) => result
+        ({ screenshotDiffResultsByBaseReplayId, ...result }) => result
       ),
     ];
     try {
@@ -256,17 +250,21 @@ export const runAllTests = async ({
   ) => {
     onProgressUpdated(progress);
     const newResult = resultsSoFar.at(-1);
-    if (newResult?.baseReplayId != null) {
-      await createReplayDiff({
-        client,
-        headReplayId: newResult.headReplayId,
-        baseReplayId: newResult.baseReplayId,
-        testRunId: testRun.id,
-        data: {
-          screenshotAssertionsOptions: screenshottingOptions,
-          screenshotDiffResults: newResult.screenshotDiffResults,
-        },
-      });
+    if (newResult != null) {
+      for (const [baseReplayId, screenshotDiffResults] of Object.entries(
+        newResult.screenshotDiffResultsByBaseReplayId
+      )) {
+        await createReplayDiff({
+          client,
+          headReplayId: newResult.headReplayId,
+          baseReplayId: baseReplayId,
+          testRunId: testRun.id,
+          data: {
+            screenshotAssertionsOptions: screenshottingOptions,
+            screenshotDiffResults,
+          },
+        });
+      }
     }
     await storeTestRunResults("Running", resultsSoFar);
   };
@@ -287,7 +285,6 @@ export const runAllTests = async ({
             testCase,
             deflake,
             replayTarget: getReplayTargetForTestCase({
-              useAssetsSnapshottedInBaseSimulation,
               appUrl,
               testCase,
             }),
@@ -295,6 +292,7 @@ export const runAllTests = async ({
             screenshottingOptions,
             generatedBy: { type: "testRun", runId: testRun.id },
             testRunId: testRun.id,
+            baseTestRunId: testCase.baseTestRunId ?? null,
             replayEventsDependencies,
             suppressScreenshotDiffLogging: isRetry,
           },
@@ -347,4 +345,47 @@ export const runAllTests = async ({
     },
     testCaseResults: sortedResults,
   };
+};
+
+const getTestCasesWithBaseTestRunId = async ({
+  logger,
+  client,
+  baseCommitSha,
+  baseTestRunId,
+  testCases,
+}: {
+  logger: log.Logger;
+  client: AxiosInstance;
+  baseCommitSha: string | null;
+  baseTestRunId: string | null;
+  testCases: TestCase[];
+}) => {
+  const defaultBaseTestRunId =
+    baseCommitSha != null
+      ? await getLatestTestRunId({
+          client,
+          commitSha: baseCommitSha,
+        })
+      : null;
+
+  const testsToRun: TestCase[] = testCases.map((test) => {
+    // We use the baseTestRunId specified in the test case if it exists, otherwise we use
+    // use the baseTestRunId specified from the CLI args if it exists, otherwise we use the
+    // baseTestRunId for the base commit if it exists, otherwise we use null (don't compare screenshots).
+    const fallbackTestRunId = baseTestRunId ?? defaultBaseTestRunId;
+    if (test.baseTestRunId != null || fallbackTestRunId == null) {
+      return test;
+    }
+    return { ...test, baseTestRunId: fallbackTestRunId };
+  });
+  if (baseCommitSha != null) {
+    testsToRun
+      .filter((test) => test.baseTestRunId == null)
+      .forEach((test) => {
+        logger.warn(
+          `Skipping comparisons for test "${test.title}" since no result to compare against stored for base commit ${baseCommitSha}`
+        );
+      });
+  }
+  return testsToRun;
 };

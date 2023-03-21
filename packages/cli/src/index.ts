@@ -1,7 +1,4 @@
-export {
-  getLatestTestRunResults,
-  GetLatestTestRunResultsOptions,
-} from "./api/test-run.api";
+export { GetLatestTestRunResultsOptions } from "./api/test-run.api";
 export { bootstrapCommand } from "./commands/bootstrap/bootstrap.command";
 export { createTestCommand } from "./commands/create-test/create-test.command";
 export { downloadReplayCommand } from "./commands/download-replay/download-replay.command";

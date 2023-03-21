@@ -24,7 +24,7 @@ export async function serveAssetsFromSimulation(
   if (!existsSync(snapshottedAssetsDir)) {
     logger.error(
       `No snapshotted assets found for simulation '${simulationId}'.` +
-        " Please re-run without the --simulationIdForAssets or --useAssetsSnapshottedInBaseSimulation flag." +
+        " Please re-run without the --simulationIdForAssets flag." +
         " You can optionally specify an --appUrl to run the simulation against."
     );
     process.exit(1);

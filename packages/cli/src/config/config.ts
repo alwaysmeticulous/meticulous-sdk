@@ -52,14 +52,13 @@ const validateConfig: (config: MeticulousCliConfig) => MeticulousCliConfig = (
   const { testCases, ...rest } = prevConfig;
 
   const nextTestCases = (testCases || [])
-    .map(({ title, sessionId, baseReplayId, options }) => ({
+    .map(({ title, sessionId, options }) => ({
       title: typeof title === "string" ? title : "",
       sessionId: typeof sessionId === "string" ? sessionId : "",
-      ...(typeof baseReplayId === "string" ? { baseReplayId } : {}),
       ...(options ? { options: validateReplayOptions(options) } : {}),
     }))
     .map(({ title, ...rest }) => ({
-      title: title || `${rest.sessionId} | ${rest.baseReplayId}`,
+      title: title || `${rest.sessionId}`,
       ...rest,
     }))
     .filter(({ sessionId }) => sessionId);

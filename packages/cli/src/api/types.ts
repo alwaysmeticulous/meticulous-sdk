@@ -1,3 +1,4 @@
+import { ScreenshotIdentifier } from "@alwaysmeticulous/api";
 import { TestCaseResult } from "../config/config.types";
 
 interface Organization {
@@ -32,4 +33,13 @@ export interface TestRun {
     [key: string]: any;
   };
   [key: string]: any;
+}
+
+/**
+ * All the information required to locate & download a screenshot of a replay.
+ */
+export interface ScreenshotLocator {
+  replayId: string;
+  screenshotIdentifier: ScreenshotIdentifier;
+  screenshotUrl: string;
 }

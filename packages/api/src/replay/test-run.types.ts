@@ -11,7 +11,7 @@ export interface TestRunConfigData {
 export interface TestCase {
   sessionId: string;
   title?: string;
-  baseReplayId?: string;
+  baseTestRunId?: string;
   options?: TestCaseReplayOptions;
 }
 
@@ -36,7 +36,6 @@ export interface TestRunArguments {
   commitSha?: string;
   baseCommitSha?: string | null;
   appUrl?: string | null;
-  useAssetsSnapshottedInBaseSimulation?: boolean;
   parallelTasks?: number | null;
   deflake?: boolean;
   githubSummary?: boolean;
