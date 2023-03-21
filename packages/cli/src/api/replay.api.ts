@@ -134,18 +134,3 @@ export const getReplayUrl = (replay: any) => {
   const replayUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/simulations/${replay.id}`;
   return replayUrl;
 };
-
-export const getDiffUrl: (
-  client: AxiosInstance,
-  baseReplayId: string,
-  headReplayId: string
-) => Promise<string> = async (client, baseReplayId, headReplayId) => {
-  const project = await getProject(client);
-  if (!project) {
-    throw new Error(`Unexpected error: could not retrieve project data`);
-  }
-  const organizationName = encodeURIComponent(project.organization.name);
-  const projectName = encodeURIComponent(project.name);
-  const diffUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/simulations/${headReplayId}/diff/${baseReplayId}`;
-  return diffUrl;
-};

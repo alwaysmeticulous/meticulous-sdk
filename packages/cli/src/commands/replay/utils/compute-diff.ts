@@ -1,12 +1,11 @@
-import { mkdir } from "fs/promises";
-import { basename, join } from "path";
+import { mkdir, opendir, rm, rmdir } from "fs/promises";
+import { join } from "path";
 import {
   ScreenshotAssertionsEnabledOptions,
   ScreenshotDiffResult,
   ScreenshotIdentifier,
 } from "@alwaysmeticulous/api";
 import { AxiosInstance } from "axios";
-import stringify from "fast-json-stable-stringify";
 import log from "loglevel";
 import { downloadFile } from "../../../api/download";
 import { getBaseScreenshots } from "../../../api/test-run.api";
@@ -19,7 +18,7 @@ import {
   diffScreenshots,
   logDifferences,
 } from "../../screenshot-diff/screenshot-diff.command";
-import { getScreenshotIdentifier } from "../../screenshot-diff/utils/get-screenshot-identifier";
+import { getScreenshotFilename } from "../../screenshot-diff/utils/get-screenshot-filename";
 
 export interface ComputeAndSaveDiffOptions {
   client: AxiosInstance;
@@ -77,12 +76,13 @@ export const computeDiff = async ({
   for (const baseReplayId of screenshotIdentifiersByBaseReplayId.keys()) {
     const baseScreenshotIdentifiers =
       screenshotIdentifiersByBaseReplayId.get(baseReplayId) ?? [];
-    const baseReplayScreenshots = await getFilteredScreenshotFiles(
-      baseScreenshotsDir,
-      baseScreenshotIdentifiers
+    const baseReplayScreenshots = baseScreenshotIdentifiers.map(
+      (identifier) => ({
+        identifier,
+        fileName: getScreenshotFilename(identifier),
+      })
     );
     const resultsForBaseReplay = await diffScreenshots({
-      client,
       baseReplayId,
       headReplayId,
       baseScreenshotsDir: baseScreenshotsDir,
@@ -90,7 +90,6 @@ export const computeDiff = async ({
       headReplayScreenshots,
       baseReplayScreenshots,
       diffOptions: screenshottingOptions.diffOptions,
-      logger,
     });
     screenshotDiffResultsByBaseReplayId[baseReplayId] = resultsForBaseReplay;
   }
@@ -101,7 +100,25 @@ export const computeDiff = async ({
     logger,
   });
 
+  // Delete base screenshots directory and all files inside it
+  // (we don't want to upload it to the backend)
+  await deleteScreenshotsDirectory(baseScreenshotsDir);
+
   return screenshotDiffResultsByBaseReplayId;
+};
+
+const deleteScreenshotsDirectory = async (directory: string) => {
+  const files = await opendir(directory);
+  for await (const file of files) {
+    if (file.isFile()) {
+      await rm(join(directory, file.name));
+    } else {
+      throw new Error(
+        `Expected screenshots directory to only contain screenshot files, but it contained: ${file.name}`
+      );
+    }
+  }
+  await rmdir(directory);
 };
 
 const groupByBaseReplayId = (screenshots: ScreenshotLocator[]) => {
@@ -128,7 +145,7 @@ const downloadScreenshots = async (
     const screenshotDownloads = screenshotBatch.map((screenshot) => {
       const filePath = join(
         directory,
-        basename(new URL(screenshot.screenshotUrl).pathname)
+        getScreenshotFilename(screenshot.screenshotIdentifier)
       );
       return downloadFile(screenshot.screenshotUrl, filePath);
     });
@@ -142,19 +159,4 @@ const chunk = <T>(array: T[], size: number) => {
     chunkedArray.push(array.slice(i, i + size));
   }
   return chunkedArray;
-};
-
-const getFilteredScreenshotFiles = async (
-  screenshotsDirPath: string,
-  screenshotIdentifiers: ScreenshotIdentifier[]
-): Promise<string[]> => {
-  const screenshotFiles = await getScreenshotFiles(screenshotsDirPath);
-  const stringifiedScreenshotIdentifiers = new Set(
-    screenshotIdentifiers.map(stringify)
-  );
-  return screenshotFiles.filter((filename) =>
-    stringifiedScreenshotIdentifiers.has(
-      stringify(getScreenshotIdentifier(filename))
-    )
-  );
 };

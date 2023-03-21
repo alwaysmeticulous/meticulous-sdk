@@ -1,5 +1,6 @@
 import { mkdir, opendir, rm } from "fs/promises";
 import { join } from "path";
+import { ScreenshotIdentifier } from "@alwaysmeticulous/api";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
@@ -10,6 +11,7 @@ import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { downloadFile } from "../api/download";
 import { getReplay, getReplayDownloadUrl } from "../api/replay.api";
+import { getScreenshotIdentifier } from "../commands/screenshot-diff/utils/get-screenshot-identifier";
 import {
   fileExists,
   getOrDownloadJsonFile,
@@ -83,20 +85,34 @@ export const getOrFetchReplayArchive = async (
   }
 };
 
+export interface IdentifiedScreenshotFile {
+  identifier: ScreenshotIdentifier;
+  fileName: string;
+}
+
 export const getScreenshotFiles: (
   screenshotsDirPath: string
-) => Promise<string[]> = async (screenshotsDirPath) => {
-  const screenshotFiles = [];
+) => Promise<IdentifiedScreenshotFile[]> = async (screenshotsDirPath) => {
+  const screenshotFiles: IdentifiedScreenshotFile[] = [];
   const screenshotsDir = await opendir(screenshotsDirPath);
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   for await (const dirEntry of screenshotsDir) {
-    if (dirEntry.isFile() && dirEntry.name.endsWith(".png")) {
-      screenshotFiles.push(dirEntry.name);
+    if (!dirEntry.isFile() || !dirEntry.name.endsWith(".png")) {
+      continue;
     }
+    const identifier = getScreenshotIdentifier(dirEntry.name);
+    if (identifier == null) {
+      logger.error(
+        `Ignoring screenshot file with unrecognized name pattern: ${dirEntry.name}`
+      );
+      continue;
+    }
+    screenshotFiles.push({ identifier, fileName: dirEntry.name });
   }
 
   // Sort files alphabetically to help when reading results.
-  return screenshotFiles.sort();
+  return screenshotFiles.sort((a, b) => a.fileName.localeCompare(b.fileName));
 };
 
 export const getSnapshottedAssetsDir = (replayId: string) =>

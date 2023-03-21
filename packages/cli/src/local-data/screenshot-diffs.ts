@@ -25,7 +25,7 @@ export const writeScreenshotDiff: (options: {
   await mkdir(diffDir, { recursive: true });
   const diffFile = join(
     diffDir,
-    `${baseReplayId}+${headReplayId}+${screenshotFileName}.png`
+    `${baseReplayId}-vs-${headReplayId}-${screenshotFileName}.png`
   );
 
   await writePng(diff, diffFile);

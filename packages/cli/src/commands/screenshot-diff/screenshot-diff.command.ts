@@ -4,10 +4,9 @@ import {
   ScreenshotDiffResult,
 } from "@alwaysmeticulous/api";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import { AxiosInstance } from "axios";
+import stringify from "fast-json-stable-stringify";
 import log from "loglevel";
 import { createClient } from "../../api/client";
-import { getDiffUrl } from "../../api/replay.api";
 import { buildCommand } from "../../command-utils/command-builder";
 import { SCREENSHOT_DIFF_OPTIONS } from "../../command-utils/common-options";
 import { compareImages } from "../../image/diff.utils";
@@ -18,13 +17,12 @@ import {
   getReplayDir,
   getScreenshotFiles,
   getScreenshotsDir,
+  IdentifiedScreenshotFile,
 } from "../../local-data/replays";
 import { writeScreenshotDiff } from "../../local-data/screenshot-diffs";
-import { getScreenshotIdentifier } from "./utils/get-screenshot-identifier";
 import { hasNotableDifferences } from "./utils/has-notable-differences";
 
 export const diffScreenshots = async ({
-  client,
   headReplayId,
   baseReplayId,
   baseScreenshotsDir,
@@ -32,108 +30,124 @@ export const diffScreenshots = async ({
   baseReplayScreenshots,
   headReplayScreenshots,
   diffOptions,
-  logger,
 }: {
-  client: AxiosInstance;
   baseReplayId: string;
   headReplayId: string;
   baseScreenshotsDir: string;
   headScreenshotsDir: string;
-  baseReplayScreenshots: string[];
-  headReplayScreenshots: string[];
+  baseReplayScreenshots: IdentifiedScreenshotFile[];
+  headReplayScreenshots: IdentifiedScreenshotFile[];
   diffOptions: ScreenshotDiffOptions;
-  logger: log.Logger;
 }): Promise<ScreenshotDiffResult[]> => {
   const { diffThreshold, diffPixelThreshold } = diffOptions;
 
-  const headReplayScreenshotsSet = new Set(headReplayScreenshots);
+  const headReplayScreenshotsByIdentifier = new Map<
+    string,
+    IdentifiedScreenshotFile
+  >(
+    headReplayScreenshots.map((screenshot) => [
+      stringify(screenshot.identifier),
+      screenshot,
+    ])
+  );
+  const baseReplayScreenshotsByIdentifier = new Map<
+    string,
+    IdentifiedScreenshotFile
+  >(
+    baseReplayScreenshots.map((screenshot) => [
+      stringify(screenshot.identifier),
+      screenshot,
+    ])
+  );
 
   const missingHeadImages = new Set(
-    baseReplayScreenshots.filter((file) => !headReplayScreenshotsSet.has(file))
+    baseReplayScreenshots.filter(
+      (file) =>
+        !headReplayScreenshotsByIdentifier.has(stringify(file.identifier))
+    )
   );
 
   const missingHeadImagesResults: ScreenshotDiffResult[] = Array.from(
     missingHeadImages
-  ).flatMap((screenshotFileName) => {
-    const identifier = getScreenshotIdentifier(screenshotFileName);
-    if (identifier == null) {
-      return [];
-    }
+  ).flatMap(({ identifier, fileName }) => {
     return [
       {
         identifier,
         outcome: "missing-head",
-        baseScreenshotFile: `screenshots/${screenshotFileName}`,
+        baseScreenshotFile: `screenshots/${fileName}`,
       },
     ];
   });
 
   const diffAgainstBase = async (
-    screenshotFileName: string
+    headScreenshot: IdentifiedScreenshotFile
   ): Promise<ScreenshotDiffResult[]> => {
-    const identifier = getScreenshotIdentifier(screenshotFileName);
-
-    if (identifier == null) {
-      return [];
-    }
-
-    if (!baseReplayScreenshots.includes(screenshotFileName)) {
+    const baseScreenshot = baseReplayScreenshotsByIdentifier.get(
+      stringify(headScreenshot.identifier)
+    );
+    if (baseScreenshot == null) {
       return [
         {
-          identifier,
+          identifier: headScreenshot.identifier,
           outcome: "missing-base",
-          headScreenshotFile: `screenshots/${screenshotFileName}`,
+          headScreenshotFile: `screenshots/${headScreenshot.fileName}`,
         },
       ];
     }
 
-    const baseScreenshotFile = join(baseScreenshotsDir, screenshotFileName);
-    const headScreenshotFile = join(headScreenshotsDir, screenshotFileName);
-    const baseScreenshot = await readPng(baseScreenshotFile);
-    const headScreenshot = await readPng(headScreenshotFile);
+    const baseScreenshotFile = join(
+      baseScreenshotsDir,
+      baseScreenshot.fileName
+    );
+    const headScreenshotFile = join(
+      headScreenshotsDir,
+      headScreenshot.fileName
+    );
+    const baseScreenshotContents = await readPng(baseScreenshotFile);
+    const headScreenshotContents = await readPng(headScreenshotFile);
 
     if (
-      baseScreenshot.width !== headScreenshot.width ||
-      baseScreenshot.height !== headScreenshot.height
+      baseScreenshotContents.width !== headScreenshotContents.width ||
+      baseScreenshotContents.height !== headScreenshotContents.height
     ) {
       return [
         {
-          identifier,
+          identifier: headScreenshot.identifier,
           outcome: "different-size",
-          headScreenshotFile: `screenshots/${screenshotFileName}`,
-          baseScreenshotFile: `screenshots/${screenshotFileName}`,
-          baseWidth: baseScreenshot.width,
-          baseHeight: baseScreenshot.height,
-          headWidth: headScreenshot.width,
-          headHeight: headScreenshot.height,
+          baseScreenshotFile: `screenshots/${baseScreenshot.fileName}`,
+          headScreenshotFile: `screenshots/${headScreenshot.fileName}`,
+          baseWidth: baseScreenshotContents.width,
+          baseHeight: baseScreenshotContents.height,
+          headWidth: headScreenshotContents.width,
+          headHeight: headScreenshotContents.height,
         },
       ];
     }
 
     const comparisonResult = compareImages({
-      base: baseScreenshot,
-      head: headScreenshot,
+      base: baseScreenshotContents,
+      head: headScreenshotContents,
       pixelThreshold: diffPixelThreshold,
     });
 
     await writeScreenshotDiff({
       baseReplayId,
       headReplayId,
-      screenshotFileName,
+      screenshotFileName: headScreenshot.fileName,
       diff: comparisonResult.diff,
     });
 
     return [
       {
-        identifier,
+        identifier: headScreenshot.identifier,
         outcome:
           comparisonResult.mismatchFraction > diffThreshold
             ? "diff"
             : "no-diff",
-        headScreenshotFile: `screenshots/${screenshotFileName}`,
-        baseScreenshotFile: `screenshots/${screenshotFileName}`,
-        width: baseScreenshot.width,
-        height: baseScreenshot.height,
+        baseScreenshotFile: `screenshots/${baseScreenshot.fileName}`,
+        headScreenshotFile: `screenshots/${headScreenshot.fileName}`,
+        width: baseScreenshotContents.width,
+        height: baseScreenshotContents.height,
         mismatchPixels: comparisonResult.mismatchPixels,
         mismatchFraction: comparisonResult.mismatchFraction,
       },
@@ -143,9 +157,6 @@ export const diffScreenshots = async ({
   const headDiffResults = (
     await Promise.all(headReplayScreenshots.map(diffAgainstBase))
   ).flat();
-
-  const diffUrl = await getDiffUrl(client, baseReplayId, headReplayId);
-  logger.info(`View screenshot diff at ${diffUrl}`);
 
   return [...missingHeadImagesResults, ...headDiffResults];
 };
@@ -253,7 +264,6 @@ const handler: (options: Options) => Promise<void> = async ({
   const headReplayScreenshots = await getScreenshotFiles(headScreenshotsDir);
 
   const results = await diffScreenshots({
-    client,
     baseReplayId,
     headReplayId,
     baseScreenshotsDir,
@@ -261,7 +271,6 @@ const handler: (options: Options) => Promise<void> = async ({
     baseReplayScreenshots,
     headReplayScreenshots,
     diffOptions,
-    logger,
   });
 
   logger.debug(results);
