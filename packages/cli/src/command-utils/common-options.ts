@@ -32,12 +32,6 @@ export const OPTIONS = {
       "Enables bypass CSP in the browser (danger: this could mean you tests hit your production backend)",
     default: false,
   },
-  padTime: {
-    boolean: true,
-    description:
-      "Pad replay time according to recording duration. Please note this option will be ignored if running with the '--skipPauses' option.",
-    default: true,
-  },
   shiftTime: {
     boolean: true,
     description: "Shift time during simulation to be set as the recording time",
@@ -115,7 +109,6 @@ export const COMMON_REPLAY_OPTIONS = {
   headless: OPTIONS.headless,
   devTools: OPTIONS.devTools,
   bypassCSP: OPTIONS.bypassCSP,
-  padTime: OPTIONS.padTime,
   shiftTime: OPTIONS.shiftTime,
   networkStubbing: OPTIONS.networkStubbing,
   skipPauses: OPTIONS.skipPauses,

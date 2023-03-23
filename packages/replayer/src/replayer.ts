@@ -5,17 +5,13 @@ import {
   ReplayEventsFn,
 } from "@alwaysmeticulous/common";
 import {
-  BootstrapReplayUserInteractionsFn,
   OnReplayTimelineEventFn,
-  ReplayUserInteractionsFn,
   ReplayUserInteractionsResult,
   SetupReplayNetworkStubbingFn,
-  StoryboardOptions,
   VirtualTimeOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import { SetupBrowserContextSeedingFn } from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
 import log, { LogLevelDesc } from "loglevel";
-import { DateTime } from "luxon";
 import { Browser, launch } from "puppeteer";
 import { openStepThroughDebuggerUI } from "./debugger/replay-debugger.ui";
 import { prepareScreenshotsDir, writeOutput } from "./output.utils";
@@ -29,7 +25,6 @@ import {
   getUserAgentOverride,
   initializeReplayData,
 } from "./replay.utils";
-import { takeScreenshot } from "./screenshot.utils";
 import { ReplayTimelineCollector } from "./timeline/collector";
 
 export const replayEvents: ReplayEventsFn = async (options) => {
@@ -59,7 +54,6 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     shiftTime,
     networkStubbing,
     skipPauses,
-    padTime,
     maxDurationMs,
     maxEventCount,
     disableRemoteFonts,
@@ -172,17 +166,12 @@ export const replayEvents: ReplayEventsFn = async (options) => {
     .nodeUserInteractions.location);
   loadReplayUserInteractionsExports?.finish();
 
-  const boostrapUserInteractions: BootstrapReplayUserInteractionsFn =
-    replayUserInteractionsExports.boostrapUserInteractions;
-
-  let replayUserInteractions: ReplayUserInteractionsFn;
-  if (typeof boostrapUserInteractions === "function") {
-    await page.setRequestInterception(true);
-    replayUserInteractions = await boostrapUserInteractions({ page, logLevel });
-  } else {
-    replayUserInteractions =
-      replayUserInteractionsExports.replayUserInteractions;
-  }
+  await page.setRequestInterception(true);
+  const replayUserInteractions =
+    await replayUserInteractionsExports.boostrapUserInteractions({
+      page,
+      logLevel,
+    });
 
   // Set-up network stubbing if required
   if (networkStubbing) {
@@ -251,13 +240,11 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   // Start simulating user interaction events
   logger.info("Starting simulation...");
 
-  const startTime = DateTime.utc();
-  const screenshotsDir = await prepareScreenshotsDir(outputDir);
-  const storyboard: StoryboardOptions =
+  const screenshotsDirectory = await prepareScreenshotsDir(outputDir);
+  const takeIntermediateScreenshots =
     screenshottingOptions.enabled &&
-    screenshottingOptions.storyboardOptions.enabled
-      ? { enabled: true, screenshotsDir }
-      : { enabled: false };
+    screenshottingOptions.storyboardOptions.enabled;
+  const takeEndStateScreenshot = screenshottingOptions.enabled;
   const sessionDuration = getSessionDuration(sessionData);
 
   const onBeforeUserEvent = enableStepThroughDebugger
@@ -275,46 +262,30 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   let browserHasFrozen = false;
   try {
     replayResult = await replayUserInteractions({
+      sdkSemanticVersion: 1,
       page,
       logLevel,
       sessionData,
       moveBeforeClick,
       virtualTime,
-      storyboard,
+      screenshots: {
+        screenshotsDirectory,
+        takeIntermediateScreenshots,
+        takeEndStateScreenshot,
+      },
       onTimelineEvent,
+      sessionDurationMs: sessionDuration.milliseconds,
       ...(onBeforeUserEvent != null ? { onBeforeUserEvent } : {}),
-      ...(sessionDuration != null
-        ? { sessionDurationMs: sessionDuration?.milliseconds }
-        : {}),
       ...(maxDurationMs != null ? { maxDurationMs } : {}),
       ...(maxEventCount != null ? { maxEventCount } : {}),
     });
     logger.debug(`Replay result: ${JSON.stringify(replayResult)}`);
-
-    // Pad replay time according to session duration recorded with rrweb
-    if (
-      padTime &&
-      !skipPauses &&
-      replayResult.length === "full" &&
-      sessionDuration != null
-    ) {
-      const now = DateTime.utc();
-      const timeToPad = startTime.plus(sessionDuration).diff(now).toMillis();
-      logger.debug(`Padtime: ${timeToPad} ${sessionDuration.toISOTime()}`);
-      if (timeToPad > 0) {
-        await new Promise<void>((resolve) => {
-          setTimeout(() => {
-            resolve();
-          }, timeToPad);
-        });
-      }
-    }
   } catch (error) {
     replayResult = { length: "short", reason: "error" };
     logger.error("Error thrown during replay", error);
 
     if (error instanceof Error && error.name === "MeticulousTimeoutError") {
-      // If we hit a timeout error it's sometimes because the browser has fully frozen: this means we won't be able to extract coverage logs, screenshot etc.
+      // If we hit a timeout error it's sometimes because the browser has fully frozen: this means we won't be able to extract coverage logs etc.
       browserHasFrozen = true;
     }
 
@@ -340,24 +311,6 @@ export const replayEvents: ReplayEventsFn = async (options) => {
   logger.debug("Collected coverage data");
 
   logger.info("Simulation done!");
-
-  const replayFinishedAtDeterministicState =
-    replayResult.length === "full" ||
-    (replayResult.length === "short" &&
-      (replayResult.reason === "max events" ||
-        replayResult.reason === "max duration"));
-
-  if (
-    screenshottingOptions.enabled &&
-    replayFinishedAtDeterministicState &&
-    !browserHasFrozen
-  ) {
-    await takeScreenshot({
-      page,
-      outputDir,
-      screenshotSelector: screenshottingOptions.screenshotSelector,
-    });
-  }
 
   logger.debug("Writing output");
   logger.debug(`Output dir: ${outputDir}`);

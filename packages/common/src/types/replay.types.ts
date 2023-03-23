@@ -55,7 +55,6 @@ export interface ReplayExecutionOptions {
   headless: boolean;
   devTools: boolean;
   bypassCSP: boolean;
-  padTime: boolean;
   shiftTime: boolean;
   networkStubbing: boolean;
   skipPauses: boolean;
