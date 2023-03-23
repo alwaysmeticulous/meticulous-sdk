@@ -19,7 +19,7 @@ export {
   InstallVirtualEventLoopOpts,
   SetupReplayNetworkStubbingFn,
   NetworkStubbingOptions,
-  StoryboardOptions,
   BrowserContextSeedingOptions,
   SetupBrowserContextSeedingFn,
+  ScreenshottingOptions,
 } from "./replay/sdk-to-bundle";

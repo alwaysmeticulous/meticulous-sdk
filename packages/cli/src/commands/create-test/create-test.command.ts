@@ -105,7 +105,6 @@ const handler: (options: Options) => Promise<void> = async ({
   // Replay options
   headless,
   screenshotSelector,
-  padTime,
   shiftTime,
   networkStubbing,
   moveBeforeClick,
@@ -157,7 +156,6 @@ const handler: (options: Options) => Promise<void> = async ({
     bypassCSP,
     screenshot: true,
     screenshotSelector,
-    padTime,
     shiftTime,
     disableRemoteFonts,
     noSandbox,

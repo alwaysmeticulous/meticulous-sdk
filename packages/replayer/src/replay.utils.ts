@@ -189,9 +189,9 @@ export const getSessionStartTime = (sessionData: SessionData): DateTime => {
   return DateTime.fromMillis(minUserEventTimestamp).toUTC();
 };
 
-export const getSessionDuration: (
-  sessionData: SessionData
-) => Duration | null = (sessionData) => {
+export const getSessionDuration: (sessionData: SessionData) => Duration = (
+  sessionData
+) => {
   const rrWebTimeRange = getMinMaxRrwebTimestamps(sessionData);
   const rrWebDuration =
     rrWebTimeRange != null ? rrWebTimeRange.max.diff(rrWebTimeRange.min) : null;
@@ -209,7 +209,7 @@ export const getSessionDuration: (
     userEventEventLog[userEventEventLog.length - 1]?.timeStamp;
 
   if (maxUserEventTimestamp == null) {
-    return null; // Cannot calculate the duration if no user events or rrweb events
+    throw new Error("Cannot replay a session with no user events");
   }
 
   return Duration.fromMillis(maxUserEventTimestamp);

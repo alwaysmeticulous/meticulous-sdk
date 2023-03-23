@@ -7,15 +7,24 @@ import {
 } from "../bundle-to-sdk";
 
 export interface ReplayUserInteractionsOptions {
+  /**
+   * A semantic version number for the SDK calling into the replay code.
+   *
+   * This version number is bumped on every API change, and allows the replay
+   * code to detect if it's being called by an old version, and if so throw
+   * and request the user updates to a newer version.
+   */
+  sdkSemanticVersion: number;
   page: Page;
   sessionData: unknown;
   moveBeforeClick: boolean;
   virtualTime?: VirtualTimeOptions;
-  storyboard?: StoryboardOptions;
   maxDurationMs?: number;
   maxEventCount?: number;
-  sessionDurationMs?: number;
+  sessionDurationMs: number;
   logLevel: LogLevelDesc;
+
+  screenshots: ScreenshottingOptions;
 
   onTimelineEvent: OnReplayTimelineEventFn;
 
@@ -24,6 +33,12 @@ export interface ReplayUserInteractionsOptions {
    * and will wait for the completion of the returned promise before continuing.
    */
   onBeforeUserEvent?: OnBeforeUserEventFn;
+}
+
+export interface ScreenshottingOptions {
+  screenshotsDirectory: string;
+  takeIntermediateScreenshots: boolean;
+  takeEndStateScreenshot: boolean;
 }
 
 /** Replay function for user interaction events */
@@ -43,11 +58,6 @@ export type BootstrapReplayUserInteractionsFn = (
 // In future we intend to add new options, but only to the enabled: true case
 // (for example we'll add an optional 'recreatePauses' option)
 export type VirtualTimeOptions = { enabled: false } | { enabled: true };
-
-/** Options for capturing a storyboard made of screenshots during replay */
-export type StoryboardOptions =
-  | { enabled: false }
-  | { enabled: true; screenshotsDir: string };
 
 export type OnReplayTimelineEventFn = (entry: SDKReplayTimelineEntry) => void;
 
