@@ -1,3 +1,4 @@
+import { TestCase } from "@alwaysmeticulous/api";
 import {
   GeneratedBy,
   ReplayEventsDependencies,
@@ -5,7 +6,6 @@ import {
   ReplayTarget,
 } from "@alwaysmeticulous/common";
 import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-types";
-import { TestCase } from "@alwaysmeticulous/api";
 
 export interface ParallelTestsReplayOptions {
   replayTarget: ReplayTarget;
