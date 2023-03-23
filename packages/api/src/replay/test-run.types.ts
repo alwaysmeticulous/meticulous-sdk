@@ -37,7 +37,6 @@ export interface TestRunArguments {
   baseCommitSha?: string | null;
   appUrl?: string | null;
   parallelTasks?: number | null;
-  deflake?: boolean;
   githubSummary?: boolean;
   [key: string]: unknown;
 }
