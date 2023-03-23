@@ -47,4 +47,7 @@ export const COMMON_CHROMIUM_FLAGS = [
   // Disable image animations (including SVG animations).
   // See https://chromium.googlesource.com/chromium/src/+/23d6a478c76d5e31c8bb47fa31bd53f619b536bd/third_party/WebKit/Source/platform/graphics/ImageAnimationPolicy.h
   "--blink-settings=imageAnimationPolicy=2",
+  // Disable smooth scrolling, since this can result in flakes if screenshot is taken mid-scroll
+  // See https://github.com/alwaysmeticulous/meticulous/pull/1360 for more details
+  "--disable-smooth-scrolling",
 ];
