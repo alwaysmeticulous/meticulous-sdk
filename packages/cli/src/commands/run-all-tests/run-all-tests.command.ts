@@ -27,7 +27,6 @@ interface Options
   githubSummary: boolean;
   parallelize: boolean;
   parallelTasks?: number | null | undefined;
-  deflake: boolean;
   maxRetriesOnFailure: number;
   useCache: boolean;
   testsFile?: string | undefined;
@@ -52,7 +51,6 @@ const handler: (options: Options) => Promise<void> = async ({
   githubSummary,
   parallelize,
   parallelTasks: parrelelTasks_,
-  deflake,
   maxRetriesOnFailure,
   useCache,
   testsFile,
@@ -106,7 +104,6 @@ const handler: (options: Options) => Promise<void> = async ({
     baseTestRunId: baseTestRunId ?? null,
     appUrl: appUrl ?? null,
     parallelTasks: parrelelTasks ?? null,
-    deflake,
     maxRetriesOnFailure,
     cachedTestRunResults,
     githubSummary,
@@ -152,11 +149,6 @@ export const runAllTestsCommand = buildCommand("run-all-tests")
         }
         return value;
       },
-    },
-    deflake: {
-      boolean: true,
-      description: "Attempt to deflake failing tests",
-      default: false,
     },
     maxRetriesOnFailure: {
       number: true,

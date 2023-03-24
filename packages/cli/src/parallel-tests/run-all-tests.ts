@@ -58,7 +58,6 @@ export interface Options {
    * Set to 1 to disable parralelism.
    */
   parallelTasks: number | null;
-  deflake: boolean;
 
   /**
    * If set to a value greater than 1 then will re-run any replays that give a screenshot diff
@@ -108,7 +107,6 @@ export const runAllTests = async ({
   executionOptions,
   screenshottingOptions,
   parallelTasks,
-  deflake,
   maxRetriesOnFailure,
   cachedTestRunResults: cachedTestRunResults_,
   githubSummary,
@@ -117,12 +115,6 @@ export const runAllTests = async ({
   onTestRunCreated,
   onTestFinished: onTestFinished_,
 }: Options): Promise<RunAllTestsResult> => {
-  if (deflake && maxRetriesOnFailure > 1) {
-    throw new Error(
-      "Arguments deflake and maxRetriesOnFailure are mutually exclusive"
-    );
-  }
-
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
@@ -174,7 +166,6 @@ export const runAllTests = async ({
         baseCommitSha,
         appUrl,
         parallelTasks,
-        deflake,
         githubSummary,
       },
       environment: getEnvironment(environment),
@@ -283,7 +274,6 @@ export const runAllTests = async ({
             apiToken,
             commitSha,
             testCase,
-            deflake,
             replayTarget: getReplayTargetForTestCase({
               appUrl,
               testCase,

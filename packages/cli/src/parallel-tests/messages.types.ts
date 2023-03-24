@@ -1,13 +1,13 @@
 import log from "loglevel";
 import { DetailedTestCaseResult } from "../config/config.types";
-import { DeflakeReplayCommandHandlerOptions } from "../deflake-tests/deflake-tests.handler";
+import { ParallelTestsReplayOptions } from "./parallel-replay.types";
 
 export interface InitMessage {
   kind: "init";
   data: {
     logLevel: log.LogLevel[keyof log.LogLevel];
     dataDir: string;
-    replayOptions: DeflakeReplayCommandHandlerOptions;
+    replayOptions: ParallelTestsReplayOptions;
   };
 }
 

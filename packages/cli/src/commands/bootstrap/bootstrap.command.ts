@@ -22,7 +22,7 @@ const handler: (options: Options) => Promise<void> = async () => {
   logger.info(`Setting up ${chalk.green("test:meticulous")} script...`);
   await npmSetScript({
     script: "test:meticulous",
-    command: "meticulous run-all-tests --headless --parallelize --deflake",
+    command: "meticulous run-all-tests --headless --parallelize",
   });
 };
 

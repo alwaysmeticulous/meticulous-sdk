@@ -1,13 +1,5 @@
-import { TestCase } from "@alwaysmeticulous/api";
 import { TestCaseReplayOptions } from "@alwaysmeticulous/api/dist/replay/test-run.types";
-import {
-  GeneratedBy,
-  METICULOUS_LOGGER_NAME,
-  ReplayEventsDependencies,
-  ReplayExecutionOptions,
-  ReplayTarget,
-} from "@alwaysmeticulous/common";
-import log from "loglevel";
+import { ReplayExecutionOptions } from "@alwaysmeticulous/common";
 import {
   ScreenshotAssertionsEnabledOptions,
   ScreenshotDiffOptions,
@@ -15,8 +7,9 @@ import {
 import { replayCommandHandler } from "../commands/replay/replay.command";
 import { hasNotableDifferences } from "../commands/screenshot-diff/utils/has-notable-differences";
 import { DetailedTestCaseResult } from "../config/config.types";
+import { ParallelTestsReplayOptions } from "./parallel-replay.types";
 
-const handleReplay = async ({
+export const handleReplay = async ({
   testCase,
   replayTarget,
   executionOptions,
@@ -28,7 +21,7 @@ const handleReplay = async ({
   replayEventsDependencies,
   suppressScreenshotDiffLogging,
   baseTestRunId,
-}: HandleReplayOptions): Promise<DetailedTestCaseResult> => {
+}: ParallelTestsReplayOptions): Promise<DetailedTestCaseResult> => {
   const { replay, screenshotDiffResultsByBaseReplayId } =
     await replayCommandHandler({
       replayTarget,
@@ -62,46 +55,6 @@ const handleReplay = async ({
     result,
     screenshotDiffResultsByBaseReplayId,
   };
-};
-
-export interface DeflakeReplayCommandHandlerOptions
-  extends HandleReplayOptions {
-  deflake: boolean;
-}
-
-interface HandleReplayOptions {
-  replayTarget: ReplayTarget;
-  executionOptions: ReplayExecutionOptions;
-  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
-  testCase: TestCase;
-  apiToken: string | null;
-  commitSha: string;
-  generatedBy: GeneratedBy;
-  testRunId: string | null;
-  baseTestRunId: string | null;
-  replayEventsDependencies: ReplayEventsDependencies;
-  suppressScreenshotDiffLogging: boolean;
-}
-
-export const deflakeReplayCommandHandler = async ({
-  deflake,
-  ...otherOptions
-}: DeflakeReplayCommandHandlerOptions): Promise<DetailedTestCaseResult> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-
-  const firstResult = await handleReplay(otherOptions);
-  if (firstResult.result === "pass" || !deflake) {
-    return firstResult;
-  }
-
-  const secondResult = await handleReplay(otherOptions);
-  if (secondResult.result === "fail") {
-    return secondResult;
-  }
-
-  const thirdResult = await handleReplay(otherOptions);
-  logger.info(`FLAKE: ${thirdResult.title} => ${thirdResult.result}`);
-  return thirdResult;
 };
 
 const applyTestCaseExecutionOptionOverrides = (

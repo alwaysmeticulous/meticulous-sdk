@@ -5,10 +5,10 @@ import {
 import * as Sentry from "@sentry/node";
 import log from "loglevel";
 import { Duration } from "luxon";
-import { deflakeReplayCommandHandler } from "../deflake-tests/deflake-tests.handler";
 import { initLogger } from "../utils/logger.utils";
 import { initSentry, SENTRY_FLUSH_TIMEOUT } from "../utils/sentry.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
+import { handleReplay } from "./parallel-replay.handler";
 
 const INIT_TIMEOUT = Duration.fromObject({ second: 1 });
 
@@ -53,7 +53,7 @@ const main = async () => {
   logger.setLevel(logLevel);
   setMeticulousLocalDataDir(dataDir);
 
-  const result = await deflakeReplayCommandHandler(replayOptions);
+  const result = await handleReplay(replayOptions);
   const resultMessage: ResultMessage = {
     kind: "result",
     data: {
