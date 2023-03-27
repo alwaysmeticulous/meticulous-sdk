@@ -20,7 +20,7 @@ import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-type
 import { readConfig } from "../config/config";
 import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
 import { loadReplayEventsDependencies } from "../local-data/replay-assets";
-import { runAllTestsInParallel } from "../parallel-tests/parallel-tests.handler";
+import { runAllTestsInParallel } from "./parallel-tests.handler";
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
 import { mergeTestCases, sortResults } from "../utils/run-all-tests.utils";
@@ -66,6 +66,17 @@ export interface Options {
    */
   maxRetriesOnFailure: number;
 
+  /**
+   * If set to a value greater than 0 then will re-run all replays the specified number of times
+   * and mark them as a flake if the screenshot generated on one of the retryed replays differs from that
+   * in the first replay.
+   *
+   * This is useful for checking flake rates.
+   *
+   * This option is mutually exclusive with maxRetriesOnFailure.
+   */
+  rerunTestsNTimes: number;
+
   githubSummary: boolean;
 
   /**
@@ -108,6 +119,7 @@ export const runAllTests = async ({
   screenshottingOptions,
   parallelTasks,
   maxRetriesOnFailure,
+  rerunTestsNTimes,
   cachedTestRunResults: cachedTestRunResults_,
   githubSummary,
   environment,
@@ -264,6 +276,7 @@ export const runAllTests = async ({
     testsToRun,
     parallelTasks,
     maxRetriesOnFailure,
+    rerunTestsNTimes,
     executeTest: (testCase, isRetry) => {
       const initMessage: InitMessage = {
         kind: "init",

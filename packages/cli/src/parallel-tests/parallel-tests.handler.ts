@@ -11,6 +11,7 @@ export interface RunAllTestsInParallelOptions {
   testsToRun: TestCase[];
   parallelTasks: number | null;
   maxRetriesOnFailure: number;
+  rerunTestsNTimes: number;
 
   executeTest: (
     testCase: TestCase,
@@ -40,10 +41,17 @@ export const runAllTestsInParallel: (
   testsToRun,
   parallelTasks,
   maxRetriesOnFailure,
+  rerunTestsNTimes,
   executeTest,
   onTestFinished,
   onTestFailedToRun,
 }) => {
+  if (maxRetriesOnFailure && rerunTestsNTimes) {
+    throw new Error(
+      "maxRetriesOnFailure and rerunTestsNTimes are mutually exclusive."
+    );
+  }
+
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   let nextId = 0;
   let queue: RerunnableTestCase[] = testsToRun.map((test) => ({
@@ -84,8 +92,24 @@ export const runAllTestsInParallel: (
       .catch(() => null)
       .then(async (result) => {
         const resultsForTestCase = resultsByTestId.get(id);
+
+        // Re-run the test if needed, comparing to the base replay.
+        if (!isRetry) {
+          queue.push(
+            ...Array.from(new Array(rerunTestsNTimes)).map(() => ({
+              ...testCase,
+              id,
+              baseReplayId: result?.headReplayId,
+            }))
+          );
+        }
+
         if (resultsForTestCase != null && result != null) {
-          logRetrySummary(testName({ id, ...testCase }), result);
+          logRetrySummary(
+            testName({ id, ...testCase }),
+            result,
+            resultsForTestCase.currentResult
+          );
         }
 
         if (
@@ -133,9 +157,14 @@ export const runAllTestsInParallel: (
         // Our work is done for this test case if the first result was a pass,
         // we've performed all the retries, or one of the retries already proved
         // the result as flakey
-        const isFinalResult =
-          mergedResult.result !== "fail" ||
-          numberOfRetriesExecuted === maxRetriesOnFailure;
+        let isFinalResult: boolean;
+        if (rerunTestsNTimes > 0) {
+          isFinalResult = numberOfRetriesExecuted >= rerunTestsNTimes;
+        } else {
+          isFinalResult =
+            mergedResult.result !== "fail" ||
+            numberOfRetriesExecuted >= maxRetriesOnFailure;
+        }
 
         if (isFinalResult) {
           // Cancel any replays that are still scheduled
@@ -182,9 +211,13 @@ export const runAllTestsInParallel: (
     ++inProgress;
 
     if (resultsByTestId.has(testCase.id)) {
-      logger.info(
-        `Test ${testName(testCase)} failed. Retrying to check for flakes...`
-      );
+      if (maxRetriesOnFailure > 0) {
+        logger.info(
+          `Test ${testName(testCase)} failed. Retrying to check for flakes...`
+        );
+      } else if (rerunTestsNTimes > 0) {
+        logger.info(`Re-running ${testName(testCase)} to check for flakes...`);
+      }
     }
     startTask(testCase);
 
@@ -200,12 +233,15 @@ export const runAllTestsInParallel: (
 
 const logRetrySummary = (
   nameOfTest: string,
-  retryResult: DetailedTestCaseResult
+  retryResult: DetailedTestCaseResult,
+  resultSoFar: DetailedTestCaseResult
 ) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   if (retryResult.result === "pass") {
     logger.info(
-      `Retried taking screenshots for failed test ${nameOfTest}, but got the same results`
+      `Retried taking screenshots for${
+        resultSoFar.result == "fail" ? " failed" : ""
+      } test ${nameOfTest}, but got the same results`
     );
   } else {
     const numDifferingScreenshots = flattenScreenshotDiffResults(

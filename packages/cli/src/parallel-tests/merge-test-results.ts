@@ -1,5 +1,7 @@
-import { ScreenshotIdentifier } from "@alwaysmeticulous/api";
-import { SingleTryScreenshotDiffResult } from "@alwaysmeticulous/api/dist/replay/replay-diff.types";
+import {
+  ScreenshotIdentifier,
+  SingleTryScreenshotDiffResult,
+} from "@alwaysmeticulous/api";
 import { logger } from "@sentry/utils";
 import stringify from "fast-json-stable-stringify";
 import { DetailedTestCaseResult } from "../config/config.types";
@@ -108,6 +110,9 @@ export const mergeResults = ({
     result:
       currentResult.result === "fail" && noLongerHasFailures
         ? "flake"
+        : currentResult.result === "pass" &&
+          comparisonToHeadReplay.result === "fail"
+        ? "fail"
         : currentResult.result,
     screenshotDiffResultsByBaseReplayId: groupScreenshotDiffResults(
       newScreenshotDiffResults

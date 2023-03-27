@@ -123,4 +123,16 @@ describe("mergeResults", () => {
       ])
     );
   });
+
+  it("returns a fail outcome if the original outcome was a pass and there are flakes", () => {
+    const currentResult = testResult("pass", [noDiff(0), noDiff(1)]);
+    const comparisonToHeadReplay = testResult("fail", [diff(0), noDiff(1)]);
+    const mergedResult = mergeResults({
+      currentResult,
+      comparisonToHeadReplay,
+    });
+    expect(mergedResult).toEqual(
+      testResult("fail", [flake(0, noDiff(), [diff()]), noDiff(1)])
+    );
+  });
 });

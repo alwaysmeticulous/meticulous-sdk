@@ -28,6 +28,7 @@ interface Options
   parallelize: boolean;
   parallelTasks?: number | null | undefined;
   maxRetriesOnFailure: number;
+  rerunTestsNTimes: number;
   useCache: boolean;
   testsFile?: string | undefined;
   maxDurationMs: number | null | undefined;
@@ -52,6 +53,7 @@ const handler: (options: Options) => Promise<void> = async ({
   parallelize,
   parallelTasks: parrelelTasks_,
   maxRetriesOnFailure,
+  rerunTestsNTimes,
   useCache,
   testsFile,
   disableRemoteFonts,
@@ -105,6 +107,7 @@ const handler: (options: Options) => Promise<void> = async ({
     appUrl: appUrl ?? null,
     parallelTasks: parrelelTasks ?? null,
     maxRetriesOnFailure,
+    rerunTestsNTimes,
     cachedTestRunResults,
     githubSummary,
   });
@@ -154,6 +157,12 @@ export const runAllTestsCommand = buildCommand("run-all-tests")
       number: true,
       description:
         "If set to a value greater than 0 then will re-run any replays that give a screenshot diff and mark them as a flake if the screenshot generated on one of the retryed replays differs from that in the first replay.",
+      default: 0,
+    },
+    rerunTestsNTimes: {
+      number: true,
+      description:
+        "If set to a value greater than 0 then will re-run all replays the specified number of times and mark them as a flake if the screenshot generated on one of the retryed replays differs from that in the first replay.",
       default: 0,
     },
     useCache: {
