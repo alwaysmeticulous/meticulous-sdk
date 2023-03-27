@@ -42,9 +42,6 @@ export const mergeResults = ({
   const newScreenshotDiffResults = flattenScreenshotDiffResults(
     currentResult
   ).map((currentDiff): ScreenshotDiffResultWithBaseReplayId => {
-    if (currentDiff.outcome === "no-diff") {
-      return currentDiff;
-    }
     const hash = hashScreenshotIdentifier(currentDiff.identifier);
     const diffWhenRetrying = retryDiffById.get(hash);
 

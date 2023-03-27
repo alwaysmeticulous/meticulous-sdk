@@ -21,14 +21,16 @@ describe("mergeResults", () => {
     expect(mergedResult).toEqual(testResult("fail", [diff(0), noDiff(1)]));
   });
 
-  it("ignores diffs to screenshots which originally passed", () => {
+  it("doesn't ignore diffs to screenshots which originally passed", () => {
     const currentResult = testResult("pass", [noDiff(0), noDiff(1)]);
     const comparisonToHeadReplay = testResult("fail", [noDiff(0), diff(1)]);
     const mergedResult = mergeResults({
       currentResult,
       comparisonToHeadReplay,
     });
-    expect(mergedResult).toEqual(testResult("pass", [noDiff(0), noDiff(1)]));
+    expect(mergedResult).toEqual(
+      testResult("fail", [noDiff(0), flake(1, noDiff(), [diff()])])
+    );
   });
 
   it("marks screenshots as flakes if the screenshot comparison originally failed, but the second retry gives a different screenshot again", () => {
