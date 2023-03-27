@@ -117,7 +117,7 @@ export interface ScreenshotDiffResultFlake {
   outcome: "flake";
 
   /**
-   * The original diff. Can be any outcome but for 'no-diff'.
+   * The original diff. Can be any outcome.
    */
   diffToBaseScreenshot: SingleTryScreenshotDiffResult;
 
