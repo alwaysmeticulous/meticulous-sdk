@@ -20,7 +20,6 @@ import { ScreenshotAssertionsEnabledOptions } from "../command-utils/common-type
 import { readConfig } from "../config/config";
 import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
 import { loadReplayEventsDependencies } from "../local-data/replay-assets";
-import { runAllTestsInParallel } from "./parallel-tests.handler";
 import { getReplayTargetForTestCase } from "../utils/config.utils";
 import { writeGitHubSummary } from "../utils/github-summary.utils";
 import { mergeTestCases, sortResults } from "../utils/run-all-tests.utils";
@@ -28,6 +27,7 @@ import { getEnvironment } from "../utils/test-run-environment.utils";
 import { getMeticulousVersion } from "../utils/version.utils";
 import { executeTestInChildProcess } from "./execute-test-in-child-process";
 import { InitMessage } from "./messages.types";
+import { runAllTestsInParallel } from "./parallel-tests.handler";
 import { TestRunProgress } from "./run-all-tests.types";
 
 export type RunAllTestsTestRun = Pick<
