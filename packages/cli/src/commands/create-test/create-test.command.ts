@@ -104,7 +104,6 @@ const handler: (options: Options) => Promise<void> = async ({
   trace,
   // Replay options
   headless,
-  screenshotSelector,
   shiftTime,
   networkStubbing,
   moveBeforeClick,
@@ -155,7 +154,6 @@ const handler: (options: Options) => Promise<void> = async ({
     devTools,
     bypassCSP,
     screenshot: true,
-    screenshotSelector,
     shiftTime,
     disableRemoteFonts,
     noSandbox,
@@ -213,11 +211,6 @@ export const createTestCommand = buildCommand("create-test")
       description: "Enable verbose logging",
     },
     // Replay options
-    screenshotSelector: {
-      string: true,
-      description:
-        "Query selector to screenshot a specific DOM element instead of the whole page",
-    },
     moveBeforeClick: OPTIONS.moveBeforeClick,
     cookiesFile: {
       string: true,

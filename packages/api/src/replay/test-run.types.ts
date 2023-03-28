@@ -23,8 +23,6 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
    */
   simulationIdForAssets?: string | undefined;
 
-  screenshotSelector?: string;
-
   moveBeforeClick?: boolean;
 }
 

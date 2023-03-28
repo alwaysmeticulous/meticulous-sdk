@@ -85,7 +85,6 @@ const handler: (options: Options) => Promise<void> = async ({
     : { enabled: false };
   const screenshottingOptions: ScreenshotAssertionsOptions = {
     enabled: true,
-    screenshotSelector: null, // this is only specified on a test case level
     diffOptions: { diffPixelThreshold, diffThreshold },
     storyboardOptions,
   };
