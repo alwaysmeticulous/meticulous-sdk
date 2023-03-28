@@ -209,8 +209,6 @@ describe("runAllTestsInParallel", () => {
 
   it("retries N times if rerunTestsNTimes > 0", async () => {
     let rerunNum = 0;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // const { baseTestRunId, ...testCaseWithoutBase } = testCase(0);
     const results = await runAllTestsInParallel({
       testsToRun: [testCase(0)],
       parallelTasks: 2,
