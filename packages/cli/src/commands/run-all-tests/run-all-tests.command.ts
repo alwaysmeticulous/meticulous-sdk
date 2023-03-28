@@ -1,13 +1,11 @@
-import {
-  createClient,
-  getCachedTestRunResults,
-} from "@alwaysmeticulous/client";
+import { createClient } from "@alwaysmeticulous/client";
 import {
   ReplayExecutionOptions,
   StoryboardOptions,
   getCommitSha,
 } from "@alwaysmeticulous/common";
 import { runAllTests } from "@alwaysmeticulous/replay-orchestrator";
+import { getCachedTestRunResults } from "../../api/test-run.api";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
@@ -93,7 +91,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
   const parrelelTasks = parallelize ? parrelelTasks_ : 1;
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
-  const client = createClient({ apiToken });
+  const client = createClient({ apiToken }); // TODO: Push client creation down into runAllTests (don't want to expose Axios in the API)
   const cachedTestRunResults = useCache
     ? await getCachedTestRunResults({ client, commitSha })
     : [];

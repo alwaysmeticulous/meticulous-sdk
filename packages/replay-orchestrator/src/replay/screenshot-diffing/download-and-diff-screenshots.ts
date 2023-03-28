@@ -5,11 +5,11 @@ import {
   ScreenshotDiffResult,
   ScreenshotIdentifier,
 } from "@alwaysmeticulous/api";
+import { downloadFile } from "@alwaysmeticulous/download-helpers";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
-import { downloadFile } from "../../../api/download";
-import { getBaseScreenshots } from "../../../api/test-run.api";
-import { ScreenshotLocator } from "../../../api/types";
+import { getBaseScreenshots } from "../../api/test-run.api";
+import { ScreenshotLocator } from "../../api/types";
 import { diffDownloadedScreenshots } from "./diff-downloaded-screenshots";
 import { getScreenshotFiles } from "./get-screenshot-files";
 import { logDifferences } from "./log-differences";

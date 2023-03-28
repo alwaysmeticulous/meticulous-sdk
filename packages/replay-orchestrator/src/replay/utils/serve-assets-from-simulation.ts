@@ -1,10 +1,11 @@
 import { existsSync } from "fs";
 import { Server } from "http";
+import { join } from "path";
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import {
   getOrFetchReplayArchive,
-  getSnapshottedAssetsDir,
-} from "@alwaysmeticulous/download-utils";
+  getReplayDir,
+} from "@alwaysmeticulous/download-helpers";
 import { AxiosInstance } from "axios";
 import express from "express";
 import findFreePort from "find-free-port";
@@ -71,3 +72,6 @@ const retryUntilFreePortFound = async (
 
 const randomNumberBetween = (inclusiveStart: number, exclusiveEnd: number) =>
   Math.floor(Math.random() * (exclusiveEnd - inclusiveStart) + inclusiveStart);
+
+const getSnapshottedAssetsDir = (replayId: string) =>
+  join(getReplayDir(replayId), "snapshotted-assets");

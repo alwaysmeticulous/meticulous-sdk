@@ -6,8 +6,8 @@ import {
   ReplayTarget,
   StoryboardOptions,
 } from "@alwaysmeticulous/common";
+import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers/dist/scripts/replay-assets";
 import { performReplay } from "@alwaysmeticulous/replay-orchestrator";
-import { loadReplayEventsDependencies } from "../../../../download-helpers/src/scripts/replay-assets";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
@@ -99,6 +99,9 @@ export const rawReplayCommandHandler = async ({
         storyboardOptions,
       }
     : { enabled: false };
+
+  // TODO: Work out how to handle this one
+  // We really want this to be inside replay-orchestrator, since it's an implementation detail
   const replayEventsDependencies = await loadReplayEventsDependencies();
   const { replay } = await performReplay({
     replayTarget: getReplayTarget({

@@ -26,12 +26,12 @@
     "test": "jest"
   },
   "dependencies": {
-    "@alwaysmeticulous/client": "^2.40.0",
+    "@alwaysmeticulous/client": "link:../client",
     "@alwaysmeticulous/common": "^2.40.0",
-    "@alwaysmeticulous/download-utils": "^2.40.0",
-    "@alwaysmeticulous/replay-orchestrator": "^2.40.0",
+    "@alwaysmeticulous/download-helpers": "link:../download-helpers",
+    "@alwaysmeticulous/replay-orchestrator": "link:../replay-orchestrator",
+    "@alwaysmeticulous/sentry": "link:../sentry",
     "@sentry/node": "^7.36.0",
-    "@sentry/tracing": "^7.36.0",
     "adm-zip": "^0.5.9",
     "archiver": "^5.3.1",
     "axios": "^1.2.6",

@@ -5,4 +5,3 @@ export { replayCommand } from "./commands/replay/replay.command";
 export { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.command";
 export { showProjectCommand } from "./commands/show-project/show-project.command";
 export { initLogger, setLogLevel } from "./utils/logger.utils";
-export { initSentry } from "./utils/sentry.utils";

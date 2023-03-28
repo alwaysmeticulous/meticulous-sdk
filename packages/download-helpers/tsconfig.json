@@ -8,6 +8,6 @@
     /* Emit */
     "outDir": "./dist"
   },
-  "include": ["src", "../client/src/api/types.ts", "../client/src/api/replay.api.ts"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }

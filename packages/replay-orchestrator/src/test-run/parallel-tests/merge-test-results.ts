@@ -2,15 +2,16 @@ import {
   ScreenshotDiffResult,
   ScreenshotIdentifier,
   SingleTryScreenshotDiffResult,
+  TestCaseResult,
 } from "@alwaysmeticulous/api";
 import stringify from "fast-json-stable-stringify";
-import { hasNotableDifferences } from "../commands/replay/screenshot-diffing/utils/has-notable-differences";
+import { hasNotableDifferences } from "../../replay/screenshot-diffing/utils/has-notable-differences";
 import {
   flattenScreenshotDiffResults,
   groupScreenshotDiffResults,
   ScreenshotDiffResultWithBaseReplayId,
 } from "./screenshot-diff-results.utils";
-import { DetailedTestCaseResult, TestCaseResult } from "./utils/config.types";
+import { DetailedTestCaseResult } from "./utils/config.types";
 
 export interface ResultsToMerge {
   currentResult: DetailedTestCaseResult;

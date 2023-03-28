@@ -2,13 +2,10 @@ import {
   METICULOUS_LOGGER_NAME,
   setMeticulousLocalDataDir,
 } from "@alwaysmeticulous/common";
+import { initSentry, SENTRY_FLUSH_TIMEOUT } from "@alwaysmeticulous/sentry";
 import * as Sentry from "@sentry/node";
 import log from "loglevel";
 import { Duration } from "luxon";
-import {
-  initSentry,
-  SENTRY_FLUSH_TIMEOUT,
-} from "../../../../cli/src/utils/sentry.utils";
 import { InitMessage, ResultMessage } from "./messages.types";
 import { handleReplay } from "./parallel-replay.handler";
 

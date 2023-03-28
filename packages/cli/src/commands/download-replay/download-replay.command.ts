@@ -1,10 +1,10 @@
+import { createClient } from "@alwaysmeticulous/client";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
 } from "@alwaysmeticulous/download-helpers";
 import log from "loglevel";
-import { createClient } from "../../../../client/src/client";
 import { buildCommand } from "../../command-utils/command-builder";
 
 interface Options {

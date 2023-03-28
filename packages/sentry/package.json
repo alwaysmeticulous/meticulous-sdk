@@ -1,7 +1,7 @@
 {
-  "name": "@alwaysmeticulous/download-helpers",
+  "name": "@alwaysmeticulous/sentry",
   "version": "2.40.0",
-  "description": "Helper utilities for downloading files & scripts required to execute replays",
+  "description": "Helper methods for connecting to Sentry",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,11 +19,9 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.40.0",
-    "@alwaysmeticulous/client": "link:../client"
-  },
-  "devDependencies": {
-    "@alwaysmeticulous/api": "^2.40.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.40.0"
+    "@sentry/node": "^7.36.0",
+    "@sentry/tracing": "^7.36.0",
+    "luxon": "^3.2.1"
   },
   "author": {
     "name": "The Meticulous Team",

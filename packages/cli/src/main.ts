@@ -1,4 +1,5 @@
 import { setMeticulousLocalDataDir } from "@alwaysmeticulous/common";
+import { initSentry } from "@alwaysmeticulous/sentry";
 import yargs from "yargs";
 import { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
 import { downloadSessionCommand } from "./commands/download-session/download-session.command";
@@ -7,7 +8,7 @@ import { replayCommand } from "./commands/replay/replay.command";
 import { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.command";
 import { showProjectCommand } from "./commands/show-project/show-project.command";
 import { initLogger, setLogLevel } from "./utils/logger.utils";
-import { initSentry, setOptions } from "./utils/sentry.utils";
+import { setOptions } from "./utils/sentry.utils";
 
 const handleDataDir: (dataDir: string | null | undefined) => void = (
   dataDir

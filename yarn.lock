@@ -2,6 +2,35 @@
 # yarn lockfile v1
 
 
+"@alwaysmeticulous/client@link:packages/client":
+  version "2.40.0"
+  dependencies:
+    "@alwaysmeticulous/common" "^2.40.0"
+    axios "^1.2.6"
+
+"@alwaysmeticulous/download-helpers@link:packages/download-helpers":
+  version "2.40.0"
+  dependencies:
+    "@alwaysmeticulous/client" "link:packages/client"
+    "@alwaysmeticulous/common" "^2.40.0"
+
+"@alwaysmeticulous/replay-orchestrator@link:packages/replay-orchestrator":
+  version "2.40.0"
+  dependencies:
+    "@alwaysmeticulous/client" "link:packages/client"
+    "@alwaysmeticulous/common" "^2.40.0"
+    "@alwaysmeticulous/download-helpers" "link:packages/download-helpers"
+    "@alwaysmeticulous/sentry" "link:packages/sentry"
+    find-free-port "^2.0.0"
+
+"@alwaysmeticulous/sentry@link:packages/sentry":
+  version "2.40.0"
+  dependencies:
+    "@alwaysmeticulous/common" "^2.40.0"
+    "@sentry/node" "^7.36.0"
+    "@sentry/tracing" "^7.36.0"
+    luxon "^3.2.1"
+
 "@ampproject/remapping@^2.1.0":
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/@ampproject/remapping/-/remapping-2.2.0.tgz#56c133824780de3174aed5ab6834f3026790154d"
@@ -7292,7 +7321,7 @@ neo-async@^2.6.0:
   resolved "https://registry.yarnpkg.com/neo-async/-/neo-async-2.6.2.tgz#b4aafb93e3aeb2d8174ca53cf163ab7d7308305f"
   integrity sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==
 
-next@^13.1.6, next@^13.2.1:
+next@^13.1.6:
   version "13.2.4"
   resolved "https://registry.yarnpkg.com/next/-/next-13.2.4.tgz#2363330392b0f7da02ab41301f60857ffa7f67d6"
   integrity sha512-g1I30317cThkEpvzfXujf0O4wtaQHtDCLhlivwlTJ885Ld+eOgcz7r3TGQzeU+cSRoNHtD8tsJgzxVdYojFssw==

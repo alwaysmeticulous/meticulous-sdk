@@ -5,13 +5,7 @@ import {
   ScreenshotAssertionsOptions,
   ScreenshotDiffOptions,
 } from "@alwaysmeticulous/api";
-import {
-  createClient,
-  createReplay,
-  getReplayCommandId,
-  getReplayPushUrl,
-  putReplayPushedStatus,
-} from "@alwaysmeticulous/client";
+import { createClient } from "@alwaysmeticulous/client";
 import {
   GeneratedBy,
   getMeticulousLocalDataDir,
@@ -26,8 +20,6 @@ import {
   getCommitSha,
 } from "@alwaysmeticulous/common";
 import {
-  createReplayArchive,
-  deleteArchive,
   sanitizeFilename,
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
@@ -36,9 +28,18 @@ import * as Sentry from "@sentry/node";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { DateTime } from "luxon";
+import {
+  createReplay,
+  getReplayCommandId,
+  getReplayPushUrl,
+  putReplayPushedStatus,
+} from "../api/replay.api";
 import { downloadAndDiffScreenshots } from "./screenshot-diffing/download-and-diff-screenshots";
+import { createReplayArchive, deleteArchive } from "./utils/archive";
 import { exitEarlyIfSkipUploadEnvVarSet } from "./utils/exit-early-if-skip-upload-env-var-set";
 import { getReplayUrl } from "./utils/get-replay-url";
+import { serveAssetsFromSimulation } from "./utils/serve-assets-from-simulation";
+import { uploadArchive } from "./utils/upload";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;

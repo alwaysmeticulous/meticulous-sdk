@@ -83,8 +83,5 @@ export const getOrFetchReplayArchive = async (
   }
 };
 
-export const getSnapshottedAssetsDir = (replayId: string) =>
-  join(getReplayDir(replayId), "snapshotted-assets");
-
 export const getReplayDir = (replayId: string) =>
   join(getMeticulousLocalDataDir(), "replays", replayId);

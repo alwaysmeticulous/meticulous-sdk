@@ -9,11 +9,7 @@ import {
 import {
   createClient,
   getProject,
-  createReplayDiff,
-  createTestRun,
   getLatestTestRunId,
-  getTestRunUrl,
-  putTestRunResults,
 } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
@@ -21,8 +17,16 @@ import {
   ReplayExecutionOptions,
   getMeticulousVersion,
 } from "@alwaysmeticulous/common";
+import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers/dist/scripts/replay-assets";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
+import { createReplayDiff } from "../../api/replay-diff.api";
+import {
+  getTestRunUrl,
+  putTestRunResults,
+  createTestRun,
+} from "../../api/test-run.api";
+import { executeTestInChildProcess } from "./execute-test-in-child-process";
 import { InitMessage } from "./messages.types";
 import { runAllTestsInParallel } from "./parallel-tests.handler";
 import { TestRunProgress } from "./run-all-tests.types";
@@ -165,6 +169,7 @@ export const runAllTests = async ({
 
   const meticulousSha = await getMeticulousVersion();
 
+  // TODO: Work this out
   const replayEventsDependencies = await loadReplayEventsDependencies();
 
   const testRun = await createTestRun({
