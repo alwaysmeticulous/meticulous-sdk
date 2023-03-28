@@ -25,6 +25,7 @@ describe("runAllTestsInParallel", () => {
       testsToRun: [testCase(0), testCase(1), testCase(2), testCase(3)],
       parallelTasks: 2,
       maxRetriesOnFailure: 0,
+      rerunTestsNTimes: 0,
       executeTest: async (
         testCase: TestCase
       ): Promise<DetailedTestCaseResult> => {
@@ -96,6 +97,7 @@ describe("runAllTestsInParallel", () => {
       testsToRun: [testCase(0), testCase(1), testCase(2), testCase(3)],
       parallelTasks: 2,
       maxRetriesOnFailure: 0,
+      rerunTestsNTimes: 0,
       executeTest: async (
         testCase: TestCase
       ): Promise<DetailedTestCaseResult> => {
@@ -133,6 +135,7 @@ describe("runAllTestsInParallel", () => {
       testsToRun: [testCase(0)],
       parallelTasks: 2,
       maxRetriesOnFailure: 0,
+      rerunTestsNTimes: 0,
       executeTest: async (
         testCase: TestCase
       ): Promise<DetailedTestCaseResult> => {
@@ -149,6 +152,7 @@ describe("runAllTestsInParallel", () => {
       testsToRun: [testCase(0)],
       parallelTasks: 2,
       maxRetriesOnFailure: 10,
+      rerunTestsNTimes: 0,
       executeTest: async (
         testCase: TestCase,
         isRetry
@@ -182,6 +186,7 @@ describe("runAllTestsInParallel", () => {
       testsToRun: [testCase(0)],
       parallelTasks: 2,
       maxRetriesOnFailure: 3,
+      rerunTestsNTimes: 0,
       executeTest: async (
         testCase: TestCase,
         isRetry
@@ -197,6 +202,39 @@ describe("runAllTestsInParallel", () => {
       testResult(
         "fail",
         [diff(0), flake(1, diff(), [diff(), diff(), diff()])],
+        testCase(0)
+      ),
+    ]);
+  });
+
+  it("retries N times if rerunTestsNTimes > 0", async () => {
+    let rerunNum = 0;
+    const results = await runAllTestsInParallel({
+      testsToRun: [testCase(0)],
+      parallelTasks: 2,
+      maxRetriesOnFailure: 0,
+      rerunTestsNTimes: 3,
+      executeTest: async (
+        testCase: TestCase,
+        isRetry
+      ): Promise<DetailedTestCaseResult> => {
+        if (!isRetry) {
+          return testResult("pass", [diff(0), noDiff(1)], testCase);
+        }
+        if (rerunNum === 2) {
+          return testResult("fail", [missingHead(0), diff(1)], testCase);
+        }
+        rerunNum++;
+        return testResult("pass", [noDiff(0), noDiff(1)], testCase);
+      },
+    });
+
+    expect(rerunNum).toEqual(2);
+    expect(results).toEqual([
+      testResult(
+        // Flake outcome is returned iff all screenshots are flaky.
+        "flake",
+        [flake(0, diff(), [missingHead()]), flake(1, noDiff(), [diff()])],
         testCase(0)
       ),
     ]);

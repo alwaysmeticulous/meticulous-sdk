@@ -1,8 +1,12 @@
-import { ScreenshotIdentifier } from "@alwaysmeticulous/api";
-import { SingleTryScreenshotDiffResult } from "@alwaysmeticulous/api/dist/replay/replay-diff.types";
+import {
+  ScreenshotDiffResult,
+  ScreenshotIdentifier,
+  SingleTryScreenshotDiffResult,
+} from "@alwaysmeticulous/api";
 import { logger } from "@sentry/utils";
 import stringify from "fast-json-stable-stringify";
-import { DetailedTestCaseResult } from "../config/config.types";
+import { hasNotableDifferences } from "../commands/screenshot-diff/utils/has-notable-differences";
+import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
 import {
   flattenScreenshotDiffResults,
   groupScreenshotDiffResults,
@@ -42,9 +46,6 @@ export const mergeResults = ({
   const newScreenshotDiffResults = flattenScreenshotDiffResults(
     currentResult
   ).map((currentDiff): ScreenshotDiffResultWithBaseReplayId => {
-    if (currentDiff.outcome === "no-diff") {
-      return currentDiff;
-    }
     const hash = hashScreenshotIdentifier(currentDiff.identifier);
     const diffWhenRetrying = retryDiffById.get(hash);
 
@@ -102,16 +103,12 @@ export const mergeResults = ({
     }
   });
 
-  const noLongerHasFailures = newScreenshotDiffResults.every(
-    ({ outcome }) => outcome === "flake" || outcome === "no-diff"
-  );
-
   return {
     ...currentResult,
-    result:
-      currentResult.result === "fail" && noLongerHasFailures
-        ? "flake"
-        : currentResult.result,
+    result: testRunOutcomeFromDiffResults(
+      currentResult.result,
+      newScreenshotDiffResults
+    ),
     screenshotDiffResultsByBaseReplayId: groupScreenshotDiffResults(
       newScreenshotDiffResults
     ),
@@ -152,4 +149,29 @@ const unknownScreenshotIdentifierType = (identifier: never) => {
   logger.error(
     `Unknown type of screenshot identifier: ${JSON.stringify(identifier)}`
   );
+};
+
+export const testRunOutcomeFromDiffResults = (
+  currentResult: TestCaseResult["result"],
+  newScreenshotDiffResults: ScreenshotDiffResult[]
+): TestCaseResult["result"] => {
+  // If a test run is already flakey, we don't want to overwrite that with a 'fail' result.
+  if (currentResult === "flake") {
+    return "flake";
+  }
+
+  const hasOnlyFlakes = newScreenshotDiffResults.every(
+    ({ outcome }) => outcome === "flake" || outcome === "no-diff"
+  );
+
+  if (hasOnlyFlakes) {
+    return "flake";
+  }
+
+  // If we've had a test run has already failed, we don't want to overwrite that with a 'pass' result.
+  // Otherwise, if there are any notable differences, we want to fail the test run.
+  return currentResult === "fail" ||
+    hasNotableDifferences(newScreenshotDiffResults)
+    ? "fail"
+    : "pass";
 };
