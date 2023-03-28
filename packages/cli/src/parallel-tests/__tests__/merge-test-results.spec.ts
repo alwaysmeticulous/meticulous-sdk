@@ -29,7 +29,8 @@ describe("mergeResults", () => {
       comparisonToHeadReplay,
     });
     expect(mergedResult).toEqual(
-      testResult("fail", [noDiff(0), flake(1, noDiff(), [diff()])])
+      // All screenshots are either "no-diff" or "flake" thus the overall result is "flake"
+      testResult("flake", [noDiff(0), flake(1, noDiff(), [diff()])])
     );
   });
 
