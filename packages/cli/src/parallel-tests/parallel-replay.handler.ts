@@ -5,7 +5,7 @@ import {
   ScreenshotDiffOptions,
 } from "../command-utils/common-types";
 import { replayCommandHandler } from "../commands/replay/replay.command";
-import { hasNotableDifferences } from "../commands/screenshot-diff/utils/has-notable-differences";
+import { hasNotableDifferences } from "../commands/replay/screenshot-diffing/utils/has-notable-differences";
 import { DetailedTestCaseResult } from "../config/config.types";
 import { ParallelTestsReplayOptions } from "./parallel-replay.types";
 

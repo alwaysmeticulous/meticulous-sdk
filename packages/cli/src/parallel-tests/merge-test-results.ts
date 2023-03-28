@@ -4,7 +4,7 @@ import {
   SingleTryScreenshotDiffResult,
 } from "@alwaysmeticulous/api";
 import stringify from "fast-json-stable-stringify";
-import { hasNotableDifferences } from "../commands/screenshot-diff/utils/has-notable-differences";
+import { hasNotableDifferences } from "../commands/replay/screenshot-diffing/utils/has-notable-differences";
 import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
 import {
   flattenScreenshotDiffResults,

@@ -46,7 +46,7 @@ import {
 } from "../../local-data/sessions";
 import { getCommitSha } from "../../utils/commit-sha.utils";
 import { getMeticulousVersion } from "../../utils/version.utils";
-import { computeDiff } from "./utils/compute-diff";
+import { downloadAndDiffScreenshots } from "./screenshot-diffing/download-and-diff-screenshots";
 import { exitEarlyIfSkipUploadEnvVarSet } from "./utils/exit-early-if-skip-upload-env-var-set";
 
 export interface ReplayOptions extends AdditionalReplayOptions {
@@ -279,7 +279,7 @@ export const replayCommandHandler = async ({
 
     const screenshotDiffResultsByBaseReplayId =
       screenshottingOptions.enabled && baseTestRunId
-        ? await computeDiff({
+        ? await downloadAndDiffScreenshots({
             client,
             baseTestRunId,
             sessionId,

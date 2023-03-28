@@ -14,11 +14,9 @@ import {
   getScreenshotFiles,
   getScreenshotsDir,
 } from "../../../local-data/replays";
-import {
-  diffScreenshots,
-  logDifferences,
-} from "../../screenshot-diff/screenshot-diff.command";
-import { getScreenshotFilename } from "../../screenshot-diff/utils/get-screenshot-filename";
+import { diffDownloadedScreenshots } from "./diff-downloaded-screenshots";
+import { logDifferences } from "./log-differences";
+import { getScreenshotFilename } from "./utils/get-screenshot-filename";
 
 export interface ComputeAndSaveDiffOptions {
   client: AxiosInstance;
@@ -30,7 +28,7 @@ export interface ComputeAndSaveDiffOptions {
   logger: log.Logger;
 }
 
-export const computeDiff = async ({
+export const downloadAndDiffScreenshots = async ({
   client,
   baseTestRunId,
   sessionId,
@@ -82,7 +80,7 @@ export const computeDiff = async ({
         fileName: getScreenshotFilename(identifier),
       })
     );
-    const resultsForBaseReplay = await diffScreenshots({
+    const resultsForBaseReplay = await diffDownloadedScreenshots({
       baseReplayId,
       headReplayId,
       baseScreenshotsDir: baseScreenshotsDir,
