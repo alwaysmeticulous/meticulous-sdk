@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    /* Projects */
+    "tsBuildInfoFile": "tsconfig.tsbuildinfo",
+    /* Modules */
+    "rootDir": "./src",
+    /* Emit */
+    "outDir": "./dist"
+  },
+  "include": ["src", "../client/src/api/types.ts", "../client/src/api/replay.api.ts"],
+  "exclude": ["node_modules", "dist"]
+}

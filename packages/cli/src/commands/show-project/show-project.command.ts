@@ -1,7 +1,6 @@
+import { getProject, createClient } from "@alwaysmeticulous/client";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import { createClient } from "../../api/client";
-import { getProject } from "../../api/project.api";
 import { buildCommand } from "../../command-utils/command-builder";
 
 interface Options {

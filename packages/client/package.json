@@ -1,7 +1,7 @@
 {
-  "name": "@alwaysmeticulous/replayer",
+  "name": "@alwaysmeticulous/client",
   "version": "2.40.0",
-  "description": "The Meticulous toolkit to replay user sessions",
+  "description": "Helper methods for using the Meticulous backend API",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,22 +19,7 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.40.0",
-    "loglevel": "^1.8.0",
-    "luxon": "^3.2.1",
-    "puppeteer": "^19.7.5",
-    "rrweb": "^1.1.3"
-  },
-  "devDependencies": {
-    "@alwaysmeticulous/api": "^2.40.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.40.0"
-  },
-  "peerDependencies": {
-    "@alwaysmeticulous/replay-debugger-ui": "^2.5.0"
-  },
-  "peerDependenciesMeta": {
-    "@alwaysmeticulous/replay-debugger-ui": {
-      "optional": true
-    }
+    "axios": "^1.2.6"
   },
   "author": {
     "name": "The Meticulous Team",

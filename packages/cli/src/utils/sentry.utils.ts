@@ -1,9 +1,11 @@
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import {
+  METICULOUS_LOGGER_NAME,
+  getMeticulousVersion,
+} from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { addExtensionMethods } from "@sentry/tracing";
 import log from "loglevel";
 import { Duration } from "luxon";
-import { getMeticulousVersion } from "./version.utils";
 
 const SENTRY_DSN =
   "https://10c6a6c9f5434786b37fb81b01323798@o914390.ingest.sentry.io/6435232";

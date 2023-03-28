@@ -26,7 +26,10 @@
     "test": "jest"
   },
   "dependencies": {
+    "@alwaysmeticulous/client": "^2.40.0",
     "@alwaysmeticulous/common": "^2.40.0",
+    "@alwaysmeticulous/download-utils": "^2.40.0",
+    "@alwaysmeticulous/replay-orchestrator": "^2.40.0",
     "@sentry/node": "^7.36.0",
     "@sentry/tracing": "^7.36.0",
     "adm-zip": "^0.5.9",
@@ -36,7 +39,6 @@
     "cosmiconfig": "^8.0.0",
     "express": "^4.18.1",
     "fast-json-stable-stringify": "^2.1.0",
-    "find-free-port": "^2.0.0",
     "inquirer": "^8.2.4",
     "luxon": "^3.2.1",
     "pixelmatch": "^5.3.0",
@@ -50,14 +52,10 @@
     "@types/proper-lockfile": "^4.1.2"
   },
   "peerDependencies": {
-    "@alwaysmeticulous/record": "^2.3.3",
-    "@alwaysmeticulous/replayer": "^2.5.1"
+    "@alwaysmeticulous/record": "^2.3.3"
   },
   "peerDependenciesMeta": {
     "@alwaysmeticulous/record": {
-      "optional": true
-    },
-    "@alwaysmeticulous/replayer": {
       "optional": true
     }
   },

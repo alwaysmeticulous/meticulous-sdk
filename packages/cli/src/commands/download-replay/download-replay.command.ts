@@ -1,11 +1,11 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import log from "loglevel";
-import { createClient } from "../../api/client";
-import { buildCommand } from "../../command-utils/command-builder";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
-} from "../../local-data/replays";
+} from "@alwaysmeticulous/download-helpers";
+import log from "loglevel";
+import { createClient } from "../../../../client/src/client";
+import { buildCommand } from "../../command-utils/command-builder";
 
 interface Options {
   apiToken?: string | null | undefined;

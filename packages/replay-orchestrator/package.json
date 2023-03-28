@@ -1,7 +1,7 @@
 {
-  "name": "@alwaysmeticulous/replayer",
+  "name": "@alwaysmeticulous/replay-orchestrator",
   "version": "2.40.0",
-  "description": "The Meticulous toolkit to replay user sessions",
+  "description": "Orchestrates running replays and test runs, and diffing the resulting screenshots",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,20 +19,19 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.40.0",
-    "loglevel": "^1.8.0",
-    "luxon": "^3.2.1",
-    "puppeteer": "^19.7.5",
-    "rrweb": "^1.1.3"
+    "@alwaysmeticulous/client": "^2.40.0",
+    "@alwaysmeticulous/download-helpers": "^2.40.0",
+    "find-free-port": "^2.0.0"
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.40.0",
     "@alwaysmeticulous/sdk-bundles-api": "^2.40.0"
   },
   "peerDependencies": {
-    "@alwaysmeticulous/replay-debugger-ui": "^2.5.0"
+    "@alwaysmeticulous/replayer": "^2.5.1"
   },
   "peerDependenciesMeta": {
-    "@alwaysmeticulous/replay-debugger-ui": {
+    "@alwaysmeticulous/replayer": {
       "optional": true
     }
   },

@@ -1,9 +1,13 @@
 import {
+  createClient,
+  getCachedTestRunResults,
+} from "@alwaysmeticulous/client";
+import {
   ReplayExecutionOptions,
   StoryboardOptions,
+  getCommitSha,
 } from "@alwaysmeticulous/common";
-import { createClient } from "../../api/client";
-import { getCachedTestRunResults } from "../../api/test-run.api";
+import { runAllTests } from "@alwaysmeticulous/replay-orchestrator";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
@@ -14,8 +18,6 @@ import {
   ScreenshotAssertionsOptions,
   ScreenshotDiffOptions,
 } from "../../command-utils/common-types";
-import { runAllTests } from "../../parallel-tests/run-all-tests";
-import { getCommitSha } from "../../utils/commit-sha.utils";
 
 interface Options
   extends ScreenshotDiffOptions,

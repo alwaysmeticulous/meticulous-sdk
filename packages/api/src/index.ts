@@ -25,6 +25,9 @@ export {
   TestRunArguments,
   TestRunConfigData,
   TestRunEnvironment,
+  TestRun,
+  TestCaseResult,
+  TestRunStatus,
 } from "./replay/test-run.types";
 export { ReplayableEvent } from "./sdk-bundle-api/bidirectional/replayable-event";
 export {
