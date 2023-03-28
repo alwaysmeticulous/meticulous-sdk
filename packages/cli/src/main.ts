@@ -7,7 +7,6 @@ import { downloadSessionCommand } from "./commands/download-session/download-ses
 import { recordCommand } from "./commands/record/record.command";
 import { replayCommand } from "./commands/replay/replay.command";
 import { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.command";
-import { screenshotDiffCommand } from "./commands/screenshot-diff/screenshot-diff.command";
 import { serveCommand } from "./commands/serve/serve.command";
 import { showProjectCommand } from "./commands/show-project/show-project.command";
 import { updateTestsCommand } from "./commands/update-tests/update-tests.command";
@@ -38,7 +37,6 @@ export const main: () => void = async () => {
     .command(recordCommand)
     .command(replayCommand)
     .command(runAllTestsCommand)
-    .command(screenshotDiffCommand)
     .command(showProjectCommand)
     .command(updateTestsCommand)
     .command("serve", false, serveCommand) // This is a debugging command, so we hide it to not pollute the main menu

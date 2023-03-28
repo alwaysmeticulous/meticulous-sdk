@@ -11,7 +11,7 @@ import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { downloadFile } from "../api/download";
 import { getReplay, getReplayDownloadUrl } from "../api/replay.api";
-import { getScreenshotIdentifier } from "../commands/screenshot-diff/utils/get-screenshot-identifier";
+import { getScreenshotIdentifier } from "../commands/replay/screenshot-diffing/utils/get-screenshot-identifier";
 import {
   fileExists,
   getOrDownloadJsonFile,
