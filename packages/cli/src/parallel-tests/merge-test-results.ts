@@ -5,13 +5,13 @@ import {
 } from "@alwaysmeticulous/api";
 import { logger } from "@sentry/utils";
 import stringify from "fast-json-stable-stringify";
+import { hasNotableDifferences } from "../commands/screenshot-diff/utils/has-notable-differences";
 import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
 import {
   flattenScreenshotDiffResults,
   groupScreenshotDiffResults,
   ScreenshotDiffResultWithBaseReplayId,
 } from "./screenshot-diff-results.utils";
-import { hasNotableDifferences } from "../commands/screenshot-diff/utils/has-notable-differences";
 
 export interface ResultsToMerge {
   currentResult: DetailedTestCaseResult;
