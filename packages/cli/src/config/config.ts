@@ -30,7 +30,6 @@ const validateReplayOptions: (
 ) => TestCaseReplayOptions = (prevOptions) => {
   const {
     appUrl,
-    screenshotSelector,
     diffThreshold,
     diffPixelThreshold,
     moveBeforeClick,
@@ -38,7 +37,6 @@ const validateReplayOptions: (
   } = prevOptions;
   return {
     ...(appUrl != null ? { appUrl } : {}),
-    ...(screenshotSelector != null ? { screenshotSelector } : {}),
     ...(diffThreshold != null ? { diffThreshold } : {}),
     ...(diffPixelThreshold != null ? { diffPixelThreshold } : {}),
     ...(moveBeforeClick != null ? { moveBeforeClick } : {}),

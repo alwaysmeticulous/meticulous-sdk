@@ -334,7 +334,6 @@ export interface RawReplayCommandHandlerOptions
   screenshot: boolean;
   appUrl: string | null | undefined;
   simulationIdForAssets: string | null | undefined;
-  screenshotSelector: string | null | undefined;
   maxDurationMs: number | null | undefined;
   maxEventCount: number | null | undefined;
   storyboard: boolean;
@@ -359,7 +358,6 @@ export const rawReplayCommandHandler = async ({
   devTools,
   bypassCSP,
   screenshot,
-  screenshotSelector,
   diffThreshold,
   diffPixelThreshold,
   shiftTime,
@@ -396,7 +394,6 @@ export const rawReplayCommandHandler = async ({
   const screenshottingOptions: ScreenshotAssertionsOptions = screenshot
     ? {
         enabled: true,
-        screenshotSelector: screenshotSelector ?? null,
         diffOptions: { diffPixelThreshold, diffThreshold },
         storyboardOptions,
       }
@@ -467,11 +464,6 @@ export const replayCommand = buildCommand("simulate")
       boolean: true,
       description: "Take a screenshot at the end of simulation",
       default: true,
-    },
-    screenshotSelector: {
-      string: true,
-      description:
-        "Query selector to screenshot a specific DOM element instead of the whole page",
     },
     debugger: {
       boolean: true,

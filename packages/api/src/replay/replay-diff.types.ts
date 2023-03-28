@@ -25,7 +25,6 @@ export interface ScreenshotAssertionsEnabledOptions
 
 export interface ScreenshottingEnabledOptions {
   enabled: true;
-  screenshotSelector: string | null;
   storyboardOptions: StoryboardOptions;
 }
 
@@ -49,11 +48,21 @@ export type ScreenshotDiffResult = {
 
 export type ScreenshotIdentifier = EndStateScreenshot | ScreenshotAfterEvent;
 
-export interface EndStateScreenshot {
+export interface LogicVersioned {
+  /**
+   * The version of the logic used to generate the screenshot. This should be bumped
+   * whenever the Meticulous code changes such that two screenshots on different logic versions
+   * are incomparable. This field is used to avoid falsely flagging a diff to our users when
+   * the logic to generate a screenshot or execute a replay changes.
+   */
+  logicVersion?: number;
+}
+
+export interface EndStateScreenshot extends LogicVersioned {
   type: "end-state";
 }
 
-export interface ScreenshotAfterEvent {
+export interface ScreenshotAfterEvent extends LogicVersioned {
   type: "after-event";
 
   /** 0 indexed */

@@ -3,7 +3,6 @@ import {
   ScreenshotIdentifier,
   SingleTryScreenshotDiffResult,
 } from "@alwaysmeticulous/api";
-import { logger } from "@sentry/utils";
 import stringify from "fast-json-stable-stringify";
 import { hasNotableDifferences } from "../commands/screenshot-diff/utils/has-notable-differences";
 import { DetailedTestCaseResult, TestCaseResult } from "../config/config.types";
@@ -131,24 +130,7 @@ type ScreenshotIdentifierHash = string;
 const hashScreenshotIdentifier = (
   identifier: ScreenshotIdentifier
 ): ScreenshotIdentifierHash => {
-  if (identifier.type === "end-state") {
-    return "end-state";
-  } else if (identifier.type === "after-event") {
-    return `after-event-${identifier.eventNumber}`;
-  } else {
-    unknownScreenshotIdentifierType(identifier);
-
-    // The identifier is probably from a newer version of the bundle script
-    // and we're on an old version of the CLI. Our best bet is to stringify it
-    // and use that as a hash.
-    return stringify(identifier);
-  }
-};
-
-const unknownScreenshotIdentifierType = (identifier: never) => {
-  logger.error(
-    `Unknown type of screenshot identifier: ${JSON.stringify(identifier)}`
-  );
+  return stringify(identifier);
 };
 
 export const testRunOutcomeFromDiffResults = (

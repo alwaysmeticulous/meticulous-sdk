@@ -80,11 +80,6 @@ export type ScreenshottingOptions =
 export interface ScreenshottingEnabledOptions {
   enabled: true;
 
-  /**
-   * If null will screenshot whole window
-   */
-  screenshotSelector: string | null;
-
   storyboardOptions: StoryboardOptions;
 }
 
