@@ -233,7 +233,7 @@ describe("runAllTestsInParallel", () => {
     expect(results).toEqual([
       testResult(
         // Flake outcome is returned iff all screenshots are flaky.
-        "fail",
+        "flake",
         [flake(0, diff(), [missingHead()]), flake(1, noDiff(), [diff()])],
         testCase(0)
       ),
