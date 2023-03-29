@@ -1,0 +1,66 @@
+import {
+  ScreenshotAssertionsEnabledOptions,
+  TestCaseResult,
+  TestRunEnvironment,
+} from "@alwaysmeticulous/api";
+import { RunningTestRunExecution } from "../bundle-to-sdk/execute-test-run";
+import { ReplayExecutionOptions } from "./execute-replay";
+
+export interface RunAllTestsOptions {
+  testsFile: string | null;
+  executionOptions: ReplayExecutionOptions;
+  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
+  apiToken: string | null;
+  commitSha: string;
+
+  /**
+   * The base commit to compare test results against for test cases that don't have a baseReplayId specified.
+   */
+  baseCommitSha: string | null;
+
+  appUrl: string | null;
+
+  /**
+   * If null runs in parralel with a sensible number of parrelel tasks for the given machine.
+   *
+   * Set to 1 to disable parralelism.
+   */
+  parallelTasks: number | null;
+
+  /**
+   * If set to a value greater than 1 then will re-run any replays that give a screenshot diff
+   * and mark them as a flake if the screenshot generated on one of the retryed replays differs from that
+   * in the first replay.
+   */
+  maxRetriesOnFailure: number;
+
+  /**
+   * If set to a value greater than 0 then will re-run all replays the specified number of times
+   * and mark them as a flake if the screenshot generated on one of the retryed replays differs from that
+   * in the first replay.
+   *
+   * This is useful for checking flake rates.
+   *
+   * This option is mutually exclusive with maxRetriesOnFailure.
+   */
+  rerunTestsNTimes: number;
+
+  githubSummary: boolean;
+
+  /**
+   * If provided it will incorportate the cachedTestRunResults in any calls to store
+   * test run results in the BE, but won't include the cachedTestRunResults in the returned
+   * RunAllTestsResult.
+   */
+  cachedTestRunResults?: TestCaseResult[];
+
+  /**
+   * Captured environment for this run
+   */
+  environment?: TestRunEnvironment;
+
+  baseTestRunId: string | null;
+
+  onTestRunCreated?: (testRun: RunningTestRunExecution) => void;
+  onTestFinished?: (testRun: RunningTestRunExecution) => void;
+}

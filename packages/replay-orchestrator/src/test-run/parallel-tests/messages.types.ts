@@ -1,6 +1,6 @@
 import log from "loglevel";
 import { ParallelTestsReplayOptions } from "./parallel-replay.types";
-import { DetailedTestCaseResult } from "./utils/config.types";
+import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
 
 export interface InitMessage {
   kind: "init";

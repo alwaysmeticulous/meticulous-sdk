@@ -3,7 +3,7 @@ import { join } from "path";
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { InitMessage, ResultMessage } from "./messages.types";
-import { DetailedTestCaseResult } from "./utils/config.types";
+import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
 
 export const executeTestInChildProcess = (
   initMessage: InitMessage

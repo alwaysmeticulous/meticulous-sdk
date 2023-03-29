@@ -3,11 +3,13 @@ import {
   ScreenshotAssertionsEnabledOptions,
   ScreenshotDiffOptions,
 } from "@alwaysmeticulous/api";
-import { ReplayExecutionOptions } from "@alwaysmeticulous/common";
+import {
+  DetailedTestCaseResult,
+  ReplayExecutionOptions,
+} from "@alwaysmeticulous/sdk-bundles-api";
 import { performReplay } from "../../replay/perform-replay";
 import { hasNotableDifferences } from "../../replay/screenshot-diffing/utils/has-notable-differences";
 import { ParallelTestsReplayOptions } from "./parallel-replay.types";
-import { DetailedTestCaseResult } from "./utils/config.types";
 
 export const handleReplay = async ({
   testCase,

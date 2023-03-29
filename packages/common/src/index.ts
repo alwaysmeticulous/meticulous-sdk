@@ -14,20 +14,6 @@ export type {
   ReplayDebuggerDependencies,
   ReplayDebuggerOptions,
 } from "./types/replay-debugger.types";
-export type {
-  BaseReplayEventsDependencies,
-  GeneratedBy,
-  Replay,
-  StoryboardOptions,
-  ReplayEventsDependencies,
-  ReplayEventsDependency,
-  ReplayEventsFn,
-  ReplayEventsOptions,
-  ReplayExecutionOptions,
-  ScreenshottingOptions,
-  ScreenshottingEnabledOptions,
-  ReplayTarget,
-} from "./types/replay.types";
 export type { RecordedSession } from "./types/session.types";
 export { BASE_SNIPPETS_URL, COMMON_CHROMIUM_FLAGS } from "./constants";
 export { getMeticulousVersion } from "./version.utils";

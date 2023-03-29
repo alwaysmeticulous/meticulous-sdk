@@ -1,24 +1,21 @@
-import { SessionData } from "@alwaysmeticulous/api";
-import { Span } from "@sentry/types";
-import { StringId } from "./ids.types";
-import { RecordedSession } from "./session.types";
+import { ScreenshotAssertionsOptions } from "@alwaysmeticulous/api";
 
-export interface ReplayEventsDependency<Key extends string> {
-  key: Key;
-  location: string;
+export interface ReplayOptions extends AdditionalReplayOptions {
+  replayTarget: ReplayTarget;
+  executionOptions: ReplayExecutionOptions;
+  screenshottingOptions: ScreenshotAssertionsOptions;
+  generatedBy: GeneratedBy;
+  testRunId: string | null;
+  suppressScreenshotDiffLogging: boolean;
 }
 
-export interface BaseReplayEventsDependencies {
-  [key: ReplayEventsDependency<string>["key"]]: ReplayEventsDependency<string>;
-}
-
-export interface ReplayEventsDependencies extends BaseReplayEventsDependencies {
-  browserUserInteractions: ReplayEventsDependency<"browserUserInteractions">;
-  browserPlayback: ReplayEventsDependency<"browserPlayback">;
-  browserUrlObserver: ReplayEventsDependency<"browserUrlObserver">;
-  nodeBrowserContext: ReplayEventsDependency<"nodeBrowserContext">;
-  nodeNetworkStubbing: ReplayEventsDependency<"nodeNetworkStubbing">;
-  nodeUserInteractions: ReplayEventsDependency<"nodeUserInteractions">;
+export interface AdditionalReplayOptions {
+  apiToken: string | null | undefined;
+  commitSha: string | null | undefined;
+  sessionId: string;
+  baseTestRunId: string | null | undefined;
+  cookiesFile: string | null | undefined;
+  debugger: boolean;
 }
 
 export type ReplayTarget =
@@ -73,7 +70,7 @@ export interface ReplayExecutionOptions {
   essentialFeaturesOnly: boolean;
 }
 
-export type ScreenshottingOptions =
+export type ReplayOrchestratorScreenshottingOptions =
   | { enabled: false }
   | ScreenshottingEnabledOptions;
 
@@ -84,41 +81,6 @@ export interface ScreenshottingEnabledOptions {
 }
 
 export type StoryboardOptions = { enabled: false } | { enabled: true };
-
-export interface ReplayEventsOptions {
-  /**
-   * If null then will use the URL the session was recorded against.
-   */
-  appUrl: string | null;
-  replayExecutionOptions: ReplayExecutionOptions;
-
-  /**
-   * Run in debugger mode, which allows the user to step through the replay event by event.
-   */
-  enableStepThroughDebugger: boolean;
-
-  browser: any;
-  outputDir: string;
-  session: RecordedSession;
-  sessionData: SessionData;
-  recordingId: string;
-  meticulousSha: string;
-  verbose?: boolean;
-  dependencies: ReplayEventsDependencies;
-  screenshottingOptions: ScreenshottingOptions;
-  cookiesFile: string | null;
-  generatedBy: GeneratedBy;
-  testRunId: string | null;
-
-  parentPerformanceSpan?: Span;
-}
-
-export type ReplayEventsFn = (options: ReplayEventsOptions) => Promise<void>;
-
-export interface Replay {
-  id: string;
-  [key: string]: any;
-}
 
 export type NotebookRunId = StringId<"NotebookRunId">;
 export type TestRunId = StringId<"TestRunId">;
@@ -143,3 +105,12 @@ export interface GeneratedByTestRun {
 export interface GeneratedByReplayCommand {
   type: "replayCommand";
 }
+
+// See https://spin.atomicobject.com/2018/01/15/typescript-flexible-nominal-typing/
+// for more details
+
+type StringId<FlavorT> = Flavor<string, FlavorT>;
+
+type Flavor<T, FlavorT> = T & {
+  _type?: FlavorT;
+};

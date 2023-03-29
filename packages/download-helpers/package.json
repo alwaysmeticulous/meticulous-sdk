@@ -18,6 +18,7 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
+    "@alwaysmeticulous/api": "^2.40.0",
     "@alwaysmeticulous/common": "^2.40.0",
     "@alwaysmeticulous/client": "^2.40.0",
     "proper-lockfile": "^4.1.2",

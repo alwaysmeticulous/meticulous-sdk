@@ -11,7 +11,7 @@ import {
   groupScreenshotDiffResults,
   ScreenshotDiffResultWithBaseReplayId,
 } from "./screenshot-diff-results.utils";
-import { DetailedTestCaseResult } from "./utils/config.types";
+import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
 
 export interface ResultsToMerge {
   currentResult: DetailedTestCaseResult;

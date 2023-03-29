@@ -2,12 +2,12 @@ import {
   TestCase,
   ScreenshotAssertionsEnabledOptions,
 } from "@alwaysmeticulous/api";
+import { ReplayEventsDependencies } from "@alwaysmeticulous/replayer";
 import {
   GeneratedBy,
-  ReplayEventsDependencies,
   ReplayExecutionOptions,
   ReplayTarget,
-} from "@alwaysmeticulous/common";
+} from "@alwaysmeticulous/sdk-bundles-api";
 
 export interface ParallelTestsReplayOptions {
   replayTarget: ReplayTarget;

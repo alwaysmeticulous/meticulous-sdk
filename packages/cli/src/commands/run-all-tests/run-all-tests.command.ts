@@ -1,10 +1,12 @@
-import { createClient } from "@alwaysmeticulous/client";
 import {
-  ReplayExecutionOptions,
+  ScreenshotAssertionsOptions,
+  ScreenshotDiffOptions,
   StoryboardOptions,
-  getCommitSha,
-} from "@alwaysmeticulous/common";
+} from "@alwaysmeticulous/api";
+import { createClient } from "@alwaysmeticulous/client";
+import { getCommitSha } from "@alwaysmeticulous/common";
 import { runAllTests } from "@alwaysmeticulous/replay-orchestrator";
+import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import { getCachedTestRunResults } from "../../api/test-run.api";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
@@ -12,11 +14,6 @@ import {
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
-import {
-  ScreenshotAssertionsOptions,
-  ScreenshotDiffOptions,
-} from "../../command-utils/common-types";
-
 interface Options
   extends ScreenshotDiffOptions,
     Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount"> {

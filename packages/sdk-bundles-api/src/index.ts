@@ -23,3 +23,29 @@ export {
   SetupBrowserContextSeedingFn,
   ScreenshottingOptions,
 } from "./replay/sdk-to-bundle";
+export {
+  ReplayOptions,
+  AdditionalReplayOptions,
+  ReplayTarget,
+  SnapshottedAssetsReplayTarget,
+  URLReplayTarget,
+  OriginalRecordedURLReplayTarget,
+  ReplayExecutionOptions,
+  ReplayOrchestratorScreenshottingOptions,
+  ScreenshottingEnabledOptions,
+  StoryboardOptions,
+  GeneratedBy,
+  GeneratedByNotebookRun,
+  GeneratedByTestRun,
+  GeneratedByReplayCommand,
+} from "./replay-orchestrator/sdk-to-bundle/execute-replay";
+export { RunAllTestsOptions } from "./replay-orchestrator/sdk-to-bundle/execute-test-run";
+export {
+  RunAllTestsResult,
+  TestRunExecution,
+  RunningTestRunExecution,
+  FinishedTestRunExecution,
+  TestRunProgress,
+  DetailedTestCaseResult,
+} from "./replay-orchestrator/bundle-to-sdk/execute-test-run";
+export { ReplayResult } from "./replay-orchestrator/bundle-to-sdk/execute-replay";

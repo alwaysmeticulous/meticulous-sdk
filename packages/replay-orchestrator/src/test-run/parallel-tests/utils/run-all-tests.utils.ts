@@ -1,6 +1,6 @@
 import { TestCase } from "@alwaysmeticulous/api";
+import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
 import { AxiosInstance } from "axios";
-import { DetailedTestCaseResult } from "./config.types";
 
 export const mergeTestCases = (
   ...testSuites: (TestCase[] | null | undefined)[]

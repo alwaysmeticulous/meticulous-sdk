@@ -1,28 +1,27 @@
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import { join, normalize } from "path";
-import {
-  ScreenshotAssertionsOptions,
-  ScreenshotDiffResult,
-} from "@alwaysmeticulous/api";
 import { createClient } from "@alwaysmeticulous/client";
 import {
-  GeneratedBy,
   getCommitSha,
   getMeticulousLocalDataDir,
   getMeticulousVersion,
   METICULOUS_LOGGER_NAME,
-  Replay,
-  ReplayEventsDependencies,
-  ReplayEventsFn,
-  ReplayEventsOptions,
-  ReplayExecutionOptions,
-  ReplayTarget,
 } from "@alwaysmeticulous/common";
 import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
   sanitizeFilename,
 } from "@alwaysmeticulous/download-helpers";
+import {
+  replayEvents,
+  ReplayEventsDependencies,
+  ReplayEventsOptions,
+} from "@alwaysmeticulous/replayer";
+import {
+  ReplayOptions,
+  ReplayResult,
+  ReplayTarget,
+} from "@alwaysmeticulous/sdk-bundles-api";
 import * as Sentry from "@sentry/node";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
@@ -34,39 +33,12 @@ import {
   putReplayPushedStatus,
 } from "../api/replay.api";
 import { downloadAndDiffScreenshots } from "./screenshot-diffing/download-and-diff-screenshots";
+import { loadReplayEventsDependencies } from "./scripts-loader/load-replay-dependencies";
 import { createReplayArchive, deleteArchive } from "./utils/archive";
 import { exitEarlyIfSkipUploadEnvVarSet } from "./utils/exit-early-if-skip-upload-env-var-set";
 import { getReplayUrl } from "./utils/get-replay-url";
 import { serveAssetsFromSimulation } from "./utils/serve-assets-from-simulation";
 import { uploadArchive } from "./utils/upload";
-
-export interface ReplayOptions extends AdditionalReplayOptions {
-  replayTarget: ReplayTarget;
-  executionOptions: ReplayExecutionOptions;
-  screenshottingOptions: ScreenshotAssertionsOptions;
-  generatedBy: GeneratedBy;
-  testRunId: string | null;
-  replayEventsDependencies: ReplayEventsDependencies;
-  suppressScreenshotDiffLogging: boolean;
-}
-
-interface AdditionalReplayOptions {
-  apiToken: string | null | undefined;
-  commitSha: string | null | undefined;
-  sessionId: string;
-  baseTestRunId: string | null | undefined;
-  cookiesFile: string | null | undefined;
-  debugger: boolean;
-}
-
-export interface ReplayResult {
-  replay: Replay;
-
-  /**
-   * Empty if screenshottingOptions.enabled was false.
-   */
-  screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffResult[]>;
-}
 
 export const performReplay = async ({
   replayTarget,
@@ -82,7 +54,9 @@ export const performReplay = async ({
   replayEventsDependencies,
   debugger: enableStepThroughDebugger,
   suppressScreenshotDiffLogging,
-}: ReplayOptions): Promise<ReplayResult> => {
+}: ReplayOptions & {
+  replayEventsDependencies?: ReplayEventsDependencies;
+}): Promise<ReplayResult> => {
   if (
     executionOptions.headless === true &&
     enableStepThroughDebugger === true
@@ -133,17 +107,13 @@ export const performReplay = async ({
   const { appUrl, closeServer } = await serveOrGetAppUrl(client, replayTarget);
   serveOrGetAppUrlSpan.finish();
 
-  // 4. Load replay package
-  let replayEvents: ReplayEventsFn;
-
-  try {
-    logger.debug("Loading replayer package...");
-    const replayer = await require("@alwaysmeticulous/replayer");
-    replayEvents = replayer.replayEvents;
-  } catch (error) {
-    logger.error("Error: could not import @alwaysmeticulous/replayer");
-    logger.error(error);
-    process.exit(1);
+  // 4. Maybe download replayEventsDependencies
+  if (replayEventsDependencies == null) {
+    const downloadReplayEventsDependenciesSpan = transaction.startChild({
+      op: "downloadReplayEventsDependencies",
+    });
+    replayEventsDependencies = await loadReplayEventsDependencies();
+    downloadReplayEventsDependenciesSpan.finish();
   }
 
   // Report replay start
