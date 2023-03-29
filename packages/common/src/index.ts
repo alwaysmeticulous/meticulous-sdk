@@ -30,3 +30,5 @@ export type {
 } from "./types/replay.types";
 export type { RecordedSession } from "./types/session.types";
 export { BASE_SNIPPETS_URL, COMMON_CHROMIUM_FLAGS } from "./constants";
+export { getMeticulousVersion } from "./version.utils";
+export { getCommitSha } from "./commit-sha.utils";

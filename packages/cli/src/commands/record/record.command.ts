@@ -1,20 +1,20 @@
 import { join } from "path";
 import {
+  createClient,
+  getProject,
+  getRecordingCommandId,
+  postSessionIdNotification,
+} from "@alwaysmeticulous/client";
+import {
   DebugLogger,
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
   RecordSessionFn,
+  getCommitSha,
 } from "@alwaysmeticulous/common";
+import { fetchAsset } from "@alwaysmeticulous/download-helpers";
 import log from "loglevel";
-import { createClient } from "../../api/client";
-import { getProject } from "../../api/project.api";
-import {
-  getRecordingCommandId,
-  postSessionIdNotification,
-} from "../../api/session.api";
 import { buildCommand } from "../../command-utils/command-builder";
-import { fetchAsset } from "../../local-data/replay-assets";
-import { getCommitSha } from "../../utils/commit-sha.utils";
 
 export interface RecordCommandHandlerOptions {
   apiToken: string | null | undefined;

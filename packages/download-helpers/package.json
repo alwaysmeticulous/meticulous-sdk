@@ -1,0 +1,49 @@
+{
+  "name": "@alwaysmeticulous/download-helpers",
+  "version": "2.40.0",
+  "description": "Helper utilities for downloading files & scripts required to execute replays",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "build": "tsc --build tsconfig.json",
+    "dev": "tsc --build tsconfig.json --watch",
+    "format": "prettier --write src",
+    "lint": "eslint src --ext=ts,tsx,js --cache",
+    "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
+    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
+  },
+  "dependencies": {
+    "@alwaysmeticulous/common": "^2.40.0",
+    "@alwaysmeticulous/client": "^2.40.0",
+    "proper-lockfile": "^4.1.2",
+    "luxon": "^3.2.1"
+  },
+  "devDependencies": {
+    "@alwaysmeticulous/api": "^2.40.0",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.40.0",
+    "@types/proper-lockfile": "^4.1.2",
+    "@types/luxon": "^3.2.0"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "engines": {
+    "node": ">= 12"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}
