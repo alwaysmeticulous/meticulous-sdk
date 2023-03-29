@@ -1,31 +1,32 @@
 import { join, normalize } from "path";
 import {
-  TestCase,
-  TestRunEnvironment,
-  TestRun,
-  TestRunStatus,
-  TestCaseResult,
   ScreenshotAssertionsEnabledOptions,
+  TestCase,
+  TestCaseResult,
+  TestRun,
+  TestRunEnvironment,
+  TestRunStatus,
 } from "@alwaysmeticulous/api";
 import {
   createClient,
+  getLatestTestRunResults,
   getProject,
-  getLatestTestRunId,
 } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
+  getMeticulousVersion,
   METICULOUS_LOGGER_NAME,
   ReplayExecutionOptions,
-  getMeticulousVersion,
 } from "@alwaysmeticulous/common";
 import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers/dist/scripts/replay-assets";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { createReplayDiff } from "../../api/replay-diff.api";
 import {
+  createTestRun,
+  getTestRun,
   getTestRunUrl,
   putTestRunResults,
-  createTestRun,
 } from "../../api/test-run.api";
 import { executeTestInChildProcess } from "./execute-test-in-child-process";
 import { InitMessage } from "./messages.types";
@@ -147,10 +148,37 @@ export const runAllTests = async ({
 
   const cachedTestRunResults = cachedTestRunResults_ ?? [];
 
+  let fallbackTestRun: TestRun | null = null;
+
+  // We use the baseTestRunId specified from the CLI args if it exists, otherwise we use the
+  // baseTestRunId for the base commit if it exists as a fallback base test run
+  // (i.e. in case the test case doesn't have a baseTestRunId specified).
+  if (baseTestRunId) {
+    fallbackTestRun = await getTestRun({ client, testRunId: baseTestRunId });
+  } else if (baseCommitSha) {
+    fallbackTestRun = await getLatestTestRunResults({
+      client,
+      commitSha: baseCommitSha,
+    });
+  }
+
   const config = await readConfig(testsFile || undefined);
+
+  const shouldIncludeBaseTestCases =
+    !!fallbackTestRun &&
+    (await shouldUseBaseTestRunTestCases({
+      client,
+      baseTestRunId: fallbackTestRun.id,
+    }));
+
+  // We merge the test cases from the project config, the meticulous.json and the "fallback"(run-all-tests-level)
+  // base test run.
+  // This guarantees that we'll at least have some test cases which ran on the global base test run,
+  // at the expense of higher run time (as we'll be running "older" test cases that aren't in the project config anymore).
   const allTestCases = mergeTestCases(
     project.configurationData.testCases,
-    config.testCases
+    config.testCases,
+    shouldIncludeBaseTestCases ? fallbackTestRun?.configData.testCases : []
   );
 
   if (!allTestCases.length) {
@@ -213,8 +241,7 @@ export const runAllTests = async ({
 
   const testsToRun = await getTestCasesWithBaseTestRunId({
     baseCommitSha,
-    baseTestRunId: baseTestRunId ?? null,
-    client,
+    fallbackTestRunId: fallbackTestRun?.id ?? null,
     logger,
     testCases,
   });
@@ -362,30 +389,19 @@ export const runAllTests = async ({
 
 const getTestCasesWithBaseTestRunId = async ({
   logger,
-  client,
   baseCommitSha,
-  baseTestRunId,
+  fallbackTestRunId,
   testCases,
 }: {
   logger: log.Logger;
-  client: AxiosInstance;
   baseCommitSha: string | null;
-  baseTestRunId: string | null;
+  fallbackTestRunId: string | null;
   testCases: TestCase[];
 }) => {
-  const defaultBaseTestRunId =
-    baseCommitSha != null
-      ? await getLatestTestRunId({
-          client,
-          commitSha: baseCommitSha,
-        })
-      : null;
-
   const testsToRun: TestCase[] = testCases.map((test) => {
     // We use the baseTestRunId specified in the test case if it exists, otherwise we use
     // use the baseTestRunId specified from the CLI args if it exists, otherwise we use the
     // baseTestRunId for the base commit if it exists, otherwise we use null (don't compare screenshots).
-    const fallbackTestRunId = baseTestRunId ?? defaultBaseTestRunId;
     if (test.baseTestRunId != null || fallbackTestRunId == null) {
       return test;
     }
@@ -401,4 +417,19 @@ const getTestCasesWithBaseTestRunId = async ({
       });
   }
   return testsToRun;
+};
+
+const shouldUseBaseTestRunTestCases = async ({
+  client,
+  baseTestRunId,
+}: {
+  client: AxiosInstance;
+  baseTestRunId: string;
+}) => {
+  const testRun = await getTestRun({ client, testRunId: baseTestRunId });
+
+  // We only want to include the test cases from the base test run if it has no base test run itself, i.e the
+  // the base test run is for a "push" event.
+  // This safeguards against the test run expanding indefinitely.
+  return !testRun?.configData?.baseTestRunId;
 };
