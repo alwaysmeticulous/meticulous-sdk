@@ -1,14 +1,15 @@
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
 import { join } from "path";
 import {
-  ScreenshotDiffResult,
   ScreenshotAssertionsOptions,
-  ScreenshotDiffOptions,
+  ScreenshotDiffResult,
 } from "@alwaysmeticulous/api";
 import { createClient } from "@alwaysmeticulous/client";
 import {
   GeneratedBy,
+  getCommitSha,
   getMeticulousLocalDataDir,
+  getMeticulousVersion,
   METICULOUS_LOGGER_NAME,
   Replay,
   ReplayEventsDependencies,
@@ -16,13 +17,11 @@ import {
   ReplayEventsOptions,
   ReplayExecutionOptions,
   ReplayTarget,
-  getMeticulousVersion,
-  getCommitSha,
 } from "@alwaysmeticulous/common";
 import {
-  sanitizeFilename,
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
+  sanitizeFilename,
 } from "@alwaysmeticulous/download-helpers";
 import * as Sentry from "@sentry/node";
 import { AxiosInstance } from "axios";
