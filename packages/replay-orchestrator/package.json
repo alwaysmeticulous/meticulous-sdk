@@ -15,7 +15,8 @@
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
-    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
+    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
+    "test": "jest"
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.40.0",
@@ -68,5 +69,22 @@
   },
   "bugs": {
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
   }
 }
