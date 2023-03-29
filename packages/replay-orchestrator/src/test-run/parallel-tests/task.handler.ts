@@ -70,6 +70,11 @@ const main = async () => {
   await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 };
 
+const initLogger: () => void = () => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  logger.setDefaultLevel(log.levels.INFO);
+};
+
 main().catch(async (error) => {
   console.error(error);
 
@@ -78,8 +83,3 @@ main().catch(async (error) => {
 
   process.exit(1);
 });
-
-const initLogger: () => void = () => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-  logger.setDefaultLevel(log.levels.INFO);
-};
