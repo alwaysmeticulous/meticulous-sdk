@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, writeFile } from "fs/promises";
-import { join } from "path";
+import { join, normalize } from "path";
 import {
   ScreenshotAssertionsOptions,
   ScreenshotDiffResult,
@@ -123,7 +123,8 @@ export const performReplay = async ({
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
   logger.debug(`Commit: ${commitSha}`);
 
-  const meticulousSha = await getMeticulousVersion();
+  const packageJsonPath = normalize(join(__dirname, "../../../package.json"));
+  const meticulousSha = await getMeticulousVersion(packageJsonPath);
 
   // 3. If simulationIdForAssets specified then download assets & spin up local server
   const serveOrGetAppUrlSpan = transaction.startChild({

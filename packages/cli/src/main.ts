@@ -1,4 +1,8 @@
-import { setMeticulousLocalDataDir } from "@alwaysmeticulous/common";
+import { join, normalize } from "path";
+import {
+  setMeticulousLocalDataDir,
+  getMeticulousVersion,
+} from "@alwaysmeticulous/common";
 import { initSentry } from "@alwaysmeticulous/sentry";
 import yargs from "yargs";
 import { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
@@ -18,7 +22,9 @@ const handleDataDir: (dataDir: string | null | undefined) => void = (
 
 export const main: () => void = async () => {
   initLogger();
-  await initSentry();
+  const packageJsonPath = normalize(join(__dirname, "../package.json"));
+  const meticulousVersion = await getMeticulousVersion(packageJsonPath);
+  await initSentry(meticulousVersion);
 
   yargs
     .scriptName("meticulous")

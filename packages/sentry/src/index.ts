@@ -1,4 +1,3 @@
-import { getMeticulousVersion } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { addExtensionMethods } from "@sentry/tracing";
 import { Duration } from "luxon";
@@ -12,10 +11,12 @@ const getTracesSampleRate: () => number = () => {
 };
 
 export const initSentry: (
+  meticulousVersion: string,
   tracesSampleRateOverride?: number
-) => Promise<Sentry.Hub> = async (tracesSampleRateOverride) => {
-  const meticulousVersion = await getMeticulousVersion();
-
+) => Promise<Sentry.Hub> = async (
+  meticulousVersion,
+  tracesSampleRateOverride
+) => {
   Sentry.init({
     dsn: SENTRY_DSN,
     release: meticulousVersion,

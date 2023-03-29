@@ -1,6 +1,8 @@
+import { join, normalize } from "path";
 import {
   METICULOUS_LOGGER_NAME,
   setMeticulousLocalDataDir,
+  getMeticulousVersion,
 } from "@alwaysmeticulous/common";
 import { initSentry, SENTRY_FLUSH_TIMEOUT } from "@alwaysmeticulous/sentry";
 import * as Sentry from "@sentry/node";
@@ -38,7 +40,9 @@ const waitForInitMessage: () => Promise<InitMessage> = () => {
 
 const main = async () => {
   initLogger();
-  await initSentry();
+  const packageJsonPath = normalize(join(__dirname, "../../../package.json"));
+  const meticulousVersion = await getMeticulousVersion(packageJsonPath);
+  await initSentry(meticulousVersion);
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   if (!process.send) {

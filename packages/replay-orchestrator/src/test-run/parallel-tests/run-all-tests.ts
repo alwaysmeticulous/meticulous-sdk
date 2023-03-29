@@ -1,3 +1,4 @@
+import { join, normalize } from "path";
 import {
   TestCase,
   TestRunEnvironment,
@@ -167,7 +168,8 @@ export const runAllTests = async ({
       )
   );
 
-  const meticulousSha = await getMeticulousVersion();
+  const packageJsonPath = normalize(join(__dirname, "../../../package.json"));
+  const meticulousSha = await getMeticulousVersion(packageJsonPath);
 
   // TODO: Work this out
   const replayEventsDependencies = await loadReplayEventsDependencies();

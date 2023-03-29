@@ -1,14 +1,14 @@
 import { readFile } from "fs/promises";
-import { join, normalize } from "path";
 
 let version = "";
 
-export const getMeticulousVersion: () => Promise<string> = async () => {
+export const getMeticulousVersion: (
+  packageJsonPath: string
+) => Promise<string> = async (packageJsonPath) => {
   if (version) {
     return version;
   }
 
-  const packageJsonPath = normalize(join(__dirname, "../../package.json"));
   const packageJson = JSON.parse(
     await readFile(packageJsonPath, { encoding: "utf-8" })
   );

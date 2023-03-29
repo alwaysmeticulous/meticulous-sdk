@@ -18,7 +18,6 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.40.0",
     "@sentry/node": "^7.36.0",
     "@sentry/tracing": "^7.36.0",
     "luxon": "^3.2.1"
