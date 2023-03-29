@@ -19,11 +19,15 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.40.0",
-    "@alwaysmeticulous/client": "link:../client"
+    "@alwaysmeticulous/client": "link:../client",
+    "proper-lockfile": "^4.1.2",
+    "luxon": "^3.2.1"
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.40.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.40.0"
+    "@alwaysmeticulous/sdk-bundles-api": "^2.40.0",
+    "@types/proper-lockfile": "^4.1.2",
+    "@types/luxon": "^3.2.0"
   },
   "author": {
     "name": "The Meticulous Team",

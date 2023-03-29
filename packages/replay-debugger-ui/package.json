@@ -23,7 +23,8 @@
     "serve": "serve -p 3005 -s out"
   },
   "dependencies": {
-    "serve": "^14.2.0"
+    "serve": "^14.2.0",
+    "luxon": "^3.2.1"
   },
   "devDependencies": {
     "@headlessui/react": "^1.7.8",
@@ -34,7 +35,9 @@
     "postcss": "^8.4.14",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tailwindcss": "^3.2.4"
+    "tailwindcss": "^3.2.4",
+    "@tailwindcss/forms": "0.5.3",
+    "@types/luxon": "^3.2.0"
   },
   "author": {
     "name": "The Meticulous Team",

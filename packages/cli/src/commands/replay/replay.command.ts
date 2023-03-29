@@ -100,8 +100,6 @@ export const rawReplayCommandHandler = async ({
       }
     : { enabled: false };
 
-  // TODO: Work out how to handle this one
-  // We really want this to be inside replay-orchestrator, since it's an implementation detail
   const replayEventsDependencies = await loadReplayEventsDependencies();
   const { replay } = await performReplay({
     replayTarget: getReplayTarget({

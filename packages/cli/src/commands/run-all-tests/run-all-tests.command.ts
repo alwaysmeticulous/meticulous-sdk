@@ -91,7 +91,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
   const parrelelTasks = parallelize ? parrelelTasks_ : 1;
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
-  const client = createClient({ apiToken }); // TODO: Push client creation down into runAllTests (don't want to expose Axios in the API)
+  const client = createClient({ apiToken });
   const cachedTestRunResults = useCache
     ? await getCachedTestRunResults({ client, commitSha })
     : [];
