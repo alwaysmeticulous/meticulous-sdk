@@ -114,6 +114,8 @@ export interface TestRun {
   [key: string]: any;
 }
 
+export type TestCaseResultStatus = "pass" | "fail" | "flake";
+
 export interface TestCaseResult extends TestCase {
   headReplayId: string;
 
@@ -122,5 +124,5 @@ export interface TestCaseResult extends TestCase {
    * but for every one of those failures regenerating the screenshot on head sometimes gave
    * a different screenshot to the original screenshot taken on head.
    */
-  result: "pass" | "fail" | "flake";
+  result: TestCaseResultStatus;
 }
