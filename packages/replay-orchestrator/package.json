@@ -20,9 +20,9 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.40.0",
-    "@alwaysmeticulous/client": "link:../client",
-    "@alwaysmeticulous/download-helpers": "link:../download-helpers",
-    "@alwaysmeticulous/sentry": "link:../sentry",
+    "@alwaysmeticulous/client": "^2.40.0",
+    "@alwaysmeticulous/download-helpers": "^2.40.0",
+    "@alwaysmeticulous/sentry": "^2.40.0",
     "@sentry/node": "^7.36.0",
     "find-free-port": "^2.0.0",
     "adm-zip": "^0.5.9",

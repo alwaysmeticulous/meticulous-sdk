@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.40.0",
-    "@alwaysmeticulous/client": "link:../client",
+    "@alwaysmeticulous/client": "^2.40.0",
     "proper-lockfile": "^4.1.2",
     "luxon": "^3.2.1"
   },

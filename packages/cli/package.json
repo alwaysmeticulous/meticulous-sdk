@@ -26,11 +26,11 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "@alwaysmeticulous/client": "link:../client",
+    "@alwaysmeticulous/client": "^2.40.0",
     "@alwaysmeticulous/common": "^2.40.0",
-    "@alwaysmeticulous/download-helpers": "link:../download-helpers",
-    "@alwaysmeticulous/replay-orchestrator": "link:../replay-orchestrator",
-    "@alwaysmeticulous/sentry": "link:../sentry",
+    "@alwaysmeticulous/download-helpers": "^2.40.0",
+    "@alwaysmeticulous/replay-orchestrator": "^2.40.0",
+    "@alwaysmeticulous/sentry": "^2.40.0",
     "@sentry/node": "^7.36.0",
     "axios": "^1.2.6",
     "chalk": "^4.1.2",
