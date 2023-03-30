@@ -15,7 +15,8 @@
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
-    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
+    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
+    "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
     "loglevel": "^1.8.0",
@@ -23,7 +24,6 @@
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.40.1",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.40.1",
     "@sentry/types": "^7.36.0",
     "@types/luxon": "^3.2.0"
   },
