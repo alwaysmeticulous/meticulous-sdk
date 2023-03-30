@@ -16,7 +16,7 @@
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
-    "depcheck": "depcheck --ignore-dirs=dist"
+    "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
     "@sentry/node": "^7.36.0",

@@ -17,7 +17,7 @@
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
     "test": "jest",
-    "depcheck": "depcheck --ignore-dirs=dist"
+    "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
     "@alwaysmeticulous/client": "^2.40.1",

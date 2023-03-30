@@ -21,7 +21,7 @@
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
     "serve": "serve -p 3005 -s out",
-    "depcheck": "depcheck --ignore-dirs=dist --ignores='src,postcss,autoprefixer' --ignore-patterns='*.eslintrc.json'"
+    "depcheck": "depcheck --ignores='src,postcss,autoprefixer' --ignore-patterns='dist,*.eslintrc.json'"
   },
   "dependencies": {
     "luxon": "^3.2.1",
