@@ -11,7 +11,7 @@ import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
   sanitizeFilename,
-} from "@alwaysmeticulous/downloader-helpers";
+} from "@alwaysmeticulous/downloading-helpers";
 import {
   replayEvents,
   ReplayEventsDependencies,

@@ -23,7 +23,7 @@
     "@alwaysmeticulous/api": "^2.40.3",
     "@alwaysmeticulous/common": "^2.40.0",
     "@alwaysmeticulous/client": "^2.40.0",
-    "@alwaysmeticulous/downloader-helpers": "^2.40.0",
+    "@alwaysmeticulous/downloading-helpers": "^2.40.0",
     "@alwaysmeticulous/sdk-bundles-api": "^2.40.0",
     "@alwaysmeticulous/sentry": "^2.40.0",
     "@alwaysmeticulous/replayer": "^2.40.0",

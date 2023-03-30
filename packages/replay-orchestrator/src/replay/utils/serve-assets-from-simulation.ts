@@ -5,7 +5,7 @@ import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import {
   getOrFetchReplayArchive,
   getReplayDir,
-} from "@alwaysmeticulous/downloader-helpers";
+} from "@alwaysmeticulous/downloading-helpers";
 import { AxiosInstance } from "axios";
 import express from "express";
 import findFreePort from "find-free-port";

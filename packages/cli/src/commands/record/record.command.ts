@@ -12,7 +12,7 @@ import {
   RecordSessionFn,
   getCommitSha,
 } from "@alwaysmeticulous/common";
-import { fetchAsset } from "@alwaysmeticulous/downloader-helpers";
+import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 
