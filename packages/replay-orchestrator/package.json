@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replay-orchestrator",
-  "version": "2.40.1",
+  "version": "2.40.2",
   "description": "Orchestrates running replays and test runs, and diffing the resulting screenshots",
   "license": "ISC",
   "main": "dist/index.js",
@@ -21,7 +21,7 @@
   "dependencies": {
     "@alwaysmeticulous/client": "^2.40.1",
     "@alwaysmeticulous/common": "^2.40.1",
-    "@alwaysmeticulous/download-helpers": "^2.40.1",
+    "@alwaysmeticulous/download-helpers": "^2.40.2",
     "@alwaysmeticulous/sentry": "^2.40.1",
     "@sentry/node": "^7.36.0",
     "adm-zip": "^0.5.9",

@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "2.40.1",
+  "version": "2.40.2",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
@@ -28,8 +28,8 @@
   "dependencies": {
     "@alwaysmeticulous/client": "^2.40.1",
     "@alwaysmeticulous/common": "^2.40.1",
-    "@alwaysmeticulous/download-helpers": "^2.40.1",
-    "@alwaysmeticulous/replay-orchestrator": "^2.40.1",
+    "@alwaysmeticulous/download-helpers": "^2.40.2",
+    "@alwaysmeticulous/replay-orchestrator": "^2.40.2",
     "@alwaysmeticulous/sentry": "^2.40.1",
     "@sentry/node": "^7.36.0",
     "axios": "^1.2.6",
