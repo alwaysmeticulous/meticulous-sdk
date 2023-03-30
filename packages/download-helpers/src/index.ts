@@ -4,6 +4,9 @@ export {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
 } from "./file-downloads/sessions";
-export { fetchAsset } from "./scripts/replay-assets";
+export {
+  fetchAsset,
+  loadReplayEventsDependencies,
+} from "./scripts/replay-assets";
 export { downloadFile } from "./file-downloads/download-file";
 export { getReplayDir } from "./scripts/replays";

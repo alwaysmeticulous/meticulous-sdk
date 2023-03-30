@@ -1,31 +1,31 @@
 import { join, normalize } from "path";
 import {
-  TestCase,
-  TestRunEnvironment,
-  TestRun,
-  TestRunStatus,
-  TestCaseResult,
   ScreenshotAssertionsEnabledOptions,
+  TestCase,
+  TestCaseResult,
+  TestRun,
+  TestRunEnvironment,
+  TestRunStatus,
 } from "@alwaysmeticulous/api";
 import {
   createClient,
-  getProject,
   getLatestTestRunId,
+  getProject,
 } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
+  getMeticulousVersion,
   METICULOUS_LOGGER_NAME,
   ReplayExecutionOptions,
-  getMeticulousVersion,
 } from "@alwaysmeticulous/common";
-import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers/dist/scripts/replay-assets";
+import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { createReplayDiff } from "../../api/replay-diff.api";
 import {
+  createTestRun,
   getTestRunUrl,
   putTestRunResults,
-  createTestRun,
 } from "../../api/test-run.api";
 import { executeTestInChildProcess } from "./execute-test-in-child-process";
 import { InitMessage } from "./messages.types";

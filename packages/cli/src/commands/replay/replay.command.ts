@@ -6,7 +6,7 @@ import {
   ReplayTarget,
   StoryboardOptions,
 } from "@alwaysmeticulous/common";
-import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers/dist/scripts/replay-assets";
+import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers";
 import { performReplay } from "@alwaysmeticulous/replay-orchestrator";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
