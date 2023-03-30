@@ -10,7 +10,7 @@ import {
   getOrFetchReplayArchive,
 } from "@alwaysmeticulous/downloading-helpers";
 import {
-  CompareScreenshotsToBestReplayForSessionInTestRun,
+  CompareScreenshotsToTestRun,
   CompareScreenshotsToSpecificReplay,
   ScreenshotComparisonOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
@@ -49,10 +49,7 @@ export const maybeDownloadAndDiffScreenshots = async ({
     return {};
   }
 
-  if (
-    screenshottingOptions.compareTo.type ===
-    "best-replay-for-session-in-test-run"
-  ) {
+  if (screenshottingOptions.compareTo.type === "base-screenshots-of-test-run") {
     return diffScreenshotsAgainstTestRun({
       client,
       sessionId,
@@ -85,7 +82,7 @@ const diffScreenshotsAgainstTestRun = async ({
   compareTo,
   logger,
 }: Omit<ComputeAndSaveDiffOptions, "screenshottingOptions"> & {
-  compareTo: CompareScreenshotsToBestReplayForSessionInTestRun;
+  compareTo: CompareScreenshotsToTestRun;
 }): Promise<Record<string, ScreenshotDiffResult[]>> => {
   logger.info(
     `Diffing screenshots against replays of session ${sessionId} in test run ${compareTo.testRunId}`

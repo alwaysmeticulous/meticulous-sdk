@@ -366,7 +366,7 @@ const getTestTasks = async ({
         baseTestRunId == null
           ? { type: "do-not-compare" }
           : {
-              type: "best-replay-for-session-in-test-run",
+              type: "base-screenshots-of-test-run",
               testRunId: baseTestRunId,
               diffOptions,
             },

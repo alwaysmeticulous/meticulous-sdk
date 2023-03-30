@@ -248,7 +248,7 @@ const testTask = (num: number): TestTask => ({
     enabled: true,
     storyboardOptions: { enabled: true },
     compareTo: {
-      type: "best-replay-for-session-in-test-run",
+      type: "base-screenshots-of-test-run",
       testRunId: "mock-base-test-run-id",
       diffOptions: {
         diffThreshold: 0.01,

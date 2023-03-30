@@ -41,7 +41,7 @@ export {
   ScreenshotComparisonEnabledOptions,
   CompareScreenshotsTo,
   CompareScreenshotsToSpecificReplay,
-  CompareScreenshotsToBestReplayForSessionInTestRun,
+  CompareScreenshotsToTestRun,
   DoNotCompareScreenshots,
 } from "./replay-orchestrator/sdk-to-bundle/execute-replay";
 export { ExecuteTestRunOptions } from "./replay-orchestrator/sdk-to-bundle/execute-test-run";

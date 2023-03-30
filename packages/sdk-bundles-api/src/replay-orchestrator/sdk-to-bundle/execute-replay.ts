@@ -31,7 +31,7 @@ export interface ScreenshotComparisonEnabledOptions
 
 export type CompareScreenshotsTo =
   | CompareScreenshotsToSpecificReplay
-  | CompareScreenshotsToBestReplayForSessionInTestRun
+  | CompareScreenshotsToTestRun
   | DoNotCompareScreenshots;
 
 export interface CompareScreenshotsToSpecificReplay {
@@ -40,8 +40,17 @@ export interface CompareScreenshotsToSpecificReplay {
   diffOptions: ScreenshotDiffOptions;
 }
 
-export interface CompareScreenshotsToBestReplayForSessionInTestRun {
-  type: "best-replay-for-session-in-test-run";
+/**
+ * Compare to the appropiate 'base-screenshots' of the specified test run.
+ *
+ * The 'base-screenshots' of a test run are the screenshots that should be
+ * used when comparing to the test run as a base. By default the screenshots
+ * taken in the replays in that test run are used as the base-screenshots, but if
+ * there is a flake then we "don't update the base screenshot", and so re-use
+ * the base screenshot from the previous test run.
+ */
+export interface CompareScreenshotsToTestRun {
+  type: "base-screenshots-of-test-run";
   testRunId: string;
   diffOptions: ScreenshotDiffOptions;
 }
