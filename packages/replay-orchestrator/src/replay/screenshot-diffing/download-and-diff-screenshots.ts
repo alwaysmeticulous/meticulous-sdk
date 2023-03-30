@@ -5,7 +5,7 @@ import {
   ScreenshotDiffResult,
   ScreenshotIdentifier,
 } from "@alwaysmeticulous/api";
-import { downloadFile } from "@alwaysmeticulous/download-helpers";
+import { downloadFile } from "@alwaysmeticulous/downloading-helpers";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { getBaseScreenshots } from "../../api/test-run.api";

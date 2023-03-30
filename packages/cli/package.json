@@ -31,7 +31,7 @@
     "@alwaysmeticulous/sdk-bundles-api": "^2.40.0",
     "@alwaysmeticulous/client": "^2.40.0",
     "@alwaysmeticulous/common": "^2.40.0",
-    "@alwaysmeticulous/download-helpers": "^2.40.0",
+    "@alwaysmeticulous/downloading-helpers": "^2.40.0",
     "@alwaysmeticulous/replay-orchestrator": "^2.40.0",
     "@alwaysmeticulous/record": "^2.40.0",
     "@alwaysmeticulous/sentry": "^2.40.0",

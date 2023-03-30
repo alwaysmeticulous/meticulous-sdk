@@ -1,4 +1,4 @@
-import { fetchAsset } from "@alwaysmeticulous/download-helpers";
+import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import { ReplayEventsDependencies } from "@alwaysmeticulous/replayer";
 
 export const loadReplayEventsDependencies =
