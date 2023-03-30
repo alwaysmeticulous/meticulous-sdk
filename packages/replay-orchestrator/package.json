@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replay-orchestrator",
-  "version": "2.40.3",
+  "version": "2.40.4",
   "description": "Orchestrates running replays and test runs, and diffing the resulting screenshots",
   "license": "ISC",
   "main": "dist/index.js",
@@ -20,13 +20,13 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/api": "^2.40.3",
-    "@alwaysmeticulous/common": "^2.40.0",
-    "@alwaysmeticulous/client": "^2.40.0",
-    "@alwaysmeticulous/downloading-helpers": "^2.40.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.40.0",
+    "@alwaysmeticulous/api": "^2.40.4",
+    "@alwaysmeticulous/client": "^2.40.4",
+    "@alwaysmeticulous/common": "^2.40.4",
+    "@alwaysmeticulous/downloading-helpers": "^2.40.4",
+    "@alwaysmeticulous/replayer": "^2.40.4",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.40.4",
     "@alwaysmeticulous/sentry": "^2.40.0",
-    "@alwaysmeticulous/replayer": "^2.40.0",
     "@sentry/node": "^7.36.0",
     "archiver": "^5.3.1",
     "axios": "^1.2.6",
