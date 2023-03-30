@@ -212,7 +212,7 @@ export const executeTestRun = async ({
         data: {
           logLevel: logger.getLevel(),
           dataDir: getMeticulousLocalDataDir(),
-          replayAndStoreResultsOptions: {
+          replayOptions: {
             apiToken,
             commitSha,
             testCase,

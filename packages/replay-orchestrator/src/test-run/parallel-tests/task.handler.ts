@@ -52,11 +52,11 @@ const main = async () => {
 
   const initMessage = await waitForInitMessage();
 
-  const { logLevel, dataDir, ReplayAndStoreResultsOptions } = initMessage.data;
+  const { logLevel, dataDir, replayOptions } = initMessage.data;
   logger.setLevel(logLevel);
   setMeticulousLocalDataDir(dataDir);
 
-  const result = await handleReplay(ReplayAndStoreResultsOptions);
+  const result = await handleReplay(replayOptions);
   const resultMessage: ResultMessage = {
     kind: "result",
     data: {
