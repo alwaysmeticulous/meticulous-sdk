@@ -19,7 +19,6 @@ import {
   ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
 import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers/dist/scripts/replay-assets";
-import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { createReplayDiff } from "../../api/replay-diff.api";
 import {
@@ -167,8 +166,7 @@ export const runAllTests = async ({
   const shouldIncludeBaseTestCases =
     !!fallbackTestRun &&
     (await shouldUseBaseTestRunTestCases({
-      client,
-      baseTestRunId: fallbackTestRun.id,
+      baseTestRun: fallbackTestRun,
     }));
 
   // We merge the test cases from the project config, the meticulous.json and the "fallback"(run-all-tests-level)
@@ -420,16 +418,12 @@ const getTestCasesWithBaseTestRunId = async ({
 };
 
 const shouldUseBaseTestRunTestCases = async ({
-  client,
-  baseTestRunId,
+  baseTestRun,
 }: {
-  client: AxiosInstance;
-  baseTestRunId: string;
+  baseTestRun: TestRun;
 }) => {
-  const testRun = await getTestRun({ client, testRunId: baseTestRunId });
-
   // We only want to include the test cases from the base test run if it has no base test run itself, i.e the
   // the base test run is for a "push" event.
   // This safeguards against the test run expanding indefinitely.
-  return !testRun?.configData?.baseTestRunId;
+  return !baseTestRun?.configData?.baseTestRunId;
 };
