@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "2.40.4",
+  "version": "2.41.0",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
@@ -27,13 +27,13 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/api": "^2.40.4",
-    "@alwaysmeticulous/client": "^2.40.4",
-    "@alwaysmeticulous/common": "^2.40.4",
-    "@alwaysmeticulous/downloading-helpers": "^2.40.4",
-    "@alwaysmeticulous/record": "^2.40.4",
-    "@alwaysmeticulous/replay-orchestrator": "^2.40.4",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.40.4",
+    "@alwaysmeticulous/api": "^2.41.0",
+    "@alwaysmeticulous/client": "^2.41.0",
+    "@alwaysmeticulous/common": "^2.41.0",
+    "@alwaysmeticulous/downloading-helpers": "^2.41.0",
+    "@alwaysmeticulous/record": "^2.41.0",
+    "@alwaysmeticulous/replay-orchestrator": "^2.41.0",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.41.0",
     "@alwaysmeticulous/sentry": "^2.40.0",
     "@sentry/node": "^7.36.0",
     "axios": "^1.2.6",
