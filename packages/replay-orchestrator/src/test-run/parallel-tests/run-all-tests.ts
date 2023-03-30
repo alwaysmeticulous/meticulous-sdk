@@ -9,8 +9,8 @@ import {
 } from "@alwaysmeticulous/api";
 import {
   createClient,
-  getLatestTestRunResults,
   getProject,
+  getLatestTestRunResults,
 } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
@@ -18,7 +18,7 @@ import {
   METICULOUS_LOGGER_NAME,
   ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
-import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers/dist/scripts/replay-assets";
+import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers";
 import log from "loglevel";
 import { createReplayDiff } from "../../api/replay-diff.api";
 import {

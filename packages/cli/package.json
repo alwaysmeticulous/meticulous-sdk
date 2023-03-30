@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "2.40.0",
+  "version": "2.40.2",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
@@ -26,11 +26,11 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "@alwaysmeticulous/client": "^2.40.0",
-    "@alwaysmeticulous/common": "^2.40.0",
-    "@alwaysmeticulous/download-helpers": "^2.40.0",
-    "@alwaysmeticulous/replay-orchestrator": "^2.40.0",
-    "@alwaysmeticulous/sentry": "^2.40.0",
+    "@alwaysmeticulous/client": "^2.40.1",
+    "@alwaysmeticulous/common": "^2.40.1",
+    "@alwaysmeticulous/download-helpers": "^2.40.2",
+    "@alwaysmeticulous/replay-orchestrator": "^2.40.2",
+    "@alwaysmeticulous/sentry": "^2.40.1",
     "@sentry/node": "^7.36.0",
     "axios": "^1.2.6",
     "chalk": "^4.1.2",
@@ -38,9 +38,9 @@
     "yargs": "^17.5.1"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.40.0",
-    "@types/yargs": "^17.0.10",
-    "@types/luxon": "^3.2.0"
+    "@alwaysmeticulous/api": "^2.40.1",
+    "@types/luxon": "^3.2.0",
+    "@types/yargs": "^17.0.10"
   },
   "peerDependencies": {
     "@alwaysmeticulous/record": "^2.3.3"
