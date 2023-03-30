@@ -28,7 +28,6 @@
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.40.1",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.40.1",
     "@types/luxon": "^3.2.0",
     "@types/proper-lockfile": "^4.1.2",
     "@types/adm-zip": "^0.5.0"
