@@ -107,6 +107,7 @@ export interface TestRun {
   id: string;
   status: TestRunStatus;
   project: Project;
+  configData: TestRunConfigData;
   resultData?: {
     results: TestCaseResult[];
     [key: string]: any;

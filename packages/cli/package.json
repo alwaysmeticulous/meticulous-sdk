@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "2.40.0",
+  "version": "2.40.3",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
@@ -23,7 +23,8 @@
     "cli": "node dist/main.js",
     "cli:dev": "ts-node src/main.ts",
     "cli:dev-localhost": "METICULOUS_API_URL=http://localhost:3001/api/ ts-node src/main.ts",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
     "@alwaysmeticulous/api": "^2.40.0",
@@ -36,13 +37,11 @@
     "@alwaysmeticulous/sentry": "^2.40.0",
     "@sentry/node": "^7.36.0",
     "axios": "^1.2.6",
-    "chalk": "^4.1.2",
-    "luxon": "^3.2.1",
+    "loglevel": "^1.8.0",
     "yargs": "^17.5.1"
   },
   "devDependencies": {
-    "@types/yargs": "^17.0.10",
-    "@types/luxon": "^3.2.0"
+    "@types/yargs": "^17.0.10"
   },
   "author": {
     "name": "The Meticulous Team",

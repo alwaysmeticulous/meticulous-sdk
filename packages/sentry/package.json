@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/sentry",
-  "version": "2.40.0",
+  "version": "2.40.3",
   "description": "Helper methods for connecting to Sentry",
   "license": "ISC",
   "main": "dist/index.js",
@@ -15,7 +15,8 @@
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
-    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
+    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
+    "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
     "@sentry/node": "^7.36.0",

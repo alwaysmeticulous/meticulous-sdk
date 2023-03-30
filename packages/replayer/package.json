@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replayer",
-  "version": "2.40.0",
+  "version": "2.40.3",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -15,19 +15,21 @@
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
-    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
+    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
+    "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.40.0",
+    "@alwaysmeticulous/common": "^2.40.3",
+    "@sentry/types": "^7.36.0",
     "loglevel": "^1.8.0",
     "luxon": "^3.2.1",
-    "puppeteer": "^19.7.5",
-    "rrweb": "^1.1.3"
+    "puppeteer": "^19.7.5"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.40.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.40.0",
-    "@types/luxon": "^3.2.0"
+    "@alwaysmeticulous/api": "^2.40.3",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.40.3",
+    "@types/luxon": "^3.2.0",
+    "next": "^13.1.6"
   },
   "peerDependencies": {
     "@alwaysmeticulous/replay-debugger-ui": "^2.5.0"
