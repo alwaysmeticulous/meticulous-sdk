@@ -59,9 +59,6 @@ export const maybeDownloadAndDiffScreenshots = async ({
       logger,
     });
   } else if (screenshottingOptions.compareTo.type === "specific-replay") {
-    logger.info(
-      `Diffing screenshots against replay ${screenshottingOptions.compareTo.replayId}`
-    );
     return diffScreenshotsAgainstReplay({
       client,
       headReplayDir,
