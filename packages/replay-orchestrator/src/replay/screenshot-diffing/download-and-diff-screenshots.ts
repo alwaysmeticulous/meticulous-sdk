@@ -12,7 +12,7 @@ import {
 import {
   CompareScreenshotsToBestReplayForSessionInTestRun,
   CompareScreenshotsToSpecificReplay,
-  ReplayScreenshotAssertionsOptions,
+  ScreenshotComparisonOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
@@ -28,7 +28,7 @@ export interface ComputeAndSaveDiffOptions {
   sessionId: string;
   headReplayId: string;
   headReplayDir: string;
-  screenshottingOptions: ReplayScreenshotAssertionsOptions;
+  screenshottingOptions: ScreenshotComparisonOptions;
   logger: log.Logger;
 }
 

@@ -1,5 +1,5 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import { ReplayScreenshotAssertionsOptions } from "@alwaysmeticulous/sdk-bundles-api";
+import { ScreenshotComparisonOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 
 const METICULOUS_SKIP_UPLOAD_ENV_VAR = "METICULOUS_SKIP_UPLOAD";
@@ -7,7 +7,7 @@ const METICULOUS_SKIP_UPLOAD_ENV_VAR = "METICULOUS_SKIP_UPLOAD";
 // Uploading the zip can take a long time, so we expose a env variable to support skipping it
 // We don't expose this as a first-class CLI option because we don't want to pollute the list of CLI options
 export const exitEarlyIfSkipUploadEnvVarSet = (
-  screenshottingOptions: ReplayScreenshotAssertionsOptions
+  screenshottingOptions: ScreenshotComparisonOptions
 ) => {
   if (!shouldSkipUpload()) {
     return;

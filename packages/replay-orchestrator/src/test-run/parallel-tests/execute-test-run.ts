@@ -1,6 +1,6 @@
 import { join, normalize } from "path";
 import {
-  ReplayDiffScreenshotAssertionsEnabledOptions,
+  ScreenshotAssertionsEnabledOptions,
   ScreenshotDiffOptions,
   TestCase,
   TestCaseReplayOptions,
@@ -22,7 +22,7 @@ import {
   ExecuteTestRunOptions,
   ExecuteTestRunResult,
   ReplayExecutionOptions,
-  ReplayScreenshotAssertionsEnabledOptions,
+  ScreenshotComparisonEnabledOptions,
   TestRunProgress,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
@@ -230,7 +230,7 @@ export const executeTestRun = async ({
           baseReplayId: baseReplayId,
           testRunId: testRun.id,
           data: {
-            ReplayDiffScreenshotAssertionsOptions: screenshottingOptions,
+            ScreenshotAssertionsOptions: screenshottingOptions,
             screenshotDiffResults,
           },
         });
@@ -333,7 +333,7 @@ const getTestTasks = async ({
   appUrl: string | null;
   testCases: TestCase[];
   executionOptions: ReplayExecutionOptions;
-  screenshottingOptions: ReplayDiffScreenshotAssertionsEnabledOptions;
+  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
 }) => {
   const testsToRun: TestTask[] = testCases.map((testCase) => {
     const mergedExecutionOptions =
@@ -360,18 +360,17 @@ const getTestTasks = async ({
       );
     }
 
-    const mergedScreenshottingOptions: ReplayScreenshotAssertionsEnabledOptions =
-      {
-        ...restOfScreenshottingOptions,
-        compareTo:
-          baseTestRunId == null
-            ? { type: "do-not-compare" }
-            : {
-                type: "best-replay-for-session-in-test-run",
-                testRunId: baseTestRunId,
-                diffOptions,
-              },
-      };
+    const mergedScreenshottingOptions: ScreenshotComparisonEnabledOptions = {
+      ...restOfScreenshottingOptions,
+      compareTo:
+        baseTestRunId == null
+          ? { type: "do-not-compare" }
+          : {
+              type: "best-replay-for-session-in-test-run",
+              testRunId: baseTestRunId,
+              diffOptions,
+            },
+    };
 
     return {
       title: testCase.title ?? null,
@@ -415,9 +414,9 @@ const applyTestCaseExecutionOptionOverrides = (
 };
 
 const applyTestCaseScreenshottingOptionsOverrides = (
-  screenshottingOptionsFromCliFlags: ReplayDiffScreenshotAssertionsEnabledOptions,
+  screenshottingOptionsFromCliFlags: ScreenshotAssertionsEnabledOptions,
   overridesFromTestCase?: TestCaseReplayOptions
-): ReplayDiffScreenshotAssertionsEnabledOptions => {
+): ScreenshotAssertionsEnabledOptions => {
   if (overridesFromTestCase == null) {
     return screenshottingOptionsFromCliFlags;
   }

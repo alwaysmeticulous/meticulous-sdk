@@ -10,23 +10,20 @@ export interface ReplayDiff {
 }
 
 export interface ReplayDiffData {
-  ReplayDiffScreenshotAssertionsOptions?: ReplayDiffScreenshotAssertionsOptions;
+  ScreenshotAssertionsOptions?: ScreenshotAssertionsOptions;
   screenshotDiffResults?: ScreenshotDiffResult[];
 }
 
 /**
- * Differs from ReplayScreenshotAssertionsOptions in that
- * ReplayScreenshotAssertionsOptions specifies the test run or base replay id
- * to compare to, while ReplayDiffScreenshotAssertionsOptions does not.
- *
- * Note that one replay may compare to multiple base replay ids, while one
- * replay diff only compares to a single base replay id.
+ * Differs from ScreenshotComparisonOptions in that
+ * ScreenshotComparisonOptions specifies the test run or base replay id
+ * to compare to, while ScreenshotAssertionsOptions does not.
  */
-export type ReplayDiffScreenshotAssertionsOptions =
+export type ScreenshotAssertionsOptions =
   | { enabled: false }
-  | ReplayDiffScreenshotAssertionsEnabledOptions;
+  | ScreenshotAssertionsEnabledOptions;
 
-export interface ReplayDiffScreenshotAssertionsEnabledOptions
+export interface ScreenshotAssertionsEnabledOptions
   extends ScreenshottingEnabledOptions {
   diffOptions: ScreenshotDiffOptions;
 }

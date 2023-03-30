@@ -3,7 +3,7 @@ import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
 export interface ReplayAndStoreResultsOptions {
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
-  screenshottingOptions: ReplayScreenshotAssertionsOptions;
+  screenshottingOptions: ScreenshotComparisonOptions;
   generatedBy: GeneratedBy;
   testRunId: string | null;
   suppressScreenshotDiffLogging: boolean;
@@ -14,15 +14,17 @@ export interface ReplayAndStoreResultsOptions {
   debugger: boolean;
 }
 
-export type ReplayScreenshotAssertionsOptions =
+/**
+ * Similar to ScreenshotAssertionsOptions, but also specifies the test run or base replay id
+ * to compare to.
+ */
+export type ScreenshotComparisonOptions =
   | {
       enabled: false;
     }
-  | (ScreenshottingEnabledOptions & {
-      compareTo: CompareScreenshotsTo;
-    });
+  | ScreenshotComparisonEnabledOptions;
 
-export interface ReplayScreenshotAssertionsEnabledOptions
+export interface ScreenshotComparisonEnabledOptions
   extends ScreenshottingEnabledOptions {
   compareTo: CompareScreenshotsTo;
 }

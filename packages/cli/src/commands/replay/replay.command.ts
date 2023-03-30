@@ -7,7 +7,7 @@ import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator";
 import {
   GeneratedBy,
   ReplayExecutionOptions,
-  ReplayScreenshotAssertionsOptions,
+  ScreenshotComparisonOptions,
   ReplayTarget,
   StoryboardOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
@@ -94,7 +94,7 @@ export const rawReplayCommandHandler = async ({
   const storyboardOptions: StoryboardOptions = storyboard
     ? { enabled: true }
     : { enabled: false };
-  const screenshottingOptions: ReplayScreenshotAssertionsOptions = screenshot
+  const screenshottingOptions: ScreenshotComparisonOptions = screenshot
     ? {
         enabled: true,
         storyboardOptions,

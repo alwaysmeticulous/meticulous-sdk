@@ -2,7 +2,7 @@ import { TestCase } from "@alwaysmeticulous/api";
 import {
   DetailedTestCaseResult,
   ReplayExecutionOptions,
-  ReplayScreenshotAssertionsOptions,
+  ScreenshotComparisonOptions,
   ReplayTarget,
 } from "@alwaysmeticulous/sdk-bundles-api";
 
@@ -18,7 +18,7 @@ export interface TestTask {
   /**
    * Overrides the screenshotting options in the test case
    */
-  screenshottingOptions: ReplayScreenshotAssertionsOptions;
+  screenshottingOptions: ScreenshotComparisonOptions;
 
   /**
    * The original test case that triggered this task. Note that given

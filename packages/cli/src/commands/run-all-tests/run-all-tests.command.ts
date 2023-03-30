@@ -1,5 +1,5 @@
 import {
-  ReplayDiffScreenshotAssertionsOptions,
+  ScreenshotAssertionsOptions,
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
@@ -81,7 +81,7 @@ const handler: (options: Options) => Promise<void> = async ({
   const storyboardOptions: StoryboardOptions = storyboard
     ? { enabled: true }
     : { enabled: false };
-  const screenshottingOptions: ReplayDiffScreenshotAssertionsOptions = {
+  const screenshottingOptions: ScreenshotAssertionsOptions = {
     enabled: true,
     diffOptions: { diffPixelThreshold, diffThreshold },
     storyboardOptions,
