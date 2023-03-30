@@ -7,7 +7,7 @@ export interface InitMessage {
   data: {
     logLevel: log.LogLevel[keyof log.LogLevel];
     dataDir: string;
-    ReplayAndStoreResultsOptions: ParallelTestsReplayOptions;
+    replayAndStoreResultsOptions: ParallelTestsReplayOptions;
   };
 }
 

@@ -7,7 +7,7 @@ import {
   DetailedTestCaseResult,
   ReplayExecutionOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
-import { replayAndStoreResults } from "../../replay/perform-replay";
+import { replayAndStoreResults } from "../../replay/replay-and-store-results";
 import { hasNotableDifferences } from "../../replay/screenshot-diffing/utils/has-notable-differences";
 import { ParallelTestsReplayOptions } from "./parallel-replay.types";
 
