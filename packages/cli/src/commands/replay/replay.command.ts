@@ -189,7 +189,7 @@ export const replayCommand = buildCommand("simulate")
     baseReplayId: {
       string: true,
       description:
-        "Base simulation id to diff the final state screenshot against",
+        "Base simulation id to diff the screenshots against",
       alias: "baseSimulationId",
     },
     ...COMMON_REPLAY_OPTIONS,
