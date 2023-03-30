@@ -5,6 +5,10 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "out/**", ".next/**", "tsconfig.tsbuildinfo"]
+    },
+    "depcheck": {
+      "dependsOn": [],
+      "outputs": []
     }
   }
 }

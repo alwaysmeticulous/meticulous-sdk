@@ -23,7 +23,8 @@
     "cli": "node dist/main.js",
     "cli:dev": "ts-node src/main.ts",
     "cli:dev-localhost": "METICULOUS_API_URL=http://localhost:3001/api/ ts-node src/main.ts",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "depcheck": "depcheck --ignore-dirs=dist"
   },
   "dependencies": {
     "@alwaysmeticulous/client": "^2.40.1",

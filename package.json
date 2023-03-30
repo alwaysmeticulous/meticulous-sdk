@@ -15,7 +15,8 @@
     "cli": "yarn workspace @alwaysmeticulous/cli cli",
     "cli:dev": "yarn workspace @alwaysmeticulous/cli cli:dev",
     "cli:dev-localhost": "yarn workspace @alwaysmeticulous/cli cli:dev-localhost",
-    "publish": "lerna version"
+    "publish": "lerna version",
+    "depcheck": "turbo run depcheck"
   },
   "devDependencies": {
     "@parcel/packager-ts": "^2.8.3",
@@ -26,6 +27,7 @@
     "@types/react-dom": "^18.0.4",
     "@typescript-eslint/eslint-plugin": "^5.49.0",
     "@typescript-eslint/parser": "^5.49.0",
+    "depcheck": "^1.4.3",
     "esbuild": "^0.17.5",
     "eslint": "^8.32.0",
     "eslint-config-next": "^13.1.5",
