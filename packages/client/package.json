@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/client",
-  "version": "2.40.0",
+  "version": "2.40.1",
   "description": "Helper methods for using the Meticulous backend API",
   "license": "ISC",
   "main": "dist/index.js",
@@ -18,7 +18,7 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.40.0",
+    "@alwaysmeticulous/common": "^2.40.1",
     "axios": "^1.2.6"
   },
   "author": {

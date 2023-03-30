@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replay-debugger-ui",
-  "version": "2.34.0",
+  "version": "2.40.1",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -23,21 +23,21 @@
     "serve": "serve -p 3005 -s out"
   },
   "dependencies": {
-    "serve": "^14.2.0",
-    "luxon": "^3.2.1"
+    "luxon": "^3.2.1",
+    "serve": "^14.2.0"
   },
   "devDependencies": {
     "@headlessui/react": "^1.7.8",
     "@heroicons/react": "^2.0.14",
+    "@tailwindcss/forms": "0.5.3",
+    "@types/luxon": "^3.2.0",
     "autoprefixer": "^10.4.7",
     "classnames": "^2.3.1",
     "next": "^13.1.6",
     "postcss": "^8.4.14",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tailwindcss": "^3.2.4",
-    "@tailwindcss/forms": "0.5.3",
-    "@types/luxon": "^3.2.0"
+    "tailwindcss": "^3.2.4"
   },
   "author": {
     "name": "The Meticulous Team",

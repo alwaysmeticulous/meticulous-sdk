@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/download-helpers",
-  "version": "2.40.0",
+  "version": "2.40.1",
   "description": "Helper utilities for downloading files & scripts required to execute replays",
   "license": "ISC",
   "main": "dist/index.js",
@@ -18,16 +18,16 @@
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.40.0",
-    "@alwaysmeticulous/client": "^2.40.0",
-    "proper-lockfile": "^4.1.2",
-    "luxon": "^3.2.1"
+    "@alwaysmeticulous/client": "^2.40.1",
+    "@alwaysmeticulous/common": "^2.40.1",
+    "luxon": "^3.2.1",
+    "proper-lockfile": "^4.1.2"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.40.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.40.0",
-    "@types/proper-lockfile": "^4.1.2",
-    "@types/luxon": "^3.2.0"
+    "@alwaysmeticulous/api": "^2.40.1",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.40.1",
+    "@types/luxon": "^3.2.0",
+    "@types/proper-lockfile": "^4.1.2"
   },
   "author": {
     "name": "The Meticulous Team",
