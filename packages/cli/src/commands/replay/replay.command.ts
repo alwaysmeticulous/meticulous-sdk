@@ -70,7 +70,7 @@ export const rawReplayCommandHandler = async ({
   essentialFeaturesOnly,
   debugger: enableStepThroughDebugger,
 }: RawReplayCommandHandlerOptions): Promise<Replay> => {
-  if (screenshot == false && storyboard == true) {
+  if (!screenshot && storyboard) {
     throw new Error(
       "Cannot take storyboard screenshots without taking end state screenshots. Please set '--screenshot' to true, or '--storyboard' to false."
     );
