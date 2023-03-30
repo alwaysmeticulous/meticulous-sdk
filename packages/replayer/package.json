@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.40.3",
+    "@sentry/types": "^7.36.0",
     "loglevel": "^1.8.0",
     "luxon": "^3.2.1",
     "puppeteer": "^19.7.5"

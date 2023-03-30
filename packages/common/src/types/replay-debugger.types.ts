@@ -1,15 +1,15 @@
 import { SessionData } from "@alwaysmeticulous/api";
-import {
-  BaseReplayEventsDependencies,
-  ReplayEventsDependency,
-} from "./replay.types";
 import { RecordedSession } from "./session.types";
 
-export interface ReplayDebuggerDependencies
-  extends BaseReplayEventsDependencies {
-  browserUserInteractions: ReplayEventsDependency<"browserUserInteractions">;
-  nodeBrowserContext: ReplayEventsDependency<"nodeBrowserContext">;
-  nodeNetworkStubbing: ReplayEventsDependency<"nodeNetworkStubbing">;
+export interface ReplayDebuggerDependency<Key extends string> {
+  key: Key;
+  location: string;
+}
+
+export interface ReplayDebuggerDependencies {
+  browserUserInteractions: ReplayDebuggerDependency<"browserUserInteractions">;
+  nodeBrowserContext: ReplayDebuggerDependency<"nodeBrowserContext">;
+  nodeNetworkStubbing: ReplayDebuggerDependency<"nodeNetworkStubbing">;
 }
 
 export interface ReplayDebuggerOptions {

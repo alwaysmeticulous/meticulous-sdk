@@ -1,5 +1,5 @@
 import { TestCase } from "@alwaysmeticulous/api";
-import { ReplayTarget } from "@alwaysmeticulous/common/dist/types/replay.types";
+import { ReplayTarget } from "@alwaysmeticulous/sdk-bundles-api";
 
 export const getReplayTargetForTestCase = ({
   appUrl,

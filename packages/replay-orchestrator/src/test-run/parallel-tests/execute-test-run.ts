@@ -1,24 +1,21 @@
 import { join, normalize } from "path";
-import {
-  ScreenshotAssertionsEnabledOptions,
-  TestCase,
-  TestCaseResult,
-  TestRun,
-  TestRunEnvironment,
-  TestRunStatus,
-} from "@alwaysmeticulous/api";
+import { TestCase, TestRun, TestRunStatus } from "@alwaysmeticulous/api";
 import {
   createClient,
-  getProject,
   getLatestTestRunResults,
+  getProject,
 } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   getMeticulousVersion,
   METICULOUS_LOGGER_NAME,
-  ReplayExecutionOptions,
 } from "@alwaysmeticulous/common";
-import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers";
+import {
+  DetailedTestCaseResult,
+  ExecuteTestRunOptions,
+  ExecuteTestRunResult,
+  TestRunProgress,
+} from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { createReplayDiff } from "../../api/replay-diff.api";
 import {
@@ -27,97 +24,21 @@ import {
   getTestRunUrl,
   putTestRunResults,
 } from "../../api/test-run.api";
+import { loadReplayEventsDependencies } from "../../replay/scripts-loader/load-replay-dependencies";
 import { executeTestInChildProcess } from "./execute-test-in-child-process";
 import { InitMessage } from "./messages.types";
 import { runAllTestsInParallel } from "./parallel-tests.handler";
-import { TestRunProgress } from "./run-all-tests.types";
 import { readConfig } from "./utils/config";
-import { DetailedTestCaseResult } from "./utils/config.types";
 import { getReplayTargetForTestCase } from "./utils/get-replay-target-for-test-case";
 import { writeGitHubSummary } from "./utils/github-summary.utils";
-import { mergeTestCases, sortResults } from "./utils/run-all-tests.utils";
+import { mergeTestCases, sortResults } from "./utils/test-case.utils";
 import { getEnvironment } from "./utils/test-run-environment.utils";
-
-export type RunAllTestsTestRun = Pick<
-  TestRun,
-  "id" | "url" | "status" | "project"
-> & {
-  progress: TestRunProgress;
-  url: string;
-};
-
-export interface Options {
-  testsFile: string | null;
-  executionOptions: ReplayExecutionOptions;
-  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
-  apiToken: string | null;
-  commitSha: string;
-
-  /**
-   * The base commit to compare test results against for test cases that don't have a baseReplayId specified.
-   */
-  baseCommitSha: string | null;
-
-  appUrl: string | null;
-
-  /**
-   * If null runs in parralel with a sensible number of parrelel tasks for the given machine.
-   *
-   * Set to 1 to disable parralelism.
-   */
-  parallelTasks: number | null;
-
-  /**
-   * If set to a value greater than 1 then will re-run any replays that give a screenshot diff
-   * and mark them as a flake if the screenshot generated on one of the retryed replays differs from that
-   * in the first replay.
-   */
-  maxRetriesOnFailure: number;
-
-  /**
-   * If set to a value greater than 0 then will re-run all replays the specified number of times
-   * and mark them as a flake if the screenshot generated on one of the retryed replays differs from that
-   * in the first replay.
-   *
-   * This is useful for checking flake rates.
-   *
-   * This option is mutually exclusive with maxRetriesOnFailure.
-   */
-  rerunTestsNTimes: number;
-
-  githubSummary: boolean;
-
-  /**
-   * If provided it will incorportate the cachedTestRunResults in any calls to store
-   * test run results in the BE, but won't include the cachedTestRunResults in the returned
-   * RunAllTestsResult.
-   */
-  cachedTestRunResults?: TestCaseResult[];
-
-  /**
-   * Captured environment for this run
-   */
-  environment?: TestRunEnvironment;
-
-  baseTestRunId: string | null;
-
-  onTestRunCreated?: (
-    testRun: RunAllTestsTestRun & { status: "Running" }
-  ) => void;
-  onTestFinished?: (
-    testRun: RunAllTestsTestRun & { status: "Running" }
-  ) => void;
-}
-export interface RunAllTestsResult {
-  testRun: RunAllTestsTestRun & { status: "Success" | "Failure" };
-  testCaseResults: DetailedTestCaseResult[];
-}
 
 /**
  * Runs all the test cases in the provided file.
  * @returns The results of the tests that were executed (note that this does not include results from any cachedTestRunResults passed in)
  */
-export const runAllTests = async ({
+export const executeTestRun = async ({
   testsFile,
   apiToken,
   commitSha,
@@ -134,7 +55,7 @@ export const runAllTests = async ({
   baseTestRunId,
   onTestRunCreated,
   onTestFinished: onTestFinished_,
-}: Options): Promise<RunAllTestsResult> => {
+}: ExecuteTestRunOptions): Promise<ExecuteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });
@@ -196,8 +117,6 @@ export const runAllTests = async ({
 
   const packageJsonPath = normalize(join(__dirname, "../../../package.json"));
   const meticulousSha = await getMeticulousVersion(packageJsonPath);
-
-  // TODO: Work this out
   const replayEventsDependencies = await loadReplayEventsDependencies();
 
   const testRun = await createTestRun({

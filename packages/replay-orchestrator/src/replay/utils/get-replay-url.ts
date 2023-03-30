@@ -1,4 +1,4 @@
-import { Replay } from "@alwaysmeticulous/common";
+import { Replay } from "@alwaysmeticulous/api";
 
 export const getReplayUrl = (replay: Replay) => {
   const organizationName = encodeURIComponent(replay.project.organization.name);

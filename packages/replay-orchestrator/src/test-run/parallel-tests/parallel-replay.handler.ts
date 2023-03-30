@@ -3,11 +3,13 @@ import {
   ScreenshotAssertionsEnabledOptions,
   ScreenshotDiffOptions,
 } from "@alwaysmeticulous/api";
-import { ReplayExecutionOptions } from "@alwaysmeticulous/common";
-import { performReplay } from "../../replay/perform-replay";
+import {
+  DetailedTestCaseResult,
+  ReplayExecutionOptions,
+} from "@alwaysmeticulous/sdk-bundles-api";
+import { replayAndStoreResults } from "../../replay/replay-and-store-results";
 import { hasNotableDifferences } from "../../replay/screenshot-diffing/utils/has-notable-differences";
 import { ParallelTestsReplayOptions } from "./parallel-replay.types";
-import { DetailedTestCaseResult } from "./utils/config.types";
 
 export const handleReplay = async ({
   testCase,
@@ -22,27 +24,28 @@ export const handleReplay = async ({
   suppressScreenshotDiffLogging,
   baseTestRunId,
 }: ParallelTestsReplayOptions): Promise<DetailedTestCaseResult> => {
-  const { replay, screenshotDiffResultsByBaseReplayId } = await performReplay({
-    replayTarget,
-    executionOptions: applyTestCaseExecutionOptionOverrides(
-      executionOptions,
-      testCase.options ?? {}
-    ),
-    screenshottingOptions: applyTestCaseScreenshottingOptionsOverrides(
-      screenshottingOptions,
-      testCase.options ?? {}
-    ),
-    apiToken,
-    commitSha,
-    sessionId: testCase.sessionId,
-    baseTestRunId,
-    cookiesFile: null,
-    generatedBy,
-    testRunId,
-    replayEventsDependencies,
-    suppressScreenshotDiffLogging,
-    debugger: false,
-  });
+  const { replay, screenshotDiffResultsByBaseReplayId } =
+    await replayAndStoreResults({
+      replayTarget,
+      executionOptions: applyTestCaseExecutionOptionOverrides(
+        executionOptions,
+        testCase.options ?? {}
+      ),
+      screenshottingOptions: applyTestCaseScreenshottingOptionsOverrides(
+        screenshottingOptions,
+        testCase.options ?? {}
+      ),
+      apiToken,
+      commitSha,
+      sessionId: testCase.sessionId,
+      baseTestRunId,
+      cookiesFile: null,
+      generatedBy,
+      testRunId,
+      replayEventsDependencies,
+      suppressScreenshotDiffLogging,
+      debugger: false,
+    });
   const result = hasNotableDifferences(
     Object.values(screenshotDiffResultsByBaseReplayId).flat()
   )

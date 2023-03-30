@@ -27,27 +27,21 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/client": "^2.40.3",
-    "@alwaysmeticulous/common": "^2.40.3",
-    "@alwaysmeticulous/download-helpers": "^2.40.3",
-    "@alwaysmeticulous/replay-orchestrator": "^2.40.3",
-    "@alwaysmeticulous/sentry": "^2.40.3",
+    "@alwaysmeticulous/api": "^2.40.0",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.40.0",
+    "@alwaysmeticulous/client": "^2.40.0",
+    "@alwaysmeticulous/common": "^2.40.0",
+    "@alwaysmeticulous/download-helpers": "^2.40.0",
+    "@alwaysmeticulous/replay-orchestrator": "^2.40.0",
+    "@alwaysmeticulous/record": "^2.40.0",
+    "@alwaysmeticulous/sentry": "^2.40.0",
     "@sentry/node": "^7.36.0",
     "axios": "^1.2.6",
     "loglevel": "^1.8.0",
     "yargs": "^17.5.1"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.40.3",
     "@types/yargs": "^17.0.10"
-  },
-  "peerDependencies": {
-    "@alwaysmeticulous/record": "^2.3.3"
-  },
-  "peerDependenciesMeta": {
-    "@alwaysmeticulous/record": {
-      "optional": true
-    }
   },
   "author": {
     "name": "The Meticulous Team",

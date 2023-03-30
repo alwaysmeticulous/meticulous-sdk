@@ -1,11 +1,13 @@
 import { cpus } from "os";
 import { TestCase } from "@alwaysmeticulous/api";
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import {
+  DetailedTestCaseResult,
+  TestRunProgress,
+} from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { mergeResults } from "./merge-test-results";
-import { TestRunProgress } from "./run-all-tests.types";
 import { flattenScreenshotDiffResults } from "./screenshot-diff-results.utils";
-import { DetailedTestCaseResult } from "./utils/config.types";
 
 export interface RunAllTestsInParallelOptions {
   testsToRun: TestCase[];

@@ -1,9 +1,6 @@
 import { readFile } from "fs/promises";
 import { SessionData } from "@alwaysmeticulous/api";
-import {
-  METICULOUS_LOGGER_NAME,
-  ReplayEventsDependencies,
-} from "@alwaysmeticulous/common";
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import {
   InstallVirtualEventLoopOpts,
   OnReplayTimelineEventFn,
@@ -21,6 +18,7 @@ import {
   PageError,
   PlaybackEvent,
   ReplayData,
+  ReplayEventsDependencies,
 } from "./replay.types";
 
 interface NextJsWindow {

@@ -4,7 +4,6 @@ import { getReplay, getReplayDownloadUrl } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
-  Replay,
 } from "@alwaysmeticulous/common";
 import Zip from "adm-zip";
 import { AxiosInstance } from "axios";
@@ -19,7 +18,7 @@ import {
 export const getOrFetchReplay = async (
   client: AxiosInstance,
   replayId: string
-): Promise<{ fileName: string; data: Replay }> => {
+): Promise<{ fileName: string }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const replayFile = join(getReplayDir(replayId), `${replayId}.json`);
@@ -37,7 +36,7 @@ export const getOrFetchReplay = async (
     process.exit(1);
   }
 
-  return { fileName: replayFile, data: replay };
+  return { fileName: replayFile };
 };
 
 export const getOrFetchReplayArchive = async (

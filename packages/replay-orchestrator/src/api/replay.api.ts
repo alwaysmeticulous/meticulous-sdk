@@ -1,4 +1,4 @@
-import { Replay } from "@alwaysmeticulous/common";
+import { Replay } from "@alwaysmeticulous/api";
 import axios, { AxiosInstance } from "axios";
 
 export const createReplay: (options: {

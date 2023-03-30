@@ -5,7 +5,7 @@ import {
   SingleTryScreenshotDiffResult,
   TestCase,
 } from "@alwaysmeticulous/api";
-import { DetailedTestCaseResult } from "../utils/config.types";
+import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
 
 export const id = (eventNumber = 0): ScreenshotIdentifier => ({
   type: "after-event",

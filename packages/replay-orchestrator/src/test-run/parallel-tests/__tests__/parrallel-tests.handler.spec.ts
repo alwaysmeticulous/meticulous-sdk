@@ -1,8 +1,10 @@
 import { TestCase } from "@alwaysmeticulous/api";
 import { defer } from "@alwaysmeticulous/common";
+import {
+  TestRunProgress,
+  DetailedTestCaseResult,
+} from "@alwaysmeticulous/sdk-bundles-api";
 import { runAllTestsInParallel } from "../parallel-tests.handler";
-import { TestRunProgress } from "../run-all-tests.types";
-import { DetailedTestCaseResult } from "../utils/config.types";
 import {
   diff,
   flake,

@@ -1,5 +1,5 @@
 import { ScreenshotDiffResult } from "@alwaysmeticulous/api";
-import { DetailedTestCaseResult } from "./utils/config.types";
+import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
 
 export type ScreenshotDiffResultWithBaseReplayId = ScreenshotDiffResult & {
   baseReplayId: string;

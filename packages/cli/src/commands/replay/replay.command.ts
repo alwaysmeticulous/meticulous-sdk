@@ -1,25 +1,24 @@
-import { ScreenshotDiffResult } from "@alwaysmeticulous/api";
+import {
+  ScreenshotDiffResult,
+  Replay,
+  ScreenshotDiffOptions,
+  ScreenshotAssertionsOptions,
+} from "@alwaysmeticulous/api";
+import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator";
 import {
   GeneratedBy,
-  Replay,
   ReplayExecutionOptions,
   ReplayTarget,
   StoryboardOptions,
-} from "@alwaysmeticulous/common";
-import { loadReplayEventsDependencies } from "@alwaysmeticulous/download-helpers";
-import { performReplay } from "@alwaysmeticulous/replay-orchestrator";
+} from "@alwaysmeticulous/sdk-bundles-api";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
-import {
-  ScreenshotAssertionsOptions,
-  ScreenshotDiffOptions,
-} from "../../command-utils/common-types";
 
-export interface ReplayResult {
+export interface ReplayAndStoreResultsResult {
   replay: Replay;
 
   /**
@@ -100,8 +99,7 @@ export const rawReplayCommandHandler = async ({
       }
     : { enabled: false };
 
-  const replayEventsDependencies = await loadReplayEventsDependencies();
-  const { replay } = await performReplay({
+  const { replay } = await replayAndStoreResults({
     replayTarget: getReplayTarget({
       appUrl: appUrl ?? null,
       simulationIdForAssets: simulationIdForAssets ?? null,
@@ -115,7 +113,6 @@ export const rawReplayCommandHandler = async ({
     generatedBy: generatedByOption,
     baseTestRunId: null,
     testRunId: null,
-    replayEventsDependencies,
     debugger: enableStepThroughDebugger,
     suppressScreenshotDiffLogging: false,
   });

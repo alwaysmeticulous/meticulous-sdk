@@ -1,9 +1,9 @@
 import { fork } from "child_process";
 import { join } from "path";
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { InitMessage, ResultMessage } from "./messages.types";
-import { DetailedTestCaseResult } from "./utils/config.types";
 
 export const executeTestInChildProcess = (
   initMessage: InitMessage

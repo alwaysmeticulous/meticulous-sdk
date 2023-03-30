@@ -1,21 +1,25 @@
-import { SDKReplayTimelineEntry } from "@alwaysmeticulous/api";
+import { SDKReplayTimelineEntry, SessionData } from "@alwaysmeticulous/api";
 import {
   COMMON_CHROMIUM_FLAGS,
   METICULOUS_LOGGER_NAME,
-  ReplayEventsFn,
+  RecordedSession,
 } from "@alwaysmeticulous/common";
 import {
   OnReplayTimelineEventFn,
   ReplayUserInteractionsResult,
   SetupReplayNetworkStubbingFn,
   VirtualTimeOptions,
+  GeneratedBy,
+  ReplayExecutionOptions,
+  ReplayOrchestratorScreenshottingOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import { SetupBrowserContextSeedingFn } from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
+import { Span } from "@sentry/types";
 import log, { LogLevelDesc } from "loglevel";
 import { Browser, launch } from "puppeteer";
 import { openStepThroughDebuggerUI } from "./debugger/replay-debugger.ui";
 import { prepareScreenshotsDir, writeOutput } from "./output.utils";
-import { ReplayMetadata } from "./replay.types";
+import { ReplayEventsDependencies, ReplayMetadata } from "./replay.types";
 import {
   createReplayPage,
   getOriginalSessionStartUrl,
@@ -27,7 +31,37 @@ import {
 } from "./replay.utils";
 import { ReplayTimelineCollector } from "./timeline/collector";
 
-export const replayEvents: ReplayEventsFn = async (options) => {
+export interface ReplayEventsOptions {
+  /**
+   * If null then will use the URL the session was recorded against.
+   */
+  appUrl: string | null;
+  replayExecutionOptions: ReplayExecutionOptions;
+
+  /**
+   * Run in debugger mode, which allows the user to step through the replay event by event.
+   */
+  enableStepThroughDebugger: boolean;
+
+  browser: any;
+  outputDir: string;
+  session: RecordedSession;
+  sessionData: SessionData;
+  recordingId: string;
+  meticulousSha: string;
+  verbose?: boolean;
+  dependencies: ReplayEventsDependencies;
+  screenshottingOptions: ReplayOrchestratorScreenshottingOptions;
+  cookiesFile: string | null;
+  generatedBy: GeneratedBy;
+  testRunId: string | null;
+
+  parentPerformanceSpan?: Span;
+}
+
+export const replayEvents = async (
+  options: ReplayEventsOptions
+): Promise<void> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const logLevel: LogLevelDesc = logger.getLevel();
 
