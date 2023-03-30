@@ -230,7 +230,7 @@ export const executeTestRun = async ({
           baseReplayId: baseReplayId,
           testRunId: testRun.id,
           data: {
-            ScreenshotAssertionsOptions: screenshottingOptions,
+            screenshotAssertionsOptions: screenshottingOptions,
             screenshotDiffResults,
           },
         });

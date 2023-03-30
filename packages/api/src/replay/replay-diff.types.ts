@@ -10,7 +10,7 @@ export interface ReplayDiff {
 }
 
 export interface ReplayDiffData {
-  ScreenshotAssertionsOptions?: ScreenshotAssertionsOptions;
+  screenshotAssertionsOptions?: ScreenshotAssertionsOptions;
   screenshotDiffResults?: ScreenshotDiffResult[];
 }
 
