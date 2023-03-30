@@ -32,14 +32,12 @@
     "@alwaysmeticulous/replay-orchestrator": "^2.40.2",
     "@alwaysmeticulous/sentry": "^2.40.1",
     "@sentry/node": "^7.36.0",
+    "loglevel": "^1.8.0",
     "axios": "^1.2.6",
-    "chalk": "^4.1.2",
-    "luxon": "^3.2.1",
     "yargs": "^17.5.1"
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.40.1",
-    "@types/luxon": "^3.2.0",
     "@types/yargs": "^17.0.10"
   },
   "peerDependencies": {
