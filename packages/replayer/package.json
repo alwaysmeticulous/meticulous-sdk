@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replayer",
-  "version": "2.40.1",
+  "version": "2.40.3",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -19,14 +19,14 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.40.1",
+    "@alwaysmeticulous/common": "^2.40.3",
     "loglevel": "^1.8.0",
     "luxon": "^3.2.1",
     "puppeteer": "^19.7.5"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.40.1",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.40.1",
+    "@alwaysmeticulous/api": "^2.40.3",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.40.3",
     "@types/luxon": "^3.2.0",
     "next": "^13.1.6"
   },
