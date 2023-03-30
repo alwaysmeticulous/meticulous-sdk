@@ -14,7 +14,7 @@ export const exitEarlyIfSkipUploadEnvVarSet = (
   }
 
   if (
-    screenshottingOptions.enabled === true &&
+    screenshottingOptions.enabled &&
     screenshottingOptions.compareTo.type !== "do-not-compare"
   ) {
     throw new Error(
