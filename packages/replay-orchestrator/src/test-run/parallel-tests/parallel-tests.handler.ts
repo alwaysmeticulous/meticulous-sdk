@@ -304,7 +304,7 @@ const createTaskToRetry = (
   firstTryReplayId: string
 ): RerunnableTestTask => {
   const { screenshottingOptions } = testTask;
-  if (screenshottingOptions.enabled === false) {
+  if (!screenshottingOptions.enabled) {
     throw new Error(
       "Result from replay was a failure, which should only be possible if screenshots are enabled, but they were not."
     );
