@@ -292,10 +292,10 @@ export const replayEvents = async (
   const replayUserInteractionsCall = parentPerformanceSpan?.startChild({
     op: "replayUserInteractions",
   });
-  let replayResult: ReplayUserInteractionsResult;
+  let ReplayAndStoreResultsResult: ReplayUserInteractionsResult;
   let browserHasFrozen = false;
   try {
-    replayResult = await replayUserInteractions({
+    ReplayAndStoreResultsResult = await replayUserInteractions({
       sdkSemanticVersion: 1,
       page,
       logLevel,
@@ -313,9 +313,11 @@ export const replayEvents = async (
       ...(maxDurationMs != null ? { maxDurationMs } : {}),
       ...(maxEventCount != null ? { maxEventCount } : {}),
     });
-    logger.debug(`Replay result: ${JSON.stringify(replayResult)}`);
+    logger.debug(
+      `Replay result: ${JSON.stringify(ReplayAndStoreResultsResult)}`
+    );
   } catch (error) {
-    replayResult = { length: "short", reason: "error" };
+    ReplayAndStoreResultsResult = { length: "short", reason: "error" };
     logger.error("Error thrown during replay", error);
 
     if (error instanceof Error && error.name === "MeticulousTimeoutError") {

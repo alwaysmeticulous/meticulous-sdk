@@ -24,7 +24,7 @@ export {
   ScreenshottingOptions,
 } from "./replay/sdk-to-bundle";
 export {
-  ReplayOptions,
+  ReplayAndStoreResultsOptions,
   AdditionalReplayOptions,
   ReplayTarget,
   SnapshottedAssetsReplayTarget,
@@ -48,4 +48,4 @@ export {
   TestRunProgress,
   DetailedTestCaseResult,
 } from "./replay-orchestrator/bundle-to-sdk/execute-test-run";
-export { ReplayResult } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
+export { ReplayAndStoreResultsResult } from "./replay-orchestrator/bundle-to-sdk/execute-replay";

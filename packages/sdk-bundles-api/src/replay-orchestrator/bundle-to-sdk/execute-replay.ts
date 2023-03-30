@@ -1,6 +1,6 @@
 import { Replay, ScreenshotDiffResult } from "@alwaysmeticulous/api";
 
-export interface ReplayResult {
+export interface ReplayAndStoreResultsResult {
   replay: Replay;
 
   /**

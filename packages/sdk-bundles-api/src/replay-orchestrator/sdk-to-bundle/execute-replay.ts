@@ -1,6 +1,6 @@
 import { ScreenshotAssertionsOptions } from "@alwaysmeticulous/api";
 
-export interface ReplayOptions extends AdditionalReplayOptions {
+export interface ReplayAndStoreResultsOptions extends AdditionalReplayOptions {
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsOptions;

@@ -4,7 +4,7 @@ import {
   ScreenshotDiffOptions,
   ScreenshotAssertionsOptions,
 } from "@alwaysmeticulous/api";
-import { performReplay } from "@alwaysmeticulous/replay-orchestrator";
+import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator";
 import {
   GeneratedBy,
   ReplayExecutionOptions,
@@ -18,7 +18,7 @@ import {
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 
-export interface ReplayResult {
+export interface ReplayAndStoreResultsResult {
   replay: Replay;
 
   /**
@@ -99,7 +99,7 @@ export const rawReplayCommandHandler = async ({
       }
     : { enabled: false };
 
-  const { replay } = await performReplay({
+  const { replay } = await replayAndStoreResults({
     replayTarget: getReplayTarget({
       appUrl: appUrl ?? null,
       simulationIdForAssets: simulationIdForAssets ?? null,

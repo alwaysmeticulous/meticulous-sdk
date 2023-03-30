@@ -18,8 +18,8 @@ import {
   ReplayEventsOptions,
 } from "@alwaysmeticulous/replayer";
 import {
-  ReplayOptions,
-  ReplayResult,
+  ReplayAndStoreResultsOptions,
+  ReplayAndStoreResultsResult,
   ReplayTarget,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import * as Sentry from "@sentry/node";
@@ -40,7 +40,7 @@ import { getReplayUrl } from "./utils/get-replay-url";
 import { serveAssetsFromSimulation } from "./utils/serve-assets-from-simulation";
 import { uploadArchive } from "./utils/upload";
 
-export const performReplay = async ({
+export const replayAndStoreResults = async ({
   replayTarget,
   executionOptions,
   screenshottingOptions,
@@ -54,9 +54,9 @@ export const performReplay = async ({
   replayEventsDependencies,
   debugger: enableStepThroughDebugger,
   suppressScreenshotDiffLogging,
-}: ReplayOptions & {
+}: ReplayAndStoreResultsOptions & {
   replayEventsDependencies?: ReplayEventsDependencies;
-}): Promise<ReplayResult> => {
+}): Promise<ReplayAndStoreResultsResult> => {
   if (
     executionOptions.headless === true &&
     enableStepThroughDebugger === true
