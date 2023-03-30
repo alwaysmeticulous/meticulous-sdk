@@ -32,7 +32,7 @@ import {
   getReplayPushUrl,
   putReplayPushedStatus,
 } from "../api/replay.api";
-import { downloadAndDiffScreenshots } from "./screenshot-diffing/download-and-diff-screenshots";
+import { maybeDownloadAndDiffScreenshots } from "./screenshot-diffing/download-and-diff-screenshots";
 import { loadReplayEventsDependencies } from "./scripts-loader/load-replay-dependencies";
 import { createReplayArchive, deleteArchive } from "./utils/archive";
 import { exitEarlyIfSkipUploadEnvVarSet } from "./utils/exit-early-if-skip-upload-env-var-set";
@@ -47,7 +47,6 @@ export const replayAndStoreResults = async ({
   apiToken,
   sessionId,
   commitSha: commitSha_,
-  baseTestRunId,
   cookiesFile,
   generatedBy,
   testRunId,
@@ -172,7 +171,7 @@ export const replayAndStoreResults = async ({
     `Simulation time: ${endTime.diff(startTime).as("seconds")} seconds`
   );
 
-  exitEarlyIfSkipUploadEnvVarSet(baseTestRunId);
+  exitEarlyIfSkipUploadEnvVarSet(screenshottingOptions);
 
   logger.info("Sending simulation results to Meticulous");
 
@@ -249,17 +248,14 @@ export const replayAndStoreResults = async ({
     }
 
     const screenshotDiffResultsByBaseReplayId =
-      screenshottingOptions.enabled && baseTestRunId
-        ? await downloadAndDiffScreenshots({
-            client,
-            baseTestRunId,
-            sessionId,
-            headReplayId: replay.id,
-            tempDir,
-            screenshottingOptions,
-            logger: computeDiffsLogger,
-          })
-        : {};
+      await maybeDownloadAndDiffScreenshots({
+        client,
+        sessionId,
+        headReplayId: replay.id,
+        headReplayDir: tempDir,
+        screenshottingOptions,
+        logger: computeDiffsLogger,
+      });
     computeDiffSpan.finish();
 
     return { replay, screenshotDiffResultsByBaseReplayId };

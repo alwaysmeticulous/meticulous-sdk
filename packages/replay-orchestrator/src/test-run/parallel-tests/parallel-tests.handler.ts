@@ -1,5 +1,4 @@
 import { cpus } from "os";
-import { TestCase } from "@alwaysmeticulous/api";
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import {
   DetailedTestCaseResult,
@@ -8,17 +7,15 @@ import {
 import log from "loglevel";
 import { mergeResults } from "./merge-test-results";
 import { flattenScreenshotDiffResults } from "./screenshot-diff-results.utils";
+import { TestTask, TestTaskResult } from "./test-task.types";
 
 export interface RunAllTestsInParallelOptions {
-  testsToRun: TestCase[];
+  testsToRun: TestTask[];
   parallelTasks: number | null;
   maxRetriesOnFailure: number;
   rerunTestsNTimes: number;
 
-  executeTest: (
-    testCase: TestCase,
-    isRetry: boolean
-  ) => Promise<DetailedTestCaseResult>;
+  executeTest: (task: TestTask) => Promise<TestTaskResult>;
 
   onTestFinished?: (
     progress: TestRunProgress,
@@ -27,7 +24,7 @@ export interface RunAllTestsInParallelOptions {
   onTestFailedToRun?: (progress: TestRunProgress) => Promise<void>;
 }
 
-interface RerunnableTestCase extends TestCase {
+interface RerunnableTestTask extends TestTask {
   id: number;
 }
 
@@ -56,7 +53,7 @@ export const runAllTestsInParallel: (
 
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   let nextId = 0;
-  let queue: RerunnableTestCase[] = testsToRun.map((test) => ({
+  let queue: RerunnableTestTask[] = testsToRun.map((test) => ({
     ...test,
     id: ++nextId,
   }));
@@ -85,21 +82,21 @@ export const runAllTestsInParallel: (
   logger.debug(`Running with ${maxTasks} maximum tasks in parallel`);
 
   // Starts running a test case in a child process
-  const startTask = (rerunnableTestCase: RerunnableTestCase) => {
-    const { id, ...testCase } = rerunnableTestCase;
-    const isRetry = resultsByTestId.has(id);
+  const startTask = (rerunnableTestTask: RerunnableTestTask) => {
+    const { id, ...testTask } = rerunnableTestTask;
 
     // Handle task completion
-    executeTest(testCase, isRetry)
+    executeTest(testTask)
       .catch(() => null)
       .then(async (result) => {
         const resultsForTestCase = resultsByTestId.get(id);
 
         // Re-run the test if needed, comparing to the base replay.
-        if (!isRetry) {
+        if (!testTask.isRetry) {
           queue.push(
             ...Array.from(new Array(rerunTestsNTimes)).map(() => ({
-              ...testCase,
+              ...testTask,
+              isRetry: true,
               id,
               baseReplayId: result?.headReplayId,
             }))
@@ -108,7 +105,7 @@ export const runAllTestsInParallel: (
 
         if (resultsForTestCase != null && result != null) {
           logRetrySummary(
-            testName({ id, ...testCase }),
+            testName({ id, ...testTask }),
             result,
             resultsForTestCase.currentResult
           );
@@ -127,7 +124,8 @@ export const runAllTestsInParallel: (
           // Let's auto-retry to see if this failure persists
           queue.push(
             ...Array.from(new Array(maxRetriesOnFailure)).map(() => ({
-              ...testCase,
+              ...testTask,
+              isRetry: true,
               id,
               baseReplayId: result.headReplayId,
             }))
@@ -142,6 +140,7 @@ export const runAllTestsInParallel: (
         }
 
         const mergedResult = getNewMergedResult(
+          testTask,
           resultsForTestCase?.currentResult ?? null,
           result
         );
@@ -181,7 +180,7 @@ export const runAllTestsInParallel: (
         logger.error(
           `Error processing result of completed task for test '${testName({
             id,
-            ...testCase,
+            ...testTask,
           })}'`,
           err
         );
@@ -206,22 +205,22 @@ export const runAllTestsInParallel: (
       return;
     }
 
-    const testCase = queue.shift();
-    if (!testCase) {
+    const testTask = queue.shift();
+    if (!testTask) {
       return;
     }
     ++inProgress;
 
-    if (resultsByTestId.has(testCase.id)) {
+    if (resultsByTestId.has(testTask.id)) {
       if (maxRetriesOnFailure > 0) {
         logger.info(
-          `Test ${testName(testCase)} failed. Retrying to check for flakes...`
+          `Test ${testName(testTask)} failed. Retrying to check for flakes...`
         );
       } else if (rerunTestsNTimes > 0) {
-        logger.info(`Re-running ${testName(testCase)} to check for flakes...`);
+        logger.info(`Re-running ${testName(testTask)} to check for flakes...`);
       }
     }
-    startTask(testCase);
+    startTask(testTask);
 
     process.nextTick(checkNextTask);
   };
@@ -235,7 +234,7 @@ export const runAllTestsInParallel: (
 
 const logRetrySummary = (
   nameOfTest: string,
-  retryResult: DetailedTestCaseResult,
+  retryResult: TestTaskResult,
   resultSoFar: DetailedTestCaseResult
 ) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -255,12 +254,13 @@ const logRetrySummary = (
   }
 };
 
-const testName = (testCase: RerunnableTestCase) =>
+const testName = (testCase: RerunnableTestTask) =>
   testCase.title != null ? `'${testCase.title}'` : `#${testCase.id + 1}`;
 
 const getNewMergedResult = (
+  testTask: TestTask,
   currentMergedResult: DetailedTestCaseResult | null,
-  newResult: DetailedTestCaseResult | null
+  newResult: TestTaskResult | null
 ): DetailedTestCaseResult => {
   // If currentMergedResult is null then this is our first try, our original head replay
   if (currentMergedResult == null) {
@@ -272,7 +272,10 @@ const getNewMergedResult = (
 
     // In this case the newResult is our first head replay, our first result,
     // so lets initialize the mergedResult to this
-    return newResult;
+    return {
+      ...testTask.originalTestCase,
+      ...newResult,
+    };
   }
 
   // If currentMergedResult is not null then newResult is a retry, containing comparison screenshots to our original head replay

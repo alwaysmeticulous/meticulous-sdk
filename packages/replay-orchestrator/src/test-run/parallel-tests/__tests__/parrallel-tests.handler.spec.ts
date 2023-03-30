@@ -1,10 +1,10 @@
-import { TestCase } from "@alwaysmeticulous/api";
 import { defer } from "@alwaysmeticulous/common";
 import {
-  TestRunProgress,
   DetailedTestCaseResult,
+  TestRunProgress,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import { runAllTestsInParallel } from "../parallel-tests.handler";
+import { TestTask } from "../test-task.types";
 import {
   diff,
   flake,
@@ -24,16 +24,16 @@ describe("runAllTestsInParallel", () => {
     let testsStarted = 0;
     const testRunPromises = [defer(), defer(), defer(), defer()];
     const overallPromise = runAllTestsInParallel({
-      testsToRun: [testCase(0), testCase(1), testCase(2), testCase(3)],
+      testsToRun: [testTask(0), testTask(1), testTask(2), testTask(3)],
       parallelTasks: 2,
       maxRetriesOnFailure: 0,
       rerunTestsNTimes: 0,
       executeTest: async (
-        testCase: TestCase
+        testTask: TestTask
       ): Promise<DetailedTestCaseResult> => {
         testsStarted++;
-        await testRunPromises[parseInt(testCase.title ?? "")].promise;
-        return testResult("pass", [noDiff(0)], testCase);
+        await testRunPromises[parseInt(testTask.title ?? "")].promise;
+        return testResult("pass", [noDiff(0)], testTask);
       },
       onTestFinished: async (newProgress) => {
         progress = newProgress;
@@ -96,15 +96,15 @@ describe("runAllTestsInParallel", () => {
     };
     const testRunPromises = [defer(), defer(), defer(), defer()];
     const overallPromise = runAllTestsInParallel({
-      testsToRun: [testCase(0), testCase(1), testCase(2), testCase(3)],
+      testsToRun: [testTask(0), testTask(1), testTask(2), testTask(3)],
       parallelTasks: 2,
       maxRetriesOnFailure: 0,
       rerunTestsNTimes: 0,
       executeTest: async (
-        testCase: TestCase
+        testTask: TestTask
       ): Promise<DetailedTestCaseResult> => {
-        await testRunPromises[parseInt(testCase.title ?? "")].promise;
-        return testResult("pass", [noDiff(0)], testCase);
+        await testRunPromises[parseInt(testTask.title ?? "")].promise;
+        return testResult("pass", [noDiff(0)], testTask);
       },
       onTestFinished: async (newProgress) => {
         progress = newProgress;
@@ -126,47 +126,46 @@ describe("runAllTestsInParallel", () => {
 
     // No result given for test 1 (it can't, because it doesn't have a headReplayId)
     expect(result).toEqual([
-      testResult("pass", [noDiff(0)], testCase(0)),
-      testResult("pass", [noDiff(0)], testCase(2)),
-      testResult("pass", [noDiff(0)], testCase(3)),
+      testResult("pass", [noDiff(0)], testTask(0)),
+      testResult("pass", [noDiff(0)], testTask(2)),
+      testResult("pass", [noDiff(0)], testTask(3)),
     ]);
   });
 
   it("does not retry failed tests if maxRetriesOnFailure is 0", async () => {
     const results = await runAllTestsInParallel({
-      testsToRun: [testCase(0)],
+      testsToRun: [testTask(0)],
       parallelTasks: 2,
       maxRetriesOnFailure: 0,
       rerunTestsNTimes: 0,
       executeTest: async (
-        testCase: TestCase
+        testTask: TestTask
       ): Promise<DetailedTestCaseResult> => {
-        return testResult("fail", [diff(0)], testCase);
+        return testResult("fail", [diff(0)], testTask);
       },
     });
 
-    expect(results).toEqual([testResult("fail", [diff(0)], testCase(0))]);
+    expect(results).toEqual([testResult("fail", [diff(0)], testTask(0))]);
   });
 
   it("retries failed tests until maxRetriesOnFailure reached or first flake seen for all screenshots if maxRetriesOnFailure > 0", async () => {
     let retryNum = 0;
     const results = await runAllTestsInParallel({
-      testsToRun: [testCase(0)],
+      testsToRun: [testTask(0)],
       parallelTasks: 2,
       maxRetriesOnFailure: 10,
       rerunTestsNTimes: 0,
       executeTest: async (
-        testCase: TestCase,
-        isRetry
+        testTask: TestTask
       ): Promise<DetailedTestCaseResult> => {
-        if (!isRetry) {
-          return testResult("fail", [diff(0), diff(1)], testCase);
+        if (!testTask.isRetry) {
+          return testResult("fail", [diff(0), diff(1)], testTask);
         }
         if (retryNum === 3) {
-          return testResult("fail", [missingHead(0), diff(1)], testCase);
+          return testResult("fail", [missingHead(0), diff(1)], testTask);
         }
         retryNum++;
-        return testResult("pass", [noDiff(0), diff(1)], testCase);
+        return testResult("pass", [noDiff(0), diff(1)], testTask);
       },
     });
 
@@ -178,25 +177,24 @@ describe("runAllTestsInParallel", () => {
           flake(0, diff(), [missingHead()]),
           flake(1, diff(), [diff(), diff(), diff(), diff()]),
         ],
-        testCase(0)
+        testTask(0)
       ),
     ]);
   });
 
   it("marks test as a failure if hit max number of retries and no flakes detected", async () => {
     const results = await runAllTestsInParallel({
-      testsToRun: [testCase(0)],
+      testsToRun: [testTask(0)],
       parallelTasks: 2,
       maxRetriesOnFailure: 3,
       rerunTestsNTimes: 0,
       executeTest: async (
-        testCase: TestCase,
-        isRetry
+        testTask: TestTask
       ): Promise<DetailedTestCaseResult> => {
-        if (!isRetry) {
-          return testResult("fail", [diff(0), diff(1)], testCase);
+        if (!testTask.isRetry) {
+          return testResult("fail", [diff(0), diff(1)], testTask);
         }
-        return testResult("pass", [noDiff(0), diff(1)], testCase);
+        return testResult("pass", [noDiff(0), diff(1)], testTask);
       },
     });
 
@@ -204,7 +202,7 @@ describe("runAllTestsInParallel", () => {
       testResult(
         "fail",
         [diff(0), flake(1, diff(), [diff(), diff(), diff()])],
-        testCase(0)
+        testTask(0)
       ),
     ]);
   });
@@ -212,22 +210,21 @@ describe("runAllTestsInParallel", () => {
   it("retries N times if rerunTestsNTimes > 0", async () => {
     let rerunNum = 0;
     const results = await runAllTestsInParallel({
-      testsToRun: [testCase(0)],
+      testsToRun: [testTask(0)],
       parallelTasks: 2,
       maxRetriesOnFailure: 0,
       rerunTestsNTimes: 3,
       executeTest: async (
-        testCase: TestCase,
-        isRetry
+        testTask: TestTask
       ): Promise<DetailedTestCaseResult> => {
-        if (!isRetry) {
-          return testResult("pass", [diff(0), noDiff(1)], testCase);
+        if (!testTask.isRetry) {
+          return testResult("pass", [diff(0), noDiff(1)], testTask);
         }
         if (rerunNum === 2) {
-          return testResult("fail", [missingHead(0), diff(1)], testCase);
+          return testResult("fail", [missingHead(0), diff(1)], testTask);
         }
         rerunNum++;
-        return testResult("pass", [noDiff(0), noDiff(1)], testCase);
+        return testResult("pass", [noDiff(0), noDiff(1)], testTask);
       },
     });
 
@@ -237,16 +234,37 @@ describe("runAllTestsInParallel", () => {
         // Flake outcome is returned iff all screenshots are flaky.
         "flake",
         [flake(0, diff(), [missingHead()]), flake(1, noDiff(), [diff()])],
-        testCase(0)
+        testTask(0)
       ),
     ]);
   });
 });
 
-const testCase = (num: number): TestCase => ({
+const testTask = (num: number): TestTask => ({
   sessionId: "mock-session-id",
   title: `${num}`,
-  baseTestRunId: "mock-base-test-run-id",
+  executionOptions: "mock-execution-options" as any,
+  screenshottingOptions: {
+    enabled: true,
+    storyboardOptions: { enabled: true },
+    compareTo: {
+      type: "best-replay-for-session-in-test-run",
+      testRunId: "mock-base-test-run-id",
+      diffOptions: {
+        diffThreshold: 0.01,
+        diffPixelThreshold: 0.1,
+      },
+    },
+  },
+  replayTarget: {
+    type: "url",
+    appUrl: "mock-url",
+  },
+  originalTestCase: {
+    sessionId: "mock-session-id",
+    title: `${num}`,
+  },
+  isRetry: false,
 });
 
 const expectPromiseToNotHaveResolved = async (promise: Promise<unknown>) => {

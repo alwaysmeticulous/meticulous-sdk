@@ -1,12 +1,12 @@
 import { ScreenshotDiffResult } from "@alwaysmeticulous/api";
-import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
+import { TestTaskResult } from "./test-task.types";
 
 export type ScreenshotDiffResultWithBaseReplayId = ScreenshotDiffResult & {
   baseReplayId: string;
 };
 
 export const flattenScreenshotDiffResults = (
-  testCaseResult: DetailedTestCaseResult
+  testCaseResult: Pick<TestTaskResult, "screenshotDiffResultsByBaseReplayId">
 ): ScreenshotDiffResultWithBaseReplayId[] => {
   return Object.entries(
     testCaseResult.screenshotDiffResultsByBaseReplayId

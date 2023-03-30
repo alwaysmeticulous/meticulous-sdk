@@ -1,15 +1,16 @@
 import { join, normalize } from "path";
 import {
+  getMeticulousVersion,
   METICULOUS_LOGGER_NAME,
   setMeticulousLocalDataDir,
-  getMeticulousVersion,
 } from "@alwaysmeticulous/common";
 import { initSentry, SENTRY_FLUSH_TIMEOUT } from "@alwaysmeticulous/sentry";
 import * as Sentry from "@sentry/node";
 import log from "loglevel";
 import { Duration } from "luxon";
+import { replayAndStoreResults } from "../../replay/replay-and-store-results";
+import { hasNotableDifferences } from "../../replay/screenshot-diffing/utils/has-notable-differences";
 import { InitMessage, ResultMessage } from "./messages.types";
-import { handleReplay } from "./parallel-replay.handler";
 
 const INIT_TIMEOUT = Duration.fromObject({ second: 1 });
 
@@ -56,11 +57,22 @@ const main = async () => {
   logger.setLevel(logLevel);
   setMeticulousLocalDataDir(dataDir);
 
-  const result = await handleReplay(replayOptions);
+  const { replay, screenshotDiffResultsByBaseReplayId } =
+    await replayAndStoreResults(replayOptions);
+  const result = hasNotableDifferences(
+    Object.values(screenshotDiffResultsByBaseReplayId).flat()
+  )
+    ? "fail"
+    : "pass";
+
   const resultMessage: ResultMessage = {
     kind: "result",
     data: {
-      result,
+      result: {
+        headReplayId: replay.id,
+        result,
+        screenshotDiffResultsByBaseReplayId,
+      },
     },
   };
 

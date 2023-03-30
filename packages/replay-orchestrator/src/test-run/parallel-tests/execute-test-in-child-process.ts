@@ -1,13 +1,13 @@
 import { fork } from "child_process";
 import { join } from "path";
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { InitMessage, ResultMessage } from "./messages.types";
+import { TestTaskResult } from "./test-task.types";
 
 export const executeTestInChildProcess = (
   initMessage: InitMessage
-): Promise<DetailedTestCaseResult> => {
+): Promise<TestTaskResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const isTypeScript = __filename.endsWith(".ts");
@@ -17,7 +17,7 @@ export const executeTestInChildProcess = (
     `task.handler${isTypeScript ? ".ts" : ".js"}`
   );
 
-  const deferredResult = defer<DetailedTestCaseResult>();
+  const deferredResult = defer<TestTaskResult>();
   const child = fork(taskHandler, [], { stdio: "inherit" });
 
   const messageHandler = (message: unknown) => {

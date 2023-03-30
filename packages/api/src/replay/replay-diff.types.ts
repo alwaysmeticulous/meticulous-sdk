@@ -10,15 +10,15 @@ export interface ReplayDiff {
 }
 
 export interface ReplayDiffData {
-  screenshotAssertionsOptions?: ScreenshotAssertionsOptions;
+  screenshotAssertionsOptions?: ReplayDiffScreenshotAssertionsOptions;
   screenshotDiffResults?: ScreenshotDiffResult[];
 }
 
-export type ScreenshotAssertionsOptions =
+export type ReplayDiffScreenshotAssertionsOptions =
   | { enabled: false }
-  | ScreenshotAssertionsEnabledOptions;
+  | ReplayDiffScreenshotAssertionsEnabledOptions;
 
-export interface ScreenshotAssertionsEnabledOptions
+export interface ReplayDiffScreenshotAssertionsEnabledOptions
   extends ScreenshottingEnabledOptions {
   diffOptions: ScreenshotDiffOptions;
 }

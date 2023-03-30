@@ -1,21 +1,51 @@
-import { ScreenshotAssertionsOptions } from "@alwaysmeticulous/api";
+import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
 
-export interface ReplayAndStoreResultsOptions extends AdditionalReplayOptions {
+export interface ReplayAndStoreResultsOptions {
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
-  screenshottingOptions: ScreenshotAssertionsOptions;
+  screenshottingOptions: ReplayScreenshotAssertionsOptions;
   generatedBy: GeneratedBy;
   testRunId: string | null;
   suppressScreenshotDiffLogging: boolean;
-}
-
-export interface AdditionalReplayOptions {
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
   sessionId: string;
-  baseTestRunId: string | null | undefined;
   cookiesFile: string | null | undefined;
   debugger: boolean;
+}
+
+export type ReplayScreenshotAssertionsOptions =
+  | {
+      enabled: false;
+    }
+  | (ScreenshottingEnabledOptions & {
+      compareTo: CompareScreenshotsTo;
+    });
+
+export interface ReplayScreenshotAssertionsEnabledOptions
+  extends ScreenshottingEnabledOptions {
+  compareTo: CompareScreenshotsTo;
+}
+
+export type CompareScreenshotsTo =
+  | CompareScreenshotsToSpecificReplay
+  | CompareScreenshotsToBestReplayForSessionInTestRun
+  | DoNotCompareScreenshots;
+
+export interface CompareScreenshotsToSpecificReplay {
+  type: "specific-replay";
+  replayId: string;
+  diffOptions: ScreenshotDiffOptions;
+}
+
+export interface CompareScreenshotsToBestReplayForSessionInTestRun {
+  type: "best-replay-for-session-in-test-run";
+  testRunId: string;
+  diffOptions: ScreenshotDiffOptions;
+}
+
+export interface DoNotCompareScreenshots {
+  type: "do-not-compare";
 }
 
 export type ReplayTarget =

@@ -1,13 +1,13 @@
 import {
-  ScreenshotDiffResult,
   Replay,
   ScreenshotDiffOptions,
-  ScreenshotAssertionsOptions,
+  ScreenshotDiffResult,
 } from "@alwaysmeticulous/api";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator";
 import {
   GeneratedBy,
   ReplayExecutionOptions,
+  ReplayScreenshotAssertionsOptions,
   ReplayTarget,
   StoryboardOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
@@ -29,23 +29,19 @@ export interface ReplayAndStoreResultsResult {
 
 export interface RawReplayCommandHandlerOptions
   extends ScreenshotDiffOptions,
-    Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount">,
-    Omit<AdditionalReplayOptions, "baseTestRunId"> {
+    Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount"> {
   screenshot: boolean;
   appUrl: string | null | undefined;
   simulationIdForAssets: string | null | undefined;
   maxDurationMs: number | null | undefined;
   maxEventCount: number | null | undefined;
   storyboard: boolean;
-}
-
-interface AdditionalReplayOptions {
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
   sessionId: string;
-  baseTestRunId: string | null | undefined;
   cookiesFile: string | null | undefined;
   debugger: boolean;
+  baseReplayId: string | null | undefined;
 }
 
 export const rawReplayCommandHandler = async ({
@@ -58,6 +54,7 @@ export const rawReplayCommandHandler = async ({
   devTools,
   bypassCSP,
   screenshot,
+  baseReplayId,
   diffThreshold,
   diffPixelThreshold,
   shiftTime,
@@ -73,6 +70,12 @@ export const rawReplayCommandHandler = async ({
   essentialFeaturesOnly,
   debugger: enableStepThroughDebugger,
 }: RawReplayCommandHandlerOptions): Promise<Replay> => {
+  if (screenshot == false && storyboard == true) {
+    throw new Error(
+      "Cannot take storyboard screenshots without taking end state screenshots. Please set '--screenshot' to true, or '--storyboard' to false."
+    );
+  }
+
   const executionOptions: ReplayExecutionOptions = {
     headless,
     devTools,
@@ -91,11 +94,20 @@ export const rawReplayCommandHandler = async ({
   const storyboardOptions: StoryboardOptions = storyboard
     ? { enabled: true }
     : { enabled: false };
-  const screenshottingOptions: ScreenshotAssertionsOptions = screenshot
+  const screenshottingOptions: ReplayScreenshotAssertionsOptions = screenshot
     ? {
         enabled: true,
-        diffOptions: { diffPixelThreshold, diffThreshold },
         storyboardOptions,
+        compareTo:
+          baseReplayId != null
+            ? {
+                type: "specific-replay",
+                replayId: baseReplayId,
+                diffOptions: { diffThreshold, diffPixelThreshold },
+              }
+            : {
+                type: "do-not-compare",
+              },
       }
     : { enabled: false };
 
@@ -111,7 +123,6 @@ export const rawReplayCommandHandler = async ({
     cookiesFile,
     sessionId,
     generatedBy: generatedByOption,
-    baseTestRunId: null,
     testRunId: null,
     debugger: enableStepThroughDebugger,
     suppressScreenshotDiffLogging: false,
@@ -174,6 +185,12 @@ export const replayCommand = buildCommand("simulate")
     cookiesFile: {
       string: true,
       description: "Path to cookies to inject before simulation",
+    },
+    baseReplayId: {
+      string: true,
+      description:
+        "Base simulation id to diff the final state screenshot against",
+      alias: "baseSimulationId",
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
