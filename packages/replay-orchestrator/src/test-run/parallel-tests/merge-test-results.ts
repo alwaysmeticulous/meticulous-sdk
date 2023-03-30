@@ -12,6 +12,7 @@ import {
   groupScreenshotDiffResults,
   ScreenshotDiffResultWithBaseReplayId,
 } from "./screenshot-diff-results.utils";
+import { TestTaskResult } from "./test-task.types";
 
 export interface ResultsToMerge {
   currentResult: DetailedTestCaseResult;
@@ -20,7 +21,7 @@ export interface ResultsToMerge {
    * The result of replaying the session once more against the head commit and
    * comparing the screenshots to those taken on the first replay against the head commit.
    */
-  comparisonToHeadReplay: DetailedTestCaseResult;
+  comparisonToHeadReplay: TestTaskResult;
 }
 
 export const mergeResults = ({

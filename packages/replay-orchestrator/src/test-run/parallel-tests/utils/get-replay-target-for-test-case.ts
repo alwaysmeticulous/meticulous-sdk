@@ -6,7 +6,7 @@ export const getReplayTargetForTestCase = ({
   testCase,
 }: {
   appUrl: string | null;
-  testCase: TestCase;
+  testCase: Pick<TestCase, "title" | "options">;
 }): ReplayTarget => {
   if (testCase.options?.simulationIdForAssets != null) {
     return {

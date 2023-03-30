@@ -1,5 +1,12 @@
 import { join, normalize } from "path";
-import { TestCase, TestRun, TestRunStatus } from "@alwaysmeticulous/api";
+import {
+  ScreenshotAssertionsEnabledOptions,
+  ScreenshotDiffOptions,
+  TestCase,
+  TestCaseReplayOptions,
+  TestRun,
+  TestRunStatus,
+} from "@alwaysmeticulous/api";
 import {
   createClient,
   getLatestTestRunResults,
@@ -14,6 +21,8 @@ import {
   DetailedTestCaseResult,
   ExecuteTestRunOptions,
   ExecuteTestRunResult,
+  ReplayExecutionOptions,
+  ScreenshotComparisonEnabledOptions,
   TestRunProgress,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
@@ -28,6 +37,7 @@ import { loadReplayEventsDependencies } from "../../replay/scripts-loader/load-r
 import { executeTestInChildProcess } from "./execute-test-in-child-process";
 import { InitMessage } from "./messages.types";
 import { runAllTestsInParallel } from "./parallel-tests.handler";
+import { TestTask } from "./test-task.types";
 import { readConfig } from "./utils/config";
 import { getReplayTargetForTestCase } from "./utils/get-replay-target-for-test-case";
 import { writeGitHubSummary } from "./utils/github-summary.utils";
@@ -156,9 +166,12 @@ export const executeTestRun = async ({
   logger.info(`Test run URL: ${testRunUrl}`);
   logger.info("");
 
-  const testsToRun = await getTestCasesWithBaseTestRunId({
+  const testsToRun = await getTestTasks({
     baseCommitSha,
     fallbackTestRunId: fallbackTestRun?.id ?? null,
+    appUrl,
+    executionOptions,
+    screenshottingOptions,
     logger,
     testCases,
   });
@@ -231,27 +244,28 @@ export const executeTestRun = async ({
     parallelTasks,
     maxRetriesOnFailure,
     rerunTestsNTimes,
-    executeTest: (testCase, isRetry) => {
+    executeTest: (testTask: TestTask) => {
       const initMessage: InitMessage = {
         kind: "init",
         data: {
           logLevel: logger.getLevel(),
           dataDir: getMeticulousLocalDataDir(),
           replayOptions: {
+            // Fixed values across all tasks
             apiToken,
             commitSha,
-            testCase,
-            replayTarget: getReplayTargetForTestCase({
-              appUrl,
-              testCase,
-            }),
-            executionOptions,
-            screenshottingOptions,
             generatedBy: { type: "testRun", runId: testRun.id },
             testRunId: testRun.id,
-            baseTestRunId: testCase.baseTestRunId ?? null,
             replayEventsDependencies,
-            suppressScreenshotDiffLogging: isRetry,
+            debugger: false,
+            cookiesFile: null,
+
+            // Specific to each task
+            sessionId: testTask.sessionId,
+            replayTarget: testTask.replayTarget,
+            executionOptions: testTask.executionOptions,
+            screenshottingOptions: testTask.screenshottingOptions,
+            suppressScreenshotDiffLogging: testTask.isRetry,
           },
         },
       };
@@ -304,35 +318,73 @@ export const executeTestRun = async ({
   };
 };
 
-const getTestCasesWithBaseTestRunId = async ({
+const getTestTasks = async ({
   logger,
   baseCommitSha,
   fallbackTestRunId,
+  appUrl,
   testCases,
+  executionOptions,
+  screenshottingOptions,
 }: {
   logger: log.Logger;
   baseCommitSha: string | null;
   fallbackTestRunId: string | null;
+  appUrl: string | null;
   testCases: TestCase[];
+  executionOptions: ReplayExecutionOptions;
+  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
 }) => {
-  const testsToRun: TestCase[] = testCases.map((test) => {
+  const testsToRun: TestTask[] = testCases.map((testCase) => {
+    const mergedExecutionOptions =
+      testCase.options == null
+        ? executionOptions
+        : applyTestCaseExecutionOptionOverrides(
+            executionOptions,
+            testCase.options
+          );
+    const { diffOptions, ...restOfScreenshottingOptions } =
+      applyTestCaseScreenshottingOptionsOverrides(
+        screenshottingOptions,
+        testCase.options
+      );
+
     // We use the baseTestRunId specified in the test case if it exists, otherwise we use
     // use the baseTestRunId specified from the CLI args if it exists, otherwise we use the
     // baseTestRunId for the base commit if it exists, otherwise we use null (don't compare screenshots).
-    if (test.baseTestRunId != null || fallbackTestRunId == null) {
-      return test;
+    const baseTestRunId = testCase.baseTestRunId ?? fallbackTestRunId;
+
+    if (baseCommitSha != null && baseTestRunId == null) {
+      logger.warn(
+        `Skipping comparisons for test "${testCase.title}" since no result to compare against stored for base commit ${baseCommitSha}`
+      );
     }
-    return { ...test, baseTestRunId: fallbackTestRunId };
+
+    const mergedScreenshottingOptions: ScreenshotComparisonEnabledOptions = {
+      ...restOfScreenshottingOptions,
+      compareTo:
+        baseTestRunId == null
+          ? { type: "do-not-compare" }
+          : {
+              type: "base-screenshots-of-test-run",
+              testRunId: baseTestRunId,
+              diffOptions,
+            },
+    };
+
+    return {
+      title: testCase.title ?? null,
+      sessionId: testCase.sessionId,
+      replayTarget: getReplayTargetForTestCase({
+        appUrl,
+        testCase,
+      }),
+      executionOptions: mergedExecutionOptions,
+      screenshottingOptions: mergedScreenshottingOptions,
+      originalTestCase: testCase,
+      isRetry: false,
+    };
   });
-  if (baseCommitSha != null) {
-    testsToRun
-      .filter((test) => test.baseTestRunId == null)
-      .forEach((test) => {
-        logger.warn(
-          `Skipping comparisons for test "${test.title}" since no result to compare against stored for base commit ${baseCommitSha}`
-        );
-      });
-  }
   return testsToRun;
 };
 
@@ -345,4 +397,42 @@ const shouldUseBaseTestRunTestCases = async ({
   // the base test run is for a "push" event.
   // This safeguards against the test run expanding indefinitely.
   return !baseTestRun?.configData?.baseTestRunId;
+};
+
+const applyTestCaseExecutionOptionOverrides = (
+  executionOptionsFromCliFlags: ReplayExecutionOptions,
+  overridesFromTestCase: TestCaseReplayOptions
+): ReplayExecutionOptions => {
+  // Options specified in the test case override those passed as CLI flags
+  // (CLI flags set the defaults)
+  return {
+    ...executionOptionsFromCliFlags,
+    moveBeforeClick:
+      overridesFromTestCase.moveBeforeClick ??
+      executionOptionsFromCliFlags.moveBeforeClick,
+  };
+};
+
+const applyTestCaseScreenshottingOptionsOverrides = (
+  screenshottingOptionsFromCliFlags: ScreenshotAssertionsEnabledOptions,
+  overridesFromTestCase?: TestCaseReplayOptions
+): ScreenshotAssertionsEnabledOptions => {
+  if (overridesFromTestCase == null) {
+    return screenshottingOptionsFromCliFlags;
+  }
+  // Options specified in the test case override those passed as CLI flags
+  // (CLI flags set the defaults)
+  const diffOptions: ScreenshotDiffOptions = {
+    diffThreshold:
+      overridesFromTestCase.diffThreshold ??
+      screenshottingOptionsFromCliFlags.diffOptions.diffThreshold,
+    diffPixelThreshold:
+      overridesFromTestCase.diffPixelThreshold ??
+      screenshottingOptionsFromCliFlags.diffOptions.diffPixelThreshold,
+  };
+  return {
+    enabled: true,
+    diffOptions,
+    storyboardOptions: screenshottingOptionsFromCliFlags.storyboardOptions,
+  };
 };

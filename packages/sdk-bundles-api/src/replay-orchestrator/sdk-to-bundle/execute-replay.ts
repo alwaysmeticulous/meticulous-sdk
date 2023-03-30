@@ -1,21 +1,62 @@
-import { ScreenshotAssertionsOptions } from "@alwaysmeticulous/api";
+import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
 
-export interface ReplayAndStoreResultsOptions extends AdditionalReplayOptions {
+export interface ReplayAndStoreResultsOptions {
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
-  screenshottingOptions: ScreenshotAssertionsOptions;
+  screenshottingOptions: ScreenshotComparisonOptions;
   generatedBy: GeneratedBy;
   testRunId: string | null;
   suppressScreenshotDiffLogging: boolean;
-}
-
-export interface AdditionalReplayOptions {
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
   sessionId: string;
-  baseTestRunId: string | null | undefined;
   cookiesFile: string | null | undefined;
   debugger: boolean;
+}
+
+/**
+ * Similar to ScreenshotAssertionsOptions, but also specifies the test run or base replay id
+ * to compare to.
+ */
+export type ScreenshotComparisonOptions =
+  | {
+      enabled: false;
+    }
+  | ScreenshotComparisonEnabledOptions;
+
+export interface ScreenshotComparisonEnabledOptions
+  extends ScreenshottingEnabledOptions {
+  compareTo: CompareScreenshotsTo;
+}
+
+export type CompareScreenshotsTo =
+  | CompareScreenshotsToSpecificReplay
+  | CompareScreenshotsToTestRun
+  | DoNotCompareScreenshots;
+
+export interface CompareScreenshotsToSpecificReplay {
+  type: "specific-replay";
+  replayId: string;
+  diffOptions: ScreenshotDiffOptions;
+}
+
+/**
+ * Compare to the appropiate 'base-screenshots' of the specified test run.
+ *
+ * The 'base-screenshots' of a test run are the screenshots that should be
+ * used when comparing to the test run as a base. By default the screenshots
+ * taken in the replays in that test run are used as the base-screenshots, but if
+ * there is a flake then we "don't update the base screenshot", and so re-use
+ * the base screenshot from the previous test run.
+ */
+export interface CompareScreenshotsToTestRun {
+  type: "base-screenshots-of-test-run";
+  testRunId: string;
+  diffOptions: ScreenshotDiffOptions;
+}
+
+export interface DoNotCompareScreenshots {
+  type: "do-not-compare";
 }
 
 export type ReplayTarget =

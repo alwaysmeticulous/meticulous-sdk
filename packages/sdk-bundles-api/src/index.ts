@@ -25,7 +25,6 @@ export {
 } from "./replay/sdk-to-bundle";
 export {
   ReplayAndStoreResultsOptions,
-  AdditionalReplayOptions,
   ReplayTarget,
   SnapshottedAssetsReplayTarget,
   URLReplayTarget,
@@ -38,6 +37,12 @@ export {
   GeneratedByNotebookRun,
   GeneratedByTestRun,
   GeneratedByReplayCommand,
+  ScreenshotComparisonOptions,
+  ScreenshotComparisonEnabledOptions,
+  CompareScreenshotsTo,
+  CompareScreenshotsToSpecificReplay,
+  CompareScreenshotsToTestRun,
+  DoNotCompareScreenshots,
 } from "./replay-orchestrator/sdk-to-bundle/execute-replay";
 export { ExecuteTestRunOptions } from "./replay-orchestrator/sdk-to-bundle/execute-test-run";
 export {

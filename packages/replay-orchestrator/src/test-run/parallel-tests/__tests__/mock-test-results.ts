@@ -1,11 +1,11 @@
 import {
   ScreenshotDiffResult,
-  ScreenshotIdentifier,
   ScreenshotDiffResultMissingBaseAndHead,
+  ScreenshotIdentifier,
   SingleTryScreenshotDiffResult,
-  TestCase,
 } from "@alwaysmeticulous/api";
 import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
+import { TestTask } from "../test-task.types";
 
 export const id = (eventNumber = 0): ScreenshotIdentifier => ({
   type: "after-event",
@@ -15,11 +15,11 @@ export const id = (eventNumber = 0): ScreenshotIdentifier => ({
 export const testResult = (
   result: "pass" | "fail" | "flake",
   screenshotDiffResults: ScreenshotDiffResult[],
-  testCase?: TestCase
+  testTask?: TestTask
 ): DetailedTestCaseResult => {
   return {
-    ...testCase,
-    sessionId: testCase?.sessionId ?? "mock-session-id",
+    ...testTask?.originalTestCase,
+    sessionId: testTask?.sessionId ?? "mock-session-id",
     headReplayId: "mock-head-replay-id",
     result,
     screenshotDiffResultsByBaseReplayId: {

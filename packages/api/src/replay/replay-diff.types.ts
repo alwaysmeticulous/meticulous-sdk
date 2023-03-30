@@ -14,6 +14,11 @@ export interface ReplayDiffData {
   screenshotDiffResults?: ScreenshotDiffResult[];
 }
 
+/**
+ * Differs from ScreenshotComparisonOptions in that
+ * ScreenshotComparisonOptions specifies the test run or base replay id
+ * to compare to, while ScreenshotAssertionsOptions does not.
+ */
 export type ScreenshotAssertionsOptions =
   | { enabled: false }
   | ScreenshotAssertionsEnabledOptions;

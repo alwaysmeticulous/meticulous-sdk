@@ -1,19 +1,22 @@
-import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
+import { ReplayEventsDependencies } from "@alwaysmeticulous/replayer";
+import { ReplayAndStoreResultsOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
-import { ParallelTestsReplayOptions } from "./parallel-replay.types";
+import { TestTaskResult } from "./test-task.types";
 
 export interface InitMessage {
   kind: "init";
   data: {
     logLevel: log.LogLevel[keyof log.LogLevel];
     dataDir: string;
-    replayOptions: ParallelTestsReplayOptions;
+    replayOptions: ReplayAndStoreResultsOptions & {
+      replayEventsDependencies: ReplayEventsDependencies;
+    };
   };
 }
 
 export interface ResultMessage {
   kind: "result";
   data: {
-    result: DetailedTestCaseResult;
+    result: TestTaskResult;
   };
 }

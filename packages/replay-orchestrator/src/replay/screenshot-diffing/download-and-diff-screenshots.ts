@@ -1,11 +1,19 @@
 import { mkdir, opendir, rm, rmdir } from "fs/promises";
 import { join } from "path";
 import {
-  ScreenshotAssertionsEnabledOptions,
   ScreenshotDiffResult,
   ScreenshotIdentifier,
 } from "@alwaysmeticulous/api";
-import { downloadFile } from "@alwaysmeticulous/downloading-helpers";
+import {
+  downloadFile,
+  getOrFetchReplay,
+  getOrFetchReplayArchive,
+} from "@alwaysmeticulous/downloading-helpers";
+import {
+  CompareScreenshotsToTestRun,
+  CompareScreenshotsToSpecificReplay,
+  ScreenshotComparisonOptions,
+} from "@alwaysmeticulous/sdk-bundles-api";
 import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { getBaseScreenshots } from "../../api/test-run.api";
@@ -17,37 +25,74 @@ import { getScreenshotFilename } from "./utils/get-screenshot-filename";
 
 export interface ComputeAndSaveDiffOptions {
   client: AxiosInstance;
-  baseTestRunId: string;
   sessionId: string;
   headReplayId: string;
-  tempDir: string;
-  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
+  headReplayDir: string;
+  screenshottingOptions: ScreenshotComparisonOptions;
   logger: log.Logger;
 }
 
-export const downloadAndDiffScreenshots = async ({
+export const maybeDownloadAndDiffScreenshots = async ({
   client,
-  baseTestRunId,
   sessionId,
-  tempDir,
+  headReplayDir,
   headReplayId,
   screenshottingOptions,
   logger,
 }: ComputeAndSaveDiffOptions): Promise<
   Record<string, ScreenshotDiffResult[]>
 > => {
+  if (
+    !screenshottingOptions.enabled ||
+    screenshottingOptions.compareTo.type === "do-not-compare"
+  ) {
+    return {};
+  }
+
+  if (screenshottingOptions.compareTo.type === "base-screenshots-of-test-run") {
+    return diffScreenshotsAgainstTestRun({
+      client,
+      sessionId,
+      headReplayDir,
+      headReplayId,
+      compareTo: screenshottingOptions.compareTo,
+      logger,
+    });
+  } else if (screenshottingOptions.compareTo.type === "specific-replay") {
+    return diffScreenshotsAgainstReplay({
+      client,
+      headReplayDir,
+      headReplayId,
+      compareTo: screenshottingOptions.compareTo,
+      logger,
+    });
+  } else {
+    return assertNeverCompareTo(screenshottingOptions.compareTo);
+  }
+};
+
+const diffScreenshotsAgainstTestRun = async ({
+  client,
+  sessionId,
+  headReplayDir,
+  headReplayId,
+  compareTo,
+  logger,
+}: Omit<ComputeAndSaveDiffOptions, "screenshottingOptions"> & {
+  compareTo: CompareScreenshotsToTestRun;
+}): Promise<Record<string, ScreenshotDiffResult[]>> => {
   logger.info(
-    `Diffing screenshots against replays of session ${sessionId} in test run ${baseTestRunId}`
+    `Diffing screenshots against replays of session ${sessionId} in test run ${compareTo.testRunId}`
   );
 
   const baseScreenshotsDir = join(
-    getScreenshotsDir(tempDir),
+    getScreenshotsDir(headReplayDir),
     "base-screenshots"
   );
   await mkdir(baseScreenshotsDir, { recursive: true });
   const baseScreenshots = await getBaseScreenshots({
     client,
-    testRunId: baseTestRunId,
+    testRunId: compareTo.testRunId,
     sessionId,
   });
 
@@ -58,7 +103,7 @@ export const downloadAndDiffScreenshots = async ({
     `Downloaded ${baseScreenshots.length} base screenshots to ${baseScreenshotsDir}}`
   );
 
-  const headReplayScreenshotsDir = getScreenshotsDir(tempDir);
+  const headReplayScreenshotsDir = getScreenshotsDir(headReplayDir);
   const headReplayScreenshots = await getScreenshotFiles(
     headReplayScreenshotsDir
   );
@@ -84,14 +129,14 @@ export const downloadAndDiffScreenshots = async ({
       headScreenshotsDir: headReplayScreenshotsDir,
       headReplayScreenshots,
       baseReplayScreenshots,
-      diffOptions: screenshottingOptions.diffOptions,
+      diffOptions: compareTo.diffOptions,
     });
     screenshotDiffResultsByBaseReplayId[baseReplayId] = resultsForBaseReplay;
   }
 
   logDifferences({
     results: Object.values(screenshotDiffResultsByBaseReplayId).flat(),
-    diffOptions: screenshottingOptions.diffOptions,
+    diffOptions: compareTo.diffOptions,
     logger,
   });
 
@@ -100,6 +145,49 @@ export const downloadAndDiffScreenshots = async ({
   await deleteScreenshotsDirectory(baseScreenshotsDir);
 
   return screenshotDiffResultsByBaseReplayId;
+};
+
+const diffScreenshotsAgainstReplay = async ({
+  client,
+  headReplayDir,
+  headReplayId,
+  compareTo,
+  logger,
+}: Omit<ComputeAndSaveDiffOptions, "screenshottingOptions" | "sessionId"> & {
+  compareTo: CompareScreenshotsToSpecificReplay;
+}): Promise<Record<string, ScreenshotDiffResult[]>> => {
+  logger.info(`Diffing screenshots against replay ${compareTo.replayId}`);
+
+  await getOrFetchReplay(client, compareTo.replayId);
+  const { fileName: baseReplayFolder } = await getOrFetchReplayArchive(
+    client,
+    compareTo.replayId
+  );
+  const baseScreenshotsDir = getScreenshotsDir(baseReplayFolder);
+  const baseReplayScreenshots = await getScreenshotFiles(baseScreenshotsDir);
+
+  const headReplayScreenshotsDir = getScreenshotsDir(headReplayDir);
+  const headReplayScreenshots = await getScreenshotFiles(
+    headReplayScreenshotsDir
+  );
+
+  const results = await diffDownloadedScreenshots({
+    baseReplayId: compareTo.replayId,
+    headReplayId,
+    baseScreenshotsDir: baseScreenshotsDir,
+    headScreenshotsDir: headReplayScreenshotsDir,
+    headReplayScreenshots,
+    baseReplayScreenshots,
+    diffOptions: compareTo.diffOptions,
+  });
+
+  logDifferences({
+    results,
+    diffOptions: compareTo.diffOptions,
+    logger,
+  });
+
+  return { [compareTo.replayId]: results };
 };
 
 const deleteScreenshotsDirectory = async (directory: string) => {
@@ -157,3 +245,7 @@ const chunk = <T>(array: T[], size: number) => {
 };
 
 const getScreenshotsDir = (replayDir: string) => join(replayDir, "screenshots");
+
+const assertNeverCompareTo = (x: never): never => {
+  throw new Error("Unexpected comparison type: " + x);
+};
