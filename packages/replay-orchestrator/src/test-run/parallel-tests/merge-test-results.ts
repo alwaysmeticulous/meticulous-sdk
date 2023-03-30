@@ -4,6 +4,7 @@ import {
   SingleTryScreenshotDiffResult,
   TestCaseResult,
 } from "@alwaysmeticulous/api";
+import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
 import stringify from "fast-json-stable-stringify";
 import { hasNotableDifferences } from "../../replay/screenshot-diffing/utils/has-notable-differences";
 import {
@@ -11,7 +12,6 @@ import {
   groupScreenshotDiffResults,
   ScreenshotDiffResultWithBaseReplayId,
 } from "./screenshot-diff-results.utils";
-import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
 
 export interface ResultsToMerge {
   currentResult: DetailedTestCaseResult;
