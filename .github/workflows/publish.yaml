@@ -50,4 +50,4 @@ jobs:
 
       - name: Publish packages
         if: github.repository == 'alwaysmeticulous/meticulous-sdk'
-        run: yarn run lerna publish from-package --yes --no-verify-access
+        run: yarn run lerna publish from-package --yes --no-verify-access --loglevel verbose
