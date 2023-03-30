@@ -53,7 +53,7 @@ export const maybeDownloadAndDiffScreenshots = async ({
     screenshottingOptions.compareTo.type ===
     "best-replay-for-session-in-test-run"
   ) {
-    return downloadAndDiffScreenshotsAgainstBaseTestRun({
+    return diffScreenshotsAgainstTestRun({
       client,
       sessionId,
       headReplayDir,
@@ -65,7 +65,7 @@ export const maybeDownloadAndDiffScreenshots = async ({
     logger.info(
       `Diffing screenshots against replay ${screenshottingOptions.compareTo.replayId}`
     );
-    return downloadAndDiffScreenshotsAgainstBaseReplay({
+    return diffScreenshotsAgainstReplay({
       client,
       headReplayDir,
       headReplayId,
@@ -77,7 +77,7 @@ export const maybeDownloadAndDiffScreenshots = async ({
   }
 };
 
-const downloadAndDiffScreenshotsAgainstBaseTestRun = async ({
+const diffScreenshotsAgainstTestRun = async ({
   client,
   sessionId,
   headReplayDir,
@@ -153,7 +153,7 @@ const downloadAndDiffScreenshotsAgainstBaseTestRun = async ({
   return screenshotDiffResultsByBaseReplayId;
 };
 
-const downloadAndDiffScreenshotsAgainstBaseReplay = async ({
+const diffScreenshotsAgainstReplay = async ({
   client,
   headReplayDir,
   headReplayId,

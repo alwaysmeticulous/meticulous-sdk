@@ -2,6 +2,7 @@ import { cpus } from "os";
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import {
   DetailedTestCaseResult,
+  ScreenshotComparisonEnabledOptions,
   TestRunProgress,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
@@ -91,15 +92,12 @@ export const runAllTestsInParallel: (
       .then(async (result) => {
         const resultsForTestCase = resultsByTestId.get(id);
 
-        // Re-run the test if needed, comparing to the base replay.
-        if (!testTask.isRetry) {
+        // Re-run the test if needed, comparing to the screenshots taken in the first try.
+        if (!testTask.isRetry && result != null) {
           queue.push(
-            ...Array.from(new Array(rerunTestsNTimes)).map(() => ({
-              ...testTask,
-              isRetry: true,
-              id,
-              baseReplayId: result?.headReplayId,
-            }))
+            ...Array.from(new Array(rerunTestsNTimes)).map(() =>
+              createTaskToRetry(id, testTask, result.headReplayId)
+            )
           );
         }
 
@@ -123,12 +121,9 @@ export const runAllTestsInParallel: (
         if (result?.result === "fail" && resultsForTestCase == null) {
           // Let's auto-retry to see if this failure persists
           queue.push(
-            ...Array.from(new Array(maxRetriesOnFailure)).map(() => ({
-              ...testTask,
-              isRetry: true,
-              id,
-              baseReplayId: result.headReplayId,
-            }))
+            ...Array.from(new Array(maxRetriesOnFailure)).map(() =>
+              createTaskToRetry(id, testTask, result.headReplayId)
+            )
           );
         }
 
@@ -300,5 +295,44 @@ const updateProgress = (
     failedTestCases: progress.failedTestCases + (newResult === "fail" ? 1 : 0),
     flakedTestCases: progress.flakedTestCases + (newResult === "flake" ? 1 : 0),
     passedTestCases: progress.passedTestCases + (newResult === "pass" ? 1 : 0),
+  };
+};
+
+const createTaskToRetry = (
+  testCaseId: number,
+  testTask: TestTask,
+  firstTryReplayId: string
+): RerunnableTestTask => {
+  const { screenshottingOptions } = testTask;
+  if (screenshottingOptions.enabled === false) {
+    throw new Error(
+      "Result from replay was a failure, which should only be possible if screenshots are enabled, but they were not."
+    );
+  }
+
+  const compareTo = screenshottingOptions.compareTo;
+  if (compareTo.type === "do-not-compare") {
+    throw new Error(
+      "Result from replay was a failure, which should only be possible if screenshot comparisons are enabled, but they were not."
+    );
+  }
+
+  // We re-use the same diff options when detecting flakes
+  const { diffOptions } = compareTo;
+  const newScreenshottingOptions: ScreenshotComparisonEnabledOptions = {
+    enabled: true,
+    storyboardOptions: screenshottingOptions.storyboardOptions,
+    compareTo: {
+      type: "specific-replay",
+      replayId: firstTryReplayId, // compare to the screenshots taken in the first try
+      diffOptions,
+    },
+  };
+
+  return {
+    ...testTask,
+    isRetry: true,
+    id: testCaseId,
+    screenshottingOptions: newScreenshottingOptions,
   };
 };
