@@ -3,7 +3,7 @@ import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
-} from "@alwaysmeticulous/download-helpers";
+} from "@alwaysmeticulous/downloader-helpers";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 
