@@ -1,6 +1,5 @@
 import { TestCase } from "@alwaysmeticulous/api";
 import { DetailedTestCaseResult } from "@alwaysmeticulous/sdk-bundles-api";
-import { AxiosInstance } from "axios";
 
 export const mergeTestCases = (
   ...testSuites: (TestCase[] | null | undefined)[]
@@ -44,13 +43,3 @@ export const sortResults: (options: {
 
   return results;
 };
-
-export interface GetTestsToRunOptions {
-  client: AxiosInstance;
-  testCases: TestCase[];
-
-  /**
-   * The base commit to compare test results against for test cases that don't have a baseReplayId specified.
-   */
-  baseCommitSha: string | null;
-}

@@ -5,7 +5,7 @@ import {
 } from "@alwaysmeticulous/api";
 import { createClient } from "@alwaysmeticulous/client";
 import { getCommitSha } from "@alwaysmeticulous/common";
-import { runAllTests } from "@alwaysmeticulous/replay-orchestrator";
+import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import { getCachedTestRunResults } from "../../api/test-run.api";
 import { buildCommand } from "../../command-utils/command-builder";
@@ -93,7 +93,7 @@ const handler: (options: Options) => Promise<void> = async ({
   const cachedTestRunResults = useCache
     ? await getCachedTestRunResults({ client, commitSha })
     : [];
-  const { testRun } = await runAllTests({
+  const { testRun } = await executeTestRun({
     testsFile: testsFile ?? null,
     executionOptions,
     screenshottingOptions,

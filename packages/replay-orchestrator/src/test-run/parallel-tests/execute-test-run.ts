@@ -12,8 +12,8 @@ import {
 } from "@alwaysmeticulous/common";
 import {
   DetailedTestCaseResult,
-  RunAllTestsOptions,
-  RunAllTestsResult,
+  ExecuteTestRunOptions,
+  ExecuteTestRunResult,
   TestRunProgress,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import { AxiosInstance } from "axios";
@@ -31,14 +31,14 @@ import { runAllTestsInParallel } from "./parallel-tests.handler";
 import { readConfig } from "./utils/config";
 import { getReplayTargetForTestCase } from "./utils/get-replay-target-for-test-case";
 import { writeGitHubSummary } from "./utils/github-summary.utils";
-import { mergeTestCases, sortResults } from "./utils/run-all-tests.utils";
+import { mergeTestCases, sortResults } from "./utils/test-case.utils";
 import { getEnvironment } from "./utils/test-run-environment.utils";
 
 /**
  * Runs all the test cases in the provided file.
  * @returns The results of the tests that were executed (note that this does not include results from any cachedTestRunResults passed in)
  */
-export const runAllTests = async ({
+export const executeTestRun = async ({
   testsFile,
   apiToken,
   commitSha,
@@ -55,7 +55,7 @@ export const runAllTests = async ({
   baseTestRunId,
   onTestRunCreated,
   onTestFinished: onTestFinished_,
-}: RunAllTestsOptions): Promise<RunAllTestsResult> => {
+}: ExecuteTestRunOptions): Promise<ExecuteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const client = createClient({ apiToken });

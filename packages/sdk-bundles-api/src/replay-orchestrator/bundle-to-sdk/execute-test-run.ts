@@ -4,7 +4,7 @@ import {
   TestRun,
 } from "@alwaysmeticulous/api";
 
-export interface RunAllTestsResult {
+export interface ExecuteTestRunResult {
   testRun: FinishedTestRunExecution;
   testCaseResults: DetailedTestCaseResult[];
 }

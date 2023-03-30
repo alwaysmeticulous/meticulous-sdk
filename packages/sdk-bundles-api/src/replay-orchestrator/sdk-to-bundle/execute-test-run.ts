@@ -6,7 +6,7 @@ import {
 import { RunningTestRunExecution } from "../bundle-to-sdk/execute-test-run";
 import { ReplayExecutionOptions } from "./execute-replay";
 
-export interface RunAllTestsOptions {
+export interface ExecuteTestRunOptions {
   testsFile: string | null;
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
@@ -50,7 +50,7 @@ export interface RunAllTestsOptions {
   /**
    * If provided it will incorportate the cachedTestRunResults in any calls to store
    * test run results in the BE, but won't include the cachedTestRunResults in the returned
-   * RunAllTestsResult.
+   * ExecuteTestRunResult.
    */
   cachedTestRunResults?: TestCaseResult[];
 

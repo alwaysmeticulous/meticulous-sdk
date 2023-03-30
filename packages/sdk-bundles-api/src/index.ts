@@ -39,9 +39,9 @@ export {
   GeneratedByTestRun,
   GeneratedByReplayCommand,
 } from "./replay-orchestrator/sdk-to-bundle/execute-replay";
-export { RunAllTestsOptions } from "./replay-orchestrator/sdk-to-bundle/execute-test-run";
+export { ExecuteTestRunOptions } from "./replay-orchestrator/sdk-to-bundle/execute-test-run";
 export {
-  RunAllTestsResult,
+  ExecuteTestRunResult,
   TestRunExecution,
   RunningTestRunExecution,
   FinishedTestRunExecution,

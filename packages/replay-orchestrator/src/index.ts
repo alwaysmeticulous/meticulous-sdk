@@ -1,2 +1,2 @@
 export { performReplay } from "./replay/perform-replay";
-export { runAllTests } from "./test-run/parallel-tests/run-all-tests";
+export { executeTestRun } from "./test-run/parallel-tests/execute-test-run";
