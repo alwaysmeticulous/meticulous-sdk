@@ -19,7 +19,7 @@ export const exitEarlyIfSkipUploadEnvVarSet = (
   ) {
     throw new Error(
       `Cannot compare to base results when ${METICULOUS_SKIP_UPLOAD_ENV_VAR} is set to true. ${METICULOUS_SKIP_UPLOAD_ENV_VAR}
-      cannot be used when specifying anything to compare to (a --baseTestRunId, or --baseReplayId etc.)
+      cannot be used when specifying anything to compare to (a --baseTestRunId, or --baseCommitSha etc.)
       `
     );
   }
