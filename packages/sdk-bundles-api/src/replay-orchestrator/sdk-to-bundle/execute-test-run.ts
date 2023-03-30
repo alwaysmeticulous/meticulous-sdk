@@ -1,5 +1,5 @@
 import {
-  ScreenshotAssertionsEnabledOptions,
+  ReplayDiffScreenshotAssertionsEnabledOptions,
   TestCaseResult,
   TestRunEnvironment,
 } from "@alwaysmeticulous/api";
@@ -9,7 +9,7 @@ import { ReplayExecutionOptions } from "./execute-replay";
 export interface ExecuteTestRunOptions {
   testsFile: string | null;
   executionOptions: ReplayExecutionOptions;
-  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
+  screenshottingOptions: ReplayDiffScreenshotAssertionsEnabledOptions;
   apiToken: string | null;
   commitSha: string;
 

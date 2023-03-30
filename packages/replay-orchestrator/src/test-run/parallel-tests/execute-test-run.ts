@@ -1,6 +1,6 @@
 import { join, normalize } from "path";
 import {
-  ScreenshotAssertionsEnabledOptions,
+  ReplayDiffScreenshotAssertionsEnabledOptions,
   ScreenshotDiffOptions,
   TestCase,
   TestCaseReplayOptions,
@@ -230,7 +230,7 @@ export const executeTestRun = async ({
           baseReplayId: baseReplayId,
           testRunId: testRun.id,
           data: {
-            screenshotAssertionsOptions: screenshottingOptions,
+            ReplayDiffScreenshotAssertionsOptions: screenshottingOptions,
             screenshotDiffResults,
           },
         });
@@ -333,7 +333,7 @@ const getTestTasks = async ({
   appUrl: string | null;
   testCases: TestCase[];
   executionOptions: ReplayExecutionOptions;
-  screenshottingOptions: ScreenshotAssertionsEnabledOptions;
+  screenshottingOptions: ReplayDiffScreenshotAssertionsEnabledOptions;
 }) => {
   const testsToRun: TestTask[] = testCases.map((testCase) => {
     const mergedExecutionOptions =
@@ -415,9 +415,9 @@ const applyTestCaseExecutionOptionOverrides = (
 };
 
 const applyTestCaseScreenshottingOptionsOverrides = (
-  screenshottingOptionsFromCliFlags: ScreenshotAssertionsEnabledOptions,
+  screenshottingOptionsFromCliFlags: ReplayDiffScreenshotAssertionsEnabledOptions,
   overridesFromTestCase?: TestCaseReplayOptions
-): ScreenshotAssertionsEnabledOptions => {
+): ReplayDiffScreenshotAssertionsEnabledOptions => {
   if (overridesFromTestCase == null) {
     return screenshottingOptionsFromCliFlags;
   }
