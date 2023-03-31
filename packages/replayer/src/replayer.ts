@@ -9,21 +9,20 @@ import {
   RecordedSession,
 } from "@alwaysmeticulous/common";
 import {
+  GeneratedBy,
   OnReplayTimelineEventFn,
+  ReplayAndStoreResultsOptions,
+  ReplayExecution,
+  ReplayExecutionOptions,
+  ReplayOrchestratorScreenshottingOptions,
   ReplayUserInteractionsResult,
   SetupReplayNetworkStubbingFn,
   VirtualTimeOptions,
-  GeneratedBy,
-  ReplayExecutionOptions,
-  ReplayOrchestratorScreenshottingOptions,
-  ReplayAndStoreResultsOptions,
-  ReplayExecution,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import { SetupBrowserContextSeedingFn } from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
 import { Span } from "@sentry/types";
 import log, { LogLevelDesc } from "loglevel";
 import { Browser, launch, Page } from "puppeteer";
-import { openStepThroughDebuggerUI } from "./debugger/replay-debugger.ui";
 import { prepareScreenshotsDir, writeOutput } from "./output.utils";
 import { ReplayEventsDependencies, ReplayMetadata } from "./replay.types";
 import {
