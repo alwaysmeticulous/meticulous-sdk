@@ -1,6 +1,6 @@
 import { ReplayableEvent } from "@alwaysmeticulous/api";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import { startServer as startUIServer } from "@alwaysmeticulous/replay-debugger-ui";
+import { startUIServer } from "@alwaysmeticulous/replay-debugger-ui";
 import {
   BeforeUserEventOptions,
   OnBeforeNextEventResult,
@@ -48,11 +48,12 @@ export const openStepThroughDebuggerUI = async ({
 
   // Launch the browser
   const browser: Browser = await launch({
-    args: [`--window-size=600,800`],
+    args: [`--window-size=600,1000`],
+    headless: false,
   });
 
   // Create page for the debugger UI
-  const debuggerPage = await browser.defaultBrowserContext().newPage();
+  const debuggerPage = (await browser.pages())[0];
   debuggerPage.setViewport({
     width: 0,
     height: 0,
@@ -136,13 +137,14 @@ export const openStepThroughDebuggerUI = async ({
       if (eventType === "set-index") {
         return onAdvanceToIndex(data.index || 0);
       }
-      logger.info(`Warning: received unknown event "${eventType}"`);
+      logger.info(
+        `[debugger-ui] Warning: received unknown event "${eventType}"`
+      );
     }
   );
 
-  const url = "http://localhost:3005/";
-  logger.info(`Navigating to ${url}...`);
-  const res = await debuggerPage.goto(url, {
+  logger.info(`[debugger-ui] Navigating to ${uiServer.url}...`);
+  const res = await debuggerPage.goto(uiServer.url, {
     waitUntil: "domcontentloaded",
   });
   const status = res && res.status();
@@ -151,7 +153,7 @@ export const openStepThroughDebuggerUI = async ({
       `Expected a 200 status when going to the initial URL of the site. Got a ${status} instead.`
     );
   }
-  logger.info(`Navigated to ${url}`);
+  logger.info(`[debugger-ui] Navigated to ${uiServer.url}`);
 
   debuggerPage.on("close", () => {
     uiServer.close();
