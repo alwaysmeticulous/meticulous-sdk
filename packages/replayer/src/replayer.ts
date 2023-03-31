@@ -423,13 +423,13 @@ const replaySessionInPage = async (
 };
 
 const logEventTarget = async (page: Page, event: ReplayableEvent) => {
-  await page.evaluate(() => {
+  await page.evaluate((event) => {
     const target = (window as any).__meticulous.replayFunctions.findEventTarget(
       event
     );
     console.log("Next event target:");
     console.log(target);
-  });
+  }, event);
 };
 
 const shouldHoldBrowserOpen = () => {
