@@ -32,7 +32,7 @@ export interface ReplayAndStoreResultsResult {
   screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffResult[]>;
 }
 
-export interface OnBeforeNextEventResult {
+export interface BeforeUserEventResult {
   /**
    * If provided then execution will continue, without calling onBeforeUserEvent, until
    * the next event with this index is reached.

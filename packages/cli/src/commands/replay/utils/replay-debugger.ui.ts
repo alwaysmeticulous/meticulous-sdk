@@ -3,7 +3,7 @@ import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { startUIServer } from "@alwaysmeticulous/replay-debugger-ui";
 import {
   BeforeUserEventOptions,
-  OnBeforeNextEventResult,
+  BeforeUserEventResult,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { launch, Browser, Page } from "puppeteer";
@@ -26,7 +26,7 @@ export interface ReplayDebuggerUI {
 
 type OnBeforeUserEventCallback = (
   options: BeforeUserEventOptions
-) => Promise<OnBeforeNextEventResult>;
+) => Promise<BeforeUserEventResult>;
 
 export interface StepThroughDebuggerUI {
   onBeforeUserEvent: OnBeforeUserEventCallback;
@@ -81,11 +81,11 @@ export const openStepThroughDebuggerUI = async ({
     await setState(state);
   };
 
-  let advanceToEvent: ((advanceTo: OnBeforeNextEventResult) => void) | null =
+  let advanceToEvent: ((advanceTo: BeforeUserEventResult) => void) | null =
     null;
   const onBeforeUserEvent = async ({
     userEventIndex,
-  }: BeforeUserEventOptions): Promise<OnBeforeNextEventResult> => {
+  }: BeforeUserEventOptions): Promise<BeforeUserEventResult> => {
     await setState({
       loading: userEventIndex < targetIndex,
       index: Math.max(0, Math.min(state.events.length - 1, userEventIndex)),
@@ -96,7 +96,7 @@ export const openStepThroughDebuggerUI = async ({
       return { nextEventIndexToPauseBefore: targetIndex }; // keep going
     }
 
-    return new Promise<OnBeforeNextEventResult>((resolve) => {
+    return new Promise<BeforeUserEventResult>((resolve) => {
       advanceToEvent = resolve;
     });
   };

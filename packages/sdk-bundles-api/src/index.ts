@@ -43,7 +43,6 @@ export {
   CompareScreenshotsToSpecificReplay,
   CompareScreenshotsToTestRun,
   DoNotCompareScreenshots,
-  OnBeforeNextEventOptions,
 } from "./replay-orchestrator/sdk-to-bundle/execute-replay";
 export { ExecuteTestRunOptions } from "./replay-orchestrator/sdk-to-bundle/execute-test-run";
 export {
@@ -57,5 +56,5 @@ export {
 export {
   ReplayAndStoreResultsResult,
   ReplayExecution,
-  OnBeforeNextEventResult,
+  BeforeUserEventResult,
 } from "./replay-orchestrator/bundle-to-sdk/execute-replay";

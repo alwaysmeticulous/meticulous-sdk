@@ -12,7 +12,7 @@ import {
   ReplayTarget,
   StoryboardOptions,
   BeforeUserEventOptions,
-  OnBeforeNextEventResult,
+  BeforeUserEventResult,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
@@ -123,7 +123,7 @@ export const rawReplayCommandHandler = async ({
 
   const getOnBeforeUserEventCallback =
     defer<
-      (options: BeforeUserEventOptions) => Promise<OnBeforeNextEventResult>
+      (options: BeforeUserEventOptions) => Promise<BeforeUserEventResult>
     >();
   const getOnClosePageCallback = defer<() => Promise<void>>();
 

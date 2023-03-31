@@ -1,5 +1,6 @@
 import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
-import { OnBeforeNextEventResult } from "../bundle-to-sdk/execute-replay";
+import { BeforeUserEventOptions } from "../../replay/bundle-to-sdk";
+import { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
 
 export interface ReplayAndStoreResultsOptions {
   replayTarget: ReplayTarget;
@@ -23,15 +24,8 @@ export interface ReplayAndStoreResultsOptions {
    * next event. This allows the caller to pause the replay, or control the playback.
    */
   onBeforeUserEvent?: (
-    opts: OnBeforeNextEventOptions
-  ) => Promise<OnBeforeNextEventResult>;
-}
-
-export interface OnBeforeNextEventOptions {
-  /**
-   * The index of the next event in sessionData.userEvents.event_log
-   */
-  userEventIndex: number;
+    opts: BeforeUserEventOptions
+  ) => Promise<BeforeUserEventResult>;
 }
 
 /**
