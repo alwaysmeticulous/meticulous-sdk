@@ -10,6 +10,7 @@ export interface Project {
   configurationData: ProjectConfigurationData;
   createdAt: string;
   updatedAt: string;
+  isGitHubIntegrationActive?: boolean;
 }
 
 export interface ProjectConfigurationData {

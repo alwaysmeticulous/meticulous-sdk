@@ -20,6 +20,7 @@ import {
 import {
   ReplayAndStoreResultsOptions,
   ReplayAndStoreResultsResult,
+  ReplayExecution,
   ReplayTarget,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import * as Sentry from "@sentry/node";
@@ -28,6 +29,7 @@ import log from "loglevel";
 import { DateTime } from "luxon";
 import {
   createReplay,
+  CreateReplayOptions,
   getReplayCommandId,
   getReplayPushUrl,
   putReplayPushedStatus,
@@ -51,20 +53,12 @@ export const replayAndStoreResults = async ({
   generatedBy,
   testRunId,
   replayEventsDependencies,
-  debugger: enableStepThroughDebugger,
   suppressScreenshotDiffLogging,
+  onBeforeUserEvent,
+  onClosePage,
 }: ReplayAndStoreResultsOptions & {
   replayEventsDependencies?: ReplayEventsDependencies;
-}): Promise<ReplayAndStoreResultsResult> => {
-  if (
-    executionOptions.headless === true &&
-    enableStepThroughDebugger === true
-  ) {
-    throw new Error(
-      "Cannot run with both --debugger flag and --headless flag at the same time."
-    );
-  }
-
+}): Promise<ReplayExecution> => {
   const rootTransaction = Sentry.getCurrentHub().getScope()?.getTransaction();
   const handlerSpanContext = {
     name: "replay.command_handler",
@@ -125,7 +119,7 @@ export const replayAndStoreResults = async ({
     recursive: true,
   });
   const tempDirName = sanitizeFilename(`${new Date().toISOString()}-`);
-  const tempDir = await mkdtemp(
+  const replayDir = await mkdtemp(
     join(getMeticulousLocalDataDir(), "replays", tempDirName)
   );
 
@@ -136,7 +130,7 @@ export const replayAndStoreResults = async ({
     replayExecutionOptions: executionOptions,
 
     browser: null,
-    outputDir: tempDir,
+    outputDir: replayDir,
     session,
     recordingId: "manual-replay",
     meticulousSha: "meticulousSha",
@@ -144,12 +138,13 @@ export const replayAndStoreResults = async ({
     testRunId,
 
     dependencies: replayEventsDependencies,
-    enableStepThroughDebugger,
     screenshottingOptions,
     cookiesFile: cookiesFile ?? null,
+    ...(onBeforeUserEvent != null ? { onBeforeUserEvent } : {}),
+    ...(onClosePage != null ? { onClosePage } : {}),
   };
   await writeFile(
-    join(tempDir, "replayEventsParams.json"),
+    join(replayDir, "replayEventsParams.json"),
     JSON.stringify(replayEventsParams)
   );
 
@@ -157,44 +152,84 @@ export const replayAndStoreResults = async ({
   logger.debug("Beggining replay...");
   const startTime = DateTime.utc();
 
-  await replayEvents({
+  const replayBrowser = await replayEvents({
     ...replayEventsParams,
     sessionData,
     parentPerformanceSpan: transaction.startChild({ op: "replayEvents" }),
   });
 
-  closeServer?.();
+  return {
+    finalResult: replayBrowser.replayCompletionPromise.then(async () => {
+      closeServer?.();
 
-  const endTime = DateTime.utc();
+      const endTime = DateTime.utc();
 
-  logger.info(
-    `Simulation time: ${endTime.diff(startTime).as("seconds")} seconds`
-  );
+      logger.info(
+        `Simulation time: ${endTime.diff(startTime).as("seconds")} seconds`
+      );
 
+      return await computeDiffsAndUploadResults({
+        screenshottingOptions,
+        sessionId,
+        suppressScreenshotDiffLogging,
+        createReplayOptions: {
+          client,
+          commitSha,
+          sessionId,
+          meticulousSha,
+          version: "v2",
+          metadata: { generatedBy },
+        },
+        replayCommandId,
+        replayDir,
+        transaction,
+      });
+    }),
+    eventsBeingReplayed: sessionData.userEvents.event_log,
+    closePage: replayBrowser.closePage,
+    logEventTarget: replayBrowser.logEventTarget,
+  };
+};
+
+interface ComputeDiffsAndUploadResultsOptions
+  extends Pick<
+    ReplayAndStoreResultsOptions,
+    "screenshottingOptions" | "sessionId" | "suppressScreenshotDiffLogging"
+  > {
+  createReplayOptions: CreateReplayOptions;
+  replayCommandId: string;
+  replayDir: string;
+  transaction: Sentry.Span;
+}
+
+const computeDiffsAndUploadResults = async ({
+  createReplayOptions,
+  replayCommandId,
+  replayDir,
+  screenshottingOptions,
+  sessionId,
+  suppressScreenshotDiffLogging,
+  transaction,
+}: ComputeDiffsAndUploadResultsOptions): Promise<ReplayAndStoreResultsResult> => {
   exitEarlyIfSkipUploadEnvVarSet(screenshottingOptions);
 
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   logger.info("Sending simulation results to Meticulous");
 
-  // 8. Create a Zip archive containing the replay files
+  // 1. Create a Zip archive containing the replay files
   const createReplayArchiveSpan = transaction.startChild({
     op: "createArchiveAndUpload",
   });
-  const archivePath = await createReplayArchive(tempDir);
+  const archivePath = await createReplayArchive(replayDir);
   createReplayArchiveSpan.finish();
 
   try {
-    // 9. Get upload URL
+    // 2. Get upload URL
     const getReplayPushUrlSpan = transaction.startChild({
       op: "getReplayPushUrl",
     });
-    const replay = await createReplay({
-      client,
-      commitSha,
-      sessionId,
-      meticulousSha,
-      version: "v2",
-      metadata: { generatedBy },
-    });
+    const replay = await createReplay(createReplayOptions);
+    const { client } = createReplayOptions;
     const uploadUrlData = await getReplayPushUrl(client, replay.id);
     if (!uploadUrlData) {
       logger.error("Error: Could not get a push URL from the Meticulous API");
@@ -203,7 +238,7 @@ export const replayAndStoreResults = async ({
     const uploadUrl = uploadUrlData.pushUrl;
     getReplayPushUrlSpan.finish();
 
-    // 10. Send archive to S3
+    // 3. Send archive to S3
     const uploadArchiveSpan = transaction.startChild({ op: "uploadArchive" });
     try {
       await uploadArchive(uploadUrl, archivePath);
@@ -219,7 +254,7 @@ export const replayAndStoreResults = async ({
     }
     uploadArchiveSpan.finish();
 
-    // 11. Report successful upload to Meticulous
+    // 4. Report successful upload to Meticulous
     const updatedProjectBuild = await putReplayPushedStatus(
       client,
       replay.id,
@@ -234,7 +269,7 @@ export const replayAndStoreResults = async ({
     logger.info(`View simulation at: ${replayUrl}`);
     logger.info("=======");
 
-    // 12. Diff against base replay screenshot if one is provided
+    // 5. Diff against base replay screenshot if one is provided
     const computeDiffSpan = transaction.startChild({
       op: "computeDiff",
     });
@@ -252,12 +287,11 @@ export const replayAndStoreResults = async ({
         client,
         sessionId,
         headReplayId: replay.id,
-        headReplayDir: tempDir,
+        headReplayDir: replayDir,
         screenshottingOptions,
         logger: computeDiffsLogger,
       });
     computeDiffSpan.finish();
-
     return { replay, screenshotDiffResultsByBaseReplayId };
   } finally {
     await deleteArchive(archivePath);

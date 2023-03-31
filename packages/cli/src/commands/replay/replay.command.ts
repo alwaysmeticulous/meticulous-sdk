@@ -3,6 +3,7 @@ import {
   ScreenshotDiffOptions,
   ScreenshotDiffResult,
 } from "@alwaysmeticulous/api";
+import { defer } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator";
 import {
   GeneratedBy,
@@ -10,6 +11,8 @@ import {
   ScreenshotComparisonOptions,
   ReplayTarget,
   StoryboardOptions,
+  BeforeUserEventOptions,
+  OnBeforeNextEventResult,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
@@ -17,6 +20,7 @@ import {
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
+import { openStepThroughDebuggerUI } from "./utils/replay-debugger.ui";
 
 export interface ReplayAndStoreResultsResult {
   replay: Replay;
@@ -76,6 +80,12 @@ export const rawReplayCommandHandler = async ({
     );
   }
 
+  if (headless && enableStepThroughDebugger) {
+    throw new Error(
+      "Cannot run with both --debugger flag and --headless flag at the same time."
+    );
+  }
+
   const executionOptions: ReplayExecutionOptions = {
     headless,
     devTools,
@@ -111,7 +121,13 @@ export const rawReplayCommandHandler = async ({
       }
     : { enabled: false };
 
-  const { replay } = await replayAndStoreResults({
+  const getOnBeforeUserEventCallback =
+    defer<
+      (options: BeforeUserEventOptions) => Promise<OnBeforeNextEventResult>
+    >();
+  const getOnClosePageCallback = defer<() => Promise<void>>();
+
+  const replayExecution = await replayAndStoreResults({
     replayTarget: getReplayTarget({
       appUrl: appUrl ?? null,
       simulationIdForAssets: simulationIdForAssets ?? null,
@@ -124,9 +140,31 @@ export const rawReplayCommandHandler = async ({
     sessionId,
     generatedBy: generatedByOption,
     testRunId: null,
-    debugger: enableStepThroughDebugger,
     suppressScreenshotDiffLogging: false,
+    ...(enableStepThroughDebugger
+      ? {
+          onBeforeUserEvent: async (options) =>
+            (
+              await getOnBeforeUserEventCallback.promise
+            )(options),
+          onClosePage: async () => (await getOnClosePageCallback.promise)(),
+        }
+      : {}),
   });
+
+  if (enableStepThroughDebugger) {
+    const stepThroughDebuggerUI = await openStepThroughDebuggerUI({
+      onLogEventTarget: replayExecution.logEventTarget,
+      onCloseReplayedPage: replayExecution.closePage,
+      replayableEvents: replayExecution.eventsBeingReplayed,
+    });
+    getOnBeforeUserEventCallback.resolve(
+      stepThroughDebuggerUI.onBeforeUserEvent
+    );
+    getOnClosePageCallback.resolve(stepThroughDebuggerUI.close);
+  }
+
+  const { replay } = await replayExecution.finalResult;
 
   return replay;
 };
@@ -188,8 +226,7 @@ export const replayCommand = buildCommand("simulate")
     },
     baseReplayId: {
       string: true,
-      description:
-        "Base simulation id to diff the screenshots against",
+      description: "Base simulation id to diff the screenshots against",
       alias: "baseSimulationId",
     },
     ...COMMON_REPLAY_OPTIONS,

@@ -57,8 +57,9 @@ const main = async () => {
   logger.setLevel(logLevel);
   setMeticulousLocalDataDir(dataDir);
 
+  const replayExecution = await replayAndStoreResults(replayOptions);
   const { replay, screenshotDiffResultsByBaseReplayId } =
-    await replayAndStoreResults(replayOptions);
+    await replayExecution.finalResult;
   const result = hasNotableDifferences(
     Object.values(screenshotDiffResultsByBaseReplayId).flat()
   )

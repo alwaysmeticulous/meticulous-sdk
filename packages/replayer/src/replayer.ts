@@ -1,4 +1,8 @@
-import { SDKReplayTimelineEntry, SessionData } from "@alwaysmeticulous/api";
+import {
+  ReplayableEvent,
+  SDKReplayTimelineEntry,
+  SessionData,
+} from "@alwaysmeticulous/api";
 import {
   COMMON_CHROMIUM_FLAGS,
   METICULOUS_LOGGER_NAME,
@@ -12,11 +16,13 @@ import {
   GeneratedBy,
   ReplayExecutionOptions,
   ReplayOrchestratorScreenshottingOptions,
+  ReplayAndStoreResultsOptions,
+  ReplayExecution,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import { SetupBrowserContextSeedingFn } from "@alwaysmeticulous/sdk-bundles-api/dist/replay/sdk-to-bundle";
 import { Span } from "@sentry/types";
 import log, { LogLevelDesc } from "loglevel";
-import { Browser, launch } from "puppeteer";
+import { Browser, launch, Page } from "puppeteer";
 import { openStepThroughDebuggerUI } from "./debugger/replay-debugger.ui";
 import { prepareScreenshotsDir, writeOutput } from "./output.utils";
 import { ReplayEventsDependencies, ReplayMetadata } from "./replay.types";
@@ -31,17 +37,16 @@ import {
 } from "./replay.utils";
 import { ReplayTimelineCollector } from "./timeline/collector";
 
-export interface ReplayEventsOptions {
+export interface ReplayEventsOptions
+  extends Pick<
+    ReplayAndStoreResultsOptions,
+    "onBeforeUserEvent" | "onClosePage"
+  > {
   /**
    * If null then will use the URL the session was recorded against.
    */
   appUrl: string | null;
   replayExecutionOptions: ReplayExecutionOptions;
-
-  /**
-   * Run in debugger mode, which allows the user to step through the replay event by event.
-   */
-  enableStepThroughDebugger: boolean;
 
   browser: any;
   outputDir: string;
@@ -59,53 +64,39 @@ export interface ReplayEventsOptions {
   parentPerformanceSpan?: Span;
 }
 
+export interface ReplayBrowser
+  extends Pick<ReplayExecution, "closePage" | "logEventTarget"> {
+  replayCompletionPromise: Promise<void>;
+}
+
 export const replayEvents = async (
   options: ReplayEventsOptions
-): Promise<void> => {
+): Promise<ReplayBrowser> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const logLevel: LogLevelDesc = logger.getLevel();
 
   logger.debug(options);
 
   const {
-    appUrl,
     browser: browser_,
-    outputDir,
-    session,
     sessionData,
     replayExecutionOptions,
     dependencies,
-    screenshottingOptions,
-    generatedBy,
     parentPerformanceSpan,
-    enableStepThroughDebugger,
+    onClosePage,
   } = options;
 
-  // Extract replay metadata
+  // Extract execution options
   const {
     headless,
     devTools,
     shiftTime,
-    networkStubbing,
     skipPauses,
-    maxDurationMs,
-    maxEventCount,
     disableRemoteFonts,
     noSandbox,
     bypassCSP,
-    moveBeforeClick,
     essentialFeaturesOnly,
   } = replayExecutionOptions;
-  const metadata: ReplayMetadata = {
-    session,
-    options: {
-      appUrl,
-      outputDir,
-      dependencies,
-      ...replayExecutionOptions,
-    },
-    generatedBy,
-  };
 
   const defaultViewport = getStartingViewport(sessionData);
   const windowWidth = defaultViewport.width + 20;
@@ -167,7 +158,74 @@ export const replayEvents = async (
     essentialFeaturesOnly,
     ...(userAgentOverride ? { userAgent: userAgentOverride } : {}),
   });
+  page.on("close", () => onClosePage?.());
   createReplayPageSpan?.finish();
+
+  return {
+    replayCompletionPromise: replaySessionInPage({
+      ...options,
+      page,
+      browser,
+      logger,
+      onTimelineEvent,
+      logLevel,
+      virtualTime,
+      timelineCollector,
+    }),
+    closePage: () => page.close(),
+    logEventTarget: (event: ReplayableEvent) => logEventTarget(page, event),
+  };
+};
+
+const replaySessionInPage = async (
+  options: ReplayEventsOptions & {
+    page: Page;
+    browser: Browser;
+    logger: log.Logger;
+    onTimelineEvent: OnReplayTimelineEventFn;
+    logLevel: log.LogLevelDesc;
+    virtualTime: VirtualTimeOptions;
+    timelineCollector: ReplayTimelineCollector;
+  }
+) => {
+  const {
+    page,
+    logger,
+    appUrl,
+    outputDir,
+    session,
+    sessionData,
+    replayExecutionOptions,
+    dependencies,
+    screenshottingOptions,
+    generatedBy,
+    parentPerformanceSpan,
+    onTimelineEvent,
+    logLevel,
+    onBeforeUserEvent,
+    virtualTime,
+    timelineCollector,
+    browser,
+  } = options;
+
+  // Extract replay metadata
+  const {
+    networkStubbing,
+    maxDurationMs,
+    maxEventCount,
+    moveBeforeClick,
+    essentialFeaturesOnly,
+  } = replayExecutionOptions;
+  const metadata: ReplayMetadata = {
+    session,
+    options: {
+      appUrl,
+      outputDir,
+      dependencies,
+      ...replayExecutionOptions,
+    },
+    generatedBy,
+  };
 
   // Calculate start URL based on the one that the session originated on/from.
   const originalSessionStartUrl = getOriginalSessionStartUrl({
@@ -281,14 +339,6 @@ export const replayEvents = async (
   const takeEndStateScreenshot = screenshottingOptions.enabled;
   const sessionDuration = getSessionDuration(sessionData);
 
-  const onBeforeUserEvent = enableStepThroughDebugger
-    ? await openStepThroughDebuggerUI({
-        browser,
-        replayedPage: page,
-        replayableEvents: sessionData.userEvents.event_log,
-      })
-    : null;
-
   const replayUserInteractionsCall = parentPerformanceSpan?.startChild({
     op: "replayUserInteractions",
   });
@@ -371,6 +421,16 @@ export const replayEvents = async (
   await browser.close();
 
   parentPerformanceSpan?.finish();
+};
+
+const logEventTarget = async (page: Page, event: ReplayableEvent) => {
+  await page.evaluate(() => {
+    const target = (window as any).__meticulous.replayFunctions.findEventTarget(
+      event
+    );
+    console.log("Next event target:");
+    console.log(target);
+  });
 };
 
 const shouldHoldBrowserOpen = () => {

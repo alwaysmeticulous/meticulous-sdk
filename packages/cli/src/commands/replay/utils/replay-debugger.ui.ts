@@ -1,8 +1,12 @@
 import { ReplayableEvent } from "@alwaysmeticulous/api";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import { BeforeUserEventOptions } from "@alwaysmeticulous/sdk-bundles-api";
+import { startServer as startUIServer } from "@alwaysmeticulous/replay-debugger-ui";
+import {
+  BeforeUserEventOptions,
+  OnBeforeNextEventResult,
+} from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
-import { Browser, Page } from "puppeteer";
+import { launch, Browser, Page } from "puppeteer";
 
 export interface ReplayDebuggerState {
   events: ReplayableEvent[];
@@ -11,8 +15,8 @@ export interface ReplayDebuggerState {
 }
 
 export interface ReplayDebuggerUIOptions {
-  browser: Browser;
-  replayedPage: Page;
+  onCloseReplayedPage: () => void;
+  onLogEventTarget: (event: ReplayableEvent) => Promise<void>;
   replayableEvents: ReplayableEvent[];
 }
 
@@ -22,18 +26,30 @@ export interface ReplayDebuggerUI {
 
 type OnBeforeUserEventCallback = (
   options: BeforeUserEventOptions
-) => Promise<void>;
+) => Promise<OnBeforeNextEventResult>;
+
+export interface StepThroughDebuggerUI {
+  onBeforeUserEvent: OnBeforeUserEventCallback;
+  close: () => Promise<void>;
+}
 
 // openStepThroughDebuggerUI returns a OnBeforeUserEventCallback, which the replay code
 // calls before each next event, and blocks on the returned promise. We use this to pause
 // the execution until the user OKs it to continue to a certain event.
 export const openStepThroughDebuggerUI = async ({
-  browser,
-  replayedPage,
+  onCloseReplayedPage,
+  onLogEventTarget,
   replayableEvents,
-}: ReplayDebuggerUIOptions): Promise<OnBeforeUserEventCallback> => {
+}: ReplayDebuggerUIOptions): Promise<StepThroughDebuggerUI> => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
   // Start the UI server
-  const uiServer = await startUiServer();
+  const uiServer = await startUIServer();
+
+  // Launch the browser
+  const browser: Browser = await launch({
+    args: [`--window-size=600,800`],
+  });
 
   // Create page for the debugger UI
   const debuggerPage = await browser.defaultBrowserContext().newPage();
@@ -64,29 +80,30 @@ export const openStepThroughDebuggerUI = async ({
     await setState(state);
   };
 
-  let advanceToNextEvent: (() => void) | null = null;
-  const onBeforeNextEvent = async ({
+  let advanceToEvent: ((advanceTo: OnBeforeNextEventResult) => void) | null =
+    null;
+  const onBeforeUserEvent = async ({
     userEventIndex,
-  }: BeforeUserEventOptions) => {
+  }: BeforeUserEventOptions): Promise<OnBeforeNextEventResult> => {
     await setState({
       loading: userEventIndex < targetIndex,
       index: Math.max(0, Math.min(state.events.length - 1, userEventIndex)),
     });
 
     if (state.index < targetIndex) {
-      advanceToNextEvent = null;
-      return; // keep going
+      advanceToEvent = null;
+      return { nextEventIndexToPauseBefore: targetIndex }; // keep going
     }
 
-    return new Promise<void>((resolve) => {
-      advanceToNextEvent = resolve;
+    return new Promise<OnBeforeNextEventResult>((resolve) => {
+      advanceToEvent = resolve;
     });
   };
 
   const onPlayNextEvent = async () => {
     targetIndex = state.index + 1;
     await setState({ loading: true });
-    advanceToNextEvent?.();
+    advanceToEvent?.({ nextEventIndexToPauseBefore: targetIndex });
   };
 
   const onAdvanceToIndex = async (newTargetIndex: number) => {
@@ -95,37 +112,7 @@ export const openStepThroughDebuggerUI = async ({
     }
     targetIndex = newTargetIndex;
     await setState({ loading: true });
-    advanceToNextEvent?.();
-  };
-
-  const findEventTarget = async (event: ReplayableEvent) => {
-    const target = await replayedPage.evaluateHandle((event) => {
-      const target = (
-        window as any
-      ).__meticulous.replayFunctions.findEventTarget(event);
-      return target;
-    }, event as any);
-    return target;
-  };
-
-  const onCheckNextTarget = async () => {
-    if (state.index >= replayableEvents.length) {
-      console.log("End of replay!");
-      return;
-    }
-
-    const nextEvent = state.events[state.index];
-    const target = await findEventTarget(nextEvent);
-    const targetExists = await target.evaluate((target) => !!target);
-    console.log(
-      `[Event #${state.index}] ${
-        targetExists ? "Target found" : "Target not found"
-      }`
-    );
-    await replayedPage.evaluate((target) => {
-      console.log("Next event target:");
-      console.log(target);
-    }, target);
+    advanceToEvent?.({ nextEventIndexToPauseBefore: targetIndex });
   };
 
   // This function is called by the UI itself
@@ -136,7 +123,12 @@ export const openStepThroughDebuggerUI = async ({
         return onReady();
       }
       if (eventType === "check-next-target") {
-        return onCheckNextTarget();
+        if (state.index >= replayableEvents.length) {
+          logger.info("End of replay!");
+          return;
+        }
+        const nextEvent = state.events[state.index];
+        return onLogEventTarget(nextEvent);
       }
       if (eventType === "play-next-event") {
         return onPlayNextEvent();
@@ -144,12 +136,12 @@ export const openStepThroughDebuggerUI = async ({
       if (eventType === "set-index") {
         return onAdvanceToIndex(data.index || 0);
       }
-      console.log(`Warning: received unknown event "${eventType}"`);
+      logger.info(`Warning: received unknown event "${eventType}"`);
     }
   );
 
   const url = "http://localhost:3005/";
-  console.log(`Navigating to ${url}...`);
+  logger.info(`Navigating to ${url}...`);
   const res = await debuggerPage.goto(url, {
     waitUntil: "domcontentloaded",
   });
@@ -159,47 +151,15 @@ export const openStepThroughDebuggerUI = async ({
       `Expected a 200 status when going to the initial URL of the site. Got a ${status} instead.`
     );
   }
-  console.log(`Navigated to ${url}`);
+  logger.info(`Navigated to ${url}`);
 
   debuggerPage.on("close", () => {
     uiServer.close();
   });
 
-  // Close all pages if one of them is closed
-  replayedPage.on("close", () => {
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    debuggerPage.close().catch(() => {});
-  });
   debuggerPage.on("close", () => {
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    replayedPage.close().catch(() => {});
+    onCloseReplayedPage();
   });
 
-  return onBeforeNextEvent;
-};
-
-interface Server {
-  close: () => void;
-}
-
-type StartServerFn = () => Server;
-
-const startUiServer = async (): Promise<Server> => {
-  try {
-    const replayDebuggerUi =
-      await require("@alwaysmeticulous/replay-debugger-ui");
-    const startServerFn = replayDebuggerUi.startServer as StartServerFn;
-    return startServerFn();
-  } catch (error) {
-    const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-    logger.error(
-      "Error: could not import @alwaysmeticulous/replay-debugger-ui"
-    );
-    logger.error(error);
-    logger.error("");
-    logger.error(
-      "Please make sure you've installed or added a dependency on '@alwaysmeticulous/replay-debugger-ui'. It is not installed automatically, and is required to use the '--debugger' flag."
-    );
-    throw error;
-  }
+  return { onBeforeUserEvent, close: () => debuggerPage.close() };
 };

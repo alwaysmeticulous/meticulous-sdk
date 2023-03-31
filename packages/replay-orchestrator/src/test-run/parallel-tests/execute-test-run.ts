@@ -257,7 +257,6 @@ export const executeTestRun = async ({
             generatedBy: { type: "testRun", runId: testRun.id },
             testRunId: testRun.id,
             replayEventsDependencies,
-            debugger: false,
             cookiesFile: null,
 
             // Specific to each task

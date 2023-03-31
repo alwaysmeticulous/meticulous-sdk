@@ -31,14 +31,6 @@
     "@types/luxon": "^3.2.0",
     "next": "^13.1.6"
   },
-  "peerDependencies": {
-    "@alwaysmeticulous/replay-debugger-ui": "^2.5.0"
-  },
-  "peerDependenciesMeta": {
-    "@alwaysmeticulous/replay-debugger-ui": {
-      "optional": true
-    }
-  },
   "author": {
     "name": "The Meticulous Team",
     "email": "eng@meticulous.ai",
