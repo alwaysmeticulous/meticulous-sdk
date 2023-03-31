@@ -53,4 +53,8 @@ export {
   TestRunProgress,
   DetailedTestCaseResult,
 } from "./replay-orchestrator/bundle-to-sdk/execute-test-run";
-export { ReplayAndStoreResultsResult } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
+export {
+  ReplayAndStoreResultsResult,
+  ReplayExecution,
+  BeforeUserEventResult,
+} from "./replay-orchestrator/bundle-to-sdk/execute-replay";

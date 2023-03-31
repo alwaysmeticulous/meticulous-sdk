@@ -1,21 +1,23 @@
 import { Replay } from "@alwaysmeticulous/api";
 import axios, { AxiosInstance } from "axios";
 
-export const createReplay: (options: {
+export interface CreateReplayOptions {
   client: AxiosInstance;
   commitSha: string;
   sessionId: string;
   meticulousSha: string;
   version: "v1" | "v2";
   metadata: { [key: string]: any };
-}) => Promise<Replay> = async ({
+}
+
+export const createReplay = async ({
   client,
   commitSha,
   sessionId,
   meticulousSha,
   version,
   metadata,
-}) => {
+}: CreateReplayOptions): Promise<Replay> => {
   const { data } = await client.post("replays", {
     commitSha,
     sessionId,

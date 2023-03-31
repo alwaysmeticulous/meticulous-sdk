@@ -4,21 +4,24 @@ import { resolve } from "path";
 const PORT = 3005;
 
 export interface Server {
+  url: string;
   close: () => void;
 }
 
-export const startServer: () => Promise<Server> = async () => {
+export const startUIServer: () => Promise<Server> = async () => {
   const workDir = resolve(__dirname, "..");
 
   const child = spawn("serve", ["-s", "-p", `${PORT}`, "out"], {
     cwd: workDir,
   });
 
+  const url = `http://localhost:${PORT}`;
+
   const startedLogPromise = new Promise<void>((resolve) => {
     child.stdout.on("data", (data) => {
       if (`${data}`.includes("Accepting connections")) {
         resolve();
-        console.log("Server started");
+        console.log(`UI Server started at ${url}`);
         child.stdout.removeAllListeners();
       }
     });
@@ -35,6 +38,7 @@ export const startServer: () => Promise<Server> = async () => {
   };
 
   return {
+    url,
     close,
   };
 };

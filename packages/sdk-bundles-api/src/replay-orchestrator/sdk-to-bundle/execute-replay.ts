@@ -1,4 +1,6 @@
 import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
+import { BeforeUserEventOptions } from "../../replay/bundle-to-sdk";
+import { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
 
 export interface ReplayAndStoreResultsOptions {
   replayTarget: ReplayTarget;
@@ -11,7 +13,19 @@ export interface ReplayAndStoreResultsOptions {
   commitSha: string | null | undefined;
   sessionId: string;
   cookiesFile: string | null | undefined;
-  debugger: boolean;
+
+  /**
+   * Called when the user or runner closes the page or browser window
+   */
+  onClosePage?: () => void;
+
+  /**
+   * The replay runner will block on the promise returned before replaying the
+   * next event. This allows the caller to pause the replay, or control the playback.
+   */
+  onBeforeUserEvent?: (
+    opts: BeforeUserEventOptions
+  ) => Promise<BeforeUserEventResult>;
 }
 
 /**
