@@ -13,10 +13,10 @@ import {
   sanitizeFilename,
 } from "@alwaysmeticulous/downloading-helpers";
 import {
-  replayEvents,
+  launchBrowserAndReplay,
   ReplayEventsDependencies,
-  ReplayEventsOptions,
-} from "@alwaysmeticulous/replayer";
+  LaunchBrowserAndReplayOptions,
+} from "@alwaysmeticulous/launch-browser-and-replay";
 import {
   ReplayAndStoreResultsOptions,
   ReplayAndStoreResultsResult,
@@ -125,7 +125,10 @@ export const replayAndStoreResults = async ({
 
   // 6. Create and save replay parameters
   logger.debug("Snapshotting replay parameters...");
-  const replayEventsParams: Omit<ReplayEventsOptions, "sessionData"> = {
+  const launchBrowserAndReplayParams: Omit<
+    LaunchBrowserAndReplayOptions,
+    "sessionData" | "onBeforeUserEvent" | "onClosePage"
+  > = {
     appUrl: appUrl ?? null,
     replayExecutionOptions: executionOptions,
 
@@ -140,22 +143,24 @@ export const replayAndStoreResults = async ({
     dependencies: replayEventsDependencies,
     screenshottingOptions,
     cookiesFile: cookiesFile ?? null,
-    ...(onBeforeUserEvent != null ? { onBeforeUserEvent } : {}),
-    ...(onClosePage != null ? { onClosePage } : {}),
   };
   await writeFile(
-    join(replayDir, "replayEventsParams.json"),
-    JSON.stringify(replayEventsParams)
+    join(replayDir, "launchBrowserAndReplayParams.json"),
+    JSON.stringify(launchBrowserAndReplayParams)
   );
 
   // 7. Perform replay
   logger.debug("Beggining replay...");
   const startTime = DateTime.utc();
 
-  const replayBrowser = await replayEvents({
-    ...replayEventsParams,
+  const replayBrowser = await launchBrowserAndReplay({
+    ...launchBrowserAndReplayParams,
+    ...(onBeforeUserEvent != null ? { onBeforeUserEvent } : {}),
+    ...(onClosePage != null ? { onClosePage } : {}),
     sessionData,
-    parentPerformanceSpan: transaction.startChild({ op: "replayEvents" }),
+    parentPerformanceSpan: transaction.startChild({
+      op: "launchBrowserAndReplay",
+    }),
   });
 
   return {

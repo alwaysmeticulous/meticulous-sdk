@@ -1,4 +1,7 @@
-export { replayEvents, ReplayEventsOptions } from "./replayer";
+export {
+  launchBrowserAndReplay,
+  LaunchBrowserAndReplayOptions,
+} from "./launch-browser-and-replay";
 export {
   getStartUrl,
   getOriginalSessionStartUrl,

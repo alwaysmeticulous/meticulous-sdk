@@ -103,7 +103,7 @@ export const SCREENSHOT_DIFF_OPTIONS = {
 };
 
 /**
- * Options that are passed onto replayEvents, that are shared by the replay, run-all-tests, and create-test commands
+ * Options that are passed onto launchBrowserAndReplay, that are shared by the replay, run-all-tests, and create-test commands
  */
 export const COMMON_REPLAY_OPTIONS = {
   headless: OPTIONS.headless,
