@@ -16,7 +16,7 @@ import {
   launchBrowserAndReplay,
   ReplayEventsDependencies,
   LaunchBrowserAndReplayOptions,
-} from "@alwaysmeticulous/launch-browser-and-replay";
+} from "@alwaysmeticulous/replay-launcher";
 import {
   ReplayAndStoreResultsOptions,
   ReplayAndStoreResultsResult,

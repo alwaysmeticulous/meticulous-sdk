@@ -1,5 +1,5 @@
 {
-  "name": "@alwaysmeticulous/launch-browser-and-replay",
+  "name": "@alwaysmeticulous/replay-launcher",
   "version": "2.41.0",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",

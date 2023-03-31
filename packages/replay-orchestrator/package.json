@@ -24,7 +24,7 @@
     "@alwaysmeticulous/client": "^2.41.0",
     "@alwaysmeticulous/common": "^2.41.0",
     "@alwaysmeticulous/downloading-helpers": "^2.41.0",
-    "@alwaysmeticulous/launch-browser-and-replay": "^2.41.0",
+    "@alwaysmeticulous/replay-launcher": "^2.41.0",
     "@alwaysmeticulous/sdk-bundles-api": "^2.41.0",
     "@alwaysmeticulous/sentry": "^2.40.0",
     "@sentry/node": "^7.36.0",

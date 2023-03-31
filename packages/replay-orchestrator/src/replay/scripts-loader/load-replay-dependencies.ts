@@ -1,5 +1,5 @@
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
-import { ReplayEventsDependencies } from "@alwaysmeticulous/launch-browser-and-replay";
+import { ReplayEventsDependencies } from "@alwaysmeticulous/replay-launcher";
 
 export const loadReplayEventsDependencies =
   async (): Promise<ReplayEventsDependencies> => {

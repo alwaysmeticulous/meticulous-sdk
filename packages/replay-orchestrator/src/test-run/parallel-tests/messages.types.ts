@@ -1,4 +1,4 @@
-import { ReplayEventsDependencies } from "@alwaysmeticulous/launch-browser-and-replay";
+import { ReplayEventsDependencies } from "@alwaysmeticulous/replay-launcher";
 import { ReplayAndStoreResultsOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
 import { TestTaskResult } from "./test-task.types";
