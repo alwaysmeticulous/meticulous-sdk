@@ -51,9 +51,9 @@ export const getOrFetchReplayArchive = async (
 
   try {
     const replayArchiveFile = join(replayDir, `${replayId}.zip`);
-    const paramsFile = join(replayDir, "replayEventsParams.json");
+    const paramsFile = join(replayDir, "metadata.json");
 
-    // Check if "replayEventsParams.json" exists. If yes, we assume the replay
+    // Check if "metadata.json" exists. If yes, we assume the replay
     // zip archive has been downloaded and extracted.
     if (await fileExists(paramsFile)) {
       logger.debug(`Replay archive already downloaded at ${replayDir}`);

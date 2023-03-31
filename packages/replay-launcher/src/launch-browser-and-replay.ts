@@ -36,7 +36,7 @@ import {
 } from "./replay.utils";
 import { ReplayTimelineCollector } from "./timeline/collector";
 
-export interface ReplayEventsOptions
+export interface LaunchBrowserAndReplayOptions
   extends Pick<
     ReplayAndStoreResultsOptions,
     "onBeforeUserEvent" | "onClosePage"
@@ -68,8 +68,8 @@ export interface ReplayBrowser
   replayCompletionPromise: Promise<void>;
 }
 
-export const replayEvents = async (
-  options: ReplayEventsOptions
+export const launchBrowserAndReplay = async (
+  options: LaunchBrowserAndReplayOptions
 ): Promise<ReplayBrowser> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const logLevel: LogLevelDesc = logger.getLevel();
@@ -177,7 +177,7 @@ export const replayEvents = async (
 };
 
 const replaySessionInPage = async (
-  options: ReplayEventsOptions & {
+  options: LaunchBrowserAndReplayOptions & {
     page: Page;
     browser: Browser;
     logger: log.Logger;
