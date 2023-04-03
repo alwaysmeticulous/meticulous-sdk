@@ -155,7 +155,10 @@ export const runAllTestsInParallel: (
         // the result as flakey
         let isFinalResult: boolean;
         if (rerunTestsNTimes > 0) {
-          isFinalResult = numberOfRetriesExecuted >= rerunTestsNTimes;
+          // If the results is a flake, we exit early so want to record this as a final result.
+          isFinalResult =
+            numberOfRetriesExecuted >= rerunTestsNTimes ||
+            mergedResult.result === "flake";
         } else {
           isFinalResult =
             mergedResult.result !== "fail" ||

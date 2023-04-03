@@ -53,6 +53,16 @@ const main = async () => {
 
   const initMessage = await waitForInitMessage();
 
+  process.on("message", (message) => {
+    if (
+      message &&
+      typeof message === "object" &&
+      (message as any)["kind"] === "result-acknowledged"
+    ) {
+      process.disconnect();
+    }
+  });
+
   const { logLevel, dataDir, replayOptions } = initMessage.data;
   logger.setLevel(logLevel);
   setMeticulousLocalDataDir(dataDir);
@@ -78,7 +88,6 @@ const main = async () => {
   };
 
   process.send(resultMessage);
-  process.disconnect();
 
   await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 };

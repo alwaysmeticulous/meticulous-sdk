@@ -238,6 +238,38 @@ describe("runAllTestsInParallel", () => {
       ),
     ]);
   });
+
+  it("records early flake outcome when running with rerunTestsNTimes > 0", async () => {
+    let rerunNum = 0;
+    const results = await runAllTestsInParallel({
+      testsToRun: [testTask(0)],
+      parallelTasks: 2,
+      maxRetriesOnFailure: 0,
+      rerunTestsNTimes: 10,
+      executeTest: async (
+        testTask: TestTask
+      ): Promise<DetailedTestCaseResult> => {
+        if (!testTask.isRetry) {
+          return testResult("pass", [diff(0), noDiff(1)], testTask);
+        }
+        if (rerunNum === 2) {
+          return testResult("fail", [missingHead(0), diff(1)], testTask);
+        }
+        rerunNum++;
+        return testResult("pass", [noDiff(0), noDiff(1)], testTask);
+      },
+    });
+
+    expect(rerunNum).toEqual(2);
+    expect(results).toEqual([
+      testResult(
+        // Flake outcome is returned iff all screenshots are flaky.
+        "flake",
+        [flake(0, diff(), [missingHead()]), flake(1, noDiff(), [diff()])],
+        testTask(0)
+      ),
+    ]);
+  });
 });
 
 const testTask = (num: number): TestTask => ({
