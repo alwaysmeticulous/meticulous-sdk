@@ -1,17 +1,13 @@
 {
-  "name": "@alwaysmeticulous/cli",
-  "version": "2.42.1",
-  "description": "The Meticulous CLI",
+  "name": "@alwaysmeticulous/replay-orchestrator-launcher",
+  "version": "2.42.0",
+  "description": "Downloads the replay-orchestrator bundle script and executes it",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "bin",
     "dist"
   ],
-  "bin": {
-    "meticulous": "bin/meticulous"
-  },
   "scripts": {
     "clean": "rimraf dist tsconfig.tsbuildinfo",
     "build": "tsc --build tsconfig.json",
@@ -20,30 +16,15 @@
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
-    "cli": "node dist/main.js",
-    "cli:dev": "ts-node src/main.ts",
-    "cli:dev-localhost": "METICULOUS_API_URL=http://localhost:3001/api/ ts-node src/main.ts",
-    "test": "jest --passWithNoTests",
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/api": "^2.42.0",
+    "@alwaysmeticulous/downloading-helpers": "^2.42.0",
     "@alwaysmeticulous/client": "^2.42.0",
     "@alwaysmeticulous/common": "^2.42.0",
-    "@alwaysmeticulous/downloading-helpers": "^2.42.0",
-    "@alwaysmeticulous/record": "^2.42.0",
-    "@alwaysmeticulous/replay-debugger-ui": "^2.42.0",
-    "@alwaysmeticulous/replay-orchestrator-launcher": "^2.42.0",
     "@alwaysmeticulous/sdk-bundles-api": "^2.42.1",
-    "@alwaysmeticulous/sentry": "^2.40.0",
-    "@sentry/node": "^7.36.0",
     "axios": "^1.2.6",
-    "loglevel": "^1.8.0",
-    "puppeteer": "^19.7.5",
-    "yargs": "^17.5.1"
-  },
-  "devDependencies": {
-    "@types/yargs": "^17.0.10"
+    "loglevel": "^1.8.0"
   },
   "author": {
     "name": "The Meticulous Team",
@@ -57,26 +38,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
-    "directory": "packages/cli"
+    "directory": "packages/replay-orchestrator-launcher"
   },
   "bugs": {
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
   }
 }
