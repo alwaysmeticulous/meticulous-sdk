@@ -26,6 +26,24 @@ export interface ReplayAndStoreResultsOptions {
   onBeforeUserEvent?: (
     opts: BeforeUserEventOptions
   ) => Promise<BeforeUserEventResult>;
+
+  /**
+   * The maximum version of the replayAndStoreResults schema (the types in this inferface
+   * and the return type) that the caller is compatible with.
+   *
+   * This version number is bumped on every API change, and allows the replayAndStoreResults
+   * code to detect if it's being called by client that is not compatible with the latest version,
+   * and if so throw an OutOfDateClientError. It is then up to the client to display a message to ask
+   * the user to update to a newer version.
+   */
+  maxSemanticVersionSupported: number;
+}
+
+/**
+ * See {@link ReplayAndStoreResultsOptions.maxSemanticVersionSupported} for more details.
+ */
+export interface OutOfDateClientError extends Error {
+  name: "OutOfDateClient";
 }
 
 /**

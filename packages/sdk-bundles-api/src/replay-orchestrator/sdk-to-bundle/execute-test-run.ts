@@ -63,4 +63,15 @@ export interface ExecuteTestRunOptions {
 
   onTestRunCreated?: (testRun: RunningTestRunExecution) => void;
   onTestFinished?: (testRun: RunningTestRunExecution) => void;
+
+  /**
+   * The maximum version of the executeTestRun schema (the types in this inferface
+   * and the return type) that the caller is compatible with.
+   *
+   * This version number is bumped on every API change, and allows the executeTestRun
+   * code to detect if it's being called by client that is not compatible with the latest version,
+   * and if so throw an OutOfDateClientError. It is then up to the client to display a message to ask
+   * the user to update to a newer version.
+   */
+  maxSemanticVersionSupported: number;
 }
