@@ -34,6 +34,19 @@ describe("mergeResults", () => {
     );
   });
 
+  it("sets correct test result outcome if all tests pass (no-diff)", () => {
+    const currentResult = testResult("pass", [noDiff(0), noDiff(1)]);
+    const comparisonToHeadReplay = testResult("pass", [noDiff(0), noDiff(1)]);
+    const mergedResult = mergeResults({
+      currentResult,
+      comparisonToHeadReplay,
+    });
+    expect(mergedResult).toEqual(
+      // All screenshots are either "no-diff" or "flake" thus the overall result is "flake"
+      testResult("pass", [noDiff(0), noDiff(1)])
+    );
+  });
+
   it("marks screenshots as flakes if the screenshot comparison originally failed, but the second retry gives a different screenshot again", () => {
     const currentResult = testResult("fail", [noDiff(0), diff(1), diff(2)]);
     const comparisonToHeadReplay = testResult("fail", [
