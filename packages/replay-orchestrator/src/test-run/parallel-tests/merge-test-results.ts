@@ -118,10 +118,6 @@ export const mergeResults = ({
     result: testRunOutcomeFromDiffResults({
       currentResult: currentResult.result,
       newScreenshotDiffResults,
-      hasHadAtLeastOneDiff: [
-        ...flattenedCurrentResult,
-        ...flattenedHeadScreenShotDiffResults,
-      ].some((diffResult) => diffResult.outcome === "diff"),
     }),
     screenshotDiffResultsByBaseReplayId: groupScreenshotDiffResults(
       newScreenshotDiffResults
@@ -151,22 +147,28 @@ const hashScreenshotIdentifier = (
 export const testRunOutcomeFromDiffResults = ({
   currentResult,
   newScreenshotDiffResults,
-  hasHadAtLeastOneDiff,
 }: {
   currentResult: TestCaseResult["result"];
   newScreenshotDiffResults: ScreenshotDiffResult[];
-  hasHadAtLeastOneDiff: boolean;
 }): TestCaseResult["result"] => {
   // If a test run is already flakey, we don't want to overwrite that with a 'fail' result.
   if (currentResult === "flake") {
     return "flake";
   }
 
+  const hasNoDifferences = newScreenshotDiffResults.every(
+    ({ outcome }) => outcome === "no-diff"
+  );
+
+  if (hasNoDifferences) {
+    return "pass";
+  }
+
   const hasOnlyFlakes = newScreenshotDiffResults.every(
     ({ outcome }) => outcome === "flake" || outcome === "no-diff"
   );
 
-  if (hasOnlyFlakes && hasHadAtLeastOneDiff) {
+  if (hasOnlyFlakes) {
     return "flake";
   }
 
