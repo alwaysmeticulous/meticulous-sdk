@@ -28,6 +28,9 @@ export const executeTestInChildProcess = (
     ) {
       const resultMessage = message as ResultMessage;
       deferredResult.resolve(resultMessage.data.result);
+
+      child.send({ kind: "result-acknowledged" });
+
       child.off("message", messageHandler);
     }
   };
