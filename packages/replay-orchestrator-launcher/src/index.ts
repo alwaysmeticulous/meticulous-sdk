@@ -28,7 +28,6 @@ export const executeTestRun = async (
   const bundleLocation = await fetchAsset(
     "replay/v3/execute-test-run.bundle.js"
   );
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   return (await require(bundleLocation)).executeTestRun({
     ...options,
     logLevel: logger.getLevel(),
