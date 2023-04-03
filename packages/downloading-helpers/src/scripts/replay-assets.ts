@@ -7,6 +7,7 @@ import {
 import axios from "axios";
 import log from "loglevel";
 import { getSnippetsBaseUrl } from "../config/snippets";
+import { waitToAcquireLockOnFile } from "../file-downloads/local-data.utils";
 
 interface AssetMetadataItem {
   fileName: string;
@@ -26,30 +27,40 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const fetchUrl = new URL(path, getSnippetsBaseUrl()).href;
   const assetFileName = `${basename(new URL(fetchUrl).pathname, ".js")}.cjs`;
 
-  const assetMetadata = await loadAssetMetadata();
-  const etag = (await axios.head(fetchUrl)).headers["etag"] || "";
+  const releaseLock = await waitToAcquireLockOnFile(await getAssetsFilePath());
+  try {
+    const assetMetadata = await loadAssetMetadata();
 
-  const entry = assetMetadata.assets.find(
-    (item) => item.fileName === assetFileName
-  );
-  const filePath = join(await getOrCreateAssetsDir(), assetFileName);
+    const etag = (await axios.head(fetchUrl)).headers["etag"] || "";
 
-  if (entry && etag !== "" && etag === entry.etag) {
-    logger.debug(`${fetchUrl} already present`);
+    const entry = assetMetadata.assets.find(
+      (item) => item.fileName === assetFileName
+    );
+    const filePath = join(await getOrCreateAssetsDir(), assetFileName);
+
+    if (entry && etag !== "" && etag === entry.etag) {
+      logger.debug(`${fetchUrl} already present`);
+      releaseLock();
+      return filePath;
+    }
+
+    const contents = (await axios.get(fetchUrl)).data;
+    await writeFile(filePath, contents);
+    if (entry) {
+      logger.debug(`${fetchUrl} updated`);
+      entry.etag = etag;
+    } else {
+      logger.debug(`${fetchUrl} downloaded`);
+      assetMetadata.assets.push({ fileName: assetFileName, etag, fetchUrl });
+    }
+    await saveAssetMetadata(assetMetadata);
+    releaseLock();
     return filePath;
+  } catch (err) {
+    releaseLock();
+    logger.error(`Error fetching asset from ${fetchUrl}`);
+    throw err;
   }
-
-  const contents = (await axios.get(fetchUrl)).data;
-  await writeFile(filePath, contents);
-  if (entry) {
-    logger.debug(`${fetchUrl} updated`);
-    entry.etag = etag;
-  } else {
-    logger.debug(`${fetchUrl} downloaded`);
-    assetMetadata.assets.push({ fileName: assetFileName, etag, fetchUrl });
-  }
-  await saveAssetMetadata(assetMetadata);
-  return filePath;
 };
 
 const getOrCreateAssetsDir: () => Promise<string> = async () => {
@@ -59,10 +70,7 @@ const getOrCreateAssetsDir: () => Promise<string> = async () => {
 };
 
 const loadAssetMetadata: () => Promise<AssetMetadata> = async () => {
-  const assetsFile = join(
-    await getOrCreateAssetsDir(),
-    ASSET_METADATA_FILE_NAME
-  );
+  const assetsFile = await getAssetsFilePath();
 
   const existingMetadata = await readFile(assetsFile)
     .then((data) => JSON.parse(data.toString("utf-8")))
@@ -83,4 +91,9 @@ const saveAssetMetadata: (
   );
 
   await writeFile(assetsFile, JSON.stringify(assetMetadata, null, 2));
+};
+
+const getAssetsFilePath = async (): Promise<string> => {
+  const assetsDir = await getOrCreateAssetsDir();
+  return join(assetsDir, ASSET_METADATA_FILE_NAME);
 };

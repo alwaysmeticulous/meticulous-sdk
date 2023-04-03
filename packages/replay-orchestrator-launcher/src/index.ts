@@ -1,3 +1,4 @@
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import {
   ExecuteTestRunOptions,
@@ -5,25 +6,31 @@ import {
   ReplayAndStoreResultsOptions,
   ReplayExecution,
 } from "@alwaysmeticulous/sdk-bundles-api";
-
-// TODO: Update CLI to use these functions instead
+import log from "loglevel";
 
 export const replayAndStoreResults = async (
-  options: ReplayAndStoreResultsOptions
+  options: Omit<ReplayAndStoreResultsOptions, "logLevel">
 ): Promise<ReplayExecution> => {
-  return (await loadReplayOrchestratorBundle()).replayAndStoreResults(options);
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const bundleLocation = await fetchAsset(
+    "replay/v3/replay-and-store-results.bundle.js"
+  );
+  return (await require(bundleLocation)).replayAndStoreResults({
+    ...options,
+    logLevel: logger.getLevel(),
+  });
 };
 
 export const executeTestRun = async (
-  options: ExecuteTestRunOptions
+  options: Omit<ExecuteTestRunOptions, "logLevel">
 ): Promise<ExecuteTestRunResult> => {
-  return (await loadReplayOrchestratorBundle()).executeTestRun(options);
-};
-
-const loadReplayOrchestratorBundle = async (): Promise<any> => {
-  const replayOrchestratorBundleLocation = await fetchAsset(
-    "replay/v3/replay-orchestrator.bundle.js"
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const bundleLocation = await fetchAsset(
+    "replay/v3/execute-test-run.bundle.js"
   );
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require(replayOrchestratorBundleLocation);
+  return (await require(bundleLocation)).executeTestRun({
+    ...options,
+    logLevel: logger.getLevel(),
+  });
 };
