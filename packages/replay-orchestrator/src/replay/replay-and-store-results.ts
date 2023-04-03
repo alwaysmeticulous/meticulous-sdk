@@ -45,7 +45,7 @@ import { uploadArchive } from "./utils/upload";
 /**
  * See {@link ReplayAndStoreResultsOptions.maxSemanticVersionSupported} for more details.
  */
-export const CURRENT_REPLAY_AND_STORE_RESULTS_SEMANTIC_VERSION = 1;
+export const CURRENT_REPLAY_AND_STORE_RESULTS_SEMANTIC_VERSION: ReplayAndStoreResultsOptions["maxSemanticVersionSupported"] = 1;
 
 export const replayAndStoreResults = async ({
   replayTarget,
