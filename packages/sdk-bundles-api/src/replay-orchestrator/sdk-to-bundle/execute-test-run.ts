@@ -72,6 +72,9 @@ export interface ExecuteTestRunOptions {
    * code to detect if it's being called by client that is not compatible with the latest version,
    * and if so throw an OutOfDateClientError. It is then up to the client to display a message to ask
    * the user to update to a newer version.
+   *
+   * Note: this is typed as a const of the latest known version, rather than a number, to ensure
+   * that all clients bump the version number passed when they upgrade to the types.
    */
-  maxSemanticVersionSupported: number;
+  maxSemanticVersionSupported: 1;
 }
