@@ -43,6 +43,7 @@ export {
   CompareScreenshotsToSpecificReplay,
   CompareScreenshotsToTestRun,
   DoNotCompareScreenshots,
+  OutOfDateClientError,
 } from "./replay-orchestrator/sdk-to-bundle/execute-replay";
 export { ExecuteTestRunOptions } from "./replay-orchestrator/sdk-to-bundle/execute-test-run";
 export {

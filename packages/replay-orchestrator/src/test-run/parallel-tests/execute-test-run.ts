@@ -33,6 +33,7 @@ import {
   getTestRunUrl,
   putTestRunResults,
 } from "../../api/test-run.api";
+import { CURRENT_REPLAY_AND_STORE_RESULTS_SEMANTIC_VERSION } from "../../replay/replay-and-store-results";
 import { loadReplayEventsDependencies } from "../../replay/scripts-loader/load-replay-dependencies";
 import { executeTestInChildProcess } from "./execute-test-in-child-process";
 import { InitMessage } from "./messages.types";
@@ -258,6 +259,10 @@ export const executeTestRun = async ({
             testRunId: testRun.id,
             replayEventsDependencies,
             cookiesFile: null,
+
+            // It's in the same package/repo, so always uses the API of the latest version:
+            maxSemanticVersionSupported:
+              CURRENT_REPLAY_AND_STORE_RESULTS_SEMANTIC_VERSION,
 
             // Specific to each task
             sessionId: testTask.sessionId,

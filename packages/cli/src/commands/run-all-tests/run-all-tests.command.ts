@@ -14,6 +14,10 @@ import {
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
+import {
+  isOutOfDateClientError,
+  OutOfDateCLIError,
+} from "../../utils/out-of-date-client-error";
 
 interface Options
   extends ScreenshotDiffOptions,
@@ -93,24 +97,33 @@ const handler: (options: Options) => Promise<void> = async ({
   const cachedTestRunResults = useCache
     ? await getCachedTestRunResults({ client, commitSha })
     : [];
-  const { testRun } = await executeTestRun({
-    testsFile: testsFile ?? null,
-    executionOptions,
-    screenshottingOptions,
-    apiToken: apiToken ?? null,
-    commitSha,
-    baseCommitSha: baseCommitSha ?? null,
-    baseTestRunId: baseTestRunId ?? null,
-    appUrl: appUrl ?? null,
-    parallelTasks: parrelelTasks ?? null,
-    maxRetriesOnFailure,
-    rerunTestsNTimes,
-    cachedTestRunResults,
-    githubSummary,
-  });
+  try {
+    const { testRun } = await executeTestRun({
+      testsFile: testsFile ?? null,
+      executionOptions,
+      screenshottingOptions,
+      apiToken: apiToken ?? null,
+      commitSha,
+      baseCommitSha: baseCommitSha ?? null,
+      baseTestRunId: baseTestRunId ?? null,
+      appUrl: appUrl ?? null,
+      parallelTasks: parrelelTasks ?? null,
+      maxRetriesOnFailure,
+      rerunTestsNTimes,
+      cachedTestRunResults,
+      githubSummary,
+      maxSemanticVersionSupported: 1,
+    });
 
-  if (testRun.status === "Failure") {
-    process.exit(1);
+    if (testRun.status === "Failure") {
+      process.exit(1);
+    }
+  } catch (error) {
+    if (isOutOfDateClientError(error)) {
+      throw new OutOfDateCLIError();
+    } else {
+      throw error;
+    }
   }
 };
 

@@ -6,13 +6,13 @@ import {
 import { defer } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator";
 import {
-  GeneratedBy,
-  ReplayExecutionOptions,
-  ScreenshotComparisonOptions,
-  ReplayTarget,
-  StoryboardOptions,
   BeforeUserEventOptions,
   BeforeUserEventResult,
+  GeneratedBy,
+  ReplayExecutionOptions,
+  ReplayTarget,
+  ScreenshotComparisonOptions,
+  StoryboardOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
@@ -20,6 +20,10 @@ import {
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
+import {
+  isOutOfDateClientError,
+  OutOfDateCLIError,
+} from "../../utils/out-of-date-client-error";
 import { openStepThroughDebuggerUI } from "./utils/replay-debugger.ui";
 
 export interface ReplayAndStoreResultsResult {
@@ -127,46 +131,55 @@ export const rawReplayCommandHandler = async ({
     >();
   const getOnClosePageCallback = defer<() => Promise<void>>();
 
-  const replayExecution = await replayAndStoreResults({
-    replayTarget: getReplayTarget({
-      appUrl: appUrl ?? null,
-      simulationIdForAssets: simulationIdForAssets ?? null,
-    }),
-    executionOptions,
-    screenshottingOptions,
-    apiToken,
-    commitSha,
-    cookiesFile,
-    sessionId,
-    generatedBy: generatedByOption,
-    testRunId: null,
-    suppressScreenshotDiffLogging: false,
-    ...(enableStepThroughDebugger
-      ? {
-          onBeforeUserEvent: async (options) =>
-            (
-              await getOnBeforeUserEventCallback.promise
-            )(options),
-          onClosePage: async () => (await getOnClosePageCallback.promise)(),
-        }
-      : {}),
-  });
-
-  if (enableStepThroughDebugger) {
-    const stepThroughDebuggerUI = await openStepThroughDebuggerUI({
-      onLogEventTarget: replayExecution.logEventTarget,
-      onCloseReplayedPage: replayExecution.closePage,
-      replayableEvents: replayExecution.eventsBeingReplayed,
+  try {
+    const replayExecution = await replayAndStoreResults({
+      replayTarget: getReplayTarget({
+        appUrl: appUrl ?? null,
+        simulationIdForAssets: simulationIdForAssets ?? null,
+      }),
+      executionOptions,
+      screenshottingOptions,
+      apiToken,
+      commitSha,
+      cookiesFile,
+      sessionId,
+      generatedBy: generatedByOption,
+      testRunId: null,
+      suppressScreenshotDiffLogging: false,
+      ...(enableStepThroughDebugger
+        ? {
+            onBeforeUserEvent: async (options) =>
+              (
+                await getOnBeforeUserEventCallback.promise
+              )(options),
+            onClosePage: async () => (await getOnClosePageCallback.promise)(),
+          }
+        : {}),
+      maxSemanticVersionSupported: 1,
     });
-    getOnBeforeUserEventCallback.resolve(
-      stepThroughDebuggerUI.onBeforeUserEvent
-    );
-    getOnClosePageCallback.resolve(stepThroughDebuggerUI.close);
+
+    if (enableStepThroughDebugger) {
+      const stepThroughDebuggerUI = await openStepThroughDebuggerUI({
+        onLogEventTarget: replayExecution.logEventTarget,
+        onCloseReplayedPage: replayExecution.closePage,
+        replayableEvents: replayExecution.eventsBeingReplayed,
+      });
+      getOnBeforeUserEventCallback.resolve(
+        stepThroughDebuggerUI.onBeforeUserEvent
+      );
+      getOnClosePageCallback.resolve(stepThroughDebuggerUI.close);
+    }
+
+    const { replay } = await replayExecution.finalResult;
+
+    return replay;
+  } catch (error) {
+    if (isOutOfDateClientError(error)) {
+      throw new OutOfDateCLIError();
+    } else {
+      throw error;
+    }
   }
-
-  const { replay } = await replayExecution.finalResult;
-
-  return replay;
 };
 
 export const getReplayTarget = ({
