@@ -42,7 +42,6 @@ describe("mergeResults", () => {
       comparisonToHeadReplay,
     });
     expect(mergedResult).toEqual(
-      // All screenshots are either "no-diff" or "flake" thus the overall result is "flake"
       testResult("pass", [noDiff(0), noDiff(1)])
     );
   });
