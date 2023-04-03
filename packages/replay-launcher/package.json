@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replay-launcher",
-  "version": "2.42.0",
+  "version": "2.42.1",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.42.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.42.0",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.42.1",
     "@types/luxon": "^3.2.0",
     "next": "^13.1.6"
   },
