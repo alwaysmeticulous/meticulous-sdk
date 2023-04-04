@@ -22,14 +22,10 @@
     "@alwaysmeticulous/api": "^2.44.0"
   },
   "peerDependencies": {
-    "loglevel": "^1.8.0",
-    "puppeteer": "^19.7.5"
+    "loglevel": "^1.8.0"
   },
   "peerDependenciesMeta": {
     "loglevel": {
-      "optional": true
-    },
-    "puppeteer": {
       "optional": true
     }
   },
