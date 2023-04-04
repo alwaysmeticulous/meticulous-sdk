@@ -259,6 +259,7 @@ export const executeTestRun = async ({
             testRunId: testRun.id,
             replayEventsDependencies,
             cookiesFile: null,
+            logLevel: logger.getLevel(),
 
             // It's in the same package/repo, so always uses the API of the latest version:
             maxSemanticVersionSupported:
