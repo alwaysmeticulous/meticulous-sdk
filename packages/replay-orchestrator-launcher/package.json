@@ -24,6 +24,9 @@
     "@alwaysmeticulous/sdk-bundles-api": "^2.44.0",
     "loglevel": "^1.8.0"
   },
+  "peerDependencies": {
+    "puppeteer": "^19.7.5"
+  },
   "author": {
     "name": "The Meticulous Team",
     "email": "eng@meticulous.ai",
