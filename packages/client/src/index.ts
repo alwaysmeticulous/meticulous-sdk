@@ -6,7 +6,6 @@ export {
   postSessionIdNotification,
 } from "./api/session.api";
 export {
-  getLatestTestRunId,
   getLatestTestRunResults,
   GetLatestTestRunOptions,
 } from "./api/test-run.api";

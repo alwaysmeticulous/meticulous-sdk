@@ -1,5 +1,14 @@
-import { TestRun } from "@alwaysmeticulous/api";
+import { Project, TestCaseResult, TestRunStatus } from "@alwaysmeticulous/api";
 import { AxiosError, AxiosInstance } from "axios";
+
+export interface TestRun {
+  id: string;
+  status: TestRunStatus;
+  project: Project;
+  resultData?: {
+    results: TestCaseResult[];
+  };
+}
 
 export interface GetLatestTestRunOptions {
   client: AxiosInstance;
@@ -19,10 +28,4 @@ export const getLatestTestRunResults = async ({
       throw error;
     });
   return (data as TestRun | null) ?? null;
-};
-
-export const getLatestTestRunId = async (
-  opts: GetLatestTestRunOptions
-): Promise<string | null> => {
-  return (await getLatestTestRunResults(opts))?.id ?? null;
 };
