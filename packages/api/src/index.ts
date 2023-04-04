@@ -2,12 +2,7 @@ export { Organization } from "./organization.types";
 export { Project, ProjectConfigurationData } from "./project.types";
 export {
   EndStateScreenshot,
-  ReplayDiff,
-  ReplayDiffData,
   ScreenshotAfterEvent,
-  ScreenshotAssertionsEnabledOptions,
-  ScreenshotAssertionsOptions,
-  ScreenshotDiffOptions,
   ScreenshotDiffResult,
   ScreenshotDiffResultCompared,
   ScreenshotDiffResultDifferentSize,
@@ -15,21 +10,22 @@ export {
   ScreenshotDiffResultMissingBaseAndHead,
   ScreenshotDiffResultMissingHead,
   ScreenshotIdentifier,
-  ScreenshottingEnabledOptions,
   SingleTryScreenshotDiffResult,
-  StoryboardOptions,
-} from "./replay/replay-diff.types";
+} from "./sdk-bundle-api/bundle-to-sdk/screenshot-diff-result";
 export {
   TestCase,
   TestCaseReplayOptions,
-  TestRunArguments,
-  TestRunConfigData,
-  TestRunEnvironment,
-  TestRun,
   TestRunStatus,
   TestCaseResult,
   TestCaseResultStatus,
 } from "./replay/test-run.types";
+export {
+  TestRunEnvironment,
+  TestRunGitHubContext,
+  TestRunGitHubPullRequestContext,
+  TestRunGitHubPushContext,
+  TestRunGitHubWorkflowDispatchContext,
+} from "./sdk-bundle-api/sdk-to-bundle/test-run-environment";
 export { ReplayableEvent } from "./sdk-bundle-api/bidirectional/replayable-event";
 export {
   SDKReplayTimelineEntry,
@@ -48,3 +44,10 @@ export {
   WindowData,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export { Replay } from "./replay/replay.types";
+export {
+  ScreenshotAssertionsOptions,
+  ScreenshotAssertionsEnabledOptions,
+  ScreenshottingEnabledOptions,
+  StoryboardOptions,
+  ScreenshotDiffOptions,
+} from "./sdk-bundle-api/sdk-to-bundle/screenshotting-options";

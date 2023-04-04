@@ -1,8 +1,4 @@
-import {
-  Replay,
-  ScreenshotDiffOptions,
-  ScreenshotDiffResult,
-} from "@alwaysmeticulous/api";
+import { Replay, ScreenshotDiffOptions } from "@alwaysmeticulous/api";
 import { defer } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import {
@@ -25,15 +21,6 @@ import {
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
 import { openStepThroughDebuggerUI } from "./utils/replay-debugger.ui";
-
-export interface ReplayAndStoreResultsResult {
-  replay: Replay;
-
-  /**
-   * Empty if screenshottingOptions.enabled was false.
-   */
-  screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffResult[]>;
-}
 
 export interface RawReplayCommandHandlerOptions
   extends ScreenshotDiffOptions,

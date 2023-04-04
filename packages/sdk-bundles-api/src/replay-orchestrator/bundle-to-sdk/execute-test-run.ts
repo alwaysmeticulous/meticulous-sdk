@@ -1,7 +1,8 @@
 import {
+  Project,
   ScreenshotDiffResult,
   TestCaseResult,
-  TestRun,
+  TestRunStatus,
 } from "@alwaysmeticulous/api";
 
 export interface ExecuteTestRunResult {
@@ -9,13 +10,13 @@ export interface ExecuteTestRunResult {
   testCaseResults: DetailedTestCaseResult[];
 }
 
-export type TestRunExecution = Pick<
-  TestRun,
-  "id" | "url" | "status" | "project"
-> & {
+export interface TestRunExecution {
+  id: string;
+  status: TestRunStatus;
+  project: Project;
   progress: TestRunProgress;
   url: string;
-};
+}
 
 export interface RunningTestRunExecution extends TestRunExecution {
   status: "Running";

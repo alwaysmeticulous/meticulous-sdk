@@ -4,26 +4,6 @@ export {
   NetworkResponseSanitizer,
 } from "./record/record-settings";
 export {
-  ReplayUserInteractionsResult,
-  ReplayUserInteractionsResultFull,
-  ReplayUserInteractionsResultShort,
-  BeforeUserEventOptions,
-} from "./replay/bundle-to-sdk/index";
-export {
-  BootstrapReplayUserInteractionsFn,
-  BootstrapReplayUserInteractionsOptions,
-  OnReplayTimelineEventFn,
-  ReplayUserInteractionsFn,
-  ReplayUserInteractionsOptions,
-  VirtualTimeOptions,
-  InstallVirtualEventLoopOpts,
-  SetupReplayNetworkStubbingFn,
-  NetworkStubbingOptions,
-  BrowserContextSeedingOptions,
-  SetupBrowserContextSeedingFn,
-  ScreenshottingOptions,
-} from "./replay/sdk-to-bundle";
-export {
   ReplayAndStoreResultsOptions,
   ReplayTarget,
   SnapshottedAssetsReplayTarget,
@@ -44,6 +24,7 @@ export {
   CompareScreenshotsToTestRun,
   DoNotCompareScreenshots,
   OutOfDateClientError,
+  BeforeUserEventOptions,
 } from "./replay-orchestrator/sdk-to-bundle/execute-replay";
 export { ExecuteTestRunOptions } from "./replay-orchestrator/sdk-to-bundle/execute-test-run";
 export {

@@ -1,6 +1,5 @@
 import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
 import { LogLevelNumbers } from "loglevel";
-import { BeforeUserEventOptions } from "../../replay/bundle-to-sdk";
 import { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
 
 export interface ReplayAndStoreResultsOptions {
@@ -42,6 +41,13 @@ export interface ReplayAndStoreResultsOptions {
    * that all clients bump the version number passed when they upgrade to the types.
    */
   maxSemanticVersionSupported: 1;
+}
+
+export interface BeforeUserEventOptions {
+  /**
+   * The index of the next event in sessionData.userEvents.event_log
+   */
+  userEventIndex: number;
 }
 
 /**
