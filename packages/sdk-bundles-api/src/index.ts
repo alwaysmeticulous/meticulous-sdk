@@ -24,6 +24,7 @@ export {
   CompareScreenshotsToTestRun,
   DoNotCompareScreenshots,
   OutOfDateClientError,
+  BeforeUserEventOptions,
 } from "./replay-orchestrator/sdk-to-bundle/execute-replay";
 export { ExecuteTestRunOptions } from "./replay-orchestrator/sdk-to-bundle/execute-test-run";
 export {
