@@ -1,0 +1,44 @@
+{
+  "name": "@alwaysmeticulous/replay-orchestrator-launcher",
+  "version": "2.42.0",
+  "description": "Downloads the replay-orchestrator bundle script and executes it",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "build": "tsc --build tsconfig.json",
+    "dev": "tsc --build tsconfig.json --watch",
+    "format": "prettier --write src",
+    "lint": "eslint src --ext=ts,tsx,js --cache",
+    "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
+    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
+    "depcheck": "depcheck --ignore-patterns=dist"
+  },
+  "dependencies": {
+    "@alwaysmeticulous/downloading-helpers": "^2.42.0",
+    "@alwaysmeticulous/common": "^2.42.0",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.42.1",
+    "loglevel": "^1.8.0"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "engines": {
+    "node": ">= 12"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/replay-orchestrator-launcher"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}

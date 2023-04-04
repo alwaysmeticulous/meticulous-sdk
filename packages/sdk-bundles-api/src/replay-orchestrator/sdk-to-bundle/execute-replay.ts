@@ -1,4 +1,5 @@
 import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
+import { LogLevelNumbers } from "loglevel";
 import { BeforeUserEventOptions } from "../../replay/bundle-to-sdk";
 import { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
 
@@ -13,6 +14,7 @@ export interface ReplayAndStoreResultsOptions {
   commitSha: string | null | undefined;
   sessionId: string;
   cookiesFile: string | null | undefined;
+  logLevel: LogLevelNumbers;
 
   /**
    * Called when the user or runner closes the page or browser window

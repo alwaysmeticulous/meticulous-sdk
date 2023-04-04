@@ -5,7 +5,7 @@ import {
 } from "@alwaysmeticulous/api";
 import { createClient } from "@alwaysmeticulous/client";
 import { getCommitSha } from "@alwaysmeticulous/common";
-import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator";
+import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import { getCachedTestRunResults } from "../../api/test-run.api";
 import { buildCommand } from "../../command-utils/command-builder";

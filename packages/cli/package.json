@@ -33,7 +33,7 @@
     "@alwaysmeticulous/downloading-helpers": "^2.42.0",
     "@alwaysmeticulous/record": "^2.42.0",
     "@alwaysmeticulous/replay-debugger-ui": "^2.42.0",
-    "@alwaysmeticulous/replay-orchestrator": "^2.42.1",
+    "@alwaysmeticulous/replay-orchestrator-launcher": "^2.42.0",
     "@alwaysmeticulous/sdk-bundles-api": "^2.42.1",
     "@alwaysmeticulous/sentry": "^2.40.0",
     "@sentry/node": "^7.36.0",

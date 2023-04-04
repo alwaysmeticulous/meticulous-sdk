@@ -62,7 +62,7 @@ export const getOrDownloadJsonFile = async <T>({
   }
 };
 
-const waitToAcquireLockOnFile = async (
+export const waitToAcquireLockOnFile = async (
   filePath: string
 ): Promise<ReleaseLock> => {
   // In many cases the file doesn't exist yet, and can't exist yet (need to download the data, and creating an

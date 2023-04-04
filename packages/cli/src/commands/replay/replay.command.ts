@@ -4,7 +4,7 @@ import {
   ScreenshotDiffResult,
 } from "@alwaysmeticulous/api";
 import { defer } from "@alwaysmeticulous/common";
-import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator";
+import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import {
   BeforeUserEventOptions,
   BeforeUserEventResult,
