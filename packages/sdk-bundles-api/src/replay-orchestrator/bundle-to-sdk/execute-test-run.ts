@@ -35,4 +35,5 @@ export interface TestRunProgress {
 
 export interface DetailedTestCaseResult extends TestCaseResult {
   screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffResult[]>;
+  totalNumberOfScreenshots: number;
 }

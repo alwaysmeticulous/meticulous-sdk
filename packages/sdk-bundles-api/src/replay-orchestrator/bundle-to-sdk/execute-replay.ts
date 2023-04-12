@@ -30,6 +30,12 @@ export interface ReplayAndStoreResultsResult {
    * Empty if screenshottingOptions.enabled was false.
    */
   screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffResult[]>;
+
+  /**
+   * The total number of screenshots taken during the replay.
+   * This will be 0 if `screenshottingOptions.enabled` was false.
+   */
+  totalNumberOfScreenshots: number;
 }
 
 export interface BeforeUserEventResult {
