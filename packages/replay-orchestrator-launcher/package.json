@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replay-orchestrator-launcher",
-  "version": "2.44.1",
+  "version": "2.45.0",
   "description": "Downloads the replay-orchestrator bundle script and executes it",
   "license": "ISC",
   "main": "dist/index.js",
@@ -21,7 +21,7 @@
   "dependencies": {
     "@alwaysmeticulous/common": "^2.44.1",
     "@alwaysmeticulous/downloading-helpers": "^2.44.1",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.44.1",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.45.0",
     "loglevel": "^1.8.0"
   },
   "peerDependencies": {
