@@ -1,6 +1,5 @@
 import { join } from "path";
 import express from "express";
-import serveIndex from "serve-index";
 
 const PORT = 3005;
 
@@ -14,7 +13,7 @@ export const startUIServer = async (): Promise<Server> => {
 
   const staticRoot = join(__dirname, "..", "out");
 
-  app.use(express.static(staticRoot), serveIndex(staticRoot, { icons: true }));
+  app.use(express.static(staticRoot));
 
   const url = `http://localhost:${PORT}`;
 
