@@ -19,9 +19,6 @@ export const ReplayDebuggerProvider: FunctionComponent<{
 
   useEffect(() => {
     (window as any).__meticulous__replayDebuggerSetState = setState;
-  }, []);
-
-  useEffect(() => {
     const dispatchEvent = (window as any)
       .__meticulous__replayDebuggerDispatchEvent;
     if (!dispatchEvent) {

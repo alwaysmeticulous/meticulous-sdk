@@ -70,15 +70,49 @@ export const openStepThroughDebuggerUI = async ({
     loading: false,
   };
 
+  let readyPromiseResolve: () => void;
+  const readyPromise = new Promise<void>((resolve) => {
+    readyPromiseResolve = resolve;
+  });
+
+  // This function is called by the UI itself
+  await debuggerPage.exposeFunction(
+    "__meticulous__replayDebuggerDispatchEvent",
+    (eventType: string, data: any) => {
+      if (eventType === "ready") {
+        return onReady();
+      }
+      if (eventType === "check-next-target") {
+        if (state.index >= replayableEvents.length) {
+          logger.info("End of replay!");
+          return;
+        }
+        const nextEvent = state.events[state.index];
+        return onLogEventTarget(nextEvent);
+      }
+      if (eventType === "play-next-event") {
+        return onPlayNextEvent();
+      }
+      if (eventType === "set-index") {
+        return onAdvanceToIndex(data.index || 0);
+      }
+      logger.info(
+        `[debugger-ui] Warning: received unknown event "${eventType}"`
+      );
+    }
+  );
+
+  const onReady = async () => {
+    readyPromiseResolve();
+    await setState(state);
+  };
+
   const setState = async (newState: Partial<ReplayDebuggerState>) => {
+    await readyPromise;
     state = { ...state, ...newState };
     await debuggerPage.evaluate((state) => {
       (window as any).__meticulous__replayDebuggerSetState(state);
     }, state as any);
-  };
-
-  const onReady = async () => {
-    await setState(state);
   };
 
   let advanceToEvent: ((advanceTo: BeforeUserEventResult) => void) | null =
@@ -115,33 +149,6 @@ export const openStepThroughDebuggerUI = async ({
     await setState({ loading: true });
     advanceToEvent?.({ nextEventIndexToPauseBefore: targetIndex });
   };
-
-  // This function is called by the UI itself
-  await debuggerPage.exposeFunction(
-    "__meticulous__replayDebuggerDispatchEvent",
-    (eventType: string, data: any) => {
-      if (eventType === "ready") {
-        return onReady();
-      }
-      if (eventType === "check-next-target") {
-        if (state.index >= replayableEvents.length) {
-          logger.info("End of replay!");
-          return;
-        }
-        const nextEvent = state.events[state.index];
-        return onLogEventTarget(nextEvent);
-      }
-      if (eventType === "play-next-event") {
-        return onPlayNextEvent();
-      }
-      if (eventType === "set-index") {
-        return onAdvanceToIndex(data.index || 0);
-      }
-      logger.info(
-        `[debugger-ui] Warning: received unknown event "${eventType}"`
-      );
-    }
-  );
 
   logger.info(`[debugger-ui] Navigating to ${uiServer.url}...`);
   const res = await debuggerPage.goto(uiServer.url, {
