@@ -1,5 +1,6 @@
-import { spawn } from "child_process";
-import { resolve } from "path";
+import { join } from "path";
+import express from "express";
+import serveIndex from "serve-index";
 
 const PORT = 3005;
 
@@ -8,37 +9,23 @@ export interface Server {
   close: () => void;
 }
 
-export const startUIServer: () => Promise<Server> = async () => {
-  const workDir = resolve(__dirname, "..");
+export const startUIServer = async (): Promise<Server> => {
+  const app = express();
 
-  const child = spawn("serve", ["-s", "-p", `${PORT}`, "out"], {
-    cwd: workDir,
-  });
+  const staticRoot = join(__dirname, "..", "out");
+
+  app.use(express.static(staticRoot), serveIndex(staticRoot, { icons: true }));
 
   const url = `http://localhost:${PORT}`;
 
-  const startedLogPromise = new Promise<void>((resolve) => {
-    child.stdout.on("data", (data) => {
-      if (`${data}`.includes("Accepting connections")) {
-        resolve();
+  return new Promise((resolve, reject) => {
+    try {
+      const server = app.listen(PORT, () => {
         console.log(`UI Server started at ${url}`);
-        child.stdout.removeAllListeners();
-      }
-    });
+        resolve({ url, close: () => server.close() });
+      });
+    } catch (err) {
+      reject(err);
+    }
   });
-
-  const spawnPromise = new Promise<void>((resolve) => {
-    child.on("spawn", () => resolve());
-  });
-
-  await Promise.all([startedLogPromise, spawnPromise]);
-
-  const close = () => {
-    child.kill();
-  };
-
-  return {
-    url,
-    close,
-  };
 };
