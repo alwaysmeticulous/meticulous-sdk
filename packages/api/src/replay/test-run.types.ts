@@ -3,7 +3,6 @@ import { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screensho
 export interface TestCase {
   sessionId: string;
   title?: string;
-  baseTestRunId?: string;
   options?: TestCaseReplayOptions;
 }
 
@@ -14,8 +13,6 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
    * If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior replay, instead of against a URL.
    */
   simulationIdForAssets?: string | undefined;
-
-  moveBeforeClick?: boolean;
 }
 
 export type TestRunStatus = "Running" | "Success" | "Failure";
