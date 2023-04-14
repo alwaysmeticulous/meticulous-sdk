@@ -37,7 +37,6 @@
     "@alwaysmeticulous/sdk-bundles-api": "^2.45.3",
     "@alwaysmeticulous/sentry": "^2.40.0",
     "@sentry/node": "^7.36.0",
-    "axios": "^1.2.6",
     "loglevel": "^1.8.0",
     "puppeteer": "19.7.5",
     "yargs": "^17.5.1"
