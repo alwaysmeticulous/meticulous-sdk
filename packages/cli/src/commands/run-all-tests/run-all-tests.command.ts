@@ -3,11 +3,9 @@ import {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
-import { createClient } from "@alwaysmeticulous/client";
 import { getCommitSha } from "@alwaysmeticulous/common";
 import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
-import { getCachedTestRunResults } from "../../api/test-run.api";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
@@ -31,7 +29,6 @@ interface Options
   parallelTasks?: number | null | undefined;
   maxRetriesOnFailure: number;
   rerunTestsNTimes: number;
-  useCache: boolean;
   testsFile?: string | undefined;
   maxDurationMs: number | null | undefined;
   maxEventCount: number | null | undefined;
@@ -56,7 +53,6 @@ const handler: (options: Options) => Promise<void> = async ({
   parallelTasks: parrelelTasks_,
   maxRetriesOnFailure,
   rerunTestsNTimes,
-  useCache,
   testsFile,
   disableRemoteFonts,
   noSandbox,
@@ -93,10 +89,6 @@ const handler: (options: Options) => Promise<void> = async ({
 
   const parrelelTasks = parallelize ? parrelelTasks_ : 1;
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
-  const client = createClient({ apiToken });
-  const cachedTestRunResults = useCache
-    ? await getCachedTestRunResults({ client, commitSha })
-    : [];
   try {
     const { testRun } = await executeTestRun({
       testsFile: testsFile ?? null,
@@ -110,7 +102,6 @@ const handler: (options: Options) => Promise<void> = async ({
       parallelTasks: parrelelTasks ?? null,
       maxRetriesOnFailure,
       rerunTestsNTimes,
-      cachedTestRunResults,
       githubSummary,
       maxSemanticVersionSupported: 1,
     });
@@ -174,11 +165,6 @@ export const runAllTestsCommand = buildCommand("run-all-tests")
       description:
         "If set to a value greater than 0 then will re-run all replays the specified number of times and mark them as a flake if the screenshot generated on one of the retryed replays differs from that in the first replay.",
       default: 0,
-    },
-    useCache: {
-      boolean: true,
-      description: "Use result cache",
-      default: false,
     },
     testsFile: {
       string: true,

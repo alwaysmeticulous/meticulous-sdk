@@ -49,13 +49,6 @@ export interface ExecuteTestRunOptions {
   githubSummary: boolean;
 
   /**
-   * If provided it will incorportate the cachedTestRunResults in any calls to store
-   * test run results in the BE, but won't include the cachedTestRunResults in the returned
-   * ExecuteTestRunResult.
-   */
-  cachedTestRunResults?: TestCaseResult[];
-
-  /**
    * Captured environment for this run
    */
   environment?: TestRunEnvironment;
