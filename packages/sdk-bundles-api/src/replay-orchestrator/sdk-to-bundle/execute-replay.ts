@@ -166,8 +166,8 @@ export interface ScreenshottingEnabledOptions {
 
 export type StoryboardOptions = { enabled: false } | { enabled: true };
 
-export type NotebookRunId = StringId<"NotebookRunId">;
-export type TestRunId = StringId<"TestRunId">;
+export type NotebookRunId = StringId<"notebookRunId">;
+export type TestRunId = StringId<"testRunId">;
 
 export type GeneratedBy =
   | GeneratedByNotebookRun
