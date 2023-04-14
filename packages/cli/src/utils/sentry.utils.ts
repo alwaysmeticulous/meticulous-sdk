@@ -12,12 +12,17 @@ export const wrapHandler = function wrapHandler_<T>(
 ): (args: T) => Promise<void> {
   return async (args: T) => {
     await handler(args)
-      .then(() => {
+      .then(async () => {
         const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
         if (transaction !== undefined) {
           transaction.setStatus("ok");
           transaction.finish();
         }
+        await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
+
+        // This is required: otherwise the process will hang for a while,
+        // presumably waiting on some setTimeout to trigger
+        process.exit(0);
       })
       .catch(async (error) => {
         await reportHandlerError(error);
@@ -26,6 +31,8 @@ export const wrapHandler = function wrapHandler_<T>(
           transaction.setStatus("unknown_error");
           transaction.finish();
         }
+
+        await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 
         // Don't display the help text which can obscure the error
         process.exit(1);
@@ -42,5 +49,4 @@ const reportHandlerError: (error: unknown) => Promise<void> = async (error) => {
     "Tip: run `meticulous <command> --help` for help on a particular command, or `meticulous --help` for a list of the available commands."
   );
   Sentry.captureException(error);
-  await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 };
