@@ -22,7 +22,7 @@ import {
 } from "../../utils/out-of-date-client-error";
 import { openStepThroughDebuggerUI } from "./utils/replay-debugger.ui";
 
-export interface RawReplayCommandHandlerOptions
+interface ReplayCommandHandlerOptions
   extends ScreenshotDiffOptions,
     Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount"> {
   screenshot: boolean;
@@ -39,7 +39,7 @@ export interface RawReplayCommandHandlerOptions
   baseReplayId: string | null | undefined;
 }
 
-export const rawReplayCommandHandler = async ({
+const replayCommandHandler = async ({
   apiToken,
   commitSha,
   sessionId,
@@ -64,7 +64,7 @@ export const rawReplayCommandHandler = async ({
   storyboard,
   essentialFeaturesOnly,
   debugger: enableStepThroughDebugger,
-}: RawReplayCommandHandlerOptions): Promise<Replay> => {
+}: ReplayCommandHandlerOptions): Promise<void> => {
   if (!screenshot && storyboard) {
     throw new Error(
       "Cannot take storyboard screenshots without taking end state screenshots. Please set '--screenshot' to true, or '--storyboard' to false."
@@ -157,9 +157,7 @@ export const rawReplayCommandHandler = async ({
       getOnClosePageCallback.resolve(stepThroughDebuggerUI.close);
     }
 
-    const { replay } = await replayExecution.finalResult;
-
-    return replay;
+    await replayExecution.finalResult;
   } catch (error) {
     if (isOutOfDateClientError(error)) {
       throw new OutOfDateCLIError();
@@ -233,5 +231,5 @@ export const replayCommand = buildCommand("simulate")
     ...SCREENSHOT_DIFF_OPTIONS,
   })
   .handler(async (options) => {
-    await rawReplayCommandHandler(options);
+    await replayCommandHandler(options);
   });
