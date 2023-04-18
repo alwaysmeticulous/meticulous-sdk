@@ -1980,15 +1980,6 @@
     "@sentry/utils" "7.48.0"
     tslib "^1.9.3"
 
-"@sentry/core@7.36.0":
-  version "7.36.0"
-  resolved "https://registry.yarnpkg.com/@sentry/core/-/core-7.36.0.tgz#37c82a1ad3f74dbe2c2fcd55f45068e127012fcc"
-  integrity sha512-lq1MlcMhvm7QIwUOknFeufkg4M6QREY3s61y6pm1o+o3vSqB7Hz0D19xlyEpP62qMn8OyuttVKOVK1UfGc2EyQ==
-  dependencies:
-    "@sentry/types" "7.36.0"
-    "@sentry/utils" "7.36.0"
-    tslib "^1.9.3"
-
 "@sentry/core@7.48.0":
   version "7.48.0"
   resolved "https://registry.yarnpkg.com/@sentry/core/-/core-7.48.0.tgz#1a5ec347ab7212d73a99583c2e64989e34e3263a"
@@ -2013,32 +2004,16 @@
     tslib "^1.9.3"
 
 "@sentry/tracing@^7.36.0":
-  version "7.36.0"
-  resolved "https://registry.yarnpkg.com/@sentry/tracing/-/tracing-7.36.0.tgz#aa38319ed07f3b642134cf47da81f43df7835629"
-  integrity sha512-5R5mfWMDncOcTMmmyYMjgus1vZJzIFw4LHaSbrX7e1IRNT/6vFyNeVxATa2ePXb9mI3XHo5f2p7YrnreAtaSXw==
+  version "7.48.0"
+  resolved "https://registry.yarnpkg.com/@sentry/tracing/-/tracing-7.48.0.tgz#071eb9536a1f2cf0f81a3a5661e99f0253e3b87e"
+  integrity sha512-X6w74Av0fyayNicKIlwL1IdpZ3O0ETQjyYXCDTwHoJL71ojrgrL5vdiNz8WwbPONTnqu98HehPYL/z3DCCKVbw==
   dependencies:
-    "@sentry/core" "7.36.0"
-    "@sentry/types" "7.36.0"
-    "@sentry/utils" "7.36.0"
-    tslib "^1.9.3"
-
-"@sentry/types@7.36.0":
-  version "7.36.0"
-  resolved "https://registry.yarnpkg.com/@sentry/types/-/types-7.36.0.tgz#205baaf7332ff55d1fb35413cbde16dea4168520"
-  integrity sha512-uvfwUn3okAWSZ948D/xqBrkc3Sn6TeHUgi3+p/dTTNGAXXskzavgfgQ4rSW7f3YD4LL+boZojpoIARVLodMGuA==
+    "@sentry-internal/tracing" "7.48.0"
 
 "@sentry/types@7.48.0":
   version "7.48.0"
   resolved "https://registry.yarnpkg.com/@sentry/types/-/types-7.48.0.tgz#57f3c9cf331a5621e82dda04eefcf8c19ee42bc9"
   integrity sha512-kkAszZwQ5/v4n7Yyw/DPNRWx7h724mVNRGZIJa9ggUMvTgMe7UKCZZ5wfQmYiKVlGbwd9pxXAcP8Oq15EbByFQ==
-
-"@sentry/utils@7.36.0":
-  version "7.36.0"
-  resolved "https://registry.yarnpkg.com/@sentry/utils/-/utils-7.36.0.tgz#b81cf63c7b5daad3f0f152c4ad319203f968ba1b"
-  integrity sha512-mgDi5X5Bm0sydCzXpnyKD/sD98yc2qnKXyRdNX4HRRwruhC/P53LT0hGhZXsyqsB/l8OAMl0zWXJLg0xONQsEw==
-  dependencies:
-    "@sentry/types" "7.36.0"
-    tslib "^1.9.3"
 
 "@sentry/utils@7.48.0":
   version "7.48.0"
