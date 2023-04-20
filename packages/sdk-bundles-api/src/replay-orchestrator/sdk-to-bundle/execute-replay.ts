@@ -3,6 +3,7 @@ import { LogLevelNumbers } from "loglevel";
 import { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
 
 export interface ReplayAndStoreResultsOptions {
+  chromeExecutablePath?: string;
   replayTarget: ReplayTarget;
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotComparisonOptions;
