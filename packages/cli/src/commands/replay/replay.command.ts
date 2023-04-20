@@ -1,4 +1,4 @@
-import { Replay, ScreenshotDiffOptions } from "@alwaysmeticulous/api";
+import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
 import { defer } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import {
@@ -10,6 +10,7 @@ import {
   ScreenshotComparisonOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
+import { executablePath } from "puppeteer";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
@@ -77,6 +78,8 @@ const replayCommandHandler = async ({
     );
   }
 
+  const chromeExecutablePath = executablePath();
+
   const executionOptions: ReplayExecutionOptions = {
     headless,
     devTools,
@@ -120,6 +123,7 @@ const replayCommandHandler = async ({
 
   try {
     const replayExecution = await replayAndStoreResults({
+      chromeExecutablePath,
       replayTarget: getReplayTarget({
         appUrl: appUrl ?? null,
         simulationIdForAssets: simulationIdForAssets ?? null,
