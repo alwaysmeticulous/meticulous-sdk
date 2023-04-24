@@ -10,7 +10,6 @@ import {
   ScreenshotComparisonOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
-import { executablePath } from "puppeteer";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
@@ -18,8 +17,8 @@ import {
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 import {
-  isOutOfDateClientError,
   OutOfDateCLIError,
+  isOutOfDateClientError,
 } from "../../utils/out-of-date-client-error";
 import { openStepThroughDebuggerUI } from "./utils/replay-debugger.ui";
 
@@ -78,8 +77,6 @@ const replayCommandHandler = async ({
     );
   }
 
-  const chromeExecutablePath = executablePath();
-
   const executionOptions: ReplayExecutionOptions = {
     headless,
     devTools,
@@ -123,7 +120,6 @@ const replayCommandHandler = async ({
 
   try {
     const replayExecution = await replayAndStoreResults({
-      chromeExecutablePath,
       replayTarget: getReplayTarget({
         appUrl: appUrl ?? null,
         simulationIdForAssets: simulationIdForAssets ?? null,

@@ -6,7 +6,6 @@ import {
 import { getCommitSha } from "@alwaysmeticulous/common";
 import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
-import { executablePath } from "puppeteer";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
@@ -14,8 +13,8 @@ import {
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 import {
-  isOutOfDateClientError,
   OutOfDateCLIError,
+  isOutOfDateClientError,
 } from "../../utils/out-of-date-client-error";
 
 interface Options
@@ -90,10 +89,8 @@ const handler: (options: Options) => Promise<void> = async ({
 
   const parrelelTasks = parallelize ? parrelelTasks_ : 1;
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
-  const chromeExecutablePath = executablePath();
   try {
     const { testRun } = await executeTestRun({
-      chromeExecutablePath,
       testsFile: testsFile ?? null,
       executionOptions,
       screenshottingOptions,
