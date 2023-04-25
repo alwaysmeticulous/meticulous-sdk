@@ -94,6 +94,12 @@ export const OPTIONS = {
       "Disable any features that are non-essential for running tests/executing replays. This includes disabling recording a video of the replay, for playback in the web app. This flag is useful to reduce noise when debugging.",
     default: false,
   },
+  logPossibleNonDeterminism: {
+    boolean: true,
+    description: "Enable logging of non-determinism events",
+    default: false,
+    hidden: true,
+  },
 } as const;
 
 export const SCREENSHOT_DIFF_OPTIONS = {
@@ -117,4 +123,5 @@ export const COMMON_REPLAY_OPTIONS = {
   maxDurationMs: OPTIONS.maxDurationMs,
   maxEventCount: OPTIONS.maxEventCount,
   essentialFeaturesOnly: OPTIONS.essentialFeaturesOnly,
+  logPossibleNonDeterminism: OPTIONS.logPossibleNonDeterminism,
 };
