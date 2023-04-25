@@ -1,6 +1,5 @@
 import {
   ScreenshotAssertionsEnabledOptions,
-  TestCaseResult,
   TestRunEnvironment,
 } from "@alwaysmeticulous/api";
 import { LogLevelNumbers } from "loglevel";

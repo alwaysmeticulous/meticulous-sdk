@@ -28,10 +28,6 @@ export {
 } from "./sdk-bundle-api/sdk-to-bundle/test-run-environment";
 export { ReplayableEvent } from "./sdk-bundle-api/bidirectional/replayable-event";
 export {
-  SDKReplayTimelineEntry,
-  SDKReplayTimelineData,
-} from "./sdk-bundle-api/bundle-to-sdk/timeline.types";
-export {
   HarEntry,
   HarLog,
   HarRequest,
