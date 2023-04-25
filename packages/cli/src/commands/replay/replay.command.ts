@@ -63,6 +63,7 @@ const replayCommandHandler = async ({
   maxEventCount,
   storyboard,
   essentialFeaturesOnly,
+  logPossibleNonDeterminism,
   debugger: enableStepThroughDebugger,
 }: ReplayCommandHandlerOptions): Promise<void> => {
   if (!screenshot && storyboard) {
@@ -90,6 +91,7 @@ const replayCommandHandler = async ({
     maxDurationMs: maxDurationMs ?? null,
     maxEventCount: maxEventCount ?? null,
     essentialFeaturesOnly,
+    logPossibleNonDeterminism
   };
   const generatedByOption: GeneratedBy = { type: "replayCommand" };
   const storyboardOptions: StoryboardOptions = storyboard
@@ -130,6 +132,7 @@ const replayCommandHandler = async ({
       commitSha,
       cookiesFile,
       sessionId,
+      logPossibleNonDeterminism,
       generatedBy: generatedByOption,
       testRunId: null,
       suppressScreenshotDiffLogging: false,
