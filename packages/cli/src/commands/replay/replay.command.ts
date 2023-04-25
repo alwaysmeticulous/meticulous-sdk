@@ -132,7 +132,6 @@ const replayCommandHandler = async ({
       commitSha,
       cookiesFile,
       sessionId,
-      logPossibleNonDeterminism,
       generatedBy: generatedByOption,
       testRunId: null,
       suppressScreenshotDiffLogging: false,
