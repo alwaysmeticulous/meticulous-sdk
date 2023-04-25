@@ -14,6 +14,7 @@ export interface ReplayAndStoreResultsOptions {
   commitSha: string | null | undefined;
   sessionId: string;
   cookiesFile: string | null | undefined;
+  logPossibleNonDeterminism: boolean;
   logLevel: LogLevelNumbers;
 
   /**
@@ -143,6 +144,11 @@ export interface ReplayExecutionOptions {
   moveBeforeClick: boolean;
   disableRemoteFonts: boolean;
   noSandbox: boolean;
+  /**
+   * Despite the naming, logPossibleNonDeterminism does actually change how a replay executes.
+   * The purpose is logging, but the implementation of how that logging happens changes the way a replay executes in a substantial way.
+   */
+  logPossibleNonDeterminism: boolean;
   maxDurationMs: number | null;
   maxEventCount: number | null;
 

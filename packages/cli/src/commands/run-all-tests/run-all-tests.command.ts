@@ -62,6 +62,7 @@ const handler: (options: Options) => Promise<void> = async ({
   maxEventCount,
   storyboard,
   essentialFeaturesOnly,
+  logPossibleNonDeterminism,
   baseTestRunId,
 }) => {
   const executionOptions: ReplayExecutionOptions = {
@@ -76,6 +77,7 @@ const handler: (options: Options) => Promise<void> = async ({
     moveBeforeClick,
     maxDurationMs: maxDurationMs ?? null,
     maxEventCount: maxEventCount ?? null,
+    logPossibleNonDeterminism,
     essentialFeaturesOnly,
   };
   const storyboardOptions: StoryboardOptions = storyboard
