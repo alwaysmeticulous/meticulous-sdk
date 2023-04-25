@@ -143,8 +143,10 @@ export interface ReplayExecutionOptions {
   moveBeforeClick: boolean;
   disableRemoteFonts: boolean;
   noSandbox: boolean;
-  // Despite the naming, logPossibleNonDeterminism does actually change how a replay executes.
-  // The purpose is logging, but the implementation of how that logging happens chnages the way a replay executes in a substantial way.
+  /**
+   * Despite the naming, logPossibleNonDeterminism does actually change how a replay executes.
+   * The purpose is logging, but the implementation of how that logging happens changes the way a replay executes in a substantial way.
+   */
   logPossibleNonDeterminism: boolean;
   maxDurationMs: number | null;
   maxEventCount: number | null;
