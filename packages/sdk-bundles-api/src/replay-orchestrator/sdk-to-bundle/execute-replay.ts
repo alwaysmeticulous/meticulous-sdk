@@ -14,7 +14,6 @@ export interface ReplayAndStoreResultsOptions {
   commitSha: string | null | undefined;
   sessionId: string;
   cookiesFile: string | null | undefined;
-  logPossibleNonDeterminism: boolean;
   logLevel: LogLevelNumbers;
 
   /**
