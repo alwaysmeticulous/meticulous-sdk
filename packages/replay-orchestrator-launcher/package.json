@@ -23,7 +23,7 @@
     "@alwaysmeticulous/downloading-helpers": "^2.48.0",
     "@alwaysmeticulous/sdk-bundles-api": "^2.49.0",
     "loglevel": "^1.8.0",
-    "puppeteer": "19.7.5"
+    "puppeteer": "19.11.1"
   },
   "author": {
     "name": "The Meticulous Team",
