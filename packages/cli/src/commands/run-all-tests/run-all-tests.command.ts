@@ -13,8 +13,8 @@ import {
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 import {
-  isOutOfDateClientError,
   OutOfDateCLIError,
+  isOutOfDateClientError,
 } from "../../utils/out-of-date-client-error";
 
 interface Options

@@ -7,6 +7,7 @@ import { RunningTestRunExecution } from "../bundle-to-sdk/execute-test-run";
 import { ReplayExecutionOptions } from "./execute-replay";
 
 export interface ExecuteTestRunOptions {
+  chromeExecutablePath?: string;
   testsFile: string | null;
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;

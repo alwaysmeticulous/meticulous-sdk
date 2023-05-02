@@ -1,4 +1,4 @@
-import { Replay, ScreenshotDiffOptions } from "@alwaysmeticulous/api";
+import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
 import { defer } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import {
@@ -17,8 +17,8 @@ import {
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 import {
-  isOutOfDateClientError,
   OutOfDateCLIError,
+  isOutOfDateClientError,
 } from "../../utils/out-of-date-client-error";
 import { openStepThroughDebuggerUI } from "./utils/replay-debugger.ui";
 
