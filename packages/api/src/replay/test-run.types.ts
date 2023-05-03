@@ -15,7 +15,7 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
   simulationIdForAssets?: string | undefined;
 }
 
-export type TestRunStatus = "Running" | "Success" | "Failure";
+export type TestRunStatus = "Scheduled" | "Running" | "Success" | "Failure";
 
 export type TestCaseResultStatus = "pass" | "fail" | "flake";
 
