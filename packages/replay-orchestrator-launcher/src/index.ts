@@ -1,6 +1,7 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import {
+  ExecuteScheduledTestRunOptions,
   ExecuteTestRunOptions,
   ExecuteTestRunResult,
   ReplayAndStoreResultsOptions,
@@ -21,6 +22,24 @@ export const replayAndStoreResults = async (
   );
 
   return (await require(bundleLocation)).replayAndStoreResults({
+    ...options,
+    chromeExecutablePath: getChromiumExecutablePath(),
+    logLevel: logger.getLevel(),
+  });
+};
+
+export const executeScheduledTestRun = async (
+  options: Omit<
+    ExecuteScheduledTestRunOptions,
+    "logLevel" | "chromeExecutablePath"
+  >
+): Promise<ExecuteTestRunResult> => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const bundleLocation = await fetchAsset(
+    "replay/v3/execute-scheduled-test-run.bundle.js"
+  );
+
+  return (await require(bundleLocation)).executeTestRun({
     ...options,
     chromeExecutablePath: getChromiumExecutablePath(),
     logLevel: logger.getLevel(),
