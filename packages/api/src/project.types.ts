@@ -6,7 +6,6 @@ export interface Project {
   organization: Organization;
   name: string;
   recordingToken: string;
-  apiToken: string;
   configurationData: ProjectConfigurationData;
   createdAt: string;
   updatedAt: string;
