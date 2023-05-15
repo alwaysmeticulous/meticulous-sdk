@@ -1,4 +1,33 @@
+import { ScreenshotAssertionsEnabledOptions } from "@alwaysmeticulous/api";
+import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
+
 export const BASE_SNIPPETS_URL = "https://snippet.meticulous.ai/";
+
+export const DEFAULT_EXECUTION_OPTIONS: ReplayExecutionOptions = {
+  headless: true,
+  devTools: false,
+  bypassCSP: false,
+  shiftTime: true,
+  networkStubbing: true,
+  skipPauses: true,
+  moveBeforeClick: false,
+  disableRemoteFonts: false,
+  noSandbox: false,
+  maxDurationMs: 5 * 60 * 1_000, // 5 minutes
+  maxEventCount: null,
+  essentialFeaturesOnly: false,
+  logPossibleNonDeterminism: false,
+};
+
+export const DEFAULT_SCREENSHOTTING_OPTIONS: ScreenshotAssertionsEnabledOptions =
+  {
+    enabled: true,
+    storyboardOptions: { enabled: true },
+    diffOptions: {
+      diffThreshold: 0.00001,
+      diffPixelThreshold: 0.01,
+    },
+  };
 
 // Many comments directly from Chromium source
 // https://source.chromium.org/chromium/chromium/src/+/main:content/public/common/content_switches.cc
