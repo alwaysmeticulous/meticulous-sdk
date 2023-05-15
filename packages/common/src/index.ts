@@ -15,6 +15,11 @@ export type {
   ReplayDebuggerOptions,
 } from "./types/replay-debugger.types";
 export type { RecordedSession } from "./types/session.types";
-export { BASE_SNIPPETS_URL, COMMON_CHROMIUM_FLAGS } from "./constants";
+export {
+  DEFAULT_EXECUTION_OPTIONS,
+  DEFAULT_SCREENSHOTTING_OPTIONS,
+  BASE_SNIPPETS_URL,
+  COMMON_CHROMIUM_FLAGS,
+} from "./constants";
 export { getMeticulousVersion } from "./version.utils";
 export { getCommitSha } from "./commit-sha.utils";
