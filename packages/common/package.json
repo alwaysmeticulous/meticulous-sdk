@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/common",
-  "version": "2.54.0",
+  "version": "2.55.0",
   "description": "Meticulous common utilities",
   "license": "ISC",
   "main": "dist/index.js",
