@@ -13,10 +13,11 @@ export type ScreenshotIdentifier = EndStateScreenshot | ScreenshotAfterEvent;
 
 export interface LogicVersioned {
   /**
-   * The version of the logic used to generate the screenshot. This should be bumped
+   * The version of the logic and environment used to generate the screenshot. This should be bumped
    * whenever the Meticulous code changes such that two screenshots on different logic versions
-   * are incomparable. This field is used to avoid falsely flagging a diff to our users when
-   * the logic to generate a screenshot or execute a replay changes.
+   * are incomparable or the replay environment differs. This field is used to avoid falsely flagging a
+   * diff to our users when the logic to generate a screenshot or execute a replay changes, or if
+   * the replay environment changes, e.g. the browser or Puppeteer versions changes.
    */
   logicVersion?: number;
 }
