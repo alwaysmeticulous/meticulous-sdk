@@ -78,9 +78,6 @@ export interface ExecuteTestRunOptions {
    * The version of the environment in which a replay is executed. This should be bumped
    * whenever the environment changes in a way that affects the replay, e.g. the version of
    * Chromium, or the version of Puppeteer.
-   *
-   * See `LogicVersioned` in `@alwaysmeticulous/api`.
-   * Values are truncated to 8 bits, so must be in the range 0-255.
    */
   logicalEnvironmentVersion?: number;
 }
