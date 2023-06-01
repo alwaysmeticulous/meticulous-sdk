@@ -10,7 +10,7 @@ import {
 import log from "loglevel";
 import { executablePath } from "puppeteer";
 
-const ENVIRONMENT_VERSION = 0;
+export const ENVIRONMENT_VERSION = 0;
 
 export const replayAndStoreResults = async (
   options: Omit<
