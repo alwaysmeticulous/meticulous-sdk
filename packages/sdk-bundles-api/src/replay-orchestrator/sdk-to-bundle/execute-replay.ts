@@ -42,6 +42,13 @@ export interface ReplayAndStoreResultsOptions {
    * that all clients bump the version number passed when they upgrade to the types.
    */
   maxSemanticVersionSupported: 1;
+
+  /**
+   * The version of the environment in which a replay is executed. This should be bumped
+   * whenever the environment changes in a way that affects the replay, e.g. the version of
+   * Chromium, or the version of Puppeteer.
+   */
+  logicalEnvironmentVersion?: number;
 }
 
 export interface BeforeUserEventOptions {

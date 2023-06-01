@@ -8,6 +8,7 @@ export type ExecuteScheduledTestRunOptions = Pick<
   | "maxRetriesOnFailure"
   | "rerunTestsNTimes"
   | "logLevel"
+  | "logicalEnvironmentVersion"
 > & {
   /**
    * The ID of the scheduled test run to execute.
