@@ -10,12 +10,10 @@ import {
 import log from "loglevel";
 import { executablePath } from "puppeteer";
 
-export const ENVIRONMENT_VERSION = 1;
-
 export const replayAndStoreResults = async (
   options: Omit<
     ReplayAndStoreResultsOptions,
-    "logLevel" | "chromeExecutablePath" | "logicalEnvironmentVersion"
+    "logLevel" | "chromeExecutablePath"
   >
 ): Promise<ReplayExecution> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -27,14 +25,13 @@ export const replayAndStoreResults = async (
     ...options,
     chromeExecutablePath: getChromiumExecutablePath(),
     logLevel: logger.getLevel(),
-    logicalEnvironmentVersion: ENVIRONMENT_VERSION,
   });
 };
 
 export const executeScheduledTestRun = async (
   options: Omit<
     ExecuteScheduledTestRunOptions,
-    "logLevel" | "chromeExecutablePath" | "logicalEnvironmentVersion"
+    "logLevel" | "chromeExecutablePath"
   >
 ): Promise<ExecuteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -46,15 +43,11 @@ export const executeScheduledTestRun = async (
     ...options,
     chromeExecutablePath: getChromiumExecutablePath(),
     logLevel: logger.getLevel(),
-    logicalEnvironmentVersion: ENVIRONMENT_VERSION,
   });
 };
 
 export const executeTestRun = async (
-  options: Omit<
-    ExecuteTestRunOptions,
-    "logLevel" | "chromeExecutablePath" | "logicalEnvironmentVersion"
-  >
+  options: Omit<ExecuteTestRunOptions, "logLevel" | "chromeExecutablePath">
 ): Promise<ExecuteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const bundleLocation = await fetchAsset(
@@ -65,7 +58,6 @@ export const executeTestRun = async (
     ...options,
     chromeExecutablePath: getChromiumExecutablePath(),
     logLevel: logger.getLevel(),
-    logicalEnvironmentVersion: ENVIRONMENT_VERSION,
   });
 };
 
