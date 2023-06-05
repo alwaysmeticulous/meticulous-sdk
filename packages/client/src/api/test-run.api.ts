@@ -13,14 +13,27 @@ export interface TestRun {
 export interface GetLatestTestRunOptions {
   client: AxiosInstance;
   commitSha: string;
+  logicalEnvironmentVersion?: number;
 }
 
 export const getLatestTestRunResults = async ({
   client,
   commitSha,
+  logicalEnvironmentVersion,
 }: GetLatestTestRunOptions): Promise<TestRun | null> => {
   const { data } = await client
-    .get(`test-runs/cache?commitSha=${encodeURIComponent(commitSha)}`)
+    .get("test-runs/cache", {
+      params: {
+        commitSha: encodeURIComponent(commitSha),
+        ...(logicalEnvironmentVersion
+          ? {
+              logicalEnvironmentVersion: encodeURIComponent(
+                logicalEnvironmentVersion
+              ),
+            }
+          : {}),
+      },
+    })
     .catch((error) => {
       if (error instanceof AxiosError && error.response?.status === 404) {
         return { data: null };
