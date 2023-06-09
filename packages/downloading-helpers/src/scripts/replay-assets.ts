@@ -5,6 +5,7 @@ import {
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
 import axios from "axios";
+import axiosRetry from "axios-retry";
 import log from "loglevel";
 import { getSnippetsBaseUrl } from "../config/snippets";
 import { waitToAcquireLockOnFile } from "../file-downloads/local-data.utils";
@@ -26,12 +27,14 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const fetchUrl = new URL(path, getSnippetsBaseUrl()).href;
   const assetFileName = `${basename(new URL(fetchUrl).pathname, ".js")}.cjs`;
+  const client = axios.create();
+  axiosRetry(client, { retries: 3 });
 
   const releaseLock = await waitToAcquireLockOnFile(await getAssetsFilePath());
   try {
     const assetMetadata = await loadAssetMetadata();
 
-    const etag = (await axios.head(fetchUrl)).headers["etag"] || "";
+    const etag = (await client.head(fetchUrl)).headers["etag"] || "";
 
     const entry = assetMetadata.assets.find(
       (item) => item.fileName === assetFileName
@@ -44,7 +47,7 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
       return filePath;
     }
 
-    const contents = (await axios.get(fetchUrl)).data;
+    const contents = (await client.get(fetchUrl)).data;
     await writeFile(filePath, contents);
     if (entry) {
       logger.debug(`${fetchUrl} updated`);
