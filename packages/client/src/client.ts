@@ -26,7 +26,7 @@ export const createClient: (options: ClientOptions) => AxiosInstance = ({
     headers: {
       authorization: apiToken,
     },
-    // 30 seconds default timeout
+    // 60 seconds default timeout
     timeout: 60_000,
   });
   axiosRetry(client, { retries: 3 });
