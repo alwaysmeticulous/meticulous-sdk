@@ -1,5 +1,6 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import axios, { AxiosInstance } from "axios";
+import axiosRetry from "axios-retry";
 import log from "loglevel";
 import { getApiToken } from "./api-token.utils";
 
@@ -20,12 +21,17 @@ export const createClient: (options: ClientOptions) => AxiosInstance = ({
     );
     process.exit(1);
   }
-  return axios.create({
+  const client = axios.create({
     baseURL: getApiUrl(),
     headers: {
       authorization: apiToken,
     },
+    // 60 seconds default timeout
+    timeout: 60_000,
   });
+  axiosRetry(client, { retries: 3 });
+
+  return client;
 };
 
 const getApiUrl = () => {
