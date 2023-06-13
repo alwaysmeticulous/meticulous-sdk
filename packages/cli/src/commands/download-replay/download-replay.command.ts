@@ -1,4 +1,3 @@
-import { readFileSync, writeFileSync } from "fs";
 import { access, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { createClient } from "@alwaysmeticulous/client";
@@ -7,7 +6,6 @@ import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
 } from "@alwaysmeticulous/downloading-helpers";
-import { fileExists } from "@alwaysmeticulous/downloading-helpers/dist/file-downloads/local-data.utils";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 
