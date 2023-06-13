@@ -1,3 +1,5 @@
+import { access, readFile, writeFile } from "fs/promises";
+import { join } from "path";
 import { createClient } from "@alwaysmeticulous/client";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import {
@@ -28,6 +30,31 @@ const handler: (options: Options) => Promise<void> = async ({
     client,
     replayId
   );
+
+  // Generate logs.concise.txt file
+  const logsFile = join(replayFolderFilePath, "logs.json");
+  const logsFileExists = await access(logsFile)
+    .then(() => true)
+    .catch(() => false);
+  if (logsFileExists) {
+    try {
+      const logs = JSON.parse(
+        await readFile(logsFile, "utf8")
+      );
+      const conciseLogs = logs.console.map(
+        (log: { type: string; message: string }) => {
+          return log.message.replace("[METICULOUS] ", "");
+        }
+      );
+      await writeFile(
+        join(replayFolderFilePath, "logs.concise.txt"),
+        conciseLogs.join("\n")
+      );
+    } catch (err) {
+      logger.error("Error creating concise version of logs file", err);
+    }
+  }
+
   logger.info(`Downloaded replay data to: ${replayFolderFilePath}`);
 };
 
