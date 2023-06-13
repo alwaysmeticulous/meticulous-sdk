@@ -39,7 +39,7 @@ const handler: (options: Options) => Promise<void> = async ({
   if (logsFileExists) {
     try {
       const logs = JSON.parse(
-        await readFile(join(replayFolderFilePath, "logs.json"), "utf8")
+        await readFile(logsFile, "utf8")
       );
       const conciseLogs = logs.console.map(
         (log: { type: string; message: string }) => {
