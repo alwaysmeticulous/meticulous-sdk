@@ -47,3 +47,11 @@ export {
   StoryboardOptions,
   ScreenshotDiffOptions,
 } from "./sdk-bundle-api/sdk-to-bundle/screenshotting-options";
+export {
+  NetworkStubbingMode,
+  StubAllRequests,
+  StubNonSSRRequests,
+  NoStubbing,
+  CustomStubbing,
+  RequestFilter,
+} from "./sdk-bundle-api/sdk-to-bundle/network-stubbing";
