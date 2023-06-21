@@ -1,7 +1,9 @@
-import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
+import {
+  ScreenshotDiffOptions,
+  NetworkStubbingMode,
+} from "@alwaysmeticulous/api";
 import { LogLevelNumbers } from "loglevel";
 import { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
-import { NetworkStubbingMode } from "./network-stubbing";
 
 export interface ReplayAndStoreResultsOptions {
   chromeExecutablePath?: string;

@@ -41,11 +41,3 @@ export {
   ReplayExecution,
   BeforeUserEventResult,
 } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
-export {
-  NetworkStubbingMode,
-  StubAllRequests,
-  StubNonSSRRequests,
-  NoStubbing,
-  CustomStubbing,
-  RequestFilter,
-} from "./replay-orchestrator/sdk-to-bundle/network-stubbing";
