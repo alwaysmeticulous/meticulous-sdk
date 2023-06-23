@@ -12,6 +12,7 @@ import {
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
+import { applyDefaultExecutionOptionsFromProject } from "../../utils/apply-default-execution-options-from-project";
 import {
   OutOfDateCLIError,
   isOutOfDateClientError,
@@ -94,7 +95,10 @@ const handler: (options: Options) => Promise<void> = async ({
   try {
     const { testRun } = await executeTestRun({
       testsFile: testsFile ?? null,
-      executionOptions,
+      executionOptions: await applyDefaultExecutionOptionsFromProject({
+        apiToken,
+        executionOptions,
+      }),
       screenshottingOptions,
       apiToken: apiToken ?? null,
       commitSha,

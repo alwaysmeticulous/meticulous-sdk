@@ -16,6 +16,7 @@ import {
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
+import { applyDefaultExecutionOptionsFromProject } from "../../utils/apply-default-execution-options-from-project";
 import {
   OutOfDateCLIError,
   isOutOfDateClientError,
@@ -91,7 +92,7 @@ const replayCommandHandler = async ({
     maxDurationMs: maxDurationMs ?? null,
     maxEventCount: maxEventCount ?? null,
     essentialFeaturesOnly,
-    logPossibleNonDeterminism
+    logPossibleNonDeterminism,
   };
   const generatedByOption: GeneratedBy = { type: "replayCommand" };
   const storyboardOptions: StoryboardOptions = storyboard
@@ -126,7 +127,10 @@ const replayCommandHandler = async ({
         appUrl: appUrl ?? null,
         simulationIdForAssets: simulationIdForAssets ?? null,
       }),
-      executionOptions,
+      executionOptions: await applyDefaultExecutionOptionsFromProject({
+        apiToken,
+        executionOptions,
+      }),
       screenshottingOptions,
       apiToken,
       commitSha,
