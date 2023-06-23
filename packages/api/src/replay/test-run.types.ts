@@ -15,7 +15,24 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
   simulationIdForAssets?: string | undefined;
 }
 
-export type TestRunStatus = "Scheduled" | "Running" | "Success" | "Failure";
+/**
+ * `Scheduled` = the test run has been created, and a cloud replay job has been queued to run it. It will switch to Running soon.
+ *
+ * `Running` = a worker is actively running the test run.
+ *
+ * `Failure` = completed, and at least one replay had notable differences - a diff, missing-head or different-size (see has-notable-differences.ts in the main repo)
+ *
+ * `Success` = completed, and no replays had notable differences
+ *
+ * `ExecutionError` = the test run failed fatally, and didn't complete. To get accurate results it'll need to be re-run. The test run may shortly switch back
+ * into 'Running' in this case, if the worker retries it.
+ */
+export type TestRunStatus =
+  | "Scheduled"
+  | "Running"
+  | "Success"
+  | "Failure"
+  | "ExecutionError";
 
 export type TestCaseResultStatus = "pass" | "fail" | "flake";
 
