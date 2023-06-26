@@ -10,7 +10,7 @@ export const DEFAULT_EXECUTION_OPTIONS: ReplayExecutionOptions = {
   shiftTime: true,
   networkStubbing: true,
   skipPauses: true,
-  moveBeforeClick: false,
+  moveBeforeClick: true,
   disableRemoteFonts: false,
   noSandbox: false,
   maxDurationMs: 5 * 60 * 1_000, // 5 minutes
