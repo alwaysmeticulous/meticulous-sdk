@@ -9,6 +9,11 @@
 //
 // This then makes the difference in behaviour explicit
 
+import {
+  DEFAULT_EXECUTION_OPTIONS,
+  DEFAULT_SCREENSHOTTING_OPTIONS,
+} from "@alwaysmeticulous/common";
+
 export const OPTIONS = {
   apiToken: {
     string: true,
@@ -17,6 +22,7 @@ export const OPTIONS = {
     string: true,
   },
   headless: {
+    // Note: when running in CI we default to headless (see DEFAULT_EXECUTION_OPTIONS), but for local runs via the CLI we use headed mode by default
     boolean: true,
     description: "Start browser in headless mode",
     default: false,
@@ -24,58 +30,59 @@ export const OPTIONS = {
   devTools: {
     boolean: true,
     description: "Open Chrome Dev Tools",
-    default: false,
+    default: DEFAULT_EXECUTION_OPTIONS.devTools,
   },
   bypassCSP: {
     boolean: true,
     description:
       "Enables bypass CSP in the browser (danger: this could mean you tests hit your production backend)",
-    default: false,
+    default: DEFAULT_EXECUTION_OPTIONS.bypassCSP,
   },
   shiftTime: {
     boolean: true,
     description: "Shift time during simulation to be set as the recording time",
-    default: true,
+    default: DEFAULT_EXECUTION_OPTIONS.shiftTime,
   },
   networkStubbing: {
     boolean: true,
     description: "Stub network requests during replay",
-    default: true,
+    default: DEFAULT_EXECUTION_OPTIONS.networkStubbing,
   },
   skipPauses: {
     boolean: true,
     description:
       "Fast forward through any pauses to replay as fast as possible.",
-    default: true,
+    default: DEFAULT_EXECUTION_OPTIONS.skipPauses,
   },
   moveBeforeClick: {
     boolean: true,
     description: "Simulate mouse movement before clicking",
-    default: true,
+    default: DEFAULT_EXECUTION_OPTIONS.moveBeforeClick,
   },
   diffThreshold: {
     number: true,
     description:
       "Acceptable maximum proportion of changed pixels, between 0 and 1. If this proportion is exceeded then the test will fail.",
-    default: 0.01,
+    default: DEFAULT_SCREENSHOTTING_OPTIONS.diffOptions.diffThreshold,
   },
   diffPixelThreshold: {
     number: true,
     description:
       "A number between 0 and 1. Color/brightness differences in individual pixels will be ignored if the difference is less than this threshold. A value of 1.0 would accept any difference in color, while a value of 0.0 would accept no difference in color.",
-    default: 0.01,
+    default: DEFAULT_SCREENSHOTTING_OPTIONS.diffOptions.diffPixelThreshold,
   },
   disableRemoteFonts: {
     boolean: true,
     description: "Pass the disable remote fonts flag into chromium",
-    default: false,
+    default: DEFAULT_EXECUTION_OPTIONS.disableRemoteFonts,
   },
   noSandbox: {
     boolean: true,
     description: "Pass the no sandbox flag into chromium",
-    default: false,
+    default: DEFAULT_EXECUTION_OPTIONS.noSandbox,
   },
   maxDurationMs: {
+    // Note: when running in CI we default to 5 minutes (see DEFAULT_EXECUTION_OPTIONS), but for local runs via the CLI we have no default limit
     number: true,
     description: "Maximum duration (in milliseconds) the simulation will run",
   },
@@ -86,18 +93,18 @@ export const OPTIONS = {
   storyboard: {
     boolean: true,
     description: "Take a storyboard of screenshots during simulation",
-    default: true,
+    default: DEFAULT_SCREENSHOTTING_OPTIONS.storyboardOptions.enabled,
   },
   essentialFeaturesOnly: {
     boolean: true,
     description:
       "Disable any features that are non-essential for running tests/executing replays. This includes disabling recording a video of the replay, for playback in the web app. This flag is useful to reduce noise when debugging.",
-    default: false,
+    default: DEFAULT_EXECUTION_OPTIONS.essentialFeaturesOnly,
   },
   logPossibleNonDeterminism: {
     boolean: true,
     description: "Enable logging of non-determinism events",
-    default: false,
+    default: DEFAULT_EXECUTION_OPTIONS.logPossibleNonDeterminism,
     hidden: true,
   },
 } as const;
