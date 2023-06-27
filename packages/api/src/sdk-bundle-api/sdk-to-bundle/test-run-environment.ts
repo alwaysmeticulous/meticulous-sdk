@@ -1,6 +1,6 @@
 export interface TestRunEnvironment {
   ci?: boolean;
-  context?: TestRunGitHubContext;
+  context?: TestRunGitHubContext | TestRunGitLabContext;
   [key: string]: unknown;
 }
 
@@ -63,4 +63,10 @@ export interface TestRunGitHubWorkflowDispatchContext {
 
   /** Resolved head commit hash */
   headSha: string;
+}
+
+export type TestRunGitLabContext = TestRunGitLabPullRequestContext;
+export interface TestRunGitLabPullRequestContext {
+  type: "gitlab";
+  event: "pull-request";
 }
