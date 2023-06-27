@@ -5,8 +5,8 @@ import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
-import Zip from "adm-zip";
 import { AxiosInstance } from "axios";
+import extract from "extract-zip";
 import log from "loglevel";
 import { downloadFile } from "../file-downloads/download-file";
 import {
@@ -71,8 +71,7 @@ export const getOrFetchReplayArchive = async (
 
     await downloadFile(downloadUrlData.dowloadUrl, replayArchiveFile);
 
-    const zipFile = new Zip(replayArchiveFile);
-    zipFile.extractAllTo(replayDir, /*overwrite=*/ true);
+    await extract(replayArchiveFile, { dir: replayDir });
     await rm(replayArchiveFile);
 
     logger.debug(`Extracted replay archive in ${replayDir}`);
