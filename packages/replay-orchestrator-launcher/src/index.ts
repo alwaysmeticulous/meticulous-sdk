@@ -4,6 +4,7 @@ import {
   ExecuteScheduledTestRunOptions,
   ExecuteTestRunOptions,
   ExecuteTestRunResult,
+  InProgressTestRun,
   ReplayAndStoreResultsOptions,
   ReplayExecution,
 } from "@alwaysmeticulous/sdk-bundles-api";
@@ -33,13 +34,13 @@ export const executeScheduledTestRun = async (
     ExecuteScheduledTestRunOptions,
     "logLevel" | "chromeExecutablePath"
   >
-): Promise<ExecuteTestRunResult> => {
+): Promise<InProgressTestRun> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const bundleLocation = await fetchAsset(
     "replay/v3/execute-scheduled-test-run.bundle.js"
   );
 
-  return (await require(bundleLocation)).executeTestRun({
+  return (await require(bundleLocation)).executeTestRunV2({
     ...options,
     chromeExecutablePath: getChromiumExecutablePath(),
     logLevel: logger.getLevel(),

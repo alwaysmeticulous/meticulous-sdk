@@ -36,6 +36,7 @@ export {
   TestRunProgress,
   DetailedTestCaseResult,
 } from "./replay-orchestrator/bundle-to-sdk/execute-test-run";
+export { InProgressTestRun } from "./replay-orchestrator/bundle-to-sdk/execute-scheduled-test-run";
 export {
   ReplayAndStoreResultsResult,
   ReplayExecution,
