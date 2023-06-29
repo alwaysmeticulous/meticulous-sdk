@@ -65,8 +65,20 @@ export interface TestRunGitHubWorkflowDispatchContext {
   headSha: string;
 }
 
-export type TestRunGitLabContext = TestRunGitLabPullRequestContext;
-export interface TestRunGitLabPullRequestContext {
+export type TestRunGitLabContext = TestRunGitLabMergeRequestContext;
+export interface TestRunGitLabMergeRequestContext {
   type: "gitlab";
-  event: "pull-request";
+  event: "merge-request";
+
+  /** Merge request title */
+  title: string;
+
+  /** Merge request number */
+  internalId: number;
+
+  /** Base commit hash */
+  baseSha: string;
+
+  /** Head commit hash */
+  headSha: string;
 }
