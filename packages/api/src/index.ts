@@ -38,6 +38,9 @@ export {
   SessionData,
   UrlHistoryEvent,
   WindowData,
+  ApplicationSpecificData,
+  LocalStorageEntry,
+  EarlyRequest,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export { Replay } from "./replay/replay.types";
 export {
