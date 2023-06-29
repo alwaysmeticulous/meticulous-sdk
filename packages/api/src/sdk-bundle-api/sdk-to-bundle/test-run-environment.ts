@@ -81,4 +81,7 @@ export interface TestRunGitLabMergeRequestContext {
 
   /** Head commit hash */
   headSha: string;
+
+  /** Merge request URL (web page) */
+  webUrl: string;
 }
