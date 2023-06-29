@@ -13,6 +13,7 @@
     "lint:fix": "lerna run lint:fix --no-bail",
     "test": "lerna run test",
     "cli": "yarn workspace @alwaysmeticulous/cli cli",
+    "cli:debug": "yarn workspace @alwaysmeticulous/cli cli:debug",
     "cli:dev": "yarn workspace @alwaysmeticulous/cli cli:dev",
     "cli:dev-localhost": "yarn workspace @alwaysmeticulous/cli cli:dev-localhost",
     "publish": "lerna version",

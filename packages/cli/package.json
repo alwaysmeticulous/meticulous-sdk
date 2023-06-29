@@ -21,6 +21,7 @@
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
     "cli": "node dist/main.js",
+    "cli:debug": "echo '\n\nVisit chrome://inspect in Chrome and attach the debugger\n\n' && node --inspect-brk dist/main.js",
     "cli:dev": "ts-node src/main.ts",
     "cli:dev-localhost": "METICULOUS_API_URL=http://localhost:3001/api/ ts-node src/main.ts",
     "test": "jest --passWithNoTests",
