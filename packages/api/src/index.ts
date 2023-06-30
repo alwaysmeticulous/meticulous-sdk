@@ -26,6 +26,7 @@ export {
   TestRunGitHubPushContext,
   TestRunGitHubWorkflowDispatchContext,
   TestRunGitLabContext,
+  TestRunGitLabMergeRequestContext,
 } from "./sdk-bundle-api/sdk-to-bundle/test-run-environment";
 export { ReplayableEvent } from "./sdk-bundle-api/bidirectional/replayable-event";
 export {
