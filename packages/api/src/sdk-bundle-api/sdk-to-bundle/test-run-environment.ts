@@ -1,6 +1,6 @@
 export interface TestRunEnvironment {
   ci?: boolean;
-  context?: TestRunGitHubContext;
+  context?: TestRunGitHubContext | TestRunGitLabContext;
   [key: string]: unknown;
 }
 
@@ -63,4 +63,25 @@ export interface TestRunGitHubWorkflowDispatchContext {
 
   /** Resolved head commit hash */
   headSha: string;
+}
+
+export type TestRunGitLabContext = TestRunGitLabMergeRequestContext;
+export interface TestRunGitLabMergeRequestContext {
+  type: "gitlab";
+  event: "merge-request";
+
+  /** Merge request title */
+  title: string;
+
+  /** Merge request number */
+  internalId: number;
+
+  /** Base commit hash */
+  baseSha: string;
+
+  /** Head commit hash */
+  headSha: string;
+
+  /** Merge request URL (web page) */
+  webUrl: string;
 }
