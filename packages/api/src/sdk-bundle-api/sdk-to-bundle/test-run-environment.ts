@@ -65,7 +65,8 @@ export interface TestRunGitHubWorkflowDispatchContext {
   headSha: string;
 }
 
-export type TestRunGitLabContext = TestRunGitLabMergeRequestContext;
+export type TestRunGitLabContext = TestRunGitLabMergeRequestContext | TestRunGitLabPushContext;
+
 export interface TestRunGitLabMergeRequestContext {
   type: "gitlab";
   event: "merge-request";
@@ -84,4 +85,15 @@ export interface TestRunGitLabMergeRequestContext {
 
   /** Merge request URL (web page) */
   webUrl: string;
+}
+
+export interface TestRunGitLabPushContext {
+  type: "gitlab";
+  event: "push";
+
+  /** Commit hash before the push event */
+  beforeSha: string;
+
+  /** Commit hash after the push event */
+  afterSha: string;
 }
