@@ -3,6 +3,7 @@ import {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
+import { applyDefaultExecutionOptionsFromProject } from "@alwaysmeticulous/client";
 import { getCommitSha } from "@alwaysmeticulous/common";
 import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
@@ -12,7 +13,6 @@ import {
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
-import { applyDefaultExecutionOptionsFromProject } from "../../utils/apply-default-execution-options-from-project";
 import {
   OutOfDateCLIError,
   isOutOfDateClientError,

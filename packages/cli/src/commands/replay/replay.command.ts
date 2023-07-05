@@ -1,4 +1,5 @@
 import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
+import { applyDefaultExecutionOptionsFromProject } from "@alwaysmeticulous/client";
 import { defer } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import {
@@ -16,7 +17,6 @@ import {
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
-import { applyDefaultExecutionOptionsFromProject } from "../../utils/apply-default-execution-options-from-project";
 import {
   OutOfDateCLIError,
   isOutOfDateClientError,
