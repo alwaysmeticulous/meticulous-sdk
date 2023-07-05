@@ -1,7 +1,8 @@
-import { createClient, getProject } from "@alwaysmeticulous/client";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
+import { createClient } from "../client";
+import { getProject } from "./project.api";
 
 export const applyDefaultExecutionOptionsFromProject = async ({
   apiToken,

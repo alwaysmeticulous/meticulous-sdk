@@ -1,4 +1,6 @@
+export { applyDefaultExecutionOptionsFromProject } from "./api/apply-default-execution-options-from-project";
 export { getProject } from "./api/project.api";
+export { getReplay, getReplayDownloadUrl } from "./api/replay.api";
 export {
   getRecordedSession,
   getRecordedSessionData,
@@ -6,9 +8,7 @@ export {
   postSessionIdNotification,
 } from "./api/session.api";
 export {
-  getLatestTestRunResults,
   GetLatestTestRunOptions,
+  getLatestTestRunResults,
 } from "./api/test-run.api";
-export { getReplay, getReplayDownloadUrl } from "./api/replay.api";
-
-export { createClient, ClientOptions } from "./client";
+export { ClientOptions, createClient } from "./client";
