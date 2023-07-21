@@ -1,5 +1,6 @@
 import { access, readFile, writeFile } from "fs/promises";
 import { join } from "path";
+import { ConsoleMessageWithStackTracePointer } from "@alwaysmeticulous/api";
 import { createClient } from "@alwaysmeticulous/client";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import {
@@ -44,22 +45,18 @@ const handler: (options: Options) => Promise<void> = async ({
         .map((line) => JSON.parse(line));
       let virtualTime = 0;
       const conciseLogs = logs.map(
-        (log: {
-          source?: "application" | "meticulous";
-          type: string | "virtual-time-change";
-          virtualTime?: number;
-          realTime?: number;
-          message: string;
-          stackTraceId: number;
-        }) => {
-          if (log.type === "virtual-time-change" && log.virtualTime != null) {
+        (log: ConsoleMessageWithStackTracePointer) => {
+          if (log.type === "virtual-time-change") {
             virtualTime = log.virtualTime;
             return "";
           }
+          const commonPostfix = `${
+            log.repetitionCount ? " [x" + log.repetitionCount + "]" : ""
+          } ${log.message}`;
           if (log.source === "application") {
-            return `[trace-id: ${log.stackTraceId}] [virtual: ${virtualTime}ms] [application] ${log.message}`;
+            return `[trace-id: ${log.stackTraceId}] [virtual: ${virtualTime}ms] [application]${commonPostfix}`;
           } else {
-            return `[trace-id: ${log.stackTraceId}] [virtual: ${virtualTime}ms, real: ${log.realTime}ms] ${log.message}`;
+            return `[trace-id: ${log.stackTraceId}] [virtual: ${virtualTime}ms, real: ${log.realTime}ms]${commonPostfix}`;
           }
         }
       );
@@ -71,22 +68,18 @@ const handler: (options: Options) => Promise<void> = async ({
       // Useful for diffing one set of logs against another (excludes the real timestamps, which are non-deterministic)
       virtualTime = 0;
       const deterministicLogs = logs.map(
-        (log: {
-          source?: "application" | "meticulous";
-          type: string | "virtual-time-change";
-          virtualTime?: number;
-          realTime?: number;
-          message: string;
-          stackTraceId: number;
-        }) => {
-          if (log.type === "virtual-time-change" && log.virtualTime != null) {
+        (log: ConsoleMessageWithStackTracePointer) => {
+          if (log.type === "virtual-time-change") {
             virtualTime = log.virtualTime;
             return "";
           }
+          const commonPostfix = `${
+            log.repetitionCount ? " [x" + log.repetitionCount + "]" : ""
+          } ${log.message}`;
           if (log.source === "application") {
-            return `[virtual: ${virtualTime}ms] [application] ${log.message}`;
+            return `[virtual: ${virtualTime}ms] [application]${commonPostfix}`;
           } else {
-            return `[virtual: ${virtualTime}ms] ${log.message}`;
+            return `[virtual: ${virtualTime}ms]${commonPostfix}`;
           }
         }
       );

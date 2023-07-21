@@ -61,3 +61,12 @@ export {
   CustomStubbing,
   RequestFilter,
 } from "./sdk-bundle-api/sdk-to-bundle/network-stubbing";
+export {
+  ConsoleMessageWithStackTracePointer,
+  VirtualTimeChange,
+  MeticulousConsoleMessage,
+  ApplicationConsoleMessage,
+  ConsoleMessageCoreData,
+  ConsoleMessageType,
+  ConsoleMessageLocation,
+} from "./sdk-bundle-api/bundle-to-sdk/console-message";
