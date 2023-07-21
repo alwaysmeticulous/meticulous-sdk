@@ -31,24 +31,41 @@ const handler: (options: Options) => Promise<void> = async ({
     replayId
   );
 
-  // Generate logs.concise.txt file
-  const logsFile = join(replayFolderFilePath, "logs.json");
+  // Generate logs.concise.txt and logs.determinstic.txt files
+  const logsFile = join(replayFolderFilePath, "logs.ndjson");
   const logsFileExists = await access(logsFile)
     .then(() => true)
     .catch(() => false);
   if (logsFileExists) {
     try {
-      const logs = JSON.parse(
-        await readFile(logsFile, "utf8")
-      );
-      const conciseLogs = logs.console.map(
-        (log: { type: string; message: string }) => {
-          return log.message.replace("[METICULOUS] ", "");
+      const logs = (await readFile(logsFile, "utf8"))
+        .split("\n")
+        .filter((line) => line !== "")
+        .map((line) => JSON.parse(line));
+      const conciseLogs = logs.map(
+        (log: { type: string; message: string; stackTraceId: number }) => {
+          return `[trace-id: ${log.stackTraceId}] ${log.message.replace(
+            "[METICULOUS] ",
+            ""
+          )}`;
         }
       );
       await writeFile(
         join(replayFolderFilePath, "logs.concise.txt"),
         conciseLogs.join("\n")
+      );
+
+      // Useful for diffing one set of logs against another (excludes the real timestamps, which are non-deterministic)
+      const deterministicLogs = logs.map(
+        (log: { type: string; message: string; stackTraceId: number }) => {
+          return log.message
+            .replace("[METICULOUS] ", "")
+            .replace(/, real: \d+\.?\d*ms/g, "");
+        }
+      );
+      await writeFile(
+        join(replayFolderFilePath, "logs.deterministic.txt"),
+        deterministicLogs.join("\n")
       );
     } catch (err) {
       logger.error("Error creating concise version of logs file", err);
