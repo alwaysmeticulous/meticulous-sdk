@@ -42,12 +42,25 @@ const handler: (options: Options) => Promise<void> = async ({
         .split("\n")
         .filter((line) => line !== "")
         .map((line) => JSON.parse(line));
+      let virtualTime = 0;
       const conciseLogs = logs.map(
-        (log: { type: string; message: string; stackTraceId: number }) => {
-          return `[trace-id: ${log.stackTraceId}] ${log.message.replace(
-            "[METICULOUS] ",
-            ""
-          )}`;
+        (log: {
+          source?: "application" | "meticulous";
+          type: string | "virtual-time-change";
+          virtualTime?: number;
+          realTime?: number;
+          message: string;
+          stackTraceId: number;
+        }) => {
+          if (log.type === "virtual-time-change" && log.virtualTime != null) {
+            virtualTime = log.virtualTime;
+            return "";
+          }
+          if (log.source === "application") {
+            return `[trace-id: ${log.stackTraceId}] [virtual: ${virtualTime}ms] [application] ${log.message}`;
+          } else {
+            return `[trace-id: ${log.stackTraceId}] [virtual: ${virtualTime}ms, real: ${log.realTime}ms] ${log.message}`;
+          }
         }
       );
       await writeFile(
@@ -56,11 +69,25 @@ const handler: (options: Options) => Promise<void> = async ({
       );
 
       // Useful for diffing one set of logs against another (excludes the real timestamps, which are non-deterministic)
+      virtualTime = 0;
       const deterministicLogs = logs.map(
-        (log: { type: string; message: string; stackTraceId: number }) => {
-          return log.message
-            .replace("[METICULOUS] ", "")
-            .replace(/, real: \d+\.?\d*ms/g, "");
+        (log: {
+          source?: "application" | "meticulous";
+          type: string | "virtual-time-change";
+          virtualTime?: number;
+          realTime?: number;
+          message: string;
+          stackTraceId: number;
+        }) => {
+          if (log.type === "virtual-time-change" && log.virtualTime != null) {
+            virtualTime = log.virtualTime;
+            return "";
+          }
+          if (log.source === "application") {
+            return `[virtual: ${virtualTime}ms] [application] ${log.message}`;
+          } else {
+            return `[virtual: ${virtualTime}ms] ${log.message}`;
+          }
         }
       );
       await writeFile(
