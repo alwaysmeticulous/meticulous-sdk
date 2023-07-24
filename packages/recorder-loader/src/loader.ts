@@ -39,10 +39,7 @@ const unsafeLoadAndStartRecorder = ({
     const script = document.createElement("script");
     script.type = "text/javascript";
     const baseSnippetsUrl = snippetsBaseUrl || "https://snippet.meticulous.ai";
-    script.src = new URL(
-      "v1/stagingMeticulousSnippetManualInit.js",
-      baseSnippetsUrl
-    ).href;
+    script.src = new URL("v1/meticulous-manual-init.js", baseSnippetsUrl).href;
 
     // Setup configuration
     const typedWindow = window as MeticulousWindowConfig;
