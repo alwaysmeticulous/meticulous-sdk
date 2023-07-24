@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/sdk-bundles-api",
-  "version": "2.70.0",
+  "version": "2.71.0",
   "description": "Meticulous common types",
   "license": "ISC",
   "main": "dist/index.js",
@@ -19,7 +19,7 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.70.0"
+    "@alwaysmeticulous/api": "^2.71.0"
   },
   "peerDependencies": {
     "loglevel": "^1.8.0"
