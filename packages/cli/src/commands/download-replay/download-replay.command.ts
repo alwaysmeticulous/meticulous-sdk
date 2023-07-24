@@ -1,5 +1,6 @@
 import { access, readFile, writeFile } from "fs/promises";
 import { join } from "path";
+import { ConsoleMessageWithStackTracePointer } from "@alwaysmeticulous/api";
 import { createClient } from "@alwaysmeticulous/client";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import {
@@ -31,24 +32,60 @@ const handler: (options: Options) => Promise<void> = async ({
     replayId
   );
 
-  // Generate logs.concise.txt file
-  const logsFile = join(replayFolderFilePath, "logs.json");
+  // Generate logs.concise.txt and logs.determinstic.txt files
+  const logsFile = join(replayFolderFilePath, "logs.ndjson");
   const logsFileExists = await access(logsFile)
     .then(() => true)
     .catch(() => false);
   if (logsFileExists) {
     try {
-      const logs = JSON.parse(
-        await readFile(logsFile, "utf8")
-      );
-      const conciseLogs = logs.console.map(
-        (log: { type: string; message: string }) => {
-          return log.message.replace("[METICULOUS] ", "");
+      const logs = (await readFile(logsFile, "utf8"))
+        .split("\n")
+        .filter((line) => line !== "")
+        .map((line) => JSON.parse(line));
+      let virtualTime = 0;
+      const conciseLogs = logs.map(
+        (log: ConsoleMessageWithStackTracePointer) => {
+          if (log.type === "virtual-time-change") {
+            virtualTime = log.virtualTime;
+            return "";
+          }
+          const commonPostfix = `${
+            log.repetitionCount ? " [x" + log.repetitionCount + "]" : ""
+          } ${log.message}`;
+          if (log.source === "application") {
+            return `[trace-id: ${log.stackTraceId}] [virtual: ${virtualTime}ms] [application]${commonPostfix}`;
+          } else {
+            return `[trace-id: ${log.stackTraceId}] [virtual: ${virtualTime}ms, real: ${log.realTime}ms]${commonPostfix}`;
+          }
         }
       );
       await writeFile(
         join(replayFolderFilePath, "logs.concise.txt"),
         conciseLogs.join("\n")
+      );
+
+      // Useful for diffing one set of logs against another (excludes the real timestamps, which are non-deterministic)
+      virtualTime = 0;
+      const deterministicLogs = logs.map(
+        (log: ConsoleMessageWithStackTracePointer) => {
+          if (log.type === "virtual-time-change") {
+            virtualTime = log.virtualTime;
+            return "";
+          }
+          const commonPostfix = `${
+            log.repetitionCount ? " [x" + log.repetitionCount + "]" : ""
+          } ${log.message}`;
+          if (log.source === "application") {
+            return `[virtual: ${virtualTime}ms] [application]${commonPostfix}`;
+          } else {
+            return `[virtual: ${virtualTime}ms]${commonPostfix}`;
+          }
+        }
+      );
+      await writeFile(
+        join(replayFolderFilePath, "logs.deterministic.txt"),
+        deterministicLogs.join("\n")
       );
     } catch (err) {
       logger.error("Error creating concise version of logs file", err);
