@@ -10,8 +10,9 @@ export const downloadFile: (
   fileUrl: string,
   path: string
 ) => Promise<void> = async (fileUrl, path) => {
-  const client = axios.create();
-  axiosRetry(client, { retries: 3 });
+  // Using the same timeout as the standard client in meticulous-sdk/packages/client/src/client.ts
+  const client = axios.create({timeout: 60_000});
+  axiosRetry(client, { retries: 3, shouldResetTimeout: true });
 
   const writer = createWriteStream(path);
 
