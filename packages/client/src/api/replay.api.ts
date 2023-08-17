@@ -4,7 +4,7 @@ import axios, { AxiosInstance } from "axios";
 export const getReplay = async (
   client: AxiosInstance,
   replayId: string
-): Promise<Replay> => {
+): Promise<Omit<Replay, "project">> => {
   const { data } = await client.get(`replays/${replayId}`).catch((error) => {
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 404) {
