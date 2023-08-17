@@ -24,7 +24,7 @@ export interface ReplayExecution {
 }
 
 export interface ReplayAndStoreResultsResult {
-  replay: Replay;
+  replay: Omit<Replay, "project">;
 
   /**
    * Empty if screenshottingOptions.enabled was false.
