@@ -11,8 +11,6 @@ export {
   OriginalRecordedURLReplayTarget,
   ReplayExecutionOptions,
   ReplayOrchestratorScreenshottingOptions,
-  ScreenshottingEnabledOptions,
-  StoryboardOptions,
   GeneratedBy,
   GeneratedByNotebookRun,
   GeneratedByTestRun,
