@@ -1,6 +1,7 @@
 import { Organization } from "./organization.types";
 import { TestCase } from "./replay/test-run.types";
 import { NetworkStubbingMode } from "./sdk-bundle-api/sdk-to-bundle/network-stubbing";
+import { ScreenshottingEnabledOptions } from "./sdk-bundle-api/sdk-to-bundle/screenshotting-options";
 
 export interface Project {
   id: string;
@@ -13,8 +14,16 @@ export interface Project {
   isGitHubIntegrationActive?: boolean;
   settings: {
     networkStubbingMode?: NetworkStubbingMode;
+    defaultScreenshottingOptions?: ProjectSettingsScreenshottingOptions;
   };
 }
+
+export type ProjectSettingsScreenshottingOptions = Partial<
+  Pick<
+    ScreenshottingEnabledOptions,
+    "waitBeforeScreenshotsMs" | "captureFullPage"
+  >
+>;
 
 export interface ProjectConfigurationData {
   testCases?: TestCase[];

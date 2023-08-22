@@ -1,4 +1,7 @@
-import { ScreenshotDiffOptions } from "@alwaysmeticulous/api";
+import {
+  ScreenshotDiffOptions,
+  StoryboardOptions,
+} from "@alwaysmeticulous/api";
 import { applyDefaultExecutionOptionsFromProject } from "@alwaysmeticulous/client";
 import { defer } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
@@ -9,7 +12,6 @@ import {
   ReplayExecutionOptions,
   ReplayTarget,
   ScreenshotComparisonOptions,
-  StoryboardOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
@@ -18,8 +20,8 @@ import {
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 import {
-  OutOfDateCLIError,
   isOutOfDateClientError,
+  OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
 import { openStepThroughDebuggerUI } from "./utils/replay-debugger.ui";
 

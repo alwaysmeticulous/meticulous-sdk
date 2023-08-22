@@ -1,6 +1,8 @@
 import {
-  ScreenshotDiffOptions,
   NetworkStubbingMode,
+  ScreenshotAssertionsEnabledOptions,
+  ScreenshotDiffOptions,
+  ScreenshottingEnabledOptions,
 } from "@alwaysmeticulous/api";
 import { LogLevelNumbers } from "loglevel";
 import { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
@@ -180,15 +182,7 @@ export interface ReplayExecutionOptions {
 
 export type ReplayOrchestratorScreenshottingOptions =
   | { enabled: false }
-  | ScreenshottingEnabledOptions;
-
-export interface ScreenshottingEnabledOptions {
-  enabled: true;
-
-  storyboardOptions: StoryboardOptions;
-}
-
-export type StoryboardOptions = { enabled: false } | { enabled: true };
+  | Omit<ScreenshotAssertionsEnabledOptions, "diffOptions">;
 
 export type NotebookRunId = StringId<"notebookRunId">;
 export type TestRunId = StringId<"testRunId">;

@@ -15,6 +15,9 @@ export interface ScreenshotAssertionsEnabledOptions
 export interface ScreenshottingEnabledOptions {
   enabled: true;
   storyboardOptions: StoryboardOptions;
+
+  waitBeforeScreenshotsMs?: number;
+  captureFullPage?: boolean;
 }
 
 export declare type StoryboardOptions = { enabled: false } | { enabled: true };
