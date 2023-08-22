@@ -41,11 +41,11 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
     );
     const filePath = join(await getOrCreateAssetsDir(), assetFileName);
 
-    // if (entry && etag !== "" && etag === entry.etag) {
-    //   logger.debug(`${fetchUrl} already present`);
-    //   releaseLock();
-    //   return filePath;
-    // }
+    if (entry && etag !== "" && etag === entry.etag) {
+      logger.debug(`${fetchUrl} already present`);
+      releaseLock();
+      return filePath;
+    }
 
     const contents = (await client.get(fetchUrl)).data;
     await writeFile(filePath, contents);
