@@ -1,4 +1,3 @@
-export { applyDefaultExecutionOptionsFromProject } from "./api/apply-default-execution-options-from-project";
 export { getProject } from "./api/project.api";
 export { getReplay, getReplayDownloadUrl } from "./api/replay.api";
 export {

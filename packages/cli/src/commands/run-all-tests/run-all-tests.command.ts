@@ -3,7 +3,6 @@ import {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
-import { applyDefaultExecutionOptionsFromProject } from "@alwaysmeticulous/client";
 import { getCommitSha } from "@alwaysmeticulous/common";
 import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
@@ -14,8 +13,8 @@ import {
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
 import {
-  OutOfDateCLIError,
   isOutOfDateClientError,
+  OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
 
 interface Options
@@ -95,10 +94,7 @@ const handler: (options: Options) => Promise<void> = async ({
   try {
     const { testRun } = await executeTestRun({
       testsFile: testsFile ?? null,
-      executionOptions: await applyDefaultExecutionOptionsFromProject({
-        apiToken,
-        executionOptions,
-      }),
+      executionOptions,
       screenshottingOptions,
       apiToken: apiToken ?? null,
       commitSha,

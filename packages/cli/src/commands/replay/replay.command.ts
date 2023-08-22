@@ -2,7 +2,6 @@ import {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
-import { applyDefaultExecutionOptionsFromProject } from "@alwaysmeticulous/client";
 import { defer } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import {
@@ -129,10 +128,7 @@ const replayCommandHandler = async ({
         appUrl: appUrl ?? null,
         simulationIdForAssets: simulationIdForAssets ?? null,
       }),
-      executionOptions: await applyDefaultExecutionOptionsFromProject({
-        apiToken,
-        executionOptions,
-      }),
+      executionOptions,
       screenshottingOptions,
       apiToken,
       commitSha,
