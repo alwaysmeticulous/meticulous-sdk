@@ -10,7 +10,7 @@ export function getOrSetWinstonLogger(): WinstonLogger {
     return winstonLogger;
 }
 
-export class WinstonLogger implements RootLogger {
+class WinstonLogger implements RootLogger {
     noConflict() {
         throw new Error("Method not implemented.");
     }
