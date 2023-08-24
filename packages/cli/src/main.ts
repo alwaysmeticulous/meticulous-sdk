@@ -24,7 +24,7 @@ export const main: () => void = async () => {
   initLogger();
   const packageJsonPath = normalize(join(__dirname, "../package.json"));
   const meticulousVersion = await getMeticulousVersion(packageJsonPath);
-  await initSentry(meticulousVersion);
+  // await initSentry(meticulousVersion);
 
   yargs
     .scriptName("meticulous")
