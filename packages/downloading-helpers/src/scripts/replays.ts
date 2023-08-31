@@ -62,11 +62,9 @@ export const getOrFetchReplayArchive = async (
 
     const downloadUrlData = await getReplayDownloadUrl(client, replayId);
     if (!downloadUrlData) {
-      logger.error(
+      throw new Error(
         "Error: Could not retrieve replay archive URL. This may be an invalid replay"
       );
-      await releaseLock();
-      process.exit(1);
     }
 
     await downloadFile(downloadUrlData.dowloadUrl, replayArchiveFile);
