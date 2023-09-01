@@ -21,7 +21,7 @@
   "dependencies": {
     "@alwaysmeticulous/common": "^2.73.0",
     "loglevel": "^1.8.0",
-    "puppeteer": "19.11.1"
+    "puppeteer": "21.1.1"
   },
   "author": {
     "name": "The Meticulous Team",
