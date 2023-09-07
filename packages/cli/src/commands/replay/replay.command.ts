@@ -27,7 +27,7 @@ import { openStepThroughDebuggerUI } from "./utils/replay-debugger.ui";
 interface ReplayCommandHandlerOptions
   extends ScreenshotDiffOptions,
     Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount"> {
-  screenshot: boolean;
+  takeSnapshots: boolean;
   appUrl: string | null | undefined;
   simulationIdForAssets: string | null | undefined;
   maxDurationMs: number | null | undefined;
@@ -50,7 +50,7 @@ const replayCommandHandler = async ({
   headless,
   devTools,
   bypassCSP,
-  screenshot,
+  takeSnapshots,
   baseReplayId,
   diffThreshold,
   diffPixelThreshold,
@@ -68,9 +68,9 @@ const replayCommandHandler = async ({
   logPossibleNonDeterminism,
   debugger: enableStepThroughDebugger,
 }: ReplayCommandHandlerOptions): Promise<void> => {
-  if (!screenshot && storyboard) {
+  if (!takeSnapshots && storyboard) {
     throw new Error(
-      "Cannot take storyboard screenshots without taking end state screenshots. Please set '--screenshot' to true, or '--storyboard' to false."
+      "Cannot take storyboard visual snapshots without taking end state snapshots. Please set '--takeSnapshots' to true, or '--storyboard' to false."
     );
   }
 
@@ -99,7 +99,7 @@ const replayCommandHandler = async ({
   const storyboardOptions: StoryboardOptions = storyboard
     ? { enabled: true }
     : { enabled: false };
-  const screenshottingOptions: ScreenshotComparisonOptions = screenshot
+  const screenshottingOptions: ScreenshotComparisonOptions = takeSnapshots
     ? {
         enabled: true,
         storyboardOptions,
@@ -210,9 +210,10 @@ export const replayCommand = buildCommand("simulate")
       description:
         "If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior simulation, instead of against a URL. An alternative to specifying an app URL.",
     },
-    screenshot: {
+    takeSnapshots: {
       boolean: true,
-      description: "Take a screenshot at the end of simulation",
+      description: "Take a visual snapshot at the end of simulation",
+      alias: "screenshot",
       default: true,
     },
     debugger: {
@@ -228,7 +229,7 @@ export const replayCommand = buildCommand("simulate")
     },
     baseReplayId: {
       string: true,
-      description: "Base simulation id to diff the screenshots against",
+      description: "Base simulation id to diff the visual snapshots against",
       alias: "baseSimulationId",
     },
     ...COMMON_REPLAY_OPTIONS,
