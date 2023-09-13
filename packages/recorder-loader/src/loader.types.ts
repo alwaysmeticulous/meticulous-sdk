@@ -9,6 +9,8 @@ export interface LoaderOptions {
   maxMsToBlockFor?: number;
   snippetsBaseUrl?: string;
 
+  isProduction?: boolean;
+
   /**
    * Optional. Allows sanitizing network responses before they are sent to Meticulous's servers.
    */

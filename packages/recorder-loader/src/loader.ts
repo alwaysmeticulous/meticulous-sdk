@@ -23,6 +23,7 @@ const unsafeLoadAndStartRecorder = ({
   maxMsToBlockFor: maxMsToBlockFor_,
   snippetsBaseUrl,
   responseSanitizers,
+  isProduction,
 }: LoaderOptions): Promise<void> => {
   let abandoned = false;
 
@@ -56,6 +57,10 @@ const unsafeLoadAndStartRecorder = ({
     if (snapshotLinkedStylesheets !== undefined) {
       typedWindow.METICULOUS_SNAPSHOT_LINKED_STYLESHEETS =
         snapshotLinkedStylesheets;
+    }
+
+    if (isProduction !== undefined) {
+      typedWindow.METICULOUS_IS_PRODUCTION_ENVIRONMENT = isProduction;
     }
 
     if (responseSanitizers != null && responseSanitizers.length > 0) {
