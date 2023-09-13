@@ -1,13 +1,8 @@
 import type { RecordState } from "@alwaysmeticulous/sdk-bundles-api";
+import { MeticulousWindowConfig } from "@alwaysmeticulous/sdk-bundles-api";
 
 declare global {
-  interface Window {
-    // Meticulous snippet configuration
-    METICULOUS_RECORDING_TOKEN: string;
-    METICULOUS_UPLOAD_INTERVAL_MS?: number;
-    METICULOUS_SNAPSHOT_LINKED_STYLESHEETS?: boolean;
-    METICULOUS_APP_COMMIT_HASH?: string;
-
+  interface Window extends MeticulousWindowConfig {
     __meticulous?: RecordState;
   }
 }
