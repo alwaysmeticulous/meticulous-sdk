@@ -1,4 +1,3 @@
-import { MeticulousWindowConfig } from "@alwaysmeticulous/sdk-bundles-api";
 import { LoaderOptions } from "./loader.types";
 
 const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2_000;
@@ -43,7 +42,7 @@ const unsafeLoadAndStartRecorder = ({
     script.src = new URL("v1/meticulous-manual-init.js", baseSnippetsUrl).href;
 
     // Setup configuration
-    const typedWindow = window as MeticulousWindowConfig;
+    const typedWindow = window;
     typedWindow.METICULOUS_RECORDING_TOKEN = projectId;
 
     if (uploadIntervalMs !== undefined) {
