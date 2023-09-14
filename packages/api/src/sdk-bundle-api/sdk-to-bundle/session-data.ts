@@ -25,6 +25,9 @@ export interface SessionData {
   hostname: string;
   abandoned: boolean;
 
+  /**
+   * @deprecated This isn't set for new sessions.
+   */
   requestsBeforeNetworkRecordingStarted?: EarlyRequest[];
   applicationSpecificData?: ApplicationSpecificData;
 }
