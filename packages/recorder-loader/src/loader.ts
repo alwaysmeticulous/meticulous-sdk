@@ -21,6 +21,7 @@ const unsafeLoadAndStartRecorder = ({
   commitHash,
   maxMsToBlockFor: maxMsToBlockFor_,
   snippetsBaseUrl,
+  forceRecording,
   responseSanitizers,
 }: LoaderOptions): Promise<void> => {
   let abandoned = false;
@@ -55,6 +56,10 @@ const unsafeLoadAndStartRecorder = ({
     if (snapshotLinkedStylesheets !== undefined) {
       typedWindow.METICULOUS_SNAPSHOT_LINKED_STYLESHEETS =
         snapshotLinkedStylesheets;
+    }
+
+    if (forceRecording !== undefined) {
+      typedWindow.METICULOUS_FORCE_RECORDING = forceRecording;
     }
 
     if (responseSanitizers != null && responseSanitizers.length > 0) {
