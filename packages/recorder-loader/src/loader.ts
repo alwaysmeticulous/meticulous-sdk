@@ -1,4 +1,3 @@
-import { MeticulousWindowConfig } from "@alwaysmeticulous/sdk-bundles-api";
 import { LoaderOptions } from "./loader.types";
 
 const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2_000;
@@ -23,6 +22,7 @@ const unsafeLoadAndStartRecorder = ({
   maxMsToBlockFor: maxMsToBlockFor_,
   snippetsBaseUrl,
   responseSanitizers,
+  isProduction,
 }: LoaderOptions): Promise<void> => {
   let abandoned = false;
 
@@ -42,7 +42,7 @@ const unsafeLoadAndStartRecorder = ({
     script.src = new URL("v1/meticulous-manual-init.js", baseSnippetsUrl).href;
 
     // Setup configuration
-    const typedWindow = window as MeticulousWindowConfig;
+    const typedWindow = window;
     typedWindow.METICULOUS_RECORDING_TOKEN = projectId;
 
     if (uploadIntervalMs !== undefined) {
@@ -56,6 +56,10 @@ const unsafeLoadAndStartRecorder = ({
     if (snapshotLinkedStylesheets !== undefined) {
       typedWindow.METICULOUS_SNAPSHOT_LINKED_STYLESHEETS =
         snapshotLinkedStylesheets;
+    }
+
+    if (isProduction !== undefined) {
+      typedWindow.METICULOUS_IS_PRODUCTION_ENVIRONMENT = isProduction;
     }
 
     if (responseSanitizers != null && responseSanitizers.length > 0) {
