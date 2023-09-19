@@ -23,6 +23,7 @@ const unsafeLoadAndStartRecorder = ({
   snippetsBaseUrl,
   forceRecording,
   responseSanitizers,
+  isProduction,
 }: LoaderOptions): Promise<void> => {
   let abandoned = false;
 
@@ -60,6 +61,10 @@ const unsafeLoadAndStartRecorder = ({
 
     if (forceRecording !== undefined) {
       typedWindow.METICULOUS_FORCE_RECORDING = forceRecording;
+    }
+
+    if (isProduction !== undefined) {
+      typedWindow.METICULOUS_IS_PRODUCTION_ENVIRONMENT = isProduction;
     }
 
     if (responseSanitizers != null && responseSanitizers.length > 0) {

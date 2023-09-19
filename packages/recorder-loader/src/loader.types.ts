@@ -9,6 +9,8 @@ export interface LoaderOptions {
   maxMsToBlockFor?: number;
   snippetsBaseUrl?: string;
 
+  isProduction?: boolean;
+
   /**
    * Optional. Disables abandonment due to payload size behaviour.
    *

@@ -6,6 +6,7 @@ export interface MeticulousWindowConfig {
   METICULOUS_APP_COMMIT_HASH?: string;
   METICULOUS_SNAPSHOT_LINKED_STYLESHEETS?: boolean;
   METICULOUS_FORCE_RECORDING?: boolean;
+  METICULOUS_IS_PRODUCTION_ENVIRONMENT?: boolean;
   METICULOUS_NETWORK_RESPONSE_SANITIZERS?: NetworkResponseSanitizer[];
 }
 
