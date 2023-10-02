@@ -178,6 +178,18 @@ export interface ReplayExecutionOptions {
    * This flag is useful to reduce noise when debugging.
    */
   essentialFeaturesOnly: boolean;
+
+  vercel?: VercelExecutionSettings;
+}
+
+export interface VercelExecutionSettings {
+  /**
+   * The protection bypass token to pass as a 'x-vercel-protection-bypass' header when downloading
+   * resources from a deployment URL with SSO or password protection enabled.
+   *
+   * https://vercel.com/docs/security/deployment-protection#protection-bypass-for-automation
+   */
+  deploymentProtectionBypassToken: string | null;
 }
 
 export type ReplayOrchestratorScreenshottingOptions =
