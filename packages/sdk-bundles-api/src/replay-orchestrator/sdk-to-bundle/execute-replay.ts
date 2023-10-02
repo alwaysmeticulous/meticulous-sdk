@@ -179,9 +179,7 @@ export interface ReplayExecutionOptions {
    */
   essentialFeaturesOnly: boolean;
 
-  vercel?: {
-    deploymentProtectionBypassToken: string | null;
-  };
+  vercel?: VercelExecutionSettings;
 }
 
 export interface VercelExecutionSettings {
