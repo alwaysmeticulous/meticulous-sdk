@@ -1,5 +1,9 @@
 export { getProject } from "./api/project.api";
-export { getReplay, getReplayDownloadUrl } from "./api/replay.api";
+export {
+  getReplay,
+  getReplayDownloadUrl,
+  getReplayV3DownloadUrls,
+} from "./api/replay.api";
 export {
   getRecordedSession,
   getRecordedSessionData,
