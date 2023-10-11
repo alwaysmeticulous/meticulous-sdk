@@ -2,7 +2,8 @@ export type SingleTryScreenshotDiffResult =
   | ScreenshotDiffResultMissingBase
   | ScreenshotDiffResultMissingHead
   | ScreenshotDiffResultDifferentSize
-  | ScreenshotDiffResultCompared;
+  | ScreenshotDiffResultNoDifference
+  | ScreenshotDiffResultDifference;
 
 /** Represents the result of comparing two screenshots */
 export type ScreenshotDiffResult = {
@@ -67,8 +68,6 @@ export interface ScreenshotDiffResultDifferentSize {
 }
 
 export interface ScreenshotDiffResultCompared {
-  outcome: "no-diff" | "diff";
-
   /** Relative path to the replay archive */
   headScreenshotFile: string;
 
@@ -79,6 +78,18 @@ export interface ScreenshotDiffResultCompared {
   height: number;
   mismatchPixels: number;
   mismatchFraction: number;
+}
+
+export interface ScreenshotDiffResultNoDifference
+  extends ScreenshotDiffResultCompared {
+  outcome: "no-diff";
+}
+
+export interface ScreenshotDiffResultDifference
+  extends ScreenshotDiffResultCompared {
+  outcome: "diff";
+
+  hashOfChangedSectionsClassNames?: string;
 }
 
 /**
