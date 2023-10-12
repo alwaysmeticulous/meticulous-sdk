@@ -26,12 +26,28 @@ export const downloadFile: (
     });
 };
 
+/**
+ * Download a file from a URL and extract it to a directory.
+ * The zip file will be deleted after extraction, keeping only the extracted files.
+ *
+ * Returns a list of the extracted files.
+ */
 export const downloadAndExtractFile: (
   fileUrl: string,
-  filePath: string,
+  tmpZipFilePath: string,
   extractPath: string
-) => Promise<void> = async (fileUrl, filePath, extractPath) => {
+) => Promise<string[]> = async (fileUrl, filePath, extractPath) => {
   await downloadFile(fileUrl, filePath);
-  await extract(filePath, { dir: extractPath });
-  await rm(filePath);
+  const entries: string[] = [];
+
+  try {
+    await extract(filePath, {
+      dir: extractPath,
+      onEntry: (entry) => entries.push(entry.fileName),
+    });
+  } finally {
+    await rm(filePath);
+  }
+
+  return entries;
 };

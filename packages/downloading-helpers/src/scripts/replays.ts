@@ -129,18 +129,21 @@ const downloadReplayV3Files = async (
     return () => downloadAndExtractFile(data.signedUrl, filePath, replayDir);
   });
 
-  const screenshotPromises = Object.values(screenshots).flatMap((data) => {
+  const screenshotPromises: (() => Promise<string[] | void>)[] = Object.values(
+    screenshots
+  ).flatMap((data) => {
     const imageFilePath = join(replayDir, data.image.filePath);
     const metadataFilePath = join(replayDir, data.metadata.filePath);
 
     return [
       () => downloadFile(data.image.signedUrl, imageFilePath),
-      () =>
-        downloadAndExtractFile(
+      async () => {
+        await downloadAndExtractFile(
           data.metadata.signedUrl,
           metadataFilePath,
           join(replayDir, dirname(data.metadata.filePath))
-        ),
+        );
+      },
     ];
   });
 
