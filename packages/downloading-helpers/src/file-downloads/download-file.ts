@@ -40,11 +40,14 @@ export const downloadAndExtractFile: (
   await downloadFile(fileUrl, filePath);
   const entries: string[] = [];
 
-  await extract(filePath, {
-    dir: extractPath,
-    onEntry: (entry) => entries.push(entry.fileName),
-  });
-  await rm(filePath);
+  try {
+    await extract(filePath, {
+      dir: extractPath,
+      onEntry: (entry) => entries.push(entry.fileName),
+    });
+  } finally {
+    await rm(filePath);
+  }
 
   return entries;
 };
