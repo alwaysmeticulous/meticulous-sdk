@@ -13,6 +13,8 @@ export {
   ScreenshotDiffResultMissingBase,
   ScreenshotDiffResultMissingBaseAndHead,
   ScreenshotDiffResultMissingHead,
+  ScreenshotDiffResultDifference,
+  ScreenshotDiffResultNoDifference,
   ScreenshotIdentifier,
   SingleTryScreenshotDiffResult,
 } from "./sdk-bundle-api/bundle-to-sdk/screenshot-diff-result";
