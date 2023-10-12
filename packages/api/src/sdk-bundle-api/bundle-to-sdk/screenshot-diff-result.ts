@@ -89,6 +89,10 @@ export interface ScreenshotDiffResultDifference
   extends ScreenshotDiffResultCompared {
   outcome: "diff";
 
+  /**
+   * The hash of the set of all class names within the DOM sections that have differences.
+   * This can be useful for grouping together diffs that are caused by the same change.
+   */
   hashOfChangedSectionsClassNames?: string;
 }
 
