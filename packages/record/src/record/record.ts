@@ -57,6 +57,7 @@ export const recordSession: RecordSessionFn = async ({
       NO_PROXY: process.env["NO_PROXY"],
       PUPPETEER_SKIP_CHROMIUM_DOWNLOAD:
         process.env["PUPPETEER_SKIP_CHROMIUM_DOWNLOAD"],
+      PUPPETEER_SKIP_DOWNLOAD: process.env["PUPPETEER_SKIP_DOWNLOAD"],
       PUPPETEER_TMP_DIR: process.env["PUPPETEER_TMP_DIR"],
       PUPPETEER_DOWNLOAD_HOST: process.env["PUPPETEER_DOWNLOAD_HOST"],
       PUPPETEER_DOWNLOAD_PATH: process.env["PUPPETEER_DOWNLOAD_PATH"],
@@ -132,7 +133,7 @@ export const recordSession: RecordSessionFn = async ({
   const sessionIds: string[] = [];
   const interval = setInterval(async () => {
     try {
-      const sessionId = await page.evaluate<never, () => string | undefined>(
+      const sessionId = await page.evaluate<[], () => string | undefined>(
         "window?.__meticulous?.config?.sessionId"
       );
       if (sessionId && !sessionIds.find((id) => id === sessionId)) {
