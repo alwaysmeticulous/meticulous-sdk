@@ -33,11 +33,14 @@ export async function bootstrapPage({
   await page.evaluateOnNewDocument(earlyNetworkRecorderSnippetFile);
 
   page.on("framenavigated", async (frame) => {
-    if (page.url() === INITIAL_METICULOUS_DOCS_URL) {
-      return;
-    }
     try {
       if (page.mainFrame() === frame) {
+        if (page.url() === INITIAL_METICULOUS_DOCS_URL) {
+          if (page.mainFrame() === frame) {
+            await frame.evaluate('window["METICULOUS_DISABLED"] = true');
+          }
+          return;
+        }
         await frame.evaluate(`
           window["METICULOUS_RECORDING_TOKEN"] = "${recordingToken}";
           window["METICULOUS_APP_COMMIT_HASH"] = "${appCommitHash}";
