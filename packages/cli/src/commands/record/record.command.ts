@@ -7,10 +7,10 @@ import {
 } from "@alwaysmeticulous/client";
 import {
   DebugLogger,
+  getCommitSha,
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
   RecordSessionFn,
-  getCommitSha,
 } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import log from "loglevel";
@@ -83,7 +83,7 @@ export const recordCommandHandler: (
   logger.debug(`Commit: ${commitSha}`);
 
   // 3. Load recording snippets
-  const recordingSnippet = await fetchAsset("v1/stagingMeticulousSnippet.js");
+  const recordingSnippet = await fetchAsset("v1/meticulous.js");
   const earlyNetworkRecorderSnippet = await fetchAsset(
     "record/v1/network-recorder.bundle.js"
   );
