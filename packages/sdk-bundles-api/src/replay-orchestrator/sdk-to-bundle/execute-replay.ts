@@ -180,6 +180,11 @@ export interface ReplayExecutionOptions {
   essentialFeaturesOnly: boolean;
 
   vercel?: VercelExecutionSettings;
+
+  /**
+   * If populated, each header will be injected into all requests when fetching resources during a replay.
+   */
+  customRequestHeaders?: Record<string, string>;
 }
 
 export interface VercelExecutionSettings {
