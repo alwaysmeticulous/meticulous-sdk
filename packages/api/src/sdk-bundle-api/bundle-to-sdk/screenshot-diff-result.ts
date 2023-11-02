@@ -117,19 +117,16 @@ export interface ScreenshotDiffResultFlake {
    * Note that in the context of these diffs base means the original head screenshot taken,
    * and head means the new head screenshot taken.
    */
-  diffsToHeadScreenshotOnRetries: Array<
-    SingleTryScreenshotDiffResult | ScreenshotDiffResultMissingBaseAndHead
-  >;
+  diffsToHeadScreenshotOnRetries: ScreenshotDiffRetryResult[];
 }
 
-export type ScreenshotDiffRetryResult = {
-  /**
-   * Only present on diffs from newer replays.
-   */
-  baseReplayId?: string;
+export type ScreenshotDiffRetryResult =
+  | SingleTryScreenshotDiffRetryResult
+  | ScreenshotDiffResultMissingBaseAndHead;
 
+export type SingleTryScreenshotDiffRetryResult = {
   /**
    * Only present on diffs from newer replays.
    */
   headReplayId?: string;
-} & (SingleTryScreenshotDiffResult | ScreenshotDiffResultMissingBaseAndHead);
+} & SingleTryScreenshotDiffResult;
