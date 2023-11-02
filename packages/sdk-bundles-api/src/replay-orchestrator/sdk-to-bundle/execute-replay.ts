@@ -182,7 +182,7 @@ export interface ReplayExecutionOptions {
   vercel?: VercelExecutionSettings;
 
   /**
-   * If populated, each header will be injected to all requests when fetching resources during a replay.
+   * If populated, each header will be injected into all requests when fetching resources during a replay.
    */
   customRequestHeaders?: Record<string, string>;
 }
