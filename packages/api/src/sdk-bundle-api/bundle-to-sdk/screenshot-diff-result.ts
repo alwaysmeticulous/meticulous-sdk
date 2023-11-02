@@ -121,3 +121,15 @@ export interface ScreenshotDiffResultFlake {
     SingleTryScreenshotDiffResult | ScreenshotDiffResultMissingBaseAndHead
   >;
 }
+
+export type ScreenshotDiffRetryResult = {
+  /**
+   * Only present on diffs from newer replays.
+   */
+  baseReplayId?: string;
+
+  /**
+   * Only present on diffs from newer replays.
+   */
+  headReplayId?: string;
+} & (SingleTryScreenshotDiffResult | ScreenshotDiffResultMissingBaseAndHead);
