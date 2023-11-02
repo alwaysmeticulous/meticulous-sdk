@@ -17,6 +17,8 @@ export {
   ScreenshotDiffResultNoDifference,
   ScreenshotIdentifier,
   SingleTryScreenshotDiffResult,
+  ScreenshotDiffRetryResult,
+  SingleTryScreenshotDiffRetryResult,
 } from "./sdk-bundle-api/bundle-to-sdk/screenshot-diff-result";
 export {
   TestCase,
