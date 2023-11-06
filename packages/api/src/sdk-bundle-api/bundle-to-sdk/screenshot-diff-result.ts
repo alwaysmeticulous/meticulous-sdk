@@ -95,6 +95,18 @@ export interface ScreenshotDiffResultCompared {
 export interface ScreenshotDiffResultNoDifference
   extends ScreenshotDiffResultCompared {
   outcome: "no-diff";
+
+  /**
+   * The result of comparing the redacted screenshots (i.e. screenshots taken after elements
+   * to ignore have been hidden/removed).
+   *
+   * Present only if there were redacted screenshots to compare, or if the original normal
+   * screenshots did not differ so there was no need to compare the redacted screenshots.
+   */
+  redactedScreenshotsComparisonResult?: {
+    mismatchPixels: number;
+    mismatchFraction: number;
+  };
 }
 
 export interface ScreenshotDiffResultDifference
