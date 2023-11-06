@@ -69,6 +69,7 @@ export interface ApplicationSpecificData {
     isFallback?: boolean;
     gsp?: boolean;
     scriptLoader?: Record<string, unknown>;
+    locale?: string;
   };
 }
 
