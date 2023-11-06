@@ -1,4 +1,5 @@
 import {
+  InjectableRequestHeader,
   NetworkStubbingMode,
   ScreenshotAssertionsEnabledOptions,
   ScreenshotDiffOptions,
@@ -184,7 +185,7 @@ export interface ReplayExecutionOptions {
   /**
    * If populated, each header will be injected into all requests when fetching resources during a replay.
    */
-  customRequestHeaders?: Record<string, string>;
+  customRequestHeaders?: InjectableRequestHeader[];
 }
 
 export interface VercelExecutionSettings {
