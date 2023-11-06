@@ -78,3 +78,11 @@ export {
   ConsoleMessageType,
   ConsoleMessageLocation,
 } from "./sdk-bundle-api/bundle-to-sdk/console-message";
+export {
+  InjectableRequestHeader,
+  StaticHeaderValue,
+  DynamicHeaderValue,
+  AllRequests,
+  AppUrlRequestsOnly,
+  CustomRequests,
+} from "./sdk-bundle-api/sdk-to-bundle/header-injection";
