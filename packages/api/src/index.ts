@@ -16,6 +16,7 @@ export {
   ScreenshotDiffResultDifference,
   ScreenshotDiffResultNoDifference,
   ScreenshotIdentifier,
+  ScreenshotVariant,
   SingleTryScreenshotDiffResult,
   ScreenshotDiffRetryResult,
   SingleTryScreenshotDiffRetryResult,
@@ -60,6 +61,8 @@ export {
   ScreenshottingEnabledOptions,
   StoryboardOptions,
   ScreenshotDiffOptions,
+  ElementToIgnore,
+  CSSSelectorToIgnore,
 } from "./sdk-bundle-api/sdk-to-bundle/screenshotting-options";
 export {
   NetworkStubbingMode,
