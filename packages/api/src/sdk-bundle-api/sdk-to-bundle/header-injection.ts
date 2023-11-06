@@ -27,7 +27,7 @@ export interface AppUrlRequestsOnly {
 
 export interface CustomRequests {
   type: "custom";
-  requestFilters: RequestFilter[];
+  requestsToInjectHeaders: RequestFilter[];
 }
 
 // Note: this is a subset of the Puppeteer HTTPRequest type. Similar to the HarLog type in har-log.ts,
