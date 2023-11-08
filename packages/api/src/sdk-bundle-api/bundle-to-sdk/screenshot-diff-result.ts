@@ -25,6 +25,9 @@ export interface LogicVersioned {
 
 export interface EndStateScreenshot extends LogicVersioned {
   type: "end-state";
+
+  /** If unset is normal variant */
+  variant?: ScreenshotVariant;
 }
 
 export interface ScreenshotAfterEvent extends LogicVersioned {
@@ -32,7 +35,16 @@ export interface ScreenshotAfterEvent extends LogicVersioned {
 
   /** 0 indexed */
   eventNumber: number;
+
+  /** If unset is normal variant */
+  variant?: ScreenshotVariant;
 }
+
+/**
+ * normal = the original screenshot to be displayed to the user
+ * redacted = after injecting CSS `display: hidden` rules for the CSS selectors to ignore
+ */
+export type ScreenshotVariant = "normal" | "redacted";
 
 export interface ScreenshotDiffResultMissingBase {
   outcome: "missing-base";
@@ -83,6 +95,18 @@ export interface ScreenshotDiffResultCompared {
 export interface ScreenshotDiffResultNoDifference
   extends ScreenshotDiffResultCompared {
   outcome: "no-diff";
+
+  /**
+   * The result of comparing the redacted screenshots (i.e. screenshots taken after elements
+   * to ignore have been hidden/removed).
+   *
+   * Present only if there were redacted screenshots to compare, or if the original normal
+   * screenshots did not differ so there was no need to compare the redacted screenshots.
+   */
+  redactedScreenshotsComparisonResult?: {
+    mismatchPixels: number;
+    mismatchFraction: number;
+  };
 }
 
 export interface ScreenshotDiffResultDifference
