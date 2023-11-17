@@ -179,13 +179,17 @@ export interface ReplayExecutionOptions {
    * This flag is useful to reduce noise when debugging.
    */
   essentialFeaturesOnly: boolean;
-
-  vercel?: VercelExecutionSettings;
-
+  
   /**
    * If populated, each header will be injected into all requests when fetching resources during a replay.
    */
   customRequestHeaders?: InjectableRequestHeader[];
+  
+  /**
+   * Hash of the project settings at the time the test run or replay was initiated. Used as part of `ReplayLogicVersion`
+   * to ensure that we don't compare screenshots that were generated from replays with different project settings.
+   */
+  projectSettingsHash?: string;
 }
 
 export interface VercelExecutionSettings {
