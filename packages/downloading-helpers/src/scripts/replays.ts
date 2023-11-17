@@ -133,15 +133,19 @@ const downloadReplayV3Files = async (
     screenshots
   ).flatMap((data) => {
     const imageFilePath = join(replayDir, data.image.filePath);
-    const metadataFilePath = join(replayDir, data.metadata.filePath);
+    const metadata = data.metadata;
+    if (metadata?.filePath == null) {
+      return [() => downloadFile(data.image.signedUrl, imageFilePath)];
+    }
 
+    const metadataFilePath = join(replayDir, metadata.filePath);
     return [
       () => downloadFile(data.image.signedUrl, imageFilePath),
       async () => {
         await downloadAndExtractFile(
-          data.metadata.signedUrl,
+          metadata.signedUrl,
           metadataFilePath,
-          join(replayDir, dirname(data.metadata.filePath))
+          join(replayDir, dirname(metadata.filePath))
         );
       },
     ];

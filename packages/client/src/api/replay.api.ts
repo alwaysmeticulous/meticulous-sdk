@@ -46,7 +46,7 @@ export interface S3UploadLocation {
 export type ReplayV3UploadLocations = Record<string, S3UploadLocation> & {
   screenshots: Record<
     string,
-    { image: S3UploadLocation; metadata: S3UploadLocation }
+    { image: S3UploadLocation; metadata?: S3UploadLocation }
   >;
 };
 
