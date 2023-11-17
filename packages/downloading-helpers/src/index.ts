@@ -1,5 +1,9 @@
 export { sanitizeFilename } from "./file-downloads/local-data.utils";
-export { getOrFetchReplay, getOrFetchReplayArchive } from "./scripts/replays";
+export {
+  getOrFetchReplay,
+  getOrFetchReplayArchive,
+  DownloadScope,
+} from "./scripts/replays";
 export {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,

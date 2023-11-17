@@ -49,9 +49,12 @@ export const getOrFetchReplay = async (
   return { fileName: replayFile };
 };
 
+export type DownloadScope = "everything" | "screenshots-only";
+
 export const getOrFetchReplayArchive = async (
   client: AxiosInstance,
-  replayId: string
+  replayId: string,
+  downloadScope: DownloadScope = "everything"
 ): Promise<{ fileName: string }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -74,7 +77,7 @@ export const getOrFetchReplayArchive = async (
     if (["v1", "v2"].includes(replay.version)) {
       await downloadReplayV2Archive(client, replayId, replayDir);
     } else if (replay.version === "v3") {
-      await downloadReplayV3Files(client, replayId, replayDir);
+      await downloadReplayV3Files(client, replayId, replayDir, downloadScope);
     } else {
       throw new Error(
         `Error: Unknown replay version "${replay.version}". This may be an invalid replay`
@@ -111,7 +114,8 @@ const downloadReplayV2Archive = async (
 const downloadReplayV3Files = async (
   client: AxiosInstance,
   replayId: string,
-  replayDir: string
+  replayDir: string,
+  downloadScope: DownloadScope
 ) => {
   const downloadUrls = await getReplayV3DownloadUrls(client, replayId);
   if (!downloadUrls) {
@@ -124,10 +128,14 @@ const downloadReplayV3Files = async (
 
   await mkdir(join(replayDir, "screenshots"), { recursive: true });
 
-  const filePromises = Object.entries(rest).map(([fileName, data]) => {
-    const filePath = join(replayDir, fileName);
-    return () => downloadAndExtractFile(data.signedUrl, filePath, replayDir);
-  });
+  const filePromises =
+    downloadScope === "everything"
+      ? Object.entries(rest).map(([fileName, data]) => {
+          const filePath = join(replayDir, fileName);
+          return () =>
+            downloadAndExtractFile(data.signedUrl, filePath, replayDir);
+        })
+      : [];
 
   const screenshotPromises: (() => Promise<string[] | void>)[] = Object.values(
     screenshots
@@ -151,25 +159,30 @@ const downloadReplayV3Files = async (
     ];
   });
 
-  const snapshottedAssetsPromise = async () => {
-    if (!snapshottedAssets) {
-      return;
-    }
+  const snapshottedAssetsPromises =
+    downloadScope === "everything"
+      ? [
+          async () => {
+            if (!snapshottedAssets) {
+              return;
+            }
 
-    const snapshottedAssetsDir = join(replayDir, "snapshotted-assets");
-    await mkdir(snapshottedAssetsDir, {
-      recursive: true,
-    });
-    await downloadAndExtractFile(
-      snapshottedAssets.signedUrl,
-      join(replayDir, snapshottedAssets.filePath),
-      snapshottedAssetsDir
-    );
-  };
+            const snapshottedAssetsDir = join(replayDir, "snapshotted-assets");
+            await mkdir(snapshottedAssetsDir, {
+              recursive: true,
+            });
+            await downloadAndExtractFile(
+              snapshottedAssets.signedUrl,
+              join(replayDir, snapshottedAssets.filePath),
+              snapshottedAssetsDir
+            );
+          },
+        ]
+      : [];
 
   const limited = pLimit(MAX_DOWNLOAD_CONCURRENCY);
   await Promise.all(
-    [...filePromises, ...screenshotPromises, snapshottedAssetsPromise].map(
+    [...filePromises, ...screenshotPromises, ...snapshottedAssetsPromises].map(
       (p) => limited(p)
     )
   );
