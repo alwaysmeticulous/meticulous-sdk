@@ -43,6 +43,11 @@ export interface Cookie {
   value: string;
   domain: string | null;
   expires: number | null;
+  path?: string;
+  partitioned?: boolean;
+  sameSite?: "strict" | "lax" | "none";
+  secure?: boolean;
+  httpOnly?: boolean;
 }
 
 export interface UrlHistoryEvent {

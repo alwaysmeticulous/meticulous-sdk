@@ -2,6 +2,7 @@ import { readFile } from "fs/promises";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { Page } from "puppeteer";
+import { provideCookieAccess } from "./utils/provide-cookie-access";
 
 export const INITIAL_METICULOUS_DOCS_URL =
   "https://app.meticulous.ai/docs/recording-a-test";
@@ -14,6 +15,7 @@ export async function bootstrapPage({
   recordingSnippet,
   earlyNetworkRecorderSnippet,
   uploadIntervalMs,
+  captureHttpOnlyCookies,
 }: {
   page: Page;
   recordingToken: string;
@@ -21,6 +23,7 @@ export async function bootstrapPage({
   recordingSnippet: string;
   earlyNetworkRecorderSnippet: string;
   uploadIntervalMs: number | null;
+  captureHttpOnlyCookies: boolean;
 }): Promise<void> {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -31,6 +34,9 @@ export async function bootstrapPage({
   );
 
   await page.evaluateOnNewDocument(earlyNetworkRecorderSnippetFile);
+  if (captureHttpOnlyCookies) {
+    await provideCookieAccess(page);
+  }
 
   page.on("framenavigated", async (frame) => {
     try {

@@ -27,6 +27,7 @@ export const recordSession: RecordSessionFn = async ({
   cookieDir,
   debugLogger,
   onDetectedSession,
+  captureHttpOnlyCookies,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -122,6 +123,7 @@ export const recordSession: RecordSessionFn = async ({
     recordingSnippet,
     earlyNetworkRecorderSnippet,
     uploadIntervalMs: uploadIntervalMs || DEFAULT_UPLOAD_INTERVAL_MS,
+    captureHttpOnlyCookies: captureHttpOnlyCookies ?? true,
   });
 
   page.goto(INITIAL_METICULOUS_DOCS_URL);

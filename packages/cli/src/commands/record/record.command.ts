@@ -26,6 +26,7 @@ export interface RecordCommandHandlerOptions {
   uploadIntervalMs: number | null | undefined;
   incognito: boolean | null | undefined;
   trace: boolean | null | undefined;
+  captureHttpOnlyCookies: boolean;
   onDetectedSession?: (sessionId: string) => void;
 }
 
@@ -42,6 +43,7 @@ export const recordCommandHandler: (
   incognito,
   trace,
   onDetectedSession: onDetectedSession_,
+  captureHttpOnlyCookies,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const debugLogger = trace ? await DebugLogger.create() : null;
@@ -143,6 +145,7 @@ export const recordCommandHandler: (
     cookieDir,
     debugLogger,
     onDetectedSession,
+    captureHttpOnlyCookies,
   }).catch((error) => {
     debugLogger?.log(`${error}`);
     throw error;
@@ -187,6 +190,11 @@ export const recordCommand = buildCommand("record")
     trace: {
       boolean: true,
       description: "Enable verbose logging",
+    },
+    captureHttpOnlyCookies: {
+      boolean: true,
+      default: true,
+      description: "Capture http-only cookies in addition to regular cookies",
     },
   })
   .handler(recordCommandHandler);
