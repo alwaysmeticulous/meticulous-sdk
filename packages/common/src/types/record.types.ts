@@ -16,6 +16,7 @@ export interface RecordSessionOptions {
   incognito?: boolean | null | undefined;
   cookieDir?: string | null | undefined;
   debugLogger?: DebugLogger | null | undefined;
+  captureHttpOnlyCookies?: boolean;
   onDetectedSession?: (sessionId: string) => void;
 }
 
