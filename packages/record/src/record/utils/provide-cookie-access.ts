@@ -21,6 +21,9 @@ export const provideCookieAccess = async (page: Page) => {
       }
     );
   await page.exposeFunction("__meticulous_getAllCookies", getCookies);
+
+  // The Meticulous recorder accesses the function via window.__meticulous.getAllCookies,
+  // let's expose it there:
   page.evaluateOnNewDocument(() => {
     const meticulousObject = (window as ModifiedWindow).__meticulous ?? {};
     meticulousObject.getAllCookies = (
