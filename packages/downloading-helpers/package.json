@@ -23,7 +23,7 @@
     "@alwaysmeticulous/client": "^2.92.0",
     "@alwaysmeticulous/common": "^2.92.0",
     "axios": "^1.2.6",
-    "axios-retry": "^3.5.0",
+    "axios-retry": "^4.0.0",
     "extract-zip": "^2.0.1",
     "loglevel": "^1.8.0",
     "luxon": "^3.2.1",
