@@ -11,9 +11,19 @@ export interface SessionData {
     pollyHAR?: { [recordingId: `Meticulous_${string}`]: { log: HarLog } };
   };
 
+  /**
+   * Note: the name 'randomEvents' is a misnomer: it should be named 'storage'.
+   */
   randomEvents: {
     localStorage: {
-      state: LocalStorageEntry[];
+      state: StorageEntry[];
+    };
+
+    /**
+     * Only present on recordings since ~Dec 2023
+     */
+    sessionStorage?: {
+      state: StorageEntry[];
     };
   };
 
@@ -63,7 +73,7 @@ export interface UrlHistoryEvent {
   urlPattern?: string;
 }
 
-export type LocalStorageEntry = { key: string; value: string };
+export type StorageEntry = { key: string; value: string };
 
 export interface ApplicationSpecificData {
   nextJs?: {
