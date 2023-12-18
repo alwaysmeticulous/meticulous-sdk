@@ -16,6 +16,7 @@ export async function bootstrapPage({
   earlyNetworkRecorderSnippet,
   uploadIntervalMs,
   captureHttpOnlyCookies,
+  recordingSource = "cli",
 }: {
   page: Page;
   recordingToken: string;
@@ -24,6 +25,7 @@ export async function bootstrapPage({
   earlyNetworkRecorderSnippet: string;
   uploadIntervalMs: number | null;
   captureHttpOnlyCookies: boolean;
+  recordingSource?: string;
 }): Promise<void> {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -51,7 +53,7 @@ export async function bootstrapPage({
           window["METICULOUS_RECORDING_TOKEN"] = "${recordingToken}";
           window["METICULOUS_APP_COMMIT_HASH"] = "${appCommitHash}";
           window["METICULOUS_FORCE_RECORDING"] = true;
-          window["METICULOUS_RECORDING_SOURCE"] = "cli";
+          window["METICULOUS_RECORDING_SOURCE"] = "${recordingSource}";
           window["METICULOUS_UPLOAD_INTERVAL_MS"] = ${uploadIntervalMs};
           window["METICULOUS_ENABLE_RRWEB_PLUGIN_NODE_DATA"] = true;
         `);
