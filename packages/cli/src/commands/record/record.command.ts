@@ -10,9 +10,9 @@ import {
   getCommitSha,
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
-  RecordSessionFn,
 } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
+import { recordSession } from "@alwaysmeticulous/record";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 
@@ -89,20 +89,6 @@ export const recordCommandHandler: (
   const earlyNetworkRecorderSnippet = await fetchAsset(
     "record/v1/network-recorder.bundle.js"
   );
-
-  // 4. Load recording package
-  let recordSession: RecordSessionFn;
-
-  try {
-    const record = await require("@alwaysmeticulous/record");
-    recordSession = record.recordSession;
-  } catch (error) {
-    logger.error("Error: could not import @alwaysmeticulous/record");
-    logger.error(error);
-    debugLogger?.log("Error: could not import @alwaysmeticulous/record");
-    debugLogger?.log(`${error}`);
-    process.exit(1);
-  }
 
   const cookieDir = join(getMeticulousLocalDataDir(), "cookies");
 
