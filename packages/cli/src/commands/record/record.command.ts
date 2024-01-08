@@ -27,7 +27,6 @@ export interface RecordCommandHandlerOptions {
   incognito: boolean | null | undefined;
   trace: boolean | null | undefined;
   captureHttpOnlyCookies: boolean;
-  onDetectedSession?: (sessionId: string) => void;
 }
 
 export const recordCommandHandler: (
@@ -42,7 +41,6 @@ export const recordCommandHandler: (
   uploadIntervalMs,
   incognito,
   trace,
-  onDetectedSession: onDetectedSession_,
   captureHttpOnlyCookies,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -97,10 +95,6 @@ export const recordCommandHandler: (
 
   // 5. Start recording
   const onDetectedSession = (sessionId: string) => {
-    if (onDetectedSession_) {
-      onDetectedSession_(sessionId);
-    }
-
     postSessionIdNotification(client, sessionId, recordingCommandId).catch(
       (error) => {
         logger.error(
