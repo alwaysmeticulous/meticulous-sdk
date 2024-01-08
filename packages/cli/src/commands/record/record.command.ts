@@ -95,6 +95,11 @@ export const recordCommandHandler: (
 
   // 5. Start recording
   const onDetectedSession = (sessionId: string) => {
+    const organizationName = encodeURIComponent(project.organization.name);
+    const projectName = encodeURIComponent(project.name);
+    const sessionUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/sessions/${sessionId}`;
+    logger.info(`Recording session: ${sessionUrl}`);
+
     postSessionIdNotification(client, sessionId, recordingCommandId).catch(
       (error) => {
         logger.error(

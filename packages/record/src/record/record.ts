@@ -136,10 +136,6 @@ export const recordSession: RecordSessionFn = async ({
       );
       if (sessionId && !sessionIds.find((id) => id === sessionId)) {
         sessionIds.push(sessionId);
-        const organizationName = encodeURIComponent(project.organization.name);
-        const projectName = encodeURIComponent(project.name);
-        const sessionUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/sessions/${sessionId}`;
-        logger.info(`Recording session: ${sessionUrl}`);
         if (onDetectedSession) {
           onDetectedSession(sessionId);
         }
