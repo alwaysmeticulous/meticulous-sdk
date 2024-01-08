@@ -12,7 +12,6 @@ const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
 const COOKIE_FILENAME = "cookies.json";
 
 export const recordSession: RecordSessionFn = async ({
-  project,
   recordingToken,
   appCommitHash,
   devTools,
@@ -34,7 +33,6 @@ export const recordSession: RecordSessionFn = async ({
 
   debugLogger?.log("recordSession options:");
   debugLogger?.logObject({
-    project,
     recordingToken,
     appCommitHash,
     devTools,

@@ -1,7 +1,6 @@
 import type { DebugLogger } from "../logger/debug-logger";
 
 export interface RecordSessionOptions {
-  project: any;
   recordingToken: string;
   appCommitHash: string;
   devTools?: boolean | null | undefined;

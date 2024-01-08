@@ -115,7 +115,6 @@ export const recordCommandHandler: (
   };
 
   await recordSession({
-    project,
     recordingToken,
     appCommitHash: commitSha,
     devTools,
