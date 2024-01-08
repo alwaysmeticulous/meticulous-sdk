@@ -110,7 +110,6 @@ export const recordCommandHandler: (
   };
 
   await recordSession({
-    browser: null,
     project,
     recordingToken,
     appCommitHash: commitSha,

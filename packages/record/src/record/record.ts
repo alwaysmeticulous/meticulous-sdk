@@ -12,7 +12,6 @@ const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
 const COOKIE_FILENAME = "cookies.json";
 
 export const recordSession: RecordSessionFn = async ({
-  browser: browser_,
   project,
   recordingToken,
   appCommitHash,
@@ -35,7 +34,6 @@ export const recordSession: RecordSessionFn = async ({
 
   debugLogger?.log("recordSession options:");
   debugLogger?.logObject({
-    browser: !!browser_,
     project,
     recordingToken,
     appCommitHash,
@@ -76,13 +74,11 @@ export const recordSession: RecordSessionFn = async ({
 
   const defaultViewport = width && height ? { width, height } : null;
 
-  const browser: Browser =
-    browser_ ||
-    (await launch({
-      defaultViewport,
-      headless: false,
-      devtools: devTools || false,
-    }));
+  const browser: Browser = await launch({
+    defaultViewport,
+    headless: false,
+    devtools: devTools || false,
+  });
 
   const context = incognito
     ? await browser.createIncognitoBrowserContext()
