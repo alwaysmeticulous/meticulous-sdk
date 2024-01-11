@@ -17,8 +17,8 @@ import { exposeNewRecordingCallback } from "./utils/expose-new-recording-callbac
 import { injectFinishRecordingFrame } from "./utils/inject-finish-recording-frame";
 import {
   printNoLoginSessionRecordedWarning,
-  printPageCloseWarning,
-} from "./utils/print-page-close-warning";
+  printPageClosedWarning,
+} from "./utils/print-warning";
 
 type ModifiedWindow = {
   __meticulous?: {
@@ -112,7 +112,7 @@ export const recordLoginFlowSession: RecordLoginFlowSessionFn = async ({
 
   loginFlowPage.on("close", () => {
     if (!isRecordingComplete) {
-      printPageCloseWarning();
+      printPageClosedWarning();
 
       // Resolve the callback only if the page is closed before the recording is complete.
       // Cases where the page is closed after the recording is complete are handled
@@ -134,7 +134,7 @@ export const recordLoginFlowSession: RecordLoginFlowSessionFn = async ({
 
       loginDataPage.on("close", () => {
         if (!onDataSessionSaved) {
-          printPageCloseWarning();
+          printPageClosedWarning();
         }
       });
 

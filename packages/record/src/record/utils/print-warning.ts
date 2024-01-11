@@ -1,6 +1,6 @@
 import chalk from "chalk";
 
-export const printPageCloseWarning = (): void => {
+export const printPageClosedWarning = (): void => {
   printWarning(
     "Login flow session recording aborted. " +
       "To complete the recording, please click the 'Finish recording' button."
