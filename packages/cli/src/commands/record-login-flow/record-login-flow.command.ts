@@ -4,6 +4,7 @@ import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import { recordLoginFlowSession } from "@alwaysmeticulous/record";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
+import { COMMON_RECORD_OPTIONS } from "../../command-utils/common-options";
 
 export interface RecordCommandHandlerOptions {
   apiToken: string | null | undefined;
@@ -85,37 +86,5 @@ export const recordLoginFlowCommand = buildCommand("record-login-flow")
   .details({
     describe: "Record a login flow session",
   })
-  .options({
-    apiToken: {
-      string: true,
-      demandOption: false,
-    },
-    devTools: {
-      boolean: true,
-      description: "Open Chrome Dev Tools",
-    },
-    bypassCSP: {
-      boolean: true,
-      description: "Enables bypass CSP in the browser",
-    },
-    width: {
-      number: true,
-    },
-    height: {
-      number: true,
-    },
-    uploadIntervalMs: {
-      number: true,
-      description: "Meticulous recording upload interval (in milliseconds)",
-    },
-    trace: {
-      boolean: true,
-      description: "Enable verbose logging",
-    },
-    captureHttpOnlyCookies: {
-      boolean: true,
-      default: true,
-      description: "Capture http-only cookies in addition to regular cookies",
-    },
-  })
+  .options(COMMON_RECORD_OPTIONS)
   .handler(recordLoginFlowCommandHandler);

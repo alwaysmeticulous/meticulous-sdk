@@ -107,6 +107,26 @@ export const OPTIONS = {
     default: DEFAULT_EXECUTION_OPTIONS.logPossibleNonDeterminism,
     hidden: true,
   },
+
+  width: {
+    number: true,
+  },
+  height: {
+    number: true,
+  },
+  uploadIntervalMs: {
+    number: true,
+    description: "Meticulous recording upload interval (in milliseconds)",
+  },
+  trace: {
+    boolean: true,
+    description: "Enable verbose logging",
+  },
+  captureHttpOnlyCookies: {
+    boolean: true,
+    default: true,
+    description: "Capture http-only cookies in addition to regular cookies",
+  },
 } as const;
 
 export const SCREENSHOT_DIFF_OPTIONS = {
@@ -131,4 +151,18 @@ export const COMMON_REPLAY_OPTIONS = {
   maxEventCount: OPTIONS.maxEventCount,
   essentialFeaturesOnly: OPTIONS.essentialFeaturesOnly,
   logPossibleNonDeterminism: OPTIONS.logPossibleNonDeterminism,
+};
+
+/**
+ * Options shared between the `record` and `record-login-flow` commands.
+ */
+export const COMMON_RECORD_OPTIONS = {
+  apiToken: OPTIONS.apiToken,
+  devTools: OPTIONS.devTools,
+  bypassCSP: OPTIONS.bypassCSP,
+  width: OPTIONS.width,
+  height: OPTIONS.height,
+  uploadIntervalMs: OPTIONS.uploadIntervalMs,
+  trace: OPTIONS.trace,
+  captureHttpOnlyCookies: OPTIONS.captureHttpOnlyCookies,
 };

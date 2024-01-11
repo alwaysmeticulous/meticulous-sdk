@@ -15,6 +15,10 @@ import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import { recordSession } from "@alwaysmeticulous/record";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
+import {
+  COMMON_RECORD_OPTIONS,
+  OPTIONS,
+} from "../../command-utils/common-options";
 
 export interface RecordCommandHandlerOptions {
   apiToken: string | null | undefined;
@@ -140,44 +144,12 @@ export const recordCommand = buildCommand("record")
     describe: "Record a session",
   })
   .options({
-    apiToken: {
-      string: true,
-      demandOption: false,
-    },
-    commitSha: {
-      string: true,
-    },
-    devTools: {
-      boolean: true,
-      description: "Open Chrome Dev Tools",
-    },
-    bypassCSP: {
-      boolean: true,
-      description: "Enables bypass CSP in the browser",
-    },
-    width: {
-      number: true,
-    },
-    height: {
-      number: true,
-    },
-    uploadIntervalMs: {
-      number: true,
-      description: "Meticulous recording upload interval (in milliseconds)",
-    },
+    ...COMMON_RECORD_OPTIONS,
+    commitSha: OPTIONS.commitSha,
     incognito: {
       boolean: true,
       description: "Use an incognito browsing context",
       default: true,
-    },
-    trace: {
-      boolean: true,
-      description: "Enable verbose logging",
-    },
-    captureHttpOnlyCookies: {
-      boolean: true,
-      default: true,
-      description: "Capture http-only cookies in addition to regular cookies",
     },
   })
   .handler(recordCommandHandler);
