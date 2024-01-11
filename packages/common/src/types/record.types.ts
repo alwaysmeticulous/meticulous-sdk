@@ -17,4 +17,17 @@ export interface RecordSessionOptions {
   onDetectedSession?: (sessionId: string) => void;
 }
 
+export type RecordLoginFlowOptions = Omit<
+  RecordSessionOptions,
+  | "appCommitHash"
+  | "incognito"
+  | "cookieDir"
+  | "debugLogger"
+  | "onDetectedSession"
+>;
+
 export type RecordSessionFn = (options: RecordSessionOptions) => Promise<void>;
+
+export type RecordLoginFlowSessionFn = (
+  options: RecordLoginFlowOptions
+) => Promise<void>;

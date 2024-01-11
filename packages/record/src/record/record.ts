@@ -6,9 +6,13 @@ import {
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import puppeteer, { Browser, launch, PuppeteerNode } from "puppeteer";
-import { bootstrapPage, INITIAL_METICULOUS_DOCS_URL } from "./record.utils";
+import {
+  DEFAULT_NAVIGATION_TIMEOUT_MS,
+  DEFAULT_UPLOAD_INTERVAL_MS,
+  INITIAL_METICULOUS_RECORD_DOCS_URL,
+} from "./constants";
+import { bootstrapPage } from "./record.utils";
 
-const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
 const COOKIE_FILENAME = "cookies.json";
 
 export const recordSession: RecordSessionFn = async ({
@@ -87,7 +91,7 @@ export const recordSession: RecordSessionFn = async ({
   );
 
   const page = await context.newPage();
-  page.setDefaultNavigationTimeout(120000); // 2 minutes
+  page.setDefaultNavigationTimeout(DEFAULT_NAVIGATION_TIMEOUT_MS); // 2 minutes
 
   if (bypassCSP) {
     await page.setBypassCSP(true);
@@ -120,7 +124,7 @@ export const recordSession: RecordSessionFn = async ({
     captureHttpOnlyCookies: captureHttpOnlyCookies ?? true,
   });
 
-  page.goto(INITIAL_METICULOUS_DOCS_URL);
+  page.goto(INITIAL_METICULOUS_RECORD_DOCS_URL);
 
   logger.info("Browser ready");
 
