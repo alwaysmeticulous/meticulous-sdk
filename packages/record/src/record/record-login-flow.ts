@@ -13,8 +13,12 @@ import {
   METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL,
 } from "./constants";
 import { bootstrapPage } from "./record.utils";
+import { exposeNewRecordingCallback } from "./utils/expose-new-recording-callback";
 import { injectFinishRecordingFrame } from "./utils/inject-finish-recording-frame";
-import { printPageCloseWarning } from "./utils/print-page-close-warning";
+import {
+  printNoLoginSessionRecordedWarning,
+  printPageCloseWarning,
+} from "./utils/print-page-close-warning";
 
 type ModifiedWindow = {
   __meticulous?: {
@@ -102,6 +106,7 @@ export const recordLoginFlowSession: RecordLoginFlowSessionFn = async ({
 
   let isRecordingComplete = false;
   let onDataSessionSaved = false;
+  let startedLoginSessionRecording = false;
 
   const recordingCompleteCallback = defer();
 
@@ -114,6 +119,11 @@ export const recordLoginFlowSession: RecordLoginFlowSessionFn = async ({
       // in the `__meticulousFinishRecording` callback.
       recordingCompleteCallback.resolve();
     }
+  });
+
+  // Expose login page functions
+  await exposeNewRecordingCallback(loginFlowPage, () => {
+    startedLoginSessionRecording = true;
   });
 
   await loginFlowPage.exposeFunction(
@@ -185,6 +195,11 @@ export const recordLoginFlowSession: RecordLoginFlowSessionFn = async ({
   await browser.close();
 
   if (!onDataSessionSaved || !isRecordingComplete) {
+    throw new Error("Recording of login flow failed");
+  }
+
+  if (!startedLoginSessionRecording) {
+    printNoLoginSessionRecordedWarning();
     throw new Error("Recording of login flow failed");
   }
 
