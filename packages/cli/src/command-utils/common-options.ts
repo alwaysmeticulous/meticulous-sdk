@@ -154,7 +154,7 @@ export const COMMON_REPLAY_OPTIONS = {
 };
 
 /**
- * Options shared between the `record` and `record-login-flow` commands.
+ * Options shared between the `record` and `record-login` commands.
  */
 export const COMMON_RECORD_OPTIONS = {
   apiToken: OPTIONS.apiToken,
