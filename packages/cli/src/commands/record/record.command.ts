@@ -10,11 +10,15 @@ import {
   getCommitSha,
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
-  RecordSessionFn,
 } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
+import { recordSession } from "@alwaysmeticulous/record";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
+import {
+  COMMON_RECORD_OPTIONS,
+  OPTIONS,
+} from "../../command-utils/common-options";
 
 export interface RecordCommandHandlerOptions {
   apiToken: string | null | undefined;
@@ -27,7 +31,6 @@ export interface RecordCommandHandlerOptions {
   incognito: boolean | null | undefined;
   trace: boolean | null | undefined;
   captureHttpOnlyCookies: boolean;
-  onDetectedSession?: (sessionId: string) => void;
 }
 
 export const recordCommandHandler: (
@@ -42,7 +45,6 @@ export const recordCommandHandler: (
   uploadIntervalMs,
   incognito,
   trace,
-  onDetectedSession: onDetectedSession_,
   captureHttpOnlyCookies,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -90,20 +92,6 @@ export const recordCommandHandler: (
     "record/v1/network-recorder.bundle.js"
   );
 
-  // 4. Load recording package
-  let recordSession: RecordSessionFn;
-
-  try {
-    const record = await require("@alwaysmeticulous/record");
-    recordSession = record.recordSession;
-  } catch (error) {
-    logger.error("Error: could not import @alwaysmeticulous/record");
-    logger.error(error);
-    debugLogger?.log("Error: could not import @alwaysmeticulous/record");
-    debugLogger?.log(`${error}`);
-    process.exit(1);
-  }
-
   const cookieDir = join(getMeticulousLocalDataDir(), "cookies");
 
   // Report recording start
@@ -111,9 +99,10 @@ export const recordCommandHandler: (
 
   // 5. Start recording
   const onDetectedSession = (sessionId: string) => {
-    if (onDetectedSession_) {
-      onDetectedSession_(sessionId);
-    }
+    const organizationName = encodeURIComponent(project.organization.name);
+    const projectName = encodeURIComponent(project.name);
+    const sessionUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/sessions/${sessionId}`;
+    logger.info(`Recording session: ${sessionUrl}`);
 
     postSessionIdNotification(client, sessionId, recordingCommandId).catch(
       (error) => {
@@ -130,8 +119,6 @@ export const recordCommandHandler: (
   };
 
   await recordSession({
-    browser: null,
-    project,
     recordingToken,
     appCommitHash: commitSha,
     devTools,
@@ -157,44 +144,12 @@ export const recordCommand = buildCommand("record")
     describe: "Record a session",
   })
   .options({
-    apiToken: {
-      string: true,
-      demandOption: false,
-    },
-    commitSha: {
-      string: true,
-    },
-    devTools: {
-      boolean: true,
-      description: "Open Chrome Dev Tools",
-    },
-    bypassCSP: {
-      boolean: true,
-      description: "Enables bypass CSP in the browser",
-    },
-    width: {
-      number: true,
-    },
-    height: {
-      number: true,
-    },
-    uploadIntervalMs: {
-      number: true,
-      description: "Meticulous recording upload interval (in milliseconds)",
-    },
+    ...COMMON_RECORD_OPTIONS,
+    commitSha: OPTIONS.commitSha,
     incognito: {
       boolean: true,
       description: "Use an incognito browsing context",
       default: true,
-    },
-    trace: {
-      boolean: true,
-      description: "Enable verbose logging",
-    },
-    captureHttpOnlyCookies: {
-      boolean: true,
-      default: true,
-      description: "Capture http-only cookies in addition to regular cookies",
     },
   })
   .handler(recordCommandHandler);

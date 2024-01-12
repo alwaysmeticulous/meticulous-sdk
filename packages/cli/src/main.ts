@@ -1,13 +1,14 @@
 import { join, normalize } from "path";
 import {
-  setMeticulousLocalDataDir,
   getMeticulousVersion,
+  setMeticulousLocalDataDir,
 } from "@alwaysmeticulous/common";
 import { initSentry } from "@alwaysmeticulous/sentry";
 import yargs from "yargs";
 import { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
 import { downloadSessionCommand } from "./commands/download-session/download-session.command";
 import { recordCommand } from "./commands/record/record.command";
+import { recordLoginFlowCommand } from "./commands/record-login-flow/record-login-flow.command";
 import { replayCommand } from "./commands/replay/replay.command";
 import { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.command";
 import { showProjectCommand } from "./commands/show-project/show-project.command";
@@ -36,6 +37,7 @@ export const main: () => void = async () => {
     .command(downloadReplayCommand)
     .command(downloadSessionCommand)
     .command(recordCommand)
+    .command(recordLoginFlowCommand)
     .command(replayCommand)
     .command(runAllTestsCommand)
     .command(showProjectCommand)

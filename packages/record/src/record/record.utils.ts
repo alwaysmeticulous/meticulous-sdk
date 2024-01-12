@@ -2,10 +2,12 @@ import { readFile } from "fs/promises";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import { Page } from "puppeteer";
+import {
+  INITIAL_METICULOUS_RECORD_DOCS_URL,
+  INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL,
+  METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL,
+} from "./constants";
 import { provideCookieAccess } from "./utils/provide-cookie-access";
-
-export const INITIAL_METICULOUS_DOCS_URL =
-  "https://app.meticulous.ai/docs/recording-a-test";
 
 // Setup Meticulous recording
 export async function bootstrapPage({
@@ -43,7 +45,13 @@ export async function bootstrapPage({
   page.on("framenavigated", async (frame) => {
     try {
       if (page.mainFrame() === frame) {
-        if (page.url() === INITIAL_METICULOUS_DOCS_URL) {
+        if (
+          [
+            INITIAL_METICULOUS_RECORD_DOCS_URL,
+            INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL,
+            METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL,
+          ].includes(page.url())
+        ) {
           if (page.mainFrame() === frame) {
             await frame.evaluate('window["METICULOUS_DISABLED"] = true');
           }
