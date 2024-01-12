@@ -27,7 +27,8 @@ type ModifiedWindow = {
 };
 
 export const LOGIN_FLOW_SESSION_RECORDING_SOURCE = "cli-login-flow";
-export const LOGIN_FLOW_DATA_SESSION_RECORDING_SOURCE = "cli-login-flow-data";
+export const LOGIN_FLOW_DATA_SESSION_RECORDING_SOURCE =
+  "cli-login-flow-application-storage";
 
 const bootstrapLoginFlowRecordingPage = async ({
   page,
