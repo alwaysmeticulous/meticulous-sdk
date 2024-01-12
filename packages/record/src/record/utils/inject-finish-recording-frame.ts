@@ -35,7 +35,8 @@ export const injectFinishRecordingFrame = async (
           iframe.style.right = "25px";
           iframe.style.width = "150px";
           iframe.style.height = "50px";
-          iframe.style.border = "0";
+          iframe.style.border = "1px solid #000000a0";
+          iframe.style.boxShadow = "#00000012 5px 5px 5px";
           iframe.style.borderRadius = "5px";
           iframe.style.zIndex = (Math.pow(2, 31) - 1).toString();
           iframe.id = "__meticulous__finish_recording_iframe";
@@ -55,7 +56,7 @@ export const injectFinishRecordingFrame = async (
                   body {
                     margin: 0;
                     background-color: transparent;
-                    font-family: Noto Sans, sans-serif;
+                    font-family: sans-serif;
                   }
                   #finish-recording {
                     width: 100%;
