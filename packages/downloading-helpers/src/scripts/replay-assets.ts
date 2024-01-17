@@ -26,7 +26,10 @@ const ASSET_METADATA_FILE_NAME = "assets.json";
 export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const fetchUrl = new URL(path, getSnippetsBaseUrl()).href;
-  const assetFileName = `${basename(new URL(fetchUrl).pathname, ".js")}.cjs`;
+  let assetFileName = basename(new URL(fetchUrl).pathname);
+  if (assetFileName.endsWith(".js")) {
+    assetFileName = `${assetFileName.slice(0, -3)}.cjs`;
+  }
   const client = axios.create();
   axiosRetry(client, { retries: 3 });
 
@@ -44,10 +47,14 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
     if (entry && etag !== "" && etag === entry.etag) {
       logger.debug(`${fetchUrl} already present`);
       releaseLock();
+      await fetchSourceMapIfDebugging(fetchUrl);
       return filePath;
     }
 
-    const contents = (await client.get(fetchUrl)).data;
+    let contents = (await client.get(fetchUrl)).data;
+    if (path.endsWith(".map")) {
+      contents = JSON.stringify(contents);
+    }
     await writeFile(filePath, contents);
     if (entry) {
       logger.debug(`${fetchUrl} updated`);
@@ -58,6 +65,7 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
     }
     await saveAssetMetadata(assetMetadata);
     releaseLock();
+    await fetchSourceMapIfDebugging(path);
     return filePath;
   } catch (err) {
     releaseLock();
@@ -65,6 +73,15 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
     throw err;
   }
 };
+
+async function fetchSourceMapIfDebugging(path: string) {
+  if (
+    process.env.METICULOUS_SNIPPETS_BASE_URL?.includes("localhost") &&
+    path.endsWith(".js")
+  ) {
+    await fetchAsset(`${path}.map`);
+  }
+}
 
 const getOrCreateAssetsDir: () => Promise<string> = async () => {
   const assetsDir = join(getMeticulousLocalDataDir(), ASSETS_FOLDER_NAME);
