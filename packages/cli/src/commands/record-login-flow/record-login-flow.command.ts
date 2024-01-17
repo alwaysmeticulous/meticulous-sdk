@@ -5,6 +5,7 @@ import { recordLoginFlowSession } from "@alwaysmeticulous/record";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import { COMMON_RECORD_OPTIONS } from "../../command-utils/common-options";
+import { MANUAL_INIT_RECORDING_SNIPPET_PATH } from "../../utils/constants";
 
 export interface RecordCommandHandlerOptions {
   apiToken: string | null | undefined;
@@ -61,9 +62,8 @@ export const recordLoginFlowCommandHandler: (
   logger.debug(`Recording token: ${recordingToken}`);
 
   // 3. Load recording snippets
-  const recordingSnippet = await fetchAsset("v1/meticulous.js");
-  const earlyNetworkRecorderSnippet = await fetchAsset(
-    "record/v1/network-recorder.bundle.js"
+  const recordingSnippetManualInit = await fetchAsset(
+    MANUAL_INIT_RECORDING_SNIPPET_PATH
   );
 
   // 4. Start recording
@@ -71,8 +71,7 @@ export const recordLoginFlowCommandHandler: (
     recordingToken,
     devTools,
     bypassCSP,
-    recordingSnippet,
-    earlyNetworkRecorderSnippet,
+    recordingSnippetManualInit,
     width,
     height,
     uploadIntervalMs,

@@ -9,13 +9,25 @@ import {
 } from "./constants";
 import { provideCookieAccess } from "./utils/provide-cookie-access";
 
+interface MeticulousRecorderWindow {
+  METICULOUS_RECORDING_TOKEN?: string;
+  METICULOUS_APP_COMMIT_HASH?: string;
+  METICULOUS_FORCE_RECORDING?: boolean;
+  METICULOUS_RECORDING_SOURCE?: string;
+  METICULOUS_UPLOAD_INTERVAL_MS?: number;
+  METICULOUS_ENABLE_RRWEB_PLUGIN_NODE_DATA?: boolean;
+
+  __meticulous?: {
+    initialiseRecorder?: () => void;
+  };
+}
+
 // Setup Meticulous recording
 export async function bootstrapPage({
   page,
   recordingToken,
   appCommitHash,
-  recordingSnippet,
-  earlyNetworkRecorderSnippet,
+  recordingSnippetManualInit,
   uploadIntervalMs,
   captureHttpOnlyCookies,
   recordingSource = "cli",
@@ -23,67 +35,57 @@ export async function bootstrapPage({
   page: Page;
   recordingToken: string;
   appCommitHash: string;
-  recordingSnippet: string;
-  earlyNetworkRecorderSnippet: string;
+  recordingSnippetManualInit: string;
   uploadIntervalMs: number | null;
   captureHttpOnlyCookies: boolean;
   recordingSource?: string;
 }): Promise<void> {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-
-  const recordingSnippetFile = await readFile(recordingSnippet, "utf8");
-  const earlyNetworkRecorderSnippetFile = await readFile(
-    earlyNetworkRecorderSnippet,
+  const recordingSnippetFile = await readFile(
+    recordingSnippetManualInit,
     "utf8"
   );
 
-  await page.evaluateOnNewDocument(earlyNetworkRecorderSnippetFile);
+  await page.evaluateOnNewDocument(
+    ({ recordingToken, appCommitHash, recordingSource, uploadIntervalMs }) => {
+      const recorderWindow = window as MeticulousRecorderWindow;
+      recorderWindow["METICULOUS_RECORDING_TOKEN"] = recordingToken;
+      recorderWindow["METICULOUS_APP_COMMIT_HASH"] = appCommitHash;
+      recorderWindow["METICULOUS_FORCE_RECORDING"] = true;
+      recorderWindow["METICULOUS_RECORDING_SOURCE"] = recordingSource;
+      recorderWindow["METICULOUS_ENABLE_RRWEB_PLUGIN_NODE_DATA"] = true;
+
+      if (uploadIntervalMs != null) {
+        recorderWindow["METICULOUS_UPLOAD_INTERVAL_MS"] = uploadIntervalMs;
+      }
+    },
+    { recordingToken, appCommitHash, recordingSource, uploadIntervalMs }
+  );
+  await page.evaluateOnNewDocument(recordingSnippetFile);
+  await page.evaluateOnNewDocument(
+    (forbiddenUrls) => {
+      // We only record in the root frame (not in sub-iframes), and we don't record on the built in start pages
+      if (
+        window === window.parent &&
+        !forbiddenUrls.includes(window.document.location.toString())
+      ) {
+        const initRecorder = (window as MeticulousRecorderWindow).__meticulous
+          ?.initialiseRecorder;
+        if (!initRecorder) {
+          throw new Error(
+            "window.__meticulous.initialiseRecorder is null or undefined: cannot record session on page"
+          );
+        }
+        initRecorder();
+      }
+    },
+    [
+      INITIAL_METICULOUS_RECORD_DOCS_URL,
+      INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL,
+      METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL,
+    ]
+  );
+
   if (captureHttpOnlyCookies) {
     await provideCookieAccess(page);
   }
-
-  page.on("framenavigated", async (frame) => {
-    try {
-      if (page.mainFrame() === frame) {
-        if (
-          [
-            INITIAL_METICULOUS_RECORD_DOCS_URL,
-            INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL,
-            METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL,
-          ].includes(page.url())
-        ) {
-          if (page.mainFrame() === frame) {
-            await frame.evaluate('window["METICULOUS_DISABLED"] = true');
-          }
-          return;
-        }
-        await frame.evaluate(`
-          window["METICULOUS_RECORDING_TOKEN"] = "${recordingToken}";
-          window["METICULOUS_APP_COMMIT_HASH"] = "${appCommitHash}";
-          window["METICULOUS_FORCE_RECORDING"] = true;
-          window["METICULOUS_RECORDING_SOURCE"] = "${recordingSource}";
-          window["METICULOUS_UPLOAD_INTERVAL_MS"] = ${uploadIntervalMs};
-          window["METICULOUS_ENABLE_RRWEB_PLUGIN_NODE_DATA"] = true;
-        `);
-        await frame.evaluate(recordingSnippetFile);
-        return;
-      }
-
-      await frame.evaluate(`
-        window.__meticulous?.earlyNetworkRecorder?.polly?.disconnect?.();
-      `);
-    } catch (error) {
-      // Suppress expected errors due to page navigation or tab being closed
-      if (
-        error instanceof Error &&
-        error.message.startsWith("Execution context was destroyed")
-      ) {
-        return;
-      }
-      if (error instanceof Error && error.message.endsWith("Target closed.")) {
-        return;
-      }
-      logger.error(error);
-    }
-  });
 }

@@ -1,11 +1,8 @@
-import {
-  defer,
-  METICULOUS_LOGGER_NAME,
-  RecordLoginFlowSessionFn,
-} from "@alwaysmeticulous/common";
+import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import chalk from "chalk";
 import log from "loglevel";
 import { Browser, launch } from "puppeteer";
+import { RecordLoginFlowOptions } from "../types";
 import {
   DEFAULT_NAVIGATION_TIMEOUT_MS,
   DEFAULT_UPLOAD_INTERVAL_MS,
@@ -33,8 +30,7 @@ export const LOGIN_FLOW_DATA_SESSION_RECORDING_SOURCE =
 const bootstrapLoginFlowRecordingPage = async ({
   page,
   recordingToken,
-  recordingSnippet,
-  earlyNetworkRecorderSnippet,
+  recordingSnippetManualInit,
   uploadIntervalMs,
   captureHttpOnlyCookies,
   recordingSource,
@@ -57,25 +53,24 @@ const bootstrapLoginFlowRecordingPage = async ({
     page,
     recordingToken,
     appCommitHash: "unknown",
-    recordingSnippet,
-    earlyNetworkRecorderSnippet,
+    recordingSnippetManualInit,
+
     uploadIntervalMs: uploadIntervalMs || DEFAULT_UPLOAD_INTERVAL_MS,
     captureHttpOnlyCookies: captureHttpOnlyCookies ?? true,
     recordingSource,
   });
 };
 
-export const recordLoginFlowSession: RecordLoginFlowSessionFn = async ({
+export const recordLoginFlowSession = async ({
   recordingToken,
   devTools,
   bypassCSP,
-  recordingSnippet,
-  earlyNetworkRecorderSnippet,
+  recordingSnippetManualInit,
   width,
   height,
   uploadIntervalMs,
   captureHttpOnlyCookies,
-}) => {
+}: RecordLoginFlowOptions) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   logger.info("Opening browser...");
@@ -97,8 +92,8 @@ export const recordLoginFlowSession: RecordLoginFlowSessionFn = async ({
   await bootstrapLoginFlowRecordingPage({
     page: loginFlowPage,
     recordingToken,
-    recordingSnippet,
-    earlyNetworkRecorderSnippet,
+    recordingSnippetManualInit,
+
     uploadIntervalMs,
     captureHttpOnlyCookies,
     bypassCSP,
@@ -155,8 +150,8 @@ export const recordLoginFlowSession: RecordLoginFlowSessionFn = async ({
         await bootstrapLoginFlowRecordingPage({
           page: loginDataPage,
           recordingToken,
-          recordingSnippet,
-          earlyNetworkRecorderSnippet,
+          recordingSnippetManualInit,
+
           uploadIntervalMs: uploadIntervalMs,
           captureHttpOnlyCookies: captureHttpOnlyCookies,
           bypassCSP,

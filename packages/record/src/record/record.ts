@@ -1,11 +1,9 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import {
-  METICULOUS_LOGGER_NAME,
-  RecordSessionFn,
-} from "@alwaysmeticulous/common";
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import puppeteer, { Browser, launch, PuppeteerNode } from "puppeteer";
+import puppeteer, { Browser, PuppeteerNode, launch } from "puppeteer";
+import { RecordSessionOptions } from "../types";
 import {
   DEFAULT_NAVIGATION_TIMEOUT_MS,
   DEFAULT_UPLOAD_INTERVAL_MS,
@@ -15,13 +13,12 @@ import { bootstrapPage } from "./record.utils";
 
 const COOKIE_FILENAME = "cookies.json";
 
-export const recordSession: RecordSessionFn = async ({
+export const recordSession = async ({
   recordingToken,
   appCommitHash,
   devTools,
   bypassCSP,
-  recordingSnippet,
-  earlyNetworkRecorderSnippet,
+  recordingSnippetManualInit,
   width,
   height,
   uploadIntervalMs,
@@ -30,7 +27,7 @@ export const recordSession: RecordSessionFn = async ({
   debugLogger,
   onDetectedSession,
   captureHttpOnlyCookies,
-}) => {
+}: RecordSessionOptions) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   logger.info("Opening browser...");
@@ -41,7 +38,7 @@ export const recordSession: RecordSessionFn = async ({
     appCommitHash,
     devTools,
     bypassCSP,
-    recordingSnippet,
+    recordingSnippetManualInit,
     width,
     height,
     uploadIntervalMs,
@@ -118,8 +115,7 @@ export const recordSession: RecordSessionFn = async ({
     page,
     recordingToken,
     appCommitHash,
-    recordingSnippet,
-    earlyNetworkRecorderSnippet,
+    recordingSnippetManualInit,
     uploadIntervalMs: uploadIntervalMs || DEFAULT_UPLOAD_INTERVAL_MS,
     captureHttpOnlyCookies: captureHttpOnlyCookies ?? true,
   });
