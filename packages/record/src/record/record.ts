@@ -77,6 +77,7 @@ export const recordSession = async ({
     defaultViewport,
     headless: false,
     devtools: devTools || false,
+    userDataDir: "/Users/q/git/meticulous-sdk/temp",
   });
 
   const context = incognito
