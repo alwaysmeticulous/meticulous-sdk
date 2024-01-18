@@ -23,13 +23,30 @@ interface AssetMetadata {
 const ASSETS_FOLDER_NAME = "assets";
 const ASSET_METADATA_FILE_NAME = "assets.json";
 
-export const fetchAsset: (path: string) => Promise<string> = async (path) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+/**
+ * Downloads the given 'module' JS file as an MJS file (to force correct interpretation when loading the JS file).
+ *
+ * The associated source map will also be downloaded if present to sit alongside the main JS file and if the base snippets URL is a localhost URL.
+ */
+export const fetchAsset = async (path: string): Promise<string> => {
+  const snippetsBaseUrl = getSnippetsBaseUrl();
   const fetchUrl = new URL(path, getSnippetsBaseUrl()).href;
-  let assetFileName = basename(new URL(fetchUrl).pathname);
-  if (assetFileName.endsWith(".js")) {
-    assetFileName = `${assetFileName.slice(0, -3)}.cjs`;
+  const assetFileName = basename(new URL(fetchUrl).pathname);
+  const assetFileNameAsCjsFile = convertJsExtensionToCJS(assetFileName);
+
+  const jsFilePath = await fetchAndCacheFile(fetchUrl, assetFileNameAsCjsFile);
+  if (snippetsBaseUrl.includes("localhost")) {
+    await fetchAndCacheFile(`${fetchUrl}.map`, `${assetFileName}.map`);
   }
+
+  return jsFilePath;
+};
+
+const fetchAndCacheFile = async (
+  urlToDownloadFrom: string,
+  fileNameToDownloadAs: string
+): Promise<string> => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const client = axios.create();
   axiosRetry(client, { retries: 3 });
 
@@ -37,51 +54,46 @@ export const fetchAsset: (path: string) => Promise<string> = async (path) => {
   try {
     const assetMetadata = await loadAssetMetadata();
 
-    const etag = (await client.head(fetchUrl)).headers["etag"] || "";
+    const etag = (await client.head(urlToDownloadFrom)).headers["etag"] || "";
 
     const entry = assetMetadata.assets.find(
-      (item) => item.fileName === assetFileName
+      (item) => item.fileName === fileNameToDownloadAs
     );
-    const filePath = join(await getOrCreateAssetsDir(), assetFileName);
+    const filePath = join(await getOrCreateAssetsDir(), fileNameToDownloadAs);
 
     if (entry && etag !== "" && etag === entry.etag) {
-      logger.debug(`${fetchUrl} already present`);
+      logger.debug(`${urlToDownloadFrom} already present`);
       releaseLock();
-      await fetchSourceMapIfDebugging(fetchUrl);
       return filePath;
     }
 
-    let contents = (await client.get(fetchUrl)).data;
-    if (path.endsWith(".map")) {
+    let contents = (await client.get(urlToDownloadFrom)).data;
+    if (typeof contents !== "string") {
+      // axios sometimes returns an object if the response body is JSON, as is the case for
+      // instance when the asset we requested was a source map
       contents = JSON.stringify(contents);
     }
     await writeFile(filePath, contents);
     if (entry) {
-      logger.debug(`${fetchUrl} updated`);
+      logger.debug(`${urlToDownloadFrom} updated`);
       entry.etag = etag;
     } else {
-      logger.debug(`${fetchUrl} downloaded`);
-      assetMetadata.assets.push({ fileName: assetFileName, etag, fetchUrl });
+      logger.debug(`${urlToDownloadFrom} downloaded`);
+      assetMetadata.assets.push({
+        fileName: urlToDownloadFrom,
+        etag,
+        fetchUrl: urlToDownloadFrom,
+      });
     }
     await saveAssetMetadata(assetMetadata);
     releaseLock();
-    await fetchSourceMapIfDebugging(path);
     return filePath;
   } catch (err) {
     releaseLock();
-    logger.error(`Error fetching asset from ${fetchUrl}`);
+    logger.error(`Error fetching asset from ${urlToDownloadFrom}`);
     throw err;
   }
 };
-
-async function fetchSourceMapIfDebugging(path: string) {
-  if (
-    process.env.METICULOUS_SNIPPETS_BASE_URL?.includes("localhost") &&
-    path.endsWith(".js")
-  ) {
-    await fetchAsset(`${path}.map`);
-  }
-}
 
 const getOrCreateAssetsDir: () => Promise<string> = async () => {
   const assetsDir = join(getMeticulousLocalDataDir(), ASSETS_FOLDER_NAME);
@@ -116,4 +128,11 @@ const saveAssetMetadata: (
 const getAssetsFilePath = async (): Promise<string> => {
   const assetsDir = await getOrCreateAssetsDir();
   return join(assetsDir, ASSET_METADATA_FILE_NAME);
+};
+
+const convertJsExtensionToCJS = (path: string) => {
+  if (path.endsWith(".js")) {
+    return `${path.slice(0, -3)}.cjs`;
+  }
+  return path;
 };
