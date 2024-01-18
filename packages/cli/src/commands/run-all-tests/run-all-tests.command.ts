@@ -131,9 +131,10 @@ export const runAllTestsCommand = buildCommand("run-all-tests")
         "The base commit to compare test results against for test cases that don't have a baseReplayId specified.",
     },
     appUrl: {
+      demandOption: true,
       string: true,
       description:
-        "The URL to execute the tests against. If left absent here and in the test cases file, then will use the URL the test was originally recorded against.",
+        "The URL to execute the tests against. This parameter is required.",
     },
     githubSummary: {
       boolean: true,
