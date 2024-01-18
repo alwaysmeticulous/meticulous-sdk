@@ -1,12 +1,11 @@
-import type { DebugLogger } from "../logger/debug-logger";
+import { DebugLogger } from "@alwaysmeticulous/common";
 
 export interface RecordSessionOptions {
   recordingToken: string;
   appCommitHash: string;
   devTools?: boolean | null | undefined;
   bypassCSP?: boolean | null | undefined;
-  recordingSnippet: string;
-  earlyNetworkRecorderSnippet: string;
+  recordingSnippetManualInit: string;
   width?: number | null | undefined;
   height?: number | null | undefined;
   uploadIntervalMs?: number | null | undefined;
@@ -25,9 +24,3 @@ export type RecordLoginFlowOptions = Omit<
   | "debugLogger"
   | "onDetectedSession"
 >;
-
-export type RecordSessionFn = (options: RecordSessionOptions) => Promise<void>;
-
-export type RecordLoginFlowSessionFn = (
-  options: RecordLoginFlowOptions
-) => Promise<void>;

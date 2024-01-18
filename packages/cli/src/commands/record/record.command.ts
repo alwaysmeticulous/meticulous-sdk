@@ -19,6 +19,7 @@ import {
   COMMON_RECORD_OPTIONS,
   OPTIONS,
 } from "../../command-utils/common-options";
+import { MANUAL_INIT_RECORDING_SNIPPET_PATH } from "../../utils/constants";
 
 export interface RecordCommandHandlerOptions {
   apiToken: string | null | undefined;
@@ -87,9 +88,8 @@ export const recordCommandHandler: (
   logger.debug(`Commit: ${commitSha}`);
 
   // 3. Load recording snippets
-  const recordingSnippet = await fetchAsset("v1/meticulous.js");
-  const earlyNetworkRecorderSnippet = await fetchAsset(
-    "record/v1/network-recorder.bundle.js"
+  const recordingSnippetManualInit = await fetchAsset(
+    MANUAL_INIT_RECORDING_SNIPPET_PATH
   );
 
   const cookieDir = join(getMeticulousLocalDataDir(), "cookies");
@@ -123,8 +123,7 @@ export const recordCommandHandler: (
     appCommitHash: commitSha,
     devTools,
     bypassCSP,
-    recordingSnippet,
-    earlyNetworkRecorderSnippet,
+    recordingSnippetManualInit,
     width,
     height,
     uploadIntervalMs,

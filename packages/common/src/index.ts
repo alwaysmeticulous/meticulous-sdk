@@ -6,12 +6,6 @@ export {
 export { METICULOUS_LOGGER_NAME } from "./logger/console-logger";
 export { DebugLogger } from "./logger/debug-logger";
 export type {
-  RecordSessionFn,
-  RecordSessionOptions,
-  RecordLoginFlowOptions,
-  RecordLoginFlowSessionFn,
-} from "./types/record.types";
-export type {
   CreateReplayDebuggerFn,
   ReplayDebuggerDependencies,
   ReplayDebuggerOptions,
