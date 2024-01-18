@@ -48,7 +48,7 @@ export interface Interceptor {
  */
 export const tryInstallMeticulousIntercepts = async (
   options: { maxMsToBlockFor: number } = { maxMsToBlockFor: 2000 }
-) => {
+): Promise<Interceptor> => {
   let requestedToStopIntercepting = false;
   let stoppedRecording = false;
   const stopIntercepting = async () => {
@@ -61,10 +61,11 @@ export const tryInstallMeticulousIntercepts = async (
     }
   };
   const startRecordingSession = tryLoadAndStartRecorder;
+  const interceptor = { startRecordingSession, stopIntercepting };
 
   const promise = new Promise<Interceptor>((resolve, reject) => {
     const timeout = setTimeout(() => {
-      resolve({ startRecordingSession, stopIntercepting });
+      resolve(interceptor);
     }, options.maxMsToBlockFor);
 
     const script = document.createElement("script");
@@ -73,7 +74,7 @@ export const tryInstallMeticulousIntercepts = async (
 
     script.onload = function () {
       window.clearTimeout(timeout);
-      resolve({ startRecordingSession, stopIntercepting });
+      resolve(interceptor);
     };
     script.onerror = () => {
       window.clearTimeout(timeout);
@@ -84,9 +85,10 @@ export const tryInstallMeticulousIntercepts = async (
   });
 
   // Try to load the early network recorder and silence any initialisation error.
-  await promise
+  return promise
     .catch((error) => {
       console.error(error);
+      return interceptor;
     })
     .finally(() => {
       if (requestedToStopIntercepting) {
