@@ -1,2 +1,2 @@
 export { loadAndStartRecorder, tryLoadAndStartRecorder } from "./loader";
-export { tryLoadAndStartEarlyNetworkRecorder } from "./early-network-recorder-loader";
+export { tryInstallMeticulousIntercepts } from "./install-meticulous-intercepts";
