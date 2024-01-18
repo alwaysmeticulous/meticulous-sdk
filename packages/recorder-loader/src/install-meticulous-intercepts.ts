@@ -5,14 +5,14 @@ import { LoaderOptions } from "./loader.types";
 interface EarlyNetworkRecorderWindow {
   __meticulous?: {
     earlyNetworkRecorder?: {
-      stop?: () => void;
+      stop?: () => Promise<void>;
     };
   };
 }
 
 export interface Interceptor {
-  startRecordingSession: (options: LoaderOptions) => void;
-  stopIntercepting: () => void;
+  startRecordingSession: (options: LoaderOptions) => Promise<void>;
+  stopIntercepting: () => Promise<void>;
 }
 
 /**
@@ -51,12 +51,12 @@ export const tryInstallMeticulousIntercepts = async (
 ) => {
   let requestedToStopIntercepting = false;
   let stoppedRecording = false;
-  const stopIntercepting = () => {
+  const stopIntercepting = async () => {
     requestedToStopIntercepting = true;
     const stopFunction = (window as EarlyNetworkRecorderWindow)?.__meticulous
       ?.earlyNetworkRecorder?.stop;
     if (stopFunction && !stoppedRecording) {
-      stopFunction();
+      await stopFunction();
       stoppedRecording = true;
     }
   };
