@@ -48,6 +48,10 @@ export type ReplayV3UploadLocations = Record<string, S3UploadLocation> & {
     string,
     { image: S3UploadLocation; metadata?: S3UploadLocation }
   >;
+  diffs?: Record<
+    string,
+    Record<string, { thumbnail: S3UploadLocation; full: S3UploadLocation }>
+  >;
 };
 
 export const getReplayV3DownloadUrls: (
