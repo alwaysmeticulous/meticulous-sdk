@@ -5,7 +5,7 @@ import { LoaderOptions } from "./loader.types";
 interface EarlyNetworkRecorderWindow {
   __meticulous?: {
     earlyNetworkRecorder?: {
-      stop?: () => Promise<void>;
+      dispose?: () => Promise<void>;
     };
   };
 }
@@ -50,14 +50,14 @@ export const tryInstallMeticulousIntercepts = async (
   options: { maxMsToBlockFor: number } = { maxMsToBlockFor: 2000 }
 ): Promise<Interceptor> => {
   let requestedToStopIntercepting = false;
-  let stoppedRecording = false;
+  let disposedEarlyNetworkRecorder = false;
   const stopIntercepting = async () => {
     requestedToStopIntercepting = true;
-    const stopFunction = (window as EarlyNetworkRecorderWindow)?.__meticulous
-      ?.earlyNetworkRecorder?.stop;
-    if (stopFunction && !stoppedRecording) {
-      await stopFunction();
-      stoppedRecording = true;
+    const disposeFunction = (window as EarlyNetworkRecorderWindow)?.__meticulous
+      ?.earlyNetworkRecorder?.dispose;
+    if (disposeFunction && !disposedEarlyNetworkRecorder) {
+      await disposeFunction();
+      disposedEarlyNetworkRecorder = true;
     }
   };
   const startRecordingSession = tryLoadAndStartRecorder;
