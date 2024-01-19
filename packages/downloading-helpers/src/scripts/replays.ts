@@ -166,24 +166,27 @@ const downloadReplayV3Files = async (
     )
   );
 
-  const diffsPromises = Object.values(diffs ?? {}).flatMap((diffsForBase) => {
-    return Object.values(diffsForBase).flatMap((urls) => {
-      return [
-        async () => {
-          await downloadFile(
-            urls.full.signedUrl,
-            join(replayDir, urls.full.filePath)
-          );
-        },
-        async () => {
-          await downloadFile(
-            urls.thumbnail.signedUrl,
-            join(replayDir, urls.thumbnail.filePath)
-          );
-        },
-      ];
-    });
-  });
+  const diffsPromises =
+    downloadScope === "everything"
+      ? Object.values(diffs ?? {}).flatMap((diffsForBase) => {
+          return Object.values(diffsForBase).flatMap((urls) => {
+            return [
+              async () => {
+                await downloadFile(
+                  urls.full.signedUrl,
+                  join(replayDir, urls.full.filePath)
+                );
+              },
+              async () => {
+                await downloadFile(
+                  urls.thumbnail.signedUrl,
+                  join(replayDir, urls.thumbnail.filePath)
+                );
+              },
+            ];
+          });
+        })
+      : [];
 
   const snapshottedAssetsPromises =
     downloadScope === "everything"
