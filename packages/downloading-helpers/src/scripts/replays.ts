@@ -124,7 +124,7 @@ const downloadReplayV3Files = async (
     );
   }
 
-  const { screenshots, snapshottedAssets, ...rest } = downloadUrls;
+  const { screenshots, diffs, snapshottedAssets, ...rest } = downloadUrls;
 
   await mkdir(join(replayDir, "screenshots"), { recursive: true });
 
@@ -159,6 +159,32 @@ const downloadReplayV3Files = async (
     ];
   });
 
+  const diffsFolder = join(replayDir, "diffs");
+  await Promise.all(
+    Object.keys(diffs ?? {}).map((baseReplayId) =>
+      mkdir(join(diffsFolder, baseReplayId), { recursive: true })
+    )
+  );
+
+  const diffsPromises = Object.values(diffs ?? {}).flatMap((diffsForBase) => {
+    return Object.values(diffsForBase).flatMap((urls) => {
+      return [
+        async () => {
+          await downloadFile(
+            urls.full.signedUrl,
+            join(replayDir, urls.full.filePath)
+          );
+        },
+        async () => {
+          await downloadFile(
+            urls.thumbnail.signedUrl,
+            join(replayDir, urls.thumbnail.filePath)
+          );
+        },
+      ];
+    });
+  });
+
   const snapshottedAssetsPromises =
     downloadScope === "everything"
       ? [
@@ -182,9 +208,12 @@ const downloadReplayV3Files = async (
 
   const limited = pLimit(MAX_DOWNLOAD_CONCURRENCY);
   await Promise.all(
-    [...filePromises, ...screenshotPromises, ...snapshottedAssetsPromises].map(
-      (p) => limited(p)
-    )
+    [
+      ...filePromises,
+      ...screenshotPromises,
+      ...diffsPromises,
+      ...snapshottedAssetsPromises,
+    ].map((p) => limited(p))
   );
 };
 

@@ -86,6 +86,12 @@ export interface ScreenshotDiffResultCompared {
   /** Relative path to the replay archive */
   baseScreenshotFile: string;
 
+  /** Relative path to the replay archive */
+  diffThumbnailFile?: string;
+
+  /** Relative path to the replay archive */
+  diffFullFile?: string;
+
   width: number;
   height: number;
   mismatchPixels: number;
