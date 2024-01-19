@@ -1,1 +1,1 @@
-export const SNIPPET_BASE_URL = "https://snippet.meticulous.ai";
+export const SNIPPETS_BASE_URL = "https://snippet.meticulous.ai";

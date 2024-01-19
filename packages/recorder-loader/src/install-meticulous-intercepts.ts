@@ -1,4 +1,4 @@
-import { SNIPPET_BASE_URL } from "./constants";
+import { SNIPPETS_BASE_URL } from "./constants";
 import { tryLoadAndStartRecorder } from "./loader";
 import { LoaderOptions } from "./loader.types";
 
@@ -64,20 +64,27 @@ export const tryInstallMeticulousIntercepts = async (
   const interceptor = { startRecordingSession, stopIntercepting };
 
   const promise = new Promise<Interceptor>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      resolve(interceptor);
-    }, options.maxMsToBlockFor);
+    const timeout =
+      options.maxMsToBlockFor > 0
+        ? setTimeout(() => {
+            resolve(interceptor);
+          }, options.maxMsToBlockFor)
+        : null;
 
     const script = document.createElement("script");
     script.type = "text/javascript";
-    script.src = `${SNIPPET_BASE_URL}/record/v1/network-recorder.bundle.js`;
+    script.src = `${SNIPPETS_BASE_URL}/record/v1/network-recorder.bundle.js`;
 
     script.onload = function () {
-      window.clearTimeout(timeout);
+      if (timeout) {
+        window.clearTimeout(timeout);
+      }
       resolve(interceptor);
     };
     script.onerror = () => {
-      window.clearTimeout(timeout);
+      if (timeout) {
+        window.clearTimeout(timeout);
+      }
       reject("Meticulous early network recorder failed to initialise.");
     };
 
