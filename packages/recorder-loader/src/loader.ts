@@ -1,3 +1,4 @@
+import { SNIPPETS_BASE_URL } from "./constants";
 import { LoaderOptions } from "./loader.types";
 
 const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2_000;
@@ -39,7 +40,7 @@ const unsafeLoadAndStartRecorder = ({
 
     const script = document.createElement("script");
     script.type = "text/javascript";
-    const baseSnippetsUrl = snippetsBaseUrl || "https://snippet.meticulous.ai";
+    const baseSnippetsUrl = snippetsBaseUrl || SNIPPETS_BASE_URL;
     script.src = new URL("v1/meticulous-manual-init.js", baseSnippetsUrl).href;
 
     // Setup configuration
