@@ -1,6 +1,4 @@
 import { readFile } from "fs/promises";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import log from "loglevel";
 import { Page } from "puppeteer";
 import {
   INITIAL_METICULOUS_RECORD_DOCS_URL,
