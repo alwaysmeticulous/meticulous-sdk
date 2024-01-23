@@ -89,17 +89,6 @@ export const recordLoginFlowSession = async ({
 
   const loginFlowPage = await context.newPage();
 
-  await bootstrapLoginFlowRecordingPage({
-    page: loginFlowPage,
-    recordingToken,
-    recordingSnippetManualInit,
-
-    uploadIntervalMs,
-    captureHttpOnlyCookies,
-    bypassCSP,
-    recordingSource: LOGIN_FLOW_SESSION_RECORDING_SOURCE,
-  });
-
   let isRecordingComplete = false;
   let onDataSessionSaved = false;
   let startedLoginSessionRecording = false;
@@ -178,6 +167,17 @@ export const recordLoginFlowSession = async ({
     loginFlowPage,
     "__meticulousFinishRecording"
   );
+
+  await bootstrapLoginFlowRecordingPage({
+    page: loginFlowPage,
+    recordingToken,
+    recordingSnippetManualInit,
+
+    uploadIntervalMs,
+    captureHttpOnlyCookies,
+    bypassCSP,
+    recordingSource: LOGIN_FLOW_SESSION_RECORDING_SOURCE,
+  });
 
   await loginFlowPage.goto(INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL);
 
