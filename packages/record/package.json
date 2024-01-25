@@ -23,7 +23,7 @@
     "@alwaysmeticulous/common": "^2.97.0",
     "chalk": "^4.1.2",
     "loglevel": "^1.8.0",
-    "puppeteer": "21.3.8"
+    "puppeteer": "21.9.0"
   },
   "author": {
     "name": "The Meticulous Team",
