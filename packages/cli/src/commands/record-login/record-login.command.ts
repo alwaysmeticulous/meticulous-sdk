@@ -81,9 +81,17 @@ export const recordLoginFlowCommandHandler: (
   });
 };
 
-export const recordLoginFlowCommand = buildCommand("record-login")
+export const recordLoginCommand = buildCommand("record-login")
   .details({
     describe: "Record a login flow session",
   })
-  .options(COMMON_RECORD_OPTIONS)
+  .options({
+    ...COMMON_RECORD_OPTIONS,
+
+    // We explicitly set the default to true for this command.
+    bypassCSP: {
+      ...COMMON_RECORD_OPTIONS.bypassCSP,
+      default: true,
+    },
+  })
   .handler(recordLoginFlowCommandHandler);
