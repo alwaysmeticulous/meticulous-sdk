@@ -81,7 +81,7 @@ export const recordLoginFlowCommandHandler: (
   });
 };
 
-export const recordLoginFlowCommand = buildCommand("record-login")
+export const recordLoginCommand = buildCommand("record-login")
   .details({
     describe: "Record a login flow session",
   })
