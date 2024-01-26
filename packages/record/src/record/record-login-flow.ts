@@ -148,7 +148,9 @@ export const recordLoginFlowSession = async ({
         });
 
         // Navigate to the final login flow url and flush any pending payloads
-        await loginDataPage.goto(finalLoginUrl, { waitUntil: "networkidle0" });
+        await loginDataPage.goto(finalLoginUrl, {
+          waitUntil: "domcontentloaded",
+        });
         await loginDataPage.evaluate(() => {
           (window as ModifiedWindow).__meticulous?.flushPendingPayloads?.();
         });
