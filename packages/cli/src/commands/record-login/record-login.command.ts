@@ -16,6 +16,7 @@ export interface RecordCommandHandlerOptions {
   uploadIntervalMs: number | null | undefined;
   trace: boolean | null | undefined;
   captureHttpOnlyCookies: boolean;
+  appUrl: string | null | undefined;
 }
 
 export const recordLoginFlowCommandHandler: (
@@ -29,6 +30,7 @@ export const recordLoginFlowCommandHandler: (
   uploadIntervalMs,
   trace,
   captureHttpOnlyCookies,
+  appUrl,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const debugLogger = trace ? await DebugLogger.create() : null;
@@ -76,6 +78,7 @@ export const recordLoginFlowCommandHandler: (
     height,
     uploadIntervalMs,
     captureHttpOnlyCookies,
+    appUrl,
   }).catch((error) => {
     throw error;
   });

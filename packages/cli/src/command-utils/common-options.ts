@@ -165,4 +165,10 @@ export const COMMON_RECORD_OPTIONS = {
   uploadIntervalMs: OPTIONS.uploadIntervalMs,
   trace: OPTIONS.trace,
   captureHttpOnlyCookies: OPTIONS.captureHttpOnlyCookies,
+  appUrl: {
+    description:
+      "Will skip straight to starting recording at the provided URL. Advanced option used to accelerate testing. Hidden from help menus.",
+    string: true,
+    hidden: true,
+  } as const,
 };

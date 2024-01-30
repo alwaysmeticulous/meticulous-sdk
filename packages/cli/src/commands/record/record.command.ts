@@ -32,6 +32,7 @@ export interface RecordCommandHandlerOptions {
   incognito: boolean | null | undefined;
   trace: boolean | null | undefined;
   captureHttpOnlyCookies: boolean;
+  appUrl: string | null | undefined;
 }
 
 export const recordCommandHandler: (
@@ -47,6 +48,7 @@ export const recordCommandHandler: (
   incognito,
   trace,
   captureHttpOnlyCookies,
+  appUrl,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const debugLogger = trace ? await DebugLogger.create() : null;
@@ -132,6 +134,7 @@ export const recordCommandHandler: (
     debugLogger,
     onDetectedSession,
     captureHttpOnlyCookies,
+    appUrl,
   }).catch((error) => {
     debugLogger?.log(`${error}`);
     throw error;
