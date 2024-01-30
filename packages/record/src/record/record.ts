@@ -27,6 +27,7 @@ export const recordSession = async ({
   debugLogger,
   onDetectedSession,
   captureHttpOnlyCookies,
+  appUrl,
 }: RecordSessionOptions) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -120,7 +121,7 @@ export const recordSession = async ({
     captureHttpOnlyCookies: captureHttpOnlyCookies ?? true,
   });
 
-  page.goto(INITIAL_METICULOUS_RECORD_DOCS_URL);
+  page.goto(appUrl ?? INITIAL_METICULOUS_RECORD_DOCS_URL);
 
   logger.info("Browser ready");
 

@@ -1,7 +1,7 @@
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import chalk from "chalk";
-import log from "loglevel";
-import { Browser, launch } from "puppeteer";
+import log, { Logger } from "loglevel";
+import { Browser, launch, Page } from "puppeteer";
 import { RecordLoginFlowOptions } from "../types";
 import {
   DEFAULT_NAVIGATION_TIMEOUT_MS,
@@ -70,6 +70,7 @@ export const recordLoginFlowSession = async ({
   height,
   uploadIntervalMs,
   captureHttpOnlyCookies,
+  appUrl,
 }: RecordLoginFlowOptions) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -107,13 +108,15 @@ export const recordLoginFlowSession = async ({
   });
 
   // Expose login page functions
-  await exposeNewRecordingCallback(loginFlowPage, () => {
+  await exposeNewRecordingCallback(loginFlowPage, ({ sessionId }) => {
     startedLoginSessionRecording = true;
+    logger.debug(`Recording login flow: ${sessionId}`);
   });
 
   await loginFlowPage.exposeFunction(
     "__meticulousFinishRecording",
     async () => {
+      logger.debug("Finish recording button clicked");
       const loginDataPage = await context.newPage();
       const finalLoginUrl = loginFlowPage.url();
 
@@ -130,11 +133,13 @@ export const recordLoginFlowSession = async ({
         );
 
         // Flush any pending payloads from the main login flow recording page and close it
-        await loginFlowPage.evaluate(() => {
-          (window as ModifiedWindow).__meticulous?.flushPendingPayloads?.();
-        });
+        await flushPendingPayloads(loginFlowPage, logger);
         isRecordingComplete = true;
         await loginFlowPage.close();
+
+        await exposeNewRecordingCallback(loginDataPage, ({ sessionId }) => {
+          logger.debug(`Recording login data: ${sessionId}`);
+        });
 
         await bootstrapLoginFlowRecordingPage({
           page: loginDataPage,
@@ -148,12 +153,11 @@ export const recordLoginFlowSession = async ({
         });
 
         // Navigate to the final login flow url and flush any pending payloads
+        logger.debug("Reloading page to capture application storage...");
         await loginDataPage.goto(finalLoginUrl, {
-          waitUntil: "domcontentloaded",
+          waitUntil: "load",
         });
-        await loginDataPage.evaluate(() => {
-          (window as ModifiedWindow).__meticulous?.flushPendingPayloads?.();
-        });
+        await flushPendingPayloads(loginDataPage, logger);
         onDataSessionSaved = true;
 
         await loginDataPage.close();
@@ -181,7 +185,9 @@ export const recordLoginFlowSession = async ({
     recordingSource: LOGIN_FLOW_SESSION_RECORDING_SOURCE,
   });
 
-  await loginFlowPage.goto(INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL);
+  await loginFlowPage.goto(
+    appUrl ?? INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL
+  );
 
   // Wait for the recording to complete or the page to close.
   await recordingCompleteCallback.promise;
@@ -209,4 +215,19 @@ export const recordLoginFlowSession = async ({
         "Return to https://app.meticulous.ai to finish setting up your project."
       )
   );
+};
+
+const flushPendingPayloads = async (page: Page, logger: Logger) => {
+  // evaluteHandle waits for the promise to resolve if the function returns a promise
+  logger.debug("Flushing pending payloads...");
+  const pendingPayloadsResult = await page.evaluateHandle(() => {
+    const flushPendingPayloads = (window as ModifiedWindow).__meticulous
+      ?.flushPendingPayloads;
+    if (flushPendingPayloads == null) {
+      throw new Error("Expected Meticulous recorder to be initialized");
+    }
+    return flushPendingPayloads();
+  });
+  await pendingPayloadsResult.dispose();
+  logger.debug("Finished flushing pending payloads");
 };

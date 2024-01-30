@@ -13,6 +13,9 @@ export interface RecordSessionOptions {
   cookieDir?: string | null | undefined;
   debugLogger?: DebugLogger | null | undefined;
   captureHttpOnlyCookies?: boolean;
+
+  /** If set will jump straight to recording from this URL */
+  appUrl?: string | null | undefined;
   onDetectedSession?: (sessionId: string) => void;
 }
 
