@@ -155,7 +155,7 @@ export const recordLoginFlowSession = async ({
         // Navigate to the final login flow url and flush any pending payloads
         logger.debug("Reloading page to capture application storage...");
         await loginDataPage.goto(finalLoginUrl, {
-          waitUntil: "load",
+          waitUntil: "domcontentloaded",
         });
         await flushPendingPayloads(loginDataPage, logger);
         onDataSessionSaved = true;
