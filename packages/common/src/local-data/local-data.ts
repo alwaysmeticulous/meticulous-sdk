@@ -7,12 +7,13 @@ let _localDataDir = "";
 export const getMeticulousLocalDataDir: () => string = () => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   if (!_localDataDir) {
-    logger.warn(
-      "Local data dir has not been set by setMeticulousLocalDataDir()!"
-    );
     setMeticulousLocalDataDir();
+    logger.debug(
+      `Local data dir has not been set explictly, so defaulting to ${_localDataDir}`
+    );
+  } else {
+    logger.debug(`Using local data dir at ${_localDataDir}`);
   }
-  logger.debug(`Meticulous local data dir: ${_localDataDir}`);
   return _localDataDir;
 };
 
