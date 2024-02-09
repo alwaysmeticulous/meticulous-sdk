@@ -11,6 +11,7 @@ import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
+  HEADLESS_FLAG,
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
@@ -96,20 +97,20 @@ const handler: (options: Options) => Promise<void> = async ({
   if (!noParallelize && headless) {
     logger.info(
       `\nRunning tests in parallel. Run with ${chalk.bold(
-        "--no-parallelize"
+        NO_PARALLELIZE_FLAG
       )} to run tests sequentially.`
     );
   } else if (!noParallelize && !headless) {
     logger.info(
       `\nRunning tests in parallel. Run with ${chalk.bold(
-        "--no-parallelize"
+        NO_PARALLELIZE_FLAG
       )} to run tests sequentially, or with ${chalk.bold(
-        "--headless"
+        HEADLESS_FLAG
       )} to hide the windows.`
     );
   } else if (!headless) {
     logger.info(
-      `\nTip: run with ${chalk.bold("--headless")} to hide the windows.`
+      `\nTip: run with ${chalk.bold(HEADLESS_FLAG)} to hide the windows.`
     );
   }
 
@@ -143,6 +144,8 @@ const handler: (options: Options) => Promise<void> = async ({
     }
   }
 };
+
+const NO_PARALLELIZE_FLAG = "--no-parallelize";
 
 export const runAllTestsCommand = buildCommand("run-all-tests")
   .details({ describe: "Run all replay test cases" })
