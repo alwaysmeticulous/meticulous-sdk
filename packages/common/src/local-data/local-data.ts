@@ -11,8 +11,9 @@ export const getMeticulousLocalDataDir: () => string = () => {
     logger.debug(
       `Local data dir has not been set explictly, so defaulting to ${_localDataDir}`
     );
+  } else {
+    logger.debug(`Using local data dir at ${_localDataDir}`);
   }
-  logger.debug(`Meticulous local data dir: ${_localDataDir}`);
   return _localDataDir;
 };
 
