@@ -3,12 +3,15 @@ import {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
-import { getCommitSha } from "@alwaysmeticulous/common";
+import { METICULOUS_LOGGER_NAME, getCommitSha } from "@alwaysmeticulous/common";
 import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
+import chalk from "chalk";
+import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
+  HEADLESS_FLAG,
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
@@ -25,7 +28,7 @@ interface Options
   baseCommitSha?: string | undefined;
   appUrl?: string | undefined;
   githubSummary: boolean;
-  parallelize: boolean;
+  noParallelize: boolean;
   parallelTasks?: number | null | undefined;
   maxRetriesOnFailure: number;
   rerunTestsNTimes: number;
@@ -49,7 +52,7 @@ const handler: (options: Options) => Promise<void> = async ({
   shiftTime,
   networkStubbing,
   githubSummary,
-  parallelize,
+  noParallelize,
   parallelTasks: parrelelTasks_,
   maxRetriesOnFailure,
   rerunTestsNTimes,
@@ -89,7 +92,29 @@ const handler: (options: Options) => Promise<void> = async ({
     storyboardOptions,
   };
 
-  const parrelelTasks = parallelize ? parrelelTasks_ : 1;
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
+  if (!noParallelize && headless) {
+    logger.info(
+      `\nRunning tests in parallel. Run with ${chalk.bold(
+        NO_PARALLELIZE_FLAG
+      )} to run tests sequentially.`
+    );
+  } else if (!noParallelize && !headless) {
+    logger.info(
+      `\nRunning tests in parallel. Run with ${chalk.bold(
+        NO_PARALLELIZE_FLAG
+      )} to run tests sequentially, or with ${chalk.bold(
+        HEADLESS_FLAG
+      )} to hide the windows.`
+    );
+  } else if (!headless) {
+    logger.info(
+      `\nTip: run with ${chalk.bold(HEADLESS_FLAG)} to hide the windows.`
+    );
+  }
+
+  const parrelelTasks = noParallelize ? 1 : parrelelTasks_;
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
   try {
     const { testRun } = await executeTestRun({
@@ -120,6 +145,8 @@ const handler: (options: Options) => Promise<void> = async ({
   }
 };
 
+const NO_PARALLELIZE_FLAG = "--no-parallelize";
+
 export const runAllTestsCommand = buildCommand("run-all-tests")
   .details({ describe: "Run all replay test cases" })
   .options({
@@ -141,9 +168,9 @@ export const runAllTestsCommand = buildCommand("run-all-tests")
       description: "Outputs a summary page for GitHub actions",
       default: false,
     },
-    parallelize: {
+    noParallelize: {
       boolean: true,
-      description: "Run tests in parallel",
+      description: "Run tests sequentially",
       default: false,
     },
     parallelTasks: {

@@ -14,6 +14,9 @@ import {
   DEFAULT_SCREENSHOTTING_OPTIONS,
 } from "@alwaysmeticulous/common";
 
+// Used in tips in console output
+export const HEADLESS_FLAG = "--headless";
+
 export const OPTIONS = {
   apiToken: {
     string: true,
