@@ -69,7 +69,8 @@ export async function bootstrapPage({
     (forbiddenUrls) => {
       const url = window.document.location.toString();
 
-      // We only record in the root frame (not in sub-iframes), and we don't record on the built in start pages
+      // We only record in the root frame (not in sub-iframes), and we don't record on the built in start pages,
+      // or on chrome:// and chrome-error:// pages
       if (
         window === window.parent &&
         !forbiddenUrls.includes(url) &&
