@@ -7,6 +7,12 @@ import {
 } from "./constants";
 import { provideCookieAccess } from "./utils/provide-cookie-access";
 
+/**
+ * The recorder crashes if it tries to initialize on a chrome-error page
+ * (Chrome e.g. uses this page for HTTP basic auth popups before the user has authenticated)
+ */
+const FORBIDDEN_PROTOCOLS = ["chrome://", "chrome-error://"];
+
 interface MeticulousRecorderWindow {
   METICULOUS_RECORDING_TOKEN?: string;
   METICULOUS_APP_COMMIT_HASH?: string;
@@ -61,10 +67,13 @@ export async function bootstrapPage({
   await page.evaluateOnNewDocument(recordingSnippetFile);
   await page.evaluateOnNewDocument(
     (forbiddenUrls) => {
+      const url = window.document.location.toString();
+
       // We only record in the root frame (not in sub-iframes), and we don't record on the built in start pages
       if (
         window === window.parent &&
-        !forbiddenUrls.includes(window.document.location.toString())
+        !forbiddenUrls.includes(url) &&
+        !FORBIDDEN_PROTOCOLS.some((protocol) => url.startsWith(protocol))
       ) {
         const initRecorder = (window as MeticulousRecorderWindow).__meticulous
           ?.initialiseRecorder;
@@ -73,6 +82,7 @@ export async function bootstrapPage({
             "window.__meticulous.initialiseRecorder is null or undefined: cannot record session on page"
           );
         }
+
         initRecorder();
       }
     },
