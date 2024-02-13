@@ -7,12 +7,6 @@ import {
 } from "./constants";
 import { provideCookieAccess } from "./utils/provide-cookie-access";
 
-/**
- * The recorder crashes if it tries to initialize on a chrome-error page
- * (Chrome e.g. uses this page for HTTP basic auth popups before the user has authenticated)
- */
-const FORBIDDEN_PROTOCOLS = ["chrome://", "chrome-error://"];
-
 interface MeticulousRecorderWindow {
   METICULOUS_RECORDING_TOKEN?: string;
   METICULOUS_APP_COMMIT_HASH?: string;
