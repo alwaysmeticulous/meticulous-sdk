@@ -59,6 +59,9 @@ export async function bootstrapPage({
     { recordingToken, appCommitHash, recordingSource, uploadIntervalMs }
   );
   await page.evaluateOnNewDocument(recordingSnippetFile);
+  if (captureHttpOnlyCookies) {
+    await provideCookieAccess(page);
+  }
   await page.evaluateOnNewDocument(
     (forbiddenUrls) => {
       /**
@@ -96,8 +99,4 @@ export async function bootstrapPage({
       METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL,
     ]
   );
-
-  if (captureHttpOnlyCookies) {
-    await provideCookieAccess(page);
-  }
 }
