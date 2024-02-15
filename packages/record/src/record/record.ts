@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import puppeteer, { Browser, PuppeteerNode, launch } from "puppeteer";
+import puppeteer, { Browser, launch, PuppeteerNode } from "puppeteer";
 import { RecordSessionOptions } from "../types";
 import {
   DEFAULT_NAVIGATION_TIMEOUT_MS,
@@ -78,6 +78,7 @@ export const recordSession = async ({
     defaultViewport,
     headless: false,
     devtools: devTools || false,
+    args: ["--disable-blink-features=AutomationControlled"],
   });
 
   const context = incognito

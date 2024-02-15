@@ -3,7 +3,7 @@ import {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
-import { METICULOUS_LOGGER_NAME, getCommitSha } from "@alwaysmeticulous/common";
+import { getCommitSha, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import chalk from "chalk";
@@ -37,6 +37,7 @@ interface Options
   maxEventCount: number | null | undefined;
   storyboard: boolean;
   baseTestRunId?: string | undefined;
+  sessionIdForApplicationStorage?: string | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -67,6 +68,7 @@ const handler: (options: Options) => Promise<void> = async ({
   essentialFeaturesOnly,
   logPossibleNonDeterminism,
   baseTestRunId,
+  sessionIdForApplicationStorage,
 }) => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -130,6 +132,7 @@ const handler: (options: Options) => Promise<void> = async ({
       maxRetriesOnFailure,
       rerunTestsNTimes,
       githubSummary,
+      sessionIdForApplicationStorage: sessionIdForApplicationStorage ?? null,
       maxSemanticVersionSupported: 1,
     });
 

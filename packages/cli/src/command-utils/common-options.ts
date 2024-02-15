@@ -111,6 +111,13 @@ export const OPTIONS = {
     hidden: true,
   },
 
+  sessionIdForApplicationStorage: {
+    string: true,
+    description:
+      "The ID of the session to use for seeding the application state (cookies, local storage, session storage)",
+    hidden: true,
+  },
+
   width: {
     number: true,
   },
@@ -154,6 +161,7 @@ export const COMMON_REPLAY_OPTIONS = {
   maxEventCount: OPTIONS.maxEventCount,
   essentialFeaturesOnly: OPTIONS.essentialFeaturesOnly,
   logPossibleNonDeterminism: OPTIONS.logPossibleNonDeterminism,
+  sessionIdForApplicationStorage: OPTIONS.sessionIdForApplicationStorage,
 };
 
 /**
