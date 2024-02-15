@@ -19,6 +19,11 @@ export interface ReplayAndStoreResultsOptions {
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
   sessionId: string;
+  /**
+   * The ID of the session to use for seeding the application state (cookies, local storage, session storage),
+   * during the replay. If undefined, the application state will be seeded from the session under simulation.
+   */
+  sessionIdForApplicationStorage?: string | null;
   cookiesFile: string | null | undefined;
   logLevel: LogLevelNumbers;
 
@@ -179,12 +184,12 @@ export interface ReplayExecutionOptions {
    * This flag is useful to reduce noise when debugging.
    */
   essentialFeaturesOnly: boolean;
-  
+
   /**
    * If populated, each header will be injected into all requests when fetching resources during a replay.
    */
   customRequestHeaders?: InjectableRequestHeader[];
-  
+
   /**
    * Hash of the project settings at the time the test run or replay was initiated. Used as part of `ReplayLogicVersion`
    * to ensure that we don't compare screenshots that were generated from replays with different project settings.
