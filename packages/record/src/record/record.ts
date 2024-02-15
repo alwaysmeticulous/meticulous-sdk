@@ -2,9 +2,10 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import puppeteer, { Browser, PuppeteerNode, launch } from "puppeteer";
+import puppeteer, { Browser, launch, PuppeteerNode } from "puppeteer";
 import { RecordSessionOptions } from "../types";
 import {
+  COMMON_RECORD_CHROME_LAUNCH_ARGS,
   DEFAULT_NAVIGATION_TIMEOUT_MS,
   DEFAULT_UPLOAD_INTERVAL_MS,
   INITIAL_METICULOUS_RECORD_DOCS_URL,
@@ -78,6 +79,7 @@ export const recordSession = async ({
     defaultViewport,
     headless: false,
     devtools: devTools || false,
+    args: COMMON_RECORD_CHROME_LAUNCH_ARGS,
   });
 
   const context = incognito

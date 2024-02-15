@@ -4,6 +4,7 @@ import log, { Logger } from "loglevel";
 import { Browser, launch, Page } from "puppeteer";
 import { RecordLoginFlowOptions } from "../types";
 import {
+  COMMON_RECORD_CHROME_LAUNCH_ARGS,
   DEFAULT_NAVIGATION_TIMEOUT_MS,
   DEFAULT_UPLOAD_INTERVAL_MS,
   INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL,
@@ -82,6 +83,7 @@ export const recordLoginFlowSession = async ({
     defaultViewport,
     headless: false,
     devtools: devTools || false,
+    args: COMMON_RECORD_CHROME_LAUNCH_ARGS,
   });
 
   const context = await browser.createIncognitoBrowserContext();
