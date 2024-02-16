@@ -39,6 +39,7 @@ interface ReplayCommandHandlerOptions
   cookiesFile: string | null | undefined;
   debugger: boolean;
   baseReplayId: string | null | undefined;
+  sessionIdForApplicationStorage: string | null | undefined;
 }
 
 const replayCommandHandler = async ({
@@ -66,6 +67,7 @@ const replayCommandHandler = async ({
   storyboard,
   essentialFeaturesOnly,
   logPossibleNonDeterminism,
+  sessionIdForApplicationStorage,
   debugger: enableStepThroughDebugger,
 }: ReplayCommandHandlerOptions): Promise<void> => {
   if (!takeSnapshots && storyboard) {
@@ -137,6 +139,7 @@ const replayCommandHandler = async ({
       generatedBy: generatedByOption,
       testRunId: null,
       suppressScreenshotDiffLogging: false,
+      sessionIdForApplicationStorage: sessionIdForApplicationStorage ?? null,
       ...(enableStepThroughDebugger
         ? {
             onBeforeUserEvent: async (options) =>

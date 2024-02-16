@@ -57,6 +57,13 @@ export interface ExecuteTestRunOptions {
 
   logLevel: LogLevelNumbers;
 
+  /**
+   * The ID of the session to use for seeding the application state (cookies, local storage, session storage),
+   * during replay of all session in the test run. If undefined, the application state will be seeded
+   * from the session under simulation.
+   */
+  sessionIdForApplicationStorage?: string | null;
+
   onTestRunCreated?: (testRun: RunningTestRunExecution) => void;
   onTestFinished?: (testRun: RunningTestRunExecution) => void;
 
