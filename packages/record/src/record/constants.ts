@@ -12,3 +12,9 @@ export const INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL =
 // Page shown while saving a login flow session recording.
 export const METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL =
   "https://app.meticulous.ai/docs/recording-a-login-flow-saving";
+
+export const COMMON_RECORD_CHROME_LAUNCH_ARGS = [
+  // Unsets navigator.webdriver during recording to provide more consistent behavior
+  // between Chrome for Test and Chrome.
+  "--disable-blink-features=AutomationControlled",
+];
