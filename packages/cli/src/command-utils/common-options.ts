@@ -13,6 +13,7 @@ import {
   DEFAULT_EXECUTION_OPTIONS,
   DEFAULT_SCREENSHOTTING_OPTIONS,
 } from "@alwaysmeticulous/common";
+import { IS_METICULOUS_SUPER_USER } from "../utils/constants";
 
 // Used in tips in console output
 export const HEADLESS_FLAG = "--headless";
@@ -108,14 +109,14 @@ export const OPTIONS = {
     boolean: true,
     description: "Enable logging of non-determinism events",
     default: DEFAULT_EXECUTION_OPTIONS.logPossibleNonDeterminism,
-    hidden: true,
+    hidden: !IS_METICULOUS_SUPER_USER,
   },
 
   sessionIdForApplicationStorage: {
     string: true,
     description:
       "The ID of the session to use for seeding the application state (cookies, local storage, session storage)",
-    hidden: true,
+    hidden: !IS_METICULOUS_SUPER_USER,
   },
 
   width: {
@@ -180,6 +181,6 @@ export const COMMON_RECORD_OPTIONS = {
     description:
       "Will skip straight to starting recording at the provided URL. Advanced option used to accelerate testing. Hidden from help menus.",
     string: true,
-    hidden: true,
+    hidden: !IS_METICULOUS_SUPER_USER,
   } as const,
 };
