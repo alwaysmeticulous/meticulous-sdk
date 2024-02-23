@@ -20,7 +20,7 @@ export interface ReplayDebuggerOptions {
   dependencies: ReplayDebuggerDependencies;
   shiftTime: boolean;
   networkStubbing: boolean;
-  moveBeforeClick: boolean;
+  moveBeforeMouseEvent: boolean;
   disableRemoteFonts: boolean;
   cookiesFile: string;
 }

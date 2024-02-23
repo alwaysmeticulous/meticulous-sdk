@@ -57,10 +57,10 @@ export const OPTIONS = {
       "Fast forward through any pauses to replay as fast as possible.",
     default: DEFAULT_EXECUTION_OPTIONS.skipPauses,
   },
-  moveBeforeClick: {
+  moveBeforeMouseEvent: {
     boolean: true,
-    description: "Simulate mouse movement before clicking",
-    default: DEFAULT_EXECUTION_OPTIONS.moveBeforeClick,
+    description: "Simulate mouse movement before mouse events",
+    default: DEFAULT_EXECUTION_OPTIONS.moveBeforeMouseEvent,
   },
   diffThreshold: {
     number: true,
