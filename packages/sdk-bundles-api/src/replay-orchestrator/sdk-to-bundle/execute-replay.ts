@@ -166,7 +166,7 @@ export interface ReplayExecutionOptions {
   networkStubbingMode?: NetworkStubbingMode;
 
   skipPauses: boolean;
-  moveBeforeClick: boolean;
+  moveBeforeMouseEvent: boolean;
   disableRemoteFonts: boolean;
   noSandbox: boolean;
   /**
