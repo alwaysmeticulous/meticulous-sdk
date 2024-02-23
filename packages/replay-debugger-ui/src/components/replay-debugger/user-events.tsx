@@ -4,6 +4,7 @@ import {
   ArrowUpTrayIcon,
   ArrowUturnLeftIcon,
   CursorArrowRaysIcon,
+  CursorArrowRippleIcon,
   FingerPrintIcon,
   ForwardIcon,
   PencilSquareIcon,
@@ -49,6 +50,9 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
       case "mouseup":
       case "mousedown":
         return CursorArrowRaysIcon;
+      case "mouseenter":
+      case "mouseleave":
+        return CursorArrowRippleIcon
       case "touchstart":
       case "touchend":
       case "touchmove":
