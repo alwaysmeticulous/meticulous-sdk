@@ -42,6 +42,10 @@ export const fetchAsset = async (path: string): Promise<string> => {
   return jsFilePath;
 };
 
+export const getAssetUrl = (path: string): string => {
+  return new URL(path, getSnippetsBaseUrl()).href;
+};
+
 const fetchAndCacheFile = async (
   urlToDownloadFrom: string,
   fileNameToDownloadAs: string

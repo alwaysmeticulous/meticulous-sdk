@@ -31,7 +31,7 @@ export const LOGIN_FLOW_DATA_SESSION_RECORDING_SOURCE =
 const bootstrapLoginFlowRecordingPage = async ({
   page,
   recordingToken,
-  recordingSnippetManualInit,
+  recordingSnippetUrl,
   uploadIntervalMs,
   captureHttpOnlyCookies,
   recordingSource,
@@ -54,8 +54,7 @@ const bootstrapLoginFlowRecordingPage = async ({
     page,
     recordingToken,
     appCommitHash: "unknown",
-    recordingSnippetManualInit,
-
+    recordingSnippetUrl,
     uploadIntervalMs: uploadIntervalMs || DEFAULT_UPLOAD_INTERVAL_MS,
     captureHttpOnlyCookies: captureHttpOnlyCookies ?? true,
     recordingSource,
@@ -66,7 +65,7 @@ export const recordLoginFlowSession = async ({
   recordingToken,
   devTools,
   bypassCSP,
-  recordingSnippetManualInit,
+  recordingSnippetUrl,
   width,
   height,
   uploadIntervalMs,
@@ -146,7 +145,7 @@ export const recordLoginFlowSession = async ({
         await bootstrapLoginFlowRecordingPage({
           page: loginDataPage,
           recordingToken,
-          recordingSnippetManualInit,
+          recordingSnippetUrl,
 
           uploadIntervalMs: uploadIntervalMs,
           captureHttpOnlyCookies: captureHttpOnlyCookies,
@@ -179,7 +178,7 @@ export const recordLoginFlowSession = async ({
   await bootstrapLoginFlowRecordingPage({
     page: loginFlowPage,
     recordingToken,
-    recordingSnippetManualInit,
+    recordingSnippetUrl,
 
     uploadIntervalMs,
     captureHttpOnlyCookies,

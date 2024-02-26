@@ -7,11 +7,11 @@ import {
 } from "@alwaysmeticulous/client";
 import {
   DebugLogger,
+  METICULOUS_LOGGER_NAME,
   getCommitSha,
   getMeticulousLocalDataDir,
-  METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
-import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
+import { getAssetUrl } from "@alwaysmeticulous/downloading-helpers";
 import { recordSession } from "@alwaysmeticulous/record";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
@@ -19,7 +19,7 @@ import {
   COMMON_RECORD_OPTIONS,
   OPTIONS,
 } from "../../command-utils/common-options";
-import { MANUAL_INIT_RECORDING_SNIPPET_PATH } from "../../utils/constants";
+import { RECORDING_SNIPPET_PATH } from "../../utils/constants";
 
 export interface RecordCommandHandlerOptions {
   apiToken: string | null | undefined;
@@ -90,9 +90,7 @@ export const recordCommandHandler: (
   logger.debug(`Commit: ${commitSha}`);
 
   // 3. Load recording snippets
-  const recordingSnippetManualInit = await fetchAsset(
-    MANUAL_INIT_RECORDING_SNIPPET_PATH
-  );
+  const recordingSnippetUrl = getAssetUrl(RECORDING_SNIPPET_PATH);
 
   const cookieDir = join(getMeticulousLocalDataDir(), "cookies");
 
@@ -125,7 +123,7 @@ export const recordCommandHandler: (
     appCommitHash: commitSha,
     devTools,
     bypassCSP,
-    recordingSnippetManualInit,
+    recordingSnippetUrl,
     width,
     height,
     uploadIntervalMs,
