@@ -74,9 +74,7 @@ export const getOrFetchReplayArchive = async (
 
     const replay = await getReplay(client, replayId);
 
-    if (["v1", "v2"].includes(replay.version)) {
-      await downloadReplayV2Archive(client, replayId, replayDir);
-    } else if (replay.version === "v3") {
+    if (replay.version === "v3") {
       await downloadReplayV3Files(client, replayId, replayDir, downloadScope);
     } else {
       throw new Error(
@@ -89,26 +87,6 @@ export const getOrFetchReplayArchive = async (
   } finally {
     await releaseLock();
   }
-};
-
-const downloadReplayV2Archive = async (
-  client: AxiosInstance,
-  replayId: string,
-  replayDir: string
-) => {
-  const replayArchiveFile = join(replayDir, `${replayId}.zip`);
-
-  const downloadUrlData = await getReplayDownloadUrl(client, replayId);
-  if (!downloadUrlData) {
-    throw new Error(
-      "Error: Could not retrieve replay archive URL. This may be an invalid replay"
-    );
-  }
-
-  await downloadFile(downloadUrlData.dowloadUrl, replayArchiveFile);
-
-  await extract(replayArchiveFile, { dir: replayDir });
-  await rm(replayArchiveFile);
 };
 
 const downloadReplayV3Files = async (
