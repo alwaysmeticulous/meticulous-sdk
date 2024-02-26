@@ -93,7 +93,7 @@ export async function bootstrapPage({
         document.head.insertBefore(script, document.head.firstChild);
         script.onerror = () => {
           console.error(
-            "Failed to load the Meticulous recorder snippet. This could be related to your site CSP policy, if so you can use the bypassCSP option to bypass it."
+            "Failed to load the Meticulous recorder snippet. This could be related to your site's CSP policy, if so you can use the --bypassCSP option to bypass it."
           );
         };
       };
