@@ -40,8 +40,7 @@ export interface HarResponse {
 
 export interface NameValueEntry {
   name: string;
-
-  value: object | string;
+  value: string;
 }
 
 export interface QueryStringNameValueEntry {
