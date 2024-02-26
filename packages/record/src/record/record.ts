@@ -83,7 +83,7 @@ export const recordSession = async ({
   });
 
   const context = incognito
-    ? await browser.createIncognitoBrowserContext()
+    ? await browser.createBrowserContext()
     : browser.defaultBrowserContext();
 
   (await browser.defaultBrowserContext().pages()).forEach((page) =>

@@ -86,7 +86,7 @@ export const recordLoginFlowSession = async ({
     args: COMMON_RECORD_CHROME_LAUNCH_ARGS,
   });
 
-  const context = await browser.createIncognitoBrowserContext();
+  const context = await browser.createBrowserContext();
 
   await Promise.all((await browser.pages()).map((page) => page.close()));
 
