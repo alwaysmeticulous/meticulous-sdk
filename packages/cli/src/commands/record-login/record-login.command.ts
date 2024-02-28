@@ -1,14 +1,11 @@
 import { createClient, getProject } from "@alwaysmeticulous/client";
 import { DebugLogger, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import { fetchAsset, getAssetUrl } from "@alwaysmeticulous/downloading-helpers";
+import { getAssetUrl } from "@alwaysmeticulous/downloading-helpers";
 import { recordLoginFlowSession } from "@alwaysmeticulous/record";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import { COMMON_RECORD_OPTIONS } from "../../command-utils/common-options";
-import {
-  EARLY_NETWORK_RECORDING_SNIPPET_PATH,
-  RECORDING_SNIPPET_PATH,
-} from "../../utils/constants";
+import { RECORDING_SNIPPET_PATH } from "../../utils/constants";
 
 export interface RecordCommandHandlerOptions {
   apiToken: string | null | undefined;
@@ -68,9 +65,6 @@ export const recordLoginFlowCommandHandler: (
 
   // 3. Load recording snippets
   const recordingSnippetUrl = getAssetUrl(RECORDING_SNIPPET_PATH);
-  const earlyNetworkRecorderSnippetPath = await fetchAsset(
-    EARLY_NETWORK_RECORDING_SNIPPET_PATH
-  );
 
   // 4. Start recording
   await recordLoginFlowSession({
@@ -78,7 +72,6 @@ export const recordLoginFlowCommandHandler: (
     devTools,
     bypassCSP,
     recordingSnippetUrl,
-    earlyNetworkRecorderSnippetPath,
     width,
     height,
     uploadIntervalMs,
