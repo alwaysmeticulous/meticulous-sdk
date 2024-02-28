@@ -52,11 +52,11 @@ export async function bootstrapPage({
     { recordingToken, appCommitHash, recordingSource, uploadIntervalMs }
   );
 
-  await page.evaluateOnNewDocument(
-    wrapInShouldRecordCondition(recordingSnippetFile)
-  );
-
   if (captureHttpOnlyCookies) {
     await provideCookieAccess(page);
   }
+
+  await page.evaluateOnNewDocument(
+    wrapInShouldRecordCondition(recordingSnippetFile)
+  );
 }
