@@ -9,6 +9,12 @@ export interface RecordSessionOptions {
    * The URL of the Meticulous auto-init recording snippet.
    */
   recordingSnippetUrl: string;
+
+  /**
+   * Path to a locally downloaded early network recorder JS file.
+   */
+  earlyNetworkRecorderSnippetPath: string;
+
   width?: number | null | undefined;
   height?: number | null | undefined;
   uploadIntervalMs?: number | null | undefined;

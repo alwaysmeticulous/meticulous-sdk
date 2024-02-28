@@ -14,6 +14,7 @@ interface MeticulousRecorderWindow {
   METICULOUS_RECORDING_SOURCE?: string;
   METICULOUS_UPLOAD_INTERVAL_MS?: number;
   METICULOUS_ENABLE_RRWEB_PLUGIN_NODE_DATA?: boolean;
+  METICULOUS_DISABLED?: boolean;
 
   __meticulous?: {
     initialiseRecorder?: () => void;
@@ -26,6 +27,7 @@ export async function bootstrapPage({
   recordingToken,
   appCommitHash,
   recordingSnippetUrl,
+  earlyNetworkRecorderSnippetPath,
   uploadIntervalMs,
   captureHttpOnlyCookies,
   recordingSource = "cli",
@@ -34,14 +36,15 @@ export async function bootstrapPage({
   recordingToken: string;
   appCommitHash: string;
   recordingSnippetUrl: string;
+  earlyNetworkRecorderSnippetPath: string;
   uploadIntervalMs: number | null;
   captureHttpOnlyCookies: boolean;
   recordingSource?: string;
 }): Promise<void> {
-  // const recordingSnippetFile = await readFile(
-  //   recordingSnippetManualInit,
-  //   "utf8"
-  // );
+  const earlyNetworkRecorderSnippetContents = await readFile(
+    earlyNetworkRecorderSnippetPath,
+    "utf8"
+  );
 
   await page.evaluateOnNewDocument(
     ({ recordingToken, appCommitHash, recordingSource, uploadIntervalMs }) => {
@@ -55,6 +58,10 @@ export async function bootstrapPage({
       if (uploadIntervalMs != null) {
         recorderWindow["METICULOUS_UPLOAD_INTERVAL_MS"] = uploadIntervalMs;
       }
+
+      if (window !== window.parent) {
+        recorderWindow["METICULOUS_DISABLED"] = true;
+      }
     },
     { recordingToken, appCommitHash, recordingSource, uploadIntervalMs }
   );
@@ -63,6 +70,10 @@ export async function bootstrapPage({
   if (captureHttpOnlyCookies) {
     await provideCookieAccess(page);
   }
+  await page.evaluateOnNewDocument(earlyNetworkRecorderSnippetContents);
+  // await page.evaluateOnNewDocument(`if (window === window.parent) {
+  //   ${earlyNetworkRecorderSnippetContents}
+  // }`);
   await page.evaluateOnNewDocument(
     (forbiddenUrls, recordingSnippetUrl) => {
       const installRecorder = () => {
