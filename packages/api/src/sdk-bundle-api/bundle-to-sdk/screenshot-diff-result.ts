@@ -109,10 +109,15 @@ export interface ScreenshotDiffResultNoDifference
    * Present only if there were redacted screenshots to compare, or if the original normal
    * screenshots did not differ so there was no need to compare the redacted screenshots.
    */
-  redactedScreenshotsComparisonResult?: {
-    mismatchPixels: number;
-    mismatchFraction: number;
-  };
+  redactedScreenshotsComparisonResult?:
+    | {
+        type: "no-diff" | "diff";
+        mismatchPixels: number;
+        mismatchFraction: number;
+      }
+    | {
+        type: "missing-base" | "missing-head" | "different-size";
+      };
 }
 
 export interface ScreenshotDiffResultDifference
