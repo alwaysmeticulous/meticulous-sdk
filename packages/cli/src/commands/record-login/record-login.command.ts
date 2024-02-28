@@ -5,7 +5,7 @@ import { recordLoginFlowSession } from "@alwaysmeticulous/record";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import { COMMON_RECORD_OPTIONS } from "../../command-utils/common-options";
-import { MANUAL_INIT_RECORDING_SNIPPET_PATH } from "../../utils/constants";
+import { RECORDING_SNIPPET_PATH } from "../../utils/constants";
 
 export interface RecordCommandHandlerOptions {
   apiToken: string | null | undefined;
@@ -64,16 +64,14 @@ export const recordLoginFlowCommandHandler: (
   logger.debug(`Recording token: ${recordingToken}`);
 
   // 3. Load recording snippets
-  const recordingSnippetManualInit = await fetchAsset(
-    MANUAL_INIT_RECORDING_SNIPPET_PATH
-  );
+  const recordingSnippet = await fetchAsset(RECORDING_SNIPPET_PATH);
 
   // 4. Start recording
   await recordLoginFlowSession({
     recordingToken,
     devTools,
     bypassCSP,
-    recordingSnippetManualInit,
+    recordingSnippet,
     width,
     height,
     uploadIntervalMs,

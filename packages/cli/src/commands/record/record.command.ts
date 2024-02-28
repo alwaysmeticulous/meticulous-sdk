@@ -19,7 +19,7 @@ import {
   COMMON_RECORD_OPTIONS,
   OPTIONS,
 } from "../../command-utils/common-options";
-import { MANUAL_INIT_RECORDING_SNIPPET_PATH } from "../../utils/constants";
+import { RECORDING_SNIPPET_PATH } from "../../utils/constants";
 
 export interface RecordCommandHandlerOptions {
   apiToken: string | null | undefined;
@@ -90,9 +90,7 @@ export const recordCommandHandler: (
   logger.debug(`Commit: ${commitSha}`);
 
   // 3. Load recording snippets
-  const recordingSnippetManualInit = await fetchAsset(
-    MANUAL_INIT_RECORDING_SNIPPET_PATH
-  );
+  const recordingSnippet = await fetchAsset(RECORDING_SNIPPET_PATH);
 
   const cookieDir = join(getMeticulousLocalDataDir(), "cookies");
 
@@ -125,7 +123,7 @@ export const recordCommandHandler: (
     appCommitHash: commitSha,
     devTools,
     bypassCSP,
-    recordingSnippetManualInit,
+    recordingSnippet,
     width,
     height,
     uploadIntervalMs,
