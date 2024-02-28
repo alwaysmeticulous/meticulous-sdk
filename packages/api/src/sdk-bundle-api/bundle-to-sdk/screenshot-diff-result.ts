@@ -110,14 +110,25 @@ export interface ScreenshotDiffResultNoDifference
    * screenshots did not differ so there was no need to compare the redacted screenshots.
    */
   redactedScreenshotsComparisonResult?:
-    | {
-        type: "no-diff" | "diff";
-        mismatchPixels: number;
-        mismatchFraction: number;
-      }
-    | {
-        type: "missing-base" | "missing-head" | "different-size";
-      };
+    | RedactedScreenshotsCompared
+    | RedactedScreenshotIncompatible;
+}
+
+/**
+ * The result of comparing the redacted screenshots. Note that due to thresholds even
+ * 'no-diff' results may have some differing pixels.
+ */
+export interface RedactedScreenshotsCompared {
+  /**
+   * type may be undefined for old screenshots, from before Feb 2024
+   */
+  type: "no-diff" | "diff" | undefined;
+  mismatchPixels: number;
+  mismatchFraction: number;
+}
+
+export interface RedactedScreenshotIncompatible {
+  type: "missing-base" | "missing-head" | "different-size";
 }
 
 export interface ScreenshotDiffResultDifference
