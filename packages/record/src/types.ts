@@ -5,10 +5,7 @@ export interface RecordSessionOptions {
   appCommitHash: string;
   devTools?: boolean | null | undefined;
   bypassCSP?: boolean | null | undefined;
-  /**
-   * The URL of the Meticulous auto-init recording snippet.
-   */
-  recordingSnippetUrl: string;
+  recordingSnippetManualInit: string;
   width?: number | null | undefined;
   height?: number | null | undefined;
   uploadIntervalMs?: number | null | undefined;

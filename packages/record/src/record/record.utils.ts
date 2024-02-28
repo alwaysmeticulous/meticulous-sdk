@@ -25,7 +25,7 @@ export async function bootstrapPage({
   page,
   recordingToken,
   appCommitHash,
-  recordingSnippetUrl,
+  recordingSnippetManualInit,
   uploadIntervalMs,
   captureHttpOnlyCookies,
   recordingSource = "cli",
@@ -33,15 +33,15 @@ export async function bootstrapPage({
   page: Page;
   recordingToken: string;
   appCommitHash: string;
-  recordingSnippetUrl: string;
+  recordingSnippetManualInit: string;
   uploadIntervalMs: number | null;
   captureHttpOnlyCookies: boolean;
   recordingSource?: string;
 }): Promise<void> {
-  // const recordingSnippetFile = await readFile(
-  //   recordingSnippetManualInit,
-  //   "utf8"
-  // );
+  const recordingSnippetFile = await readFile(
+    recordingSnippetManualInit,
+    "utf8"
+  );
 
   await page.evaluateOnNewDocument(
     ({ recordingToken, appCommitHash, recordingSource, uploadIntervalMs }) => {
@@ -58,56 +58,45 @@ export async function bootstrapPage({
     },
     { recordingToken, appCommitHash, recordingSource, uploadIntervalMs }
   );
-
-  // await page.evaluateOnNewDocument(recordingSnippetFile);
+  await page.evaluateOnNewDocument(recordingSnippetFile);
   if (captureHttpOnlyCookies) {
     await provideCookieAccess(page);
   }
   await page.evaluateOnNewDocument(
-    (forbiddenUrls, recordingSnippetUrl) => {
-      const installRecorder = () => {
-        /**
-         * The recorder crashes if it tries to initialize on a chrome-error page
-         * (Chrome e.g. uses this page for HTTP basic auth popups before the user has authenticated)
-         *
-         * This is because the recorder tries inserting an iframe into the head, and this crashes Chrome
-         * if done on a chrome-error page.
-         */
-        const FORBIDDEN_PROTOCOLS = ["chrome://", "chrome-error://"];
+    (forbiddenUrls) => {
+      /**
+       * The recorder crashes if it tries to initialize on a chrome-error page
+       * (Chrome e.g. uses this page for HTTP basic auth popups before the user has authenticated)
+       *
+       * This is because the recorder tries inserting an iframe into the head, and this crashes Chrome
+       * if done on a chrome-error page.
+       */
+      const FORBIDDEN_PROTOCOLS = ["chrome://", "chrome-error://"];
 
-        const url = window.document.location.toString();
+      const url = window.document.location.toString();
 
-        // We only record in the root frame (not in sub-iframes), and we don't record on the built in start pages,
-        // or on chrome:// and chrome-error:// pages
-        if (
-          window !== window.parent ||
-          forbiddenUrls.includes(url) ||
-          FORBIDDEN_PROTOCOLS.some((protocol) => url.startsWith(protocol))
-        ) {
-          return;
+      // We only record in the root frame (not in sub-iframes), and we don't record on the built in start pages,
+      // or on chrome:// and chrome-error:// pages
+      if (
+        window === window.parent &&
+        !forbiddenUrls.includes(url) &&
+        !FORBIDDEN_PROTOCOLS.some((protocol) => url.startsWith(protocol))
+      ) {
+        const initRecorder = (window as MeticulousRecorderWindow).__meticulous
+          ?.initialiseRecorder;
+        if (!initRecorder) {
+          throw new Error(
+            "window.__meticulous.initialiseRecorder is null or undefined: cannot record session on page"
+          );
         }
 
-        const script = document.createElement("script");
-        script.type = "text/javascript";
-        script.src = recordingSnippetUrl;
-        document.head.insertBefore(script, document.head.firstChild);
-        script.onerror = () => {
-          console.error(
-            "Failed to load the Meticulous recorder snippet. This could be related to your site CSP policy, if so you can use the bypassCSP option to bypass it."
-          );
-        };
-      };
-      if (document.head) {
-        installRecorder();
-      } else {
-        document.addEventListener("DOMContentLoaded", installRecorder);
+        initRecorder();
       }
     },
     [
       INITIAL_METICULOUS_RECORD_DOCS_URL,
       INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL,
       METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL,
-    ],
-    recordingSnippetUrl
+    ]
   );
 }

@@ -8,7 +8,7 @@ export {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
 } from "./file-downloads/sessions";
-export { fetchAsset, getAssetUrl } from "./scripts/replay-assets";
+export { fetchAsset } from "./scripts/replay-assets";
 export {
   downloadFile,
   downloadAndExtractFile,
