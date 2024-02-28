@@ -5,7 +5,7 @@ export interface RecordSessionOptions {
   appCommitHash: string;
   devTools?: boolean | null | undefined;
   bypassCSP?: boolean | null | undefined;
-  recordingSnippetManualInit: string;
+  recordingSnippet: string;
   width?: number | null | undefined;
   height?: number | null | undefined;
   uploadIntervalMs?: number | null | undefined;

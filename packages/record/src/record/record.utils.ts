@@ -1,11 +1,7 @@
 import { readFile } from "fs/promises";
 import { Page } from "puppeteer";
-import {
-  INITIAL_METICULOUS_RECORD_DOCS_URL,
-  INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL,
-  METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL,
-} from "./constants";
 import { provideCookieAccess } from "./utils/provide-cookie-access";
+import { wrapInShouldRecordCondition } from "./utils/wrap-in-should-record-condition";
 
 interface MeticulousRecorderWindow {
   METICULOUS_RECORDING_TOKEN?: string;
@@ -25,7 +21,7 @@ export async function bootstrapPage({
   page,
   recordingToken,
   appCommitHash,
-  recordingSnippetManualInit,
+  recordingSnippet,
   uploadIntervalMs,
   captureHttpOnlyCookies,
   recordingSource = "cli",
@@ -33,15 +29,12 @@ export async function bootstrapPage({
   page: Page;
   recordingToken: string;
   appCommitHash: string;
-  recordingSnippetManualInit: string;
+  recordingSnippet: string;
   uploadIntervalMs: number | null;
   captureHttpOnlyCookies: boolean;
   recordingSource?: string;
 }): Promise<void> {
-  const recordingSnippetFile = await readFile(
-    recordingSnippetManualInit,
-    "utf8"
-  );
+  const recordingSnippetFile = await readFile(recordingSnippet, "utf8");
 
   await page.evaluateOnNewDocument(
     ({ recordingToken, appCommitHash, recordingSource, uploadIntervalMs }) => {
@@ -58,45 +51,12 @@ export async function bootstrapPage({
     },
     { recordingToken, appCommitHash, recordingSource, uploadIntervalMs }
   );
-  await page.evaluateOnNewDocument(recordingSnippetFile);
+
+  await page.evaluateOnNewDocument(
+    wrapInShouldRecordCondition(recordingSnippetFile)
+  );
+
   if (captureHttpOnlyCookies) {
     await provideCookieAccess(page);
   }
-  await page.evaluateOnNewDocument(
-    (forbiddenUrls) => {
-      /**
-       * The recorder crashes if it tries to initialize on a chrome-error page
-       * (Chrome e.g. uses this page for HTTP basic auth popups before the user has authenticated)
-       *
-       * This is because the recorder tries inserting an iframe into the head, and this crashes Chrome
-       * if done on a chrome-error page.
-       */
-      const FORBIDDEN_PROTOCOLS = ["chrome://", "chrome-error://"];
-
-      const url = window.document.location.toString();
-
-      // We only record in the root frame (not in sub-iframes), and we don't record on the built in start pages,
-      // or on chrome:// and chrome-error:// pages
-      if (
-        window === window.parent &&
-        !forbiddenUrls.includes(url) &&
-        !FORBIDDEN_PROTOCOLS.some((protocol) => url.startsWith(protocol))
-      ) {
-        const initRecorder = (window as MeticulousRecorderWindow).__meticulous
-          ?.initialiseRecorder;
-        if (!initRecorder) {
-          throw new Error(
-            "window.__meticulous.initialiseRecorder is null or undefined: cannot record session on page"
-          );
-        }
-
-        initRecorder();
-      }
-    },
-    [
-      INITIAL_METICULOUS_RECORD_DOCS_URL,
-      INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL,
-      METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL,
-    ]
-  );
 }
