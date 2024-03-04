@@ -195,6 +195,11 @@ export interface ReplayExecutionOptions {
    * to ensure that we don't compare screenshots that were generated from replays with different project settings.
    */
   projectSettingsHash?: string;
+
+  /**
+   * Defalts to false. If true, Meticulous will allow websockets to pass through to the real server.
+   */
+  passThroughWebSockets?: boolean;
 }
 
 export interface VercelExecutionSettings {

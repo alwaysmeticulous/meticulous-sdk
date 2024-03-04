@@ -27,6 +27,11 @@ export interface SessionData {
     };
   };
 
+  /**
+   * Only present on recordings since ~March 2024
+   */
+  webSocketData?: WebSocketConnectionData[];
+
   cookies: Cookie[];
   urlHistory: UrlHistoryEvent[];
   rrwebEvents: unknown[];
@@ -93,4 +98,16 @@ export interface EarlyRequest {
   initiatorType: "fetch" | "xmlhttprequest";
   startTime: number;
   duration: number;
+}
+
+export interface WebSocketConnectionData {
+  id: number;
+  url: string;
+  events: WebSocketConnectionEvent[];
+}
+
+export interface WebSocketConnectionEvent {
+  timestamp: number;
+  type: "created" | "opened" | "message sent" | "message received" | "closed" | "error";
+  data?: string;
 }
