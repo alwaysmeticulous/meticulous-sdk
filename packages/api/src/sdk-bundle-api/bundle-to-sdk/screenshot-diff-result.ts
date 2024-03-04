@@ -96,11 +96,6 @@ export interface ScreenshotDiffResultCompared {
   height: number;
   mismatchPixels: number;
   mismatchFraction: number;
-}
-
-export interface ScreenshotDiffResultNoDifference
-  extends ScreenshotDiffResultCompared {
-  outcome: "no-diff";
 
   /**
    * The result of comparing the redacted screenshots (i.e. screenshots taken after elements
@@ -112,6 +107,11 @@ export interface ScreenshotDiffResultNoDifference
   redactedScreenshotsComparisonResult?:
     | RedactedScreenshotsCompared
     | RedactedScreenshotIncompatible;
+}
+
+export interface ScreenshotDiffResultNoDifference
+  extends ScreenshotDiffResultCompared {
+  outcome: "no-diff";
 }
 
 /**
