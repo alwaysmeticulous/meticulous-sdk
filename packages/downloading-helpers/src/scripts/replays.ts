@@ -1,3 +1,4 @@
+import { readFileSync, writeFileSync } from "fs";
 import { mkdir, rm } from "fs/promises";
 import { dirname, join } from "path";
 import {
@@ -51,6 +52,8 @@ export const getOrFetchReplay = async (
 
 export type DownloadScope = "everything" | "screenshots-only";
 
+const REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME = "previously-downloaded.txt";
+
 export const getOrFetchReplayArchive = async (
   client: AxiosInstance,
   replayId: string,
@@ -63,25 +66,61 @@ export const getOrFetchReplayArchive = async (
   const releaseLock = await waitToAcquireLockOnDirectory(replayDir);
 
   try {
-    const paramsFile = join(replayDir, "metadata.json");
+    const previouslyDownloadedFile = join(
+      replayDir,
+      REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME
+    );
 
-    // Check if "metadata.json" exists. If yes, we assume the replay
-    // zip archive has been downloaded and extracted.
-    if (await fileExists(paramsFile)) {
-      logger.debug(`Replay archive already downloaded at ${replayDir}`);
-      return { fileName: replayDir };
+    // Check what we have already downloaded. This is passed to the downloading function
+    // to avoid downloading the same thing twice. This is particularly important because
+    // a concurrent process might be using the previously downloaded data, so we don't
+    // want to overwrite it while it's being read.
+    let previouslyDownloadedScope: DownloadScope | undefined = undefined;
+    if (await fileExists(previouslyDownloadedFile)) {
+      const fileContents = readFileSync(previouslyDownloadedFile, "utf-8");
+      if (
+        fileContents === "everything" ||
+        fileContents === "screenshots-only"
+      ) {
+        previouslyDownloadedScope = fileContents;
+        if (
+          previouslyDownloadedScope === downloadScope ||
+          previouslyDownloadedScope === "everything"
+        ) {
+          logger.debug(`Replay archive already downloaded at ${replayDir}`);
+          return { fileName: replayDir };
+        } else {
+          // Instead of trying to reason about how to combine the two scopes, let's bump
+          // to downloading everything which is guaranteed to be a superset.
+          logger.debug(
+            `Replay archive is partially downloaded at ${replayDir}, will now download everything`
+          );
+          downloadScope = "everything";
+        }
+      } else {
+        throw new Error(
+          `Error: Unknown previously download scope "${fileContents}"`
+        );
+      }
     }
 
     const replay = await getReplay(client, replayId);
 
     if (replay.version === "v3") {
-      await downloadReplayV3Files(client, replayId, replayDir, downloadScope);
+      await downloadReplayV3Files(
+        client,
+        replayId,
+        replayDir,
+        downloadScope,
+        previouslyDownloadedScope
+      );
     } else {
       throw new Error(
         `Error: Unknown replay version "${replay.version}". This may be an invalid replay`
       );
     }
 
+    writeFileSync(previouslyDownloadedFile, downloadScope, "utf-8");
     logger.debug(`Extracted replay archive in ${replayDir}`);
     return { fileName: replayDir };
   } finally {
@@ -93,7 +132,8 @@ const downloadReplayV3Files = async (
   client: AxiosInstance,
   replayId: string,
   replayDir: string,
-  downloadScope: DownloadScope
+  downloadScope: DownloadScope,
+  previouslyDownloadedScope: DownloadScope | undefined
 ) => {
   const downloadUrls = await getReplayV3DownloadUrls(client, replayId);
   if (!downloadUrls) {
@@ -115,27 +155,28 @@ const downloadReplayV3Files = async (
         })
       : [];
 
-  const screenshotPromises: (() => Promise<string[] | void>)[] = Object.values(
-    screenshots
-  ).flatMap((data) => {
-    const imageFilePath = join(replayDir, data.image.filePath);
-    const metadata = data.metadata;
-    if (metadata?.filePath == null) {
-      return [() => downloadFile(data.image.signedUrl, imageFilePath)];
-    }
+  const screenshotPromises: (() => Promise<string[] | void>)[] =
+    previouslyDownloadedScope === "screenshots-only"
+      ? []
+      : Object.values(screenshots).flatMap((data) => {
+          const imageFilePath = join(replayDir, data.image.filePath);
+          const metadata = data.metadata;
+          if (metadata?.filePath == null) {
+            return [() => downloadFile(data.image.signedUrl, imageFilePath)];
+          }
 
-    const metadataFilePath = join(replayDir, metadata.filePath);
-    return [
-      () => downloadFile(data.image.signedUrl, imageFilePath),
-      async () => {
-        await downloadAndExtractFile(
-          metadata.signedUrl,
-          metadataFilePath,
-          join(replayDir, dirname(metadata.filePath))
-        );
-      },
-    ];
-  });
+          const metadataFilePath = join(replayDir, metadata.filePath);
+          return [
+            () => downloadFile(data.image.signedUrl, imageFilePath),
+            async () => {
+              await downloadAndExtractFile(
+                metadata.signedUrl,
+                metadataFilePath,
+                join(replayDir, dirname(metadata.filePath))
+              );
+            },
+          ];
+        });
 
   const diffsFolder = join(replayDir, "diffs");
   await Promise.all(
