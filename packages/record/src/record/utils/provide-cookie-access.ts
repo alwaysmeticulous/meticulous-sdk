@@ -11,12 +11,13 @@ type ModifiedWindow = {
 export const provideCookieAccess = async (page: Page) => {
   const client = await page.target().createCDPSession();
   const getCookies = async () =>
-    (await client.send("Network.getAllCookies")).cookies.map(
-      ({ sameSite, ...rest }): Cookie => {
+    (await client.send("Storage.getCookies")).cookies.map(
+      ({ sameSite, expires, ...rest }): Cookie => {
         const convertedSameSite = convertSameSiteValue(sameSite);
         return {
           ...rest,
           ...(convertedSameSite ? { sameSite: convertedSameSite } : {}),
+          expires: expires ? expires * 1000 : null, // Convert seconds to milliseconds
         };
       }
     );
