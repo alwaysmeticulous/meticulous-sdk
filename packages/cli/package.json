@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "2.111.0",
+  "version": "2.111.1",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
@@ -33,7 +33,7 @@
     "@alwaysmeticulous/client": "^2.110.0",
     "@alwaysmeticulous/common": "^2.110.0",
     "@alwaysmeticulous/downloading-helpers": "^2.110.0",
-    "@alwaysmeticulous/record": "^2.111.0",
+    "@alwaysmeticulous/record": "^2.111.1",
     "@alwaysmeticulous/replay-debugger-ui": "^2.106.1",
     "@alwaysmeticulous/replay-orchestrator-launcher": "^2.110.0",
     "@alwaysmeticulous/sdk-bundles-api": "^2.110.0",
