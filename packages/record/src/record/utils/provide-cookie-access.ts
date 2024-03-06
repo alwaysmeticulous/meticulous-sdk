@@ -11,7 +11,7 @@ type ModifiedWindow = {
 export const provideCookieAccess = async (page: Page) => {
   const client = await page.target().createCDPSession();
   const getCookies = async () =>
-    (await client.send("Storage.getCookies")).cookies.map(
+    (await client.send("Network.getAllCookies")).cookies.map(
       ({ sameSite, expires, ...rest }): Cookie => {
         const convertedSameSite = convertSameSiteValue(sameSite);
         return {
