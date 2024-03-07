@@ -112,10 +112,10 @@ export interface WebSocketConnectionEvent {
   /**
    * The time in milliseconds since the start of the session.
    * 
-   * During simulations, we consider the "created" event to have been replayed whenever the browser calls `new WebSocket()`
-   * and all other events are replayed at a time relative to the "created" event's timestamp.
+   * During simulations, we consider the "created" event to have been replayed whenever the browser calls 
+   * `new WebSocket()` and all other events are replayed at a time relative to the "created" event's timestamp.
    * 
-   * E.g. the "opened" event is replayed at ("opened".timestamp - "created".timestamp) milliseconds after the "created" event.
+   * E.g. the "opened" event is replayed at ("opened".timestamp - "created".timestamp) milliseconds after the browser calls `new WebSocket()`.
    */
   timestamp: number;
   type: "created" | "opened" | "message-sent" | "message-received" | "closed" | "error";
