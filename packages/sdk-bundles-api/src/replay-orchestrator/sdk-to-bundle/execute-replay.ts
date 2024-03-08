@@ -1,4 +1,5 @@
 import {
+  Cookie,
   InjectableRequestHeader,
   NetworkStubbingMode,
   ScreenshotAssertionsEnabledOptions,
@@ -189,6 +190,11 @@ export interface ReplayExecutionOptions {
    * If populated, each header will be injected into all requests when fetching resources during a replay.
    */
   customRequestHeaders?: InjectableRequestHeader[];
+
+  /**
+   * Extra cookies to use during the replay. These will override cookies of the same name from the session under simulation.
+   */
+  extraCookies?: Cookie[];
 
   /**
    * Hash of the project settings at the time the test run or replay was initiated. Used as part of `ReplayLogicVersion`
