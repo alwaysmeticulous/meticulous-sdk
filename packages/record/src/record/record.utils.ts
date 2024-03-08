@@ -1,5 +1,9 @@
 import { readFile } from "fs/promises";
 import { Page } from "puppeteer";
+import {
+  METICULOUS_BYPASS_CSP_DOCS_URL,
+  REQUIRED_CSP_ORIGINS,
+} from "./constants";
 import { provideCookieAccess } from "./utils/provide-cookie-access";
 import { wrapInShouldRecordCondition } from "./utils/wrap-in-should-record-condition";
 
@@ -58,5 +62,22 @@ export async function bootstrapPage({
 
   await page.evaluateOnNewDocument(
     wrapInShouldRecordCondition(recordingSnippetFile)
+  );
+
+  await page.evaluateOnNewDocument(
+    (requiredOrigins, docsPage) => {
+      if (window.parent !== window) {
+        return; // Do not add redirect iframes to CSP warnings, since we don't try to record in iFrames anyway
+      }
+      addEventListener("securitypolicyviolation", (event) => {
+        if (
+          requiredOrigins.some((origin) => event.blockedURI.startsWith(origin))
+        ) {
+          window.location.href = docsPage;
+        }
+      });
+    },
+    REQUIRED_CSP_ORIGINS,
+    METICULOUS_BYPASS_CSP_DOCS_URL
   );
 }
