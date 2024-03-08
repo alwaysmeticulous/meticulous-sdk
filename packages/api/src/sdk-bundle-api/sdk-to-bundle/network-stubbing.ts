@@ -39,8 +39,17 @@ export interface RequestFilter {
    * Any JS regex that passes https://github.com/tjenkinson/redos-detector is supported.
    */
   urlRegex: string;
+
+  /** Defaults to `{ fetch: true, xhr: true, webSockets: true }` */
+  connectionTypes?: ConnectionTypesFilter;
 }
 
 export interface NoStubbing {
   type: "no-stubbing";
+}
+
+export interface ConnectionTypesFilter {
+  fetch: boolean;
+  xhr: boolean;
+  webSockets: boolean;
 }
