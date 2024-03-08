@@ -10,8 +10,9 @@
   ],
   "scripts": {
     "clean": "rimraf dist tsconfig.tsbuildinfo",
+     "cli": "node dist/bin/lt.js",
+    "cli:dev": "ts-node src/bin/lt.ts",
     "build": "tsc --build tsconfig.json",
-    "dev": "tsc --build tsconfig.json --watch",
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
@@ -19,13 +20,9 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "axios": "0.21.4",
-    "debug": "4.3.2",
-    "openurl": "1.1.1",
-    "yargs": "17.1.1"
-  },
-  "devDependencies": {
-    "mocha": "~9.1.1"
+    "axios": "^1.2.6",
+    "debug": "^4.3.4",
+    "yargs": "^17.5.1"
   },
   "author": {
     "name": "The Meticulous Team",
