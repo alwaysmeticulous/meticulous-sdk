@@ -40,7 +40,7 @@ export interface RequestFilter {
    */
   urlRegex: string;
 
-  /** Defaults to `{ fetch: true, xhr: true, webSockets: false }` */
+  /** Defaults to `{ fetch: true, xhr: true, webSockets: true }` */
   connectionTypes?: ConnectionTypesFilter;
 }
 
