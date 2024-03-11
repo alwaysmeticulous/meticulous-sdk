@@ -1,8 +1,10 @@
 #!/usr/bin/env node
+import { initLogger, setLogLevel } from "@alwaysmeticulous/common";
 import yargs from "yargs";
 import { localtunnel } from "../localtunnel";
 
 interface Options {
+  logLevel: string | undefined;
   port: number;
   host: string;
   subdomain: string | undefined;
@@ -69,10 +71,17 @@ const buildOptions = (args: yargs.Argv): yargs.Argv<Options> =>
       describe: "Print basic request info",
       boolean: true,
       default: false,
+    })
+    .option("logLevel", {
+      choices: ["trace", "debug", "info", "warn", "error", "silent"],
+      description: "Log level",
     });
 
 const handle = async (argv: Options) => {
+  const logger = initLogger();
+  setLogLevel(argv.logLevel);
   const tunnel = await localtunnel({
+    logger,
     port: argv.port,
     host: argv.host,
     subdomain: argv.subdomain || null,

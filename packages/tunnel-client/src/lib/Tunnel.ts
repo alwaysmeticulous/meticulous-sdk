@@ -1,10 +1,8 @@
 import { EventEmitter } from "events";
 import { parse } from "url";
 import axios from "axios";
-import { debug as Debug } from "debug";
+import { Logger } from "loglevel";
 import { TunnelCluster } from "./TunnelCluster";
-
-const debug = Debug("localtunnel:client");
 
 interface CreateTunnelResponse {
   id: string;
@@ -35,6 +33,7 @@ interface TunnelInfo {
 }
 
 export interface LocalTunnelOptions {
+  logger: Logger;
   port: number;
   subdomain: string | null;
   host: string;
@@ -47,6 +46,7 @@ export interface LocalTunnelOptions {
 }
 
 export class Tunnel extends EventEmitter {
+  private readonly logger: Logger;
   private readonly opts: LocalTunnelOptions;
   private closed: boolean;
   private tunnelCluster: TunnelCluster | null = null;
@@ -56,8 +56,11 @@ export class Tunnel extends EventEmitter {
 
   constructor(opts: LocalTunnelOptions) {
     super();
+    this.logger = opts.logger;
+
     this.opts = opts;
     this.closed = false;
+
     if (!this.opts.host) {
       this.opts.host = "https://localtunnel.me";
     }
@@ -101,12 +104,12 @@ export class Tunnel extends EventEmitter {
     // where to quest
     const uri = baseUri + (assignedDomain || "?new");
 
-    (function getUrl() {
+    const getUrl = () => {
       axios
         .get<CreateTunnelResponse | CreateTunnelResponseError>(uri, params)
         .then((res) => {
           const body = res.data;
-          debug("got tunnel information", res.data);
+          this.logger.debug("got tunnel information", res.data);
           if (res.status !== 200) {
             const err = new Error(
               (body && (body as CreateTunnelResponseError).error) ||
@@ -117,10 +120,12 @@ export class Tunnel extends EventEmitter {
           cb(null, getInfo(body as CreateTunnelResponse));
         })
         .catch((err) => {
-          debug(`tunnel server offline: ${err.message}, retry 1s`);
+          this.logger.debug(`tunnel server offline: ${err.message}, retry 1s`);
           return setTimeout(getUrl, 1000);
         });
-    })();
+    };
+
+    getUrl();
   }
 
   _establish(info: TunnelInfo) {
@@ -130,7 +135,7 @@ export class Tunnel extends EventEmitter {
       info.max_conn + (EventEmitter.defaultMaxListeners || 10)
     );
 
-    this.tunnelCluster = new TunnelCluster(info);
+    this.tunnelCluster = new TunnelCluster({ ...info, logger: this.logger });
 
     // only emit the url the first time
     this.tunnelCluster.once("open", () => {
@@ -139,7 +144,7 @@ export class Tunnel extends EventEmitter {
 
     // re-emit socket error
     this.tunnelCluster.on("error", (err) => {
-      debug("got socket error", err.message);
+      this.logger.debug("got socket error", err.message);
       this.emit("error", err);
     });
 
@@ -148,7 +153,7 @@ export class Tunnel extends EventEmitter {
     // track open count
     this.tunnelCluster.on("open", (tunnel) => {
       tunnelCount++;
-      debug("tunnel open [total: %d]", tunnelCount);
+      this.logger.debug("tunnel open [total: %d]", tunnelCount);
 
       const closeHandler = () => {
         tunnel.destroy();
@@ -167,7 +172,7 @@ export class Tunnel extends EventEmitter {
     // when a tunnel dies, open a new one
     this.tunnelCluster.on("dead", () => {
       tunnelCount--;
-      debug("tunnel dead [total: %d]", tunnelCount);
+      this.logger.debug("tunnel dead [total: %d]", tunnelCount);
       if (this.closed || !this.tunnelCluster) {
         return;
       }

@@ -3,7 +3,11 @@ export {
   getMeticulousLocalDataDir,
   setMeticulousLocalDataDir,
 } from "./local-data/local-data";
-export { METICULOUS_LOGGER_NAME } from "./logger/console-logger";
+export {
+  METICULOUS_LOGGER_NAME,
+  initLogger,
+  setLogLevel,
+} from "./logger/console-logger";
 export { DebugLogger } from "./logger/debug-logger";
 export type {
   CreateReplayDebuggerFn,

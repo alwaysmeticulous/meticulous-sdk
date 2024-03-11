@@ -20,8 +20,9 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
+    "@alwaysmeticulous/common": "^2.113.0",
+    "loglevel": "^1.8.0",
     "axios": "^1.2.6",
-    "debug": "^4.3.4",
     "yargs": "^17.5.1"
   },
   "author": {
