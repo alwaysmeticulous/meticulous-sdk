@@ -8,8 +8,7 @@ import { HeaderHostTransformer } from "./HeaderHostTransformer";
 
 interface TunnelClusterOpts {
   logger: Logger;
-  remote_ip?: string;
-  remote_host: string | null;
+  remote_host: string;
   remote_port: number;
   useTls: boolean;
   tunnelPassphrase: string;
@@ -36,8 +35,7 @@ export class TunnelCluster extends EventEmitter {
   open() {
     const opt = this.opts;
 
-    // Prefer IP if returned by the server
-    const remoteHostOrIp = opt.remote_ip || opt.remote_host;
+    const remoteHostOrIp = opt.remote_host;
     const remotePort = opt.remote_port;
     const localHost = opt.local_host || "localhost";
     const localPort = opt.local_port;
@@ -52,10 +50,6 @@ export class TunnelCluster extends EventEmitter {
       remoteHostOrIp,
       remotePort
     );
-
-    if (!remoteHostOrIp) {
-      throw new Error("remote_host or remote_ip is required");
-    }
 
     // connection to localtunnel server
     let remote: net.Socket | tls.TLSSocket;

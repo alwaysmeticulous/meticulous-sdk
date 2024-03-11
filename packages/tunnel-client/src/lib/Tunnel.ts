@@ -7,7 +7,6 @@ const DEFAULT_HOST = "https://tunnels.meticulous.ai";
 
 interface CreateTunnelResponse {
   id: string;
-  ip: string;
   port: number;
   url: string;
   max_conn_count: number;
@@ -24,8 +23,7 @@ interface TunnelInfo {
   name: string;
   url: string;
   max_conn: number;
-  remote_host: string | null;
-  remote_ip: string;
+  remote_host: string;
   remote_port: number;
   useTls: boolean;
   tunnelPassphrase: string;
@@ -79,7 +77,6 @@ export class Tunnel extends EventEmitter {
   _getInfo(body: CreateTunnelResponse): TunnelInfo {
     const {
       id,
-      ip,
       port,
       url,
       max_conn_count,
@@ -101,7 +98,6 @@ export class Tunnel extends EventEmitter {
       url,
       max_conn: max_conn_count || 1,
       remote_host: parsedHost.hostname,
-      remote_ip: ip,
       remote_port: port,
       useTls,
       tunnelPassphrase: tunnel_passphrase,
