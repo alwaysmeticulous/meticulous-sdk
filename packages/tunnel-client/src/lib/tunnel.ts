@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 import axios from "axios";
 import { Logger } from "loglevel";
-import { TunnelCluster } from "./TunnelCluster";
+import { TunnelCluster } from "./tunnel-cluster";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
 

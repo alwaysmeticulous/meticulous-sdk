@@ -4,7 +4,7 @@ import * as net from "net";
 import { Duplex } from "stream";
 import * as tls from "tls";
 import { Logger } from "loglevel";
-import { HeaderHostTransformer } from "./HeaderHostTransformer";
+import { HeaderHostTransformer } from "./header-host-transformer";
 
 interface TunnelClusterOpts {
   logger: Logger;
