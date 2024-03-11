@@ -23,6 +23,7 @@ interface TunnelInfo {
   remote_host: string | null;
   remote_ip: string;
   remote_port: number;
+  useTls: boolean;
   local_port: number;
   local_host: string;
   local_https: boolean;
@@ -72,6 +73,11 @@ export class Tunnel extends EventEmitter {
     const { host, port: local_port, local_host } = this.opts;
     const { local_https, local_cert, local_key, local_ca, allow_invalid_cert } =
       this.opts;
+
+    // determine if we should use tls for the connection to the local server
+    // TODO: Don't use parse, use `useTls` from the the response body after migration to the new API endpoint.
+    const useTls = parse(url).protocol === "https:";
+
     return {
       name: id,
       url,
@@ -79,6 +85,7 @@ export class Tunnel extends EventEmitter {
       remote_host: parse(host).hostname,
       remote_ip: ip,
       remote_port: port,
+      useTls,
       local_port,
       local_host,
       local_https,

@@ -13,6 +13,7 @@ interface TunnelClusterOpts {
   remote_port: number;
   local_host: string;
   local_port: number;
+  useTls: boolean;
   local_https: boolean;
   allow_invalid_cert: boolean;
   local_cert?: string | undefined;
@@ -56,10 +57,19 @@ export class TunnelCluster extends EventEmitter {
     }
 
     // connection to localtunnel server
-    const remote = net.connect({
-      host: remoteHostOrIp,
-      port: remotePort,
-    });
+    let remote: net.Socket | tls.TLSSocket;
+    if (opt.useTls) {
+      remote = tls.connect({
+        host: remoteHostOrIp,
+        port: remotePort,
+        rejectUnauthorized: true,
+      });
+    } else {
+      remote = net.connect({
+        host: remoteHostOrIp,
+        port: remotePort,
+      });
+    }
 
     remote.setKeepAlive(true);
 
@@ -189,7 +199,10 @@ export class TunnelCluster extends EventEmitter {
     });
 
     // tunnel is considered open when remote connects
-    remote.once("connect", () => {
+
+    const connectEvent = opt.useTls ? "secureConnect" : "connect";
+
+    remote.once(connectEvent, () => {
       this.emit("open", remote);
       connLocal();
     });
