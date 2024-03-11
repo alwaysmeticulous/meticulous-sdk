@@ -120,7 +120,9 @@ const handle = async (argv: Options) => {
     throw err;
   });
 
-  console.log("your url is: %s", tunnel.url);
+  logger.info(
+    `Your url is: ${tunnel.url}, user: ${tunnel.basicAuthUser}, password: ${tunnel.basicAuthPassword}`
+  );
 
   if (argv.printRequests) {
     tunnel.on("request", (info) => {

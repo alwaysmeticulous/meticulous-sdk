@@ -13,6 +13,8 @@ interface CreateTunnelResponse {
   url: string;
   max_conn_count: number;
   tunnel_passphrase: string;
+  basic_auth_user: string;
+  basic_auth_password: string;
 }
 
 interface CreateTunnelResponseError {
@@ -28,6 +30,8 @@ interface TunnelInfo {
   remote_port: number;
   useTls: boolean;
   tunnelPassphrase: string;
+  basicAuthUser: string;
+  basicAuthPassword: string;
   local_port: number;
   local_host: string;
   local_https: boolean;
@@ -60,6 +64,8 @@ export class Tunnel extends EventEmitter {
 
   public clientId: string | null = null;
   public url: string | null = null;
+  public basicAuthUser: string | null = null;
+  public basicAuthPassword: string | null = null;
 
   constructor(opts: LocalTunnelOptions) {
     super();
@@ -72,7 +78,16 @@ export class Tunnel extends EventEmitter {
   }
 
   _getInfo(body: CreateTunnelResponse): TunnelInfo {
-    const { id, ip, port, url, max_conn_count, tunnel_passphrase } = body;
+    const {
+      id,
+      ip,
+      port,
+      url,
+      max_conn_count,
+      tunnel_passphrase,
+      basic_auth_user,
+      basic_auth_password,
+    } = body;
     const { port: local_port, local_host } = this.opts;
     const { local_https, local_cert, local_key, local_ca, allow_invalid_cert } =
       this.opts;
@@ -90,6 +105,8 @@ export class Tunnel extends EventEmitter {
       remote_port: port,
       useTls,
       tunnelPassphrase: tunnel_passphrase,
+      basicAuthUser: basic_auth_user,
+      basicAuthPassword: basic_auth_password,
       local_port,
       local_host,
       local_https,
@@ -154,7 +171,11 @@ export class Tunnel extends EventEmitter {
 
     // only emit the url the first time
     this.tunnelCluster.once("open", () => {
-      this.emit("url", info.url);
+      this.emit("url", {
+        url: info.url,
+        basicAuthUser: info.basicAuthUser,
+        basicAuthPassword: info.basicAuthPassword,
+      });
     });
 
     // re-emit socket error
@@ -212,6 +233,8 @@ export class Tunnel extends EventEmitter {
 
       this.clientId = info.name;
       this.url = info.url;
+      this.basicAuthUser = info.basicAuthUser;
+      this.basicAuthPassword = info.basicAuthPassword;
 
       this._establish(info);
       cb();
