@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 import { getApiToken } from "@alwaysmeticulous/client/dist/api-token.utils";
 import {
   initLogger,
