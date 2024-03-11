@@ -11,7 +11,6 @@ interface CreateTunnelResponse {
   ip: string;
   port: number;
   url: string;
-  cached_url?: string;
   max_conn_count: number;
 }
 
@@ -22,7 +21,6 @@ interface CreateTunnelResponseError {
 interface TunnelInfo {
   name: string;
   url: string;
-  cached_url: string | null;
   max_conn: number;
   remote_host: string | null;
   remote_ip: string;
@@ -55,7 +53,6 @@ export class Tunnel extends EventEmitter {
 
   public clientId: string | null = null;
   public url: string | null = null;
-  public cachedUrl: string | null = null;
 
   constructor(opts: LocalTunnelOptions) {
     super();
@@ -67,14 +64,13 @@ export class Tunnel extends EventEmitter {
   }
 
   _getInfo(body: CreateTunnelResponse): TunnelInfo {
-    const { id, ip, port, url, cached_url, max_conn_count } = body;
+    const { id, ip, port, url, max_conn_count } = body;
     const { host, port: local_port, local_host } = this.opts;
     const { local_https, local_cert, local_key, local_ca, allow_invalid_cert } =
       this.opts;
     return {
       name: id,
       url,
-      cached_url: cached_url || null,
       max_conn: max_conn_count || 1,
       remote_host: parse(host).hostname,
       remote_ip: ip,
@@ -196,11 +192,6 @@ export class Tunnel extends EventEmitter {
 
       this.clientId = info.name;
       this.url = info.url;
-
-      // `cached_url` is only returned by proxy servers that support resource caching.
-      if (info.cached_url) {
-        this.cachedUrl = info.cached_url;
-      }
 
       this._establish(info);
       cb();
