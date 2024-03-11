@@ -1,10 +1,17 @@
 #!/usr/bin/env node
-import { initLogger, setLogLevel } from "@alwaysmeticulous/common";
+import { getApiToken } from "@alwaysmeticulous/client/dist/api-token.utils";
+import {
+  initLogger,
+  METICULOUS_LOGGER_NAME,
+  setLogLevel,
+} from "@alwaysmeticulous/common";
+import log from "loglevel";
 import yargs from "yargs";
 import { localtunnel } from "../localtunnel";
 
 interface Options {
   logLevel: string | undefined;
+  apiToken: string | undefined;
   port: number;
   host: string;
   subdomain: string | undefined;
@@ -19,6 +26,10 @@ interface Options {
 
 const buildOptions = (args: yargs.Argv): yargs.Argv<Options> =>
   args
+    .option("apiToken", {
+      describe: "Meticulous API token",
+      string: true,
+    })
     .option("port", {
       alias: "p",
       describe: "Internal HTTP server port",
@@ -80,8 +91,19 @@ const buildOptions = (args: yargs.Argv): yargs.Argv<Options> =>
 const handle = async (argv: Options) => {
   const logger = initLogger();
   setLogLevel(argv.logLevel);
+
+  const apiToken = getApiToken(argv.apiToken);
+  if (!apiToken) {
+    const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+    logger.error(
+      "You must provide an API token by using the --apiToken parameter"
+    );
+    process.exit(1);
+  }
+
   const tunnel = await localtunnel({
     logger,
+    apiToken,
     port: argv.port,
     host: argv.host,
     subdomain: argv.subdomain || null,

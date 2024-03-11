@@ -34,6 +34,7 @@ interface TunnelInfo {
 
 export interface LocalTunnelOptions {
   logger: Logger;
+  apiToken: string;
   port: number;
   subdomain: string | null;
   host: string;
@@ -96,6 +97,9 @@ export class Tunnel extends EventEmitter {
 
     const params = {
       responseType: "json" as const,
+      headers: {
+        Authorization: opt.apiToken,
+      },
     };
 
     const baseUri = `${opt.host}/`;
