@@ -1,5 +1,4 @@
 import { EventEmitter } from "events";
-import { parse } from "url";
 import axios from "axios";
 import { Logger } from "loglevel";
 import { TunnelCluster } from "./TunnelCluster";
@@ -91,16 +90,17 @@ export class Tunnel extends EventEmitter {
     const { port: local_port, local_host } = this.opts;
     const { local_https, local_cert, local_key, local_ca, allow_invalid_cert } =
       this.opts;
+    const parsedHost = new URL(this.host);
 
     // determine if we should use tls for the connection to the local server
     // TODO: Don't use parse, use `useTls` from the the response body after migration to the new API endpoint.
-    const useTls = parse(this.host).protocol === "https:";
+    const useTls = parsedHost.protocol === "https:";
 
     return {
       name: id,
       url,
       max_conn: max_conn_count || 1,
-      remote_host: parse(this.host).hostname,
+      remote_host: parsedHost.hostname,
       remote_ip: ip,
       remote_port: port,
       useTls,
