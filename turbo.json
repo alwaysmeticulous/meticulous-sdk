@@ -9,6 +9,33 @@
     "depcheck": {
       "dependsOn": [],
       "outputs": []
+    },
+    "clean": {
+      "cache": false
+    },
+    "format": {
+      "cache": false
+    },
+    "lint": {
+      "outputs": [".eslintcache"],
+      "outputMode": "new-only"
+    },
+    "lint:commit": {
+      "cache": false
+    },
+    "lint:fix": {
+      "cache": false
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "outputMode": "new-only"
     }
-  }
+  },
+  "globalDependencies": [
+    "tsconfig.base.json",
+    "jest.config.base.js",
+    "jest.config.js",
+    ".eslintrc.js"
+  ]
 }
