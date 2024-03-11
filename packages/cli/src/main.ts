@@ -1,6 +1,8 @@
 import { join, normalize } from "path";
 import {
   getMeticulousVersion,
+  initLogger,
+  setLogLevel,
   setMeticulousLocalDataDir,
 } from "@alwaysmeticulous/common";
 import { initSentry } from "@alwaysmeticulous/sentry";
@@ -12,7 +14,6 @@ import { recordLoginCommand } from "./commands/record-login/record-login.command
 import { replayCommand } from "./commands/replay/replay.command";
 import { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.command";
 import { showProjectCommand } from "./commands/show-project/show-project.command";
-import { initLogger, setLogLevel } from "./utils/logger.utils";
 import { setOptions } from "./utils/sentry.utils";
 
 const handleDataDir: (dataDir: string | null | undefined) => void = (
