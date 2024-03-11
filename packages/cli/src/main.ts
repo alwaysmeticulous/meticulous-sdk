@@ -14,6 +14,7 @@ import { recordLoginCommand } from "./commands/record-login/record-login.command
 import { replayCommand } from "./commands/replay/replay.command";
 import { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.command";
 import { showProjectCommand } from "./commands/show-project/show-project.command";
+import { startLocalTunnelCommand } from "./commands/start-local-tunnel/start-local-tunnel.command";
 import { setOptions } from "./utils/sentry.utils";
 
 const handleDataDir: (dataDir: string | null | undefined) => void = (
@@ -42,6 +43,7 @@ export const main: () => void = async () => {
     .command(replayCommand)
     .command(runAllTestsCommand)
     .command(showProjectCommand)
+    .command(startLocalTunnelCommand)
     .help()
     .strict()
     .demandCommand()

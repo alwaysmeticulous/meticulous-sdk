@@ -1,6 +1,7 @@
 import { EventEmitter } from "events";
 import axios from "axios";
 import { Logger } from "loglevel";
+import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
 import { TunnelCluster } from "./tunnel-cluster";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
@@ -17,39 +18,6 @@ interface CreateTunnelResponse {
 
 interface CreateTunnelResponseError {
   error: string;
-}
-
-interface TunnelInfo {
-  name: string;
-  url: string;
-  maxConn: number;
-  remoteHost: string;
-  remotePort: number;
-  useTls: boolean;
-  tunnelPassphrase: string;
-  basicAuthUser: string;
-  basicAuthPassword: string;
-  localPort: number;
-  localHost: string;
-  localHttps: boolean;
-  localCert?: string | undefined;
-  localKey?: string | undefined;
-  localCa?: string | undefined;
-  allowInvalidCert: boolean;
-}
-
-export interface LocalTunnelOptions {
-  logger: Logger;
-  apiToken: string;
-  port: number;
-  subdomain: string | null;
-  host: string | undefined;
-  localHost: string;
-  localHttps: boolean;
-  localCert?: string | undefined;
-  localKey?: string | undefined;
-  localCa?: string | undefined;
-  allowInvalidCert: boolean;
 }
 
 export class Tunnel extends EventEmitter {
@@ -211,7 +179,7 @@ export class Tunnel extends EventEmitter {
       this.tunnelCluster.open();
     });
 
-    this.tunnelCluster.on("request", (req) => {
+    this.tunnelCluster.on("request", (req: IncomingRequestEvent) => {
       this.emit("request", req);
     });
 

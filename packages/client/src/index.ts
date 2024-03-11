@@ -14,4 +14,5 @@ export {
   GetLatestTestRunOptions,
   getLatestTestRunResults,
 } from "./api/test-run.api";
+export { getApiToken } from "./api-token.utils";
 export { ClientOptions, createClient } from "./client";

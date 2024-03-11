@@ -1,4 +1,5 @@
-import { LocalTunnelOptions, Tunnel } from "./lib/tunnel";
+import { Tunnel } from "./lib/tunnel";
+import { LocalTunnelOptions } from "./types";
 
 export const localtunnel = (options: LocalTunnelOptions): Promise<Tunnel> => {
   const client = new Tunnel(options);
