@@ -4,6 +4,8 @@ import axios from "axios";
 import { Logger } from "loglevel";
 import { TunnelCluster } from "./TunnelCluster";
 
+const DEFAULT_HOST = "https://tunnels.meticulous.ai";
+
 interface CreateTunnelResponse {
   id: string;
   ip: string;
@@ -40,7 +42,7 @@ export interface LocalTunnelOptions {
   apiToken: string;
   port: number;
   subdomain: string | null;
-  host: string;
+  host: string | undefined;
   local_host: string;
   local_https: boolean;
   local_cert?: string | undefined;
@@ -51,7 +53,8 @@ export interface LocalTunnelOptions {
 
 export class Tunnel extends EventEmitter {
   private readonly logger: Logger;
-  private readonly opts: LocalTunnelOptions;
+  private readonly opts: Omit<LocalTunnelOptions, "logger" | "host">;
+  private readonly host: string;
   private closed: boolean;
   private tunnelCluster: TunnelCluster | null = null;
 
@@ -65,26 +68,24 @@ export class Tunnel extends EventEmitter {
     this.opts = opts;
     this.closed = false;
 
-    if (!this.opts.host) {
-      this.opts.host = "https://localtunnel.me";
-    }
+    this.host = opts.host || DEFAULT_HOST;
   }
 
   _getInfo(body: CreateTunnelResponse): TunnelInfo {
     const { id, ip, port, url, max_conn_count, tunnel_passphrase } = body;
-    const { host, port: local_port, local_host } = this.opts;
+    const { port: local_port, local_host } = this.opts;
     const { local_https, local_cert, local_key, local_ca, allow_invalid_cert } =
       this.opts;
 
     // determine if we should use tls for the connection to the local server
     // TODO: Don't use parse, use `useTls` from the the response body after migration to the new API endpoint.
-    const useTls = parse(url).protocol === "https:";
+    const useTls = parse(this.host).protocol === "https:";
 
     return {
       name: id,
       url,
       max_conn: max_conn_count || 1,
-      remote_host: parse(host).hostname,
+      remote_host: parse(this.host).hostname,
       remote_ip: ip,
       remote_port: port,
       useTls,
@@ -112,7 +113,7 @@ export class Tunnel extends EventEmitter {
       },
     };
 
-    const baseUri = `${opt.host}/`;
+    const baseUri = `${this.host}/`;
     // no subdomain at first, maybe use requested domain
     const assignedDomain = opt.subdomain;
     // where to quest

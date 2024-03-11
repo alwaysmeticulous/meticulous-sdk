@@ -13,7 +13,7 @@ interface Options {
   logLevel: string | undefined;
   apiToken: string | undefined;
   port: number;
-  host: string;
+  host: string | undefined;
   subdomain: string | undefined;
   localHost: string;
   localHttps: boolean;
@@ -39,7 +39,6 @@ const buildOptions = (args: yargs.Argv): yargs.Argv<Options> =>
     .option("host", {
       alias: "h",
       describe: "Upstream server providing forwarding",
-      default: "https://localtunnel.me",
       string: true,
     })
     .option("subdomain", {
