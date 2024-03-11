@@ -106,12 +106,12 @@ const handle = async (argv: Options) => {
     port: argv.port,
     host: argv.host,
     subdomain: argv.subdomain || null,
-    local_host: argv.localHost,
-    local_https: argv.localHttps,
-    local_cert: argv.localCert,
-    local_key: argv.localKey,
-    local_ca: argv.localCa,
-    allow_invalid_cert: argv.allowInvalidCert,
+    localHost: argv.localHost,
+    localHttps: argv.localHttps,
+    localCert: argv.localCert,
+    localKey: argv.localKey,
+    localCa: argv.localCa,
+    allowInvalidCert: argv.allowInvalidCert,
   }).catch((err) => {
     throw err;
   });

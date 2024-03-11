@@ -8,17 +8,17 @@ import { HeaderHostTransformer } from "./HeaderHostTransformer";
 
 interface TunnelClusterOpts {
   logger: Logger;
-  remote_host: string;
-  remote_port: number;
+  remoteHost: string;
+  remotePort: number;
   useTls: boolean;
   tunnelPassphrase: string;
-  local_host: string;
-  local_port: number;
-  local_https: boolean;
-  allow_invalid_cert: boolean;
-  local_cert?: string | undefined;
-  local_key?: string | undefined;
-  local_ca?: string | undefined;
+  localHost: string;
+  localPort: number;
+  localHttps: boolean;
+  allowInvalidCert: boolean;
+  localCert?: string | undefined;
+  localKey?: string | undefined;
+  localCa?: string | undefined;
 }
 
 // manages groups of tunnels
@@ -35,12 +35,12 @@ export class TunnelCluster extends EventEmitter {
   open() {
     const opt = this.opts;
 
-    const remoteHostOrIp = opt.remote_host;
-    const remotePort = opt.remote_port;
-    const localHost = opt.local_host || "localhost";
-    const localPort = opt.local_port;
-    const localProtocol = opt.local_https ? "https" : "http";
-    const allowInvalidCert = opt.allow_invalid_cert;
+    const remoteHostOrIp = opt.remoteHost;
+    const remotePort = opt.remotePort;
+    const localHost = opt.localHost;
+    const localPort = opt.localPort;
+    const localProtocol = opt.localHttps ? "https" : "http";
+    const allowInvalidCert = opt.allowInvalidCert;
 
     this.logger.debug(
       "establishing tunnel %s://%s:%s <> %s:%s",
@@ -106,15 +106,15 @@ export class TunnelCluster extends EventEmitter {
 
       let local: net.Socket | tls.TLSSocket;
 
-      if (opt.local_https) {
+      if (opt.localHttps) {
         if (allowInvalidCert) {
           this.logger.debug("allowing invalid certificates");
         } else {
-          if (!opt.local_cert) {
+          if (!opt.localCert) {
             throw new Error("local_cert is required for https");
           }
 
-          if (!opt.local_key) {
+          if (!opt.localKey) {
             throw new Error("local_key is required for https");
           }
         }
@@ -123,9 +123,9 @@ export class TunnelCluster extends EventEmitter {
           allowInvalidCert
             ? { rejectUnauthorized: false }
             : {
-                cert: readFileSync(opt.local_cert as string),
-                key: readFileSync(opt.local_key as string),
-                ca: opt.local_ca ? [readFileSync(opt.local_ca)] : undefined,
+                cert: readFileSync(opt.localCert as string),
+                key: readFileSync(opt.localKey as string),
+                ca: opt.localCa ? [readFileSync(opt.localCa)] : undefined,
               };
 
         // connection to local http server
@@ -171,10 +171,10 @@ export class TunnelCluster extends EventEmitter {
 
         // if user requested specific local host
         // then we use host header transform to replace the host header
-        if (opt.local_host) {
-          this.logger.debug("transform Host header to %s", opt.local_host);
+        if (opt.localHost) {
+          this.logger.debug("transform Host header to %s", opt.localHost);
           stream = remote.pipe(
-            new HeaderHostTransformer({ host: opt.local_host })
+            new HeaderHostTransformer({ host: opt.localHost })
           );
         }
 

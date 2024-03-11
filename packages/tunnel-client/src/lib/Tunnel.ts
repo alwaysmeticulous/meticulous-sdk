@@ -22,20 +22,20 @@ interface CreateTunnelResponseError {
 interface TunnelInfo {
   name: string;
   url: string;
-  max_conn: number;
-  remote_host: string;
-  remote_port: number;
+  maxConn: number;
+  remoteHost: string;
+  remotePort: number;
   useTls: boolean;
   tunnelPassphrase: string;
   basicAuthUser: string;
   basicAuthPassword: string;
-  local_port: number;
-  local_host: string;
-  local_https: boolean;
-  local_cert?: string | undefined;
-  local_key?: string | undefined;
-  local_ca?: string | undefined;
-  allow_invalid_cert: boolean;
+  localPort: number;
+  localHost: string;
+  localHttps: boolean;
+  localCert?: string | undefined;
+  localKey?: string | undefined;
+  localCa?: string | undefined;
+  allowInvalidCert: boolean;
 }
 
 export interface LocalTunnelOptions {
@@ -44,12 +44,12 @@ export interface LocalTunnelOptions {
   port: number;
   subdomain: string | null;
   host: string | undefined;
-  local_host: string;
-  local_https: boolean;
-  local_cert?: string | undefined;
-  local_key?: string | undefined;
-  local_ca?: string | undefined;
-  allow_invalid_cert: boolean;
+  localHost: string;
+  localHttps: boolean;
+  localCert?: string | undefined;
+  localKey?: string | undefined;
+  localCa?: string | undefined;
+  allowInvalidCert: boolean;
 }
 
 export class Tunnel extends EventEmitter {
@@ -84,8 +84,8 @@ export class Tunnel extends EventEmitter {
       basic_auth_user,
       basic_auth_password,
     } = body;
-    const { port: local_port, local_host } = this.opts;
-    const { local_https, local_cert, local_key, local_ca, allow_invalid_cert } =
+    const { port: localPort, localHost } = this.opts;
+    const { localHttps, localCert, localKey, localCa, allowInvalidCert } =
       this.opts;
     const parsedHost = new URL(this.host);
 
@@ -96,20 +96,20 @@ export class Tunnel extends EventEmitter {
     return {
       name: id,
       url,
-      max_conn: max_conn_count || 1,
-      remote_host: parsedHost.hostname,
-      remote_port: port,
+      maxConn: max_conn_count || 1,
+      remoteHost: parsedHost.hostname,
+      remotePort: port,
       useTls,
       tunnelPassphrase: tunnel_passphrase,
       basicAuthUser: basic_auth_user,
       basicAuthPassword: basic_auth_password,
-      local_port,
-      local_host,
-      local_https,
-      local_cert,
-      local_key,
-      local_ca,
-      allow_invalid_cert,
+      localPort,
+      localHost,
+      localHttps,
+      localCert,
+      localKey,
+      localCa,
+      allowInvalidCert,
     };
   }
 
@@ -160,7 +160,7 @@ export class Tunnel extends EventEmitter {
     // increase max event listeners so that localtunnel consumers don't get
     // warning messages as soon as they setup even one listener. See #71
     this.setMaxListeners(
-      info.max_conn + (EventEmitter.defaultMaxListeners || 10)
+      info.maxConn + (EventEmitter.defaultMaxListeners || 10)
     );
 
     this.tunnelCluster = new TunnelCluster({ ...info, logger: this.logger });
@@ -216,7 +216,7 @@ export class Tunnel extends EventEmitter {
     });
 
     // establish as many tunnels as allowed
-    for (let count = 0; count < info.max_conn; ++count) {
+    for (let count = 0; count < info.maxConn; ++count) {
       this.tunnelCluster.open();
     }
   }
