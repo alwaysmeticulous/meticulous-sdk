@@ -11,9 +11,10 @@ interface TunnelClusterOpts {
   remote_ip?: string;
   remote_host: string | null;
   remote_port: number;
+  useTls: boolean;
+  tunnelPassphrase: string;
   local_host: string;
   local_port: number;
-  useTls: boolean;
   local_https: boolean;
   allow_invalid_cert: boolean;
   local_cert?: string | undefined;
@@ -103,6 +104,10 @@ export class TunnelCluster extends EventEmitter {
         localHost,
         localPort
       );
+
+      // Authenticate with the remote server
+      remote.write(`AUTH ${opt.tunnelPassphrase}`);
+
       remote.pause();
 
       let local: net.Socket | tls.TLSSocket;

@@ -10,6 +10,7 @@ interface CreateTunnelResponse {
   port: number;
   url: string;
   max_conn_count: number;
+  tunnel_passphrase: string;
 }
 
 interface CreateTunnelResponseError {
@@ -24,6 +25,7 @@ interface TunnelInfo {
   remote_ip: string;
   remote_port: number;
   useTls: boolean;
+  tunnelPassphrase: string;
   local_port: number;
   local_host: string;
   local_https: boolean;
@@ -69,7 +71,7 @@ export class Tunnel extends EventEmitter {
   }
 
   _getInfo(body: CreateTunnelResponse): TunnelInfo {
-    const { id, ip, port, url, max_conn_count } = body;
+    const { id, ip, port, url, max_conn_count, tunnel_passphrase } = body;
     const { host, port: local_port, local_host } = this.opts;
     const { local_https, local_cert, local_key, local_ca, allow_invalid_cert } =
       this.opts;
@@ -86,6 +88,7 @@ export class Tunnel extends EventEmitter {
       remote_ip: ip,
       remote_port: port,
       useTls,
+      tunnelPassphrase: tunnel_passphrase,
       local_port,
       local_host,
       local_https,
