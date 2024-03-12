@@ -55,6 +55,7 @@ export {
   ApplicationSpecificData,
   StorageEntry,
   EarlyRequest,
+  SequenceNumber,
   WebSocketConnectionData,
   WebSocketConnectionEvent,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
