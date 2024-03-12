@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 
 import { getApiToken } from "@alwaysmeticulous/client";
-import {
-  defer,
-  initLogger,
-  METICULOUS_LOGGER_NAME,
-} from "@alwaysmeticulous/common";
+import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import {
   IncomingRequestEvent,
   localtunnel,
@@ -29,11 +25,10 @@ interface Options {
 }
 
 const handler = async (argv: Options) => {
-  const logger = initLogger();
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const apiToken = getApiToken(argv.apiToken);
   if (!apiToken) {
-    const logger = log.getLogger(METICULOUS_LOGGER_NAME);
     logger.error(
       "You must provide an API token by using the --apiToken parameter"
     );
