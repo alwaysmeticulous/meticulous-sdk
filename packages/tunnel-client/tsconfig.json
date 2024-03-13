@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    /* Projects */
+    "tsBuildInfoFile": "tsconfig.tsbuildinfo",
+    /* Modules */
+    "rootDir": "./src",
+    /* Emit */
+    "outDir": "./dist",
+    "lib": ["ES2019"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

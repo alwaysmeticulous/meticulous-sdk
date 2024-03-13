@@ -38,6 +38,7 @@
     "@alwaysmeticulous/replay-orchestrator-launcher": "^2.114.0",
     "@alwaysmeticulous/sdk-bundles-api": "^2.114.0",
     "@alwaysmeticulous/sentry": "^2.72.0",
+    "@alwaysmeticulous/tunnels-client": "^2.113.0",
     "@sentry/node": "^7.36.0",
     "axios": "^1.2.6",
     "chalk": "^4.1.2",
