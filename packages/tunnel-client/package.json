@@ -10,8 +10,6 @@
   ],
   "scripts": {
     "clean": "rimraf dist tsconfig.tsbuildinfo",
-     "cli": "node dist/bin/lt.js",
-    "cli:dev": "ts-node src/bin/lt.ts",
     "build": "tsc --build tsconfig.json",
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",
@@ -20,11 +18,8 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/client": "^2.113.0",
-    "@alwaysmeticulous/common": "^2.113.0",
     "loglevel": "^1.8.0",
-    "axios": "^1.2.6",
-    "yargs": "^17.5.1"
+    "axios": "^1.2.6"
   },
   "author": {
     "name": "The Meticulous Team",
