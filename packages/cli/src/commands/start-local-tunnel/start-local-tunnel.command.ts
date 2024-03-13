@@ -54,6 +54,8 @@ const handler = async (argv: Options) => {
   });
 
   tunnel.on("error", (err) => {
+    tunnel.close();
+
     logger.error(err);
 
     throw err;
