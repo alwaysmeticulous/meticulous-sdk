@@ -69,7 +69,7 @@ const handler = async (argv: Options) => {
 
   if (argv.printRequests) {
     tunnel.on("request", (info: IncomingRequestEvent) => {
-      console.log(new Date().toString(), info.method, info.path);
+      logger.info(new Date().toString(), info.method, info.path);
     });
   }
 
