@@ -1,6 +1,7 @@
 import { EventEmitter } from "events";
 import axios from "axios";
 import { Logger } from "loglevel";
+import TypedEmitter from "typed-emitter";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
 import { TunnelCluster } from "./tunnel-cluster";
 
@@ -20,7 +21,18 @@ interface CreateTunnelResponseError {
   error: string;
 }
 
-export class Tunnel extends EventEmitter {
+type TunnelEvents = {
+  close: () => void;
+  error: (error: Error) => void;
+  request: (req: IncomingRequestEvent) => void;
+  url: (info: {
+    url: string;
+    basicAuthUser: string;
+    basicAuthPassword: string;
+  }) => void;
+};
+
+export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents>) {
   private readonly logger: Logger;
   private readonly opts: Omit<LocalTunnelOptions, "logger" | "host">;
   private readonly host: string;

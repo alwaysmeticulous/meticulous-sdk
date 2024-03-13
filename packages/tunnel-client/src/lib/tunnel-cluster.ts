@@ -4,6 +4,7 @@ import * as net from "net";
 import { Duplex } from "stream";
 import * as tls from "tls";
 import { Logger } from "loglevel";
+import TypedEmitter from "typed-emitter";
 import { HeaderHostTransformer } from "./header-host-transformer";
 
 interface TunnelClusterOpts {
@@ -21,8 +22,15 @@ interface TunnelClusterOpts {
   localCa?: string | undefined;
 }
 
+type TunnelClusterEvents = {
+  open: (remote: net.Socket | tls.TLSSocket) => void;
+  dead: () => void;
+  request: (request: { method: string; path: string }) => void;
+  error: (err: Error) => void;
+};
+
 // manages groups of tunnels
-export class TunnelCluster extends EventEmitter {
+export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<TunnelClusterEvents>) {
   private readonly logger: Logger;
   private readonly opts: TunnelClusterOpts;
 
