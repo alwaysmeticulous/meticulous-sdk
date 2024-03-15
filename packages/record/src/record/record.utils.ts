@@ -30,6 +30,7 @@ export async function bootstrapPage({
   uploadIntervalMs,
   captureHttpOnlyCookies,
   recordingSource = "cli",
+  disablePasswordRedaction,
 }: {
   page: Page;
   recordingToken: string;
@@ -38,6 +39,7 @@ export async function bootstrapPage({
   uploadIntervalMs: number | null;
   captureHttpOnlyCookies: boolean;
   recordingSource?: string;
+  disablePasswordRedaction?: boolean;
 }): Promise<void> {
   const recordingSnippetFile = await readFile(recordingSnippet, "utf8");
 
@@ -53,7 +55,7 @@ export async function bootstrapPage({
       if (uploadIntervalMs != null) {
         recorderWindow["METICULOUS_UPLOAD_INTERVAL_MS"] = uploadIntervalMs;
       }
-      if (recordingSource === "cli-login-flow") {
+      if (disablePasswordRedaction) {
         recorderWindow["METICULOUS_REDACT_PASSWORDS"] = false;
       }
     },
