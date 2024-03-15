@@ -55,10 +55,17 @@ export {
   ApplicationSpecificData,
   StorageEntry,
   EarlyRequest,
+} from "./sdk-bundle-api/sdk-to-bundle/session-data";
+export {
   SequenceNumber,
   WebSocketConnectionData,
   WebSocketConnectionEvent,
-} from "./sdk-bundle-api/sdk-to-bundle/session-data";
+  WebSocketConnectionCreatedEvent,
+  WebSocketConnectionOpenedEvent,
+  WebSocketConnectionMessageEvent,
+  WebSocketConnectionErrorEvent,
+  WebSocketConnectionClosedEvent,
+} from "./sdk-bundle-api/sdk-to-bundle/websocket-data";
 export { Replay } from "./replay/replay.types";
 export {
   ScreenshotAssertionsOptions,

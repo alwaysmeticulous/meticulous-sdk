@@ -1,5 +1,6 @@
 import { ReplayableEvent } from "../bidirectional/replayable-event";
 import { HarLog } from "./har-log";
+import { WebSocketConnectionData } from "./websocket-data";
 
 export interface SessionData {
   userEvents: {
@@ -98,26 +99,4 @@ export interface EarlyRequest {
   initiatorType: "fetch" | "xmlhttprequest";
   startTime: number;
   duration: number;
-}
-
-export type SequenceNumber = number;
-
-export interface WebSocketConnectionData {
-  id: SequenceNumber;
-  url: string;
-  events: WebSocketConnectionEvent[];
-}
-
-export interface WebSocketConnectionEvent {
-  /**
-   * The time in milliseconds since the start of the session.
-   * 
-   * During simulations, we consider the "created" event to have been replayed whenever the browser calls 
-   * `new WebSocket()` and all other events are replayed at a time relative to the "created" event's timestamp.
-   * 
-   * E.g. the "opened" event is replayed at ("opened".timestamp - "created".timestamp) milliseconds after the browser calls `new WebSocket()`.
-   */
-  timestamp: number;
-  type: "created" | "opened" | "message-sent" | "message-received" | "closed" | "error";
-  data?: string;
 }
