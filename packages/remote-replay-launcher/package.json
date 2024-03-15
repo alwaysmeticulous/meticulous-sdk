@@ -19,9 +19,9 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.115.0",
-    "@alwaysmeticulous/downloading-helpers": "^2.115.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.114.0",
+    "@alwaysmeticulous/client": "^2.116.0",
+    "@alwaysmeticulous/common": "^2.116.0",
+    "@alwaysmeticulous/tunnels-client": "^2.115.0",
     "loglevel": "^1.8.0"
   },
   "author": {
