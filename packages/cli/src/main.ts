@@ -11,6 +11,7 @@ import { downloadReplayCommand } from "./commands/download-replay/download-repla
 import { downloadSessionCommand } from "./commands/download-session/download-session.command";
 import { recordCommand } from "./commands/record/record.command";
 import { recordLoginCommand } from "./commands/record-login/record-login.command";
+import { remoteRunAllTestsCommand } from "./commands/remote-run-all-tests/remote-run-all-tests.command";
 import { replayCommand } from "./commands/replay/replay.command";
 import { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.command";
 import { showProjectCommand } from "./commands/show-project/show-project.command";
@@ -40,6 +41,7 @@ export const main: () => void = async () => {
     .command(downloadSessionCommand)
     .command(recordCommand)
     .command(recordLoginCommand)
+    .command(remoteRunAllTestsCommand)
     .command(replayCommand)
     .command(runAllTestsCommand)
     .command(showProjectCommand)
