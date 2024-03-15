@@ -14,6 +14,7 @@ interface MeticulousRecorderWindow {
   METICULOUS_RECORDING_SOURCE?: string;
   METICULOUS_UPLOAD_INTERVAL_MS?: number;
   METICULOUS_ENABLE_RRWEB_PLUGIN_NODE_DATA?: boolean;
+  METICULOUS_REDACT_PASSWORDS?: boolean;
 
   __meticulous?: {
     initialiseRecorder?: () => void;
@@ -51,6 +52,9 @@ export async function bootstrapPage({
 
       if (uploadIntervalMs != null) {
         recorderWindow["METICULOUS_UPLOAD_INTERVAL_MS"] = uploadIntervalMs;
+      }
+      if (recordingSource === "cli-login-flow") {
+        recorderWindow["METICULOUS_REDACT_PASSWORDS"] = false;
       }
     },
     { recordingToken, appCommitHash, recordingSource, uploadIntervalMs }
