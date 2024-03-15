@@ -16,6 +16,7 @@ export interface TestRun {
   resultData?: {
     results?: TestCaseResult[];
   };
+  url: string;
 }
 
 export interface ExecuteSecureTunnelTestRunOptions {

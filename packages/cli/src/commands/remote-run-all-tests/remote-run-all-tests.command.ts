@@ -55,9 +55,7 @@ const handler: (options: Options) => Promise<void> = async ({
       },
 
       onTestRunCreated: (testRun) => {
-        logger.info(
-          `\nTest run created: ${testRun.id}: https://app.meticulous.ai/projects/${testRun.project.organization.name}/${testRun.project.name}/test-runs/${testRun.id}`
-        );
+        logger.info(`\nTest run created: ${testRun.url}`);
       },
 
       onProgressUpdate: (testRun) => {
