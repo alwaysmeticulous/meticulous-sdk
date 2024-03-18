@@ -19,6 +19,7 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
+    "@alwaysmeticulous/common": "^2.116.0",
     "@sentry/node": "^7.36.0",
     "@sentry/tracing": "^7.36.0",
     "luxon": "^3.2.1"
