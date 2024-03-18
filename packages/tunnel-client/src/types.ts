@@ -23,8 +23,8 @@ export interface LocalTunnelOptions {
   logger: Logger;
   apiToken: string;
   port: number;
-  subdomain: string | null;
-  host: string | undefined;
+  subdomain?: string;
+  host?: string;
   localHost: string;
   localHttps: boolean;
   localCert?: string | undefined;

@@ -13,6 +13,7 @@ import { recordCommand } from "./commands/record/record.command";
 import { recordLoginCommand } from "./commands/record-login/record-login.command";
 import { replayCommand } from "./commands/replay/replay.command";
 import { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.command";
+import { runAllTestsInCloudCommand } from "./commands/run-all-tests-in-cloud/run-all-tests-in-cloud.command";
 import { showProjectCommand } from "./commands/show-project/show-project.command";
 import { startLocalTunnelCommand } from "./commands/start-local-tunnel/start-local-tunnel.command";
 import { setOptions } from "./utils/sentry.utils";
@@ -42,6 +43,7 @@ export const main: () => void = async () => {
     .command(recordLoginCommand)
     .command(replayCommand)
     .command(runAllTestsCommand)
+    .command(runAllTestsInCloudCommand)
     .command(showProjectCommand)
     .command(startLocalTunnelCommand)
     .help()

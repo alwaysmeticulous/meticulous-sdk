@@ -1,7 +1,7 @@
 {
-  "name": "@alwaysmeticulous/replay-orchestrator-launcher",
+  "name": "@alwaysmeticulous/remote-replay-launcher",
   "version": "2.117.0",
-  "description": "Downloads the replay-orchestrator bundle script and executes it",
+  "description": "Executes a remote replay on Meticulous' infrastructure",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,11 +19,10 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
+    "@alwaysmeticulous/client": "^2.116.0",
     "@alwaysmeticulous/common": "^2.116.0",
-    "@alwaysmeticulous/downloading-helpers": "^2.116.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.116.0",
-    "loglevel": "^1.8.0",
-    "puppeteer": "21.9.0"
+    "@alwaysmeticulous/tunnels-client": "^2.115.0",
+    "loglevel": "^1.8.0"
   },
   "author": {
     "name": "The Meticulous Team",
