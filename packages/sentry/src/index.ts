@@ -1,3 +1,4 @@
+import { IS_METICULOUS_SUPER_USER } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { addExtensionMethods } from "@sentry/tracing";
 import { Duration } from "luxon";
@@ -28,7 +29,10 @@ export const initSentry: (
     release: meticulousVersion,
 
     tracesSampleRate: tracesSampleRateOverride ?? getTracesSampleRate(),
-    environment: __filename.endsWith(".ts") ? "development" : "production",
+    environment:
+      __filename.endsWith(".ts") || IS_METICULOUS_SUPER_USER
+        ? "development"
+        : "production",
   });
 
   addExtensionMethods();

@@ -3,6 +3,8 @@ import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
 
 export const BASE_SNIPPETS_URL = "https://snippet.meticulous.ai/";
 
+export const IS_METICULOUS_SUPER_USER = !!process.env["METICULOUS_SUPER_USER"];
+
 export const DEFAULT_EXECUTION_OPTIONS: ReplayExecutionOptions = {
   headless: true,
   devTools: false,

@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 
 import { getApiToken } from "@alwaysmeticulous/client";
-import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import {
+  defer,
+  IS_METICULOUS_SUPER_USER,
+  METICULOUS_LOGGER_NAME,
+} from "@alwaysmeticulous/common";
 import {
   IncomingRequestEvent,
   localtunnel,
 } from "@alwaysmeticulous/tunnels-client";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
-import { IS_METICULOUS_SUPER_USER } from "../../utils/constants";
 
 interface Options {
   apiToken: string | undefined;

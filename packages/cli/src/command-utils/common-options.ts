@@ -12,8 +12,8 @@
 import {
   DEFAULT_EXECUTION_OPTIONS,
   DEFAULT_SCREENSHOTTING_OPTIONS,
+  IS_METICULOUS_SUPER_USER,
 } from "@alwaysmeticulous/common";
-import { IS_METICULOUS_SUPER_USER } from "../utils/constants";
 
 // Used in tips in console output
 export const HEADLESS_FLAG = "--headless";
