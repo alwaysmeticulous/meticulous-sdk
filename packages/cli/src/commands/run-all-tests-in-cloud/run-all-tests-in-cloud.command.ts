@@ -6,6 +6,7 @@ import log from "loglevel";
 import ora from "ora";
 import { buildCommand } from "../../command-utils/command-builder";
 import { OPTIONS } from "../../command-utils/common-options";
+import { Environment, getEnvironment } from "../../utils/environment.utils";
 import {
   isOutOfDateClientError,
   OutOfDateCLIError,
@@ -16,6 +17,16 @@ interface Options {
   commitSha?: string | undefined;
   appUrl: string;
 }
+
+const environmentToString: (environment: Environment) => string = (
+  environment
+) => {
+  if (environment.isCI) {
+    return `ci-${environment.ci.name}`;
+  }
+
+  return "local";
+};
 
 const handler: (options: Options) => Promise<void> = async ({
   apiToken,
@@ -78,7 +89,7 @@ const handler: (options: Options) => Promise<void> = async ({
           progressBar.update(testRun.resultData?.results?.length || 0);
         }
       },
-      environment: "local",
+      environment: environmentToString(getEnvironment()),
     });
   } catch (error) {
     if (isOutOfDateClientError(error)) {
