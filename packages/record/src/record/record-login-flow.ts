@@ -59,6 +59,7 @@ const bootstrapLoginFlowRecordingPage = async ({
     uploadIntervalMs: uploadIntervalMs || DEFAULT_UPLOAD_INTERVAL_MS,
     captureHttpOnlyCookies: captureHttpOnlyCookies ?? true,
     recordingSource,
+    disablePasswordRedaction: true,
   });
 };
 
