@@ -91,7 +91,7 @@ const handler: (options: Options) => Promise<void> = async ({
   }
 };
 
-export const remoteRunAllTestsCommand = buildCommand("remote-run-all-tests")
+export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
   .details({ describe: "Run all replay test cases remotely" })
   .options({
     apiToken: OPTIONS.apiToken,
