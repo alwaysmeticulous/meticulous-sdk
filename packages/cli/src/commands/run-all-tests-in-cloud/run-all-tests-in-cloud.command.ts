@@ -32,6 +32,8 @@ const handler: (options: Options) => Promise<void> = async ({
     process.exit(1);
   }
 
+  logger.info(`Running all tests in cloud for commit ${commitSha}`);
+
   const scheduledTestRunSpinner = ora("Starting test run execution").start();
   const progressBar = new cliProgress.SingleBar(
     {
