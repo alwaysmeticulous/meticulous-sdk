@@ -84,7 +84,8 @@ export const recordLoginFlowCommandHandler: (
 
 export const recordLoginCommand = buildCommand("record-login")
   .details({
-    describe: "Record a login flow session",
+    describe:
+      "Record a login flow session (warning: sessions recorded with this command will store credentials)",
   })
   .options({
     ...COMMON_RECORD_OPTIONS,
