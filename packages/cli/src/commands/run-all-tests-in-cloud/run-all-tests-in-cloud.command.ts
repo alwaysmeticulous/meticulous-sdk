@@ -22,10 +22,10 @@ const environmentToString: (environment: Environment) => string = (
   environment
 ) => {
   if (environment.isCI) {
-    return `ci-${environment.ci.name}`;
+    return `cli-ci-${environment.ci.name}`;
   }
 
-  return "local";
+  return "cli-local";
 };
 
 const handler: (options: Options) => Promise<void> = async ({
