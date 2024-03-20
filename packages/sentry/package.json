@@ -20,8 +20,8 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.118.0",
-    "@sentry/node": "^7.36.0",
-    "@sentry/tracing": "^7.36.0",
+    "@sentry/node": "^7.107.0",
+    "@sentry/tracing": "^7.107.0",
     "luxon": "^3.2.1"
   },
   "devDependencies": {
