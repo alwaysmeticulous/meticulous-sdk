@@ -67,12 +67,14 @@ export interface GetLatestTestRunOptions {
   client: AxiosInstance;
   commitSha: string;
   logicalEnvironmentVersion?: number;
+  useCloudReplayEnvironmentVersion?: boolean;
 }
 
 export const getLatestTestRunResults = async ({
   client,
   commitSha,
   logicalEnvironmentVersion,
+  useCloudReplayEnvironmentVersion,
 }: GetLatestTestRunOptions): Promise<TestRun | null> => {
   const { data } = await client
     .get("test-runs/cache", {
@@ -84,6 +86,9 @@ export const getLatestTestRunResults = async ({
                 logicalEnvironmentVersion
               ),
             }
+          : {}),
+        ...(useCloudReplayEnvironmentVersion
+          ? { useCloudReplayEnvironmentVersion: true }
           : {}),
       },
     })
