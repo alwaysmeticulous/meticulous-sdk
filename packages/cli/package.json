@@ -40,7 +40,7 @@
     "@alwaysmeticulous/sdk-bundles-api": "^2.116.0",
     "@alwaysmeticulous/sentry": "^2.118.0",
     "@alwaysmeticulous/tunnels-client": "^2.118.0",
-    "@sentry/node": "^7.36.0",
+    "@sentry/node": "^7.107.0",
     "axios": "^1.2.6",
     "chalk": "^4.1.2",
     "ci-info": "^4.0.0",
