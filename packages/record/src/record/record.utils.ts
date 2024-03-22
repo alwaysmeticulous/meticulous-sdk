@@ -44,7 +44,13 @@ export async function bootstrapPage({
   const recordingSnippetFile = await readFile(recordingSnippet, "utf8");
 
   await page.evaluateOnNewDocument(
-    ({ recordingToken, appCommitHash, recordingSource, uploadIntervalMs }) => {
+    ({
+      recordingToken,
+      appCommitHash,
+      recordingSource,
+      uploadIntervalMs,
+      disablePasswordRedaction,
+    }) => {
       const recorderWindow = window as MeticulousRecorderWindow;
       recorderWindow["METICULOUS_RECORDING_TOKEN"] = recordingToken;
       recorderWindow["METICULOUS_APP_COMMIT_HASH"] = appCommitHash;
@@ -59,7 +65,13 @@ export async function bootstrapPage({
         recorderWindow["METICULOUS_REDACT_PASSWORDS"] = false;
       }
     },
-    { recordingToken, appCommitHash, recordingSource, uploadIntervalMs }
+    {
+      recordingToken,
+      appCommitHash,
+      recordingSource,
+      uploadIntervalMs,
+      disablePasswordRedaction,
+    }
   );
 
   if (captureHttpOnlyCookies) {
