@@ -41,6 +41,11 @@ export interface WebSocketConnectionMessageEvent
   extends WebSocketConnectionGenericEvent {
   type: "message-sent" | "message-received";
   data: string;
+
+  /**
+   * If set, indicates that the `data` field is base64 encoded binary data originally of the given type.
+   */
+  binaryType?: BinaryType;
 }
 
 export interface WebSocketConnectionErrorEvent
