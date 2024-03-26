@@ -37,15 +37,24 @@ export interface WebSocketConnectionOpenedEvent
   type: "opened";
 }
 
+export interface EncodedArrayBuffer {
+  binaryType: "arraybuffer";
+  /** Base 64 encoded binary from an array buffer */
+  encodedData: string;
+}
+
+export interface EncodedBlob {
+  binaryType: "blob";
+  /** Base 64 encoded binary from a blob */
+  encodedData: string;
+  /** https://developer.mozilla.org/en-US/docs/Web/API/Blob/type */
+  mimeType: string;
+}
+
 export interface WebSocketConnectionMessageEvent
   extends WebSocketConnectionGenericEvent {
   type: "message-sent" | "message-received";
-  data: string;
-
-  /**
-   * If set, indicates that the `data` field is base64 encoded binary data originally of the given type.
-   */
-  binaryType?: BinaryType;
+  data: string | EncodedArrayBuffer | EncodedBlob;
 }
 
 export interface WebSocketConnectionErrorEvent
