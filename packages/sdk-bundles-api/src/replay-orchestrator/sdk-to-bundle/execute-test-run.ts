@@ -58,6 +58,11 @@ export interface ExecuteTestRunOptions {
   logLevel: LogLevelNumbers;
 
   /**
+   * If set all log messages will be prefixed with this string.
+   */
+  logPrefix?: string;
+
+  /**
    * The ID of the session to use for seeding the application state (cookies, local storage, session storage),
    * during replay of all session in the test run. If undefined, the application state will be seeded
    * from the session under simulation.
