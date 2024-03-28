@@ -1,5 +1,6 @@
 import { EventEmitter } from "events";
 import axios from "axios";
+import axiosRetry from "axios-retry";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
@@ -113,7 +114,9 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     const uri = baseUri + (assignedDomain || "?new");
 
     const getUrl = () => {
-      axios
+      const client = axios.create({ timeout: 30_000 });
+      axiosRetry(client, { retries: 3, shouldResetTimeout: true });
+      client
         .get<CreateTunnelResponse | CreateTunnelResponseError>(uri, params)
         .then((res) => {
           const body = res.data;
