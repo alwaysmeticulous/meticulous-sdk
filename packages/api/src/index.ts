@@ -62,6 +62,8 @@ export {
   WebSocketConnectionEvent,
   WebSocketConnectionCreatedEvent,
   WebSocketConnectionOpenedEvent,
+  EncodedArrayBuffer,
+  EncodedBlob,
   WebSocketConnectionMessageEvent,
   WebSocketConnectionErrorEvent,
   WebSocketConnectionClosedEvent,
