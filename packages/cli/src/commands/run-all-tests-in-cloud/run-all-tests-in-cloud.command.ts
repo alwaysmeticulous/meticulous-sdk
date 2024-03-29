@@ -1,5 +1,13 @@
-import { getCommitSha, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import { executeRemoteTestRun } from "@alwaysmeticulous/remote-replay-launcher";
+import { IN_PROGRESS_TEST_RUN_STATUS } from "@alwaysmeticulous/client";
+import {
+  defer,
+  getCommitSha,
+  METICULOUS_LOGGER_NAME,
+} from "@alwaysmeticulous/common";
+import {
+  executeRemoteTestRun,
+  TunnelData,
+} from "@alwaysmeticulous/remote-replay-launcher";
 import chalk from "chalk";
 import cliProgress from "cli-progress";
 import log from "loglevel";
@@ -16,6 +24,7 @@ interface Options {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
   appUrl: string;
+  keepTunnelOpenSec: number;
 }
 
 const environmentToString: (environment: Environment) => string = (
@@ -32,6 +41,7 @@ const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   commitSha: commitSha_,
   appUrl,
+  keepTunnelOpenSec,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const commitSha = await getCommitSha(commitSha_);
@@ -55,15 +65,29 @@ const handler: (options: Options) => Promise<void> = async ({
     cliProgress.Presets.shades_classic
   );
 
+  const endProgressBar = () => {
+    progressBar.update(progressBar.getTotal());
+    progressBar.stop();
+  };
+
+  const keepTunnelOpenPromise = keepTunnelOpenSec > 0 ? defer<void>() : null;
+
+  // Tunnel data set after within the onTunnelCreated callback below.
+  let tunnelData: TunnelData | null = null;
   try {
     const { testRun } = await executeRemoteTestRun({
       apiToken,
       commitSha,
       appUrl,
 
-      onTunnelCreated: ({ url, basicAuthUser, basicAuthPassword }) => {
+      ...(keepTunnelOpenPromise
+        ? { keepTunnelOpenPromise: keepTunnelOpenPromise.promise }
+        : {}),
+
+      onTunnelCreated: (data) => {
+        tunnelData = data;
         logger.info(
-          `\nExposing local service running at ${appUrl}: ${url}, user: ${basicAuthUser}, password: ${basicAuthPassword}`
+          `\nExposing local service running at ${appUrl}: ${data.url} user: ${data.basicAuthUser} password: ${data.basicAuthPassword}`
         );
       },
 
@@ -88,6 +112,26 @@ const handler: (options: Options) => Promise<void> = async ({
         if (progressBar.getTotal() > 0) {
           progressBar.update(testRun.resultData?.results?.length || 0);
         }
+
+        if (!IN_PROGRESS_TEST_RUN_STATUS.includes(testRun.status)) {
+          endProgressBar();
+
+          if (keepTunnelOpenPromise) {
+            logger.info(
+              `Keeping tunnel open for ${keepTunnelOpenSec} seconds...`
+            );
+
+            // tunnelData should be set in the onTunnelCreated callback.
+            if (tunnelData) {
+              logger.info(
+                `Your app can be accessed from ${tunnelData.url} username: ${tunnelData.basicAuthUser} password: ${tunnelData.basicAuthPassword}`
+              );
+            }
+            setTimeout(() => {
+              keepTunnelOpenPromise.resolve();
+            }, keepTunnelOpenSec * 1000);
+          }
+        }
       },
       environment: environmentToString(getEnvironment()),
     });
@@ -98,9 +142,7 @@ const handler: (options: Options) => Promise<void> = async ({
       throw error;
     }
   } finally {
-    progressBar.update(progressBar.getTotal());
-
-    progressBar.stop();
+    endProgressBar();
   }
 };
 
@@ -114,6 +156,12 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
       string: true,
       description:
         "The URL to execute the tests against. This parameter is required.",
+    },
+    keepTunnelOpenSec: {
+      number: true,
+      description:
+        "Keep the tunnel open after test completion for the specified number of seconds. This is useful for debugging",
+      default: 0,
     },
   } as const)
   .handler(handler);
