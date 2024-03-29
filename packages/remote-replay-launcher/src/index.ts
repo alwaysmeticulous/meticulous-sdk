@@ -13,6 +13,7 @@ import {
   ExecuteRemoteTestRunOptions,
   ExecuteRemoteTestRunResult,
 } from "./types";
+import { getPort } from "./url.utils";
 
 const PROGRESS_UPDATE_INTERVAL_MS = 5_000; // 5 seconds
 
@@ -44,11 +45,16 @@ export const executeRemoteTestRun = async ({
     throw new Error(`Invalid app URL: ${appUrl}`);
   }
 
+  const port = getPort(url);
+  if (port === -1) {
+    throw new Error(`Invalid app URL port: ${appUrl}`);
+  }
+
   const tunnel = await localtunnel({
     logger,
     apiToken,
     localHost: url.hostname,
-    port: parseInt(url.port, 10),
+    port,
     localHttps: false,
     allowInvalidCert: false,
   });
