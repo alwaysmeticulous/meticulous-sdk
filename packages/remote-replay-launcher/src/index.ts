@@ -15,6 +15,8 @@ import {
 } from "./types";
 import { getPort } from "./url.utils";
 
+export { TunnelData } from "./types";
+
 const PROGRESS_UPDATE_INTERVAL_MS = 5_000; // 5 seconds
 
 export const executeRemoteTestRun = async ({
@@ -24,6 +26,7 @@ export const executeRemoteTestRun = async ({
   onTunnelCreated,
   onTestRunCreated,
   onProgressUpdate,
+  keepTunnelOpenPromise,
   environment,
 }: ExecuteRemoteTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -97,22 +100,29 @@ export const executeRemoteTestRun = async ({
       clearInterval(progressUpdateInterval);
     }
 
-    tunnel.close();
+    if (keepTunnelOpenPromise) {
+      keepTunnelOpenPromise.then(() => {
+        tunnel.close();
 
-    testRunCompleted.resolve(completedTestRun);
+        testRunCompleted.resolve(completedTestRun);
+      });
+    } else {
+      tunnel.close();
+
+      testRunCompleted.resolve(completedTestRun);
+    }
   };
 
   // Poll every few seconds for progress updates and exit when the test run is completed
   progressUpdateInterval = setInterval(async () => {
     const updatedTestRun = await getTestRun({ client, testRunId: testRun.id });
+    onProgressUpdate?.(updatedTestRun);
 
     if (!IN_PROGRESS_TEST_RUN_STATUS.includes(updatedTestRun.status)) {
       onTestRunCompleted(updatedTestRun);
 
       return;
     }
-
-    onProgressUpdate?.(updatedTestRun);
   }, PROGRESS_UPDATE_INTERVAL_MS);
 
   const completedTestRun = await testRunCompleted.promise;
