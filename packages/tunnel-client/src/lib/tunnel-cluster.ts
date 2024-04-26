@@ -90,7 +90,7 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
         );
       }
 
-      remote.end();
+      remote.destroy();
     });
 
     const connLocal = () => {
@@ -164,7 +164,7 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
         remote.removeListener("close", remoteClose);
 
         if (err.code !== "ECONNREFUSED" && err.code !== "ECONNRESET") {
-          return remote.end();
+          return remote.destroy();
         }
 
         // retrying connection to local server
@@ -191,6 +191,7 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
         // when local closes, also get a new remote
         local.once("close", (hadError) => {
           this.logger.debug("local connection closed [%s]", hadError);
+          remote.destroy();
         });
       });
     };
