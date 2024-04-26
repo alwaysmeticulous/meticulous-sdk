@@ -14,7 +14,9 @@ export type ExecuteScheduledTestRunOptions = Pick<
   testRunId: string;
 
   /**
-   * If true then the test run will be restarted even if it's already completed or in the process of running.
+   * If true then the test run will be restarted even if it's already completed or in the process of running, without logging a warning.
+   *
+   * If false then the test run will be restarted even if it's already completed or in the process of running, but a warning will be logged.
    *
    * Existing test run results will be deleted and overwritten.
    */
