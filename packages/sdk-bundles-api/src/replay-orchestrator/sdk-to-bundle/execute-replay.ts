@@ -201,6 +201,13 @@ export interface ReplayExecutionOptions {
    * to ensure that we don't compare screenshots that were generated from replays with different project settings.
    */
   projectSettingsHash?: string;
+
+  delayLayoutTriggeredEvents?: boolean;
+
+  /**
+   * If true deletes window.Worker (pretends the browser doesn't support web workers).
+   */
+  disableWebWorkers?: boolean;
 }
 
 export interface VercelExecutionSettings {
