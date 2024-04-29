@@ -84,7 +84,9 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
       this.emit("dead");
     }, 10 * 1000);
 
-    remote.once("connect", () => {
+    const connectEvent = opt.useTls ? "secureConnect" : "connect";
+
+    remote.once(connectEvent, () => {
       clearTimeout(timeout);
     });
 
@@ -218,9 +220,6 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
     });
 
     // tunnel is considered open when remote connects
-
-    const connectEvent = opt.useTls ? "secureConnect" : "connect";
-
     remote.once(connectEvent, () => {
       this.emit("open", remote);
       connLocal();
