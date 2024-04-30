@@ -219,10 +219,6 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
 
       this.pendingSockets.delete(socket);
 
-      if (!isPending) {
-        return;
-      }
-
       if (!inSet && !isPending) {
         this.logger.warn("tunnel not in set on disconnect");
       } else {
