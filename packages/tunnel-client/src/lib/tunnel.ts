@@ -1,4 +1,6 @@
 import { EventEmitter } from "events";
+import * as net from "net";
+import * as tls from "tls";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import { Logger } from "loglevel";
@@ -45,6 +47,8 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
   public basicAuthUser: string | null = null;
   public basicAuthPassword: string | null = null;
 
+  private readonly openSocketsSet: WeakSet<net.Socket | tls.TLSSocket>;
+
   constructor(opts: LocalTunnelOptions) {
     super();
     this.logger = opts.logger;
@@ -53,6 +57,8 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     this.closed = false;
 
     this.host = opts.host || DEFAULT_HOST;
+
+    this.openSocketsSet = new WeakSet();
   }
 
   _getInfo(body: CreateTunnelResponse): TunnelInfo {
@@ -171,6 +177,13 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
 
     // track open count
     this.tunnelCluster.on("open", (tunnel) => {
+      const inSet = this.openSocketsSet.has(tunnel);
+      if (inSet) {
+        this.logger.warn("tunnel already in set");
+      } else {
+        this.openSocketsSet.add(tunnel);
+      }
+
       tunnelCount++;
       this.logger.debug("tunnel open [total: %d]", tunnelCount);
 
@@ -189,7 +202,15 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     });
 
     // when a tunnel dies, open a new one
-    this.tunnelCluster.on("dead", () => {
+    this.tunnelCluster.on("dead", (socket) => {
+      const inSet = this.openSocketsSet.has(socket);
+      if (!inSet) {
+        this.logger.warn("tunnel not in set on disconnect");
+        return;
+      } else {
+        this.openSocketsSet.delete(socket);
+      }
+
       tunnelCount--;
       this.logger.debug("tunnel dead [total: %d]", tunnelCount);
       if (this.closed || !this.tunnelCluster) {

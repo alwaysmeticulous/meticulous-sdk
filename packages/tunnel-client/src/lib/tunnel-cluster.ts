@@ -24,7 +24,7 @@ interface TunnelClusterOpts {
 
 type TunnelClusterEvents = {
   open: (remote: net.Socket | tls.TLSSocket) => void;
-  dead: () => void;
+  dead: (remote: net.Socket | tls.TLSSocket) => void;
   request: (request: { method: string; path: string }) => void;
   error: (err: Error) => void;
 };
@@ -106,7 +106,7 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
     const connLocal = () => {
       if (remote.destroyed) {
         this.logger.debug("remote destroyed");
-        this.emit("dead");
+        this.emit("dead", remote);
         return;
       }
 
@@ -158,7 +158,7 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
 
       const remoteClose = () => {
         this.logger.debug("remote close");
-        this.emit("dead");
+        this.emit("dead", remote);
         local.end();
       };
 
