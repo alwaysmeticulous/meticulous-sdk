@@ -23,6 +23,7 @@ interface TunnelClusterOpts {
 }
 
 type TunnelClusterEvents = {
+  pending: (remote: net.Socket | tls.TLSSocket) => void;
   open: (remote: net.Socket | tls.TLSSocket) => void;
   dead: (remote: net.Socket | tls.TLSSocket) => void;
   request: (request: { method: string; path: string }) => void;

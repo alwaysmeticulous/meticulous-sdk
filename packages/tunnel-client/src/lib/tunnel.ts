@@ -47,6 +47,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
   public basicAuthUser: string | null = null;
   public basicAuthPassword: string | null = null;
 
+  private readonly pendingSockets: Set<net.Socket | tls.TLSSocket> = new Set();
   private readonly openSocketsSet: Set<net.Socket | tls.TLSSocket>;
 
   constructor(opts: LocalTunnelOptions) {
@@ -173,14 +174,20 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
 
     setInterval(() => {
       this.logger.warn(
-        "tunnel count: %d set: %d",
+        "tunnel count: %d set: %d pending: %d",
         tunnelCount,
-        this.openSocketsSet.size
+        this.openSocketsSet.size,
+        this.pendingSockets.size
       );
     }, 500);
 
+    this.tunnelCluster.on("pending", (socket) => {
+      this.pendingSockets.add(socket);
+    });
+
     // track open count
     this.tunnelCluster.on("open", (tunnel) => {
+      this.pendingSockets.delete(tunnel);
       const inSet = this.openSocketsSet.has(tunnel);
       if (inSet) {
         this.logger.warn("tunnel already in set");
