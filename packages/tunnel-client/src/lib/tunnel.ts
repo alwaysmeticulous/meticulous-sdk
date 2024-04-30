@@ -172,7 +172,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     let tunnelCount = 0;
 
     setInterval(() => {
-      this.logger.debug(
+      this.logger.warn(
         "tunnel count: %d set: %d",
         tunnelCount,
         this.openSocketsSet.size
@@ -213,9 +213,10 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
         return;
       } else {
         this.openSocketsSet.delete(socket);
+
+        tunnelCount--;
       }
 
-      tunnelCount--;
       this.logger.debug("tunnel dead [total: %d]", tunnelCount);
       if (this.closed || !this.tunnelCluster) {
         return;
