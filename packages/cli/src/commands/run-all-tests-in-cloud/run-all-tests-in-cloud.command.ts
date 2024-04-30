@@ -24,6 +24,7 @@ interface Options {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
   appUrl: string;
+  secureTunnelHost?: string | undefined;
   keepTunnelOpenSec: number;
 }
 
@@ -41,6 +42,7 @@ const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   commitSha: commitSha_,
   appUrl,
+  secureTunnelHost,
   keepTunnelOpenSec,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -79,6 +81,8 @@ const handler: (options: Options) => Promise<void> = async ({
       apiToken,
       commitSha,
       appUrl,
+
+      secureTunnelHost,
 
       ...(keepTunnelOpenPromise
         ? { keepTunnelOpenPromise: keepTunnelOpenPromise.promise }
@@ -162,6 +166,10 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
       description:
         "Keep the tunnel open after test completion for the specified number of seconds. This is useful for debugging",
       default: 0,
+    },
+    secureTunnelHost: {
+      string: true,
+      description: "The host to use for the secure tunnel server.",
     },
   } as const)
   .handler(handler);
