@@ -165,6 +165,10 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
 
     let tunnelCount = 0;
 
+    setInterval(() => {
+      this.logger.debug("tunnel count: %d", tunnelCount);
+    }, 500);
+
     // track open count
     this.tunnelCluster.on("open", (tunnel) => {
       tunnelCount++;
