@@ -77,7 +77,7 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
     // Set a 10 sec remote connection timeout
     const timeout = setTimeout(() => {
       this.logger.warn("remote connection timeout");
-      remote.destroy();
+      if (remote.connecting) remote.destroy();
     }, 10 * 1000);
 
     const connectEvent = opt.useTls ? "secureConnect" : "connect";
