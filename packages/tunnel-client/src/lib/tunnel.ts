@@ -47,7 +47,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
   public basicAuthUser: string | null = null;
   public basicAuthPassword: string | null = null;
 
-  private readonly openSocketsSet: WeakSet<net.Socket | tls.TLSSocket>;
+  private readonly openSocketsSet: Set<net.Socket | tls.TLSSocket>;
 
   constructor(opts: LocalTunnelOptions) {
     super();
@@ -58,7 +58,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
 
     this.host = opts.host || DEFAULT_HOST;
 
-    this.openSocketsSet = new WeakSet();
+    this.openSocketsSet = new Set();
   }
 
   _getInfo(body: CreateTunnelResponse): TunnelInfo {
@@ -172,7 +172,11 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     let tunnelCount = 0;
 
     setInterval(() => {
-      this.logger.debug("tunnel count: %d", tunnelCount);
+      this.logger.debug(
+        "tunnel count: %d set: %d",
+        tunnelCount,
+        this.openSocketsSet.size
+      );
     }, 500);
 
     // track open count
