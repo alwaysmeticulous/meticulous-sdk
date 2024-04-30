@@ -101,6 +101,10 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
       }
 
       remote.end();
+
+      // We won't try to reconnect if the remote connection is refused
+      // so we emit a dead event for a remote which wasn't open
+      this.emit("dead", remote);
     });
 
     const connLocal = () => {
