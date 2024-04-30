@@ -217,15 +217,14 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       const inSet = this.openSocketsSet.has(socket);
       const isPending = this.pendingSockets.has(socket);
 
-      this.pendingSockets.delete(socket);
-
       if (!inSet && !isPending) {
         this.logger.warn("tunnel not in set on disconnect");
-      } else {
-        this.openSocketsSet.delete(socket);
-
-        tunnelCount--;
+        return;
       }
+      this.openSocketsSet.delete(socket);
+      this.pendingSockets.delete(socket);
+
+      tunnelCount--;
 
       this.logger.debug("tunnel dead [total: %d]", tunnelCount);
       if (this.closed || !this.tunnelCluster) {
