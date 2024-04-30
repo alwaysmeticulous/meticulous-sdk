@@ -210,7 +210,6 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       const inSet = this.openSocketsSet.has(socket);
       if (!inSet) {
         this.logger.warn("tunnel not in set on disconnect");
-        return;
       } else {
         this.openSocketsSet.delete(socket);
 
