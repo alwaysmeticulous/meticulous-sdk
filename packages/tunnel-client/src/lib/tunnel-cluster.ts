@@ -112,7 +112,9 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
       remote.end();
 
       // We won't try to reconnect if the remote connection is refused
-      // so we emit a dead event for a remote which wasn't open
+      // so we emit a dead event for a remote which might not have been open.
+      // We might emit duplicate dead events, but that's okay. The listener
+      // should be idempotent.
       this.emit("dead", remote);
     });
 
