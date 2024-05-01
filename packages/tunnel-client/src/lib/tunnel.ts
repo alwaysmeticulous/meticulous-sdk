@@ -191,6 +191,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       const inSet = this.openSocketsSet.has(tunnel);
       if (inSet) {
         this.logger.warn("tunnel already in set");
+        return;
       } else {
         this.openSocketsSet.add(tunnel);
       }
