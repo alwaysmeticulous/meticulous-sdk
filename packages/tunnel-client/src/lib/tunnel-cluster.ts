@@ -78,8 +78,6 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
       });
     }
 
-    remote.setKeepAlive(true);
-
     this.emit("pending", remote);
 
     // Set a 10 sec remote connection timeout
