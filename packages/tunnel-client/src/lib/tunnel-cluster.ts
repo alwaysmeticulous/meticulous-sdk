@@ -23,8 +23,11 @@ interface TunnelClusterOpts {
 }
 
 type TunnelClusterEvents = {
+  // Emits when a remote connection is pending, before it is open.
   pending: (remote: net.Socket | tls.TLSSocket) => void;
+  // Emits when a remote connection is open.
   open: (remote: net.Socket | tls.TLSSocket) => void;
+  // Emits when a remote connection is dead.
   dead: (remote: net.Socket | tls.TLSSocket) => void;
   request: (request: { method: string; path: string }) => void;
   error: (err: Error) => void;
