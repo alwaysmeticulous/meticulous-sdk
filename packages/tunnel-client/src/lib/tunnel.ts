@@ -84,7 +84,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     return {
       name: id,
       url,
-      maxConn: Math.min(max_conn_count || 1, 50),
+      maxConn: max_conn_count || 1,
       remoteHost: parsedHost.hostname,
       remotePort: port,
       useTls,
