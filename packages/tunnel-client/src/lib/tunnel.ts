@@ -1,6 +1,11 @@
 import { EventEmitter } from "events";
+import net from "net";
+import tls from "tls";
 import axios from "axios";
 import axiosRetry from "axios-retry";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { BPMux } from "bpmux";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
@@ -139,69 +144,137 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     getUrl();
   }
 
-  _establish(info: TunnelInfo) {
+  _establish({
+    remoteHost,
+    remotePort,
+    localHost,
+    localPort,
+    localHttps,
+    allowInvalidCert,
+    maxConn,
+    useTls,
+    url,
+    basicAuthUser,
+    basicAuthPassword,
+    tunnelPassphrase,
+  }: TunnelInfo) {
     // increase max event listeners so that localtunnel consumers don't get
     // warning messages as soon as they setup even one listener. See #71
-    this.setMaxListeners(
-      info.maxConn + (EventEmitter.defaultMaxListeners || 10)
+    this.setMaxListeners(maxConn + (EventEmitter.defaultMaxListeners || 10));
+
+    const localProtocol = localHttps ? "https" : "http";
+    this.logger.debug(
+      "establishing tunnel %s://%s:%s <> %s:%s",
+      localProtocol,
+      localHost,
+      localPort,
+      remoteHost,
+      remotePort
     );
 
-    this.tunnelCluster = new TunnelCluster({ ...info, logger: this.logger });
+    let sharedSocket: net.Socket | tls.TLSSocket;
 
-    // only emit the url the first time
-    this.tunnelCluster.once("open", () => {
-      this.emit("url", {
-        url: info.url,
-        basicAuthUser: info.basicAuthUser,
-        basicAuthPassword: info.basicAuthPassword,
+    if (useTls) {
+      sharedSocket = tls.connect({
+        host: remoteHost,
+        port: remotePort,
+        rejectUnauthorized: true,
       });
-    });
-
-    // re-emit socket error
-    this.tunnelCluster.on("error", (err) => {
-      this.logger.debug("got socket error", err.message);
-      this.emit("error", err);
-    });
-
-    let tunnelCount = 0;
-
-    // track open count
-    this.tunnelCluster.on("open", (tunnel) => {
-      tunnelCount++;
-      this.logger.debug("tunnel open [total: %d]", tunnelCount);
-
-      const closeHandler = () => {
-        tunnel.destroy();
-      };
-
-      if (this.closed) {
-        return closeHandler();
-      }
-
-      this.once("close", closeHandler);
-      tunnel.once("close", () => {
-        this.removeListener("close", closeHandler);
+    } else {
+      sharedSocket = net.connect({
+        host: remoteHost,
+        port: remotePort,
       });
-    });
-
-    // when a tunnel dies, open a new one
-    this.tunnelCluster.on("dead", () => {
-      tunnelCount--;
-      this.logger.debug("tunnel dead [total: %d]", tunnelCount);
-      if (this.closed || !this.tunnelCluster) {
-        return;
-      }
-      this.tunnelCluster.open();
-    });
-
-    this.tunnelCluster.on("request", (req: IncomingRequestEvent) => {
-      this.emit("request", req);
-    });
-
-    // establish as many tunnels as allowed
-    for (let count = 0; count < info.maxConn; ++count) {
-      this.tunnelCluster.open();
     }
+
+    sharedSocket.on("error", (err: NodeJS.ErrnoException) => {
+      this.logger.debug("got remote connection error", err.message);
+
+      // emit connection refused errors immediately, because they
+      // indicate that the tunnel can't be established.
+      if (err.code === "ECONNREFUSED") {
+        this.emit(
+          "error",
+          new Error(
+            `connection refused: ${remoteHost}:${remotePort} (check your firewall settings)`
+          )
+        );
+      }
+
+      sharedSocket.end();
+    });
+    const connectEvent = useTls ? "secureConnect" : "connect";
+
+    sharedSocket.once(connectEvent, () => {
+      // Send the tunnel passphrase to the server
+      sharedSocket.write(`AUTH ${tunnelPassphrase}`);
+
+      const remoteMuxClient = new BPMux(sharedSocket);
+
+      const tunnelCluster = new TunnelCluster({
+        remoteMuxClient,
+        logger: this.logger,
+        localHost,
+        localPort,
+        localHttps,
+        allowInvalidCert,
+      });
+
+      // only emit the url the first time
+      tunnelCluster.once("open", () => {
+        this.emit("url", {
+          url: url,
+          basicAuthUser: basicAuthUser,
+          basicAuthPassword: basicAuthPassword,
+        });
+      });
+
+      // re-emit socket error
+      tunnelCluster.on("error", (err) => {
+        this.logger.debug("got socket error", err.message);
+        this.emit("error", err);
+      });
+
+      let tunnelCount = 0;
+
+      // track open count
+      tunnelCluster.on("open", (tunnel) => {
+        tunnelCount++;
+        this.logger.debug("tunnel open [total: %d]", tunnelCount);
+
+        const closeHandler = () => {
+          tunnel.destroy();
+        };
+
+        if (this.closed) {
+          return closeHandler();
+        }
+
+        this.once("close", closeHandler);
+        tunnel.once("close", () => {
+          this.removeListener("close", closeHandler);
+        });
+      });
+
+      // when a tunnel dies, open a new one
+      tunnelCluster.on("dead", () => {
+        tunnelCount--;
+        this.logger.debug("tunnel dead [total: %d]", tunnelCount);
+        if (this.closed) {
+          return;
+        }
+        tunnelCluster.open();
+      });
+
+      tunnelCluster.on("request", (req: IncomingRequestEvent) => {
+        this.emit("request", req);
+      });
+
+      // establish as many tunnels as allowed
+      for (let count = 0; count < maxConn; ++count) {
+        tunnelCluster.open();
+      }
+    });
   }
 
   open(cb: (err?: Error) => void) {

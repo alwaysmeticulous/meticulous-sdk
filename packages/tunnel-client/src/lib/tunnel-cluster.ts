@@ -3,16 +3,16 @@ import { readFileSync } from "fs";
 import * as net from "net";
 import { Duplex } from "stream";
 import * as tls from "tls";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { BPMux } from "bpmux";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
 import { HeaderHostTransformer } from "./header-host-transformer";
 
 interface TunnelClusterOpts {
   logger: Logger;
-  remoteHost: string;
-  remotePort: number;
-  useTls: boolean;
-  tunnelPassphrase: string;
+  remoteMuxClient: BPMux;
   localHost: string;
   localPort: number;
   localHttps: boolean;
@@ -23,7 +23,7 @@ interface TunnelClusterOpts {
 }
 
 type TunnelClusterEvents = {
-  open: (remote: net.Socket | tls.TLSSocket) => void;
+  open: (stream: Duplex) => void;
   dead: () => void;
   request: (request: { method: string; path: string }) => void;
   error: (err: Error) => void;
@@ -33,66 +33,26 @@ type TunnelClusterEvents = {
 export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<TunnelClusterEvents>) {
   private readonly logger: Logger;
   private readonly opts: TunnelClusterOpts;
+  private readonly remoteMuxClient: BPMux;
 
   constructor(opts: TunnelClusterOpts) {
     super();
     this.logger = opts.logger;
     this.opts = opts;
+
+    this.remoteMuxClient = opts.remoteMuxClient;
   }
 
   open() {
+    this.logger.debug("opening tunnel cluster");
+    const remote = this.remoteMuxClient.multiplex();
     const opt = this.opts;
 
-    const remoteHostOrIp = opt.remoteHost;
-    const remotePort = opt.remotePort;
     const localHost = opt.localHost;
     const localPort = opt.localPort;
     const localProtocol = opt.localHttps ? "https" : "http";
+
     const allowInvalidCert = opt.allowInvalidCert;
-
-    this.logger.debug(
-      "establishing tunnel %s://%s:%s <> %s:%s",
-      localProtocol,
-      localHost,
-      localPort,
-      remoteHostOrIp,
-      remotePort
-    );
-
-    // connection to localtunnel server
-    let remote: net.Socket | tls.TLSSocket;
-    if (opt.useTls) {
-      remote = tls.connect({
-        host: remoteHostOrIp,
-        port: remotePort,
-        rejectUnauthorized: true,
-      });
-    } else {
-      remote = net.connect({
-        host: remoteHostOrIp,
-        port: remotePort,
-      });
-    }
-
-    remote.setKeepAlive(true);
-
-    remote.on("error", (err: NodeJS.ErrnoException) => {
-      this.logger.debug("got remote connection error", err.message);
-
-      // emit connection refused errors immediately, because they
-      // indicate that the tunnel can't be established.
-      if (err.code === "ECONNREFUSED") {
-        this.emit(
-          "error",
-          new Error(
-            `connection refused: ${remoteHostOrIp}:${remotePort} (check your firewall settings)`
-          )
-        );
-      }
-
-      remote.end();
-    });
-
     const connLocal = () => {
       if (remote.destroyed) {
         this.logger.debug("remote destroyed");
@@ -106,11 +66,6 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
         localHost,
         localPort
       );
-
-      // Authenticate with the remote server
-      remote.write(`AUTH ${opt.tunnelPassphrase}`);
-
-      remote.pause();
 
       let local: net.Socket | tls.TLSSocket;
 
@@ -191,11 +146,13 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
         // when local closes, also get a new remote
         local.once("close", (hadError) => {
           this.logger.debug("local connection closed [%s]", hadError);
+
+          //   remote.end()?
         });
       });
     };
 
-    remote.on("data", (data) => {
+    remote.on("data", (data: any) => {
       const match = data.toString().match(/^(\w+) (\S+)/);
       if (match) {
         this.emit("request", {
@@ -205,13 +162,9 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
       }
     });
 
-    // tunnel is considered open when remote connects
+    this.emit("open", remote);
 
-    const connectEvent = opt.useTls ? "secureConnect" : "connect";
-
-    remote.once(connectEvent, () => {
-      this.emit("open", remote);
-      connLocal();
-    });
+    remote.pause();
+    connLocal();
   }
 }
