@@ -187,6 +187,8 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       });
     }
 
+    sharedSocket.setNoDelay(true);
+
     sharedSocket.on("error", (err: NodeJS.ErrnoException) => {
       this.logger.debug("got remote connection error", err.message);
 
@@ -209,7 +211,10 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       // Send the tunnel passphrase to the server
       sharedSocket.write(`AUTH ${tunnelPassphrase}`);
 
-      const remoteMuxClient = new BPMux(sharedSocket);
+      const remoteMuxClient = new BPMux(sharedSocket, {
+        highWaterMark: 1024 * 1024 * 10,
+        peer_multiplex_options: { highWaterMark: 1024 * 1024 * 10 },
+      });
 
       const tunnelCluster = new TunnelCluster({
         remoteMuxClient,

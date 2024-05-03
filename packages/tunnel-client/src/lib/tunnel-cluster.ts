@@ -45,7 +45,9 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
 
   open() {
     this.logger.debug("opening tunnel cluster");
-    const remote = this.remoteMuxClient.multiplex();
+    const remote = this.remoteMuxClient.multiplex({
+      highWaterMark: 1024 * 1024 * 10,
+    });
     const opt = this.opts;
 
     const localHost = opt.localHost;
