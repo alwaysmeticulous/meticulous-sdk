@@ -136,7 +136,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
           cb(null, getInfo(body as CreateTunnelResponse));
         })
         .catch((err) => {
-          this.logger.debug(`tunnel server offline: ${err.message}, retry 1s`);
+          this.logger.error(`tunnel server offline: ${err.message}, retry 1s`);
           return setTimeout(getUrl, 1000);
         });
     };
