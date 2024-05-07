@@ -9,3 +9,10 @@ forked from [1f47bd6](https://github.com/localtunnel/localtunnel/commit/1f47bd6a
 
 A lot of the modifications are to make the client work with the secure Meticulous tunnels service so this client is not compatible with the original localtunnel service.
 
+## Usage
+
+You can use this via the CLI:
+
+```bash
+npx @alwaysmeticulous/cli start-local-tunnel -p 8080 --apiToken <your-api-token>
+```
