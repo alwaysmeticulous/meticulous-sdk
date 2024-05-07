@@ -8,6 +8,7 @@ import * as tls from "tls";
 import { BPMux } from "bpmux";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
+import { TUNNEL_HIGH_WATER_MARK } from "../consts";
 import { HeaderHostTransformer } from "./header-host-transformer";
 
 interface TunnelClusterOpts {
@@ -44,9 +45,8 @@ export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<Tunne
   }
 
   open() {
-    this.logger.debug("opening tunnel cluster");
     const remote = this.remoteMuxClient.multiplex({
-      highWaterMark: 1024 * 1024 * 10,
+      highWaterMark: TUNNEL_HIGH_WATER_MARK,
     });
     const opt = this.opts;
 

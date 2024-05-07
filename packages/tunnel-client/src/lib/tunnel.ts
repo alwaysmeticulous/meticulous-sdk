@@ -8,6 +8,7 @@ import axiosRetry from "axios-retry";
 import { BPMux } from "bpmux";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
+import { TUNNEL_HIGH_WATER_MARK } from "../consts";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
 import { TunnelCluster } from "./tunnel-cluster";
 
@@ -43,7 +44,6 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
   private readonly opts: Omit<LocalTunnelOptions, "logger" | "host">;
   private readonly host: string;
   private closed: boolean;
-  private tunnelCluster: TunnelCluster | null = null;
 
   public clientId: string | null = null;
   public url: string | null = null;
@@ -212,8 +212,10 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       sharedSocket.write(`AUTH ${tunnelPassphrase}`);
 
       const remoteMuxClient = new BPMux(sharedSocket, {
-        highWaterMark: 1024 * 1024 * 10,
-        peer_multiplex_options: { highWaterMark: 1024 * 1024 * 10 },
+        highWaterMark: TUNNEL_HIGH_WATER_MARK,
+        peer_multiplex_options: {
+          highWaterMark: TUNNEL_HIGH_WATER_MARK,
+        },
       });
 
       const tunnelCluster = new TunnelCluster({
