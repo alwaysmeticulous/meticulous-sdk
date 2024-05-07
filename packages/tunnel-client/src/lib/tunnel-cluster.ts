@@ -3,8 +3,6 @@ import { readFileSync } from "fs";
 import * as net from "net";
 import { Duplex } from "stream";
 import * as tls from "tls";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { BPMux } from "bpmux";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";

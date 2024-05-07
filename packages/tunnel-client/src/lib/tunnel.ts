@@ -3,8 +3,6 @@ import net from "net";
 import tls from "tls";
 import axios from "axios";
 import axiosRetry from "axios-retry";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { BPMux } from "bpmux";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
