@@ -8,33 +8,22 @@ import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
 import { TUNNEL_HIGH_WATER_MARK } from "../consts";
 import { HeaderHostTransformer } from "./header-host-transformer";
+import { TunnelClusterEvents, TunnelClusterOpts } from "./tunnel-cluster.types";
 
-interface TunnelClusterOpts {
-  logger: Logger;
+interface TunnelMultiplexingClusterOpts extends TunnelClusterOpts {
   remoteMuxClient: BPMux;
-  localHost: string;
-  localPort: number;
-  localHttps: boolean;
-  allowInvalidCert: boolean;
-  localCert?: string | undefined;
-  localKey?: string | undefined;
-  localCa?: string | undefined;
 }
 
-type TunnelClusterEvents = {
-  open: (stream: Duplex) => void;
-  dead: () => void;
-  request: (request: { method: string; path: string }) => void;
-  error: (err: Error) => void;
-};
-
-// manages groups of tunnels
-export class TunnelCluster extends (EventEmitter as new () => TypedEmitter<TunnelClusterEvents>) {
+/**
+ * TunnelMultiplexingCluster manages a single tunnel connection to a remote server and multiplexes
+ * multiple connections over that single tunnel.
+ */
+export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedEmitter<TunnelClusterEvents>) {
   private readonly logger: Logger;
   private readonly opts: TunnelClusterOpts;
   private readonly remoteMuxClient: BPMux;
 
-  constructor(opts: TunnelClusterOpts) {
+  constructor(opts: TunnelMultiplexingClusterOpts) {
     super();
     this.logger = opts.logger;
     this.opts = opts;

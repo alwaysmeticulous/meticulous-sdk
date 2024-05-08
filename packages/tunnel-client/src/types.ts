@@ -5,9 +5,10 @@ export interface TunnelInfo {
   url: string;
   maxConn: number;
   remoteHost: string;
-  remotePort: number;
+  remotePort?: number | undefined;
   useTls: boolean;
   tunnelPassphrase: string;
+  multiplexingRemotePort?: number | undefined;
   basicAuthUser: string;
   basicAuthPassword: string;
   localPort: number;
