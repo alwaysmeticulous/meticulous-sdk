@@ -30,7 +30,7 @@ const ASSET_METADATA_FILE_NAME = "assets.json";
  */
 export const fetchAsset = async (path: string): Promise<string> => {
   const snippetsBaseUrl = getSnippetsBaseUrl();
-  const fetchUrl = new URL(path, getSnippetsBaseUrl()).href;
+  const fetchUrl = new URL(path, snippetsBaseUrl).href;
   const assetFileName = basename(new URL(fetchUrl).pathname);
   const assetFileNameAsCjsFile = convertJsExtensionToCJS(assetFileName);
 
@@ -47,7 +47,7 @@ const fetchAndCacheFile = async (
   fileNameToDownloadAs: string
 ): Promise<string> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-  const client = axios.create();
+  const client = axios.create({ timeout: 60_000 });
   axiosRetry(client, { retries: 3 });
 
   const releaseLock = await waitToAcquireLockOnFile(await getAssetsFilePath());
