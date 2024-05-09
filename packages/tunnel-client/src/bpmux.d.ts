@@ -36,7 +36,7 @@ declare module "bpmux" {
   export class BPMux {
     constructor(
       carrier: Duplex | Http2Session,
-      opts: GenericDuplexOpts & {
+      opts?: GenericDuplexOpts & {
         /**
          * Whether to batch together writes to the carrier.
          * When the carrier indicates it's ready to receive data, its spare capacity is shared equally between the multiplexed streams.
@@ -85,6 +85,6 @@ declare module "bpmux" {
     on(event: "handshake", listener: (duplex: Duplex) => void): this;
     on(event: "error", listener: (err: Error) => void): this;
 
-    multiplex(opts: GenericDuplexOpts & BPMuxDuplexOpts): Duplex;
+    multiplex(opts?: GenericDuplexOpts & BPMuxDuplexOpts): Duplex;
   }
 }
