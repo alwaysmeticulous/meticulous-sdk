@@ -132,11 +132,8 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
 
         stream.pipe(local).pipe(remote);
 
-        // when local closes, also get a new remote
         local.once("close", (hadError) => {
           this.logger.debug("local connection closed [%s]", hadError);
-
-          //   remote.end()?
         });
       });
     };
