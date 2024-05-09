@@ -354,7 +354,7 @@
     core-js-pure "^3.20.2"
     regenerator-runtime "^0.13.4"
 
-"@babel/runtime@^7.10.2", "@babel/runtime@^7.15.4", "@babel/runtime@^7.16.3":
+"@babel/runtime@^7.10.2", "@babel/runtime@^7.16.3":
   version "7.22.5"
   resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.22.5.tgz#8564dd588182ce0047d55d7a75e93921107b57ec"
   integrity sha512-ecjvYlnAaZ/KVneE/OdKYBYfgXV3Ptu6zQWmgEF7vwKhQnvVS6bjMD2XYgj+SNvQ1GfK/pjgokfPkC/2CO8CuA==
@@ -2937,12 +2937,11 @@ axe-core@^4.3.5:
   resolved "https://registry.yarnpkg.com/axe-core/-/axe-core-4.4.2.tgz#dcf7fb6dea866166c3eab33d68208afe4d5f670c"
   integrity sha512-LVAaGp/wkkgYJcjmHsoKx4juT1aQvJyPcW09MLCjVTh3V2cc6PnyempiLMNH5iMdfIX/zdbjUx2KDjMLCTdPeA==
 
-axios-retry@^3.5.0:
-  version "3.6.0"
-  resolved "https://registry.yarnpkg.com/axios-retry/-/axios-retry-3.6.0.tgz#3bf6edbce42e526a3f7ac70b1891b645adb4c301"
-  integrity sha512-jtH4qWTKZ2a17dH6tjq52Y1ssNV0lKge6/Z9Lw67s9Wt01nGTg4hg7/LJBGYfDci44NTANJQlCPHPOT/TSFm9w==
+axios-retry@^4.1.0:
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/axios-retry/-/axios-retry-4.1.0.tgz#aac5a9657213913048201152ef14090f7111608f"
+  integrity sha512-svdth4H00yhlsjBbjfLQ/sMLkXqeLxhiFC1nE1JtkN/CIssGxqk0UwTEdrVjwA2gr3yJkAulwvDSIm4z4HyPvg==
   dependencies:
-    "@babel/runtime" "^7.15.4"
     is-retry-allowed "^2.2.0"
 
 axios@^1.0.0, axios@^1.2.6:
@@ -4133,9 +4132,9 @@ ee-first@1.1.1:
   integrity sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==
 
 ejs@^3.1.7:
-  version "3.1.8"
-  resolved "https://registry.yarnpkg.com/ejs/-/ejs-3.1.8.tgz#758d32910c78047585c7ef1f92f9ee041c1c190b"
-  integrity sha512-/sXZeMlhS0ArkfX2Aw780gJzXSMPnKjtspYZv+f3NiKLlubezAHDU5+9xz6gd3/NhG3txQCo6xlglmTS+oTGEQ==
+  version "3.1.10"
+  resolved "https://registry.yarnpkg.com/ejs/-/ejs-3.1.10.tgz#69ab8358b14e896f80cc39e62087b88500c3ac3b"
+  integrity sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==
   dependencies:
     jake "^10.8.5"
 

@@ -65,7 +65,9 @@ export interface TestRunGitHubWorkflowDispatchContext {
   headSha: string;
 }
 
-export type TestRunGitLabContext = TestRunGitLabMergeRequestContext | TestRunGitLabPushContext;
+export type TestRunGitLabContext =
+  | TestRunGitLabMergeRequestContext
+  | TestRunGitLabPushContext;
 
 export interface TestRunGitLabMergeRequestContext {
   type: "gitlab";
