@@ -11,7 +11,7 @@ import { HeaderHostTransformer } from "./header-host-transformer";
 import { TunnelClusterEvents, TunnelClusterOpts } from "./tunnel-cluster.types";
 
 interface TunnelMultiplexingClusterOpts extends TunnelClusterOpts {
-  remoteMuxClient: BPMux;
+  remoteMuxClient: BPMux<net.Socket>;
 }
 
 /**
@@ -21,7 +21,7 @@ interface TunnelMultiplexingClusterOpts extends TunnelClusterOpts {
 export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedEmitter<TunnelClusterEvents>) {
   private readonly logger: Logger;
   private readonly opts: TunnelClusterOpts;
-  private readonly remoteMuxClient: BPMux;
+  private readonly remoteMuxClient: BPMux<net.Socket>;
 
   constructor(opts: TunnelMultiplexingClusterOpts) {
     super();
