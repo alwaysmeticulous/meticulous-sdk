@@ -296,23 +296,31 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
         // Send the tunnel passphrase to the server
         sharedSocket.write(`AUTH ${tunnelPassphrase}`);
 
-        const remoteMuxClient = new BPMux(sharedSocket, {
-          highWaterMark: TUNNEL_HIGH_WATER_MARK,
-          peer_multiplex_options: {
+        sharedSocket.once("data", (data) => {
+          console.log("data", data.toString());
+          if (data.toString() != "AUTH OK") {
+            this.emit("error", new Error("Tunnel auth failed"));
+            sharedSocket.end();
+          }
+
+          const remoteMuxClient = new BPMux(sharedSocket, {
             highWaterMark: TUNNEL_HIGH_WATER_MARK,
-          },
-        });
+            peer_multiplex_options: {
+              highWaterMark: TUNNEL_HIGH_WATER_MARK,
+            },
+          });
 
-        const tunnelCluster = new TunnelMultiplexingCluster({
-          remoteMuxClient,
-          logger: this.logger,
-          localHost,
-          localPort,
-          localHttps,
-          allowInvalidCert,
-        });
+          const tunnelCluster = new TunnelMultiplexingCluster({
+            remoteMuxClient,
+            logger: this.logger,
+            localHost,
+            localPort,
+            localHttps,
+            allowInvalidCert,
+          });
 
-        resolve(tunnelCluster);
+          resolve(tunnelCluster);
+        });
       });
     });
   }
