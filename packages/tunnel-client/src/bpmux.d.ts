@@ -33,9 +33,9 @@ declare module "bpmux" {
     highWaterMark?: number | undefined;
   }
 
-  export class BPMux {
+  export class BPMux<T extends Duplex | Http2Session> {
     constructor(
-      carrier: Duplex | Http2Session,
+      carrier: T,
       opts?: GenericDuplexOpts & {
         /**
          * Whether to batch together writes to the carrier.
@@ -86,5 +86,7 @@ declare module "bpmux" {
     on(event: "error", listener: (err: Error) => void): this;
 
     multiplex(opts?: GenericDuplexOpts & BPMuxDuplexOpts): Duplex;
+
+    carrier: T;
   }
 }
