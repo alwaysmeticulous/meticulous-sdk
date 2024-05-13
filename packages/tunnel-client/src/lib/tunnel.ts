@@ -1,16 +1,22 @@
 import { EventEmitter } from "events";
+import net from "net";
+import tls from "tls";
 import axios from "axios";
 import axiosRetry from "axios-retry";
+import { BPMux } from "bpmux";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
+import { TUNNEL_HIGH_WATER_MARK } from "../consts";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
-import { TunnelCluster } from "./tunnel-cluster";
+import { TunnelConnectionCluster } from "./tunnel-connection-cluster";
+import { TunnelMultiplexingCluster } from "./tunnel-multiplexing-cluster";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
 
 interface CreateTunnelResponse {
   id: string;
-  port: number;
+  port?: number | undefined;
+  multiplexing_port?: number | undefined;
   url: string;
   max_conn_count: number;
   tunnel_passphrase: string;
@@ -38,7 +44,6 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
   private readonly opts: Omit<LocalTunnelOptions, "logger" | "host">;
   private readonly host: string;
   private closed: boolean;
-  private tunnelCluster: TunnelCluster | null = null;
 
   public clientId: string | null = null;
   public url: string | null = null;
@@ -59,6 +64,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     const {
       id,
       port,
+      multiplexing_port,
       url,
       max_conn_count,
       tunnel_passphrase,
@@ -80,6 +86,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       maxConn: max_conn_count || 1,
       remoteHost: parsedHost.hostname,
       remotePort: port,
+      multiplexingRemotePort: multiplexing_port,
       useTls,
       tunnelPassphrase: tunnel_passphrase,
       basicAuthUser: basic_auth_user,
@@ -105,13 +112,19 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       headers: {
         Authorization: opt.apiToken,
       },
+      params: {
+        // Older versions of the client don't support multiplexing.
+        // Temporary until all clients support multiplexing.
+        supportsMultiplexing: true,
+        new: true,
+      },
     };
 
     const baseUri = `${this.host}/`;
     // no subdomain at first, maybe use requested domain
     const assignedDomain = opt.subdomain;
     // where to quest
-    const uri = baseUri + (assignedDomain || "?new");
+    const uri = baseUri + (assignedDomain || "");
 
     const getUrl = () => {
       const client = axios.create({ timeout: 30_000 });
@@ -131,7 +144,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
           cb(null, getInfo(body as CreateTunnelResponse));
         })
         .catch((err) => {
-          this.logger.debug(`tunnel server offline: ${err.message}, retry 1s`);
+          this.logger.error(`tunnel server offline: ${err.message}, retry 1s`);
           return setTimeout(getUrl, 1000);
         });
     };
@@ -139,17 +152,34 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     getUrl();
   }
 
-  _establish(info: TunnelInfo) {
+  async _establish(info: TunnelInfo) {
     // increase max event listeners so that localtunnel consumers don't get
     // warning messages as soon as they setup even one listener. See #71
     this.setMaxListeners(
       info.maxConn + (EventEmitter.defaultMaxListeners || 10)
     );
 
-    this.tunnelCluster = new TunnelCluster({ ...info, logger: this.logger });
+    let tunnelCluster: TunnelConnectionCluster | TunnelMultiplexingCluster;
+
+    if (info.multiplexingRemotePort) {
+      this.logger.debug("using multiplexing agent");
+      tunnelCluster = await this._establishMultiplexingCluster({
+        ...info,
+        multiplexingRemotePort: info.multiplexingRemotePort,
+      });
+    } else if (info.remotePort) {
+      this.logger.debug("using connection agent");
+      tunnelCluster = new TunnelConnectionCluster({
+        ...info,
+        remotePort: info.remotePort,
+        logger: this.logger,
+      });
+    } else {
+      throw new Error("remotePort or multiplexingRemotePort must be set");
+    }
 
     // only emit the url the first time
-    this.tunnelCluster.once("open", () => {
+    tunnelCluster.once("open", () => {
       this.emit("url", {
         url: info.url,
         basicAuthUser: info.basicAuthUser,
@@ -158,7 +188,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     });
 
     // re-emit socket error
-    this.tunnelCluster.on("error", (err) => {
+    tunnelCluster.on("error", (err) => {
       this.logger.debug("got socket error", err.message);
       this.emit("error", err);
     });
@@ -166,7 +196,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     let tunnelCount = 0;
 
     // track open count
-    this.tunnelCluster.on("open", (tunnel) => {
+    tunnelCluster.on("open", (tunnel) => {
       tunnelCount++;
       this.logger.debug("tunnel open [total: %d]", tunnelCount);
 
@@ -185,23 +215,114 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     });
 
     // when a tunnel dies, open a new one
-    this.tunnelCluster.on("dead", () => {
+    tunnelCluster.on("dead", () => {
       tunnelCount--;
       this.logger.debug("tunnel dead [total: %d]", tunnelCount);
-      if (this.closed || !this.tunnelCluster) {
+      if (this.closed || !tunnelCluster) {
         return;
       }
-      this.tunnelCluster.open();
+      tunnelCluster.open();
     });
 
-    this.tunnelCluster.on("request", (req: IncomingRequestEvent) => {
+    tunnelCluster.on("request", (req: IncomingRequestEvent) => {
       this.emit("request", req);
     });
 
     // establish as many tunnels as allowed
     for (let count = 0; count < info.maxConn; ++count) {
-      this.tunnelCluster.open();
+      tunnelCluster.open();
     }
+  }
+
+  _establishMultiplexingCluster({
+    remoteHost,
+    multiplexingRemotePort,
+    localHost,
+    localPort,
+    localHttps,
+    allowInvalidCert,
+    useTls,
+    tunnelPassphrase,
+  }: Omit<TunnelInfo, "multiplexingRemotePort"> & {
+    multiplexingRemotePort: number;
+  }): Promise<TunnelMultiplexingCluster> {
+    const localProtocol = localHttps ? "https" : "http";
+    this.logger.debug(
+      "establishing tunnel %s://%s:%s <> %s:%s",
+      localProtocol,
+      localHost,
+      localPort,
+      remoteHost,
+      multiplexingRemotePort
+    );
+
+    let sharedSocket: net.Socket | tls.TLSSocket;
+
+    if (useTls) {
+      sharedSocket = tls.connect({
+        host: remoteHost,
+        port: multiplexingRemotePort,
+        rejectUnauthorized: true,
+      });
+    } else {
+      sharedSocket = net.connect({
+        host: remoteHost,
+        port: multiplexingRemotePort,
+      });
+    }
+
+    sharedSocket.setNoDelay(true);
+
+    sharedSocket.on("error", (err: NodeJS.ErrnoException) => {
+      this.logger.debug("got remote connection error", err.message);
+
+      // emit connection refused errors immediately, because they
+      // indicate that the tunnel can't be established.
+      if (err.code === "ECONNREFUSED") {
+        this.emit(
+          "error",
+          new Error(
+            `connection refused: ${remoteHost}:${multiplexingRemotePort} (check your firewall settings)`
+          )
+        );
+      }
+
+      sharedSocket.end();
+    });
+    const connectEvent = useTls ? "secureConnect" : "connect";
+
+    return new Promise<TunnelMultiplexingCluster>((resolve) => {
+      sharedSocket.once(connectEvent, () => {
+        // Send the tunnel passphrase to the server
+        sharedSocket.write(`AUTH ${tunnelPassphrase}`);
+
+        sharedSocket.once("data", (data) => {
+          console.log("data", data.toString());
+          if (data.toString() != "AUTH OK") {
+            this.emit("error", new Error("Tunnel auth failed"));
+            sharedSocket.end();
+          }
+
+          const remoteMuxClient = new BPMux(sharedSocket, {
+            highWaterMark: TUNNEL_HIGH_WATER_MARK,
+            peer_multiplex_options: {
+              highWaterMark: TUNNEL_HIGH_WATER_MARK,
+            },
+          });
+
+          const tunnelCluster = new TunnelMultiplexingCluster({
+            remoteMuxClient,
+            logger: this.logger,
+            localHost,
+            localPort,
+            localHttps,
+            allowInvalidCert,
+          });
+
+          resolve(tunnelCluster);
+        });
+      });
+    });
   }
 
   open(cb: (err?: Error) => void) {
@@ -215,8 +336,13 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       this.basicAuthUser = info.basicAuthUser;
       this.basicAuthPassword = info.basicAuthPassword;
 
-      this._establish(info);
-      cb();
+      this._establish(info)
+        .then(() => {
+          cb();
+        })
+        .catch((err) => {
+          this.emit("error", err);
+        });
     });
   }
 

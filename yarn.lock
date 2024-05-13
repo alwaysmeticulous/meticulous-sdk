@@ -3100,6 +3100,13 @@ boolbase@^1.0.0:
   resolved "https://registry.yarnpkg.com/boolbase/-/boolbase-1.0.0.tgz#68dff5fbe60c51eb37725ea9e3ed310dcc1e776e"
   integrity sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==
 
+bpmux@^8.2.1:
+  version "8.2.1"
+  resolved "https://registry.yarnpkg.com/bpmux/-/bpmux-8.2.1.tgz#94c2e6cc4802f9a42107b8974baeaa78ef2e3f86"
+  integrity sha512-inUpRFzaSsbzyjb4XSZKKcv7u6CQXkMcb/ST5Klf1DFBl3p6GXar+COr9I3rCy32gbFpqnfdiMdPFxEQweMjeA==
+  dependencies:
+    frame-stream "^3.0.1"
+
 brace-expansion@^1.1.7:
   version "1.1.11"
   resolved "https://registry.yarnpkg.com/brace-expansion/-/brace-expansion-1.1.11.tgz#3c7fcbf529d87226f3d2f52b966ff5271eb441dd"
@@ -4903,6 +4910,11 @@ fraction.js@^4.2.0:
   version "4.2.0"
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.2.0.tgz#448e5109a313a3527f5a3ab2119ec4cf0e0e2950"
   integrity sha512-MhLuK+2gUcnZe8ZHlaaINnQLl0xRIGRfcGk2yl8xoQAfHrSsL3rYu6FCmBdkdbhc9EPlwyGHewaRsvwRMJtAlA==
+
+frame-stream@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/frame-stream/-/frame-stream-3.0.1.tgz#e58f6ec5dca6fd9f043ca1c077c16bb17ab89183"
+  integrity sha512-Fu8Cdbt2hHfb7wp2HBG5AOfMO5qaglHoJuoiEoQKHS+mZtO/IsMiac3wEQtBVDmOLVmCmDeoutXbrfPlpwMiqg==
 
 fresh@0.5.2:
   version "0.5.2"

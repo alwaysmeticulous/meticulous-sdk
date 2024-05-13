@@ -11,6 +11,8 @@ export interface ExecuteRemoteTestRunOptions {
   appUrl: string;
   commitSha: string;
 
+  secureTunnelHost?: string | undefined;
+
   onTunnelCreated?: (data: TunnelData) => void;
   onTestRunCreated?: (testRun: TestRun) => void;
   onProgressUpdate?: (testRun: TestRun) => void;
