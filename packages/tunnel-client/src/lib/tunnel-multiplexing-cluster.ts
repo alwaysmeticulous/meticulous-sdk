@@ -139,6 +139,8 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
     };
 
     remote.on("data", (data: any) => {
+      // parse the first (request) line of the request to determine the method and path
+      // Example: GET /path HTTP/1.1
       const match = data.toString().match(/^(\w+) (\S+)/);
       if (match) {
         this.emit("request", {
