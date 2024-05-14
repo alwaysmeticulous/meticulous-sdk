@@ -12,9 +12,8 @@
   "scripts": {
     "clean": "rimraf dist .next out tsconfig.tsbuildinfo",
     "build:next": "next build",
-    "build:next-export": "next export",
     "build:scripts": "tsc -p tsconfig.scripts.json",
-    "build": "yarn build:next && yarn build:next-export && yarn build:scripts",
+    "build": "yarn build:next && yarn build:scripts",
     "dev": "next dev -p 3005",
     "format": "prettier --write src",
     "lint": "eslint src --ext=ts,tsx,js --cache",
