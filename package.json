@@ -45,5 +45,9 @@
     "turbo": "^1.2.16",
     "typescript": "^4.9.4"
   },
+  "resolutions": {
+    "//": "https://nvd.nist.gov/vuln/detail/CVE-2022-46175",
+    "json5": "^2.2.2"
+  },
   "version": "0.0.0"
 }
