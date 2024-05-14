@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 import net from "net";
 import tls from "tls";
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 import axiosRetry from "axios-retry";
 import { BPMux } from "bpmux";
 import { Logger } from "loglevel";
@@ -144,6 +144,12 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
           cb(null, getInfo(body as CreateTunnelResponse));
         })
         .catch((err) => {
+          if (isAxiosError(err)) {
+            if (err.response?.status === 401) {
+              return cb(new Error("Unauthorized. Please check your API token"));
+            }
+          }
+
           this.logger.error(`tunnel server offline: ${err.message}, retry 1s`);
           return setTimeout(getUrl, 1000);
         });
