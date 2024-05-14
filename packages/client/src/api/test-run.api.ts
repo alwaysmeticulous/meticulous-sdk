@@ -4,7 +4,7 @@ import {
   TestCaseResult,
   TestRunStatus,
 } from "@alwaysmeticulous/api";
-import { AxiosError, AxiosInstance } from "axios";
+import { AxiosError, AxiosInstance, isAxiosError } from "axios";
 
 export interface TestRun {
   id: string;
@@ -45,9 +45,18 @@ export const executeSecureTunnelTestRun = async ({
       environment,
     })
     .catch((error) => {
-      if (error instanceof AxiosError && error.response?.status === 404) {
-        return { data: null };
+      if (isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          return { data: null };
+        }
+
+        const errorMessage = error.response?.data?.message;
+
+        if (errorMessage) {
+          throw new Error(errorMessage);
+        }
       }
+
       throw error;
     });
   return (data as TestRun | null) ?? null;
