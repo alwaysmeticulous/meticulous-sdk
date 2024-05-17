@@ -7,12 +7,23 @@ interface EarlyNetworkRecorderWindow {
     earlyNetworkRecorder?: {
       dispose?: () => Promise<void>;
     };
+    stopRecording?: () => void;
   };
 }
 
 export interface Interceptor {
-  startRecordingSession: (options: LoaderOptions) => Promise<void>;
+  startRecordingSession: (options: LoaderOptions) => Promise<Recorder>;
   stopIntercepting: () => Promise<void>;
+}
+
+export interface Recorder {
+  /**
+   * Disables the recorder for the rest of the user session, and stops sending data to the Meticulous
+   * servers.
+   *
+   * Once this method is called the recorder cannot be restarted (unless the page is reloaded).
+   */
+  stopRecording: () => Promise<void>;
 }
 
 /**
@@ -60,7 +71,20 @@ export const tryInstallMeticulousIntercepts = async (
       disposedEarlyNetworkRecorder = true;
     }
   };
-  const startRecordingSession = tryLoadAndStartRecorder;
+  const startRecordingSession = (options: LoaderOptions) =>
+    tryLoadAndStartRecorder(options).then(() => ({
+      stopRecording: async () => {
+        const stopRecording = (window as EarlyNetworkRecorderWindow)
+          .__meticulous?.stopRecording;
+        if (!stopRecording) {
+          throw new Error(
+            "Recorder not initialised: window.__meticulous.stopRecording is not defined."
+          );
+        }
+        await stopRecording();
+        return;
+      },
+    }));
   const interceptor = { startRecordingSession, stopIntercepting };
 
   const promise = new Promise<Interceptor>((resolve, reject) => {
