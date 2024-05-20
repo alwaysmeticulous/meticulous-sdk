@@ -303,7 +303,6 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
         sharedSocket.write(`AUTH ${tunnelPassphrase}`);
 
         sharedSocket.once("data", (data) => {
-          console.log("data", data.toString());
           if (data.toString() != "AUTH OK") {
             this.emit("error", new Error("Tunnel auth failed"));
             sharedSocket.end();
