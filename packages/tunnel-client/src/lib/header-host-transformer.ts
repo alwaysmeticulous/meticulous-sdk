@@ -1,12 +1,17 @@
-import { Transform, TransformCallback } from "stream";
+import { Transform, TransformCallback, TransformOptions } from "stream";
+
+type HeaderHostTransformerOptions = TransformOptions & {
+  host: string;
+  port: number;
+};
 
 export class HeaderHostTransformer extends Transform {
   private readonly host: string;
   private replaced: boolean;
 
-  constructor(opts: any) {
+  constructor(opts: HeaderHostTransformerOptions) {
     super(opts);
-    this.host = opts.host || "localhost";
+    this.host = `${opts.host}:${opts.port}`;
     this.replaced = false;
   }
 

@@ -126,7 +126,10 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
         if (opt.localHost) {
           this.logger.debug("transform Host header to %s", opt.localHost);
           stream = remote.pipe(
-            new HeaderHostTransformer({ host: opt.localHost })
+            new HeaderHostTransformer({
+              host: opt.localHost,
+              port: opt.localPort,
+            })
           );
         }
 
