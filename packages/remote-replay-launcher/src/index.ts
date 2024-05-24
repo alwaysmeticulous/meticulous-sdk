@@ -111,7 +111,7 @@ export const executeRemoteTestRun = async ({
       if (startedWaitingForRetryAt === undefined) {
         startedWaitingForRetryAt = Date.now();
         logger.info(
-          `Test run failed with ExecutionError. Waiting for ${
+          `Test run failed with execution error. Waiting for ${
             MS_TO_WAIT_FOR_RETRY / 1_000
           } seconds to see if it gets automatically retried...`
         );
