@@ -18,6 +18,7 @@ import { getPort } from "./url.utils";
 export { TunnelData } from "./types";
 
 const PROGRESS_UPDATE_INTERVAL_MS = 5_000; // 5 seconds
+const MS_TO_WAIT_FOR_RETRY = 5 * 60 * 1_000; // 5 minutes
 
 export const executeRemoteTestRun = async ({
   apiToken: apiToken_,
@@ -96,8 +97,28 @@ export const executeRemoteTestRun = async ({
   const testRunCompleted = defer<TestRun>();
 
   let progressUpdateInterval: NodeJS.Timeout | undefined = undefined;
+  let startedWaitingForRetryAt: number | undefined = undefined;
 
   const onTestRunCompleted = (completedTestRun: TestRun) => {
+    if (
+      completedTestRun.status === "ExecutionError" &&
+      (startedWaitingForRetryAt === undefined ||
+        Date.now() - startedWaitingForRetryAt < MS_TO_WAIT_FOR_RETRY)
+    ) {
+      // It may get re-triggered: let's wait to see if it does: we keep progressUpdateInterval
+      // so it'll keep polling for updates. Eventually it'll either hit the timeout or the test run
+      // will move to the Running state again and we'll wait a while more.
+      if (startedWaitingForRetryAt === undefined) {
+        startedWaitingForRetryAt = Date.now();
+        logger.info(
+          `Test run failed with execution error. Waiting for ${
+            MS_TO_WAIT_FOR_RETRY / 1_000
+          } seconds to see if it gets automatically retried...`
+        );
+      }
+      return;
+    }
+
     if (progressUpdateInterval) {
       clearInterval(progressUpdateInterval);
     }
@@ -124,6 +145,11 @@ export const executeRemoteTestRun = async ({
       onTestRunCompleted(updatedTestRun);
 
       return;
+    } else if (startedWaitingForRetryAt !== undefined) {
+      logger.info(
+        `Retrying test run... (status is now ${updatedTestRun.status})`
+      );
+      startedWaitingForRetryAt = undefined;
     }
   }, PROGRESS_UPDATE_INTERVAL_MS);
 
