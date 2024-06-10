@@ -1,3 +1,4 @@
+import { createWriteStream } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { basename, join } from "path";
 import {
@@ -71,13 +72,10 @@ const fetchAndCacheFile = async (
       return filePath;
     }
 
-    let contents = (await client.get(urlToDownloadFrom)).data;
-    if (typeof contents !== "string") {
-      // axios sometimes returns an object if the response body is JSON, as is the case for
-      // instance when the asset we requested was a source map
-      contents = JSON.stringify(contents);
-    }
-    await writeFile(filePath, contents);
+    const contentStream = (
+      await client.get(urlToDownloadFrom, { responseType: "stream" })
+    ).data;
+    await contentStream.pipe(createWriteStream(filePath));
     if (entry) {
       logger.debug(`${urlToDownloadFrom} updated`);
       entry.etag = etag;
