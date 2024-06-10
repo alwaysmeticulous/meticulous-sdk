@@ -35,7 +35,11 @@ export const fetchAsset = async (path: string): Promise<string> => {
   const assetFileNameAsCjsFile = convertJsExtensionToCJS(assetFileName);
 
   const jsFilePath = await fetchAndCacheFile(fetchUrl, assetFileNameAsCjsFile);
-  if (snippetsBaseUrl.includes("localhost") && process.env.CI !== "true") {
+  if (
+    snippetsBaseUrl.includes("localhost") &&
+    process.env.CI !== "true" &&
+    jsFilePath.endsWith(".js")
+  ) {
     await fetchAndCacheFile(`${fetchUrl}.map`, `${assetFileName}.map`);
   }
 
