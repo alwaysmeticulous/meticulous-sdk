@@ -1,3 +1,4 @@
+export * from "./api/github-cloud-replay.api";
 export { getProject } from "./api/project.api";
 export {
   getReplay,
