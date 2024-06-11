@@ -1,4 +1,3 @@
-import { createWriteStream } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { basename, join } from "path";
 import {
@@ -9,6 +8,7 @@ import axios from "axios";
 import axiosRetry from "axios-retry";
 import log from "loglevel";
 import { getSnippetsBaseUrl } from "../config/snippets";
+import { downloadFile } from "../file-downloads/download-file";
 import { waitToAcquireLockOnFile } from "../file-downloads/local-data.utils";
 
 interface AssetMetadataItem {
@@ -72,10 +72,7 @@ const fetchAndCacheFile = async (
       return filePath;
     }
 
-    const contentStream = (
-      await client.get(urlToDownloadFrom, { responseType: "stream" })
-    ).data;
-    await contentStream.pipe(createWriteStream(filePath));
+    await downloadFile(urlToDownloadFrom, filePath);
     if (entry) {
       logger.debug(`${urlToDownloadFrom} updated`);
       entry.etag = etag;
