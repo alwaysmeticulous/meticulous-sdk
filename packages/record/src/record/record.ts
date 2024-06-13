@@ -123,7 +123,7 @@ export const recordSession = async ({
     captureHttpOnlyCookies: captureHttpOnlyCookies ?? true,
   });
 
-  page.goto(appUrl ?? INITIAL_METICULOUS_RECORD_DOCS_URL);
+  await page.goto(appUrl ?? INITIAL_METICULOUS_RECORD_DOCS_URL);
 
   logger.info("Browser ready");
 

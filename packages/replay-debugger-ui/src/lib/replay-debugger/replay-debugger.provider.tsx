@@ -30,7 +30,7 @@ export const ReplayDebuggerProvider: FunctionComponent<{
 
   useEffect(() => {
     if (dispatchEvent) {
-      dispatchEvent("ready", null);
+      void dispatchEvent("ready", null);
     }
   }, [dispatchEvent]);
 

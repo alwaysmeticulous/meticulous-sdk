@@ -68,7 +68,7 @@ const fetchAndCacheFile = async (
 
     if (entry && etag !== "" && etag === entry.etag) {
       logger.debug(`${urlToDownloadFrom} already present`);
-      releaseLock();
+      await releaseLock();
       return filePath;
     }
 
@@ -85,10 +85,10 @@ const fetchAndCacheFile = async (
       });
     }
     await saveAssetMetadata(assetMetadata);
-    releaseLock();
+    await releaseLock();
     return filePath;
   } catch (err) {
-    releaseLock();
+    await releaseLock();
     logger.error(`Error fetching asset from ${urlToDownloadFrom}`);
     throw err;
   }

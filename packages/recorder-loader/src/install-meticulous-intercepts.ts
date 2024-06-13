@@ -123,7 +123,7 @@ export const tryInstallMeticulousIntercepts = async (
     })
     .finally(() => {
       if (requestedToStopIntercepting) {
-        stopIntercepting();
+        void stopIntercepting();
       }
     });
 };

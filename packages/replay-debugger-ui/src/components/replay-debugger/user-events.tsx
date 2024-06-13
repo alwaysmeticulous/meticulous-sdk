@@ -81,11 +81,11 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
   }, [current]);
 
   const onPlayNextEvent = useCallback(() => {
-    dispatchEvent("play-next-event", null);
+    void dispatchEvent("play-next-event", null);
   }, [dispatchEvent]);
 
   const onSetIndex = useCallback(() => {
-    dispatchEvent("set-index", { index });
+    void dispatchEvent("set-index", { index });
   }, [dispatchEvent, index]);
 
   return (
@@ -209,7 +209,7 @@ const EndOfReplayItem: FunctionComponent<{ current?: boolean }> = ({
   const { loading } = state;
 
   const onReset = useCallback(() => {
-    dispatchEvent("set-index", { index: 0 });
+    void dispatchEvent("set-index", { index: 0 });
   }, [dispatchEvent]);
 
   return (
