@@ -124,7 +124,7 @@ export const executeRemoteTestRun = async ({
     }
 
     if (keepTunnelOpenPromise) {
-      keepTunnelOpenPromise.then(() => {
+      void keepTunnelOpenPromise.then(() => {
         tunnel.close();
 
         testRunCompleted.resolve(completedTestRun);

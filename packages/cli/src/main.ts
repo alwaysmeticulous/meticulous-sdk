@@ -30,7 +30,7 @@ export const main: () => void = async () => {
   const meticulousVersion = await getMeticulousVersion(packageJsonPath);
   await initSentry(meticulousVersion);
 
-  yargs
+  await yargs
     .scriptName("meticulous")
     .usage(
       `$0 <command>

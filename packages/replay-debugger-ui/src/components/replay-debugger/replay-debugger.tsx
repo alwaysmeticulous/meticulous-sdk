@@ -14,11 +14,11 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
   const { events, index, loading } = state;
 
   const onCheckNextEventTarget = useCallback(() => {
-    dispatchEvent("check-next-target", null);
+    void dispatchEvent("check-next-target", null);
   }, [dispatchEvent]);
 
   const onPlayNextEvent = useCallback(() => {
-    dispatchEvent("play-next-event", null);
+    void dispatchEvent("play-next-event", null);
   }, [dispatchEvent]);
 
   return (
