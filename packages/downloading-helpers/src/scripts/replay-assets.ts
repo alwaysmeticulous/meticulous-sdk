@@ -79,7 +79,7 @@ const fetchAndCacheFile = async (
     } else {
       logger.debug(`${urlToDownloadFrom} downloaded`);
       assetMetadata.assets.push({
-        fileName: urlToDownloadFrom,
+        fileName: fileNameToDownloadAs,
         etag,
         fetchUrl: urlToDownloadFrom,
       });
