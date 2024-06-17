@@ -1,10 +1,11 @@
-import { createWriteStream } from "fs";
+import { createWriteStream, renameSync } from "fs";
 import { rm } from "fs/promises";
 import { finished } from "stream";
 import { promisify } from "util";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import extract from "extract-zip";
+import { fileSync } from "tmp";
 
 const promisifiedFinished = promisify(finished);
 
@@ -16,14 +17,17 @@ export const downloadFile: (
   const client = axios.create({ timeout: 60_000 });
   axiosRetry(client, { retries: 3, shouldResetTimeout: true });
 
-  const writer = createWriteStream(path);
+  const tmpFile = fileSync();
+  const writer = createWriteStream(tmpFile.name);
 
-  return client
+  await client
     .request({ method: "GET", url: fileUrl, responseType: "stream" })
     .then(async (response) => {
       response.data.pipe(writer);
       return promisifiedFinished(writer);
     });
+
+  renameSync(tmpFile.name, path);
 };
 
 /**
