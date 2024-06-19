@@ -1,9 +1,5 @@
 export { Organization } from "./organization.types";
-export {
-  Project,
-  ProjectConfigurationData,
-  ProjectSettingsScreenshottingOptions,
-} from "./project.types";
+export { Project, ProjectSettingsScreenshottingOptions } from "./project.types";
 export {
   EndStateScreenshot,
   ScreenshotAfterEvent,
