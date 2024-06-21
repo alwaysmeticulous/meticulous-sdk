@@ -36,6 +36,11 @@ export interface ReplayAndStoreResultsResult {
    * This will be 0 if `screenshottingOptions.enabled` was false.
    */
   totalNumberOfScreenshots: number;
+
+  /**
+   * Local directory where the data for this replay is stored.
+   */
+  replayDir: string;
 }
 
 export interface BeforeUserEventResult {
