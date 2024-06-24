@@ -17,7 +17,12 @@ export const downloadFile: (
   const client = axios.create({ timeout: 60_000 });
   axiosRetry(client, { retries: 3, shouldResetTimeout: true });
 
-  const tmpFile = fileSync();
+  const tmpFile = fileSync(
+    // Create the temporary file in the same directory. This is needed because cloud-replay
+    // has the default temporary directory in a different file system which causes the rename
+    // below to fail if we don't set this.
+    { dir: path.substring(0, path.lastIndexOf("/")) }
+  );
   const writer = createWriteStream(tmpFile.name);
 
   await client
