@@ -1,11 +1,10 @@
-import { createWriteStream, renameSync } from "fs";
+import { createWriteStream } from "fs";
 import { rm } from "fs/promises";
 import { finished } from "stream";
 import { promisify } from "util";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import extract from "extract-zip";
-import { fileSync } from "tmp";
 
 const promisifiedFinished = promisify(finished);
 
@@ -17,22 +16,14 @@ export const downloadFile: (
   const client = axios.create({ timeout: 60_000 });
   axiosRetry(client, { retries: 3, shouldResetTimeout: true });
 
-  const tmpFile = fileSync(
-    // Create the temporary file in the same directory. This is needed because cloud-replay
-    // has the default temporary directory in a different file system which causes the rename
-    // below to fail if we don't set this.
-    { dir: path.substring(0, path.lastIndexOf("/")) }
-  );
-  const writer = createWriteStream(tmpFile.name);
+  const writer = createWriteStream(path);
 
-  await client
+  return client
     .request({ method: "GET", url: fileUrl, responseType: "stream" })
     .then(async (response) => {
       response.data.pipe(writer);
       return promisifiedFinished(writer);
     });
-
-  renameSync(tmpFile.name, path);
 };
 
 /**
