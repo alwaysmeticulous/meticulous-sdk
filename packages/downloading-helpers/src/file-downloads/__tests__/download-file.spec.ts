@@ -1,7 +1,7 @@
+import { existsSync } from "fs";
+import { readFile, rm } from "fs/promises";
 import http from "http";
 import { downloadFile } from "../download-file";
-import { readFile, rm } from "fs/promises";
-import { existsSync } from "fs";
 
 describe("downloadFile", () => {
   it("downloads a file from a URL", async () => {
@@ -54,6 +54,7 @@ describe("downloadFile", () => {
 
       if (existsSync("file.txt")) {
         await rm("file.txt");
+        // eslint-disable-next-line no-unsafe-finally
         throw new Error("Unexpected file download");
       }
     }
