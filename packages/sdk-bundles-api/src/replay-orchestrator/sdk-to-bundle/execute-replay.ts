@@ -19,6 +19,12 @@ export interface ReplayAndStoreResultsOptions {
   suppressScreenshotDiffLogging: boolean;
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
+
+  /**
+   * The git ref used if there was one e.g. refs/head/master
+   */
+  gitRef: string | null | undefined;
+
   sessionId: string;
   /**
    * The ID of the session to use for seeding the application state (cookies, local storage, session storage),
