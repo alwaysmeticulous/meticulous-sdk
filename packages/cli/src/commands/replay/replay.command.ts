@@ -134,6 +134,7 @@ const replayCommandHandler = async ({
       screenshottingOptions,
       apiToken,
       commitSha,
+      gitRef: null,
       cookiesFile,
       sessionId,
       generatedBy: generatedByOption,
