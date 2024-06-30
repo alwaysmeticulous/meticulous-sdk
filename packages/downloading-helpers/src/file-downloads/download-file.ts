@@ -1,10 +1,9 @@
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import extract from "extract-zip";
-import { createWriteStream } from "fs";
-import { rename, rm } from "fs/promises";
+import { createWriteStream, existsSync } from "fs";
+import { rm } from "fs/promises";
 import { Stream, finished } from "stream";
-import { file } from "tmp";
 import { promisify } from "util";
 
 const promisifiedFinished = promisify(finished);
@@ -22,8 +21,7 @@ export const downloadFile = async (
   axiosRetry(client, { retries: 3, shouldResetTimeout: true });
   const source = axios.CancelToken.source();
 
-  const tmpFile = await createTmpFile();
-  const writer = createWriteStream(tmpFile.name);
+  const writer = createWriteStream(path);
 
   const response = await client.request({
     method: "GET",
@@ -41,7 +39,9 @@ export const downloadFile = async (
       );
       source.cancel("Download timeout");
       response.data.destroy(error);
-      tmpFile.cleanupCallback();
+      if (existsSync(path)) {
+        await rm(path);
+      }
       reject(error);
     }, downloadCompleteTimeoutInMs);
   });
@@ -59,8 +59,6 @@ export const downloadFile = async (
       }),
     timeout,
   ]);
-
-  await rename(tmpFile.name, path);
 };
 
 /**
@@ -88,17 +86,3 @@ export const downloadAndExtractFile: (
 
   return entries;
 };
-
-const createTmpFile = () =>
-  new Promise<{
-    name: string;
-    cleanupCallback: () => void;
-  }>((resolve, reject) =>
-    file((err, name, _fd, cleanupCallback) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve({ name, cleanupCallback });
-      }
-    })
-  );
