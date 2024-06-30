@@ -1,33 +1,65 @@
-import { createWriteStream, renameSync } from "fs";
-import { rm } from "fs/promises";
-import { finished } from "stream";
-import { promisify } from "util";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import extract from "extract-zip";
-import { fileSync } from "tmp";
+import { createWriteStream } from "fs";
+import { rename, rm } from "fs/promises";
+import { Stream, finished } from "stream";
+import { file } from "tmp";
+import { promisify } from "util";
 
 const promisifiedFinished = promisify(finished);
 
-export const downloadFile: (
+export const downloadFile = async (
   fileUrl: string,
-  path: string
-) => Promise<void> = async (fileUrl, path) => {
+  path: string,
+  { downloadTimeoutInMs }: { downloadTimeoutInMs: number } = {
+    downloadTimeoutInMs: 120_000,
+  }
+): Promise<void> => {
   // Using the same timeout as the standard client in meticulous-sdk/packages/client/src/client.ts
   const client = axios.create({ timeout: 60_000 });
   axiosRetry(client, { retries: 3, shouldResetTimeout: true });
+  const source = axios.CancelToken.source();
 
-  const tmpFile = fileSync();
+  const tmpFile = await createTmpFile();
   const writer = createWriteStream(tmpFile.name);
 
-  await client
-    .request({ method: "GET", url: fileUrl, responseType: "stream" })
-    .then(async (response) => {
-      response.data.pipe(writer);
-      return promisifiedFinished(writer);
-    });
+  const response = await client.request({
+    method: "GET",
+    url: fileUrl,
+    responseType: "stream",
+    cancelToken: source.token,
+  });
 
-  renameSync(tmpFile.name, path);
+  (response.data as Stream).pipe(writer);
+  let timeoutId: NodeJS.Timeout;
+  const timeout = new Promise<void>((_, reject) => {
+    timeoutId = setTimeout(async () => {
+      const error = new Error(
+        `Download timed out after ${downloadTimeoutInMs}ms`
+      );
+      source.cancel("Download timeout");
+      response.data.destroy(error);
+      tmpFile.cleanupCallback();
+      reject(error);
+    }, downloadTimeoutInMs);
+  });
+
+  await Promise.race([
+    promisifiedFinished(writer)
+      .then(() => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      })
+      .catch(async (err) => {
+        await new Promise((resolve) => writer.close(resolve));
+        throw err;
+      }),
+    timeout,
+  ]);
+
+  await rename(tmpFile.name, path);
 };
 
 /**
@@ -55,3 +87,17 @@ export const downloadAndExtractFile: (
 
   return entries;
 };
+
+const createTmpFile = () =>
+  new Promise<{
+    name: string;
+    cleanupCallback: () => void;
+  }>((resolve, reject) =>
+    file((err, name, _fd, cleanupCallback) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({ name, cleanupCallback });
+      }
+    })
+  );
