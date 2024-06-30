@@ -42,6 +42,8 @@ describe("downloadFile", () => {
       await downloadFile("http://localhost:1234", "file.txt", {
         firstDataTimeoutInMs: 1000,
         downloadCompleteTimeoutInMs: 1,
+        maxDownloadContentRetries: 0,
+        downloadContentRetryDelay: 0,
       });
 
       throw new Error("Expected download to time out");
@@ -53,6 +55,41 @@ describe("downloadFile", () => {
       if (existsSync("file.txt")) {
         await rm("file.txt");
         throw new Error("Unexpected file download");
+      }
+    }
+  });
+
+  it("retries downloading content on file", async () => {
+    let attempt = 0;
+    const server = http.createServer((req, res) => {
+      res.write("Hello");
+      if (attempt === 1) {
+        res.end(" World");
+      }
+
+      attempt++;
+      setTimeout(() => {
+        res.end("...  ... World.");
+      }, 1000);
+    });
+
+    try {
+      server.listen(1234);
+
+      await downloadFile("http://localhost:1234", "file.txt", {
+        firstDataTimeoutInMs: 1000,
+        downloadCompleteTimeoutInMs: 20,
+        maxDownloadContentRetries: 1,
+        downloadContentRetryDelay: 0,
+      });
+
+      // Read file contents
+      const fileContents = await readFile("file.txt", "utf8");
+      expect(fileContents).toBe("Hello World");
+    } finally {
+      server.close();
+      if (existsSync("file.txt")) {
+        await rm("file.txt");
       }
     }
   });

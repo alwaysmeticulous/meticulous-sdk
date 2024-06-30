@@ -11,17 +11,23 @@ const promisifiedFinished = promisify(finished);
 export const downloadFile = async (
   fileUrl: string,
   path: string,
-  { firstDataTimeoutInMs, downloadCompleteTimeoutInMs } = {
-    firstDataTimeoutInMs: 60_000,
-    downloadCompleteTimeoutInMs: 120_000,
-  }
+  opts: {
+    firstDataTimeoutInMs?: number;
+    downloadCompleteTimeoutInMs?: number;
+    maxDownloadContentRetries?: number;
+    downloadContentRetryDelay?: number;
+  } = {}
 ): Promise<void> => {
   // Using the same timeout as the standard client in meticulous-sdk/packages/client/src/client.ts
+  const firstDataTimeoutInMs = opts.firstDataTimeoutInMs ?? 60_000;
+  const downloadCompleteTimeoutInMs =
+    opts.downloadCompleteTimeoutInMs ?? 120_000;
+  const maxDownloadContentRetries = opts.maxDownloadContentRetries ?? 3;
+  const downloadContentRetryDelay = opts.downloadContentRetryDelay ?? 1000;
+
   const client = axios.create({ timeout: firstDataTimeoutInMs });
   axiosRetry(client, { retries: 3, shouldResetTimeout: true });
   const source = axios.CancelToken.source();
-
-  const writer = createWriteStream(path);
 
   const response = await client.request({
     method: "GET",
@@ -30,35 +36,44 @@ export const downloadFile = async (
     cancelToken: source.token,
   });
 
+  const writer = createWriteStream(path);
   (response.data as Stream).pipe(writer);
-  let timeoutId: NodeJS.Timeout;
-  const timeout = new Promise<void>((_, reject) => {
-    timeoutId = setTimeout(async () => {
-      const error = new Error(
-        `Download timed out after ${downloadCompleteTimeoutInMs}ms`
-      );
-      source.cancel("Download timeout");
-      response.data.destroy(error);
-      if (existsSync(path)) {
-        await rm(path);
-      }
-      reject(error);
-    }, downloadCompleteTimeoutInMs);
-  });
+  const timeoutId = setTimeout(async () => {
+    const error = `Download timed out after ${downloadCompleteTimeoutInMs}ms`;
+    source.cancel(error);
+    writer.destroy(new Error(error));
+  }, downloadCompleteTimeoutInMs);
 
-  await Promise.race([
-    promisifiedFinished(writer)
-      .then(() => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-      })
-      .catch(async (err) => {
-        await new Promise((resolve) => writer.close(resolve));
-        throw err;
-      }),
-    timeout,
-  ]);
+  try {
+    await promisifiedFinished(writer);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  } catch (err) {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    await new Promise((resolve) => writer.close(resolve));
+
+    if (existsSync(path)) {
+      await rm(path);
+    }
+
+    if (maxDownloadContentRetries === 0) {
+      throw err;
+    }
+
+    // Let's try again after a short delay
+    await new Promise((resolve) =>
+      setTimeout(resolve, downloadContentRetryDelay)
+    );
+    await downloadFile(fileUrl, path, {
+      firstDataTimeoutInMs,
+      downloadCompleteTimeoutInMs,
+      maxDownloadContentRetries: maxDownloadContentRetries - 1,
+    });
+  }
 };
 
 /**
