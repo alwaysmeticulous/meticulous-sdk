@@ -12,12 +12,13 @@ const promisifiedFinished = promisify(finished);
 export const downloadFile = async (
   fileUrl: string,
   path: string,
-  { downloadTimeoutInMs }: { downloadTimeoutInMs: number } = {
-    downloadTimeoutInMs: 120_000,
+  { firstDataTimeoutInMs, downloadCompleteTimeoutInMs } = {
+    firstDataTimeoutInMs: 60_000,
+    downloadCompleteTimeoutInMs: 120_000,
   }
 ): Promise<void> => {
   // Using the same timeout as the standard client in meticulous-sdk/packages/client/src/client.ts
-  const client = axios.create({ timeout: 60_000 });
+  const client = axios.create({ timeout: firstDataTimeoutInMs });
   axiosRetry(client, { retries: 3, shouldResetTimeout: true });
   const source = axios.CancelToken.source();
 
@@ -36,13 +37,13 @@ export const downloadFile = async (
   const timeout = new Promise<void>((_, reject) => {
     timeoutId = setTimeout(async () => {
       const error = new Error(
-        `Download timed out after ${downloadTimeoutInMs}ms`
+        `Download timed out after ${downloadCompleteTimeoutInMs}ms`
       );
       source.cancel("Download timeout");
       response.data.destroy(error);
       tmpFile.cleanupCallback();
       reject(error);
-    }, downloadTimeoutInMs);
+    }, downloadCompleteTimeoutInMs);
   });
 
   await Promise.race([

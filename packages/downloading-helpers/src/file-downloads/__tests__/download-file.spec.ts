@@ -13,7 +13,8 @@ describe("downloadFile", () => {
       server.listen(1234);
 
       await downloadFile("http://localhost:1234", "file.txt", {
-        downloadTimeoutInMs: 1000,
+        firstDataTimeoutInMs: 1000,
+        downloadCompleteTimeoutInMs: 1000,
       });
 
       // Read file contents
@@ -39,7 +40,8 @@ describe("downloadFile", () => {
       server.listen(1234);
 
       await downloadFile("http://localhost:1234", "file.txt", {
-        downloadTimeoutInMs: 1,
+        firstDataTimeoutInMs: 1000,
+        downloadCompleteTimeoutInMs: 1,
       });
 
       throw new Error("Expected download to time out");
