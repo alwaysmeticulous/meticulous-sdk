@@ -28,6 +28,10 @@ const ASSET_METADATA_FILE_NAME = "assets.json";
  * Downloads the given 'module' JS file as an MJS file (to force correct interpretation when loading the JS file).
  *
  * The associated source map will also be downloaded if present to sit alongside the main JS file and if the base snippets URL is a localhost URL.
+ *
+ * Warning: this function is not thread safe. Do not try downloading a file to a path that may already be in use by another process.
+ *
+ * (for example most downloads are generally done at the test run level rather than the replay level)
  */
 export const fetchAsset = async (path: string): Promise<string> => {
   const snippetsBaseUrl = getSnippetsBaseUrl();
