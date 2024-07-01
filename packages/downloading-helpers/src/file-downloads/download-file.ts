@@ -8,6 +8,11 @@ import extract from "extract-zip";
 
 const promisifiedFinished = promisify(finished);
 
+/**
+ * Warning: this function is not thread safe. Do not try downloading a file to a path that may already be in use by another process.
+ *
+ * (for example most downloads are generally done at the test run level rather than the replay level)
+ */
 export const downloadFile = async (
   fileUrl: string,
   path: string,
@@ -57,6 +62,8 @@ export const downloadFile = async (
     await new Promise((resolve) => writer.close(resolve));
 
     if (existsSync(path)) {
+      // If we errored at this stage and not earlier then we've likely already written to and corrupted the file,
+      // so let's delete it.
       await rm(path);
     }
 
@@ -81,6 +88,8 @@ export const downloadFile = async (
  * The zip file will be deleted after extraction, keeping only the extracted files.
  *
  * Returns a list of the extracted files.
+ *
+ * Warning: this function is not thread safe. Do not try downloading a file to an extractPath that may already be in use by another process.
  */
 export const downloadAndExtractFile: (
   fileUrl: string,
