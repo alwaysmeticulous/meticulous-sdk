@@ -87,6 +87,12 @@ export interface TestRunGitLabMergeRequestContext {
 
   /** Merge request URL (web page) */
   webUrl: string;
+
+  /** Git ref for the target branch (/refs/head/<target_branch>). Not defined for merge requests prior to July 2024. */
+  baseRef?: string;
+
+  /** Git ref for the source branch (/refs/head/<source_branch>). Not defined for merge requests prior to July 2024. */
+  headRef?: string;
 }
 
 export interface TestRunGitLabPushContext {
@@ -98,4 +104,7 @@ export interface TestRunGitLabPushContext {
 
   /** Commit hash after the push event */
   afterSha: string;
+
+  /** Git ref for the branch (/refs/head/<branch>). Not defined for pushes prior to July 2024. */
+  ref?: string;
 }
