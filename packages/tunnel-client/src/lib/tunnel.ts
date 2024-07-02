@@ -74,17 +74,23 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     const { port: localPort, localHost } = this.opts;
     const { localHttps, localCert, localKey, localCa, allowInvalidCert } =
       this.opts;
-    const parsedHost = new URL(this.host);
+    const parsedHost = new URL(url);
+
+    // Drop the client ID (first part of the subdomain) from the URL to get the remote host to establish tunnel connections to.
+    // TODO: Use the host & scheme from the response body.
+    const urlParts = url.split(".");
+    urlParts.shift();
+    const remoteHost = urlParts.join(".");
 
     // determine if we should use tls for the connection to the local server
-    // TODO: Don't use parse, use `useTls` from the the response body after migration to the new API endpoint.
+    // TODO: Don't use parse, use `useTls` from the the response body.
     const useTls = parsedHost.protocol === "https:";
 
     return {
       name: id,
       url,
       maxConn: max_conn_count || 1,
-      remoteHost: parsedHost.hostname,
+      remoteHost: remoteHost,
       remotePort: port,
       multiplexingRemotePort: multiplexing_port,
       useTls,
