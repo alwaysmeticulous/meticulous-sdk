@@ -78,9 +78,9 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
 
     // Drop the client ID (first part of the subdomain) from the URL to get the remote host to establish tunnel connections to.
     // TODO: Use the host & scheme from the response body.
-    const urlParts = url.split(".");
-    urlParts.shift();
-    const remoteHost = urlParts.join(".");
+    const hostParts = parsedHost.hostname.split(".");
+    hostParts.shift();
+    const remoteHost = hostParts.join(".");
 
     // determine if we should use tls for the connection to the local server
     // TODO: Don't use parse, use `useTls` from the the response body.
