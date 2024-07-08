@@ -1,4 +1,5 @@
 import {
+  Divergence,
   Replay,
   ReplayableEvent,
   ScreenshotDiffResult,
@@ -28,8 +29,10 @@ export interface ReplayAndStoreResultsResult {
 
   /**
    * Empty if screenshottingOptions.enabled was false.
+   *
+   * TODO: rename
    */
-  screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffResult[]>;
+  screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffData>;
 
   /**
    * The total number of screenshots taken during the replay.
@@ -51,4 +54,9 @@ export interface BeforeUserEventResult {
    * If omitted then onBeforeUserEvent will be called again on the immediate next event.
    */
   nextEventIndexToPauseBefore?: number;
+}
+
+export interface ScreenshotDiffData {
+  results: ScreenshotDiffResult[];
+  divergences?: Divergence[];
 }

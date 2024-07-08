@@ -1,9 +1,5 @@
-import {
-  Project,
-  ScreenshotDiffResult,
-  TestCaseResult,
-  TestRunStatus,
-} from "@alwaysmeticulous/api";
+import { Project, TestCaseResult, TestRunStatus } from "@alwaysmeticulous/api";
+import { ScreenshotDiffData } from "./execute-replay";
 
 export interface ExecuteTestRunResult {
   testRun: FinishedTestRunExecution;
@@ -34,6 +30,7 @@ export interface TestRunProgress {
 }
 
 export interface DetailedTestCaseResult extends TestCaseResult {
-  screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffResult[]>;
+  // TODO: rename
+  screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffData>;
   totalNumberOfScreenshots: number;
 }
