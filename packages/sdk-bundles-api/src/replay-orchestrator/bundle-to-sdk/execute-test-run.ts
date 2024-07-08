@@ -30,7 +30,6 @@ export interface TestRunProgress {
 }
 
 export interface DetailedTestCaseResult extends TestCaseResult {
-  // TODO: rename
-  screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffData>;
+  screenshotDiffDataByBaseReplayId: Record<string, ScreenshotDiffData>;
   totalNumberOfScreenshots: number;
 }

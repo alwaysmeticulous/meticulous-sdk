@@ -29,10 +29,8 @@ export interface ReplayAndStoreResultsResult {
 
   /**
    * Empty if screenshottingOptions.enabled was false.
-   *
-   * TODO: rename
    */
-  screenshotDiffResultsByBaseReplayId: Record<string, ScreenshotDiffData>;
+  screenshotDiffDataByBaseReplayId: Record<string, ScreenshotDiffData>;
 
   /**
    * The total number of screenshots taken during the replay.
