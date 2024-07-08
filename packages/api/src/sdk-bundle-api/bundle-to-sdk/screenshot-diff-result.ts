@@ -98,6 +98,11 @@ export interface ScreenshotDiffResultCompared {
   mismatchFraction: number;
 
   /**
+   * First 8 characters of the hash of the diff image.
+   */
+  diffHash?: string;
+
+  /**
    * The result of comparing the redacted screenshots (i.e. screenshots taken after elements
    * to ignore have been hidden/removed).
    *
