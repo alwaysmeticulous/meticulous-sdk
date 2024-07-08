@@ -98,6 +98,11 @@ export interface ScreenshotDiffResultCompared {
   mismatchFraction: number;
 
   /**
+   * First 8 characters of the hash of the diff image.
+   */
+  diffHash?: string;
+
+  /**
    * The result of comparing the redacted screenshots (i.e. screenshots taken after elements
    * to ignore have been hidden/removed).
    *
@@ -125,6 +130,11 @@ export interface RedactedScreenshotsCompared {
   type: "no-diff" | "diff" | undefined;
   mismatchPixels: number;
   mismatchFraction: number;
+
+  /**
+   * First 8 characters of the hash of the diff image.
+   */
+  diffHash?: string;
 }
 
 export interface RedactedScreenshotIncompatible {
@@ -150,6 +160,8 @@ export interface ScreenshotDiffResultDifference
 export interface ScreenshotDiffResultFlake {
   outcome: "flake";
 
+  evidence?: FlakeEvidence;
+
   /**
    * The original diff. Can be any outcome.
    */
@@ -165,6 +177,8 @@ export interface ScreenshotDiffResultFlake {
    */
   diffsToHeadScreenshotOnRetries: ScreenshotDiffRetryResult[];
 }
+
+export type FlakeEvidence = "varied-results-on-retry" | "diff-is-known-flake";
 
 export type ScreenshotDiffRetryResult =
   | SingleTryScreenshotDiffRetryResult
