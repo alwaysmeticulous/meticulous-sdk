@@ -130,6 +130,11 @@ export interface RedactedScreenshotsCompared {
   type: "no-diff" | "diff" | undefined;
   mismatchPixels: number;
   mismatchFraction: number;
+
+  /**
+   * First 8 characters of the hash of the diff image.
+   */
+  diffHash?: string;
 }
 
 export interface RedactedScreenshotIncompatible {
