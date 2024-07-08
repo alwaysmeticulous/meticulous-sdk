@@ -150,6 +150,8 @@ export interface ScreenshotDiffResultDifference
 export interface ScreenshotDiffResultFlake {
   outcome: "flake";
 
+  evidence?: FlakeEvidence;
+
   /**
    * The original diff. Can be any outcome.
    */
@@ -165,6 +167,8 @@ export interface ScreenshotDiffResultFlake {
    */
   diffsToHeadScreenshotOnRetries: ScreenshotDiffRetryResult[];
 }
+
+export type FlakeEvidence = "varied-results-on-retry" | "diff-is-known-flake";
 
 export type ScreenshotDiffRetryResult =
   | SingleTryScreenshotDiffRetryResult
