@@ -103,6 +103,7 @@ export {
   Divergence,
   DivergenceIndicator,
   NetworkActivityDivergenceIndicator,
+  ScreenshotDivergenceIdentifier,
   UrlChangeEventDivergenceIndicator,
   UserEventDivergenceIndicator,
 } from "./sdk-bundle-api/bundle-to-sdk/replay-divergence";
