@@ -1,3 +1,5 @@
+import { ScreenshotDiffResult } from "./screenshot-diff-result";
+
 export type DivergenceIndicator =
   | UserEventDivergenceIndicator
   | UrlChangeEventDivergenceIndicator
@@ -22,11 +24,9 @@ export interface NetworkActivityDivergenceIndicator {
 }
 
 export interface ScreenshotDivergenceIdentifier {
+  filename: string;
+  outcome: ScreenshotDiffResult["outcome"];
   virtualTime: number;
-  /**
-   * Index of the screenshot diff in ReplayDiff.data.screenshotDiffResults
-   */
-  idx: number;
 }
 
 export interface Divergence {
@@ -47,7 +47,7 @@ export interface Divergence {
    * The most recent 'no-diff' prior to startScreenshotDiff, if one exists. Note that there could be some
    * missing bases or missing heads etc. between lastMatchingScreenshotDiff and startScreenshotDiff.
    */
-  lastMatchingScreenshotDiffId: ScreenshotDivergenceIdentifier | undefined;
+  lastMatchingScreenshotDiffId?: ScreenshotDivergenceIdentifier | undefined;
   /**
    * The number of screenshot diffs between startScreenshotDiff and endScreenshotDiff inclusive.
    */
