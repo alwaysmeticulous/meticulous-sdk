@@ -99,3 +99,10 @@ export {
   AppUrlRequestsOnly,
   CustomRequests,
 } from "./sdk-bundle-api/sdk-to-bundle/header-injection";
+export {
+  Divergence,
+  DivergenceIndicator,
+  NetworkActivityDivergenceIndicator,
+  UrlChangeEventDivergenceIndicator,
+  UserEventDivergenceIndicator,
+} from "./sdk-bundle-api/bundle-to-sdk/replay-divergence";

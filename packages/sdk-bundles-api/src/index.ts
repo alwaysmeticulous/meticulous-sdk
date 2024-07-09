@@ -40,3 +40,4 @@ export {
   ReplayExecution,
   BeforeUserEventResult,
 } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
+export { ScreenshotDiffData } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
