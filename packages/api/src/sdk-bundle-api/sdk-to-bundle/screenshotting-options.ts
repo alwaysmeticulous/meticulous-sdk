@@ -27,6 +27,7 @@ export declare type StoryboardOptions = { enabled: false } | { enabled: true };
 export interface ScreenshotDiffOptions {
   diffThreshold: number;
   diffPixelThreshold: number;
+  diffHashesToIgnoreByScreenshotFilename?: Record<string, string[]>;
 }
 
 export type ElementToIgnore = CSSSelectorToIgnore;
