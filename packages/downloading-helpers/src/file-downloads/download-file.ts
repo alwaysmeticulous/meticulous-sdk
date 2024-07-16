@@ -89,7 +89,8 @@ export const downloadFile = async (
  *
  * Returns a list of the extracted files.
  *
- * Warning: this function is not thread safe. Do not try downloading a file to a tmpZipFilePath that may already be in use by another process.
+ * Warning: this function is not thread safe. Do not try downloading a file to a `tmpZipFilePath`
+ * that may already be in use by another process.
  */
 export const downloadAndExtractFile: (
   fileUrl: string,
