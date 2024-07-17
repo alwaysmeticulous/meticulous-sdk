@@ -95,8 +95,6 @@ export const downloadFile = async (
  * Do not try extracting to a dir that may already be in use by another process b/c overlapping
  * file names can cause data corruption.
  * @returns The list of the extracted files.
- *
- *
  */
 export const downloadAndExtractFile: (
   fileUrl: string,
