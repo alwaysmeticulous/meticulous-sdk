@@ -84,9 +84,9 @@ export const downloadFile = async (
 };
 
 /**
- * __Warning__: this function is not thread safe.
  * Download a file from a URL and extract it to a directory.
  * The zip file will be deleted after extraction, keeping only the extracted files.
+ * __Warning__: this function is not thread safe.
  *
  * @param fileUrl The URL of the file to download.
  * @param tmpZipFilePath The path to save the downloaded file. Do not try downloading a file to a
