@@ -84,13 +84,19 @@ export const downloadFile = async (
 };
 
 /**
+ * __Warning__: this function is not thread safe.
  * Download a file from a URL and extract it to a directory.
  * The zip file will be deleted after extraction, keeping only the extracted files.
  *
- * Returns a list of the extracted files.
+ * @param fileUrl The URL of the file to download.
+ * @param tmpZipFilePath The path to save the downloaded file. Do not try downloading a file to a
+ * `tmpZipFilePath` that may already be in use by another process b/c this can corrupt the data.
+ * @param extractPath The path to a directory which we will extract files from a gzip into.
+ * Do not try extracting to a dir that may already be in use by another process b/c overlapping
+ * file names can cause data corruption.
+ * @returns The list of the extracted files.
  *
- * Warning: this function is not thread safe. Do not try downloading a file to a `tmpZipFilePath`
- * that may already be in use by another process.
+ *
  */
 export const downloadAndExtractFile: (
   fileUrl: string,
