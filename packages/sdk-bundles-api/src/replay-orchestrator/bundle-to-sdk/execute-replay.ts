@@ -39,6 +39,12 @@ export interface ReplayAndStoreResultsResult {
   totalNumberOfScreenshots: number;
 
   /**
+   * The total number of original source files covered by the replay.
+   * This will be 0 if no source maps are being served.
+   */
+  totalNumberOfSourceFiles: number;
+
+  /**
    * Local directory where the data for this replay is stored.
    */
   replayDir: string;
