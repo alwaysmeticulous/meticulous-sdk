@@ -6,6 +6,7 @@ import * as tls from "tls";
 import { BPMux } from "bpmux";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
+import { TUNNEL_HIGH_WATER_MARK } from "../consts";
 import { HeaderHostTransformer } from "./header-host-transformer";
 import { TunnelClusterEvents, TunnelClusterOpts } from "./tunnel-cluster.types";
 
@@ -14,11 +15,10 @@ interface TunnelMultiplexingClusterOpts extends TunnelClusterOpts {
 }
 
 /**
- * TunnelMultiplexingPoolingCluster manages a single tunnel connection to a remote server and multiplexes
+ * TunnelMultiplexingCluster manages a single tunnel connection to a remote server and multiplexes
  * multiple connections over that single tunnel.
- * This cluster listens for incoming multiplexed connections and forwards them to a local server.
  */
-export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedEmitter<TunnelClusterEvents>) {
+export class TunnelMultiplexingPoolingCluster extends (EventEmitter as new () => TypedEmitter<TunnelClusterEvents>) {
   private readonly logger: Logger;
   private readonly opts: TunnelClusterOpts;
   private readonly remoteMuxClient: BPMux<net.Socket>;
@@ -31,7 +31,10 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
     this.remoteMuxClient = opts.remoteMuxClient;
   }
 
-  startListening() {
+  open() {
+    const remote = this.remoteMuxClient.multiplex({
+      highWaterMark: TUNNEL_HIGH_WATER_MARK,
+    });
     const opt = this.opts;
 
     const localHost = opt.localHost;
@@ -39,7 +42,7 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
     const localProtocol = opt.localHttps ? "https" : "http";
 
     const allowInvalidCert = opt.allowInvalidCert;
-    const connLocal = (remote: Duplex) => {
+    const connLocal = () => {
       if (remote.destroyed) {
         this.logger.debug("remote destroyed");
         this.emit("dead");
@@ -109,7 +112,7 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
         }
 
         // retrying connection to local server
-        setTimeout(() => connLocal(remote), 1000);
+        setTimeout(connLocal, 1000);
       });
 
       local.once("connect", () => {
@@ -138,23 +141,21 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
       });
     };
 
-    this.remoteMuxClient.on("handshake", (stream) => {
-      stream.on("data", (data: any) => {
-        // parse the first (request) line of the request to determine the method and path
-        // Example: GET /path HTTP/1.1
-        const match = data.toString().match(/^(\w+) (\S+)/);
-        if (match) {
-          this.emit("request", {
-            method: match[1],
-            path: match[2],
-          });
-        }
-      });
-
-      stream.pause();
-      connLocal(stream);
-
-      this.emit("open", stream);
+    remote.on("data", (data: any) => {
+      // parse the first (request) line of the request to determine the method and path
+      // Example: GET /path HTTP/1.1
+      const match = data.toString().match(/^(\w+) (\S+)/);
+      if (match) {
+        this.emit("request", {
+          method: match[1],
+          path: match[2],
+        });
+      }
     });
+
+    this.emit("open", remote);
+
+    remote.pause();
+    connLocal();
   }
 }

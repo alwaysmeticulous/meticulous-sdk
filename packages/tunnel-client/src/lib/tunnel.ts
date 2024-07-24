@@ -10,6 +10,7 @@ import { TUNNEL_HIGH_WATER_MARK } from "../consts";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
 import { TunnelConnectionCluster } from "./tunnel-connection-cluster";
 import { TunnelMultiplexingCluster } from "./tunnel-multiplexing-cluster";
+import { TunnelMultiplexingPoolingCluster } from "./tunnel-multiplexing-pooling-cluster";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
 
@@ -17,6 +18,7 @@ interface CreateTunnelResponse {
   id: string;
   port?: number | undefined;
   multiplexing_port?: number | undefined;
+  use_no_pool_multiplexing?: boolean | undefined;
   url: string;
   max_conn_count: number;
   tunnel_passphrase: string;
@@ -65,6 +67,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       id,
       port,
       multiplexing_port,
+      use_no_pool_multiplexing,
       url,
       max_conn_count,
       tunnel_passphrase,
@@ -93,6 +96,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       remoteHost: remoteHost,
       remotePort: port,
       multiplexingRemotePort: multiplexing_port,
+      useNoPoolMultiplexing: use_no_pool_multiplexing,
       useTls,
       tunnelPassphrase: tunnel_passphrase,
       basicAuthUser: basic_auth_user,
@@ -122,6 +126,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
         // Older versions of the client don't support multiplexing.
         // Temporary until all clients support multiplexing.
         supportsMultiplexing: true,
+        supportsNoMultiplexingPool: true,
         new: true,
       },
     };
@@ -171,13 +176,21 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       info.maxConn + (EventEmitter.defaultMaxListeners || 10)
     );
 
-    let tunnelCluster: TunnelConnectionCluster | TunnelMultiplexingCluster;
+    let tunnelCluster:
+      | TunnelConnectionCluster
+      | TunnelMultiplexingPoolingCluster
+      | TunnelMultiplexingCluster;
 
     if (info.multiplexingRemotePort) {
-      this.logger.debug("using multiplexing agent");
+      this.logger.debug(
+        `using multiplexing ${
+          info.useNoPoolMultiplexing ? "no-pooling" : "pooling"
+        } agent`
+      );
       tunnelCluster = await this._establishMultiplexingCluster({
         ...info,
         multiplexingRemotePort: info.multiplexingRemotePort,
+        useNoPoolMultiplexing: info.useNoPoolMultiplexing,
       });
     } else if (info.remotePort) {
       this.logger.debug("using connection agent");
@@ -233,7 +246,9 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       if (this.closed || !tunnelCluster) {
         return;
       }
-      tunnelCluster.open();
+      if (!(tunnelCluster instanceof TunnelMultiplexingCluster)) {
+        tunnelCluster.open();
+      }
     });
 
     tunnelCluster.on("request", (req: IncomingRequestEvent) => {
@@ -241,14 +256,24 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     });
 
     // establish as many tunnels as allowed
-    for (let count = 0; count < info.maxConn; ++count) {
-      tunnelCluster.open();
+    if (!(tunnelCluster instanceof TunnelMultiplexingCluster)) {
+      for (let count = 0; count < info.maxConn; ++count) {
+        if (
+          tunnelCluster instanceof TunnelConnectionCluster ||
+          tunnelCluster instanceof TunnelMultiplexingPoolingCluster
+        ) {
+          tunnelCluster.open();
+        }
+      }
+    } else {
+      tunnelCluster.startListening();
     }
   }
 
   _establishMultiplexingCluster({
     remoteHost,
     multiplexingRemotePort,
+    useNoPoolMultiplexing,
     localHost,
     localPort,
     localHttps,
@@ -257,7 +282,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     tunnelPassphrase,
   }: Omit<TunnelInfo, "multiplexingRemotePort"> & {
     multiplexingRemotePort: number;
-  }): Promise<TunnelMultiplexingCluster> {
+  }): Promise<TunnelMultiplexingPoolingCluster | TunnelMultiplexingCluster> {
     const localProtocol = localHttps ? "https" : "http";
     this.logger.debug(
       "establishing tunnel %s://%s:%s <> %s:%s",
@@ -303,7 +328,9 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     });
     const connectEvent = useTls ? "secureConnect" : "connect";
 
-    return new Promise<TunnelMultiplexingCluster>((resolve) => {
+    return new Promise<
+      TunnelMultiplexingCluster | TunnelMultiplexingPoolingCluster
+    >((resolve) => {
       sharedSocket.once(connectEvent, () => {
         // Send the tunnel passphrase to the server
         sharedSocket.write(`AUTH ${tunnelPassphrase}`);
@@ -321,14 +348,18 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
             },
           });
 
-          const tunnelCluster = new TunnelMultiplexingCluster({
+          const tunnelOpts = {
             remoteMuxClient,
             logger: this.logger,
             localHost,
             localPort,
             localHttps,
             allowInvalidCert,
-          });
+          };
+
+          const tunnelCluster = useNoPoolMultiplexing
+            ? new TunnelMultiplexingCluster(tunnelOpts)
+            : new TunnelMultiplexingPoolingCluster(tunnelOpts);
 
           resolve(tunnelCluster);
         });
