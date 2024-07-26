@@ -8,7 +8,24 @@ import { ReplayExecutionOptions } from "./execute-replay";
 
 export interface ExecuteTestRunOptions {
   chromeExecutablePath?: string;
+
+  /**
+   * Optional. The path to a '.json' file of additional test cases to run, which contains JSON of the format:
+   *
+   * ```ts
+   * {
+   *   testCases: Array<{ sessionId: string, title?: string, options?: TestCaseReplayOptions }>
+   * }
+   * ```
+   */
   testsFile: string | null;
+
+  /**
+   * If true no automatically selected sessions, sessions manually selected in the UI or sessions from the base
+   * test run will be executed. Only sessions from the passed `testsFile` will be executed.
+   */
+  onlyReplaySessionsInTestsFile?: boolean;
+
   executionOptions: ReplayExecutionOptions;
   screenshottingOptions: ScreenshotAssertionsEnabledOptions;
   apiToken: string | null;
