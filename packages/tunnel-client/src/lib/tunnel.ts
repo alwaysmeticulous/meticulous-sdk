@@ -8,7 +8,6 @@ import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
 import { TUNNEL_HIGH_WATER_MARK } from "../consts";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
-import { TunnelConnectionCluster } from "./tunnel-connection-cluster";
 import { TunnelMultiplexingCluster } from "./tunnel-multiplexing-cluster";
 import { TunnelMultiplexingPoolingCluster } from "./tunnel-multiplexing-pooling-cluster";
 
@@ -176,32 +175,20 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       info.maxConn + (EventEmitter.defaultMaxListeners || 10)
     );
 
-    let tunnelCluster:
-      | TunnelConnectionCluster
-      | TunnelMultiplexingPoolingCluster
-      | TunnelMultiplexingCluster;
-
-    if (info.multiplexingRemotePort) {
-      this.logger.debug(
-        `using multiplexing ${
-          info.useNoPoolMultiplexing ? "no-pooling" : "pooling"
-        } agent`
-      );
-      tunnelCluster = await this._establishMultiplexingCluster({
-        ...info,
-        multiplexingRemotePort: info.multiplexingRemotePort,
-        useNoPoolMultiplexing: info.useNoPoolMultiplexing,
-      });
-    } else if (info.remotePort) {
-      this.logger.debug("using connection agent");
-      tunnelCluster = new TunnelConnectionCluster({
-        ...info,
-        remotePort: info.remotePort,
-        logger: this.logger,
-      });
-    } else {
-      throw new Error("remotePort or multiplexingRemotePort must be set");
+    if (!info.multiplexingRemotePort) {
+      throw new Error("multiplexingRemotePort must be set");
     }
+
+    this.logger.debug(
+      `using multiplexing ${
+        info.useNoPoolMultiplexing ? "no-pooling" : "pooling"
+      } agent`
+    );
+    const tunnelCluster = await this._establishMultiplexingCluster({
+      ...info,
+      multiplexingRemotePort: info.multiplexingRemotePort,
+      useNoPoolMultiplexing: info.useNoPoolMultiplexing,
+    });
 
     // only emit the url the first time
     tunnelCluster.once("open", () => {
@@ -256,14 +243,9 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     });
 
     // establish as many tunnels as allowed
-    if (!(tunnelCluster instanceof TunnelMultiplexingCluster)) {
+    if (tunnelCluster instanceof TunnelMultiplexingPoolingCluster) {
       for (let count = 0; count < info.maxConn; ++count) {
-        if (
-          tunnelCluster instanceof TunnelConnectionCluster ||
-          tunnelCluster instanceof TunnelMultiplexingPoolingCluster
-        ) {
-          tunnelCluster.open();
-        }
+        tunnelCluster.open();
       }
     } else {
       tunnelCluster.startListening();
