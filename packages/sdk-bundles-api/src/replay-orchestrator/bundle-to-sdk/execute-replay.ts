@@ -14,6 +14,8 @@ export interface ReplayExecution {
   /**
    * The list of events that will actually be replayed. This list is the deduplicated events list,
    * and so may have fewer events than the raw session data (sessionData.userEvents.event_log).
+   *
+   * These are used for the replay debugger UI.
    */
   eventsBeingReplayed: IndexedReplayableEvent[];
 
