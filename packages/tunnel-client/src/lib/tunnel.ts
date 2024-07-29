@@ -308,6 +308,15 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
 
       sharedSocket.end();
     });
+
+    sharedSocket.on("close", () => {
+      if (!this.closed) {
+        this.logger.error(
+          "The remote connection was closed unexpectedly. Please check your network connection and try again."
+        );
+      }
+    });
+
     const connectEvent = useTls ? "secureConnect" : "connect";
 
     return new Promise<
@@ -373,5 +382,6 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
   close() {
     this.closed = true;
     this.emit("close");
+    this;
   }
 }
