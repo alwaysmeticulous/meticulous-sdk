@@ -26,6 +26,13 @@ export interface SessionData {
     sessionStorage?: {
       state: StorageEntry[];
     };
+
+    /**
+     * Only present on recordings since ~Aug 2024
+     */
+    indexedDb?: {
+      state: IndexedDbObjectStoreWithEntries[];
+    };
   };
 
   /**
@@ -102,11 +109,12 @@ export interface EarlyRequest {
   duration: number;
 }
 
-export interface IndexedDBObjectStore {
+export interface IndexedDbObjectStore {
   databaseName: string;
   objectStoreName: string;
 }
 
-export type IndexedDBObjectStoreWithEntries = IndexedDBObjectStore & {
+export type IndexedDbObjectStoreWithEntries = IndexedDbObjectStore & {
+  keyPath: string | string[];
   entries: string[];
 };
