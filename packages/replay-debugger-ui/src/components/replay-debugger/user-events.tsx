@@ -1,3 +1,4 @@
+import { IndexedReplayableEvent } from "@alwaysmeticulous/sdk-bundles-api";
 import {
   ArrowDownTrayIcon,
   ArrowsUpDownIcon,
@@ -16,7 +17,6 @@ import { Duration } from "luxon";
 import { FunctionComponent, useCallback, useEffect, useRef } from "react";
 import { ReplayableEvent } from "src/lib/event/event.types";
 import { useReplayDebuggerContext } from "src/lib/replay-debugger/replay-debugger.context";
-import { IndexedReplayableEvent } from "@alwaysmeticulous/sdk-bundles-api";
 
 interface EventListItemProps {
   event: IndexedReplayableEvent | ReplayableEvent;
