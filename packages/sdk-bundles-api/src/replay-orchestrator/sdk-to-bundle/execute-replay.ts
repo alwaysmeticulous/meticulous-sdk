@@ -71,7 +71,11 @@ export interface ReplayAndStoreResultsOptions {
 
 export interface BeforeUserEventOptions {
   /**
-   * The index of the next event in sessionData.userEvents.event_log
+   * The index of the next event in the `eventsBeingReplayed` list returned on the ReplayExecution
+   * object returned by `replayAndStoreResults`.
+   *
+   * Note that this list is the deduplicated events list, and so may have fewer events than the
+   * raw session data (sessionData.userEvents.event_log).
    */
   userEventIndex: number;
 }

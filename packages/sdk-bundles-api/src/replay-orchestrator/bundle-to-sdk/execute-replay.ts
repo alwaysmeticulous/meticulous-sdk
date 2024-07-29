@@ -11,7 +11,13 @@ export interface ReplayExecution {
    */
   finalResult: Promise<ReplayAndStoreResultsResult>;
 
-  eventsBeingReplayed: ReplayableEvent[];
+  /**
+   * The list of events that will actually be replayed. This list is the deduplicated events list,
+   * and so may have fewer events than the raw session data (sessionData.userEvents.event_log).
+   *
+   * These are used for the replay debugger UI.
+   */
+  eventsBeingReplayed: IndexedReplayableEvent[];
 
   /**
    * When called will log the target of the given event to the browser console.
@@ -22,6 +28,14 @@ export interface ReplayExecution {
    * Closes the browser window and stops the replay short.
    */
   closePage: () => Promise<void>;
+}
+
+export interface IndexedReplayableEvent extends ReplayableEvent {
+  /**
+   * The index of the event in the raw session data, before any events were removed,
+   * deduplicated or merged.
+   */
+  originalEventIndex: number;
 }
 
 export interface ReplayAndStoreResultsResult {
