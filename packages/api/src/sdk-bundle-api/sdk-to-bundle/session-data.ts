@@ -101,3 +101,12 @@ export interface EarlyRequest {
   startTime: number;
   duration: number;
 }
+
+export interface IndexedDBObjectStore {
+  databaseName: string;
+  objectStoreName: string;
+}
+
+export type IndexedDBObjectStoreWithEntries = IndexedDBObjectStore & {
+  entries: string[];
+};
