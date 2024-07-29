@@ -16,9 +16,10 @@ import { Duration } from "luxon";
 import { FunctionComponent, useCallback, useEffect, useRef } from "react";
 import { ReplayableEvent } from "src/lib/event/event.types";
 import { useReplayDebuggerContext } from "src/lib/replay-debugger/replay-debugger.context";
+import { IndexedReplayableEvent } from "@alwaysmeticulous/sdk-bundles-api";
 
 interface EventListItemProps {
-  event: ReplayableEvent;
+  event: IndexedReplayableEvent | ReplayableEvent;
   index: number;
   current?: boolean;
 }
@@ -52,7 +53,7 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
         return CursorArrowRaysIcon;
       case "mouseenter":
       case "mouseleave":
-        return CursorArrowRippleIcon
+        return CursorArrowRippleIcon;
       case "touchstart":
       case "touchend":
       case "touchmove":
@@ -192,7 +193,7 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
       </div>
       <div className={cx("ml-2", "my-auto", "flex-1")}>{eventType}</div>
       <div className={cx("my-auto", "text-sm", "font-medium", "text-zinc-600")}>
-        Event Index: {index}
+        Event #{event.originalEventIndex ?? index}
         {" | "}
         <time dateTime={timeTick.toISO()}>
           {timeTick.toFormat("mm:ss.SSS")}
