@@ -6,7 +6,6 @@ import * as tls from "tls";
 import { BPMux } from "bpmux";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
-import { TUNNEL_HIGH_WATER_MARK } from "../consts";
 import { HeaderHostTransformer } from "./header-host-transformer";
 import { TunnelClusterEvents, TunnelClusterOpts } from "./tunnel-cluster.types";
 
@@ -15,8 +14,9 @@ interface TunnelMultiplexingClusterOpts extends TunnelClusterOpts {
 }
 
 /**
- * TunnelMultiplexingCluster manages a single tunnel connection to a remote server and multiplexes
+ * TunnelMultiplexingPoolingCluster manages a single tunnel connection to a remote server and multiplexes
  * multiple connections over that single tunnel.
+ * This cluster listens for incoming multiplexed connections and forwards them to a local server.
  */
 export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedEmitter<TunnelClusterEvents>) {
   private readonly logger: Logger;
@@ -31,10 +31,7 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
     this.remoteMuxClient = opts.remoteMuxClient;
   }
 
-  open() {
-    const remote = this.remoteMuxClient.multiplex({
-      highWaterMark: TUNNEL_HIGH_WATER_MARK,
-    });
+  startListening() {
     const opt = this.opts;
 
     const localHost = opt.localHost;
@@ -42,7 +39,7 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
     const localProtocol = opt.localHttps ? "https" : "http";
 
     const allowInvalidCert = opt.allowInvalidCert;
-    const connLocal = () => {
+    const connLocal = (remote: Duplex) => {
       if (remote.destroyed) {
         this.logger.debug("remote destroyed");
         this.emit("dead");
@@ -57,6 +54,15 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
       );
 
       let local: net.Socket | tls.TLSSocket;
+
+      const onConnectionTimeout = () => {
+        this.logger.warn("local connection timeout");
+        onLocalDisconnect(true);
+      };
+
+      let connectionTimeout: NodeJS.Timeout | null = null;
+
+      const CONNECTION_TIMEOUT_MS = 5_000;
 
       if (opt.localHttps) {
         if (allowInvalidCert) {
@@ -86,9 +92,18 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
           port: localPort,
           ...getLocalCertOpts(),
         });
+        connectionTimeout = setTimeout(
+          onConnectionTimeout,
+          CONNECTION_TIMEOUT_MS
+        );
       } else {
         local = net.connect({ host: localHost, port: localPort });
       }
+
+      connectionTimeout = setTimeout(
+        onConnectionTimeout,
+        CONNECTION_TIMEOUT_MS
+      );
 
       const remoteClose = () => {
         this.logger.debug("remote close");
@@ -98,24 +113,43 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
 
       remote.once("close", remoteClose);
 
-      // TODO some languages have single threaded servers which makes opening up
-      // multiple local connections impossible. We need a smarter way to scale
-      // and adjust for such instances to avoid beating on the door of the server
-      local.once("error", (err) => {
-        this.logger.debug("local error %s", err.message);
+      const onLocalDisconnect = (reconnect: boolean) => {
         local.end();
 
         remote.removeListener("close", remoteClose);
 
-        if (err.code !== "ECONNREFUSED" && err.code !== "ECONNRESET") {
+        if (!reconnect) {
           return remote.end();
         }
 
         // retrying connection to local server
-        setTimeout(connLocal, 1000);
+        this.logger.warn("retrying connection to local server");
+        setTimeout(() => connLocal(remote), 0);
+      };
+
+      // TODO some languages have single threaded servers which makes opening up
+      // multiple local connections impossible. We need a smarter way to scale
+      // and adjust for such instances to avoid beating on the door of the server
+      local.once("error", (err) => {
+        if (connectionTimeout) {
+          clearTimeout(connectionTimeout);
+        }
+        this.logger.error(
+          "local error %s %s %s",
+          err.message,
+          err.code,
+          err,
+          err.errors
+        );
+        onLocalDisconnect(
+          err.code === "ECONNREFUSED" || err.code === "ECONNRESET"
+        );
       });
 
       local.once("connect", () => {
+        if (connectionTimeout) {
+          clearTimeout(connectionTimeout);
+        }
         this.logger.debug("connected locally");
         remote.resume();
 
@@ -141,21 +175,23 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
       });
     };
 
-    remote.on("data", (data: any) => {
-      // parse the first (request) line of the request to determine the method and path
-      // Example: GET /path HTTP/1.1
-      const match = data.toString().match(/^(\w+) (\S+)/);
-      if (match) {
-        this.emit("request", {
-          method: match[1],
-          path: match[2],
-        });
-      }
+    this.remoteMuxClient.on("handshake", (stream) => {
+      stream.on("data", (data: any) => {
+        // parse the first (request) line of the request to determine the method and path
+        // Example: GET /path HTTP/1.1
+        const match = data.toString().match(/^(\w+) (\S+)/);
+        if (match) {
+          this.emit("request", {
+            method: match[1],
+            path: match[2],
+          });
+        }
+      });
+
+      stream.pause();
+      connLocal(stream);
+
+      this.emit("open", stream);
     });
-
-    this.emit("open", remote);
-
-    remote.pause();
-    connLocal();
   }
 }
