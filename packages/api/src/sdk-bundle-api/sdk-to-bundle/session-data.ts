@@ -26,6 +26,13 @@ export interface SessionData {
     sessionStorage?: {
       state: StorageEntry[];
     };
+
+    /**
+     * Only present on recordings since ~Aug 2024
+     */
+    indexedDb?: {
+      state: IDBObjectStoreWithEntries[];
+    };
   };
 
   /**
@@ -101,3 +108,38 @@ export interface EarlyRequest {
   startTime: number;
   duration: number;
 }
+
+export interface IDBObjectStoreMetadata {
+  databaseName: string;
+  objectStoreName: string;
+  serialize?: (value: any) => string;
+  deserialize?: (value: string) => any;
+}
+
+/**
+ * Currently we only support string keys, but we may support other types in the future.
+ * Keys are:
+ * - Serialized in recorder/src/storage/storage.ts
+ * - Deserialized in puppeteer-utils/src/browser-context/storage.ts
+ *
+ * @see IDBValidKey for all possible types.
+ */
+export type SerializedIDBValidKey = StringKey;
+
+interface StringKey {
+  type: "string";
+  serializedKey: string;
+}
+
+export type IDBObjectStoreWithEntries = Omit<
+  IDBObjectStoreMetadata,
+  "serialize" | "deserialize"
+> & {
+  createObjectStoreOptions: IDBObjectStoreParameters;
+  /**
+   * Entry values are JSON stringified by default. JSON representable objects, arrays and primitives are supported.
+   * For all other types (e.g. Date, Regex, ArrayBuffer etc.), you can define a custom [de]serialize function on the
+   * object store metadata to dictate how the value should be mapped to/from strings. @see IDBObjectStoreMetadata
+   */
+  entries: { key?: SerializedIDBValidKey; value: string }[];
+};

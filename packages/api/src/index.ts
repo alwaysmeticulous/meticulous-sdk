@@ -51,6 +51,9 @@ export {
   ApplicationSpecificData,
   StorageEntry,
   EarlyRequest,
+  SerializedIDBValidKey,
+  IDBObjectStoreMetadata,
+  IDBObjectStoreWithEntries,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export {
   SequenceNumber,
