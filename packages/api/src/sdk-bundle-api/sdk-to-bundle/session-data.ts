@@ -136,5 +136,10 @@ export type IDBObjectStoreWithEntries = Omit<
   "serialize" | "deserialize"
 > & {
   createObjectStoreOptions: IDBObjectStoreParameters;
+  /**
+   * Entry values are JSON stringified by default. JSON representable objects, arrays and primitives are supported.
+   * For all other types (e.g. Date, Regex, ArrayBuffer etc.), you can define a custom [de]serialize function on the
+   * object store metadata to dictate how the value should be mapped to/from strings. @see IDBObjectStoreMetadata
+   */
   entries: { key?: SerializedIDBValidKey; value: string }[];
 };
