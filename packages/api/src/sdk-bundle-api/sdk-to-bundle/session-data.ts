@@ -31,7 +31,7 @@ export interface SessionData {
      * Only present on recordings since ~Aug 2024
      */
     indexedDb?: {
-      state: IndexedDbObjectStoreWithEntries[];
+      state: IDBObjectStoreWithEntries[];
     };
   };
 
@@ -109,12 +109,32 @@ export interface EarlyRequest {
   duration: number;
 }
 
-export interface IndexedDbObjectStore {
+export interface IDBObjectStoreMetadata {
   databaseName: string;
   objectStoreName: string;
+  serialize?: (value: any) => string;
+  deserialize?: (value: string) => any;
 }
 
-export type IndexedDbObjectStoreWithEntries = IndexedDbObjectStore & {
-  keyPath: string | string[];
-  entries: string[];
+/**
+ * Currently we only support string keys, but we may support other types in the future.
+ * Keys are:
+ * - Serialized in recorder/src/storage/storage.ts
+ * - Deserialized in puppeteer-utils/src/browser-context/storage.ts
+ *
+ * @see IDBValidKey for all possible types.
+ */
+export type SerializedIDBValidKey = StringKey;
+
+interface StringKey {
+  type: "string";
+  serializedKey: string;
+}
+
+export type IDBObjectStoreWithEntries = Omit<
+  IDBObjectStoreMetadata,
+  "serialize" | "deserialize"
+> & {
+  createObjectStoreOptions: IDBObjectStoreParameters;
+  entries: { key?: SerializedIDBValidKey; value: string }[];
 };

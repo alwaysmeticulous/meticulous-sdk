@@ -51,8 +51,9 @@ export {
   ApplicationSpecificData,
   StorageEntry,
   EarlyRequest,
-  IndexedDbObjectStore,
-  IndexedDbObjectStoreWithEntries,
+  SerializedIDBValidKey,
+  IDBObjectStoreMetadata,
+  IDBObjectStoreWithEntries,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export {
   SequenceNumber,
