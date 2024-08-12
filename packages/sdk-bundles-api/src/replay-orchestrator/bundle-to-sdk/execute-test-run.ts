@@ -20,6 +20,19 @@ export interface RunningTestRunExecution extends TestRunExecution {
 
 export interface FinishedTestRunExecution extends TestRunExecution {
   status: "Success" | "Failure";
+  coverageInfo?: TestRunCoverageInfo;
+}
+
+export interface TestRunCoverageInfo {
+  totalFilesCovered: number;
+  editedFileCoverage?: TestRunEditedCoverage;
+  hadCoverageData?: boolean;
+}
+
+export interface TestRunEditedCoverage {
+  hadCoverageData?: boolean;
+  executableLinesEdited: number;
+  executableLinesEditedAndCovered: number;
 }
 
 export interface TestRunProgress {
