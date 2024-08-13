@@ -67,19 +67,35 @@ const handler: (options: Options) => Promise<void> = async ({
 
       // Useful for diffing one set of logs against another (excludes the real timestamps, which are non-deterministic)
       virtualTime = 0;
-      const deterministicLogs = logs.map(
+      const deterministicLogs = logs.flatMap(
         (log: ConsoleMessageWithStackTracePointer) => {
           if (log.type === "virtual-time-change") {
             virtualTime = log.virtualTime;
-            return "";
+            return [""];
           }
+
+          if (log.message.includes("[non-deterministic]")) {
+            return [];
+          }
+
+          // Event ids are unstable (one difference at the start of a replay can affect all subsequent event ids) and so we
+          // filter them out to minimize noise
+          const message = log.message.startsWith("Executing event")
+            ? log.message.replace(/"id": ?\d+/g, '"id": "<non-deterministic>"')
+            : log.message;
+
           const commonPostfix = `${
             log.repetitionCount ? " [x" + log.repetitionCount + "]" : ""
-          } ${log.message}`;
+          } ${message}`;
+
           if (log.source === "application") {
-            return `[virtual: ${virtualTime}ms] [application]${commonPostfix}`;
+            // Application logs are not guaranteed to be deterministic since code can get executed e.g. when a script loads,
+            // but they are low volume and high signal so we include them anyway
+            return [
+              `[virtual: ${virtualTime}ms] [application]${commonPostfix}`,
+            ];
           } else {
-            return `[virtual: ${virtualTime}ms]${commonPostfix}`;
+            return [`[virtual: ${virtualTime}ms]${commonPostfix}`];
           }
         }
       );
