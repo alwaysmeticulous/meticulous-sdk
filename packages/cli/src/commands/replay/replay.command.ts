@@ -140,6 +140,7 @@ const replayCommandHandler = async ({
       generatedBy: generatedByOption,
       testRunId: null,
       suppressScreenshotDiffLogging: false,
+      disableAssetCache: false,
       sessionIdForApplicationStorage: sessionIdForApplicationStorage ?? null,
       ...(enableStepThroughDebugger
         ? {
