@@ -26,7 +26,6 @@ export interface FinishedTestRunExecution extends TestRunExecution {
 export interface TestRunCoverageInfo {
   totalFilesCovered: number;
   editedFileCoverage?: TestRunEditedCoverage;
-  hadCoverageData?: boolean;
 }
 
 export interface TestRunEditedCoverage {
