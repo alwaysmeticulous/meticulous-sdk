@@ -17,6 +17,7 @@ export interface ReplayAndStoreResultsOptions {
   generatedBy: GeneratedBy;
   testRunId: string | null;
   suppressScreenshotDiffLogging: boolean;
+  disableAssetCache: boolean;
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
 
