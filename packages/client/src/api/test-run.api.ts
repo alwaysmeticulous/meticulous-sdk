@@ -109,3 +109,13 @@ export const getLatestTestRunResults = async ({
     });
   return (data as TestRun | null) ?? null;
 };
+
+export const emitTelemetry = async ({
+  client,
+  values,
+}: {
+  client: AxiosInstance;
+  values: Record<string, number>;
+}): Promise<void> => {
+  await client.post(`test-runs/telemetry`, { values });
+};
