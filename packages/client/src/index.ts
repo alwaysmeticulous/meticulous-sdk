@@ -18,6 +18,7 @@ export {
   GetLatestTestRunOptions,
   getLatestTestRunResults,
   TestRun,
+  emitTelemetry,
 } from "./api/test-run.api";
 export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
 export { getApiToken } from "./api-token.utils";
