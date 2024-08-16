@@ -105,6 +105,7 @@ export {
 export {
   Divergence,
   DivergenceIndicator,
+  InitialNavigationDivergenceIndicator,
   NetworkActivityDivergenceIndicator,
   ScreenshotDivergenceIdentifier,
   UrlChangeEventDivergenceIndicator,

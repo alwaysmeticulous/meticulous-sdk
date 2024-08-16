@@ -3,7 +3,8 @@ import { ScreenshotDiffResult } from "./screenshot-diff-result";
 export type DivergenceIndicator =
   | UserEventDivergenceIndicator
   | UrlChangeEventDivergenceIndicator
-  | NetworkActivityDivergenceIndicator;
+  | NetworkActivityDivergenceIndicator
+  | InitialNavigationDivergenceIndicator;
 
 export interface UserEventDivergenceIndicator {
   type: "user-event";
@@ -21,6 +22,12 @@ export interface NetworkActivityDivergenceIndicator {
   type: "network-activity";
   beforeEventIndices?: number[] | undefined;
   afterEventIndices: number[];
+}
+
+export interface InitialNavigationDivergenceIndicator {
+  type: "initial-navigation";
+  beforeEventIdx: number;
+  afterEventIdx: number;
 }
 
 export interface ScreenshotDivergenceIdentifier {
