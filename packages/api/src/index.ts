@@ -103,6 +103,7 @@ export {
   CustomRequests,
 } from "./sdk-bundle-api/sdk-to-bundle/header-injection";
 export {
+  ConsoleErrorDivergenceIndicator,
   Divergence,
   DivergenceIndicator,
   InitialNavigationDivergenceIndicator,

@@ -4,7 +4,8 @@ export type DivergenceIndicator =
   | UserEventDivergenceIndicator
   | UrlChangeEventDivergenceIndicator
   | NetworkActivityDivergenceIndicator
-  | InitialNavigationDivergenceIndicator;
+  | InitialNavigationDivergenceIndicator
+  | ConsoleErrorDivergenceIndicator;
 
 export interface UserEventDivergenceIndicator {
   type: "user-event";
@@ -28,6 +29,12 @@ export interface InitialNavigationDivergenceIndicator {
   type: "initial-navigation";
   beforeEventIdx: number;
   afterEventIdx: number;
+}
+
+export interface ConsoleErrorDivergenceIndicator {
+  type: "console-error";
+  beforeEventIdx?: number;
+  afterEventIdx?: number;
 }
 
 export interface ScreenshotDivergenceIdentifier {
