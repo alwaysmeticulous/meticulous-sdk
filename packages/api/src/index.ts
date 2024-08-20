@@ -105,6 +105,7 @@ export {
 export {
   ConsoleErrorDivergenceIndicator,
   Divergence,
+  DivergenceConsoleError,
   DivergenceIndicator,
   InitialNavigationDivergenceIndicator,
   NetworkActivityDivergenceIndicator,

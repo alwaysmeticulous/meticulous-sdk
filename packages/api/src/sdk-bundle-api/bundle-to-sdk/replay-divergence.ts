@@ -31,10 +31,16 @@ export interface InitialNavigationDivergenceIndicator {
   afterEventIdx: number;
 }
 
+export interface DivergenceConsoleError {
+  idx: number;
+  numHeadAppearances: number;
+  numBaseAppearances: number;
+}
+
 export interface ConsoleErrorDivergenceIndicator {
   type: "console-error";
-  beforeEventIdx?: number;
-  afterEventIdx?: number;
+  beforeErrors?: DivergenceConsoleError[];
+  afterErrors?: DivergenceConsoleError[];
 }
 
 export interface ScreenshotDivergenceIdentifier {
