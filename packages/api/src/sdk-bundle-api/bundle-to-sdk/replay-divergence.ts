@@ -39,8 +39,8 @@ export interface DivergenceConsoleError {
 
 export interface ConsoleErrorDivergenceIndicator {
   type: "console-error";
-  beforeErrors?: DivergenceConsoleError[];
-  afterErrors?: DivergenceConsoleError[];
+  beforeErrors: DivergenceConsoleError[];
+  afterErrors: DivergenceConsoleError[];
 }
 
 export interface ScreenshotDivergenceIdentifier {
