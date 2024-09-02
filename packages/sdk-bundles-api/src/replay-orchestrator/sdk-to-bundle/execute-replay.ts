@@ -17,7 +17,11 @@ export interface ReplayAndStoreResultsOptions {
   generatedBy: GeneratedBy;
   testRunId: string | null;
   suppressScreenshotDiffLogging: boolean;
-  disableAssetCache: boolean;
+
+  /**
+   * @deprecated Use `simulationProxyUrl` instead.
+   */
+  disableAssetCache?: boolean;
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
 
@@ -68,6 +72,11 @@ export interface ReplayAndStoreResultsOptions {
    * Chromium, or the version of Puppeteer.
    */
   logicalEnvironmentVersion?: number;
+
+  /**
+   * If present, requests for assets during simulation will be proxied through this URL
+   */
+  simulationProxyUrl?: string;
 }
 
 export interface BeforeUserEventOptions {
