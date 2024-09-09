@@ -20,6 +20,7 @@ export {
   TestRun,
   emitTelemetry,
 } from "./api/test-run.api";
+export { GetIsLockedOptions, getIsLocked } from "./api/deployment-lock.api";
 export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
 export { getApiToken } from "./api-token.utils";
 export { ClientOptions, createClient } from "./client";
