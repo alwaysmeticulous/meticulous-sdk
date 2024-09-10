@@ -16,6 +16,7 @@ export interface ExecuteRemoteTestRunOptions {
   onTunnelCreated?: (data: TunnelData) => void;
   onTestRunCreated?: (testRun: TestRun) => void;
   onProgressUpdate?: (testRun: TestRun) => void;
+  onTunnelLocked?: () => void;
 
   /**
    * If set, the tunnel will be kept open until this promise is resolved.
@@ -24,6 +25,7 @@ export interface ExecuteRemoteTestRunOptions {
   keepTunnelOpenPromise?: Promise<void>;
 
   environment: string;
+  isLockable: boolean;
 }
 
 export interface ExecuteRemoteTestRunResult {

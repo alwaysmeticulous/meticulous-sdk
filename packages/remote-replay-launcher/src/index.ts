@@ -5,6 +5,7 @@ import {
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
   TestRun,
+  getIsLocked,
 } from "@alwaysmeticulous/client";
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { localtunnel } from "@alwaysmeticulous/tunnels-client";
@@ -17,6 +18,7 @@ import { getPort } from "./url.utils";
 
 export { TunnelData } from "./types";
 
+const POLL_LOCK_INTERVAL_MS = 30_000; // 30 seconds
 const PROGRESS_UPDATE_INTERVAL_MS = 5_000; // 5 seconds
 const MS_TO_WAIT_FOR_RETRY = 5 * 60 * 1_000; // 5 minutes
 
@@ -28,8 +30,10 @@ export const executeRemoteTestRun = async ({
   onTunnelCreated,
   onTestRunCreated,
   onProgressUpdate,
+  onTunnelLocked,
   keepTunnelOpenPromise,
   environment,
+  isLockable,
 }: ExecuteRemoteTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -79,19 +83,21 @@ export const executeRemoteTestRun = async ({
     basicAuthPassword: tunnel.basicAuthPassword,
   });
 
-  const testRun = await executeSecureTunnelTestRun({
+  const response = await executeSecureTunnelTestRun({
     client,
     headSha: commitSha,
     tunnelUrl: tunnel.url,
     basicAuthUser: tunnel.basicAuthUser,
     basicAuthPassword: tunnel.basicAuthPassword,
     environment,
+    isLockable,
   });
 
-  if (!testRun) {
+  if (!response) {
     throw new Error("Test run was not created");
   }
 
+  const { testRun, deploymentId } = response;
   onTestRunCreated?.(testRun);
 
   const testRunCompleted = defer<TestRun>();
@@ -123,17 +129,7 @@ export const executeRemoteTestRun = async ({
       clearInterval(progressUpdateInterval);
     }
 
-    if (keepTunnelOpenPromise) {
-      void keepTunnelOpenPromise.then(() => {
-        tunnel.close();
-
-        testRunCompleted.resolve(completedTestRun);
-      });
-    } else {
-      tunnel.close();
-
-      testRunCompleted.resolve(completedTestRun);
-    }
+    testRunCompleted.resolve(completedTestRun);
   };
 
   // Poll every few seconds for progress updates and exit when the test run is completed
@@ -154,6 +150,33 @@ export const executeRemoteTestRun = async ({
   }, PROGRESS_UPDATE_INTERVAL_MS);
 
   const completedTestRun = await testRunCompleted.promise;
+
+  const tunnelUnlocked = defer<void>();
+  let tunnelCheckInterval: NodeJS.Timeout | undefined = undefined;
+  const checkUnlocked = async () => {
+    const isLocked = await getIsLocked({ client, deploymentId });
+    if (isLocked) {
+      onTunnelLocked?.();
+      return false;
+    }
+    if (tunnelCheckInterval) {
+      clearInterval(tunnelCheckInterval);
+    }
+    if (keepTunnelOpenPromise) {
+      void keepTunnelOpenPromise.then(() => {
+        tunnel.close();
+      });
+    } else {
+      tunnel.close();
+    }
+    tunnelUnlocked.resolve();
+    return true;
+  };
+  const alreadyUnlocked = await checkUnlocked();
+  if (!alreadyUnlocked) {
+    tunnelCheckInterval = setInterval(checkUnlocked, POLL_LOCK_INTERVAL_MS);
+    await tunnelUnlocked.promise;
+  }
 
   return {
     testRun: completedTestRun,

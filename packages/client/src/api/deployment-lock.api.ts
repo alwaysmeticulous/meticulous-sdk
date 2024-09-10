@@ -2,16 +2,16 @@ import { AxiosInstance, isAxiosError } from "axios";
 
 export interface GetIsLockedOptions {
   client: AxiosInstance;
-  url: string;
+  deploymentId: string;
 }
 
 export const getIsLocked = async ({
   client,
-  url,
+  deploymentId,
 }: GetIsLockedOptions): Promise<boolean> => {
   const { data } = await client
     .get<unknown, { data: string }>("deployment-locks/is-locked", {
-      params: { url },
+      params: { deploymentId },
     })
     .catch((error) => {
       if (isAxiosError(error)) {
