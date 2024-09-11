@@ -58,12 +58,13 @@ export interface ConnectionTypesFilter {
   webSockets: boolean;
 }
 
+type TransformableRequestData = Pick<Request, "body" | "method" | "url">;
+
 interface CustomTransformationBase {
   searchString: string;
   replacement: string;
+  requestComponent: keyof TransformableRequestData;
 }
-
-type TransformableRequestData = Pick<Request, "body" | "method" | "url">;
 
 type TransformableUrlStringFields = keyof Pick<
   URL,
