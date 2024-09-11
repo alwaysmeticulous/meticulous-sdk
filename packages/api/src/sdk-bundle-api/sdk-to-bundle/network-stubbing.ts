@@ -4,6 +4,10 @@ export type NetworkStubbingMode =
   | CustomStubbing;
 
 interface NetworkStubbingBase {
+  /**
+   * When looking for a request to use as a stub, these transformations will be applied to the request before any other transformations.
+   * They will be applied in the order they are defined.
+   */
   customRequestTransformations?: CustomTransformation[];
 }
 
@@ -61,12 +65,15 @@ export interface ConnectionTypesFilter {
 type TransformableRequestData = Pick<Request, "body" | "method" | "url">;
 
 interface CustomTransformationBase {
+  /**
+   * The string to search for in the request component. This can also be a regular expression.
+   */
   searchString: string;
   replacement: string;
   requestComponent: keyof TransformableRequestData;
 }
 
-type TransformableUrlStringFields = keyof Pick<
+type TransformableUrlFields = keyof Pick<
   URL,
   | "hash"
   | "host"
@@ -82,7 +89,7 @@ type TransformableUrlStringFields = keyof Pick<
 
 interface CustomUrlTransformation extends CustomTransformationBase {
   requestComponent: keyof Pick<TransformableRequestData, "url">;
-  urlComponent: TransformableUrlStringFields;
+  urlComponent: TransformableUrlFields;
 }
 
 interface CustomRequestTransformation extends CustomTransformationBase {
