@@ -93,7 +93,7 @@ export const executeRemoteTestRun = async ({
     isLockable,
   });
 
-  if (!response) {
+  if (!response.testRun) {
     throw new Error("Test run was not created");
   }
 

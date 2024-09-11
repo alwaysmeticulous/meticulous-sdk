@@ -30,7 +30,7 @@ export interface ExecuteSecureTunnelTestRunOptions {
 }
 
 export interface ExecuteSecureTunnelTestRunResponse {
-  testRun: TestRun;
+  testRun?: TestRun;
   deploymentId: string;
 }
 
@@ -42,7 +42,7 @@ export const executeSecureTunnelTestRun = async ({
   basicAuthPassword,
   environment,
   isLockable,
-}: ExecuteSecureTunnelTestRunOptions): Promise<ExecuteSecureTunnelTestRunResponse | null> => {
+}: ExecuteSecureTunnelTestRunOptions): Promise<ExecuteSecureTunnelTestRunResponse> => {
   const { data } = await client
     .post("test-runs/trigger-secure-tunnel-test-run-v2", {
       headSha,
@@ -67,7 +67,7 @@ export const executeSecureTunnelTestRun = async ({
 
       throw error;
     });
-  return (data as ExecuteSecureTunnelTestRunResponse | null) ?? null;
+  return data as ExecuteSecureTunnelTestRunResponse;
 };
 
 export const getTestRun: (options: {
