@@ -3,10 +3,14 @@ export type NetworkStubbingMode =
   | StubNonSSRRequests
   | CustomStubbing;
 
+interface NetworkStubbingBase {
+  customRequestTransformations?: CustomTransformation[];
+}
+
 /**
  * The default mode. Stubs all requests, apart from ones for _next/static/ files.
  */
-export interface StubAllRequests {
+export interface StubAllRequests extends NetworkStubbingBase {
   type: "stub-all-requests";
 }
 
@@ -15,11 +19,11 @@ export interface StubAllRequests {
  *
  * Used for NextJs 13 /app directory & server components.
  */
-export interface StubNonSSRRequests {
+export interface StubNonSSRRequests extends NetworkStubbingBase {
   type: "stub-non-ssr-requests";
 }
 
-export interface CustomStubbing {
+export interface CustomStubbing extends NetworkStubbingBase {
   type: "custom-stubbing";
 
   /*
@@ -53,3 +57,37 @@ export interface ConnectionTypesFilter {
   xhr: boolean;
   webSockets: boolean;
 }
+
+interface CustomTransformationBase {
+  searchString: string;
+  replacement: string;
+}
+
+type TransformableRequestData = Pick<Request, "body" | "method" | "url">;
+
+type TransformableUrlStringFields = keyof Pick<
+  URL,
+  | "hash"
+  | "host"
+  | "hostname"
+  | "href"
+  | "password"
+  | "pathname"
+  | "port"
+  | "protocol"
+  | "search"
+  | "username"
+>;
+
+interface CustomUrlTransformation extends CustomTransformationBase {
+  requestComponent: keyof Pick<TransformableRequestData, "url">;
+  urlComponent: TransformableUrlStringFields;
+}
+
+interface CustomRequestTransformation extends CustomTransformationBase {
+  requestComponent: keyof Omit<TransformableRequestData, "url">;
+}
+
+export type CustomTransformation =
+  | CustomRequestTransformation
+  | CustomUrlTransformation;
