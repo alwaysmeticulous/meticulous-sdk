@@ -9,6 +9,13 @@ const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2_000;
 export const tryLoadAndStartRecorder = async (
   options: LoaderOptions
 ): Promise<void> => {
+  if (window.Meticulous?.isRunningAsTest) {
+    console.debug(
+      "Running as part of a Meticulous test case, so skipping loading the Meticulous recorder."
+    );
+    return;
+  }
+
   // Try to load the recorder and silence any initialisation error.
   await unsafeLoadAndStartRecorder(options).catch((error) => {
     console.error(error);
@@ -17,6 +24,7 @@ export const tryLoadAndStartRecorder = async (
 
 const unsafeLoadAndStartRecorder = ({
   projectId,
+  recordingToken,
   uploadIntervalMs,
   snapshotLinkedStylesheets,
   commitHash,
@@ -45,7 +53,7 @@ const unsafeLoadAndStartRecorder = ({
 
     // Setup configuration
     const typedWindow = window;
-    typedWindow.METICULOUS_RECORDING_TOKEN = projectId;
+    typedWindow.METICULOUS_RECORDING_TOKEN = recordingToken ?? projectId;
 
     if (uploadIntervalMs !== undefined) {
       typedWindow.METICULOUS_UPLOAD_INTERVAL_MS = uploadIntervalMs;
