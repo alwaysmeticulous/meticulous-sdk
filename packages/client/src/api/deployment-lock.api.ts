@@ -10,7 +10,7 @@ export const getIsLocked = async ({
   deploymentId,
 }: GetIsLockedOptions): Promise<boolean> => {
   const { data } = await client
-    .get<unknown, { data: string }>("deployment-locks/is-locked", {
+    .get<unknown, { data: boolean }>("deployment-locks/is-locked", {
       params: { deploymentId },
     })
     .catch((error) => {
@@ -25,5 +25,5 @@ export const getIsLocked = async ({
       throw error;
     });
 
-  return data.trim() === "true";
+  return data;
 };
