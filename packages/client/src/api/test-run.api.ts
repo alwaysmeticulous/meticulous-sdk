@@ -26,6 +26,12 @@ export interface ExecuteSecureTunnelTestRunOptions {
   basicAuthUser: string;
   basicAuthPassword: string;
   environment: string;
+  isLockable: boolean;
+}
+
+export interface ExecuteSecureTunnelTestRunResponse {
+  testRun?: TestRun;
+  deploymentId: string;
 }
 
 export const executeSecureTunnelTestRun = async ({
@@ -35,14 +41,16 @@ export const executeSecureTunnelTestRun = async ({
   basicAuthUser,
   basicAuthPassword,
   environment,
-}: ExecuteSecureTunnelTestRunOptions): Promise<TestRun | null> => {
+  isLockable,
+}: ExecuteSecureTunnelTestRunOptions): Promise<ExecuteSecureTunnelTestRunResponse> => {
   const { data } = await client
-    .post("test-runs/trigger-secure-tunnel-test-run", {
+    .post("test-runs/trigger-secure-tunnel-test-run-v2", {
       headSha,
       tunnelUrl,
       basicAuthUser,
       basicAuthPassword,
       environment,
+      isLockable,
     })
     .catch((error) => {
       if (isAxiosError(error)) {
@@ -59,7 +67,7 @@ export const executeSecureTunnelTestRun = async ({
 
       throw error;
     });
-  return (data as TestRun | null) ?? null;
+  return data as ExecuteSecureTunnelTestRunResponse;
 };
 
 export const getTestRun: (options: {

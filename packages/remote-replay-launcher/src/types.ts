@@ -18,12 +18,18 @@ export interface ExecuteRemoteTestRunOptions {
   onProgressUpdate?: (testRun: TestRun) => void;
 
   /**
+   * Called periodically when the test run has completed but the tunnel is still locked.
+   */
+  onTunnelStillLocked?: () => void;
+
+  /**
    * If set, the tunnel will be kept open until this promise is resolved.
    * `executeRemoteTestRun` will not resolve until this promise is resolved.
    */
   keepTunnelOpenPromise?: Promise<void>;
 
   environment: string;
+  isLockable: boolean;
 }
 
 export interface ExecuteRemoteTestRunResult {

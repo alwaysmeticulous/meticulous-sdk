@@ -77,6 +77,7 @@ const handler: (options: Options) => Promise<void> = async ({
   // Tunnel data set after within the onTunnelCreated callback below.
   let tunnelData: TunnelData | null = null;
   try {
+    const environment = getEnvironment();
     const { testRun } = await executeRemoteTestRun({
       apiToken,
       commitSha,
@@ -137,7 +138,15 @@ const handler: (options: Options) => Promise<void> = async ({
           }
         }
       },
-      environment: environmentToString(getEnvironment()),
+
+      onTunnelStillLocked: () => {
+        logger.info(
+          "Keeping tunnel open while additional tasks using it run on the Meticulous platform..."
+        );
+      },
+
+      environment: environmentToString(environment),
+      isLockable: environment.isCI,
     });
   } catch (error) {
     if (isOutOfDateClientError(error)) {

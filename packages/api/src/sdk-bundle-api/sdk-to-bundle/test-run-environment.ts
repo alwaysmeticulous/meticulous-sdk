@@ -33,6 +33,9 @@ export interface TestRunGitHubPullRequestContext {
 
   /** Head ref (usually /refs/head/<branch>) */
   headRef?: string;
+
+  /** GitHub Actions run ID that triggered this test run */
+  runId?: number;
 }
 
 export interface TestRunGitHubPushContext {
@@ -47,6 +50,9 @@ export interface TestRunGitHubPushContext {
 
   /** Git ref (usually /refs/head/<branch>) */
   ref: string;
+
+  /** GitHub Actions run ID that triggered this test run */
+  runId?: number;
 }
 
 export interface TestRunGitHubWorkflowDispatchContext {
@@ -63,6 +69,9 @@ export interface TestRunGitHubWorkflowDispatchContext {
 
   /** Resolved head commit hash */
   headSha: string;
+
+  /** GitHub Actions run ID that triggered this test run */
+  runId?: number;
 }
 
 export type TestRunGitLabContext =
