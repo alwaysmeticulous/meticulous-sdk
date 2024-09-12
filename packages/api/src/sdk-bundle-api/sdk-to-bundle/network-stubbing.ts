@@ -3,10 +3,18 @@ export type NetworkStubbingMode =
   | StubNonSSRRequests
   | CustomStubbing;
 
+interface NetworkStubbingBase {
+  /**
+   * When looking for a request to use as a stub, these transformations will be applied to the request before any other transformations.
+   * They will be applied in the order they are defined.
+   */
+  customRequestTransformations?: CustomTransformation[];
+}
+
 /**
  * The default mode. Stubs all requests, apart from ones for _next/static/ files.
  */
-export interface StubAllRequests {
+export interface StubAllRequests extends NetworkStubbingBase {
   type: "stub-all-requests";
 }
 
@@ -15,11 +23,11 @@ export interface StubAllRequests {
  *
  * Used for NextJs 13 /app directory & server components.
  */
-export interface StubNonSSRRequests {
+export interface StubNonSSRRequests extends NetworkStubbingBase {
   type: "stub-non-ssr-requests";
 }
 
-export interface CustomStubbing {
+export interface CustomStubbing extends NetworkStubbingBase {
   type: "custom-stubbing";
 
   /*
@@ -53,3 +61,47 @@ export interface ConnectionTypesFilter {
   xhr: boolean;
   webSockets: boolean;
 }
+
+type TransformableRequestData = Pick<Request, "body" | "method" | "url">;
+
+interface CustomTransformationBase {
+  /**
+   * The regex to match against the request component.
+   */
+  matchRegex: string;
+  /**
+   * The replacement for any matches with matchRegex.
+   * This can reference groups in the matchRegex, for example:
+   * - matchRegex = `id_(\w*)=[^&]*`, replacement = `id_$1=<redacted>`
+   * - matchRegex= `id_(?<param_name>\w*)=[^&]*`, replacement = `id_$<param_name>=<redacted>`
+   */
+  replacement: string;
+  requestComponent: keyof TransformableRequestData;
+}
+
+type TransformableUrlFields = keyof Pick<
+  URL,
+  | "hash"
+  | "host"
+  | "hostname"
+  | "href"
+  | "password"
+  | "pathname"
+  | "port"
+  | "protocol"
+  | "search"
+  | "username"
+>;
+
+interface CustomUrlTransformation extends CustomTransformationBase {
+  requestComponent: keyof Pick<TransformableRequestData, "url">;
+  urlComponent: TransformableUrlFields;
+}
+
+interface CustomRequestTransformation extends CustomTransformationBase {
+  requestComponent: keyof Omit<TransformableRequestData, "url">;
+}
+
+export type CustomTransformation =
+  | CustomRequestTransformation
+  | CustomUrlTransformation;
