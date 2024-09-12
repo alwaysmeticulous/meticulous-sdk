@@ -1,6 +1,6 @@
 # Meticulous Recorder loader
 
-Utiliy package used to aid the injection of the Meticulous recorder snippet on web apps.
+Utility package used to aid the injection of the Meticulous recorder snippet on web apps.
 
 ## Installing
 
