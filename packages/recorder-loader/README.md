@@ -1,6 +1,6 @@
 # Meticulous Recorder loader
 
-Utiliy package used to aid the injection of the Meticulous recorder snippet on web apps.
+Utility package used to aid the injection of the Meticulous recorder snippet on web apps.
 
 ## Installing
 
@@ -21,7 +21,7 @@ async function startApp() {
     // Start the Meticulous recorder before you initialise your app.
     try {
         await loadAndStartRecorder({
-            projectId: '<project ID>',
+            recordingToken: '<recording token>',
         })
     } catch (err) {
         console.error(`Meticulous failed to initialise ${err}`)

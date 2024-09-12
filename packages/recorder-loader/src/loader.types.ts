@@ -1,7 +1,12 @@
 import { NetworkResponseSanitizer } from "@alwaysmeticulous/sdk-bundles-api";
 
 export interface LoaderOptions {
-  projectId: string;
+  /**
+   * @deprecated Renamed to recordingToken. Please use the same value but pass it as the recordingToken instead.
+   */
+  projectId?: string;
+  recordingToken: string;
+
   uploadIntervalMs?: number;
   snapshotLinkedStylesheets?: boolean;
   commitHash?: string;
