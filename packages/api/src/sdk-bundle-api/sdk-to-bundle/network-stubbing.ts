@@ -66,9 +66,15 @@ type TransformableRequestData = Pick<Request, "body" | "method" | "url">;
 
 interface CustomTransformationBase {
   /**
-   * The string to search for in the request component. This can also be a regular expression.
+   * The regex to match against the request component.
    */
-  searchString: string;
+  matchRegex: string;
+  /**
+   * The replacement for any matches with matchRegex.
+   * This can reference groups in the matchRegex, for example:
+   * - matchRegex = `id_(\w*)=[^&]*`, replacement = `id_$1=<redacted>`
+   * - matchRegex= `id_(?<param_name>\w*)=[^&]*`, replacement = `id_$<param_name>=<redacted>`
+   */
   replacement: string;
   requestComponent: keyof TransformableRequestData;
 }
