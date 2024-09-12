@@ -139,7 +139,7 @@ const handler: (options: Options) => Promise<void> = async ({
         }
       },
 
-      onTunnelLocked: () => {
+      onTunnelStillLocked: () => {
         logger.info(
           "Keeping tunnel open while additional tasks using it run on the Meticulous platform..."
         );

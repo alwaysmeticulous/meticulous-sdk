@@ -18,7 +18,7 @@ import { getPort } from "./url.utils";
 
 export { TunnelData } from "./types";
 
-const POLL_LOCK_INTERVAL_MS = 30_000; // 30 seconds
+const POLL_LOCK_INTERVAL_MS = 5_000; // 5 seconds
 const PROGRESS_UPDATE_INTERVAL_MS = 5_000; // 5 seconds
 const MS_TO_WAIT_FOR_RETRY = 5 * 60 * 1_000; // 5 minutes
 
@@ -30,7 +30,7 @@ export const executeRemoteTestRun = async ({
   onTunnelCreated,
   onTestRunCreated,
   onProgressUpdate,
-  onTunnelLocked,
+  onTunnelStillLocked,
   keepTunnelOpenPromise,
   environment,
   isLockable,
@@ -156,18 +156,8 @@ export const executeRemoteTestRun = async ({
   const checkUnlocked = async () => {
     const isLocked = await getIsLocked({ client, deploymentId });
     if (isLocked) {
-      onTunnelLocked?.();
+      onTunnelStillLocked?.();
       return false;
-    }
-    if (tunnelCheckInterval) {
-      clearInterval(tunnelCheckInterval);
-    }
-    if (keepTunnelOpenPromise) {
-      void keepTunnelOpenPromise.then(() => {
-        tunnel.close();
-      });
-    } else {
-      tunnel.close();
     }
     tunnelUnlocked.resolve();
     return true;
@@ -177,6 +167,14 @@ export const executeRemoteTestRun = async ({
     tunnelCheckInterval = setInterval(checkUnlocked, POLL_LOCK_INTERVAL_MS);
     await tunnelUnlocked.promise;
   }
+  if (tunnelCheckInterval) {
+    clearInterval(tunnelCheckInterval);
+  }
+
+  if (keepTunnelOpenPromise) {
+    await keepTunnelOpenPromise;
+  }
+  tunnel.close();
 
   return {
     testRun: completedTestRun,
