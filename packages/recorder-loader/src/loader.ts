@@ -23,6 +23,7 @@ export const tryLoadAndStartRecorder = async (
 };
 
 const unsafeLoadAndStartRecorder = ({
+  projectId,
   recordingToken,
   uploadIntervalMs,
   snapshotLinkedStylesheets,
@@ -52,7 +53,7 @@ const unsafeLoadAndStartRecorder = ({
 
     // Setup configuration
     const typedWindow = window;
-    typedWindow.METICULOUS_RECORDING_TOKEN = recordingToken;
+    typedWindow.METICULOUS_RECORDING_TOKEN = recordingToken ?? projectId;
 
     if (uploadIntervalMs !== undefined) {
       typedWindow.METICULOUS_UPLOAD_INTERVAL_MS = uploadIntervalMs;
