@@ -21,7 +21,7 @@ async function startApp() {
     // Start the Meticulous recorder before you initialise your app.
     try {
         await loadAndStartRecorder({
-            projectId: '<project ID>',
+            recordingToken: '<recording token>',
         })
     } catch (err) {
         console.error(`Meticulous failed to initialise ${err}`)
