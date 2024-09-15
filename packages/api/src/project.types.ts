@@ -10,6 +10,7 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   isGitHubIntegrationActive?: boolean;
+  isMonitoringEnabled: boolean;
   settings: {
     networkStubbingMode?: NetworkStubbingMode;
     defaultScreenshottingOptions?: ProjectSettingsScreenshottingOptions;
