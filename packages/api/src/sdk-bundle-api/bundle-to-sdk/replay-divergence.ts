@@ -72,4 +72,8 @@ export interface Divergence {
    * The number of screenshot diffs between startScreenshotDiff and endScreenshotDiff inclusive.
    */
   length: number;
+  /**
+   * The virtual time of the first divergence indicator that occurred chronologically.
+   */
+  startTime?: number;
 }
