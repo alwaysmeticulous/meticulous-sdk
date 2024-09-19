@@ -228,6 +228,11 @@ export interface ReplayExecutionOptions {
    * If true deletes window.Worker (pretends the browser doesn't support web workers).
    */
   disableWebWorkers?: boolean;
+
+  /**
+   * If true deletes window.SharedWorker (pretends the browser doesn't support shared workers).
+   */
+  disableSharedWorkers?: boolean;
 }
 
 export interface VercelExecutionSettings {
