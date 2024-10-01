@@ -23,6 +23,7 @@ export interface NetworkActivityDivergenceIndicator {
   type: "network-activity";
   beforeEventIndices?: number[] | undefined;
   afterEventIndices: number[];
+  kind: "completed-requests" | "pending-requests";
 }
 
 export interface InitialNavigationDivergenceIndicator {
