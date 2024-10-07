@@ -34,7 +34,7 @@ export type ConsoleMessageType =
   | "debug"
   | "info"
   | "error"
-  | "warning"
+  | "warn"
   | "dir"
   | "dirxml"
   | "table"
