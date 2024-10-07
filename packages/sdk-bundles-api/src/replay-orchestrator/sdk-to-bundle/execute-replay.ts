@@ -276,6 +276,11 @@ export interface GeneratedByReplayCommand {
 }
 
 export interface AppUrlConfig {
+  /**
+   * If set, we will ensure that the appUrl pathname is prefixed with this value for the initial navigation.
+   *
+   * __Note:__ When checking if the appUrl is already prefixed, we check against {@link URL.pathname} which will always have a leading "/".
+   */
   pathnamePrefix: string;
 }
 
