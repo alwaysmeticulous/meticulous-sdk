@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/recorder-loader",
-  "version": "2.157.0",
+  "version": "2.158.1",
   "license": "ISC",
   "source": "src/index.ts",
   "main": "dist/index.js",
@@ -21,7 +21,7 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "devDependencies": {
-    "@alwaysmeticulous/sdk-bundles-api": "^2.157.0"
+    "@alwaysmeticulous/sdk-bundles-api": "^2.158.1"
   },
   "author": {
     "name": "The Meticulous Team",
