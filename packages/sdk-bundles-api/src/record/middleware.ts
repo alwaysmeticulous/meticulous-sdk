@@ -103,9 +103,9 @@ export interface RecorderMiddleware {
    * See JSDoc for {@link RecorderMiddleware} before implementing.
    */
   transformNetworkRequest?: (
-    request: HarRequest,
+    request: Omit<HarRequest, "queryString">,
     metadata: NetworkRequestMetadata
-  ) => HarRequest | null;
+  ) => Omit<HarRequest, "queryString"> | null;
 
   /**
    * Transforms network requests before they are sent to Meticulous's servers.
