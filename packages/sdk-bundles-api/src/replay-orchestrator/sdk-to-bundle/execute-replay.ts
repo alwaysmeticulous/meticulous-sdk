@@ -233,6 +233,8 @@ export interface ReplayExecutionOptions {
    * If true deletes window.SharedWorker (pretends the browser doesn't support shared workers).
    */
   disableSharedWorkers?: boolean;
+
+  appUrlConfig?: AppUrlConfig;
 }
 
 export interface VercelExecutionSettings {
@@ -271,6 +273,15 @@ export interface GeneratedByTestRun {
 
 export interface GeneratedByReplayCommand {
   type: "replayCommand";
+}
+
+export interface AppUrlConfig {
+  /**
+   * If set, we will ensure that the appUrl pathname is prefixed with this value for the initial navigation.
+   *
+   * __Note:__ When checking if the appUrl is already prefixed, we check against {@link URL.pathname} which will always have a leading "/".
+   */
+  pathnamePrefix: string;
 }
 
 // See https://spin.atomicobject.com/2018/01/15/typescript-flexible-nominal-typing/
