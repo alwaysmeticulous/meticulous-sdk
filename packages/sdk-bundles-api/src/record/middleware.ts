@@ -148,8 +148,12 @@ export interface IndexedDBStoreEntries {
 export interface NetworkRequestMetadata {
   /**
    * Milliseconds since unix epoch when the request was sent
+   *
+   * Note: this is only defined at record time, not when we redact the requests at replay time
+   * for matching with the stored redacted requests in the original recording. See JSDoc on
+   * {@link RecorderMiddleware.transformNetworkRequest} for more information.
    */
-  requestStartedAt: number;
+  requestStartedAt?: number;
 }
 
 export interface NetworkResponseMetadata {
