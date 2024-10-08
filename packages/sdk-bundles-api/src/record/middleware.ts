@@ -79,11 +79,23 @@ export interface RecorderMiddleware {
   /**
    * Transforms network requests before they are sent to Meticulous's servers.
    *
-   * Please note if redacting the network request enough unique information must be preserved to allow
-   * Meticulous to correctly match a request that is performed at replay time by your application with
+   * Please ensure you call tryLoadAndStartRecorder with your middleware, or set
+   * `window.METICULOUS_RECORDER_MIDDLEWARE_V1`, when Meticulous is replaying sessions at test time ('replay time'),
+   * and not just when you want to record. This allows Meticulous to auto-detect your middleware and transform the
+   * requests at replay time when finding an appropiate request to match with. This enables correctly matching
+   * requests with the corresponding saved responses even if the requests have been substantially transformed by
+   * your middleware.
+   *
+   * Please note however that enough unique information must still be preserved in the redacted network request
+   * to allow Meticulous to correctly match a request that is performed at replay time by your application with
    * the correct corresponding saved request stored in the recording / recorded session.
    *
-   * Returning null will cause the request and the corresponding response to be dropped from the payload.
+   * For example: if you replace all query string values with "[REDACTED]", and there are multiple distinct requests with
+   * identical paths but different query string values then Meticulous will not have enough information to match
+   * them correctly. However if instead you md5 hash all query string values then Meticulous would have enough
+   * information to match the requests correctly.
+   *
+   * Note: returning null will cause the request and the corresponding response to be dropped from the payload.
    * If the request/response is dropped from the payload but at replay time your application still makes
    * the request then Meticulous will look for another closely matching recorded request, and replay that,
    * or if none can be found it will fail the request with 'net::ERR_FAILED'/'Failed to fetch'.
@@ -116,6 +128,9 @@ export interface RecorderMiddleware {
    * Returning null will cause the data to be dropped from the payload.
    *
    * Please note that the messages sent across a connection to a single URL may be split across multiple payloads.
+   *
+   * Note: we pass the WebSocketConnectionData to your middleware without the id field, and re-add the id field after
+   * you return the transformed data.
    *
    * See JSDoc for {@link RecorderMiddleware} before implementing.
    */
