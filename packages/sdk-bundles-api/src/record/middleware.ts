@@ -156,7 +156,11 @@ export interface NetworkRequestMetadata {
   requestStartedAt?: number;
 }
 
-export interface NetworkResponseMetadata {
+export interface NetworkResponseMetadata extends NetworkResponseTimings {
+  request: Omit<HarRequest, "queryString">;
+}
+
+export interface NetworkResponseTimings {
   /**
    * Milliseconds since unix epoch when the request was sent
    */
