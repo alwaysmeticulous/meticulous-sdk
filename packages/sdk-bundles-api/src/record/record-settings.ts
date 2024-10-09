@@ -1,6 +1,6 @@
 // Settings sent from the recorder-loader to the recorder bundle
 
-import { NetworkResponseMetadata, RecorderMiddleware } from "./middleware";
+import { NetworkResponseTimings, RecorderMiddleware } from "./middleware";
 
 export interface MeticulousWindowConfig {
   METICULOUS_RECORDING_TOKEN?: string;
@@ -31,5 +31,5 @@ export interface NetworkResponseSanitizer {
    * at replay time. For example, if you want to sanitize email addresses, replace them with a dummy email address
    * of a current format. That will ensure that the email address will still pass any validation the application may have.
    */
-  sanitizeBody: (body: string, metadata: NetworkResponseMetadata) => string;
+  sanitizeBody: (body: string, metadata: NetworkResponseTimings) => string;
 }
