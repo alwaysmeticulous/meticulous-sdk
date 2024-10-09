@@ -3,6 +3,7 @@ export {
   MeticulousWindowConfig,
   NetworkResponseSanitizer,
 } from "./record/record-settings";
+export * from "./record/middleware";
 export {
   ReplayAndStoreResultsOptions,
   ReplayTarget,

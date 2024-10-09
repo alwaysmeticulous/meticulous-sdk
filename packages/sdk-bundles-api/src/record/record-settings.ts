@@ -1,5 +1,7 @@
 // Settings sent from the recorder-loader to the recorder bundle
 
+import { NetworkResponseMetadata, RecorderMiddleware } from "./middleware";
+
 export interface MeticulousWindowConfig {
   METICULOUS_RECORDING_TOKEN?: string;
   METICULOUS_UPLOAD_INTERVAL_MS?: number;
@@ -8,6 +10,7 @@ export interface MeticulousWindowConfig {
   METICULOUS_FORCE_RECORDING?: boolean;
   METICULOUS_IS_PRODUCTION_ENVIRONMENT?: boolean;
   METICULOUS_NETWORK_RESPONSE_SANITIZERS?: NetworkResponseSanitizer[];
+  METICULOUS_RECORDER_MIDDLEWARE_V1: RecorderMiddleware[];
 }
 
 /**
@@ -29,16 +32,4 @@ export interface NetworkResponseSanitizer {
    * of a current format. That will ensure that the email address will still pass any validation the application may have.
    */
   sanitizeBody: (body: string, metadata: NetworkResponseMetadata) => string;
-}
-
-export interface NetworkResponseMetadata {
-  /**
-   * Milliseconds since unix epoch when the request was sent
-   */
-  requestStartedAt: number;
-
-  /**
-   * Milliseconds since unix epoch when the response was received
-   */
-  responseReceivedAt: number;
 }
