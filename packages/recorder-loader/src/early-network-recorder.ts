@@ -1,11 +1,4 @@
-export interface PrivateWindowApi {
-  __meticulous?: {
-    earlyNetworkRecorder?: {
-      dispose?: () => Promise<void>;
-    };
-    stopRecording?: () => void;
-  };
-}
+import { PrivateWindowApi } from "./private-window-api";
 
 /**
  * If you add 'https://snippet.meticulous.ai/record/v1/network-recorder.bundle.js' as a script tag
@@ -20,7 +13,7 @@ export interface PrivateWindowApi {
  * not stop the recording. For that you need to call
  */
 export const stopIntercepting = async () => {
-  const disposeFunction = (window as EarlyNetworkRecorderWindow)?.__meticulous
+  const disposeFunction = (window as PrivateWindowApi)?.__meticulous
     ?.earlyNetworkRecorder?.dispose;
   if (disposeFunction) {
     await disposeFunction();

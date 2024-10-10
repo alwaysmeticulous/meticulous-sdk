@@ -1,4 +1,4 @@
-export { RecordConfig, RecordSettings, RecordState } from "./record";
+export { RecordConfig, RecordSettings } from "./record";
 export {
   MeticulousWindowConfig,
   NetworkResponseSanitizer,
@@ -45,3 +45,4 @@ export {
 } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
 export { ScreenshotDiffData } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
 export { MeticulousPublicApi } from "./window-api/public-window-api";
+export { MeticulousPrivateApi } from "./window-api/private-window-api";

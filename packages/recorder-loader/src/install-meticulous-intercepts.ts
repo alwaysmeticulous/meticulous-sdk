@@ -1,7 +1,7 @@
 import { SNIPPETS_BASE_URL } from "./constants";
-import { PrivateWindowApi } from "./early-network-recorder";
-import { tryLoadAndStartRecorder } from "./loader";
+import { Recorder, tryLoadAndStartRecorder } from "./loader";
 import { LoaderOptions } from "./loader.types";
+import { PrivateWindowApi } from "./private-window-api";
 
 export interface Interceptor {
   startRecordingSession: (options: LoaderOptions) => Promise<Recorder>;

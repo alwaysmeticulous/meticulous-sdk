@@ -6,7 +6,6 @@ import type {
 
 declare global {
   interface Window extends MeticulousWindowConfig {
-    __meticulous?: RecordState;
     Meticulous?: MeticulousPublicApi;
   }
 }

@@ -1,6 +1,6 @@
 import { SNIPPETS_BASE_URL } from "./constants";
-import { PrivateWindowApi } from "./early-network-recorder";
 import { LoaderOptions } from "./loader.types";
+import { PrivateWindowApi } from "./private-window-api";
 
 const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2_000;
 
@@ -113,7 +113,8 @@ const unsafeLoadAndStartRecorder = ({
         return;
       }
 
-      const initialiseRecorder = window.__meticulous?.initialiseRecorder;
+      const initialiseRecorder = (window as PrivateWindowApi).__meticulous
+        ?.initialiseRecorder;
       if (typeof initialiseRecorder !== "function") {
         reject("Meticulous recorder failed to initialise.");
         return;
