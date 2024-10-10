@@ -1,4 +1,7 @@
-import { NetworkResponseSanitizer } from "@alwaysmeticulous/sdk-bundles-api";
+import {
+  NetworkResponseSanitizer,
+  RecorderMiddleware,
+} from "@alwaysmeticulous/sdk-bundles-api";
 
 export interface LoaderOptions {
   /**
@@ -30,6 +33,16 @@ export interface LoaderOptions {
 
   /**
    * Optional. Allows sanitizing network responses before they are sent to Meticulous's servers.
+   *
+   * @deprecated Please use `middleware` instead.
    */
   responseSanitizers?: NetworkResponseSanitizer[];
+
+  /**
+   * Transform the recorded data before it is sent to Meticulous's servers. This is useful for redacting sensitive
+   * information when recording production sessions.
+   *
+   * Please see JSDoc on {@link RecorderMiddleware} before implementing custom middleware.
+   */
+  middleware?: RecorderMiddleware[];
 }

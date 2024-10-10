@@ -31,6 +31,7 @@ const unsafeLoadAndStartRecorder = ({
   maxMsToBlockFor: maxMsToBlockFor_,
   snippetsBaseUrl,
   forceRecording,
+  middleware,
   responseSanitizers,
   isProduction,
 }: LoaderOptions): Promise<void> => {
@@ -78,6 +79,10 @@ const unsafeLoadAndStartRecorder = ({
 
     if (responseSanitizers != null && responseSanitizers.length > 0) {
       typedWindow.METICULOUS_NETWORK_RESPONSE_SANITIZERS = responseSanitizers;
+    }
+
+    if (middleware != null && middleware.length > 0) {
+      typedWindow.METICULOUS_RECORDER_MIDDLEWARE_V1 = middleware;
     }
 
     script.onload = function () {
