@@ -1,12 +1,13 @@
-import type { RecordState } from "@alwaysmeticulous/sdk-bundles-api";
-import { MeticulousWindowConfig } from "@alwaysmeticulous/sdk-bundles-api";
+import type {
+  RecordState,
+  MeticulousWindowConfig,
+  MeticulousPublicApi,
+} from "@alwaysmeticulous/sdk-bundles-api";
 
 declare global {
   interface Window extends MeticulousWindowConfig {
     __meticulous?: RecordState;
-    Meticulous?: {
-      isRunningAsTest?: boolean;
-    };
+    Meticulous?: MeticulousPublicApi;
   }
 }
 

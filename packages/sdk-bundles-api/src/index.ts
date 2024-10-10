@@ -44,3 +44,4 @@ export {
   IndexedReplayableEvent,
 } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
 export { ScreenshotDiffData } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
+export { MeticulousPublicApi } from "./window-api/public-window-api";
