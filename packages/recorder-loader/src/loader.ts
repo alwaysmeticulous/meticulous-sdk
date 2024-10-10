@@ -1,24 +1,44 @@
 import { SNIPPETS_BASE_URL } from "./constants";
 import { LoaderOptions } from "./loader.types";
+import { PrivateWindowApi } from "./private-window-api";
 
 const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2_000;
+
+export interface Recorder {
+  /**
+   * Disables the recorder for the rest of the user session, and stops sending data to the Meticulous
+   * servers.
+   *
+   * Once this method is called the recorder cannot be restarted (unless the page is reloaded).
+   */
+  stopRecording: () => Promise<void>;
+}
 
 /**
  * Load and start the Meticulous Recorder
  */
 export const tryLoadAndStartRecorder = async (
   options: LoaderOptions
-): Promise<void> => {
+): Promise<Recorder> => {
   if (window.Meticulous?.isRunningAsTest) {
     console.debug(
       "Running as part of a Meticulous test case, so skipping loading the Meticulous recorder."
     );
-    return;
+    return {
+      stopRecording: async () => {
+        // No op
+      },
+    };
   }
 
   // Try to load the recorder and silence any initialisation error.
-  await unsafeLoadAndStartRecorder(options).catch((error) => {
+  return await unsafeLoadAndStartRecorder(options).catch((error) => {
     console.error(error);
+    return {
+      stopRecording: async () => {
+        // No op
+      },
+    };
   });
 };
 
@@ -33,16 +53,20 @@ const unsafeLoadAndStartRecorder = ({
   forceRecording,
   responseSanitizers,
   isProduction,
-}: LoaderOptions): Promise<void> => {
+}: LoaderOptions): Promise<Recorder> => {
   let abandoned = false;
 
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<Recorder>((resolve, reject) => {
     const maxMsToBlockFor = maxMsToBlockFor_ ?? DEFAULT_MAX_MS_TO_BLOCK_FOR;
 
     if (maxMsToBlockFor > 0) {
       setTimeout(() => {
         abandoned = true;
-        resolve();
+        resolve({
+          stopRecording: async () => {
+            // No op: we never started recording
+          },
+        });
       }, maxMsToBlockFor);
     }
 
@@ -89,7 +113,8 @@ const unsafeLoadAndStartRecorder = ({
         return;
       }
 
-      const initialiseRecorder = window.__meticulous?.initialiseRecorder;
+      const initialiseRecorder = (window as PrivateWindowApi).__meticulous
+        ?.initialiseRecorder;
       if (typeof initialiseRecorder !== "function") {
         reject("Meticulous recorder failed to initialise.");
         return;
@@ -101,7 +126,19 @@ const unsafeLoadAndStartRecorder = ({
         reject(error);
       }
 
-      resolve();
+      resolve({
+        stopRecording: async () => {
+          const stopRecording = (window as PrivateWindowApi).__meticulous
+            ?.stopRecording;
+          if (!stopRecording) {
+            throw new Error(
+              "Recorder not initialised: window.__meticulous.stopRecording is not defined."
+            );
+          }
+          await stopRecording();
+          return;
+        },
+      });
     };
     script.onerror = () => {
       reject("Meticulous recorder failed to initialise.");

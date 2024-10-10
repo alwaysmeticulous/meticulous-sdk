@@ -1,29 +1,11 @@
 import { SNIPPETS_BASE_URL } from "./constants";
-import { tryLoadAndStartRecorder } from "./loader";
+import { Recorder, tryLoadAndStartRecorder } from "./loader";
 import { LoaderOptions } from "./loader.types";
-
-interface EarlyNetworkRecorderWindow {
-  __meticulous?: {
-    earlyNetworkRecorder?: {
-      dispose?: () => Promise<void>;
-    };
-    stopRecording?: () => void;
-  };
-}
+import { PrivateWindowApi } from "./private-window-api";
 
 export interface Interceptor {
   startRecordingSession: (options: LoaderOptions) => Promise<Recorder>;
   stopIntercepting: () => Promise<void>;
-}
-
-export interface Recorder {
-  /**
-   * Disables the recorder for the rest of the user session, and stops sending data to the Meticulous
-   * servers.
-   *
-   * Once this method is called the recorder cannot be restarted (unless the page is reloaded).
-   */
-  stopRecording: () => Promise<void>;
 }
 
 /**
@@ -64,28 +46,17 @@ export const tryInstallMeticulousIntercepts = async (
   let disposedEarlyNetworkRecorder = false;
   const stopIntercepting = async () => {
     requestedToStopIntercepting = true;
-    const disposeFunction = (window as EarlyNetworkRecorderWindow)?.__meticulous
+    const disposeFunction = (window as PrivateWindowApi)?.__meticulous
       ?.earlyNetworkRecorder?.dispose;
     if (disposeFunction && !disposedEarlyNetworkRecorder) {
       await disposeFunction();
       disposedEarlyNetworkRecorder = true;
     }
   };
-  const startRecordingSession = (options: LoaderOptions) =>
-    tryLoadAndStartRecorder(options).then(() => ({
-      stopRecording: async () => {
-        const stopRecording = (window as EarlyNetworkRecorderWindow)
-          .__meticulous?.stopRecording;
-        if (!stopRecording) {
-          throw new Error(
-            "Recorder not initialised: window.__meticulous.stopRecording is not defined."
-          );
-        }
-        await stopRecording();
-        return;
-      },
-    }));
-  const interceptor = { startRecordingSession, stopIntercepting };
+  const interceptor = {
+    startRecordingSession: tryLoadAndStartRecorder,
+    stopIntercepting,
+  };
 
   const promise = new Promise<Interceptor>((resolve, reject) => {
     const timeout =

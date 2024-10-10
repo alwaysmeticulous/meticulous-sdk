@@ -46,14 +46,6 @@ export interface RecordConfig
   windowHostname: string;
 }
 
-/**
- * Meticulous record state and functions
- */
-export interface RecordState {
-  /** Initialises and starts Meticulous recording */
-  initialiseRecorder?: () => void;
-}
-
 type DeepRequired<T> = T extends object
   ? { [P in keyof T]-?: DeepRequired<T[P]> }
   : T;
