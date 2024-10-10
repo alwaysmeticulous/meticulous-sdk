@@ -10,7 +10,7 @@ import { PrivateWindowApi } from "./private-window-api";
  *
  * Please note that if you've already started recording and sending data to Meticulous's services i.e.
  * loaded the main meticulous recorder script or called tryLoadAndStartRecorder then this method will
- * not stop the recording. For that you need to call
+ * not stop the recording. For that you need to call the stopRecording method returned by tryLoadAndStartRecorder.
  */
 export const stopIntercepting = async () => {
   const disposeFunction = (window as PrivateWindowApi)?.__meticulous
