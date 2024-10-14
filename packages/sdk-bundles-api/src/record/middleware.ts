@@ -91,7 +91,7 @@ export interface RecorderMiddleware {
    *     with. This enables correctly matching requests with the corresponding saved responses even if the
    *     requests have been substantially transformed by your middleware.
    *
-   *  2. Please avoid using changing the transformations applied based on context that may differ at replay time.
+   *  2. Please avoid changing the transformations applied based on context that may differ at replay time.
    *     For example, if you change whether you apply transformNetworkRequest based on whether the current URL contains
    *     'staging', then when replaying the recorded session that network request transformer would not be applied
    *     (URL does not contain 'staging', even if the original session was recorded on a staging environment), and
