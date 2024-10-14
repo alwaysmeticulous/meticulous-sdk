@@ -49,6 +49,11 @@ export interface SessionData {
   abandoned: boolean;
 
   /**
+   * Only present on recordings since ~Oct 2024
+   */
+  customData?: CustomData;
+
+  /**
    * @deprecated This isn't set for new sessions.
    */
   requestsBeforeNetworkRecordingStarted?: EarlyRequest[];
@@ -142,4 +147,9 @@ export type IDBObjectStoreWithEntries = Omit<
    * object store metadata to dictate how the value should be mapped to/from strings. @see IDBObjectStoreMetadata
    */
   entries: { key?: SerializedIDBValidKey; value: string }[];
+};
+
+export type CustomData = {
+  singletons: Record<string, string>;
+  arrays: Record<string, string[]>;
 };
