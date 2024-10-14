@@ -17,8 +17,7 @@ const middleware = [
   }),
   transformJsonResponse({
     urlRegExp: /https:\/\/api\.example\.com\/sensitive.*/,
-    transform: (data) => redactRecursively({
-      obj: data,
+    transform: (data) => redactRecursively(data, {
       redactString: (str, path) => path[path.length - 1] === "uuid" ? str : asterixOut(str),
     }),
   }),
