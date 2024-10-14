@@ -1,6 +1,6 @@
 import { HarResponse } from "@alwaysmeticulous/api";
-import { transformJsonResponse } from "../transform-json-response";
 import { NetworkResponseMetadata } from "@alwaysmeticulous/sdk-bundles-api";
+import { transformJsonResponse } from "../transform-json-response";
 
 interface MockResponse {
   sensitive: string;

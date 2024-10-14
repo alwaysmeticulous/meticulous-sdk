@@ -1,5 +1,5 @@
-import { RecorderMiddleware } from "@alwaysmeticulous/sdk-bundles-api";
 import { HarRequest } from "@alwaysmeticulous/api";
+import { RecorderMiddleware } from "@alwaysmeticulous/sdk-bundles-api";
 
 /**
  * Drops a request header from network requests.
