@@ -21,8 +21,8 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "devDependencies": {
-    "@alwaysmeticulous/sdk-bundles-api": "^2.162.0",
-    "@alwaysmeticulous/api": "^2.162.0"
+    "@alwaysmeticulous/api": "^2.158.1",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.162.0"
   },
   "author": {
     "name": "The Meticulous Team",
