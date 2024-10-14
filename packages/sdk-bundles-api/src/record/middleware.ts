@@ -108,7 +108,7 @@ export interface RecorderMiddleware {
    *
    *  4. Returning null will cause the request and the corresponding response to be dropped from the payload.
    *     At replay time if there is no exact match for a request that is transformed to null then the request
-   *     will be failed with 'net::ERR_FAILED'/'Failed to fetch'. rather than automatically trying to find a
+   *     will be failed with 'net::ERR_FAILED'/'Failed to fetch' rather than automatically trying to find a
    *     'closest match' in the recorded session.
    *
    * See JSDoc for {@link RecorderMiddleware} before implementing.
