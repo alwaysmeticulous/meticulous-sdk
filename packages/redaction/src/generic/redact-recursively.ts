@@ -26,6 +26,19 @@ export const redactRecursively = (
      *
      * If a new object is returned (different memory reference) then redactRecursively will
      * replace the existing object with the new object and not recurse inside it.
+     *
+     * In the case where you return the obj passed in unchanged, and so allow redactRecursively
+     * to continue recursing inside the object, you should make sure that your redactObject function
+     * returns quickly, and does NOT take time proportional to the size of the nested object. For example
+     * the below code would be O(n^2) in the size of the object and so extremely unperformant on large objects:
+     *
+     * ```
+     * const redactObject = (obj) => {
+     *   const containsSecret = JSON.stringify(obj).includes("secret"); // O(N) where N is size of obj
+     *   return containsSecret ? { __redacted__: true } : obj;
+     * }
+     * const redacted = redactRecursively(aHugeObject, { redactObject }); // O(N^2) (!)
+     * ```
      */
     redactObject?: (obj: object, jsonPath: string[]) => object;
 
@@ -35,6 +48,11 @@ export const redactRecursively = (
      *
      * If a new array is returned (different memory reference) then redactRecursively will
      * replace the existing array with the new array and not recurse inside it.
+     *
+     * Similar to {@link redactObject} you should make sure that your implement executes
+     * quickly in cases where you return the original object unchanged, since it may be executed
+     * many times over in such a case. See the failure case example in the JSDoc for {@link redactObject}
+     * for more details.
      */
     redactArray?: (arr: unknown[], jsonPath: string[]) => unknown[];
     redactString?: (str: string, jsonPath: string[]) => string;
