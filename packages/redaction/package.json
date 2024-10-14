@@ -1,0 +1,41 @@
+{
+  "name": "@alwaysmeticulous/redaction",
+  "version": "1.0.0",
+  "license": "ISC",
+  "source": "src/index.ts",
+  "main": "dist/index.js",
+  "module": "dist/module.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "dev": "parcel watch",
+    "build": "parcel build",
+    "format": "prettier --write src",
+    "lint": "eslint src --ext=ts,tsx,js --cache",
+    "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
+    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
+    "depcheck": "depcheck --ignore-patterns=dist"
+  },
+  "devDependencies": {
+    "@alwaysmeticulous/sdk-bundles-api": "^2.162.0",
+    "@alwaysmeticulous/api": "^2.162.0"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/redaction"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}

@@ -79,26 +79,37 @@ export interface RecorderMiddleware {
   /**
    * Transforms network requests before they are sent to Meticulous's servers.
    *
-   * Please ensure you call tryLoadAndStartRecorder with your middleware, or set
-   * `window.METICULOUS_RECORDER_MIDDLEWARE_V1`, when Meticulous is replaying sessions at test time ('replay time'),
-   * and not just when you want to record. This allows Meticulous to auto-detect your middleware and transform the
-   * requests at replay time when finding an appropiate request to match with. This enables correctly matching
-   * requests with the corresponding saved responses even if the requests have been substantially transformed by
-   * your middleware.
+   * If you are only transforming headers, and nothing else then set {@link applyRequestTransformationAtReplayTime}
+   * to false.
    *
-   * Please note however that enough unique information must still be preserved in the redacted network request
-   * to allow Meticulous to correctly match a request that is performed at replay time by your application with
-   * the correct corresponding saved request stored in the recording / recorded session.
+   * If you are transforming URLs, query strings or request bodies, or sometimes returning null, then:
    *
-   * For example: if you replace all query string values with "[REDACTED]", and there are multiple distinct requests with
-   * identical paths but different query string values then Meticulous will not have enough information to match
-   * them correctly. However if instead you md5 hash all query string values then Meticulous would have enough
-   * information to match the requests correctly.
+   *  1. Please ensure you call tryLoadAndStartRecorder with your middleware, or set
+   *     `window.METICULOUS_RECORDER_MIDDLEWARE_V1`, when Meticulous is replaying sessions at test time
+   *     ('replay time'), and not just when you want to record. This allows Meticulous to auto-detect your
+   *     middleware and transform the requests at replay time when finding an appropiate request to match
+   *     with. This enables correctly matching requests with the corresponding saved responses even if the
+   *     requests have been substantially transformed by your middleware.
    *
-   * Note: returning null will cause the request and the corresponding response to be dropped from the payload.
-   * If the request/response is dropped from the payload but at replay time your application still makes
-   * the request then Meticulous will look for another closely matching recorded request, and replay that,
-   * or if none can be found it will fail the request with 'net::ERR_FAILED'/'Failed to fetch'.
+   *  2. Please avoid using changing the transformations applied based on context that may differ at replay time.
+   *     For example, if you change whether you apply transformNetworkRequest based on whether the current URL contains
+   *     'staging', then when replaying the recorded session that network request transformer would not be applied
+   *     (URL does not contain 'staging', even if the original session was recorded on a staging environment), and
+   *     so the request may not be able to be matched correctly.
+   *
+   *  3. Enough unique information must still be preserved in the redacted network request to allow Meticulous
+   *     to correctly match a request that is performed at replay time by your application with
+   *     the correct corresponding saved request stored in the recording / recorded session.
+   *
+   *     For example: if you replace all query string values with "[REDACTED]", and there are multiple distinct
+   *     requests with identical paths but different query string values then Meticulous will not have enough
+   *     information to match them correctly. However if instead you md5 hash all query string values then
+   *     Meticulous would have enough information to match the requests correctly.
+   *
+   *  4. Returning null will cause the request and the corresponding response to be dropped from the payload.
+   *     At replay time if there is no exact match for a request that is transformed to null then the request
+   *     will be failed with 'net::ERR_FAILED'/'Failed to fetch'. rather than automatically trying to find a
+   *     'closest match' in the recorded session.
    *
    * See JSDoc for {@link RecorderMiddleware} before implementing.
    */
@@ -137,6 +148,14 @@ export interface RecorderMiddleware {
   transformWebSocketConnectionData?: (
     entry: Omit<WebSocketConnectionData, "id">
   ) => Omit<WebSocketConnectionData, "id"> | null;
+
+  /**
+   * Defaults to true. Set to false if transformNetworkRequest only transforms the headers and not the URL or body of the request,
+   * and transformNetworkRequest never returns null. Setting to false when not required improves replay performance.
+   *
+   * See {@link transformNetworkRequest} for more details.
+   */
+  applyRequestTransformationAtReplayTime?: boolean;
 }
 
 export interface IndexedDBStoreEntries {
