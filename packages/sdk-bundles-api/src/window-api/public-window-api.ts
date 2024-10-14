@@ -9,6 +9,7 @@ export type MeticulousPublicApi = MeticulousPublicApiCommon &
       }
     | {
         isRunningAsTest: false;
+        record: MeticulousPublicRecordApi;
       }
   );
 
@@ -29,4 +30,32 @@ export interface MeticulousPublicReplayApi {
    * See https://app.meticulous.ai/docs/how-to/fix-false-positive-diffs#pausing-meticulous-replays
    */
   resume: () => void;
+
+  /**
+   * Call this method to retrieve custom data that was recorded during the test run.
+   */
+  retrieveCustomData(key: string): string | null;
+
+  /**
+   * Call this method to retrieve an array of custom data that was recorded during the test run.
+   */
+  retrieveCustomDataArray(arrayId: string): string[];
+}
+
+export interface MeticulousPublicRecordApi {
+  /**
+   * Call this method to record a single custom data value during the test run.
+   * Repeated calls to this method with the same key will overwrite the previous value.
+   */
+  recordCustomData(key: string, value: string): { success: boolean };
+
+  /**
+   * Call this method to push a value to an array of custom data during the test run.
+   * If the array does not exist, it will be created.
+   * If the array already exists, the value will be appended to it.
+   */
+  pushToCustomDataArray(
+    arrayId: string,
+    valueToAppend: string
+  ): { success: boolean };
 }
