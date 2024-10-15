@@ -117,3 +117,40 @@ export interface TestRunGitLabPushContext {
   /** Git ref for the branch (/refs/head/<branch>). Not defined for pushes prior to July 2024. */
   ref?: string;
 }
+
+export type TestRunBitBucketContext = { type: "bitbucket" } & (
+  | TestRunBitBucketPullRequestContext
+  | TestRunBitBucketPushContext
+);
+
+export interface TestRunBitBucketPullRequestContext {
+  event: "pull-request";
+
+  /** Pull request title */
+  title: string;
+
+  /** Pull request number */
+  number: number;
+
+  /** Pull request URL (web page) */
+  htmlUrl: string;
+
+  /** Base commit hash */
+  baseSha: string;
+
+  /** Head commit hash */
+  headSha: string;
+}
+
+export interface TestRunBitBucketPushContext {
+  event: "push";
+
+  /** Commit hash before the push event */
+  beforeSha: string;
+
+  /** Commit hash after the push event */
+  afterSha: string;
+
+  /** Git ref for the branch (/refs/head/<branch>) */
+  ref: string;
+}
