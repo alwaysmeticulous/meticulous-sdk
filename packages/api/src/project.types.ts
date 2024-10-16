@@ -15,6 +15,8 @@ export interface Project {
     networkStubbingMode?: NetworkStubbingMode;
     defaultScreenshottingOptions?: ProjectSettingsScreenshottingOptions;
   };
+
+  experimentValues: Record<string, string>;
 }
 
 export type ProjectSettingsScreenshottingOptions = Partial<
