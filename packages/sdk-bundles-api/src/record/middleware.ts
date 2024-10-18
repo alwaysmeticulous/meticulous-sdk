@@ -159,6 +159,10 @@ export interface IndexedDBStoreEntries {
   databaseName: string;
   objectStoreName: string;
   entries: {
+    /**
+     * Note if you don't set explicit keys, and instead use 'keyPath' when constructing your store then
+     * the key passed here will be undefined: you'll need to retrieve your key from the value.
+     */
     key?: IDBValidKey;
 
     /**
