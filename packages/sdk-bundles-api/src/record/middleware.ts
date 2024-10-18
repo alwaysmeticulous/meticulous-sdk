@@ -2,7 +2,6 @@ import {
   Cookie,
   HarRequest,
   HarResponse,
-  IDBObjectStoreWithEntries,
   StorageEntry,
   WebSocketConnectionData,
 } from "@alwaysmeticulous/api";
@@ -159,7 +158,14 @@ export interface RecorderMiddleware {
 export interface IndexedDBStoreEntries {
   databaseName: string;
   objectStoreName: string;
-  entries: IDBObjectStoreWithEntries["entries"];
+  entries: {
+    key?: IDBValidKey;
+
+    /**
+     * The value stored in IDB. For most IDB use cases this is normally a JSON string.
+     */
+    value: unknown;
+  }[];
 }
 
 export interface NetworkRequestMetadata {
