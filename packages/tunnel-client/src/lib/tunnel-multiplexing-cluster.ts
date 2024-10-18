@@ -194,4 +194,8 @@ export class TunnelMultiplexingCluster extends (EventEmitter as new () => TypedE
       this.emit("open", stream);
     });
   }
+
+  close() {
+    // no-op
+  }
 }

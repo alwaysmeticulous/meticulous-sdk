@@ -18,6 +18,7 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
+    "agentkeepalive": "^4.5.0",
     "axios": "^1.2.6",
     "axios-retry": "^4.1.0",
     "bpmux": "^8.2.1",
