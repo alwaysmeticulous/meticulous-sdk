@@ -113,6 +113,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
           const {
             connection,
             "keep-alive": _,
+            "transfer-encoding": __,
             ...headersToForward
           } = clientRes.headers;
 
