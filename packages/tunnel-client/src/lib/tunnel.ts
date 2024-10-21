@@ -14,6 +14,11 @@ import { TunnelMultiplexingPoolingCluster } from "./tunnel-multiplexing-pooling-
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
 
+/**
+ * Number of connections to establish for HTTP2 multiplexing.
+ */
+const HTTP2_NUMBER_OF_CONNECTIONS = 2;
+
 interface CreateTunnelResponse {
   id: string;
   multiplexing_port: number;
@@ -330,7 +335,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
         : new TunnelMultiplexingPoolingCluster(tunnelOpts);
     } else {
       const sockets = await Promise.all(
-        Array.from({ length: 2 }).map(() =>
+        Array.from({ length: HTTP2_NUMBER_OF_CONNECTIONS }).map(() =>
           this.openSocket({
             useTls,
             remoteHost,
