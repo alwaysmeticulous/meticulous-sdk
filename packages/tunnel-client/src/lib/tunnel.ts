@@ -453,14 +453,16 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
             socket.end();
           }
 
-          if (sendAuthOkAck) {
-            // Some tunnel implementations require an ACK after the AUTH OK message.
-            socket.write("AUTH OK ACK");
-          }
-
           socket.pause();
 
-          resolve();
+          if (sendAuthOkAck) {
+            // Some tunnel implementations require an ACK after the AUTH OK message.
+            socket.write("AUTH OK ACK", () => {
+              resolve();
+            });
+          } else {
+            resolve();
+          }
         });
       });
     });
