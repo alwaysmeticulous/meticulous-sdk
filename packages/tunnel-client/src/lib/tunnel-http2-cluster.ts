@@ -135,6 +135,10 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
     });
 
     this.sockets.forEach((socket) => {
+      // By default the server doesn't listen to anything, but we can
+      // emit connection events which will make the server listen to any
+      // requests sent over those connections
+      // See: https://nodejs.org/api/http2.html#event-connection
       this.server.emit("connection", socket);
       socket.resume();
     });
