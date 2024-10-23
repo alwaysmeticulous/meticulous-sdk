@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/sentry",
-  "version": "2.167.0",
+  "version": "2.168.0",
   "description": "Helper methods for connecting to Sentry",
   "license": "ISC",
   "main": "dist/index.js",
@@ -19,7 +19,7 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.167.0",
+    "@alwaysmeticulous/common": "^2.168.0",
     "@sentry/node": "^7.107.0",
     "@sentry/tracing": "^7.107.0",
     "luxon": "^3.2.1"
