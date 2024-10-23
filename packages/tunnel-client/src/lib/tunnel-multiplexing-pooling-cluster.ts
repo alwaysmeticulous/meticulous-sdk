@@ -158,4 +158,8 @@ export class TunnelMultiplexingPoolingCluster extends (EventEmitter as new () =>
     remote.pause();
     connLocal();
   }
+
+  close() {
+    // no-op
+  }
 }
