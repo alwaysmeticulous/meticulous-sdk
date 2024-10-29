@@ -1,6 +1,9 @@
 export interface TestRunEnvironment {
   ci?: boolean;
-  context?: TestRunGitHubContext | TestRunGitLabContext;
+  context?:
+    | TestRunGitHubContext
+    | TestRunGitLabContext
+    | TestRunBitbucketContext;
   [key: string]: unknown;
 }
 
@@ -118,12 +121,12 @@ export interface TestRunGitLabPushContext {
   ref?: string;
 }
 
-export type TestRunBitBucketContext = { type: "bitbucket" } & (
-  | TestRunBitBucketPullRequestContext
-  | TestRunBitBucketPushContext
+export type TestRunBitbucketContext = { type: "bitbucket" } & (
+  | TestRunBitbucketPullRequestContext
+  | TestRunBitbucketPushContext
 );
 
-export interface TestRunBitBucketPullRequestContext {
+export interface TestRunBitbucketPullRequestContext {
   event: "pull-request";
 
   /** Pull request title */
@@ -142,7 +145,7 @@ export interface TestRunBitBucketPullRequestContext {
   headSha: string;
 }
 
-export interface TestRunBitBucketPushContext {
+export interface TestRunBitbucketPushContext {
   event: "push";
 
   /** Commit hash before the push event */
