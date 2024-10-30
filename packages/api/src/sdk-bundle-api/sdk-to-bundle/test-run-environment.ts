@@ -141,8 +141,14 @@ export interface TestRunBitbucketPullRequestContext {
   /** Base commit hash */
   baseSha: string;
 
+  /** Base ref (usually /refs/head/<branch>) */
+  baseRef: string;
+
   /** Head commit hash */
   headSha: string;
+
+  /** Head ref (usually /refs/head/<branch>) */
+  headRef: string;
 }
 
 export interface TestRunBitbucketPushContext {
