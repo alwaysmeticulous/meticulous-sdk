@@ -2,7 +2,6 @@ import {
   Cookie,
   HarRequest,
   HarResponse,
-  IDBObjectStoreWithEntries,
   StorageEntry,
   WebSocketConnectionData,
 } from "@alwaysmeticulous/api";
@@ -119,19 +118,17 @@ export interface RecorderMiddleware {
   ) => Omit<HarRequest, "queryString"> | null;
 
   /**
-   * Transforms network requests before they are sent to Meticulous's servers.
+   * Transforms network responses before they are sent to Meticulous's servers.
    *
-   * Returning null will cause the request and the response to be dropped from the payload.
-   * If the request/response is dropped from the payload but at replay time your application still makes
-   * the request then Meticulous will look for another closely matching recorded request, and replay that,
-   * or if none can be found it will fail the request with 'net::ERR_FAILED'/'Failed to fetch'.
+   * If you wish to drop a network response entirely please implement transformNetworkRequest
+   * instead and return null for the corresponding request.
    *
    * See JSDoc for {@link RecorderMiddleware} before implementing.
    */
   transformNetworkResponse?: (
     response: HarResponse,
     metadata: NetworkResponseMetadata
-  ) => HarResponse | null;
+  ) => HarResponse;
 
   /**
    * Transforms WebSocket messages before they are sent to Meticulous's servers.
@@ -161,7 +158,18 @@ export interface RecorderMiddleware {
 export interface IndexedDBStoreEntries {
   databaseName: string;
   objectStoreName: string;
-  entries: IDBObjectStoreWithEntries["entries"];
+  entries: {
+    /**
+     * Note if you don't set explicit keys, and instead use 'keyPath' when constructing your store then
+     * the key passed here will be undefined: you'll need to retrieve your key from the value.
+     */
+    key?: IDBValidKey;
+
+    /**
+     * The value stored in IDB. For most IDB use cases this is normally a JSON string.
+     */
+    value: unknown;
+  }[];
 }
 
 export interface NetworkRequestMetadata {
