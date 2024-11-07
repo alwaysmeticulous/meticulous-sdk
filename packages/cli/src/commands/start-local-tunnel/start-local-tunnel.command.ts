@@ -69,7 +69,7 @@ const handler = async (argv: Options) => {
   });
 
   logger.info(
-    `Your url is: ${tunnel.url}, user: ${tunnel.basicAuthUser}, password: ${tunnel.basicAuthPassword}`
+    `Your url is: ${tunnel.url} \nuser: ${tunnel.basicAuthUser}, password: ${tunnel.basicAuthPassword}`
   );
 
   if (argv.printRequests) {
