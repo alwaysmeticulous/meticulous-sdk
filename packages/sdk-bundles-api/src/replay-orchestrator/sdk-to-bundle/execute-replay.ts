@@ -235,6 +235,11 @@ export interface ReplayExecutionOptions {
   disableSharedWorkers?: boolean;
 
   appUrlConfig?: AppUrlConfig;
+
+  /**
+   * If true records CSS coverage for the replay.
+   */
+  enableCssCoverage?: boolean;
 }
 
 export interface VercelExecutionSettings {
