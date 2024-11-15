@@ -149,7 +149,14 @@ export type IDBObjectStoreWithEntries = Omit<
   entries: { key?: SerializedIDBValidKey; value: string }[];
 };
 
+export type CustomUserEvent = {
+  type: string;
+  timestamp: number;
+  data: any;
+};
+
 export type CustomData = {
   singletons: Record<string, string>;
   arrays: Record<string, string[]>;
+  events: CustomUserEvent[];
 };
