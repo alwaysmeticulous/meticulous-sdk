@@ -34,6 +34,10 @@ export interface InitialNavigationDivergenceIndicator {
 
 export interface DivergenceConsoleError {
   idx: number;
+  /**
+   * Truncated to the first 50 characters to avoid sending large payloads
+   */
+  truncatedMessage: string;
   numHeadAppearances: number;
   numBaseAppearances: number;
 }
