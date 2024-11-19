@@ -149,7 +149,17 @@ export type IDBObjectStoreWithEntries = Omit<
   entries: { key?: SerializedIDBValidKey; value: string }[];
 };
 
+export type CustomUserEvent = {
+  type: string;
+  /**
+   * The timestamp based on performance.now() in the browser when the event was recorded.
+   */
+  timestamp: number;
+  data: string;
+};
+
 export type CustomData = {
   singletons: Record<string, string>;
   arrays: Record<string, string[]>;
+  events: CustomUserEvent[];
 };

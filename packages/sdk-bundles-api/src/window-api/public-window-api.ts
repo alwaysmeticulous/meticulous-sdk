@@ -40,6 +40,14 @@ export interface MeticulousPublicReplayApi {
    * Call this method to retrieve an array of custom data that was recorded during the test run.
    */
   retrieveCustomDataArray(arrayId: string): string[];
+
+  /**
+   * Call this method to add a listener for a custom event that was recorded during the test run.
+   */
+  addCustomEventListener(
+    type: string,
+    callback: (serializedData: string) => void | Promise<void>
+  ): void;
 }
 
 export interface MeticulousPublicRecordApi {
@@ -58,4 +66,11 @@ export interface MeticulousPublicRecordApi {
     arrayId: string,
     valueToAppend: string
   ): { success: boolean };
+
+  /**
+   * Call this method to record a custom event to replay when replaying this session
+   * at the same timestamp as when it was recorde. To listen for these events at replay
+   * time see the addCustomEventListener method in the replay API.
+   */
+  recordCustomEvent(type: string, serializedData: string): { success: boolean };
 }
