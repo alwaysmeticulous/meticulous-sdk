@@ -28,7 +28,7 @@ export interface ScreenshotDiffOptions {
   diffThreshold: number;
   diffPixelThreshold: number;
   diffHashesToIgnoreByScreenshotFilename?: Record<string, string[]>;
-  shouldUseRedactedScreenshotByScreenshotFilename?: Map<string, boolean>;
+  shouldUseRedactedScreenshotByScreenshotFilename?: Record<string, boolean>;
 }
 
 export type ElementToIgnore = CSSSelectorToIgnore;
