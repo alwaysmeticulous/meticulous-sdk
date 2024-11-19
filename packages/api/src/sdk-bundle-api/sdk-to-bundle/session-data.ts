@@ -151,8 +151,11 @@ export type IDBObjectStoreWithEntries = Omit<
 
 export type CustomUserEvent = {
   type: string;
+  /**
+   * The timestamp based on performance.now() in the browser when the event was recorded.
+   */
   timestamp: number;
-  data: any;
+  data: string;
 };
 
 export type CustomData = {

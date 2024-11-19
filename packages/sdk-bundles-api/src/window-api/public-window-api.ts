@@ -44,7 +44,10 @@ export interface MeticulousPublicReplayApi {
   /**
    * Call this method to add a listener for a custom event that was recorded during the test run.
    */
-  addCustomEventListener(type: string, callback: (data: any) => void): void;
+  addCustomEventListener(
+    type: string,
+    callback: (serializedData: string) => void | Promise<void>
+  ): void;
 }
 
 export interface MeticulousPublicRecordApi {
@@ -69,5 +72,5 @@ export interface MeticulousPublicRecordApi {
    * at the same timestamp as when it was recorde. To listen for these events at replay
    * time see the addCustomEventListener method in the replay API.
    */
-  recordCustomEvent(type: string, data: any): { success: boolean };
+  recordCustomEvent(type: string, serializedData: string): { success: boolean };
 }
