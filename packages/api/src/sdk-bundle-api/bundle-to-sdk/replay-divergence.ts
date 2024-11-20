@@ -44,6 +44,11 @@ export interface DivergenceConsoleError {
   numBaseAppearances: number;
 }
 
+/**
+ * Initially we only classified divergences with this indicator based on console error timeline
+ * entries, but as of Nov 18, 2024 we also classify divergences with this indicator based on
+ * unhandled-window-error and unhandled-promise-rejection timeline events.
+ */
 export interface ConsoleErrorDivergenceIndicator {
   type: "console-error";
   beforeErrors: DivergenceConsoleError[];
