@@ -108,6 +108,10 @@ export interface ScreenshotDiffResultCompared {
    *
    * Present only if there were redacted screenshots to compare, or if the original normal
    * screenshots did not differ so there was no need to compare the redacted screenshots.
+   *
+   * Present if there were redacted screenshots to compare and either:
+   *  - the original normal screenshots differed or
+   *  - this comparison was a retry and the original comparison result was from the redacted screenshots
    */
   redactedScreenshotsComparisonResult?:
     | RedactedScreenshotsCompared
@@ -178,7 +182,10 @@ export interface ScreenshotDiffResultFlake {
   diffsToHeadScreenshotOnRetries: ScreenshotDiffRetryResult[];
 }
 
-export type FlakeEvidence = "varied-results-on-retry" | "diff-is-known-flake";
+export type FlakeEvidence =
+  | "varied-results-on-retry"
+  | "diff-is-known-flake"
+  | "varied-redacted-results-on-retry";
 
 export type ScreenshotDiffRetryResult =
   | SingleTryScreenshotDiffRetryResult
