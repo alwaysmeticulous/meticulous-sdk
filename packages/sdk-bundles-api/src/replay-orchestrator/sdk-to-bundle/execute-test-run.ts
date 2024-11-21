@@ -109,4 +109,9 @@ export interface ExecuteTestRunOptions {
    * Chromium, or the version of Puppeteer.
    */
   logicalEnvironmentVersion?: number;
+
+  /**
+   * If set to true, capture snapshots of assets.
+   */
+  snapshotAssets?: boolean;
 }
