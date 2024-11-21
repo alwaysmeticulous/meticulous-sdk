@@ -77,6 +77,11 @@ export interface ReplayAndStoreResultsOptions {
    * If present, requests for assets during simulation will be proxied through this URL
    */
   simulationProxyUrl?: string;
+
+  /**
+   * If set to true, capture snapshots of assets.
+   */
+  snapshotAssets?: boolean;
 }
 
 export interface BeforeUserEventOptions {
