@@ -106,16 +106,16 @@ export interface ScreenshotDiffResultCompared {
    * The result of comparing the redacted screenshots (i.e. screenshots taken after elements
    * to ignore have been hidden/removed).
    *
-   * Present only if there were redacted screenshots to compare, or if the original normal
-   * screenshots did not differ so there was no need to compare the redacted screenshots.
-   *
    * Present if there were redacted screenshots to compare and either:
-   *  - the original normal screenshots differed or
-   *  - this comparison was a retry and the original comparison result was from the redacted screenshots
+   *  1. the original normal screenshots differed or
+   *  2. this comparison was a retry and the original comparison result was from the redacted screenshots
    */
-  redactedScreenshotsComparisonResult?:
-    | RedactedScreenshotsCompared
-    | RedactedScreenshotIncompatible;
+  redactedScreenshotsComparisonResult?: {
+    /**
+     * This field will only be true if we are in situation 2 above and the original comparison was a no diff.
+     */
+    wasOriginalComparisonNoDiff?: boolean;
+  } & (RedactedScreenshotsCompared | RedactedScreenshotIncompatible);
 }
 
 export interface ScreenshotDiffResultNoDifference
@@ -182,10 +182,19 @@ export interface ScreenshotDiffResultFlake {
   diffsToHeadScreenshotOnRetries: ScreenshotDiffRetryResult[];
 }
 
+/**
+ * - **varied-results-on-retry**: The head screenshot was retaken one or more times and at least one of
+ *                                the new head screenshots differed from the first head screenshot.
+ *
+ * - **varied-redacted-results-on-retry**: The comparison between the retry screenshot and the original screenshot did not have
+ *                                         a diff but when we compared the redacted versions of the screenshot we found a diff.
+ *
+ * - **diff-is-known-flake**: The diff screenshot's hash matches the hash of a flake that was previously detected by one of the methods above.
+ */
 export type FlakeEvidence =
   | "varied-results-on-retry"
-  | "diff-is-known-flake"
-  | "varied-redacted-results-on-retry";
+  | "varied-redacted-results-on-retry"
+  | "diff-is-known-flake";
 
 export type ScreenshotDiffRetryResult =
   | SingleTryScreenshotDiffRetryResult
