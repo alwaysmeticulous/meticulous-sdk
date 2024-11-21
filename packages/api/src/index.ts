@@ -46,6 +46,7 @@ export {
   IDBObjectStoreMetadata,
   IDBObjectStoreWithEntries,
   CustomData,
+  CustomUserEvent,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export {
   SequenceNumber,
