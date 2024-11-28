@@ -26,6 +26,7 @@ export {
   TestCaseResult,
   TestCaseResultStatus,
 } from "./replay/test-run.types";
+export { TestRunChunkStatus } from "./replay/test-run-chunk.types";
 export * from "./sdk-bundle-api/sdk-to-bundle/test-run-environment";
 export { ReplayableEvent } from "./sdk-bundle-api/bidirectional/replayable-event";
 export {

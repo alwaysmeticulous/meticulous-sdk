@@ -41,6 +41,11 @@ export {
 } from "./replay-orchestrator/bundle-to-sdk/execute-test-run";
 export { InProgressTestRun } from "./replay-orchestrator/bundle-to-sdk/execute-scheduled-test-run";
 export {
+  InProgressTestRunChunk,
+  ExecuteTestRunChunkResult,
+  TestRunChunkExecution,
+} from "./replay-orchestrator/bundle-to-sdk/execute-scheduled-test-run-chunk";
+export {
   ReplayAndStoreResultsResult,
   ReplayExecution,
   BeforeUserEventResult,
