@@ -179,7 +179,8 @@ dist
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -246,5 +247,8 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# Turbo cache
+.turbo
 
 # End of https://www.toptal.com/developers/gitignore/api/git,linux,osx,windows,node,visualstudiocode
