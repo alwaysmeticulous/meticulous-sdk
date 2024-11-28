@@ -1,10 +1,12 @@
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import {
+  ExecuteScheduledTestRunChunkOptions,
   ExecuteScheduledTestRunOptions,
   ExecuteTestRunOptions,
   ExecuteTestRunResult,
   InProgressTestRun,
+  InProgressTestRunChunk,
   ReplayAndStoreResultsOptions,
   ReplayExecution,
 } from "@alwaysmeticulous/sdk-bundles-api";
@@ -29,6 +31,9 @@ export const replayAndStoreResults = async (
   });
 };
 
+const EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH =
+  "replay/v3/execute-scheduled-test-run.bundle.js";
+
 export const executeScheduledTestRun = async (
   options: Omit<
     ExecuteScheduledTestRunOptions,
@@ -37,10 +42,28 @@ export const executeScheduledTestRun = async (
 ): Promise<InProgressTestRun> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const bundleLocation = await fetchAsset(
-    "replay/v3/execute-scheduled-test-run.bundle.js"
+    EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH
   );
 
   return (await require(bundleLocation)).executeTestRunV2({
+    ...options,
+    chromeExecutablePath: getChromiumExecutablePath(),
+    logLevel: logger.getLevel(),
+  });
+};
+
+export const executeScheduledTestRunChunk = async (
+  options: Omit<
+    ExecuteScheduledTestRunChunkOptions,
+    "logLevel" | "chromeExecutablePath"
+  >
+): Promise<InProgressTestRunChunk> => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const bundleLocation = await fetchAsset(
+    EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH
+  );
+
+  return (await require(bundleLocation)).executeTestRunChunk({
     ...options,
     chromeExecutablePath: getChromiumExecutablePath(),
     logLevel: logger.getLevel(),
