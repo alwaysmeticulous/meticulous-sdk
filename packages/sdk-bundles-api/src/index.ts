@@ -29,8 +29,10 @@ export {
 } from "./replay-orchestrator/sdk-to-bundle/execute-replay";
 export { ExecuteTestRunOptions } from "./replay-orchestrator/sdk-to-bundle/execute-test-run";
 export { ExecuteScheduledTestRunOptions } from "./replay-orchestrator/sdk-to-bundle/execute-scheduled-test-run";
+export { ExecuteScheduledTestRunChunkOptions } from "./replay-orchestrator/sdk-to-bundle/execute-scheduled-test-run-chunk";
 export {
   ExecuteTestRunResult,
+  ExecutionProgress,
   TestRunExecution,
   RunningTestRunExecution,
   FinishedTestRunExecution,
@@ -38,6 +40,11 @@ export {
   DetailedTestCaseResult,
 } from "./replay-orchestrator/bundle-to-sdk/execute-test-run";
 export { InProgressTestRun } from "./replay-orchestrator/bundle-to-sdk/execute-scheduled-test-run";
+export {
+  InProgressTestRunChunk,
+  ExecuteTestRunChunkResult,
+  TestRunChunkExecution,
+} from "./replay-orchestrator/bundle-to-sdk/execute-scheduled-test-run-chunk";
 export {
   ReplayAndStoreResultsResult,
   ReplayExecution,

@@ -10,7 +10,7 @@ export interface TestRunExecution {
   id: string;
   status: TestRunStatus;
   project: Project;
-  progress: TestRunProgress;
+  progress: ExecutionProgress;
   url: string;
 }
 
@@ -34,12 +34,17 @@ export interface TestRunEditedCoverage {
   executableLinesEditedAndCovered: number;
 }
 
-export interface TestRunProgress {
+export interface ExecutionProgress {
   failedTestCases: number;
   flakedTestCases: number;
   passedTestCases: number;
   runningTestCases: number;
 }
+
+/**
+ * @deprecated Use `ExecutionProgress` instead.
+ */
+export type TestRunProgress = ExecutionProgress;
 
 export interface DetailedTestCaseResult extends TestCaseResult {
   screenshotDiffDataByBaseReplayId: Record<string, ScreenshotDiffData>;
