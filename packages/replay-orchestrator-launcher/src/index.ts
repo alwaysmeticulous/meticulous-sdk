@@ -14,7 +14,7 @@ import { executablePath } from "puppeteer";
 export const replayAndStoreResults = async (
   options: Omit<
     ReplayAndStoreResultsOptions,
-    "logLevel" | "chromeExecutablePath"
+    "logLevel" | "chromeExecutablePath" | "projectId"
   >
 ): Promise<ReplayExecution> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);

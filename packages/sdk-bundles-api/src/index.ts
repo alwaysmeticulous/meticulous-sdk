@@ -25,6 +25,7 @@ export {
   OutOfDateClientError,
   BeforeUserEventOptions,
   AppUrlConfig,
+  PreNavigationResult,
 } from "./replay-orchestrator/sdk-to-bundle/execute-replay";
 export { ExecuteTestRunOptions } from "./replay-orchestrator/sdk-to-bundle/execute-test-run";
 export { ExecuteScheduledTestRunOptions } from "./replay-orchestrator/sdk-to-bundle/execute-scheduled-test-run";

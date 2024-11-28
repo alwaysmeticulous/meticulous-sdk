@@ -30,6 +30,7 @@ export interface ReplayAndStoreResultsOptions {
    */
   gitRef: string | null | undefined;
 
+  projectId: string;
   sessionId: string;
   /**
    * The ID of the session to use for seeding the application state (cookies, local storage, session storage),
@@ -82,6 +83,15 @@ export interface ReplayAndStoreResultsOptions {
    * If set to true, capture snapshots of assets.
    */
   snapshotAssets?: boolean;
+
+  /**
+   * If present, contains the result of the pre-navigation step.
+   */
+  preNavigationResult?: PreNavigationResult;
+}
+
+export interface PreNavigationResult {
+  cookies: Cookie[];
 }
 
 export interface BeforeUserEventOptions {
