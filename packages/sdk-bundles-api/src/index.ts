@@ -32,6 +32,7 @@ export { ExecuteScheduledTestRunOptions } from "./replay-orchestrator/sdk-to-bun
 export { ExecuteScheduledTestRunChunkOptions } from "./replay-orchestrator/sdk-to-bundle/execute-scheduled-test-run-chunk";
 export {
   ExecuteTestRunResult,
+  ExecutionProgress,
   TestRunExecution,
   RunningTestRunExecution,
   FinishedTestRunExecution,
