@@ -44,7 +44,8 @@ export {
   EarlyRequest,
   SerializedIDBValidKey,
   IDBObjectStoreMetadata,
-  IDBObjectStoreWithEntries,
+  IDBObjectStoreSnapshot,
+  IDBIndexSnapshot,
   CustomData,
   CustomUserEvent,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
