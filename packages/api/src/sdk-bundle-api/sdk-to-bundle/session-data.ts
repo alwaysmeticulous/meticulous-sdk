@@ -31,7 +31,7 @@ export interface SessionData {
      * Only present on recordings since ~Aug 2024
      */
     indexedDb?: {
-      state: IDBObjectStoreWithEntries[];
+      state: IDBObjectStoreSnapshot[];
     };
   };
 
@@ -136,7 +136,7 @@ interface StringKey {
   serializedKey: string;
 }
 
-export type IDBObjectStoreWithEntries = Omit<
+export type IDBObjectStoreSnapshot = Omit<
   IDBObjectStoreMetadata,
   "serialize" | "deserialize"
 > & {
@@ -147,6 +147,23 @@ export type IDBObjectStoreWithEntries = Omit<
    * object store metadata to dictate how the value should be mapped to/from strings. @see IDBObjectStoreMetadata
    */
   entries: { key?: SerializedIDBValidKey; value: string }[];
+
+  /**
+   * This is only present on IDB snapshots taken since ~Dec 2024.
+   * It contains the indexes of the object store. In particular, these are the arguments that need to be provided to
+   * the `createIndex` method on the IDBObjectStore object to re-create the indexes that existed at the time of the
+   * snapshot.
+   */
+  indexes?: IDBIndexSnapshot[];
+};
+
+export type IDBIndexSnapshot = {
+  name: string;
+  keyPath: string | string[];
+  options: {
+    unique: boolean;
+    multiEntry: boolean;
+  };
 };
 
 export type CustomUserEvent = {
