@@ -31,7 +31,7 @@ export interface SessionData {
      * Only present on recordings since ~Aug 2024
      */
     indexedDb?: {
-      state: IDBObjectStoreWithEntries[];
+      state: IDBObjectStoreSnapshot[];
     };
   };
 
