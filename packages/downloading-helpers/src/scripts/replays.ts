@@ -1,17 +1,12 @@
 import { readFileSync, writeFileSync } from "fs";
-import { mkdir, rm } from "fs/promises";
+import { mkdir } from "fs/promises";
 import { dirname, join } from "path";
-import {
-  getReplay,
-  getReplayDownloadUrl,
-  getReplayV3DownloadUrls,
-} from "@alwaysmeticulous/client";
+import { getReplay, getReplayV3DownloadUrls } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
 import { AxiosInstance } from "axios";
-import extract from "extract-zip";
 import log from "loglevel";
 import pLimit from "p-limit";
 import {
@@ -50,7 +45,33 @@ export const getOrFetchReplay = async (
   return { fileName: replayFile };
 };
 
-export type DownloadScope = "everything" | "screenshots-only";
+/**
+ * The scope of the download. This is used to determine what to download from the replay.
+ * - `everything`: Download everything.
+ * - `screenshots-only`: Download only the screenshots.
+ * - `post-test-run-processing-files-only`: Download only the files that are needed for post-test-run processing
+ * e.g mapped coverage and timeline data.
+ */
+const DOWNLOAD_SCOPES = [
+  "everything",
+  "screenshots-only",
+  "post-test-run-processing-files-only",
+] as const;
+
+export type DownloadScope = (typeof DOWNLOAD_SCOPES)[number];
+
+const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<DownloadScope, RegExp> = {
+  everything: /.*/,
+  "screenshots-only": /screenshots/,
+  "post-test-run-processing-files-only": /mappedCoverage/,
+};
+
+const shouldDownloadFile = (
+  fileType: string,
+  downloadScope: DownloadScope
+): boolean => {
+  return DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD[downloadScope].test(fileType);
+};
 
 const REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME = "previously-downloaded.txt";
 
@@ -78,11 +99,8 @@ export const getOrFetchReplayArchive = async (
     let previouslyDownloadedScope: DownloadScope | undefined = undefined;
     if (await fileExists(previouslyDownloadedFile)) {
       const fileContents = readFileSync(previouslyDownloadedFile, "utf-8");
-      if (
-        fileContents === "everything" ||
-        fileContents === "screenshots-only"
-      ) {
-        previouslyDownloadedScope = fileContents;
+      if (DOWNLOAD_SCOPES.includes(fileContents as DownloadScope)) {
+        previouslyDownloadedScope = fileContents as DownloadScope;
         if (
           previouslyDownloadedScope === downloadScope ||
           previouslyDownloadedScope === "everything"
@@ -144,18 +162,19 @@ const downloadReplayV3Files = async (
 
   const { screenshots, diffs, snapshottedAssets, ...rest } = downloadUrls;
 
-  await mkdir(join(replayDir, "screenshots"), { recursive: true });
+  const filePromises = Object.entries(rest)
+    .filter(([fileType]) => shouldDownloadFile(fileType, downloadScope))
+    .map(([fileType, data]) => {
+      const filePath = join(replayDir, fileType);
+      return () => downloadAndExtractFile(data.signedUrl, filePath, replayDir);
+    });
 
-  const filePromises =
-    downloadScope === "everything"
-      ? Object.entries(rest).map(([fileName, data]) => {
-          const filePath = join(replayDir, fileName);
-          return () =>
-            downloadAndExtractFile(data.signedUrl, filePath, replayDir);
-        })
-      : [];
+  if (shouldDownloadFile("screenshots", downloadScope)) {
+    await mkdir(join(replayDir, "screenshots"), { recursive: true });
+  }
 
   const screenshotPromises: (() => Promise<string[] | void>)[] =
+    !shouldDownloadFile("screenshots", downloadScope) ||
     previouslyDownloadedScope === "screenshots-only"
       ? []
       : Object.values(screenshots).flatMap((data) => {
@@ -185,48 +204,49 @@ const downloadReplayV3Files = async (
     )
   );
 
-  const diffsPromises =
-    downloadScope === "everything"
-      ? Object.values(diffs ?? {}).flatMap((diffsForBase) => {
-          return Object.values(diffsForBase).flatMap((urls) => {
-            return [
-              async () => {
-                await downloadFile(
-                  urls.full.signedUrl,
-                  join(replayDir, urls.full.filePath)
-                );
-              },
-              async () => {
-                await downloadFile(
-                  urls.thumbnail.signedUrl,
-                  join(replayDir, urls.thumbnail.filePath)
-                );
-              },
-            ];
+  const diffsPromises = shouldDownloadFile("diffs", downloadScope)
+    ? Object.values(diffs ?? {}).flatMap((diffsForBase) => {
+        return Object.values(diffsForBase).flatMap((urls) => {
+          return [
+            async () => {
+              await downloadFile(
+                urls.full.signedUrl,
+                join(replayDir, urls.full.filePath)
+              );
+            },
+            async () => {
+              await downloadFile(
+                urls.thumbnail.signedUrl,
+                join(replayDir, urls.thumbnail.filePath)
+              );
+            },
+          ];
+        });
+      })
+    : [];
+
+  const snapshottedAssetsPromises = shouldDownloadFile(
+    "snapshottedAssets",
+    downloadScope
+  )
+    ? [
+        async () => {
+          if (!snapshottedAssets) {
+            return;
+          }
+
+          const snapshottedAssetsDir = join(replayDir, "snapshotted-assets");
+          await mkdir(snapshottedAssetsDir, {
+            recursive: true,
           });
-        })
-      : [];
-
-  const snapshottedAssetsPromises =
-    downloadScope === "everything"
-      ? [
-          async () => {
-            if (!snapshottedAssets) {
-              return;
-            }
-
-            const snapshottedAssetsDir = join(replayDir, "snapshotted-assets");
-            await mkdir(snapshottedAssetsDir, {
-              recursive: true,
-            });
-            await downloadAndExtractFile(
-              snapshottedAssets.signedUrl,
-              join(replayDir, snapshottedAssets.filePath),
-              snapshottedAssetsDir
-            );
-          },
-        ]
-      : [];
+          await downloadAndExtractFile(
+            snapshottedAssets.signedUrl,
+            join(replayDir, snapshottedAssets.filePath),
+            snapshottedAssetsDir
+          );
+        },
+      ]
+    : [];
 
   const limited = pLimit(MAX_DOWNLOAD_CONCURRENCY);
   await Promise.all(
