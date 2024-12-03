@@ -157,6 +157,11 @@ export type IDBObjectStoreSnapshot = Omit<
   indexes?: IDBIndexSnapshot[];
 };
 
+/**
+ * @deprecated Use {@link IDBObjectStoreSnapshot} instead.
+ */
+export type IDBObjectStoreWithEntries = IDBObjectStoreSnapshot;
+
 export type IDBIndexSnapshot = {
   name: string;
   keyPath: string | string[];

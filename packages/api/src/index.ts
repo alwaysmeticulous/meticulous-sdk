@@ -46,6 +46,7 @@ export {
   SerializedIDBValidKey,
   IDBObjectStoreMetadata,
   IDBObjectStoreSnapshot,
+  IDBObjectStoreWithEntries,
   IDBIndexSnapshot,
   CustomData,
   CustomUserEvent,
