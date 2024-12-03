@@ -62,8 +62,8 @@ export type DownloadScope = (typeof DOWNLOAD_SCOPES)[number];
 
 const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<DownloadScope, RegExp> = {
   everything: /.*/,
-  "screenshots-only": /screenshots/,
-  "post-test-run-processing-files-only": /mappedCoverage/,
+  "screenshots-only": /^screenshots/,
+  "post-test-run-processing-files-only": /^mappedCoverage/,
 };
 
 const shouldDownloadFile = (
