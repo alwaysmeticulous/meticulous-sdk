@@ -49,12 +49,14 @@ export const getOrFetchReplay = async (
  * The scope of the download. This is used to determine what to download from the replay.
  * - `everything`: Download everything.
  * - `screenshots-only`: Download only the screenshots.
+ * - `timeline-only`: Download only the timeline data.
  * - `post-test-run-processing-files-only`: Download only the files that are needed for post-test-run processing
  * e.g mapped coverage and timeline data.
  */
 const DOWNLOAD_SCOPES = [
   "everything",
   "screenshots-only",
+  "timeline-only",
   "post-test-run-processing-files-only",
 ] as const;
 
@@ -63,6 +65,7 @@ export type DownloadScope = (typeof DOWNLOAD_SCOPES)[number];
 const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<DownloadScope, RegExp> = {
   everything: /.*/,
   "screenshots-only": /^screenshots/,
+  "timeline-only": /^timeline/,
   "post-test-run-processing-files-only": /^(mappedCoverage|timeline)/,
 };
 
