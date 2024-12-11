@@ -86,7 +86,7 @@ export const executeRemoteTestRun = async ({
   const response = await executeSecureTunnelTestRun({
     client,
     headSha: commitSha,
-    tunnelUrl: tunnel.url,
+    tunnelUrl: tunnel.url + url.pathname,
     basicAuthUser: tunnel.basicAuthUser,
     basicAuthPassword: tunnel.basicAuthPassword,
     environment,
