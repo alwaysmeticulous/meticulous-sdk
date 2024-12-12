@@ -115,8 +115,27 @@ export interface ScreenshotDiffResultCompared {
      * This field will only be true if we are in situation 2 above and the original comparison was a no diff.
      */
     wasOriginalComparisonNoDiff?: boolean;
+
+    /**
+     * Undefined for old screenshots, from before Dec 2024.
+     */
+    comparison?: RedactedScreenshotsComparison;
   } & (RedactedScreenshotsCompared | RedactedScreenshotIncompatible);
 }
+
+/**
+ * If the redacted screenshots were present for both head and base then we compare these; but if a
+ * redacted screenshot was only present for one of head or base then we compare the redacted screenshot
+ * to the unredacted screenshot. This field indicates which comparison was made.
+ *
+ * The left hand side is the base screenshot, and the right hand side is the head screenshot. For example,
+ * `redacted-vs-unredacted` means it compared the redacted base screenshot to the unredacted head screenshot
+ * (i.e. there was no redacted head screenshot to compare to).
+ */
+export type RedactedScreenshotsComparison =
+  | "redacted-vs-redacted"
+  | "redacted-vs-unredacted"
+  | "unredacted-vs-redacted";
 
 export interface ScreenshotDiffResultNoDifference
   extends ScreenshotDiffResultCompared {
@@ -132,7 +151,9 @@ export interface RedactedScreenshotsCompared {
    * type may be undefined for old screenshots, from before Feb 2024
    */
   type: "no-diff" | "diff" | undefined;
+
   mismatchPixels: number;
+
   mismatchFraction: number;
 
   /**
