@@ -146,7 +146,17 @@ export type IDBObjectStoreSnapshot = Omit<
    * For all other types (e.g. Date, Regex, ArrayBuffer etc.), you can define a custom [de]serialize function on the
    * object store metadata to dictate how the value should be mapped to/from strings. @see IDBObjectStoreMetadata
    */
-  entries: { key?: SerializedIDBValidKey; value: string }[];
+  entries: {
+    key?: SerializedIDBValidKey;
+    value: string;
+    // This may be present for snapshots taken since ~Dec 2024 when we started using SuperJSON.
+    // If it's present, this field stores the SuperJSONResult.meta field, with the text from SuperJSON.json being stored
+    // in the value field above.
+    valueMeta?: {
+      values?: unknown;
+      referentialEqualities?: unknown;
+    };
+  }[];
 
   /**
    * This is only present on IDB snapshots taken since ~Dec 2024.
@@ -156,6 +166,11 @@ export type IDBObjectStoreSnapshot = Omit<
    */
   indexes?: IDBIndexSnapshot[];
 };
+
+/**
+ * @deprecated Use {@link IDBObjectStoreSnapshot} instead.
+ */
+export type IDBObjectStoreWithEntries = IDBObjectStoreSnapshot;
 
 export type IDBIndexSnapshot = {
   name: string;

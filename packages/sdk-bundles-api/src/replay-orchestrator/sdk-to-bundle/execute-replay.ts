@@ -227,6 +227,11 @@ export interface ReplayExecutionOptions {
   customRequestHeaders?: InjectableRequestHeader[];
 
   /**
+   * If populated, a list of additional CSS rules to inject into the page when replaying.
+   */
+  customStyleOverrides?: string[];
+
+  /**
    * Extra cookies to use during the replay. These will override cookies of the same name from the session under simulation.
    */
   extraCookies?: Cookie[];
