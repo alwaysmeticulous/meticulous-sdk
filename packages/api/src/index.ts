@@ -18,6 +18,7 @@ export {
   SingleTryScreenshotDiffRetryResult,
   RedactedScreenshotIncompatible,
   RedactedScreenshotsCompared,
+  RedactedScreenshotsComparison,
 } from "./sdk-bundle-api/bundle-to-sdk/screenshot-diff-result";
 export {
   TestCase,
