@@ -127,6 +127,10 @@ export interface ScreenshotDiffResultCompared {
  * If the redacted screenshots were present for both head and base then we compare these; but if a
  * redacted screenshot was only present for one of head or base then we compare the redacted screenshot
  * to the unredacted screenshot. This field indicates which comparison was made.
+ *
+ * The left hand side is the base screenshot, and the right hand side is the head screenshot. For example,
+ * `redacted-vs-unredacted` means it compared the redacted base screenshot to the unredacted head screenshot
+ * (i.e. there was no redacted head screenshot to compare to).
  */
 export type RedactedScreenshotsComparison =
   | "redacted-vs-redacted"
