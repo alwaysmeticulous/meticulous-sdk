@@ -175,6 +175,19 @@ export interface ScreenshotDiffResultDifference
    * This can be useful for grouping together diffs that are caused by the same change.
    */
   hashOfChangedSectionsClassNames?: string;
+
+  /**
+   * The set of the first N class names within the DOM sections that have differences.
+   *
+   * Only present on recent replays since Dec 2024.
+   */
+  changedSectionsClassNames?: string[];
+
+  /**
+   * If there are too many class names we truncate the {@link changedSectionsClassNames} list,
+   * and this field will be true, otherwise this field will not be present.
+   */
+  isChangedSectionsClassNamesListTruncated?: true;
 }
 
 /**
