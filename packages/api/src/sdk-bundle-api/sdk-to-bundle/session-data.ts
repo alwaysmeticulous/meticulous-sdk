@@ -119,6 +119,13 @@ export interface IDBObjectStoreMetadata {
   objectStoreName: string;
   serialize?: (value: any) => string;
   deserialize?: (value: string) => any;
+  /**
+   * For object stores with known data structures, we can estimate the length more efficiently
+   * than our standard estimateLength() function by looking at specific fields. If the value
+   * returned by this method exceeds the recording environment's maximum IDB entry length,
+   * we will not attempt to serialize or record the value.
+   */
+  estimateLength?: (value: any) => number;
 }
 
 /**
