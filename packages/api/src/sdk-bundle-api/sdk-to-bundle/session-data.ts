@@ -145,7 +145,7 @@ interface StringKey {
 
 export type IDBObjectStoreSnapshot = Omit<
   IDBObjectStoreMetadata,
-  "serialize" | "deserialize"
+  "serialize" | "deserialize" | "estimateLength"
 > & {
   createObjectStoreOptions: IDBObjectStoreParameters;
   /**
