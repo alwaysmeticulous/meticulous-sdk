@@ -119,6 +119,7 @@ export interface IDBObjectStoreMetadata {
   objectStoreName: string;
   serialize?: (value: any) => string;
   deserialize?: (value: string) => any;
+  estimateLength?: (value: any) => number;
 }
 
 /**
