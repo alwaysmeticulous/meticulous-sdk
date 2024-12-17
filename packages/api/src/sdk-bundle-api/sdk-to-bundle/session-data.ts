@@ -125,8 +125,9 @@ export interface IDBObjectStoreMetadata {
   databaseName: string;
   objectStoreName: string;
   /**
-   * If true, then we only snapshot the entries that are read from the object store.
-   * This can be useful if...
+   * If true, then we only snapshot the entries as they are read from the object store.
+   * This can be useful if the object store is typically large and we don't want to snapshot
+   * the entire thing.
    */
   snapshotEntriesOnRead?: boolean;
   serialize?: (value: any) => string;
@@ -161,11 +162,10 @@ export type IDBObjectStoreSnapshot = Pick<
 > & {
   createObjectStoreOptions: IDBObjectStoreParameters;
   /**
-   * TODO: change to reflect our use of SuperJSON.
-   *
-   * Entry values are JSON stringified by default. JSON representable objects, arrays and primitives are supported.
-   * For all other types (e.g. Date, Regex, ArrayBuffer etc.), you can define a custom [de]serialize function on the
-   * object store metadata to dictate how the value should be mapped to/from strings. @see IDBObjectStoreMetadata
+   * Entry values are serialized with SuperJSON by default. JSON representable objects, arrays and primitives are
+   * supported as well as more complex types (e.g. Date, Regex, ArrayBuffer etc.). However, you can add custom
+   * serialization logic to the object store metadata to support object store specific types.
+   * @see IDBObjectStoreMetadata.serialize
    */
   entries: {
     key?: SerializedIDBValidKey;
