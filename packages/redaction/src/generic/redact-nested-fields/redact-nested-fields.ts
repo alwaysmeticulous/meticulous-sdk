@@ -3,24 +3,35 @@ import { Redactor, RedactorsFor } from "./utils/primative-field-names";
 export const redactNestedFields = <T>(
   redactor: RedactorsFor<T>
 ): ((value: T) => T) => {
-  return createRedactor(redactor);
+  return createRedactor(redactor, true);
 };
 
 export const redactNestedFieldsIncludingNumbers = <T>(
   redactor: RedactorsFor<T, false>
 ): ((value: T) => T) => {
-  return createRedactor(redactor);
+  return createRedactor(redactor, true);
 };
 
 export const redactNestedFieldsNonTypeSafe = <T>(
   redactor: Record<string, Redactor<any>>
 ): ((value: T) => T) => {
-  return createRedactor(redactor as any);
+  return createRedactor(redactor as any, false);
 };
 
-const createRedactor = <T>(redactors: RedactorsFor<T>): ((value: T) => T) => {
+// TODO: Handle full set of primative types
+const createRedactor = <T>(
+  redactors: RedactorsFor<T>,
+  redactNumbers: boolean
+): ((value: T) => T) => {
   const redactFn = (value: T, key?: string): T => {
     if (value == null) {
+      return value;
+    }
+
+    if (typeof value === "number" && !redactNumbers) {
+      // If there's a prop name that exists both as a number and a string,
+      // but number redaction is disabled, then we only want to redact the
+      // string versions
       return value;
     }
 

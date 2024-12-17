@@ -72,13 +72,14 @@ export interface OriginalTweet {
   metrics: Record<string, number>;
 }
 
-interface Quote {
+export interface Quote {
   id: string;
   text: string;
   type: "quote";
   author_id: string;
   conversation_id: string;
   created_at: string;
+  quote_text: string;
 }
 
 // Search and filtering types

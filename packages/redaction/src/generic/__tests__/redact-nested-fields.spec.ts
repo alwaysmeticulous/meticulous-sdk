@@ -1,6 +1,6 @@
 import { asterixOut } from "../asterix-out";
 import { redactNestedFields } from "../redact-nested-fields/redact-nested-fields";
-import { OriginalTweet } from "./typings/twitter-example";
+import { Tweet } from "./typings/twitter-example";
 
 describe("redactNestedFields", () => {
   it("should redact nested fields", () => {
@@ -18,7 +18,7 @@ describe("redactNestedFields", () => {
     // (and won't force for type union string fields like `"tweet" | "retweet"`).
     //
     // If you use redactNestedFieldsIncludingNumbers it'll force you to redact number too.
-    const redactor = redactNestedFields<OriginalTweet>({
+    const redactor = redactNestedFields<Tweet>({
       ...DEFAULT_REDACTORS,
       text: asterixOut,
       author_id: doNotRedact,
@@ -36,6 +36,7 @@ describe("redactNestedFields", () => {
       media_key: doNotRedact,
       preview_image_url: () => "https://redacted.com",
       alt_text: asterixOut,
+      quote_text: asterixOut,
     });
 
     const redactedTweet = redactor({

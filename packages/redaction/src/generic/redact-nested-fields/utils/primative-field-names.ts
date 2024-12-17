@@ -6,13 +6,18 @@ type IsFixedStringUnion<T> = T extends string
 
 type WithoutNullOrUndefined<T> = T extends null | undefined ? never : T;
 
-type RelevantPrimitiveFieldNames<T, PRIMATIVES_TO_REDACT = string | Date> = {
+type AllValues<T> = UnionToIntersection<T>[keyof UnionToIntersection<T>];
+
+type RelevantPrimitiveFieldNames<
+  T,
+  PRIMATIVES_TO_REDACT = string | Date
+> = AllValues<{
   [K in keyof T]: PrimitiveFieldNamesHelper<
     K,
     WithoutNullOrUndefined<T[K]>,
     PRIMATIVES_TO_REDACT
   >;
-}[keyof T];
+}>;
 
 type PrimitiveFieldNamesHelper<K, V, PRIMATIVES_TO_REDACT> =
   IsFixedStringUnion<V> extends true
@@ -44,7 +49,6 @@ type ToRedactorObject<T> = T extends [infer K, infer V]
 
 type TuplePairsToRedactorObject<T> = UnionToIntersection<ToRedactorObject<T>>;
 
-// TODO: Add support for type unions (test on Tweet instead of OriginalTweet)
 export type RedactorsFor<T, IGNORE_NUMBERS = true> = TuplePairsToRedactorObject<
   RelevantPrimitiveFieldNames<
     T,
