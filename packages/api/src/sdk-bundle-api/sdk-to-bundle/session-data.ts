@@ -143,9 +143,9 @@ interface StringKey {
   serializedKey: string;
 }
 
-export type IDBObjectStoreSnapshot = Omit<
+export type IDBObjectStoreSnapshot = Pick<
   IDBObjectStoreMetadata,
-  "serialize" | "deserialize"
+  "databaseName" | "objectStoreName"
 > & {
   createObjectStoreOptions: IDBObjectStoreParameters;
   /**
