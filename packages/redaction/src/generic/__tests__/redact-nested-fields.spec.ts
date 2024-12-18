@@ -18,7 +18,7 @@ describe("redactNestedFields", () => {
     // (and won't force for type union string fields like `"tweet" | "retweet"`).
     //
     // If you use redactNestedFieldsIncludingNumbers it'll force you to redact number too.
-    const redactor = NestedFieldsRedactor.create().createRedactor<Tweet>({
+    const redactor = NestedFieldsRedactor.builder().createRedactor<Tweet>({
       strings: {
         ...DEFAULT_STRING_REDACTORS,
         text: asterixOut,
@@ -98,7 +98,7 @@ describe("redactNestedFields", () => {
     const doNotRedact = <T>(value: T): T => value;
 
     const redactor =
-      NestedFieldsRedactor.createWithDefaults().createRedactor<Tweet>({
+      NestedFieldsRedactor.builderWithDefaults().createRedactor<Tweet>({
         strings: {
           tag: doNotRedact,
           media_key: doNotRedact,

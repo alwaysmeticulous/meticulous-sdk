@@ -19,7 +19,7 @@ export class NestedFieldsRedactor<
     private readonly dateRedactors: Array<PatternBasedRedactor<string, Date>>
   ) {}
 
-  public static create() {
+  public static builder() {
     return new NestedFieldsRedactor<never, never>([], []);
   }
 
@@ -30,7 +30,7 @@ export class NestedFieldsRedactor<
    *
    * (recommended)
    */
-  public static createWithDefaults() {
+  public static builderWithDefaults() {
     return new NestedFieldsRedactor<never, never>([], [])
       .withPatternBasedStringRedactors(ALL_DEFAULT_STRING_REDACTORS)
       .withPatternBasedDateRedactors(ALL_DEFAULT_DATE_REDACTORS);
