@@ -59,6 +59,10 @@ See [redactString.spec.ts](packages/redaction/src/generic/__tests__/redact-strin
 
 ### NestedFieldsRedactor
 
+NestedFieldsRedactor allows you to specify a redaction policy for each distinct field name (for example 'ssn' or 'email'). It'll then recursively apply this redaction policy across all nested fields inside an object. Type safety
+ensures that compile time errors will be produced if you provide an object that has a field name (nested at any level
+inside the object) that you have not specified a redaction policy for.
+
 #### Basic Usage
 
 ```ts
