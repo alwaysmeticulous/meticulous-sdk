@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    /* Projects */
+    "tsBuildInfoFile": "tsconfig.tsbuildinfo",
+    /* Modules */
+    "rootDir": "./src",
+    /* Emit */
+    "outDir": "./dist/tsc"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
