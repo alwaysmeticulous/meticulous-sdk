@@ -55,7 +55,7 @@ const redacted2 = redactString("test@example.com"); // returns "____@_______.com
 // etc.
 ```
 
-See [redactString.spec.ts](packages/redaction/src/generic/__tests__/redact-string.spec.ts) for more examples.
+See [redactString.spec.ts](src/generic/__tests__/redact-string.spec.ts) for more examples.
 
 ### NestedFieldsRedactor
 
@@ -139,12 +139,12 @@ const complexApiTypeRedactor = NestedFieldsRedactor.builderWithDefaults().create
 #### Pattern Based Redactors
 
 You can also specify redactors that match field names that end with a given postfix, while preserving
-compile-time type safety. See [common-redactors.ts](packages/redaction/src/generic/redact-nested-fields/common-redactors.ts)
-and [redact-nested-fields.ts](packages/redaction/src/generic/redact-nested-fields/redact-nested-fields.ts) for some examples.
+compile-time type safety. See [common-redactors.ts](src/generic/redact-nested-fields/common-redactors.ts)
+and [redact-nested-fields.ts](src/generic/redact-nested-fields/redact-nested-fields.ts) for some examples.
 
 ### redactRecursively
 
-Recursively iterates through a JSON object applying the provided redaction function. See [redact-recursively.spec.ts](packages/redaction/src/generic/__tests__/redact-recursively.spec.ts) for more details.
+Recursively iterates through a JSON object applying the provided redaction function. See [redact-recursively.spec.ts](src/generic/__tests__/redact-recursively.spec.ts) for more details.
 
 This can be combined with `NestedFieldsRedactor` to provide extra safety. For example:
 
