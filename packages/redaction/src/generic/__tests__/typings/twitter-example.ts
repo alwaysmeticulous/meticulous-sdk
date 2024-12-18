@@ -1,23 +1,3 @@
-// User-related types
-export type UserVerificationType = "blue" | "business" | "government" | "none";
-
-interface TwitterUser {
-  id: string;
-  username: string;
-  display_name: string;
-  verified: boolean;
-  verification_type: UserVerificationType;
-  created_at: Date;
-  description: string | null;
-  location: string | null;
-  url: string | null;
-  protected: boolean;
-  followers_count: number;
-  following_count: number;
-  tweet_count: number;
-  listed_count: number;
-}
-
 interface MediaEntity {
   type: "photo" | "video" | "animated_gif";
   media_key: string;
@@ -81,47 +61,4 @@ export interface Quote {
   conversation_id: string;
   created_at: string;
   quote_text: string;
-}
-
-// Search and filtering types
-type ResultType = "mixed" | "recent" | "popular";
-
-interface SearchParameters {
-  query: string;
-  max_results?: number;
-  result_type?: ResultType;
-  lang?: string;
-  until?: string;
-  since_id?: string;
-  max_id?: string;
-  include_entities?: boolean;
-}
-
-// API response types
-interface PaginatedResponse<T> {
-  data: T[];
-  meta: {
-    result_count: number;
-    newest_id?: string;
-    oldest_id?: string;
-    next_token?: string;
-    previous_token?: string;
-  };
-  includes?: {
-    users?: TwitterUser[];
-    tweets?: Tweet[];
-    media?: MediaEntity[];
-  };
-}
-
-// API endpoint function types
-interface TwitterAPIEndpoints {
-  getTweet(id: string): Promise<{ data: Tweet }>;
-  getUserByUsername(username: string): Promise<{ data: TwitterUser }>;
-  search(params: SearchParameters): Promise<PaginatedResponse<Tweet>>;
-  postTweet(data: {
-    text: string;
-    reply?: { in_reply_to_tweet_id: string };
-  }): Promise<{ data: Tweet }>;
-  deleteTweet(id: string): Promise<void>;
 }

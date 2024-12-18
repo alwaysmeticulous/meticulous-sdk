@@ -57,7 +57,8 @@ export const FREE_TEXT_REDACTORS = PatternBasedRedactorSet.create<string>()
   .with(redactKeysEndingWith("summary", redactString))
   .with(redactKeysEndingWith("title", redactString));
 
-export const redactDateOfBirth = (_date: Date): Date => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const redactDateOfBirth = (_: Date): Date => {
   return new Date(0);
 };
 

@@ -45,7 +45,7 @@ describe("redactRecursively", () => {
   });
 
   it("passes the json path to the redaction function", () => {
-    const redactString = jest.fn((str, path) => asterixOut(str));
+    const redactString = jest.fn((str) => asterixOut(str));
     redactRecursively(
       {
         a: {

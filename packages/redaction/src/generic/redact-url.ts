@@ -29,5 +29,5 @@ export const redactUrl = (url: string) => {
 };
 
 export const redactPath = (path: string) => {
-  return path.replace(/\/[^\/]+/g, "/redacted");
+  return path.replace(/\/[^/]+/g, "/redacted");
 };
