@@ -136,3 +136,35 @@ const complexApiTypeRedactor = NestedFieldsRedactor.builderWithDefaults().create
 You can also specify redactors that match field names that end with a given postfix, while preserving
 compile-time type safety. See [common-redactors.ts](packages/redaction/src/generic/common-redactors.ts)
 and [redact-nested-fields.ts](packages/redaction/src/generic/redact-nested-fields.ts) for some examples.
+
+### redactRecursively
+
+Recursively iterates through a JSON object applying the provided redaction function. See [redact-recursively.spec.ts](packages/redaction/src/generic/__tests__/redact-recursively.spec.ts) for more details.
+
+This can be combined with `NestedFieldsRedactor` to provide extra safety. For example:
+
+```
+const complexApiTypeRedactor = NestedFieldsRedactor.builder().createRedactor<MyComplexApiType>({
+  strings: {
+    ssn: redactString,
+    mobile: redactString,
+    home: redactString,
+  },
+});
+
+const redactAnythingThatLooksLikeAnSSN = <T>(data: T) => redactRecursively(
+    data,
+    {
+      redactString: (str) => looksLikeAnSSN(str) ? asterixOut(str) : str,
+    }
+  );
+
+const middleware = [
+  transformJsonResponse({
+    urlRegExp: /https:\/\/api\.example\.com\/.*/,
+    transform: (data: MyComplexApiType) => {
+      return redactAnythingThatLooksLikeAnSSN(complexApiTypeRedactor(data));
+    },
+  }),
+];
+```

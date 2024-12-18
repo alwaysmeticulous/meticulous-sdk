@@ -1,4 +1,6 @@
 import { asterixOut } from "../asterix-out";
+import { doNotRedact } from "../redact-nested-fields/common-redactors";
+import { redactKey } from "../redact-nested-fields/pattern-based-redactors";
 import { NestedFieldsRedactor } from "../redact-nested-fields/redact-nested-fields";
 import { Tweet } from "./typings/twitter-example";
 
@@ -168,5 +170,199 @@ describe("redactNestedFields", () => {
         "type": "tweet",
       }
     `);
+  });
+
+  it("can redact primative arrays", () => {
+    interface WithPrimativeArray {
+      phoneNumbers: string[];
+    }
+
+    const redactor =
+      NestedFieldsRedactor.builder().createRedactor<WithPrimativeArray>({
+        strings: {
+          phoneNumbers: asterixOut,
+        },
+      });
+
+    const redacted = redactor({
+      phoneNumbers: ["123 456 7890", "098 765 4321"],
+    });
+
+    expect(redacted).toMatchInlineSnapshot(`
+      {
+        "phoneNumbers": [
+          "*** *** ****",
+          "*** *** ****",
+        ],
+      }
+    `);
+  });
+
+  it("only applies string redactors to string fields", () => {
+    interface WithStringFields {
+      field: string;
+      nested: {
+        field: number;
+      };
+    }
+
+    const redactor =
+      NestedFieldsRedactor.builder().createRedactor<WithStringFields>({
+        strings: {
+          field: asterixOut,
+        },
+      });
+
+    const redacted = redactor({
+      field: "hello",
+      nested: {
+        field: 123,
+      },
+    });
+
+    expect(redacted).toMatchInlineSnapshot(`
+      {
+        "field": "*****",
+        "nested": {
+          "field": 123,
+        },
+      }
+    `);
+  });
+
+  it("prefers explict redactors to pattern based redactors", () => {
+    interface WithStringFields {
+      field: string;
+    }
+
+    const redactor = NestedFieldsRedactor.builder()
+      .withPatternBasedStringRedactor(redactKey("field", asterixOut))
+      .createRedactor<WithStringFields>({
+        strings: {
+          field: () => "Hello World",
+        },
+      });
+
+    const redacted = redactor({
+      field: "Some Text",
+    });
+
+    expect(redacted).toMatchInlineSnapshot(`
+      {
+        "field": "Hello World",
+      }
+    `);
+  });
+
+  it("preserves null vs undefined vs absent", () => {
+    interface EdgeCases {
+      null: null;
+      undefined: undefined;
+      missing?: never;
+    }
+
+    const redactor = NestedFieldsRedactor.builder().createRedactor<EdgeCases>({
+      strings: {},
+    });
+
+    const redacted = redactor({
+      null: null,
+      undefined: undefined,
+    });
+
+    expect(redacted).toMatchInlineSnapshot(`
+      {
+        "null": null,
+        "undefined": undefined,
+      }
+    `);
+  });
+
+  it("preserves functions, symbols and booleans", () => {
+    interface WithFunctions {
+      fn: () => string;
+      bool: boolean;
+      symbol: symbol;
+    }
+
+    const redactor =
+      NestedFieldsRedactor.builder().createRedactor<WithFunctions>({
+        strings: {},
+      });
+
+    const redacted = redactor({
+      fn: () => "hello",
+      bool: true,
+      symbol: Symbol("hello"),
+    });
+
+    expect(redacted).toMatchInlineSnapshot(`
+      {
+        "bool": true,
+        "fn": [Function],
+        "symbol": Symbol(hello),
+      }
+    `);
+  });
+
+  it("drops non-enumerable properties", () => {
+    class MyClass {
+      public secret = "hello";
+
+      public helloWorld() {
+        return "hi";
+      }
+    }
+
+    const redactor = NestedFieldsRedactor.builder().createRedactor<MyClass>({
+      strings: {
+        secret: asterixOut,
+      },
+    });
+
+    const redacted = redactor(new MyClass());
+
+    expect(redacted).toMatchInlineSnapshot(`
+      {
+        "secret": "*****",
+      }
+    `);
+  });
+
+  // Returning the original object preserve performance, particularly when nesting redactors
+  it("returns the original object if no redactors apply", () => {
+    interface AnObject {
+      field1: string;
+      nested: {
+        field2: number;
+        nestedArray: Array<{
+          field3: boolean;
+        }>;
+        nullValue: null;
+      };
+    }
+
+    const redactor = NestedFieldsRedactor.builder().createRedactor<AnObject>({
+      strings: {
+        field1: doNotRedact,
+      },
+    });
+
+    const original = {
+      field1: "Some Text",
+      nested: {
+        field2: 123,
+        nestedArray: [
+          {
+            field3: true,
+          },
+        ],
+        nullValue: null,
+      },
+    };
+    const redacted = redactor(original);
+
+    expect(redacted).toEqual(original);
+    expect(redacted).toBe(original);
   });
 });
