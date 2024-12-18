@@ -31,7 +31,14 @@ export interface SessionData {
      * Only present on recordings since ~Aug 2024
      */
     indexedDb?: {
-      state: IDBObjectStoreSnapshot[];
+      /**
+       * createObjectStoreOptions will be omitted when snapshotting an object store entry on the fly.
+       * @see IDBObjectStoreMetadata.snapshotEntriesOnRead for more details.
+       */
+      state: (
+        | IDBObjectStoreSnapshot
+        | Omit<IDBObjectStoreSnapshot, "createObjectStoreOptions">
+      )[];
     };
   };
 
@@ -117,6 +124,12 @@ export interface EarlyRequest {
 export interface IDBObjectStoreMetadata {
   databaseName: string;
   objectStoreName: string;
+  /**
+   * If true, then we only snapshot the entries as they are read from the object store.
+   * This can be useful if the object store is typically large and we don't want to snapshot
+   * the entire thing.
+   */
+  snapshotEntriesOnRead?: boolean;
   serialize?: (value: any) => string;
   deserialize?: (value: string) => any;
   /**
@@ -149,16 +162,19 @@ export type IDBObjectStoreSnapshot = Pick<
 > & {
   createObjectStoreOptions: IDBObjectStoreParameters;
   /**
-   * Entry values are JSON stringified by default. JSON representable objects, arrays and primitives are supported.
-   * For all other types (e.g. Date, Regex, ArrayBuffer etc.), you can define a custom [de]serialize function on the
-   * object store metadata to dictate how the value should be mapped to/from strings. @see IDBObjectStoreMetadata
+   * Entry values are serialized with SuperJSON by default. JSON representable objects, arrays and primitives are
+   * supported as well as more complex types (e.g. Date, Regex, ArrayBuffer etc.). However, you can add custom
+   * serialization logic to the object store metadata to support object store specific types.
+   * @see IDBObjectStoreMetadata.serialize
    */
   entries: {
     key?: SerializedIDBValidKey;
     value: string;
-    // This may be present for snapshots taken since ~Dec 2024 when we started using SuperJSON.
-    // If it's present, this field stores the SuperJSONResult.meta field, with the text from SuperJSON.json being stored
-    // in the value field above.
+    /**
+     * This may be present for snapshots taken since ~Dec 2024 when we started using SuperJSON.
+     * If it's present, this field stores the SuperJSONResult.meta field, with the stringified
+     * text of SuperJSON.json being stored in the value field above.
+     */
     valueMeta?: {
       values?: unknown;
       referentialEqualities?: unknown;
