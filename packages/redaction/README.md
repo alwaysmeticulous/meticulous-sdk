@@ -121,7 +121,7 @@ for most common field names. If there are any string fields not covered by those
 force you to specify a redaction policy for them:
 
 ```ts
-const complexApiTypeRedactor = NestedFieldsRedactor.builder().createRedactor<MyComplexApiType>({
+const complexApiTypeRedactor = NestedFieldsRedactor.builderWithDefaults().createRedactor<MyComplexApiType>({
   strings: {
     // Don't need to specify a redaction policy for `ssn` as it's covered by the defaults,
     // but we do need to specify a redaction policy for `mobile` and `home` as they're not covered by the defaults.
