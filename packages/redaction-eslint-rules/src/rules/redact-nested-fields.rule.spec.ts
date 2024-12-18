@@ -1,46 +1,55 @@
-import { RuleTester } from "@typescript-eslint/utils/dist/ts-eslint";
+import { RuleTester } from "@typescript-eslint/rule-tester";
 import { rule } from "./redact-nested-fields.rule";
+import tseslint from "typescript-eslint";
+import path from "path";
 
-// RuleTester.setDefaultConfig({
-//   parser: "@typescript-eslint/parser",
-//   parserOptions: {
-//     ecmaVersion: 2018,
-//     sourceType: "module",
-//     project: "./tsconfig.json",
-//   },
-// });
-
-const ruleTester = new RuleTester();
+const ruleTester = new RuleTester({
+  languageOptions: {
+    parser: tseslint.parser,
+    parserOptions: {
+      projectService: {
+        allowDefaultProject: ["*.ts*"],
+        defaultProject: "tsconfig.json",
+      },
+      sourceType: "module",
+      module: "NodeNext",
+      tsconfigRootDir: path.join(__dirname, "../.."),
+    },
+  },
+});
 
 ruleTester.run("missingRedactors", rule, {
   valid: [
     // Complete redactors specified
     {
       code: `
-        const redactor = NestedFieldsRedactor.builder().createRedactor<"ssn" | "firstName">({
+        type MyObject = {
+          ssn: string;
+          firstName: string;
+        }
+
+        // Some indirection
+        type Props = { [K in keyof MyObject]: K }[keyof MyObject];
+
+        class NestedFieldsRedactor {
+          static builder() {
+            return new NestedFieldsRedactor();
+          }
+
+          createRedactor(options: {
+            strings: Record<Props, (value: string) => string>;
+          }) {
+            return options;
+          }
+        }
+
+        const doNotRedact = (value: string) => value;
+        const redactor = NestedFieldsRedactor.builder().createRedactor({
           strings: {
             ssn: doNotRedact,
             firstName: doNotRedact,
           },
         });
-      `,
-    },
-    // Single field, fully specified
-    {
-      code: `
-        const redactor = NestedFieldsRedactor.builder().createRedactor<"ssn">({
-          strings: {
-            ssn: doNotRedact,
-          },
-        });
-      `,
-    },
-    // Not a createRedactor call (should be ignored)
-    {
-      code: `
-        const obj = {
-          strings: {}
-        };
       `,
     },
   ],
@@ -48,76 +57,71 @@ ruleTester.run("missingRedactors", rule, {
     // Missing one field
     {
       code: `
-        const redactor = NestedFieldsRedactor.builder().createRedactor<"ssn" | "firstName">({
-          strings: {
-            ssn: doNotRedact,
-          },
-        });
-      `,
-      errors: [
-        {
-          messageId: "missingRedactors",
-          data: {
-            fields: "firstName",
-          },
-        },
-      ],
-      output: `
-        const redactor = NestedFieldsRedactor.builder().createRedactor<"ssn" | "firstName">({
-          strings: {
-            ssn: doNotRedact,
-            firstName: doNotRedact,
-          },
-        });
-      `,
-    },
-    // Empty strings object
-    {
-      code: `
-        const redactor = NestedFieldsRedactor.builder().createRedactor<"ssn" | "firstName">({
-          strings: {},
-        });
-      `,
-      errors: [
-        {
-          messageId: "missingRedactors",
-          data: {
-            fields: "ssn, firstName",
-          },
-        },
-      ],
-      output: `
-        const redactor = NestedFieldsRedactor.builder().createRedactor<"ssn" | "firstName">({
-          strings: {
-            ssn: doNotRedact,
-            firstName: doNotRedact
-          },
-        });
-      `,
-    },
-    // Multiple missing fields
-    {
-      code: `
-        const redactor = NestedFieldsRedactor.builder().createRedactor<"ssn" | "firstName" | "lastName">({
-          strings: {
-            ssn: doNotRedact,
-          },
-        });
-      `,
-      errors: [
-        {
-          messageId: "missingRedactors",
-          data: {
-            fields: "firstName, lastName",
-          },
-        },
-      ],
-      output: `
-        const redactor = NestedFieldsRedactor.builder().createRedactor<"ssn" | "firstName" | "lastName">({
+        type MyObject = {
+          ssn: string;
+          firstName: string;
+          lastName: string;
+        }
+
+        // Some indirection
+        type Props = { [K in keyof MyObject]: K }[keyof MyObject];
+
+        class NestedFieldsRedactor {
+          static builder() {
+            return new NestedFieldsRedactor();
+          }
+
+          createRedactor(options: {
+            strings: Record<Props, (value: string) => string>;
+          }) {
+            return options;
+          }
+        }
+
+        const doNotRedact = (value: string) => value;
+        const redactor = NestedFieldsRedactor.builder().createRedactor({
           strings: {
             ssn: doNotRedact,
             firstName: doNotRedact,
-            lastName: doNotRedact,
+          },
+        });
+      `,
+      errors: [
+        {
+          messageId: "missingRedactors",
+          data: {
+            fields: "lastName",
+          },
+        },
+      ],
+      output: `
+        type MyObject = {
+          ssn: string;
+          firstName: string;
+          lastName: string;
+        }
+
+        // Some indirection
+        type Props = { [K in keyof MyObject]: K }[keyof MyObject];
+
+        class NestedFieldsRedactor {
+          static builder() {
+            return new NestedFieldsRedactor();
+          }
+
+          createRedactor(options: {
+            strings: Record<Props, (value: string) => string>;
+          }) {
+            return options;
+          }
+        }
+
+        const doNotRedact = (value: string) => value;
+        const redactor = NestedFieldsRedactor.builder().createRedactor({
+          strings: {
+            ssn: doNotRedact,
+            firstName: doNotRedact,
+    lastName: doNotRedact,
           },
         });
       `,

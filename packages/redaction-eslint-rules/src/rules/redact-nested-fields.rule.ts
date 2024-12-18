@@ -1,4 +1,8 @@
-import { ESLintUtils, TSESTree } from "@typescript-eslint/utils";
+import {
+  ESLintUtils,
+  ParserServices,
+  TSESTree,
+} from "@typescript-eslint/utils";
 import ts from "typescript";
 
 const createRule = ESLintUtils.RuleCreator(
@@ -17,7 +21,6 @@ export const rule = createRule<Options, keyof typeof messages>({
     type: "problem",
     docs: {
       description: "Ensures all required redactors are specified",
-      recommended: "error",
     },
     fixable: "code",
     schema: [],
@@ -30,68 +33,88 @@ export const rule = createRule<Options, keyof typeof messages>({
 
     return {
       CallExpression(node) {
-        // Check if this is a call to createRedactor
-        if (!isCreateRedactorCall(node)) return;
-
-        // Get the first argument (options object)
-        const optionsArg = node.arguments[0];
-        if (!optionsArg || !ts.isObjectLiteralExpression(optionsArg)) return;
-
-        // Get the strings property
-        const stringsProperty = optionsArg.properties.find(
-          (prop) =>
-            ts.isPropertyAssignment(prop) && prop.name.getText() === "strings"
-        );
-        if (!stringsProperty || !ts.isPropertyAssignment(stringsProperty))
+        if (node.callee.type !== TSESTree.AST_NODE_TYPES.MemberExpression) {
           return;
+        }
+        if (node.callee.property.type !== TSESTree.AST_NODE_TYPES.Identifier) {
+          return;
+        }
 
-        // Get the type parameter (KEY_TYPES)
-        const typeParameter = getTypeParameter(node, checker);
-        if (!typeParameter) return;
+        const propertyName = node.callee.property.name;
+        if (propertyName !== "createRedactor") {
+          return;
+        }
 
-        // Get all required field names from the type
-        const requiredFields = getRequiredFieldNames(typeParameter);
+        // For a specific node/file
+        const sourceFile = parserServices.program.getSourceFile(
+          context.getFilename()
+        );
+        const fileSpecificDiagnostics =
+          parserServices.program.getSemanticDiagnostics(sourceFile);
 
-        // Get existing field names from the strings object
-        const existingFields = getExistingFieldNames(
-          stringsProperty.initializer
+        const hasMissingPropertyError = fileSpecificDiagnostics.filter((e) =>
+          e.messageText.toString().match(/Property '.+' is missing in type/)
+        );
+        if (hasMissingPropertyError.length === 0) {
+          return;
+        }
+
+        const stringsProperty = getStringsProperty(node);
+        if (!stringsProperty) {
+          return;
+        }
+
+        const actualKeys = getFieldsWithRedactionPolicies(stringsProperty);
+
+        const paramType = getFirstParamType(
+          parserServices,
+          node.callee.property,
+          checker
+        );
+        if (!paramType) {
+          return;
+        }
+        const expectedKeys = getFieldsThatRequireRedactionPolicies(
+          paramType,
+          checker
+        );
+        const actualKeysSet = new Set(actualKeys);
+        const missingKeys = expectedKeys.filter(
+          (key) => !actualKeysSet.has(key)
         );
 
-        // Find missing fields
-        const missingFields = requiredFields.filter(
-          (field) => !existingFields.includes(field)
-        );
-
-        if (missingFields.length === 0) return;
+        if (missingKeys.length === 0) {
+          return;
+        }
 
         context.report({
           node: stringsProperty,
           messageId: "missingRedactors",
           data: {
-            fields: missingFields.join(", "),
+            fields: missingKeys,
           },
           fix(fixer) {
-            const sourceCode = context.getSourceCode();
-            const stringsObj = stringsProperty.initializer;
+            const stringsObject =
+              stringsProperty.value as TSESTree.ObjectExpression;
+            const lastProperty =
+              stringsObject.properties[stringsObject.properties.length - 1];
 
-            // If empty object, replace entirely
-            if (stringsObj.properties.length === 0) {
-              const newRedactors = missingFields
-                .map((field) => `${field}: doNotRedact`)
-                .join(",\n    ");
-              return fixer.replaceText(
-                stringsObj,
-                `{\n    ${newRedactors}\n  }`
+            if (!lastProperty) {
+              // If there are no properties, insert inside the braces
+              return fixer.insertTextAfter(
+                stringsObject.properties[0] || stringsObject,
+                `\n    ${missingKeys
+                  .map((field) => `${field}: doNotRedact`)
+                  .join(",\n    ")}\n  `
               );
             }
 
-            // Add missing fields to existing object
-            const lastProp =
-              stringsObj.properties[stringsObj.properties.length - 1];
-            const newRedactors = missingFields
-              .map((field) => `\n    ${field}: doNotRedact,`)
-              .join("");
-            return fixer.insertTextAfter(lastProp, newRedactors);
+            return fixer.insertTextAfter(
+              lastProperty,
+              `,\n    ${missingKeys
+                .map((field) => `${field}: doNotRedact`)
+                .join(",\n    ")}`
+            );
           },
         });
       },
@@ -99,34 +122,105 @@ export const rule = createRule<Options, keyof typeof messages>({
   },
 });
 
-// Helper functions
-function isCreateRedactorCall(node: TSESTree.CallExpression): boolean {
-  return (
-    node.callee.type === "MemberExpression" &&
-    node.callee.property.type === "Identifier" &&
-    node.callee.property.name === "createRedactor"
-  );
+function getStringsProperty(node: TSESTree.CallExpression) {
+  // Get the args from the call expression
+  const [firstArg] = node.arguments;
+
+  if (firstArg?.type === TSESTree.AST_NODE_TYPES.ObjectExpression) {
+    // Get the 'strings' property
+    const stringsProperty = firstArg.properties.find(
+      (prop): prop is TSESTree.Property =>
+        prop.type === "Property" &&
+        "name" in prop.key &&
+        prop.key.name === "strings"
+    );
+
+    if (
+      stringsProperty?.type === "Property" &&
+      stringsProperty.value.type === "ObjectExpression"
+    ) {
+      return stringsProperty;
+    }
+  }
+
+  return null;
 }
 
-function getTypeParameter(
-  node: TSESTree.CallExpression,
+function getFieldsWithRedactionPolicies(
+  stringsProperty: TSESTree.Property
+): string[] {
+  if (
+    stringsProperty?.type === "Property" &&
+    stringsProperty.value.type === "ObjectExpression"
+  ) {
+    // Extract keys from the strings object
+    return stringsProperty.value.properties
+      .map((prop) => {
+        if (prop.type === "Property" && "name" in prop.key) {
+          return prop.key.name;
+        }
+        return null;
+      })
+      .filter((key): key is string => key !== null);
+  }
+
+  return [];
+}
+
+function getFieldsThatRequireRedactionPolicies(
+  type: ts.Type,
   checker: ts.TypeChecker
-): ts.Type | undefined {
-  const signature = checker.getResolvedSignature(node);
-  if (!signature || !signature.typeParameters) return undefined;
-  return signature.typeParameters[0];
+): string[] {
+  // For Record<K,V>, we need to get the type reference
+  const stringsSymbol = type.getProperty("strings");
+  if (!stringsSymbol) {
+    return [];
+  }
+
+  if (!stringsSymbol.valueDeclaration) {
+    return [];
+  }
+
+  const stringsType = checker.getTypeOfSymbolAtLocation(
+    stringsSymbol,
+    stringsSymbol.valueDeclaration
+  );
+
+  const normalizedType = checker.typeToString(
+    stringsType!,
+    undefined, // enclosingDeclaration
+    ts.TypeFormatFlags.NoTruncation |
+      ts.TypeFormatFlags.NoTypeReduction |
+      ts.TypeFormatFlags.InTypeAlias
+  );
+
+  return normalizedType
+    .replace(/[{}]/g, "")
+    .split(";")
+    .map((prop) => prop.trim())
+    .filter(Boolean)
+    .map((prop) => prop.split(":")[0].trim());
 }
 
-function getRequiredFieldNames(type: ts.Type): string[] {
-  if (!type.isUnion()) return [];
-  return type.types
-    .filter((t) => t.isStringLiteral())
-    .map((t) => (t as ts.StringLiteralType).value);
-}
+function getFirstParamType(
+  parserServices: ParserServices,
+  node: TSESTree.Expression,
+  checker: ts.TypeChecker
+) {
+  const calleeType = checker.getTypeAtLocation(
+    parserServices.esTreeNodeToTSNodeMap.get(node)
+  );
 
-function getExistingFieldNames(obj: ts.Expression): string[] {
-  if (!ts.isObjectLiteralExpression(obj)) return [];
-  return obj.properties
-    .filter(ts.isPropertyAssignment)
-    .map((prop) => prop.name.getText());
+  // Get the declaration
+  const symbol = calleeType.getSymbol();
+  if (symbol) {
+    const decl = symbol.declarations?.[0];
+    if (decl && ts.isMethodDeclaration(decl)) {
+      const methodParams = decl.parameters;
+      // Get type of first parameter
+      if (methodParams.length > 0) {
+        return checker.getTypeAtLocation(methodParams[0]);
+      }
+    }
+  }
 }
