@@ -62,6 +62,7 @@ export interface OriginalTweet {
       id: string;
     }>;
     hashtags?: Array<{
+      id: number;
       start: number;
       end: number;
       tag: string;

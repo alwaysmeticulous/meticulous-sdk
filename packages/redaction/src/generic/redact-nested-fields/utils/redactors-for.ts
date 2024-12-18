@@ -49,9 +49,9 @@ type ToRedactorObject<T> = T extends [infer K, infer V]
 
 type TuplePairsToRedactorObject<T> = UnionToIntersection<ToRedactorObject<T>>;
 
-export type RedactorsFor<T, IGNORE_NUMBERS = true> = TuplePairsToRedactorObject<
-  RelevantPrimitiveFieldNames<
-    T,
-    IGNORE_NUMBERS extends true ? string | Date : string | Date | number
-  >
+export type RedactorsFor<
+  T,
+  PRIMATIVES_TO_REDACT = string
+> = TuplePairsToRedactorObject<
+  RelevantPrimitiveFieldNames<T, PRIMATIVES_TO_REDACT>
 >;
