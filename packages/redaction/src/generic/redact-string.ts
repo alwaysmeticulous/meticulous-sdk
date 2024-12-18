@@ -18,7 +18,7 @@ export const redactString = (str: string) => {
   }
 
   // Common number formats (SSNs, phone numbers, currency, etc)
-  if (str.match(/^[$£€¥#]?[\d -_./]+[%]?$/)) {
+  if (str.match(/^[$£€¥#]?[\d \-_.\/]+[%]?$/)) {
     return str.replace(/\d/g, "0");
   }
 
