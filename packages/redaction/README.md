@@ -32,7 +32,7 @@ To make it easier to redact large complex javascript types we provide a number o
 
 ### asterixOut
 
-This ensures the redacted text is the same length and has the same line breaks as the original text,
+This ensures the redacted text is the same length and has the same whitespace as the original text,
 thereby allowing you to test the same layout cases.
 
 ```ts
@@ -97,7 +97,7 @@ const middleware = [
 ];
 ```
 
-If you update MyComplexApiType to add a new 'name'string field:
+If you update MyComplexApiType to add a new `name` string field:
 
 ```ts
 interface MyComplexApiType {
