@@ -97,11 +97,12 @@ const middleware = [
 ];
 ```
 
-If you update MyComplexApiType to add a new string field:
+If you update MyComplexApiType to add a new 'name'string field:
 
 ```ts
 interface MyComplexApiType {
-  name: string;
+  name: string; // <<< ADDED
+
   details: {
     ssn: string;
     phoneNumbers: Array<{ mobile?: string; home?: string }>;
@@ -138,8 +139,8 @@ const complexApiTypeRedactor = NestedFieldsRedactor.builderWithDefaults().create
 #### Pattern Based Redactors
 
 You can also specify redactors that match field names that end with a given postfix, while preserving
-compile-time type safety. See [common-redactors.ts](packages/redaction/src/generic/common-redactors.ts)
-and [redact-nested-fields.ts](packages/redaction/src/generic/redact-nested-fields.ts) for some examples.
+compile-time type safety. See [common-redactors.ts](packages/redaction/src/generic/redact-nested-fields/common-redactors.ts)
+and [redact-nested-fields.ts](packages/redaction/src/generic/redact-nested-fields/redact-nested-fields.ts) for some examples.
 
 ### redactRecursively
 
@@ -147,7 +148,7 @@ Recursively iterates through a JSON object applying the provided redaction funct
 
 This can be combined with `NestedFieldsRedactor` to provide extra safety. For example:
 
-```
+```ts
 const complexApiTypeRedactor = NestedFieldsRedactor.builder().createRedactor<MyComplexApiType>({
   strings: {
     ssn: redactString,
