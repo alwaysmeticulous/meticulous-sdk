@@ -16,5 +16,5 @@ const redactComponent = (component: string) => {
   }
   // We repeat the string "redacted", since asterixes may not work with all parsers
   // redacted___@redac.red
-  return component.replace(/./g, "_");
+  return component.replace(/./g, "-");
 };

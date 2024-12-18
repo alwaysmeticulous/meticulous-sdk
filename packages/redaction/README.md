@@ -51,7 +51,7 @@ redacted data (e.g. "*******" is not a valid URL):
 import { redactString } from "@alwaysmeticulous/redaction";
 
 const redacted = redactString("some sensitive text"); // returns "**** ********* ****"
-const redacted2 = redactString("test@example.com"); // returns "____@_______.com"
+const redacted2 = redactString("test@example.com"); // returns "----@-------.com"
 // etc.
 ```
 

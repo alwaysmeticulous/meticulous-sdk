@@ -3,7 +3,7 @@ import { redactString } from "../redact-string";
 describe("redactString", () => {
   it("redacts emails correctly", () => {
     expect(redactString("test@example.com")).toMatchInlineSnapshot(
-      `"____@_______.com"`
+      `"----@-------.com"`
     );
   });
 
@@ -39,5 +39,11 @@ describe("redactString", () => {
 
   it("redacts decimal numbers correctly", () => {
     expect(redactString("12345678.90")).toMatchInlineSnapshot(`"00000000.00"`);
+  });
+
+  it("redacts credit card numbers correctly", () => {
+    expect(redactString("1234-5678-9012-3456")).toMatchInlineSnapshot(
+      `"0000-0000-0000-0000"`
+    );
   });
 });
