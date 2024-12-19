@@ -1,3 +1,4 @@
+import { redactString } from "../redact-string";
 import {
   ALL_DEFAULT_DATE_REDACTORS,
   ALL_DEFAULT_STRING_REDACTORS,
@@ -16,7 +17,8 @@ export class NestedFieldsRedactor<
     private readonly stringRedactors: Array<
       PatternBasedRedactor<string, string>
     >,
-    private readonly dateRedactors: Array<PatternBasedRedactor<string, Date>>
+    private readonly dateRedactors: Array<PatternBasedRedactor<string, Date>>,
+    private readonly defaultStringRedactor?: Redactor<string>
   ) {}
 
   public static builder() {
@@ -34,6 +36,13 @@ export class NestedFieldsRedactor<
     return new NestedFieldsRedactor<never, never>([], [])
       .withPatternBasedStringRedactors(ALL_DEFAULT_STRING_REDACTORS)
       .withPatternBasedDateRedactors(ALL_DEFAULT_DATE_REDACTORS);
+  }
+
+  public withDefaultStringRedactor(redactor: Redactor<string>) {
+    return new NestedFieldsRedactor<
+      HANDLED_STRING_KEY_TYPES,
+      HANDLED_DATE_KEY_TYPES
+    >(this.stringRedactors, this.dateRedactors, redactor);
   }
 
   public withPatternBasedStringRedactor<KEY_TYPE extends string>(
@@ -147,6 +156,7 @@ interface MultiTypeRedactors<T> {
   dates?: Partial<RedactorsFor<T, Date>>;
   numbers?: Partial<RedactorsFor<T, number>>;
   bigints?: Partial<RedactorsFor<T, bigint>>;
+  defaultStringRedactor?: Redactor<string>;
 }
 
 const createRedactor = <T>({
@@ -155,7 +165,34 @@ const createRedactor = <T>({
   numbers,
   bigints,
   patternBasedRedactors,
+  defaultStringRedactor,
 }: MultiTypeRedactors<T>): ((value: T) => T) => {
+  const indexedPatternBasedStringRedactors: {
+    byTrailingBigram: Record<
+      string,
+      Array<PatternBasedRedactor<string, string>>
+    >;
+    other: Array<PatternBasedRedactor<string, string>>;
+  } = {
+    byTrailingBigram: {},
+    other: [],
+  };
+  for (const redactor of patternBasedRedactors.strings) {
+    const keyMatch =
+      redactor.type === "key-postfix" ? redactor.postfix : redactor.key;
+    if (keyMatch.length >= 2) {
+      const trailingBigram = keyMatch.slice(-2);
+      indexedPatternBasedStringRedactors.byTrailingBigram[trailingBigram] = [
+        ...(indexedPatternBasedStringRedactors.byTrailingBigram[
+          trailingBigram
+        ] ?? []),
+        redactor,
+      ];
+    } else {
+      indexedPatternBasedStringRedactors.other.push(redactor);
+    }
+  }
+
   const redactFn = (value: T, key?: string): T => {
     if (
       value == null ||
@@ -170,15 +207,17 @@ const createRedactor = <T>({
       const fieldRedactor = key && strings ? (strings as any)[key] : undefined;
       if (!fieldRedactor) {
         const patternBasedRedactor = key
-          ? findApplicablePatternBasedRedactor(
+          ? findApplicablePatternBasedStringRedactor(
               key,
-              patternBasedRedactors.strings
+              indexedPatternBasedStringRedactors
             )
           : null;
         if (patternBasedRedactor) {
           return patternBasedRedactor.redactor(value) as T;
         }
-        return value;
+        return defaultStringRedactor
+          ? (defaultStringRedactor(value) as T)
+          : value;
       }
       return fieldRedactor(value);
     }
@@ -262,4 +301,29 @@ const findApplicablePatternBasedRedactor = <T>(
     }
     return false;
   });
+};
+
+const findApplicablePatternBasedStringRedactor = (
+  key: string,
+  indexedPatternBasedStringRedactors: {
+    byTrailingBigram: Record<
+      string,
+      Array<PatternBasedRedactor<string, string>>
+    >;
+    other: Array<PatternBasedRedactor<string, string>>;
+  }
+) => {
+  const redactor = findApplicablePatternBasedRedactor(
+    key,
+    indexedPatternBasedStringRedactors.other
+  );
+  if (redactor || key.length < 2) {
+    return redactor;
+  }
+  const redactorsMatchingBigram =
+    indexedPatternBasedStringRedactors.byTrailingBigram[key.slice(-2)] ?? [];
+  if (redactorsMatchingBigram.length === 0) {
+    return null;
+  }
+  return findApplicablePatternBasedRedactor(key, redactorsMatchingBigram);
 };
