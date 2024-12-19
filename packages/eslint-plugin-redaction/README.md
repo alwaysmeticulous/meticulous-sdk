@@ -1,5 +1,7 @@
 # `eslint-plugin-redaction`
 
+## Experimental: This plugin is experimental and may be removed in future.
+
 Auto-generates a default config for your .createRedactor() calls.
 
 This rule requires type information: when using please ensure that parserOptions.projectService is set to true in your eslint config,
