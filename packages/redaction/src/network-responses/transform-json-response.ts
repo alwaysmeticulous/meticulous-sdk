@@ -49,6 +49,7 @@ export const transformJsonResponse = <T>({
       let parsed: T;
       try {
         parsed = JSON.parse(response.content.text ?? "");
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_e) {
         // If it's not valid JSON we assume it is an error/failed response so doesn't need to be redacted
         if (skipRedactionIfNotValidJSON) {

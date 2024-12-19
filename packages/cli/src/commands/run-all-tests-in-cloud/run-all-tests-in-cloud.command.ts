@@ -78,6 +78,7 @@ const handler: (options: Options) => Promise<void> = async ({
   let tunnelData: TunnelData | null = null;
   try {
     const environment = getEnvironment();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { testRun } = await executeRemoteTestRun({
       apiToken,
       commitSha,

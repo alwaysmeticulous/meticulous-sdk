@@ -16,9 +16,9 @@
     "build": "yarn build:next && yarn build:scripts",
     "dev": "next dev -p 3005",
     "format": "prettier --write src",
-    "lint": "eslint src --ext=ts,tsx,js --cache",
+    "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
-    "lint:fix": "eslint src --ext=ts,tsx,js --cache --fix",
+    "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
     "depcheck": "depcheck --ignores='src,postcss,autoprefixer' --ignore-patterns='dist,*.eslintrc.json'"
   },
   "dependencies": {

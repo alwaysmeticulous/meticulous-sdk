@@ -23,6 +23,7 @@ export const redactUrl = (url: string) => {
       }
     }
     return parsedUrl.toString();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_e) {
     return asterixOut(url);
   }
