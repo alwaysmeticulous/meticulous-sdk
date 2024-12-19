@@ -12,8 +12,7 @@
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf dist tsconfig.tsbuildinfo",
-    "dev": "parcel watch",
-    "build": "parcel build",
+    "build": "tsc",
     "format": "prettier --write src",
     "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
@@ -35,7 +34,7 @@
     "eslint-plugin-eslint-plugin": "^6.3.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "8.18.0",
-    "minimatch": "^10.0.1"
+    "minimatch": "^9.0.3"
   },
   "author": {
     "name": "The Meticulous Team",
