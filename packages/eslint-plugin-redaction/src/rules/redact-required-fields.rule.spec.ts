@@ -1,7 +1,7 @@
-import { RuleTester } from "@typescript-eslint/rule-tester";
-import { rule } from "./redact-required-fields.rule";
-import tseslint from "typescript-eslint";
 import path from "path";
+import { RuleTester } from "@typescript-eslint/rule-tester";
+import tseslint from "typescript-eslint";
+import { rule } from "./redact-required-fields.rule";
 
 // This is a copy of the types from redactors-for.ts in the redaction package
 const COMMON_TYPES = `

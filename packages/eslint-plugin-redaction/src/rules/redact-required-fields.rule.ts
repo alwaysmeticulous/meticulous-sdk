@@ -59,7 +59,7 @@ export const rule = createRule<Options, keyof typeof messages>({
         }
 
         const methodProperty = node.callee.property;
-        let missingFields = getMissingFields(
+        const missingFields = getMissingFields(
           methodProperty,
           stringsProperty,
           parserServices,
@@ -187,48 +187,6 @@ const getFieldsWithRedactionPolicies = (
   }
 
   return [];
-};
-
-/**
- * Given the type of the 'opts' _parameter_ of the createRedactor method,
- * returns the list of fields that require redaction policies to be specified.
- */
-const getFieldsThatRequireRedactionPolicies = (
-  optsParameterType: ts.Type,
-  checker: ts.TypeChecker
-): string[] => {
-  // For Record<K,V>, we need to get the type reference
-  const stringsSymbol = optsParameterType.getProperty("strings");
-  if (!stringsSymbol) {
-    return [];
-  }
-
-  if (!stringsSymbol.valueDeclaration) {
-    return [];
-  }
-
-  const stringsType = checker.getTypeOfSymbolAtLocation(
-    stringsSymbol,
-    stringsSymbol.valueDeclaration
-  );
-
-  const normalizedType = checker.typeToString(
-    stringsType!,
-    undefined, // enclosingDeclaration
-    ts.TypeFormatFlags.NoTruncation |
-      ts.TypeFormatFlags.NoTypeReduction |
-      ts.TypeFormatFlags.InElementType |
-      ts.TypeFormatFlags.InTypeAlias
-  );
-
-  console.log("normalizedType", normalizedType);
-
-  return normalizedType
-    .replace(/[{}]/g, "")
-    .split(";")
-    .map((prop) => prop.trim())
-    .filter(Boolean)
-    .map((prop) => prop.split(":")[0].trim());
 };
 
 const getTypeOfFirstMethodParameter = (
