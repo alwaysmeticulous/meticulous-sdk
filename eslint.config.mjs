@@ -1,10 +1,9 @@
-import { fixupConfigRules, fixupPluginRules } from "@eslint/compat";
-import _import from "eslint-plugin-import";
+import { fixupConfigRules } from "@eslint/compat";
+import { FlatCompat } from "@eslint/eslintrc";
+import js from "@eslint/js";
 import tsParser from "@typescript-eslint/parser";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,8 +62,8 @@ export default [
   {
     languageOptions: {
       parser: tsParser,
-      ecmaVersion: "latest", // Changed from 5 to "latest"
-      sourceType: "module", // Changed from "script" to "module"
+      ecmaVersion: "latest",
+      sourceType: "module",
 
       parserOptions: {
         project: ["packages/*/tsconfig.json"],
