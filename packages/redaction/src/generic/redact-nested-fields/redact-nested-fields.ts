@@ -156,6 +156,32 @@ const createRedactor = <T>({
   bigints,
   patternBasedRedactors,
 }: MultiTypeRedactors<T>): ((value: T) => T) => {
+  const indexedPatternBasedStringRedactors: {
+    byTrailingBigram: Record<
+      string,
+      Array<PatternBasedRedactor<string, string>>
+    >;
+    other: Array<PatternBasedRedactor<string, string>>;
+  } = {
+    byTrailingBigram: {},
+    other: [],
+  };
+  for (const redactor of patternBasedRedactors.strings) {
+    const keyMatch =
+      redactor.type === "key-postfix" ? redactor.postfix : redactor.key;
+    if (keyMatch.length >= 2) {
+      const trailingBigram = keyMatch.slice(-2);
+      indexedPatternBasedStringRedactors.byTrailingBigram[trailingBigram] = [
+        ...(indexedPatternBasedStringRedactors.byTrailingBigram[
+          trailingBigram
+        ] ?? []),
+        redactor,
+      ];
+    } else {
+      indexedPatternBasedStringRedactors.other.push(redactor);
+    }
+  }
+
   const redactFn = (value: T, key?: string): T => {
     if (
       value == null ||
@@ -170,9 +196,9 @@ const createRedactor = <T>({
       const fieldRedactor = key && strings ? (strings as any)[key] : undefined;
       if (!fieldRedactor) {
         const patternBasedRedactor = key
-          ? findApplicablePatternBasedRedactor(
+          ? findApplicablePatternBasedStringRedactor(
               key,
-              patternBasedRedactors.strings
+              indexedPatternBasedStringRedactors
             )
           : null;
         if (patternBasedRedactor) {
@@ -262,4 +288,29 @@ const findApplicablePatternBasedRedactor = <T>(
     }
     return false;
   });
+};
+
+const findApplicablePatternBasedStringRedactor = (
+  key: string,
+  indexedPatternBasedStringRedactors: {
+    byTrailingBigram: Record<
+      string,
+      Array<PatternBasedRedactor<string, string>>
+    >;
+    other: Array<PatternBasedRedactor<string, string>>;
+  }
+) => {
+  const redactor = findApplicablePatternBasedRedactor(
+    key,
+    indexedPatternBasedStringRedactors.other
+  );
+  if (redactor || key.length < 2) {
+    return redactor;
+  }
+  const redactorsMatchingBigram =
+    indexedPatternBasedStringRedactors.byTrailingBigram[key.slice(-2)] ?? [];
+  if (redactorsMatchingBigram.length === 0) {
+    return null;
+  }
+  return findApplicablePatternBasedRedactor(key, redactorsMatchingBigram);
 };
