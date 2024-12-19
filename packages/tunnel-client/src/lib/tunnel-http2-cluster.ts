@@ -84,6 +84,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
       });
 
       // Drop host & connection header from the original request. Let Node handle it.
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { host, connection, ..._headersToForward } = req.headers;
 
       // Also drop HTTP2 pseudo headers
@@ -111,8 +112,11 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
         (clientRes) => {
           // Drop HTTP1 specific headers
           const {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             connection,
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             "keep-alive": _,
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             "transfer-encoding": __,
             ...headersToForward
           } = clientRes.headers;

@@ -24,6 +24,7 @@ export const replayAndStoreResults = async (
     "replay/v3/replay-and-store-results.bundle.js"
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   return (await require(bundleLocation)).replayAndStoreResults({
     ...options,
     chromeExecutablePath: getChromiumExecutablePath(),
@@ -45,6 +46,7 @@ export const executeScheduledTestRun = async (
     EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   return (await require(bundleLocation)).executeTestRunV2({
     ...options,
     chromeExecutablePath: getChromiumExecutablePath(),
@@ -63,6 +65,7 @@ export const executeScheduledTestRunChunk = async (
     EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   return (await require(bundleLocation)).executeTestRunChunk({
     ...options,
     chromeExecutablePath: getChromiumExecutablePath(),
@@ -78,6 +81,7 @@ export const executeTestRun = async (
     "replay/v3/execute-test-run.bundle.js"
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   return (await require(bundleLocation)).executeTestRun({
     ...options,
     chromeExecutablePath: getChromiumExecutablePath(),

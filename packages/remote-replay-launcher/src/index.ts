@@ -50,7 +50,8 @@ export const executeRemoteTestRun = async ({
   let url: URL;
   try {
     url = new URL(appUrl);
-  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (_error) {
     throw new Error(`Invalid app URL: ${appUrl}`);
   }
 

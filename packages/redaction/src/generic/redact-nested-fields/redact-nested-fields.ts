@@ -122,7 +122,7 @@ export class NestedFieldsRedactor<
     } as any as MultiTypeRedactors<T>);
   }
 
-  public redactNestedStringFieldsNonTypeSafe = <T>(opts: {
+  public createRedactorLax = <T>(opts: {
     strings: Record<string, Redactor<string>>;
     dates?: Record<string, Redactor<Date>>;
     numbers?: Record<string, Redactor<number>>;
