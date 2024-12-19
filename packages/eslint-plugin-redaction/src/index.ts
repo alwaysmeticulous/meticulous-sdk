@@ -1,17 +1,12 @@
 import { rule as redactRequiredFields } from "./rules/redact-required-fields.rule.js";
 
-const { name, version } =
-  // `import`ing here would bypass the TSConfig's `"rootDir": "src"`
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require("../package.json") as typeof import("../package.json");
-
 const plugin = {
   configs: {
     get recommended() {
       return recommended;
     },
   },
-  meta: { name, version },
+  meta: { name: "@alwaysmeticulous/eslint-plugin-redaction", version: "0.0.1" },
   rules: {
     "redact-required-fields": redactRequiredFields,
   },

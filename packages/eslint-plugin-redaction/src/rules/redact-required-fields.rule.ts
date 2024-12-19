@@ -197,13 +197,20 @@ const getTypeOfFirstMethodParameter = (
   const calleeType = checker.getTypeAtLocation(
     parserServices.esTreeNodeToTSNodeMap.get(node)
   );
+  console.log("calleeType", calleeType);
 
   // Get the declaration
   const symbol = calleeType.getSymbol();
   if (symbol) {
+    console.log("symbol", symbol);
     const decl = symbol.declarations?.[0];
-    if (decl && ts.isMethodDeclaration(decl)) {
-      const methodParams = decl.parameters;
+    console.log("decl", decl);
+    if (
+      decl &&
+      (ts.isMethodDeclaration(decl) || ts.isPropertySignature(decl))
+    ) {
+      const methodParams = (decl as ts.MethodDeclaration).parameters;
+      console.log("methodParams", methodParams);
       // Get type of first parameter
       if (methodParams.length > 0) {
         return checker.getTypeAtLocation(methodParams[0]);

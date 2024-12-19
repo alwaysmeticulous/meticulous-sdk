@@ -1,6 +1,6 @@
 import path from "path";
 import { RuleTester } from "@typescript-eslint/rule-tester";
-import tseslint from "typescript-eslint";
+import { parser } from "typescript-eslint";
 import { rule } from "./redact-required-fields.rule";
 
 // This is a copy of the types from redactors-for.ts in the redaction package
@@ -79,7 +79,7 @@ const doNotRedact = (value: string) => value;
 
 const ruleTester = new RuleTester({
   languageOptions: {
-    parser: tseslint.parser,
+    parser,
     parserOptions: {
       projectService: {
         allowDefaultProject: ["*.ts*"],

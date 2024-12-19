@@ -104,6 +104,17 @@ describe("redactNestedFields", () => {
         strings: {
           tag: doNotRedact,
           media_key: doNotRedact,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
+    in_reply_to_user_id: doNotRedact,
+    id: doNotRedact,
+    id: doNotRedact,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
         },
       });
 
@@ -181,6 +192,17 @@ describe("redactNestedFields", () => {
       NestedFieldsRedactor.builder().createRedactor<WithPrimativeArray>({
         strings: {
           phoneNumbers: asterixOut,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
+    in_reply_to_user_id: doNotRedact,
+    id: doNotRedact,
+    id: doNotRedact,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
         },
       });
 
@@ -210,6 +232,17 @@ describe("redactNestedFields", () => {
       NestedFieldsRedactor.builder().createRedactor<WithStringFields>({
         strings: {
           field: asterixOut,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
+    in_reply_to_user_id: doNotRedact,
+    id: doNotRedact,
+    id: doNotRedact,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
         },
       });
 
@@ -240,6 +273,17 @@ describe("redactNestedFields", () => {
       .createRedactor<WithStringFields>({
         strings: {
           field: () => "Hello World",
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
+    in_reply_to_user_id: doNotRedact,
+    id: doNotRedact,
+    id: doNotRedact,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
         },
       });
 
@@ -262,7 +306,19 @@ describe("redactNestedFields", () => {
     }
 
     const redactor = NestedFieldsRedactor.builder().createRedactor<EdgeCases>({
-      strings: {},
+      strings: {}
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
+    in_reply_to_user_id: doNotRedact,
+    id: doNotRedact,
+    id: doNotRedact,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact
+  ,
     });
 
     const redacted = redactor({
@@ -287,7 +343,19 @@ describe("redactNestedFields", () => {
 
     const redactor =
       NestedFieldsRedactor.builder().createRedactor<WithFunctions>({
-        strings: {},
+        strings: {}
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
+    in_reply_to_user_id: doNotRedact,
+    id: doNotRedact,
+    id: doNotRedact,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact
+  ,
       });
 
     const redacted = redactor({
@@ -317,6 +385,17 @@ describe("redactNestedFields", () => {
     const redactor = NestedFieldsRedactor.builder().createRedactor<MyClass>({
       strings: {
         secret: asterixOut,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
+    in_reply_to_user_id: doNotRedact,
+    id: doNotRedact,
+    id: doNotRedact,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
       },
     });
 
@@ -345,6 +424,17 @@ describe("redactNestedFields", () => {
     const redactor = NestedFieldsRedactor.builder().createRedactor<AnObject>({
       strings: {
         field1: doNotRedact,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
+    in_reply_to_user_id: doNotRedact,
+    id: doNotRedact,
+    id: doNotRedact,
+    text: doNotRedact,
+    author_id: doNotRedact,
+    conversation_id: doNotRedact,
+    created_at: doNotRedact,
       },
     });
 
