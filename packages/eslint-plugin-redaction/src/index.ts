@@ -19,7 +19,7 @@ const plugin = {
 
 const recommended = {
   plugins: {
-    "example-typed-linting": plugin,
+    "redact-required-fields": plugin,
   },
   rules: {
     "redact-required-fields": redactRequiredFields,
