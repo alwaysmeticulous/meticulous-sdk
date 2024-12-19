@@ -1,5 +1,5 @@
 {
-  "name": "@alwaysmeticulous/redaction-eslint-rules",
+  "name": "@alwaysmeticulous/eslint-plugin-redaction",
   "version": "1.0.0",
   "license": "ISC",
   "source": "src/index.ts",
@@ -22,10 +22,10 @@
     "test": "jest"
   },
   "dependencies": {
-    "@alwaysmeticulous/redaction": "^2.187.0",
     "@typescript-eslint/utils": "8.18.0"
   },
   "devDependencies": {
+    "@alwaysmeticulous/redaction": "^2.187.0",
     "@eslint/js": "^9.16.0",
     "@types/eslint": "^9.6.1",
     "@types/eslint__js": "^8.42.3",
@@ -46,7 +46,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
-    "directory": "packages/redaction-eslint-rules"
+    "directory": "packages/eslint-plugin-redaction"
   },
   "bugs": {
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"

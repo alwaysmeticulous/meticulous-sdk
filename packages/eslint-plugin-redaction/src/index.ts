@@ -1,4 +1,4 @@
-import { rule as redactNestedFields } from "./rules/redact-nested-fields.rule.js";
+import { rule as redactRequiredFields } from "./rules/redact-required-fields.rule.js";
 
 const { name, version } =
   // `import`ing here would bypass the TSConfig's `"rootDir": "src"`
@@ -13,7 +13,7 @@ const plugin = {
   },
   meta: { name, version },
   rules: {
-    "redact-nested-fields": redactNestedFields,
+    "redact-required-fields": redactRequiredFields,
   },
 };
 
@@ -22,7 +22,7 @@ const recommended = {
     "example-typed-linting": plugin,
   },
   rules: {
-    "redact-nested-fields": redactNestedFields,
+    "redact-required-fields": redactRequiredFields,
   },
 };
 
