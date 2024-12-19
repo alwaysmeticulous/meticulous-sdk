@@ -1,3 +1,4 @@
+import { redactString } from "../redact-string";
 import {
   ALL_DEFAULT_DATE_REDACTORS,
   ALL_DEFAULT_STRING_REDACTORS,
@@ -16,7 +17,8 @@ export class NestedFieldsRedactor<
     private readonly stringRedactors: Array<
       PatternBasedRedactor<string, string>
     >,
-    private readonly dateRedactors: Array<PatternBasedRedactor<string, Date>>
+    private readonly dateRedactors: Array<PatternBasedRedactor<string, Date>>,
+    private readonly defaultStringRedactor?: Redactor<string>
   ) {}
 
   public static builder() {
@@ -34,6 +36,13 @@ export class NestedFieldsRedactor<
     return new NestedFieldsRedactor<never, never>([], [])
       .withPatternBasedStringRedactors(ALL_DEFAULT_STRING_REDACTORS)
       .withPatternBasedDateRedactors(ALL_DEFAULT_DATE_REDACTORS);
+  }
+
+  public withDefaultStringRedactor(redactor: Redactor<string>) {
+    return new NestedFieldsRedactor<
+      HANDLED_STRING_KEY_TYPES,
+      HANDLED_DATE_KEY_TYPES
+    >(this.stringRedactors, this.dateRedactors, redactor);
   }
 
   public withPatternBasedStringRedactor<KEY_TYPE extends string>(
@@ -147,6 +156,7 @@ interface MultiTypeRedactors<T> {
   dates?: Partial<RedactorsFor<T, Date>>;
   numbers?: Partial<RedactorsFor<T, number>>;
   bigints?: Partial<RedactorsFor<T, bigint>>;
+  defaultStringRedactor?: Redactor<string>;
 }
 
 const createRedactor = <T>({
@@ -155,6 +165,7 @@ const createRedactor = <T>({
   numbers,
   bigints,
   patternBasedRedactors,
+  defaultStringRedactor,
 }: MultiTypeRedactors<T>): ((value: T) => T) => {
   const indexedPatternBasedStringRedactors: {
     byTrailingBigram: Record<
@@ -204,7 +215,9 @@ const createRedactor = <T>({
         if (patternBasedRedactor) {
           return patternBasedRedactor.redactor(value) as T;
         }
-        return value;
+        return defaultStringRedactor
+          ? (defaultStringRedactor(value) as T)
+          : (redactString(value) as T);
       }
       return fieldRedactor(value);
     }
