@@ -1,4 +1,3 @@
-import { redactString } from "../redact-string";
 import {
   ALL_DEFAULT_DATE_REDACTORS,
   ALL_DEFAULT_STRING_REDACTORS,
