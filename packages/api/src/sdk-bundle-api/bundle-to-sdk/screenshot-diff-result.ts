@@ -187,7 +187,7 @@ export interface ScreenshotDiffResultDifference
    * If there are too many class names we truncate the {@link changedSectionsClassNames} list,
    * and this field will be true, otherwise this field will not be present.
    */
-  isChangedSectionsClassNamesListTruncated?: true;
+  isClassNamesListTruncated?: true;
 }
 
 /**
