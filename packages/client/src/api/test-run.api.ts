@@ -121,9 +121,11 @@ export const getLatestTestRunResults = async ({
 export const emitTelemetry = async ({
   client,
   values,
+  commitSha,
 }: {
   client: AxiosInstance;
   values: Record<string, number>;
+  commitSha?: string;
 }): Promise<void> => {
-  await client.post(`test-runs/telemetry`, { values });
+  await client.post(`test-runs/telemetry`, { values, commitSha });
 };
