@@ -101,6 +101,7 @@ export class NestedFieldsRedactor<
     dates?: Omit<Partial<RedactorsFor<T, Date>>, HANDLED_DATE_KEY_TYPES>;
     numbers?: Partial<RedactorsFor<T, number>>;
     bigints?: Partial<RedactorsFor<T, bigint>>;
+    defaultStringRedactor?: Redactor<string>;
   }) {
     return createRedactor({
       ...opts,
@@ -120,6 +121,7 @@ export class NestedFieldsRedactor<
     dates: Omit<RedactorsFor<T, Date>, HANDLED_DATE_KEY_TYPES>;
     numbers: RedactorsFor<T, number>;
     bigints: RedactorsFor<T, bigint>;
+    defaultStringRedactor?: Redactor<string>;
   }) {
     return createRedactor({
       ...opts,
@@ -135,6 +137,7 @@ export class NestedFieldsRedactor<
     dates?: Record<string, Redactor<Date>>;
     numbers?: Record<string, Redactor<number>>;
     bigints?: Record<string, Redactor<bigint>>;
+    defaultStringRedactor?: Redactor<string>;
   }): ((value: T) => T) => {
     return createRedactor({
       ...opts,
