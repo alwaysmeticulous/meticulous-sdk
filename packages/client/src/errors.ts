@@ -30,9 +30,6 @@ const enrichAxiosError = (error: AxiosError) => {
     message = requestAndResponse;
   }
 
-  console.log("request", error.request);
-  console.log("response", error.response);
-
   if (!message) {
     return error;
   }
