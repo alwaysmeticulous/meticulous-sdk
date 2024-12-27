@@ -1,4 +1,5 @@
-import { AxiosInstance, isAxiosError } from "axios";
+import { AxiosInstance } from "axios";
+import { maybeEnrichAxiosError } from "../errors";
 import { TestRun } from "./test-run.api";
 
 export interface GetBaseTestRunOptions {
@@ -31,15 +32,7 @@ export const getGitHubCloudReplayBaseTestRun = async ({
       }
     )
     .catch((error) => {
-      if (isAxiosError(error)) {
-        const errorMessage = error.response?.data?.message;
-
-        if (errorMessage) {
-          throw new Error(errorMessage);
-        }
-      }
-
-      throw error;
+      throw maybeEnrichAxiosError(error);
     });
 
   return data;
@@ -53,15 +46,7 @@ export const getGitHubCloudReplayRepoUrl = async ({
       "github-cloud-replay/repo-url"
     )
     .catch((error) => {
-      if (isAxiosError(error)) {
-        const errorMessage = error.response?.data?.message;
-
-        if (errorMessage) {
-          throw new Error(errorMessage);
-        }
-      }
-
-      throw error;
+      throw maybeEnrichAxiosError(error);
     });
 
   return data;

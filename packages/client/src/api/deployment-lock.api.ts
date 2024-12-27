@@ -1,4 +1,5 @@
-import { AxiosInstance, isAxiosError } from "axios";
+import { AxiosInstance } from "axios";
+import { maybeEnrichAxiosError } from "../errors";
 
 export interface GetIsLockedOptions {
   client: AxiosInstance;
@@ -14,15 +15,7 @@ export const getIsLocked = async ({
       params: { deploymentId },
     })
     .catch((error) => {
-      if (isAxiosError(error)) {
-        const errorMessage = error.response?.data?.message;
-
-        if (errorMessage) {
-          throw new Error(errorMessage);
-        }
-      }
-
-      throw error;
+      throw maybeEnrichAxiosError(error);
     });
 
   return data;

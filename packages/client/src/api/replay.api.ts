@@ -1,17 +1,17 @@
 import { Replay } from "@alwaysmeticulous/api";
-import axios, { AxiosInstance } from "axios";
+import { AxiosInstance, isAxiosError } from "axios";
+import { maybeEnrichAxiosError } from "../errors";
 
 export const getReplay = async (
   client: AxiosInstance,
   replayId: string
 ): Promise<Omit<Replay, "project">> => {
   const { data } = await client.get(`replays/${replayId}`).catch((error) => {
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 404) {
-        return { data: null };
-      }
+    if (isAxiosError(error) && error.response?.status === 404) {
+      return { data: null };
     }
-    throw error;
+
+    throw maybeEnrichAxiosError(error);
   });
   return data;
 };
@@ -28,12 +28,11 @@ export const getReplayDownloadUrl: (
   const { data } = await client
     .get<ReplayDownloadUrlOutput>(`replays/${replayId}/archive-url`)
     .catch((error) => {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 404) {
-          return { data: null };
-        }
+      if (isAxiosError(error) && error.response?.status === 404) {
+        return { data: null };
       }
-      throw error;
+
+      throw maybeEnrichAxiosError(error);
     });
   return data;
 };
@@ -61,12 +60,11 @@ export const getReplayV3DownloadUrls: (
   const { data } = await client
     .get<ReplayV3UploadLocations>(`replays/${replayId}/download-urls`)
     .catch((error) => {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 404) {
-          return { data: null };
-        }
+      if (isAxiosError(error) && error.response?.status === 404) {
+        return { data: null };
       }
-      throw error;
+
+      throw maybeEnrichAxiosError(error);
     });
   return data;
 };

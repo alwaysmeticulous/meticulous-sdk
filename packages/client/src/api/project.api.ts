@@ -1,5 +1,6 @@
 import { Project } from "@alwaysmeticulous/api";
-import axios, { AxiosInstance } from "axios";
+import { AxiosInstance, isAxiosError } from "axios";
+import { maybeEnrichAxiosError } from "../errors";
 
 export const getProject: (
   client: AxiosInstance
@@ -7,12 +8,11 @@ export const getProject: (
   const { data } = await client
     .get<Project>("projects/token-info")
     .catch((error) => {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 404) {
-          return { data: null };
-        }
+      if (isAxiosError(error) && error.response?.status === 404) {
+        return { data: null };
       }
-      throw error;
+
+      throw maybeEnrichAxiosError(error);
     });
   return data;
 };

@@ -1,17 +1,17 @@
 import { SessionData } from "@alwaysmeticulous/api";
-import axios, { AxiosInstance } from "axios";
+import { AxiosInstance, isAxiosError } from "axios";
+import { maybeEnrichAxiosError } from "../errors";
 
 export const getRecordedSession = async (
   client: AxiosInstance,
   sessionId: string
 ): Promise<any> => {
   const { data } = await client.get(`sessions/${sessionId}`).catch((error) => {
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 404) {
-        return { data: null };
-      }
+    if (isAxiosError(error) && error.response?.status === 404) {
+      return { data: null };
     }
-    throw error;
+
+    throw maybeEnrichAxiosError(error);
   });
   return data;
 };
@@ -23,12 +23,11 @@ export const getRecordedSessionData = async (
   const { data } = await client
     .get(`sessions/${sessionId}/data`)
     .catch((error) => {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 404) {
-          return { data: null };
-        }
+      if (isAxiosError(error) && error.response?.status === 404) {
+        return { data: null };
       }
-      throw error;
+
+      throw maybeEnrichAxiosError(error);
     });
   return data;
 };
