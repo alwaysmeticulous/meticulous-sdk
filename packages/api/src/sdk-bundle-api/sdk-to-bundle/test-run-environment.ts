@@ -56,6 +56,13 @@ export interface TestRunGitHubPushContext {
 
   /** GitHub Actions run ID that triggered this test run */
   runId?: number;
+
+  /**
+   * Defined if we fell back to marking the trigger as a push, because for some reason we couldn't
+   * identify a single pull request to post the comments & checks on; or we don't want to post any
+   * comments or checks on any pull requests
+   */
+  reasonPullRequestIsNotAvailable?: ReasonPullRequestIsNotAvailable;
 }
 
 export interface TestRunGitHubWorkflowDispatchContext {
@@ -163,3 +170,9 @@ export interface TestRunBitbucketPushContext {
   /** Git ref for the branch (/refs/head/<branch>) */
   ref: string;
 }
+
+export type ReasonPullRequestIsNotAvailable =
+  | "no-pull-requests-found-for-commit"
+  | "multiple-pull-requests-for-same-commit"
+  | "all-pull-requests-had-skip-meticulous-label"
+  | "only-found-merged-pull-requests-for-which-commit-is-the-merge-commit";
