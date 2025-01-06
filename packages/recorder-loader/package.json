@@ -20,7 +20,7 @@
     "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
     "depcheck": "depcheck --ignore-patterns=dist"
   },
-  "devDependencies": {
+  "dependencies": {
     "@alwaysmeticulous/sdk-bundles-api": "^2.189.0"
   },
   "author": {

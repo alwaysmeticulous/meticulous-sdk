@@ -2,9 +2,9 @@ import {
   ScreenshotAssertionsEnabledOptions,
   TestRunEnvironment,
 } from "@alwaysmeticulous/api";
-import { LogLevelNumbers } from "loglevel";
 import { RunningTestRunExecution } from "../bundle-to-sdk/execute-test-run";
 import { ReplayExecutionOptions } from "./execute-replay";
+import { LogLevelNumbers } from "./loglevel";
 
 export interface ExecuteTestRunOptions {
   chromeExecutablePath?: string;
