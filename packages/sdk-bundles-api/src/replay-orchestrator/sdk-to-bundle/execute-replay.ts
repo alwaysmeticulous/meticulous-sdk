@@ -6,8 +6,8 @@ import {
   ScreenshotDiffOptions,
   ScreenshottingEnabledOptions,
 } from "@alwaysmeticulous/api";
-import { LogLevelNumbers } from "loglevel";
 import { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
+import { LogLevelNumbers } from "./loglevel";
 
 export interface ReplayAndStoreResultsOptions {
   chromeExecutablePath?: string;
