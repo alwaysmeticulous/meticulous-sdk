@@ -65,7 +65,7 @@ const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2000;
  * ```
  */
 export const tryInstallMeticulousIntercepts = async (
-  options: InterceptorOptions = { maxMsToBlockFor: 2000 }
+  options: InterceptorOptions
 ): Promise<Interceptor> => {
   let requestedToStopIntercepting = false;
   let disposedEarlyNetworkRecorder = false;
