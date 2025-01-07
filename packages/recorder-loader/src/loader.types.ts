@@ -14,6 +14,14 @@ export interface LoaderOptions {
   snapshotLinkedStylesheets?: boolean;
   commitHash?: string;
 
+  /**
+   * If it takes more than the specified number of 'ms' to load the recorder,
+   * then the promise returned by tryLoadAndStartRecorder will return
+   * immediately (thereby unblocking the load of the application, but preventing
+   * Meticulous from recording a correct session, with all required network mocks).
+   *
+   * Defaults to 2000ms.
+   */
   maxMsToBlockFor?: number;
   snippetsBaseUrl?: string;
 
@@ -45,4 +53,14 @@ export interface LoaderOptions {
    * Please see JSDoc on {@link RecorderMiddleware} before implementing custom middleware.
    */
   middleware?: RecorderMiddleware[];
+
+  /**
+   * Load a specific fixed version of the snippet. If not set will load the
+   * latest minor/patch version of the recorder. Bumping to a new major
+   * version requires a bump of your @alwaysmeticulous/recorder-loader
+   * dependency.
+   *
+   * Recommendation: leave this unset
+   */
+  version?: string;
 }
