@@ -213,8 +213,16 @@ export type CustomUserEvent = {
   data: string;
 };
 
+export enum CustomDataInternalKey {
+  SystemThemePreferredColor = "met-system-theme-preferred-color",
+}
+
+export type CustomDataInternalValues = {
+  [CustomDataInternalKey.SystemThemePreferredColor]: "light" | "dark";
+};
+
 export type CustomData = {
-  singletons: Record<string, string>;
+  singletons: Record<string, string> & Partial<CustomDataInternalValues>;
   arrays: Record<string, string[]>;
   events: CustomUserEvent[];
 };
