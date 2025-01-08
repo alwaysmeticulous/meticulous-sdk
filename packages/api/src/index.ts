@@ -49,6 +49,8 @@ export {
   IDBObjectStoreSnapshot,
   IDBObjectStoreWithEntries,
   IDBIndexSnapshot,
+  CustomDataSingletonInternalKey,
+  CustomDataSingletonInternalValues,
   CustomData,
   CustomUserEvent,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
