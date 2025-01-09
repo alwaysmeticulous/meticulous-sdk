@@ -175,4 +175,5 @@ export type ReasonPullRequestIsNotAvailable =
   | "no-pull-requests-found-for-commit"
   | "multiple-pull-requests-for-same-commit"
   | "all-pull-requests-had-skip-meticulous-label"
-  | "only-found-merged-pull-requests-for-which-commit-is-the-merge-commit";
+  | "only-found-merged-pull-requests-for-which-commit-is-the-merge-commit"
+  | "commit-is-already-on-base-branch";
