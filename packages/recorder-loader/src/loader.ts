@@ -77,7 +77,9 @@ const unsafeLoadAndStartRecorder = ({
     script.type = "text/javascript";
     const baseSnippetsUrl = snippetsBaseUrl || SNIPPETS_BASE_URL;
     script.src = new URL(
-      `${getSnippetVersionFolder(version ?? null)}/meticulous-manual-init.js`,
+      `${version != null ? "record/" : ""}${getSnippetVersionFolder(
+        version ?? null
+      )}/meticulous-manual-init.js`,
       baseSnippetsUrl
     ).href;
 
