@@ -1,4 +1,5 @@
 import { SNIPPETS_BASE_URL } from "./constants";
+import { getSnippetVersionFolder } from "./get-snippet-version-folder";
 import { LoaderOptions } from "./loader.types";
 import { PrivateWindowApi } from "./private-window-api";
 
@@ -54,6 +55,7 @@ const unsafeLoadAndStartRecorder = ({
   middleware,
   responseSanitizers,
   isProduction,
+  version,
 }: LoaderOptions): Promise<Recorder> => {
   let abandoned = false;
 
@@ -74,7 +76,12 @@ const unsafeLoadAndStartRecorder = ({
     const script = document.createElement("script");
     script.type = "text/javascript";
     const baseSnippetsUrl = snippetsBaseUrl || SNIPPETS_BASE_URL;
-    script.src = new URL("v1/meticulous-manual-init.js", baseSnippetsUrl).href;
+    script.src = new URL(
+      `${version != null ? "record/" : ""}${getSnippetVersionFolder(
+        version ?? null
+      )}/meticulous-manual-init.js`,
+      baseSnippetsUrl
+    ).href;
 
     // Setup configuration
     const typedWindow = window;

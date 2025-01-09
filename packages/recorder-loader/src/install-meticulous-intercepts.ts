@@ -1,4 +1,5 @@
 import { SNIPPETS_BASE_URL } from "./constants";
+import { getSnippetVersionFolder } from "./get-snippet-version-folder";
 import { Recorder, tryLoadAndStartRecorder } from "./loader";
 import { LoaderOptions } from "./loader.types";
 import { PrivateWindowApi } from "./private-window-api";
@@ -7,6 +8,30 @@ export interface Interceptor {
   startRecordingSession: (options: LoaderOptions) => Promise<Recorder>;
   stopIntercepting: () => Promise<void>;
 }
+
+export interface InterceptorOptions {
+  /**
+   * If it takes more than the specified number of 'ms' to load the interceptor,
+   * then the promise returned by tryInstallMeticulousIntercepts will return
+   * immediately (thereby unblocking the load of the application, but preventing
+   * Meticulous from recording a correct session, with all required network mocks).
+   *
+   * Defaults to 2000ms.
+   */
+  maxMsToBlockFor?: number;
+
+  /**
+   * Load a specific fixed version of the snippet. If not set will load the
+   * latest minor/patch version of the recorder. Bumping to a new major
+   * version requires a bump of your @alwaysmeticulous/recorder-loader
+   * dependency.
+   *
+   * Recommendation: leave this unset
+   */
+  version?: string;
+}
+
+const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2000;
 
 /**
  * Stores a copy of network requests and responses in memory, but doesn't send them to the
@@ -40,7 +65,7 @@ export interface Interceptor {
  * ```
  */
 export const tryInstallMeticulousIntercepts = async (
-  options: { maxMsToBlockFor: number } = { maxMsToBlockFor: 2000 }
+  options: InterceptorOptions
 ): Promise<Interceptor> => {
   let requestedToStopIntercepting = false;
   let disposedEarlyNetworkRecorder = false;
@@ -58,17 +83,21 @@ export const tryInstallMeticulousIntercepts = async (
     stopIntercepting,
   };
 
+  const maxMsToBlockFor =
+    options.maxMsToBlockFor ?? DEFAULT_MAX_MS_TO_BLOCK_FOR;
   const promise = new Promise<Interceptor>((resolve, reject) => {
     const timeout =
-      options.maxMsToBlockFor > 0
+      maxMsToBlockFor > 0
         ? setTimeout(() => {
             resolve(interceptor);
-          }, options.maxMsToBlockFor)
+          }, maxMsToBlockFor)
         : null;
 
     const script = document.createElement("script");
     script.type = "text/javascript";
-    script.src = `${SNIPPETS_BASE_URL}/record/v1/network-recorder.bundle.js`;
+    script.src = `${SNIPPETS_BASE_URL}/record/${getSnippetVersionFolder(
+      options.version ?? null
+    )}/network-recorder.bundle.js`;
 
     script.onload = function () {
       if (timeout) {
