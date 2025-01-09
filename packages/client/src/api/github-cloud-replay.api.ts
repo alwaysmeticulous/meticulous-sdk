@@ -12,14 +12,6 @@ export interface GitHubBaseTestRunResponse {
   baseTestRun: TestRun | null;
 }
 
-export interface GetRepoUrlOptions {
-  client: AxiosInstance;
-}
-
-export interface GitHubRepoUrlResponse {
-  repoUrl: string;
-}
-
 export const getGitHubCloudReplayBaseTestRun = async ({
   client,
   headCommitSha,
@@ -30,20 +22,6 @@ export const getGitHubCloudReplayBaseTestRun = async ({
       {
         params: { headCommitSha },
       }
-    )
-    .catch((error) => {
-      throw maybeEnrichAxiosError(error);
-    });
-
-  return data;
-};
-
-export const getGitHubCloudReplayRepoUrl = async ({
-  client,
-}: GetRepoUrlOptions): Promise<GitHubRepoUrlResponse> => {
-  const { data } = await client
-    .get<unknown, { data: GitHubRepoUrlResponse }>(
-      "github-cloud-replay/repo-url"
     )
     .catch((error) => {
       throw maybeEnrichAxiosError(error);
