@@ -33,6 +33,10 @@ export const initSentry: (
       __filename.endsWith(".ts") || IS_METICULOUS_SUPER_USER
         ? "development"
         : "production",
+    ignoreErrors: [
+      "ReplayKillingPossibleUserError",
+      "SecureTunnelInactiveForAppUrlError",
+    ],
   });
 
   addExtensionMethods();
