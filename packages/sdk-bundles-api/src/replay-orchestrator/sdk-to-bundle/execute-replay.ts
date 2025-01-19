@@ -5,6 +5,7 @@ import {
   ScreenshotAssertionsEnabledOptions,
   ScreenshotDiffOptions,
   ScreenshottingEnabledOptions,
+  StorageEntry,
 } from "@alwaysmeticulous/api";
 import { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
 import { LogLevelNumbers } from "./loglevel";
@@ -235,6 +236,10 @@ export interface ReplayExecutionOptions {
    * Extra cookies to use during the replay. These will override cookies of the same name from the session under simulation.
    */
   extraCookies?: Cookie[];
+
+  extraLocalStorageEntries?: StorageEntry[];
+
+  extraSessionStorageEntries?: StorageEntry[];
 
   /**
    * Hash of the project settings at the time the test run or replay was initiated. Used as part of `ReplayLogicVersion`
