@@ -237,9 +237,9 @@ export interface ReplayExecutionOptions {
    */
   extraCookies?: Cookie[];
 
-  extraLocalStorageEntries?: StorageEntry[];
+  extraLocalStorageEntries?: StorageEntryOverride[];
 
-  extraSessionStorageEntries?: StorageEntry[];
+  extraSessionStorageEntries?: StorageEntryOverride[];
 
   /**
    * Hash of the project settings at the time the test run or replay was initiated. Used as part of `ReplayLogicVersion`
@@ -265,6 +265,15 @@ export interface ReplayExecutionOptions {
    * If true records CSS coverage for the replay.
    */
   enableCssCoverage?: boolean;
+}
+
+export interface StorageEntryOverride extends StorageEntry {
+  /**
+   * If true, the entry will not be added if it already exists in the session.
+   *
+   * If false or omitted the entry will be overridden if it already exists in the session.
+   */
+  ignoreIfEntryAlreadyExists?: true;
 }
 
 export interface VercelExecutionSettings {
