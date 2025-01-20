@@ -35,7 +35,7 @@ const enrichAxiosError = (error: AxiosError) => {
   }
 
   return new AxiosError(
-    error.message ? message + "\n\n" + error.message : message,
+    message,
     error.code,
     error.config,
     error.request,
@@ -59,7 +59,9 @@ const requestAndResponseToString = (
 const requestToString = (
   request: Pick<AxiosRequestConfig, "method" | "url">
 ) => {
-  return `${request.method} ${request.url}`;
+  return `${request.method?.toUpperCase()}${request.method ? " " : ""}${
+    request.url
+  }`;
 };
 
 const responseToString = (response: AxiosResponse) => {
