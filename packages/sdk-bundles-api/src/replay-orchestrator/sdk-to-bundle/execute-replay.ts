@@ -5,6 +5,7 @@ import {
   ScreenshotAssertionsEnabledOptions,
   ScreenshotDiffOptions,
   ScreenshottingEnabledOptions,
+  StorageEntry,
 } from "@alwaysmeticulous/api";
 import { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
 import { LogLevelNumbers } from "./loglevel";
@@ -236,6 +237,10 @@ export interface ReplayExecutionOptions {
    */
   extraCookies?: Cookie[];
 
+  extraLocalStorageEntries?: StorageEntryOverride[];
+
+  extraSessionStorageEntries?: StorageEntryOverride[];
+
   /**
    * Hash of the project settings at the time the test run or replay was initiated. Used as part of `ReplayLogicVersion`
    * to ensure that we don't compare screenshots that were generated from replays with different project settings.
@@ -260,6 +265,15 @@ export interface ReplayExecutionOptions {
    * If true records CSS coverage for the replay.
    */
   enableCssCoverage?: boolean;
+}
+
+export interface StorageEntryOverride extends StorageEntry {
+  /**
+   * If true, the entry will not be added if it already exists in the session.
+   *
+   * If false or omitted the entry will be overridden if it already exists in the session.
+   */
+  ignoreIfEntryAlreadyExists?: true;
 }
 
 export interface VercelExecutionSettings {
