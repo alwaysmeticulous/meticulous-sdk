@@ -1,10 +1,11 @@
 import EventEmitter from "events";
-import { readFileSync } from "fs";
-import { request } from "http";
+import { request as httpRequest } from "http";
+import { request as httpsRequest } from "https";
 import * as net from "net";
 import { createServer, Http2Server } from "node:http2";
 import { pipeline } from "stream";
 import Agent from "agentkeepalive";
+import { HttpsAgent } from "agentkeepalive";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
 import { TunnelClusterEvents, TunnelClusterOpts } from "./tunnel-cluster.types";
@@ -61,21 +62,8 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
   startListening() {
     const opt = this.opts;
 
-    const localHost = opt.localHost;
-    const localPort = opt.localPort;
-    const localProtocol = opt.localHttps ? "https" : "http";
-
-    const allowInvalidCert = opt.allowInvalidCert;
-    const localCertOpts =
-      localProtocol === "http" || allowInvalidCert
-        ? { rejectUnauthorized: false }
-        : {
-            cert: readFileSync(opt.localCert as string),
-            key: readFileSync(opt.localKey as string),
-            ca: opt.localCa ? [readFileSync(opt.localCa)] : undefined,
-          };
-
-    const agent = new Agent();
+    const httpAgent = new Agent();
+    const httpsAgent = new HttpsAgent();
 
     this.server.on("request", (req, res) => {
       this.emit("request", {
@@ -84,8 +72,16 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
       });
 
       // Drop host & connection header from the original request. Let Node handle it.
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { host, connection, ..._headersToForward } = req.headers;
+      // Also grab our headers that tell us the original host and protocol.
+      const {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        host,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        connection,
+        "x-meticulous-original-host": originalHost,
+        "x-meticulous-original-protocol": originalProtocol,
+        ..._headersToForward
+      } = req.headers;
 
       // Also drop HTTP2 pseudo headers
       const headersToForward = Object.keys(_headersToForward).reduce(
@@ -98,16 +94,24 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
         {} as Record<string, string | string[] | undefined>
       );
 
+      const splitHost = originalHost?.toString().split(":");
+      const protocolToRequest = originalProtocol ?? "http";
+      const hostToRequest = splitHost?.[0] ?? opt.localHost;
+      const portToRequest = splitHost?.[1] ?? opt.localPort;
+
       // Forward the request to the local server
+      const request =
+        protocolToRequest === "https" ? httpsRequest : httpRequest;
+      const agent = protocolToRequest === "https" ? httpsAgent : httpAgent;
+
       const clientReq = request(
         {
           agent,
-          host: localHost,
-          port: localPort,
+          host: hostToRequest,
+          port: portToRequest,
           path: req.url,
           method: req.method,
           headers: headersToForward,
-          ...localCertOpts,
         },
         (clientRes) => {
           // Drop HTTP1 specific headers
