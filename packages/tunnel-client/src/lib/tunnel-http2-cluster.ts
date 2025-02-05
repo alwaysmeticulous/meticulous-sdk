@@ -22,6 +22,7 @@ const HTTP2_MAX_SESSION_MEMORY = 256; // MB
 
 interface TunnelHTTP2ClusterOpts extends TunnelClusterOpts {
   sockets: net.Socket[];
+  getHost: () => string;
 }
 
 /**
@@ -34,7 +35,7 @@ interface TunnelHTTP2ClusterOpts extends TunnelClusterOpts {
  */
 export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<TunnelClusterEvents>) {
   private readonly logger: Logger;
-  private readonly opts: TunnelClusterOpts;
+  private readonly opts: TunnelHTTP2ClusterOpts;
   private readonly sockets: net.Socket[];
   private readonly server: Http2Server;
 
@@ -94,12 +95,10 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
         {} as Record<string, string | string[] | undefined>
       );
 
-      const splitHost = originalHost?.toString().split(":");
+      // Forward the request to the right target
       const protocolToRequest = originalProtocol ?? "http";
-      const hostToRequest = splitHost?.[0] ?? opt.localHost;
-      const portToRequest = splitHost?.[1] ?? opt.localPort;
-
-      // Forward the request to the local server
+      const { hostToRequest, portToRequest } =
+        this.getRequestTarget(originalHost);
       const request =
         protocolToRequest === "https" ? httpsRequest : httpRequest;
       const agent = protocolToRequest === "https" ? httpsAgent : httpAgent;
@@ -150,6 +149,26 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
       this.server.emit("connection", socket);
       socket.resume();
     });
+  }
+
+  private getRequestTarget(originalHost: string | string[] | undefined) {
+    const splitHost = originalHost?.toString().split(":");
+    const hostToRequest = splitHost?.[0] ?? this.opts.localHost;
+    const portToRequest = splitHost?.[1] ?? this.opts.localPort;
+
+    if (hostToRequest === this.opts.getHost()) {
+      // This is actually a request to the tunnel server itself. If we forward it, we will
+      // end up in an infinite loop. We want to dispatch this request to the local server.
+      return {
+        hostToRequest: this.opts.localHost,
+        portToRequest: this.opts.localPort,
+      };
+    }
+
+    return {
+      hostToRequest,
+      portToRequest,
+    };
   }
 
   close() {
