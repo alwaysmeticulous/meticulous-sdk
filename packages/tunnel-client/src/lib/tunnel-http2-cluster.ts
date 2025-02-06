@@ -61,7 +61,13 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
 
   startListening() {
     const httpAgent = new Agent();
-    const httpsAgent = new HttpsAgent();
+    const httpsAgent = new HttpsAgent(
+      this.opts.allowInvalidCert
+        ? {
+            rejectUnauthorized: false,
+          }
+        : undefined
+    );
 
     this.server.on("request", (req, res) => {
       this.emit("request", {
