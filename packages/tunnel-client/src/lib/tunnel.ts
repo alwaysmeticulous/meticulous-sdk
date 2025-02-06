@@ -350,6 +350,13 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       return new TunnelHTTP2Cluster({
         ...commonTunnelOpts,
         sockets,
+        getHost: () => {
+          if (!this.url) {
+            throw new Error("Tried to call getHost before tunnel was opened!");
+          }
+          const parsedUrl = new URL(this.url);
+          return parsedUrl.host;
+        },
       });
     }
   }
