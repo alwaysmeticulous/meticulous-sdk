@@ -165,7 +165,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
       }
       const protocolToRequest = (parsed.protocol || "http").replace(":", "");
       const portToRequest =
-        parsed.port ?? (parsed.protocol === "https" ? 443 : 80);
+        parsed.port || (parsed.protocol === "https" ? 443 : 80);
       return {
         hostToRequest,
         portToRequest,
