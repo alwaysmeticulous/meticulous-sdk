@@ -4,8 +4,7 @@ import { request as httpsRequest } from "https";
 import * as net from "net";
 import { createServer, Http2Server } from "node:http2";
 import { pipeline } from "stream";
-import Agent from "agentkeepalive";
-import { HttpsAgent } from "agentkeepalive";
+import Agent, { HttpsAgent } from "agentkeepalive";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
 import { TunnelClusterEvents, TunnelClusterOpts } from "./tunnel-cluster.types";
@@ -61,8 +60,6 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
   }
 
   startListening() {
-    const opt = this.opts;
-
     const httpAgent = new Agent();
     const httpsAgent = new HttpsAgent();
 
@@ -79,8 +76,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
         host,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         connection,
-        "x-meticulous-original-host": originalHost,
-        "x-meticulous-original-protocol": originalProtocol,
+        "x-meticulous-original-url": originalUrl,
         ..._headersToForward
       } = req.headers;
 
@@ -96,9 +92,8 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
       );
 
       // Forward the request to the right target
-      const protocolToRequest = originalProtocol ?? "http";
-      const { hostToRequest, portToRequest } =
-        this.getRequestTarget(originalHost);
+      const { hostToRequest, portToRequest, protocolToRequest } =
+        this.getRequestTarget(originalUrl);
       const request =
         protocolToRequest === "https" ? httpsRequest : httpRequest;
       const agent = protocolToRequest === "https" ? httpsAgent : httpAgent;
@@ -151,24 +146,35 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
     });
   }
 
-  private getRequestTarget(originalHost: string | string[] | undefined) {
-    const splitHost = originalHost?.toString().split(":");
-    const hostToRequest = splitHost?.[0] ?? this.opts.localHost;
-    const portToRequest = splitHost?.[1] ?? this.opts.localPort;
-
-    if (hostToRequest === this.opts.getHost()) {
-      // This is actually a request to the tunnel server itself. If we forward it, we will
-      // end up in an infinite loop. We want to dispatch this request to the local server.
-      return {
-        hostToRequest: this.opts.localHost,
-        portToRequest: this.opts.localPort,
-      };
-    }
-
-    return {
-      hostToRequest,
-      portToRequest,
+  private getRequestTarget(originalUrl: string | string[] | undefined) {
+    const defaultTarget = {
+      hostToRequest: this.opts.localHost,
+      portToRequest: this.opts.localPort,
+      protocolToRequest: "http",
     };
+    try {
+      if (!originalUrl) {
+        return defaultTarget;
+      }
+      const parsed = new URL(originalUrl.toString());
+      const hostToRequest = parsed.host;
+      if (hostToRequest === this.opts.getHost()) {
+        // This is actually a request to the tunnel server itself. If we forward it, we will
+        // end up in an infinite loop. We want to dispatch this request to the local server.
+        return defaultTarget;
+      }
+      const protocolToRequest = (parsed.protocol || "http").replace(":", "");
+      const portToRequest =
+        parsed.port ?? (parsed.protocol === "https" ? 443 : 80);
+      return {
+        hostToRequest,
+        portToRequest,
+        protocolToRequest,
+      };
+    } catch (error) {
+      this.logger.error("Error getting request target", error);
+      return defaultTarget;
+    }
   }
 
   close() {
