@@ -318,9 +318,23 @@ export interface AppUrlConfig {
   /**
    * If set, we will ensure that the appUrl pathname is prefixed with this value for the initial navigation.
    *
-   * __Note:__ When checking if the appUrl is already prefixed, we check against {@link URL.pathname} which will always have a leading "/".
+   * __Note:__ When checking if the appUrl is already prefixed, we check against {@link URL.pathname} which
+   * will always have a leading "/".
    */
-  pathnamePrefix: string;
+  pathnamePrefix?: string;
+
+  /**
+   * Normally if an app URL includes a path, query or hash component then we completely ignore
+   * the session start URL (and the provided {@link pathnamePrefix}) and just use the app URL.
+   *
+   * Setting ignoreAppUrlPathAfterPreNavigation to true overrides this behaviour and use the path, query and hash from the
+   * session start URL, and the hostname/origin from the app URL. Thereby completely ignoring the path, query
+   * and hash from the app URL.
+   *
+   * Note: The original full app URL (with path, query and hash) is still used for pre-navigation
+   * if pre-navigation (navigating to a URL to get cookies before starting the main replay) is enabled.
+   */
+  ignoreAppUrlPathAfterPreNavigation?: boolean;
 }
 
 // See https://spin.atomicobject.com/2018/01/15/typescript-flexible-nominal-typing/
