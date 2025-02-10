@@ -73,4 +73,10 @@ export interface MeticulousPublicRecordApi {
    * time see the addCustomEventListener method in the replay API.
    */
   recordCustomEvent(type: string, serializedData: string): { success: boolean };
+
+  /**
+   * Provides a link to view the session in the Meticulous UI. This link
+   * is of course only accessible by users with access to the Meticulous project.
+   */
+  getSessionUrl(): string;
 }
