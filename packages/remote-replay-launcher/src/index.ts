@@ -34,6 +34,7 @@ export const executeRemoteTestRun = async ({
   keepTunnelOpenPromise,
   environment,
   isLockable,
+  pullRequestHostingProviderId,
 }: ExecuteRemoteTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -92,6 +93,7 @@ export const executeRemoteTestRun = async ({
     basicAuthPassword: tunnel.basicAuthPassword,
     environment,
     isLockable,
+    ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
   });
 
   if (!response.testRun) {
