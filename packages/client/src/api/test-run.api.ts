@@ -28,6 +28,7 @@ export interface ExecuteSecureTunnelTestRunOptions {
   basicAuthPassword: string;
   environment: string;
   isLockable: boolean;
+  pullRequestHostingProviderId?: string;
 }
 
 export interface ExecuteSecureTunnelTestRunResponse {
@@ -43,6 +44,7 @@ export const executeSecureTunnelTestRun = async ({
   basicAuthPassword,
   environment,
   isLockable,
+  pullRequestHostingProviderId,
 }: ExecuteSecureTunnelTestRunOptions): Promise<ExecuteSecureTunnelTestRunResponse> => {
   const { data } = await client
     .post("test-runs/trigger-secure-tunnel-test-run-v2", {
@@ -52,6 +54,7 @@ export const executeSecureTunnelTestRun = async ({
       basicAuthPassword,
       environment,
       isLockable,
+      ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
     })
     .catch((error) => {
       if (isAxiosError(error) && error.response?.status === 404) {
