@@ -215,10 +215,19 @@ export type CustomUserEvent = {
 
 export enum CustomDataSingletonInternalKey {
   SystemThemePreferredColor = "met-system-theme-preferred-color",
+
+  /**
+   * System timezone of the browser the session was recorded on. This is an IANA timezone string,
+   * as defined in https://data.iana.org/time-zones/tzdb-2021a/zone1970.tab
+   * For example, "America/New_York" or "Europe/Paris".
+   * Present on recordings since ~Feb 2025.
+   */
+  TimezoneName = "met-timezone-name",
 }
 
 export type CustomDataSingletonInternalValues = {
   [CustomDataSingletonInternalKey.SystemThemePreferredColor]: "light" | "dark";
+  [CustomDataSingletonInternalKey.TimezoneName]: string;
 };
 
 export type CustomData = {
