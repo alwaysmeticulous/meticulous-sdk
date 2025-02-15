@@ -10,7 +10,7 @@ export function extractHostnameAndPort(urlString: string): {
     throw new Error(`Invalid app URL: '${urlString}'`);
   }
 
-  if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
+  if (!["http:", "https:", "ws:", "wss:", "ftp:"].includes(url.protocol)) {
     throw new Error(
       `Invalid app URL protocol: '${urlString}'. Are you missing a 'http://' prefix?`
     );
