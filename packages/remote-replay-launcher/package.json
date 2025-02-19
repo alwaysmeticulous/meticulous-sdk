@@ -23,6 +23,7 @@
     "@alwaysmeticulous/client": "^2.200.0",
     "@alwaysmeticulous/common": "^2.199.1",
     "@alwaysmeticulous/tunnels-client": "^2.200.0",
+    "@sentry/node": "^8.33.1",
     "loglevel": "^1.8.0"
   },
   "author": {

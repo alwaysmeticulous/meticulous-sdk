@@ -10,6 +10,7 @@ import {
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { localtunnel } from "@alwaysmeticulous/tunnels-client";
 import log from "loglevel";
+import { ResourceTracker } from "./resource-tracker";
 import {
   ExecuteRemoteTestRunOptions,
   ExecuteRemoteTestRunResult,
@@ -136,6 +137,7 @@ export const executeRemoteTestRun = async ({
   };
 
   // Poll every few seconds for progress updates and exit when the test run is completed
+  const resourceTracker = new ResourceTracker(logger, testRun);
   progressUpdateInterval = setInterval(async () => {
     const updatedTestRun = await getTestRun({ client, testRunId: testRun.id });
     onProgressUpdate?.(updatedTestRun);
@@ -150,6 +152,7 @@ export const executeRemoteTestRun = async ({
       );
       startedWaitingForRetryAt = undefined;
     }
+    resourceTracker.checkUsage();
   }, PROGRESS_UPDATE_INTERVAL_MS);
 
   const completedTestRun = await testRunCompleted.promise;
@@ -160,6 +163,7 @@ export const executeRemoteTestRun = async ({
     const isLocked = await getIsLocked({ client, deploymentId });
     if (isLocked) {
       onTunnelStillLocked?.();
+      resourceTracker.checkUsage();
       return false;
     }
     tunnelUnlocked.resolve();
