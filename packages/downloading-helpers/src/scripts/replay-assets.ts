@@ -34,18 +34,22 @@ const ASSET_METADATA_FILE_NAME = "assets.json";
  * (for example most downloads are generally done at the test run level rather than the replay level)
  */
 export const fetchAsset = async (path: string): Promise<string> => {
-  const snippetsBaseUrl = getSnippetsBaseUrl();
-  const fetchUrl = new URL(path, snippetsBaseUrl).href;
-  const assetFileName = basename(new URL(fetchUrl).pathname);
-  const assetFileNameAsCjsFile = convertJsExtensionToCJS(assetFileName);
+  const { snippetsBaseUrl, urlToDownloadFrom, fileNameToDownloadAs } =
+    getAssetDownloadPaths(path);
 
-  const jsFilePath = await fetchAndCacheFile(fetchUrl, assetFileNameAsCjsFile);
+  const jsFilePath = await fetchAndCacheFile(
+    urlToDownloadFrom,
+    fileNameToDownloadAs
+  );
   if (
     snippetsBaseUrl.includes("localhost") &&
     process.env.CI !== "true" &&
     jsFilePath.endsWith(".js")
   ) {
-    await fetchAndCacheFile(`${fetchUrl}.map`, `${assetFileName}.map`);
+    await fetchAndCacheFile(
+      `${urlToDownloadFrom}.map`,
+      `${basename(new URL(urlToDownloadFrom).pathname)}.map`
+    );
   }
 
   return jsFilePath;
@@ -53,21 +57,19 @@ export const fetchAsset = async (path: string): Promise<string> => {
 
 export const checkIfAssetOutdated = async (path: string): Promise<boolean> => {
   // Get latest etag for the asset
-  const snippetsBaseUrl = getSnippetsBaseUrl();
-  const urlToDownloadFrom = new URL(path, snippetsBaseUrl).href;
+  const { urlToDownloadFrom, fileNameToDownloadAs } =
+    getAssetDownloadPaths(path);
   const client = axios.create({ timeout: 60_000 });
   axiosRetry(client, { retries: 3 });
   const etag = (await client.head(urlToDownloadFrom)).headers["etag"] || "";
 
   // Get etag for downloaded assets
-  const assetFileName = basename(new URL(urlToDownloadFrom).pathname);
-  const assetFileNameAsCjsFile = convertJsExtensionToCJS(assetFileName);
   const releaseLock = await waitToAcquireLockOnFile(await getAssetsFilePath());
   try {
     const assetMetadata = await loadAssetMetadata();
 
     const entry = assetMetadata.assets.find(
-      (item) => item.fileName === assetFileNameAsCjsFile
+      (item) => item.fileName === fileNameToDownloadAs
     );
 
     const isOutdated = !entry || !entry.etag || etag !== entry.etag;
@@ -78,6 +80,18 @@ export const checkIfAssetOutdated = async (path: string): Promise<boolean> => {
     await releaseLock();
     throw err;
   }
+};
+
+const getAssetDownloadPaths = (path: string) => {
+  const snippetsBaseUrl = getSnippetsBaseUrl();
+  const urlToDownloadFrom = new URL(path, snippetsBaseUrl).href;
+  const assetFileName = basename(new URL(urlToDownloadFrom).pathname);
+  const assetFileNameAsCjsFile = convertJsExtensionToCJS(assetFileName);
+  return {
+    snippetsBaseUrl,
+    urlToDownloadFrom,
+    fileNameToDownloadAs: assetFileNameAsCjsFile,
+  };
 };
 
 const fetchAndCacheFile = async (
