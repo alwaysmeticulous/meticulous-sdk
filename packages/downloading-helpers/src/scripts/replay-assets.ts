@@ -51,6 +51,35 @@ export const fetchAsset = async (path: string): Promise<string> => {
   return jsFilePath;
 };
 
+export const checkIfAssetOutdated = async (path: string): Promise<boolean> => {
+  // Get latest etag for the asset
+  const snippetsBaseUrl = getSnippetsBaseUrl();
+  const urlToDownloadFrom = new URL(path, snippetsBaseUrl).href;
+  const client = axios.create({ timeout: 60_000 });
+  axiosRetry(client, { retries: 3 });
+  const etag = (await client.head(urlToDownloadFrom)).headers["etag"] || "";
+
+  // Get etag for downloaded assets
+  const assetFileName = basename(new URL(urlToDownloadFrom).pathname);
+  const assetFileNameAsCjsFile = convertJsExtensionToCJS(assetFileName);
+  const releaseLock = await waitToAcquireLockOnFile(await getAssetsFilePath());
+  try {
+    const assetMetadata = await loadAssetMetadata();
+
+    const entry = assetMetadata.assets.find(
+      (item) => item.fileName === assetFileNameAsCjsFile
+    );
+
+    const isOutdated = !entry || !entry.etag || etag !== entry.etag;
+
+    await releaseLock();
+    return isOutdated;
+  } catch (err) {
+    await releaseLock();
+    throw err;
+  }
+};
+
 const fetchAndCacheFile = async (
   urlToDownloadFrom: string,
   fileNameToDownloadAs: string
