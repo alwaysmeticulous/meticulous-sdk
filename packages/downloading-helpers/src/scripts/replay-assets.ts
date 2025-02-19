@@ -75,19 +75,23 @@ export const checkIfAssetsOutdated = async (
   );
 
   // Get etag for downloaded assets
+  const assetMetadata = await readAssetMetadata();
+  return Object.fromEntries(
+    withEtags.map(({ path, etag, fileNameToDownloadAs }) => {
+      const entry = assetMetadata.assets.find(
+        (item) => item.fileName === fileNameToDownloadAs
+      );
+      return [path, !entry || !entry.etag || etag !== entry.etag];
+    })
+  );
+};
+
+const readAssetMetadata = async (): Promise<AssetMetadata> => {
   const releaseLock = await waitToAcquireLockOnFile(await getAssetsFilePath());
   try {
     const assetMetadata = await loadAssetMetadata();
     await releaseLock();
-
-    return Object.fromEntries(
-      withEtags.map(({ path, etag, fileNameToDownloadAs }) => {
-        const entry = assetMetadata.assets.find(
-          (item) => item.fileName === fileNameToDownloadAs
-        );
-        return [path, !entry || !entry.etag || etag !== entry.etag];
-      })
-    );
+    return assetMetadata;
   } catch (err) {
     await releaseLock();
     throw err;
