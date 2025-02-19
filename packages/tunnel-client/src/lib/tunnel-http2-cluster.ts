@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import EventEmitter from "events";
 import { request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
@@ -75,13 +77,24 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
         path: req.url ?? "unknown",
       });
 
-      // Drop host & connection header from the original request. Let Node handle it.
-      // Also grab our headers that tell us the original host and protocol.
       const {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // (1) Drop host & connection header from the original request. Node will set these correctly for the actual request.
         host,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         connection,
+        // (2) Drop some other headers that get set by our tunnel but we don't want to forward.
+        "x-datadog-sampling-priority": _datadogSamplingPriority,
+        "x-datadog-tags": _datadogTags,
+        "x-datadog-trace-id": _datadogTraceId,
+        "x-datadog-parent-id": _datadogParentId,
+        "x-forwarded-host": _forwardedHost,
+        "x-forwarded-for": _forwardedFor,
+        "x-forwarded-proto": _forwardedProto,
+        "x-original-uri": _originalUri,
+        sentrytrace,
+        traceparent,
+        tracestate,
+        baggage,
+        // (3) Grab our header that tells us the original host and protocol that was requested.
         "x-meticulous-original-url": originalUrl,
         ..._headersToForward
       } = req.headers;
@@ -116,11 +129,10 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
         (clientRes) => {
           // Drop HTTP1 specific headers
           const {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             connection,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
             "keep-alive": _,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
             "transfer-encoding": __,
             ...headersToForward
           } = clientRes.headers;
