@@ -33,5 +33,8 @@ export const initSentry: (
       "ReplayKillingPossibleUserError",
       "SecureTunnelInactiveForAppUrlError",
     ],
+    integrations: [
+      ...Sentry.autoDiscoverNodePerformanceMonitoringIntegrations(),
+    ],
   });
 };
