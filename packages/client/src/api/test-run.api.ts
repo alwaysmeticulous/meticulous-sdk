@@ -4,7 +4,7 @@ import {
   TestCaseResult,
   TestRunStatus,
 } from "@alwaysmeticulous/api";
-import { AxiosError, AxiosInstance, isAxiosError } from "axios";
+import { AxiosError, AxiosInstance } from "axios";
 import { maybeEnrichAxiosError } from "../errors";
 
 export interface TestRun {
