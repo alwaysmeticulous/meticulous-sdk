@@ -223,11 +223,20 @@ export enum CustomDataSingletonInternalKey {
    * Present on recordings since ~Feb 2025.
    */
   TimezoneName = "met-timezone-name",
+
+  /**
+   * The browser's languages as given by `navigator.languages`. This is a comma-separated list of
+   * language tags, as defined in RFC 5646:
+   * https://datatracker.ietf.org/doc/html/rfc5646
+   * Present on recordings since ~Feb 2025.
+   */
+  Languages = "met-languages",
 }
 
 export type CustomDataSingletonInternalValues = {
   [CustomDataSingletonInternalKey.SystemThemePreferredColor]: "light" | "dark";
   [CustomDataSingletonInternalKey.TimezoneName]: string;
+  [CustomDataSingletonInternalKey.Languages]: string;
 };
 
 export type CustomData = {
