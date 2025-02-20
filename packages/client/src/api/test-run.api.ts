@@ -57,10 +57,6 @@ export const executeSecureTunnelTestRun = async ({
       ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
     })
     .catch((error) => {
-      if (isAxiosError(error) && error.response?.status === 404) {
-        return { data: null };
-      }
-
       throw maybeEnrichAxiosError(error);
     });
   return data as ExecuteSecureTunnelTestRunResponse;
