@@ -1,6 +1,5 @@
 import { IS_METICULOUS_SUPER_USER } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
-import { addExtensionMethods } from "@sentry/tracing";
 import { Duration } from "luxon";
 
 /**
@@ -20,10 +19,7 @@ const getTracesSampleRate: () => number = () => {
 export const initSentry: (
   meticulousVersion: string,
   tracesSampleRateOverride?: number
-) => Promise<Sentry.Hub> = async (
-  meticulousVersion,
-  tracesSampleRateOverride
-) => {
+) => Promise<void> = async (meticulousVersion, tracesSampleRateOverride) => {
   Sentry.init({
     dsn: SENTRY_DSN,
     release: meticulousVersion,
@@ -38,8 +34,4 @@ export const initSentry: (
       "SecureTunnelInactiveForAppUrlError",
     ],
   });
-
-  addExtensionMethods();
-
-  return Sentry.getCurrentHub();
 };
