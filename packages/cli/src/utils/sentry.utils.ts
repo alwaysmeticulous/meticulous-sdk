@@ -14,10 +14,10 @@ export const wrapHandler = function wrapHandler_<T>(
   return async (args: T) => {
     await handler(args)
       .then(async () => {
-        const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
-        if (transaction !== undefined) {
-          transaction.setStatus("ok");
-          transaction.finish();
+        const currentSpan = Sentry.getActiveSpan();
+        if (currentSpan) {
+          currentSpan.setStatus({ code: 1 });
+          currentSpan.end();
         }
         await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 
@@ -27,12 +27,11 @@ export const wrapHandler = function wrapHandler_<T>(
       })
       .catch(async (error) => {
         await reportHandlerError(error);
-        const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
-        if (transaction !== undefined) {
-          transaction.setStatus("unknown_error");
-          transaction.finish();
+        const currentSpan = Sentry.getActiveSpan();
+        if (currentSpan) {
+          currentSpan.setStatus({ code: 2 });
+          currentSpan.end();
         }
-
         await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 
         // Don't display the help text which can obscure the error
