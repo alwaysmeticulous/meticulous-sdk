@@ -152,7 +152,7 @@ export const executeRemoteTestRun = async ({
       );
       startedWaitingForRetryAt = undefined;
     }
-    resourceTracker.checkUsage();
+    await resourceTracker.checkUsage();
   }, PROGRESS_UPDATE_INTERVAL_MS);
 
   const completedTestRun = await testRunCompleted.promise;
@@ -163,7 +163,7 @@ export const executeRemoteTestRun = async ({
     const isLocked = await getIsLocked({ client, deploymentId });
     if (isLocked) {
       onTunnelStillLocked?.();
-      resourceTracker.checkUsage();
+      await resourceTracker.checkUsage();
       return false;
     }
     tunnelUnlocked.resolve();

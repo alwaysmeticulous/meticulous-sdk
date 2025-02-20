@@ -2,6 +2,7 @@ import os from "os";
 import { TestRun } from "@alwaysmeticulous/client";
 import * as Sentry from "@sentry/node";
 import { Logger } from "loglevel";
+import { mem } from "systeminformation";
 
 export class ResourceTracker {
   private previousCpuUsage: { active: number; idle: number };
@@ -15,7 +16,7 @@ export class ResourceTracker {
     this.testRun = testRun;
   }
 
-  public checkUsage() {
+  public async checkUsage() {
     if (this.haveLoggedWarning) {
       // We only want to log a warning once, so we can stop tracking usage once we've warned.
       return;
@@ -27,8 +28,9 @@ export class ResourceTracker {
     const idleSinceLastCall = currentCpuUsage.idle - this.previousCpuUsage.idle;
     const cpuUsagePercentage =
       (activeSinceLastCall / (activeSinceLastCall + idleSinceLastCall)) * 100;
+    const memoryUsage = await mem();
     const memoryUsagePercentage =
-      ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
+      (memoryUsage.active / memoryUsage.total) * 100;
 
     if (cpuUsagePercentage > 80 || memoryUsagePercentage > 80) {
       this.logger.warn(
