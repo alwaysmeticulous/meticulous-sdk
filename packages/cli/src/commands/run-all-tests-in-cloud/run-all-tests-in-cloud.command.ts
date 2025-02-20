@@ -63,6 +63,8 @@ const handler: (options: Options) => Promise<void> = async ({
       format: `Test Run execution progress |${chalk.cyan(
         "{bar}"
       )}| {percentage}% || {value}/{total} tests executed`,
+      noTTYOutput: true,
+      notTTYSchedule: 60000,
     },
     cliProgress.Presets.shades_classic
   );
