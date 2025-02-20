@@ -4,7 +4,7 @@ import {
   TestCaseResult,
   TestRunStatus,
 } from "@alwaysmeticulous/api";
-import { AxiosError, AxiosInstance, isAxiosError } from "axios";
+import { AxiosError, AxiosInstance } from "axios";
 import { maybeEnrichAxiosError } from "../errors";
 
 export interface TestRun {
@@ -57,10 +57,6 @@ export const executeSecureTunnelTestRun = async ({
       ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
     })
     .catch((error) => {
-      if (isAxiosError(error) && error.response?.status === 404) {
-        return { data: null };
-      }
-
       throw maybeEnrichAxiosError(error);
     });
   return data as ExecuteSecureTunnelTestRunResponse;
