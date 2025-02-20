@@ -64,7 +64,7 @@ const handler: (options: Options) => Promise<void> = async ({
         "{bar}"
       )}| {percentage}% || {value}/{total} tests executed`,
       noTTYOutput: true,
-      notTTYSchedule: 60000,
+      notTTYSchedule: 30000,
     },
     cliProgress.Presets.shades_classic
   );
