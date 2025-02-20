@@ -57,12 +57,18 @@ const handler: (options: Options) => Promise<void> = async ({
 
   logger.info(`Running all tests in cloud for commit ${commitSha}`);
 
-  const scheduledTestRunSpinner = ora("Starting test run execution").start();
+  let scheduledTestRunSpinner: ora.Ora | null = ora(
+    "Starting test run execution"
+  ).start();
   const progressBar = new cliProgress.SingleBar(
     {
       format: `Test Run execution progress |${chalk.cyan(
         "{bar}"
       )}| {percentage}% || {value}/{total} tests executed`,
+      // We want to still output progress even if not connected to a interactive tty since some CI runners
+      // such as CircleCI will timeout the process early if it hasn't outputted anything for a while.
+      // You can test this by running:
+      //  `yarn cli:dev run-all-tests-in-cloud --appUrl <your app URL> --commitSha <a valid commit SHA> 2>&1 | cat`
       noTTYOutput: true,
       notTTYSchedule: 30000,
     },
@@ -77,6 +83,7 @@ const handler: (options: Options) => Promise<void> = async ({
   const keepTunnelOpenPromise = keepTunnelOpenSec > 0 ? defer<void>() : null;
 
   // Tunnel data set after within the onTunnelCreated callback below.
+  let lastPrintedStillSchedulingMessage = Date.now();
   let tunnelData: TunnelData | null = null;
   try {
     const environment = getEnvironment();
@@ -105,10 +112,20 @@ const handler: (options: Options) => Promise<void> = async ({
 
       onProgressUpdate: (testRun) => {
         if (
-          testRun.status === "Running" &&
-          scheduledTestRunSpinner.isSpinning
+          testRun.status === "Scheduled" &&
+          Date.now() - lastPrintedStillSchedulingMessage > 30_000
         ) {
+          logger.info(
+            "Still waiting for test runner to pick up scheduled run..."
+          );
+          lastPrintedStillSchedulingMessage = Date.now();
+        }
+
+        // Note we can't just check 'scheduledTestRunSpinner.isSpinning' because it won't spin
+        // if connected to a non-tty terminal.
+        if (testRun.status === "Running" && scheduledTestRunSpinner) {
           scheduledTestRunSpinner.stop();
+          scheduledTestRunSpinner = null;
 
           const numTestCases = testRun.configData.testCases?.length || 0;
 
