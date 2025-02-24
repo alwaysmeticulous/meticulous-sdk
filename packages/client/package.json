@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/client",
-  "version": "2.201.0",
+  "version": "2.205.0",
   "description": "Helper methods for using the Meticulous backend API",
   "license": "ISC",
   "main": "dist/index.js",
