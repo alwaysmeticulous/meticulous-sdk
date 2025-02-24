@@ -7,7 +7,10 @@ import {
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import log from "loglevel";
-import { getSnippetsBaseUrl } from "../config/snippets";
+import {
+  getSnippetsBaseUrl,
+  isCustomSnippetsBaseUrl,
+} from "../config/snippets";
 import { downloadFile } from "../file-downloads/download-file";
 import { waitToAcquireLockOnFile } from "../file-downloads/local-data.utils";
 
@@ -158,9 +161,31 @@ const fetchAndCacheFile = async (
 };
 
 const getOrCreateAssetsDir: () => Promise<string> = async () => {
+  if (isCustomSnippetsBaseUrl()) {
+    const assetsDir = join(
+      getMeticulousLocalDataDir(),
+      ASSETS_FOLDER_NAME,
+      urlToValidFolderName(getSnippetsBaseUrl())
+    );
+    await mkdir(assetsDir, { recursive: true });
+    return assetsDir;
+  }
   const assetsDir = join(getMeticulousLocalDataDir(), ASSETS_FOLDER_NAME);
   await mkdir(assetsDir, { recursive: true });
   return assetsDir;
+};
+
+const urlToValidFolderName = (url: string) => {
+  const sanitizedUrl = url
+    .replace(/https?:\/\/(www\.)?/, "")
+    .replace(/[^a-zA-Z0-9]/g, "_");
+  if (sanitizedUrl.length === 0) {
+    throw new Error("URL is empty");
+  }
+  if (sanitizedUrl.length > 128) {
+    return sanitizedUrl.slice(0, 128);
+  }
+  return sanitizedUrl;
 };
 
 const loadAssetMetadata: () => Promise<AssetMetadata> = async () => {
