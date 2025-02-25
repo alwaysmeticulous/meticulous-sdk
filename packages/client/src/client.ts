@@ -29,7 +29,10 @@ export const createClient: (options: ClientOptions) => AxiosInstance = ({
     // 60 seconds default timeout
     timeout: 60_000,
   });
-  axiosRetry(client, { retries: 3 });
+  axiosRetry(client, {
+    retries: 3,
+    retryDelay: (retryCount) => retryCount * 1000,
+  });
 
   return client;
 };
