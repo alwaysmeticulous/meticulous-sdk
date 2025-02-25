@@ -231,12 +231,26 @@ export enum CustomDataSingletonInternalKey {
    * Present on recordings since ~Feb 2025.
    */
   Languages = "met-languages",
+
+  /**
+   * The id of the logged in user (e.g. a user id from a database for the application Meticulous is testing).
+   * This must be set by the recording application by calling `window.Meticulous.record.recordUserId(userId)`.
+   */
+  UserId = "met-user-id",
+
+  /**
+   * The email address of the logged in user. This must be set by the recording application
+   * by calling `window.Meticulous.record.recordUserEmail(email)`.
+   */
+  UserEmail = "met-user-email",
 }
 
 export type CustomDataSingletonInternalValues = {
   [CustomDataSingletonInternalKey.SystemThemePreferredColor]: "light" | "dark";
   [CustomDataSingletonInternalKey.TimezoneName]: string;
   [CustomDataSingletonInternalKey.Languages]: string;
+  [CustomDataSingletonInternalKey.UserId]: string;
+  [CustomDataSingletonInternalKey.UserEmail]: string;
 };
 
 export type CustomData = {

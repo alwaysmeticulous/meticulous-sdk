@@ -79,4 +79,17 @@ export interface MeticulousPublicRecordApi {
    * is of course only accessible by users with access to the Meticulous project.
    */
   getSessionUrl(): string;
+
+  /**
+   * Record the id of the logged in user (e.g. a user id from a database for the application Meticulous
+   * is testing). This is associated with the session and can make it easier to find sessions for a
+   * specific user.
+   */
+  recordUserId(userId: string): { success: boolean };
+
+  /**
+   * Record the email address of the logged in user. This is associated with the session
+   * and can make it easier to find sessions for a specific user.
+   */
+  recordUserEmail(emailAddress: string): { success: boolean };
 }
