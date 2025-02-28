@@ -28,13 +28,13 @@ export interface TestRunGitHubPullRequestContext {
   /** Base commit hash */
   baseSha: string;
 
-  /** Base ref (usually /refs/head/<branch>) */
+  /** Base ref (usually /refs/heads/<branch>) */
   baseRef?: string;
 
   /** Head commit hash */
   headSha: string;
 
-  /** Head ref (usually /refs/head/<branch>) */
+  /** Head ref (usually /refs/heads/<branch>) */
   headRef?: string;
 
   /** GitHub Actions run ID that triggered this test run */
@@ -51,7 +51,7 @@ export interface TestRunGitHubPushContext {
   /** Commit hash after the push event */
   afterSha: string;
 
-  /** Git ref (usually /refs/head/<branch>) */
+  /** Git ref (usually /refs/heads/<branch>) */
   ref: string;
 
   /** GitHub Actions run ID that triggered this test run */
@@ -69,7 +69,7 @@ export interface TestRunGitHubWorkflowDispatchContext {
   type: "github";
   event: "workflow-dispatch";
 
-  /** Git ref (usually /refs/head/<branch>) */
+  /** Git ref (usually /refs/heads/<branch>) */
   ref: string;
 
   /** Workflow dispatch inputs */
@@ -107,10 +107,10 @@ export interface TestRunGitLabMergeRequestContext {
   /** Merge request URL (web page) */
   webUrl: string;
 
-  /** Git ref for the target branch (/refs/head/<target_branch>). Not defined for merge requests prior to July 2024. */
+  /** Git ref for the target branch (/refs/heads/<target_branch>). Not defined for merge requests prior to July 2024. */
   baseRef?: string;
 
-  /** Git ref for the source branch (/refs/head/<source_branch>). Not defined for merge requests prior to July 2024. */
+  /** Git ref for the source branch (/refs/heads/<source_branch>). Not defined for merge requests prior to July 2024. */
   headRef?: string;
 }
 
@@ -124,7 +124,7 @@ export interface TestRunGitLabPushContext {
   /** Commit hash after the push event */
   afterSha: string;
 
-  /** Git ref for the branch (/refs/head/<branch>). Not defined for pushes prior to July 2024. */
+  /** Git ref for the branch (/refs/heads/<branch>). Not defined for pushes prior to July 2024. */
   ref?: string;
 }
 
@@ -148,13 +148,13 @@ export interface TestRunBitbucketPullRequestContext {
   /** Base commit hash */
   baseSha: string;
 
-  /** Base ref (usually /refs/head/<branch>) */
+  /** Base ref (usually /refs/heads/<branch>) */
   baseRef: string;
 
   /** Head commit hash */
   headSha: string;
 
-  /** Head ref (usually /refs/head/<branch>) */
+  /** Head ref (usually /refs/heads/<branch>) */
   headRef: string;
 }
 
@@ -167,7 +167,7 @@ export interface TestRunBitbucketPushContext {
   /** Commit hash after the push event */
   afterSha: string;
 
-  /** Git ref for the branch (/refs/head/<branch>) */
+  /** Git ref for the branch (/refs/heads/<branch>) */
   ref: string;
 }
 
