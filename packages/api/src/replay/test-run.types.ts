@@ -1,8 +1,13 @@
 import { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screenshotting-options";
 
+/**
+ * Relevance of a session
+ */
+export type SessionRelevance = "is-relevant" | "not-relevant" | "maybe-relevant"; 
+
 export interface TestCase {
   sessionId: string;
-  isRelevantToPR?: boolean;
+  relevanceToPR?: SessionRelevance;
   title?: string;
   options?: TestCaseReplayOptions;
 }
