@@ -2,7 +2,7 @@ import { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screensho
 
 export interface TestCase {
   sessionId: string;
-  selected?: boolean;
+  isRelevantToPR?: boolean;
   title?: string;
   options?: TestCaseReplayOptions;
 }
