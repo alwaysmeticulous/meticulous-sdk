@@ -21,6 +21,7 @@ export {
   RedactedScreenshotsComparison,
 } from "./sdk-bundle-api/bundle-to-sdk/screenshot-diff-result";
 export {
+  SessionRelevance,
   TestCase,
   TestCaseReplayOptions,
   TestRunStatus,
