@@ -3,7 +3,11 @@ import { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screensho
 /**
  * Relevance of a session
  */
-export type SessionRelevance = "is-relevant" | "not-relevant" | "maybe-relevant"; 
+export enum SessionRelevance {
+  IsRelevant = "is-relevant",
+  NotRelevant = "not-relevant", 
+  MaybeRelevant = "maybe-relevant"
+}
 
 export interface TestCase {
   sessionId: string;
