@@ -8,8 +8,6 @@ export interface TunnelInfo {
   useTls: boolean;
   tunnelPassphrase: string;
   multiplexingRemotePort: number;
-  useNoPoolMultiplexing?: boolean | undefined;
-  useHTTP2ForMultiplexing?: boolean | undefined;
   basicAuthUser: string;
   basicAuthPassword: string;
   localPort: number;
