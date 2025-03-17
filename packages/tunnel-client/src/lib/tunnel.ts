@@ -3,14 +3,10 @@ import net from "net";
 import tls from "tls";
 import axios, { isAxiosError } from "axios";
 import axiosRetry from "axios-retry";
-import { BPMux } from "bpmux";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
-import { TUNNEL_HIGH_WATER_MARK } from "../consts";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
 import { TunnelHTTP2Cluster } from "./tunnel-http2-cluster";
-import { TunnelMultiplexingCluster } from "./tunnel-multiplexing-cluster";
-import { TunnelMultiplexingPoolingCluster } from "./tunnel-multiplexing-pooling-cluster";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
 
@@ -22,8 +18,6 @@ const HTTP2_NUMBER_OF_CONNECTIONS = 2;
 interface CreateTunnelResponse {
   id: string;
   multiplexing_port: number;
-  use_no_pool_multiplexing?: boolean | undefined;
-  use_http2_multiplexing?: boolean | undefined;
   url: string;
   max_conn_count: number;
   tunnel_passphrase: string;
@@ -71,8 +65,6 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     const {
       id,
       multiplexing_port,
-      use_no_pool_multiplexing,
-      use_http2_multiplexing,
       url,
       max_conn_count,
       tunnel_passphrase,
@@ -100,8 +92,6 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       maxConn: max_conn_count || 1,
       remoteHost: remoteHost,
       multiplexingRemotePort: multiplexing_port,
-      useNoPoolMultiplexing: use_no_pool_multiplexing,
-      useHTTP2ForMultiplexing: use_http2_multiplexing,
       useTls,
       tunnelPassphrase: tunnel_passphrase,
       basicAuthUser: basic_auth_user,
@@ -128,7 +118,6 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
         Authorization: opt.apiToken,
       },
       params: {
-        supportsNoMultiplexingPool: true,
         supportsHTTP2Multiplexing: true,
         new: true,
       },
@@ -183,22 +172,12 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       throw new Error("multiplexingRemotePort must be set");
     }
 
-    if (info.useHTTP2ForMultiplexing && info.useNoPoolMultiplexing) {
-      throw new Error("Can either use HTTP2 or no-pool multiplexing, not both");
-    }
-
-    const agentType = info.useHTTP2ForMultiplexing
-      ? "http2 multiplexing"
-      : info.useNoPoolMultiplexing
-      ? "no pooling multiplexing"
-      : "pool multiplexing";
+    const agentType = "http2-multiplexing";
 
     this.logger.debug(`using ${agentType} agent`);
     const tunnelCluster = await this._establishMultiplexingCluster({
       ...info,
       multiplexingRemotePort: info.multiplexingRemotePort,
-      useNoPoolMultiplexing: info.useNoPoolMultiplexing,
-      useHTTP2ForMultiplexing: info.useHTTP2ForMultiplexing,
     });
 
     // only emit the url the first time
@@ -244,23 +223,13 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       if (this.closed || !tunnelCluster) {
         return;
       }
-      if (tunnelCluster instanceof TunnelMultiplexingPoolingCluster) {
-        tunnelCluster.open();
-      }
     });
 
     tunnelCluster.on("request", (req: IncomingRequestEvent) => {
       this.emit("request", req);
     });
 
-    // establish as many tunnels as allowed
-    if (tunnelCluster instanceof TunnelMultiplexingPoolingCluster) {
-      for (let count = 0; count < info.maxConn; ++count) {
-        tunnelCluster.open();
-      }
-    } else {
-      tunnelCluster.startListening();
-    }
+    tunnelCluster.startListening();
 
     this.once("close", () => {
       tunnelCluster.close();
@@ -270,8 +239,6 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
   async _establishMultiplexingCluster({
     remoteHost,
     multiplexingRemotePort,
-    useNoPoolMultiplexing,
-    useHTTP2ForMultiplexing,
     localHost,
     localPort,
     localHttps,
@@ -280,15 +247,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     tunnelPassphrase,
   }: Omit<TunnelInfo, "multiplexingRemotePort"> & {
     multiplexingRemotePort: number;
-  }): Promise<
-    | TunnelMultiplexingPoolingCluster
-    | TunnelMultiplexingCluster
-    | TunnelHTTP2Cluster
-  > {
-    if (useHTTP2ForMultiplexing && useNoPoolMultiplexing) {
-      throw new Error("Can either use HTTP2 or no-pool multiplexing, not both");
-    }
-
+  }): Promise<TunnelHTTP2Cluster> {
     const localProtocol = localHttps ? "https" : "http";
     this.logger.debug(
       "establishing tunnel %s://%s:%s <> %s:%s",
@@ -307,58 +266,29 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       allowInvalidCert,
     };
 
-    if (!useHTTP2ForMultiplexing) {
-      const sharedSocket = await this.openSocket({
-        useTls,
-        remoteHost,
-        multiplexingRemotePort,
-        useHTTP2ForMultiplexing,
-        tunnelPassphrase,
-      });
+    const sockets = await Promise.all(
+      Array.from({ length: HTTP2_NUMBER_OF_CONNECTIONS }).map(() =>
+        this.openSocket({
+          useTls,
+          remoteHost,
+          multiplexingRemotePort,
+          tunnelPassphrase,
+          sendAuthOkAck: true,
+        })
+      )
+    );
 
-      sharedSocket.resume();
-
-      const remoteMuxClient = new BPMux(sharedSocket, {
-        highWaterMark: TUNNEL_HIGH_WATER_MARK,
-        peer_multiplex_options: {
-          highWaterMark: TUNNEL_HIGH_WATER_MARK,
-        },
-      });
-
-      const tunnelOpts = {
-        ...commonTunnelOpts,
-        remoteMuxClient,
-      };
-
-      return useNoPoolMultiplexing
-        ? new TunnelMultiplexingCluster(tunnelOpts)
-        : new TunnelMultiplexingPoolingCluster(tunnelOpts);
-    } else {
-      const sockets = await Promise.all(
-        Array.from({ length: HTTP2_NUMBER_OF_CONNECTIONS }).map(() =>
-          this.openSocket({
-            useTls,
-            remoteHost,
-            multiplexingRemotePort,
-            useHTTP2ForMultiplexing,
-            tunnelPassphrase,
-            sendAuthOkAck: true,
-          })
-        )
-      );
-
-      return new TunnelHTTP2Cluster({
-        ...commonTunnelOpts,
-        sockets,
-        getHost: () => {
-          if (!this.url) {
-            throw new Error("Tried to call getHost before tunnel was opened!");
-          }
-          const parsedUrl = new URL(this.url);
-          return parsedUrl.host;
-        },
-      });
-    }
+    return new TunnelHTTP2Cluster({
+      ...commonTunnelOpts,
+      sockets,
+      getHost: () => {
+        if (!this.url) {
+          throw new Error("Tried to call getHost before tunnel was opened!");
+        }
+        const parsedUrl = new URL(this.url);
+        return parsedUrl.host;
+      },
+    });
   }
 
   open(cb: (err?: Error) => void) {
@@ -391,16 +321,11 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     useTls,
     remoteHost,
     multiplexingRemotePort,
-    useHTTP2ForMultiplexing,
     tunnelPassphrase,
     sendAuthOkAck,
   }: Pick<
     TunnelInfo,
-    | "useTls"
-    | "remoteHost"
-    | "multiplexingRemotePort"
-    | "useHTTP2ForMultiplexing"
-    | "tunnelPassphrase"
+    "useTls" | "remoteHost" | "multiplexingRemotePort" | "tunnelPassphrase"
   > & {
     sendAuthOkAck?: boolean;
   }): Promise<net.Socket | tls.TLSSocket> {
@@ -414,9 +339,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
         // The HTTP2 node implementation requires ALPN set.
         // See https://github.com/nodejs/node/blob/9a9409ff1f45c968173118de4cd37dea784f8ec9/lib/internal/http2/core.js#L3039.
         // The server should respond with the ALPN protocol "meticulous-tunnel".
-        ...(useHTTP2ForMultiplexing
-          ? { ALPNProtocols: ["meticulous-tunnel"] }
-          : {}),
+        ALPNProtocols: ["meticulous-tunnel"],
       });
     } else {
       socket = net.connect({
