@@ -343,6 +343,7 @@ export interface NetworkDebuggingOptions {
   requestRegexes: string[];
   transformationsFns: string[];
   requestTypes: ("original-recorded-request" | "request-to-match")[];
+  websocketUrlRegexes: string[];
 }
 
 // See https://spin.atomicobject.com/2018/01/15/typescript-flexible-nominal-typing/

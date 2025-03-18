@@ -44,6 +44,7 @@ interface ReplayCommandHandlerOptions
   networkDebuggingRequestRegexes: string[] | undefined;
   networkDebuggingTransformationFns: string[] | undefined;
   networkDebuggingRequestTypes: string[] | undefined;
+  networkDebuggingWebsocketUrlRegexes: string[] | undefined;
 }
 
 const replayCommandHandler = async ({
@@ -76,6 +77,7 @@ const replayCommandHandler = async ({
   networkDebuggingRequestRegexes,
   networkDebuggingTransformationFns,
   networkDebuggingRequestTypes,
+  networkDebuggingWebsocketUrlRegexes,
 }: ReplayCommandHandlerOptions): Promise<void> => {
   if (!takeSnapshots && storyboard) {
     throw new Error(
@@ -94,7 +96,8 @@ const replayCommandHandler = async ({
   if (
     networkDebuggingRequestRegexes ||
     networkDebuggingTransformationFns ||
-    networkDebuggingRequestTypes
+    networkDebuggingRequestTypes ||
+    networkDebuggingWebsocketUrlRegexes
   ) {
     networkDebuggingOptions = {
       requestRegexes: networkDebuggingRequestRegexes ?? [],
@@ -102,7 +105,8 @@ const replayCommandHandler = async ({
       requestTypes: (networkDebuggingRequestTypes as Array<
         "original-recorded-request" | "request-to-match"
       >) ?? ["original-recorded-request", "request-to-match"],
-    };
+      websocketUrlRegexes: networkDebuggingWebsocketUrlRegexes ?? [],
+    } as NetworkDebuggingOptions;
   }
 
   const executionOptions: ReplayExecutionOptions = {
@@ -277,6 +281,11 @@ export const replayCommand = buildCommand("simulate")
       string: true,
       description: "Types of requests to capture",
       choices: ["original-recorded-request", "request-to-match"],
+    },
+    networkDebuggingWebsocketUrlRegexes: {
+      type: "array",
+      string: true,
+      description: "Regexes to match websocket URLs against for debugging",
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
