@@ -265,6 +265,8 @@ export interface ReplayExecutionOptions {
    * If true records CSS coverage for the replay.
    */
   enableCssCoverage?: boolean;
+
+  networkDebuggingOptions?: NetworkDebuggingOptions;
 }
 
 export interface StorageEntryOverride extends StorageEntry {
@@ -335,6 +337,12 @@ export interface AppUrlConfig {
    * if pre-navigation (navigating to a URL to get cookies before starting the main replay) is enabled.
    */
   ignoreAppUrlPathAfterPreNavigation?: boolean;
+}
+
+export interface NetworkDebuggingOptions {
+  requestRegexes: string[];
+  transformationsFns: string[];
+  requestTypes: ("original-recorded-request" | "request-to-match")[];
 }
 
 // See https://spin.atomicobject.com/2018/01/15/typescript-flexible-nominal-typing/

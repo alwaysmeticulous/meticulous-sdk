@@ -8,6 +8,7 @@ import {
   BeforeUserEventOptions,
   BeforeUserEventResult,
   GeneratedBy,
+  NetworkDebuggingOptions,
   ReplayExecutionOptions,
   ReplayTarget,
   ScreenshotComparisonOptions,
@@ -40,6 +41,9 @@ interface ReplayCommandHandlerOptions
   debugger: boolean;
   baseReplayId: string | null | undefined;
   sessionIdForApplicationStorage: string | null | undefined;
+  networkDebuggingRequestRegexes: string[] | undefined;
+  networkDebuggingTransformationFns: string[] | undefined;
+  networkDebuggingRequestTypes: string[] | undefined;
 }
 
 const replayCommandHandler = async ({
@@ -69,6 +73,9 @@ const replayCommandHandler = async ({
   logPossibleNonDeterminism,
   sessionIdForApplicationStorage,
   debugger: enableStepThroughDebugger,
+  networkDebuggingRequestRegexes,
+  networkDebuggingTransformationFns,
+  networkDebuggingRequestTypes,
 }: ReplayCommandHandlerOptions): Promise<void> => {
   if (!takeSnapshots && storyboard) {
     throw new Error(
@@ -80,6 +87,22 @@ const replayCommandHandler = async ({
     throw new Error(
       "Cannot run with both --debugger flag and --headless flag at the same time."
     );
+  }
+
+  let networkDebuggingOptions: NetworkDebuggingOptions | undefined = undefined;
+
+  if (
+    networkDebuggingRequestRegexes ||
+    networkDebuggingTransformationFns ||
+    networkDebuggingRequestTypes
+  ) {
+    networkDebuggingOptions = {
+      requestRegexes: networkDebuggingRequestRegexes ?? [],
+      transformationsFns: networkDebuggingTransformationFns ?? [],
+      requestTypes: (networkDebuggingRequestTypes as Array<
+        "original-recorded-request" | "request-to-match"
+      >) ?? ["original-recorded-request", "request-to-match"],
+    };
   }
 
   const executionOptions: ReplayExecutionOptions = {
@@ -96,6 +119,7 @@ const replayCommandHandler = async ({
     maxEventCount: maxEventCount ?? null,
     essentialFeaturesOnly,
     logPossibleNonDeterminism,
+    ...(networkDebuggingOptions ? { networkDebuggingOptions } : {}),
   };
   const generatedByOption: GeneratedBy = { type: "replayCommand" };
   const storyboardOptions: StoryboardOptions = storyboard
@@ -236,6 +260,23 @@ export const replayCommand = buildCommand("simulate")
       string: true,
       description: "Base simulation id to diff the visual snapshots against",
       alias: "baseSimulationId",
+    },
+    networkDebuggingRequestRegexes: {
+      type: "array",
+      string: true,
+      description: "Regexes to match requests against",
+    },
+    networkDebuggingTransformationFns: {
+      type: "array",
+      string: true,
+      description:
+        "Request transformations to log. Will log all if not specified.",
+    },
+    networkDebuggingRequestTypes: {
+      type: "array",
+      string: true,
+      description: "Types of requests to capture",
+      choices: ["original-recorded-request", "request-to-match"],
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
