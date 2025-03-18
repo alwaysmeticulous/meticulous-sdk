@@ -268,7 +268,7 @@ export const replayCommand = buildCommand("simulate")
     networkDebuggingRequestRegexes: {
       type: "array",
       string: true,
-      description: "Regexes to match requests against",
+      description: "Regexes to match requests against for debug logging",
     },
     networkDebuggingTransformationFns: {
       type: "array",
@@ -285,7 +285,7 @@ export const replayCommand = buildCommand("simulate")
     networkDebuggingWebsocketUrlRegexes: {
       type: "array",
       string: true,
-      description: "Regexes to match websocket URLs against for debugging",
+      description: "Regexes to match websocket URLs against for debug logging",
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
