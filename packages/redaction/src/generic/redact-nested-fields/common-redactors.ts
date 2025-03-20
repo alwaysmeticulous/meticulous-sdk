@@ -18,7 +18,9 @@ import {
  */
 export const NAME_REDACTORS = PatternBasedRedactorSet.create<string>()
   .with(redactKey("name", redactString))
-  .with(redactKeysEndingWith("_name", redactString))
+  .with(redactKeysEndingWith("first_name", redactString))
+  .with(redactKeysEndingWith("last_name", redactString))
+  .with(redactKeysEndingWith("full_name", redactString))
   .with(redactKeysEndingWith("ullName", redactString))
   .with(redactKeysEndingWith("irstname", redactString))
   .with(redactKeysEndingWith("astname", redactString));
