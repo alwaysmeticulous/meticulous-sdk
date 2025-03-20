@@ -95,10 +95,14 @@ export class NestedFieldsRedactor<
   /**
    * Type safety: forces a redaction policy to be set for every unique nested string field name in the object.
    * Leaves redaction of dates, numbers and bigints as optional.
+   *
+   * Note: if a redactor is provided for a property x that already has a default redaction policy then that
+   * redactor will be used for property x rather than the default redaction policy.
    */
   public createRedactor<T>(opts: {
-    strings: Omit<RedactorsFor<T>, HANDLED_STRING_KEY_TYPES>;
-    dates?: Omit<Partial<RedactorsFor<T, Date>>, HANDLED_DATE_KEY_TYPES>;
+    strings: Omit<RedactorsFor<T>, HANDLED_STRING_KEY_TYPES> &
+      Partial<RedactorsFor<T>>;
+    dates?: Partial<RedactorsFor<T, Date>>;
     numbers?: Partial<RedactorsFor<T, number>>;
     bigints?: Partial<RedactorsFor<T, bigint>>;
     defaultStringRedactor?: Redactor<string>;
@@ -115,10 +119,15 @@ export class NestedFieldsRedactor<
   /**
    * Type safety: forces a redaction policy to be set for every unique nested string, date, number and bigint
    * field name in the object.
+   *
+   * Note: if a redactor is provided for a property x that already has a default redaction policy then that
+   * redactor will be used for property x rather than the default redaction policy.
    */
   public createRedactorStrict<T>(opts: {
-    strings: Omit<RedactorsFor<T>, HANDLED_STRING_KEY_TYPES>;
-    dates: Omit<RedactorsFor<T, Date>, HANDLED_DATE_KEY_TYPES>;
+    strings: Omit<RedactorsFor<T>, HANDLED_STRING_KEY_TYPES> &
+      Partial<RedactorsFor<T>>;
+    dates: Omit<RedactorsFor<T, Date>, HANDLED_DATE_KEY_TYPES> &
+      Partial<RedactorsFor<T, Date>>;
     numbers: RedactorsFor<T, number>;
     bigints: RedactorsFor<T, bigint>;
     defaultStringRedactor?: Redactor<string>;
@@ -132,6 +141,12 @@ export class NestedFieldsRedactor<
     } as any as MultiTypeRedactors<T>);
   }
 
+  /**
+   * Type safety: does not force a redaction policy to be set of any field.
+   *
+   * Note: if a redactor is provided for a property x that already has a default redaction policy then that
+   * redactor will be used for property x rather than the default redaction policy.
+   */
   public createRedactorLax = <T>(opts: {
     strings: Record<string, Redactor<string>>;
     dates?: Record<string, Redactor<Date>>;
