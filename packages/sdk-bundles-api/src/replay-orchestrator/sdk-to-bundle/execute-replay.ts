@@ -259,6 +259,11 @@ export interface ReplayExecutionOptions {
    */
   disableSharedWorkers?: boolean;
 
+  /**
+   * If true disables the rrweb recorder.
+   */
+  disableRrweb?: boolean;
+
   appUrlConfig?: AppUrlConfig;
 
   /**
