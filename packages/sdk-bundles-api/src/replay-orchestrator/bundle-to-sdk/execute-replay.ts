@@ -62,6 +62,15 @@ export interface ReplayAndStoreResultsResult {
    * Local directory where the data for this replay is stored.
    */
   replayDir: string;
+
+  /**
+   * Indicates that at least one of the screenshots was compared against a replay
+   * that was generated with a different Meticulous logic/environment version, or
+   * with different project settings.
+   *
+   * Only present on replays from March 2025 and later.
+   */
+  comparedAgainstReplayWithDifferentLogicVersion?: boolean;
 }
 
 export interface BeforeUserEventResult {
