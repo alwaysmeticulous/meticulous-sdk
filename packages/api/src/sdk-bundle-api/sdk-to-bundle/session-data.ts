@@ -112,6 +112,27 @@ export interface ApplicationSpecificData {
     scriptLoader?: Record<string, unknown>;
     locale?: string;
   };
+  // https://github.com/remix-run/react-router/blob/e099d6927c7ea2bd97bae015e32fa96a6b0c84e0/packages/react-router/lib/dom/global.ts#L5
+  reactRouter?: {
+    context?: {
+      state?: {
+        loaderData?: {
+          [routeIndex: string]: unknown;
+        };
+        actionData?: {
+          [routeIndex: string]: unknown;
+        } | null;
+        errors?: {
+          [routeIndex: string]: unknown;
+        } | null;
+      };
+      future?: Record<string, unknown>;
+      publicPath?: string;
+      basename?: string;
+    };
+    // https://github.com/remix-run/react-router/blob/e099d6927c7ea2bd97bae015e32fa96a6b0c84e0/packages/react-router/lib/dom/global.ts#L33
+    version?: string;
+  };
 }
 
 export interface EarlyRequest {
