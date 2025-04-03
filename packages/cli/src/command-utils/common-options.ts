@@ -183,4 +183,8 @@ export const COMMON_RECORD_OPTIONS = {
     string: true,
     hidden: !IS_METICULOUS_SUPER_USER,
   } as const,
+  maxPayloadSize: {
+    number: true,
+    description: "The maximum payload size for the session",
+  } as const,
 };

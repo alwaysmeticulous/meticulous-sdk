@@ -29,6 +29,7 @@ export const recordSession = async ({
   onDetectedSession,
   captureHttpOnlyCookies,
   appUrl,
+  maxPayloadSize,
 }: RecordSessionOptions) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -92,6 +93,11 @@ export const recordSession = async ({
 
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(DEFAULT_NAVIGATION_TIMEOUT_MS); // 2 minutes
+  if (maxPayloadSize) {
+    await page.evaluateOnNewDocument((maxPayloadSize) => {
+      (window as any).METICULOUS_MAX_PAYLOAD_SIZE = maxPayloadSize;
+    }, maxPayloadSize);
+  }
 
   if (bypassCSP) {
     await page.setBypassCSP(true);

@@ -16,6 +16,8 @@ export interface RecordSessionOptions {
 
   /** If set will jump straight to recording from this URL */
   appUrl?: string | null | undefined;
+  /** If set, will set the max payload size for the session */
+  maxPayloadSize?: number | null | undefined;
   onDetectedSession?: (sessionId: string) => void;
 }
 
