@@ -50,7 +50,7 @@ export interface MeticulousPublicReplayApi {
   ): void;
 
   /**
-   * [Experiment] Record a custom event. If a mock communication channel is configured,
+   * Record a custom event. If a mock communication channel is configured,
    * this may trigger custom events to be fired.
    */
   recordCustomEvent(type: string, serializedData: string): { success: boolean };
