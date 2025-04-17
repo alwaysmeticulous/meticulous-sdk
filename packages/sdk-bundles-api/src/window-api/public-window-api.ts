@@ -48,6 +48,12 @@ export interface MeticulousPublicReplayApi {
     type: string,
     callback: (serializedData: string) => void | Promise<void>
   ): void;
+
+  /**
+   * Record a custom event. If a mock communication channel is configured,
+   * this may trigger custom events to be fired.
+   */
+  recordCustomEvent(type: string, serializedData: string): { success: boolean };
 }
 
 export interface MeticulousPublicRecordApi {
