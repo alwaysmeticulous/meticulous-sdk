@@ -114,3 +114,4 @@ export {
   UrlChangeEventDivergenceIndicator,
   UserEventDivergenceIndicator,
 } from "./sdk-bundle-api/bundle-to-sdk/replay-divergence";
+export { AssetUploadMetadata } from "./sdk-bundle-api/sdk-to-bundle/asset-upload-metadata";
