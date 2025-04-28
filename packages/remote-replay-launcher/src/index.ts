@@ -27,6 +27,7 @@ const MS_TO_WAIT_FOR_RETRY = 5 * 60 * 1_000; // 5 minutes
 export const executeRemoteTestRun = async ({
   apiToken: apiToken_,
   appUrl,
+  appDirectory,
   commitSha,
   secureTunnelHost,
   onTunnelCreated,
@@ -51,19 +52,33 @@ export const executeRemoteTestRun = async ({
 
   const client = createClient({ apiToken });
 
-  let url: URL;
-  try {
-    url = new URL(appUrl);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_error) {
+  if (appUrl && appDirectory) {
+    logger.error("You must provide precisely one of appUrl or appDirectory");
+    process.exit(1);
+  }
+
+  if (appDirectory) {
     // If the app URL is not a valid URL, it must be a local directory and we bundle it and upload to S3
     const { testRun } = await uploadAssetsToS3({
-      folder: appUrl,
+      folder: appDirectory,
       client,
       commitSha,
       rewrites: rewrites ?? [],
     });
     return { testRun };
+  }
+
+  if (!appUrl) {
+    logger.error("You must provide precisely one of appUrl or appDirectory");
+    process.exit(1);
+  }
+
+  let url: URL;
+  try {
+    url = new URL(appUrl);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (_error) {
+    throw new Error(`Invalid app URL: ${appUrl}`);
   }
 
   const port = getPort(url);

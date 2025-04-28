@@ -10,12 +10,14 @@ export interface ExecuteRemoteTestRunOptions {
   apiToken: string | null | undefined;
 
   /**
-   * The URL of the app to test.
-   * This should be either:
-   * - A URL which will result in a tunnel being created.
-   * - A local directory path which will result in the app being bundled and uploaded to S3.
+   * The application to test. This should be either:
+   * - appUrl: A URL which will result in a tunnel being created.
+   * - appDirectory: A local directory path which will result in the app being bundled and uploaded to S3.
+   * We expect precisely one of these to be provided, and will throw an error if that's not the case.
    */
-  appUrl: string;
+  appUrl?: string;
+  appDirectory?: string;
+
   commitSha: string;
 
   secureTunnelHost?: string | undefined;
