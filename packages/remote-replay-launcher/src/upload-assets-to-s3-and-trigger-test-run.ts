@@ -1,36 +1,42 @@
-import { createReadStream, createWriteStream, statSync, unlinkSync } from "fs";
+import { createWriteStream, createReadStream, statSync, unlinkSync } from "fs";
 import { IncomingMessage } from "http";
 import { request as httpsRequest } from "https";
 import { tmpdir } from "os";
 import { join } from "path";
-import { AssetUploadMetadata } from "@alwaysmeticulous/api";
 import {
-  TestRun,
-  requestAssetUpload,
   completeAssetUpload,
+  getApiToken,
+  requestAssetUpload,
+  createClient,
 } from "@alwaysmeticulous/client";
+import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import archiver from "archiver";
-import { AxiosInstance } from "axios";
+import log from "loglevel";
+import {
+  UploadAssetsToS3AndTriggerTestRunOptions,
+  ExecuteRemoteTestRunResult,
+} from "./types";
 
-export interface UploadAssetsToS3Options {
-  folder: string;
-  client: AxiosInstance;
-  commitSha: string;
-  rewrites: AssetUploadMetadata["rewrites"];
-}
-
-export interface UploadAssetsToS3Result {
-  testRun: TestRun | null;
-}
-
-export const uploadAssetsToS3 = async ({
-  folder,
-  client,
+export const uploadAssetsToS3AndTriggerTestRun = async ({
+  apiToken: apiToken_,
+  appDirectory,
   commitSha,
   rewrites,
-}: UploadAssetsToS3Options): Promise<UploadAssetsToS3Result> => {
+}: UploadAssetsToS3AndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+
+  const apiToken = getApiToken(apiToken_);
+  if (!apiToken) {
+    logger.error(
+      "You must provide an API token by using the --apiToken parameter"
+    );
+    process.exit(1);
+  }
+
+  const client = createClient({ apiToken });
+
   const zipPath = join(tmpdir(), `assets-${Date.now()}.zip`);
-  await createZipFromFolder(folder, zipPath);
+  await createZipFromFolder(appDirectory, zipPath);
 
   try {
     const stats = statSync(zipPath);
@@ -44,7 +50,7 @@ export const uploadAssetsToS3 = async ({
       client,
       uploadId,
       commitSha,
-      rewrites,
+      rewrites: rewrites ?? [],
     });
 
     return {
@@ -108,7 +114,6 @@ const uploadFileToSignedUrl = async (
     );
 
     req.on("error", reject);
-
     fileStream.pipe(req);
   });
 };

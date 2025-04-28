@@ -6,18 +6,11 @@ export interface TunnelData {
   basicAuthUser: string;
   basicAuthPassword: string;
 }
+
 export interface ExecuteRemoteTestRunOptions {
   apiToken: string | null | undefined;
 
-  /**
-   * The application to test. This should be either:
-   * - appUrl: A URL which will result in a tunnel being created.
-   * - appDirectory: A local directory path which will result in the app being bundled and uploaded to S3.
-   * We expect precisely one of these to be provided, and will throw an error if that's not the case.
-   */
-  appUrl?: string;
-  appDirectory?: string;
-
+  appUrl: string;
   commitSha: string;
 
   secureTunnelHost?: string | undefined;
@@ -46,14 +39,15 @@ export interface ExecuteRemoteTestRunOptions {
    * cases (e.g. PRs from forks on GitHub) this may not work, hence one can be provided here.
    */
   pullRequestHostingProviderId?: string;
-
-  /**
-   * A set of rewrite rules to apply. Note these are only applied to bundles uploaded to S3.
-   * If you are opening a tunnel to a server, you should apply any rewrite rules in the server.
-   */
-  rewrites?: AssetUploadMetadata["rewrites"];
 }
 
 export interface ExecuteRemoteTestRunResult {
   testRun: TestRun | null;
+}
+
+export interface UploadAssetsToS3AndTriggerTestRunOptions {
+  apiToken: string | null | undefined;
+  appDirectory: string;
+  commitSha: string;
+  rewrites?: AssetUploadMetadata["rewrites"];
 }
