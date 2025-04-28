@@ -5,7 +5,16 @@ export type NetworkStubbingMode =
 
 interface NetworkStubbingBase {
   /**
-   * When looking for a request to use as a stub, these transformations will be applied to the request before any other transformations.
+   * When looking for a request to use as a stub, these transformations will be applied to the request first.
+   * If not defined, the default identity transformation will be used (i.e., exact matching of the request).
+   * These transformations take precedence over any other transformations.
+   * They will be applied in the order they are defined.
+   */
+  identityRequestTransformations?: CustomTransformation[];
+
+  /**
+   * When looking for a request to use as a stub, these transformations will be applied after the identity transformations.
+   * These transformations are applied in addition to (and after) any identity transformations.
    * They will be applied in the order they are defined.
    */
   customRequestTransformations?: CustomTransformation[];
