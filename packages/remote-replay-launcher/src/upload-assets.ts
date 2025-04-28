@@ -61,20 +61,21 @@ export const uploadAssetsToS3 = async ({
 
 const createZipFromFolder = async (
   folderPath: string,
-  outputPath: string
+  archivePath: string
 ): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const output = createWriteStream(outputPath);
-    const archive = archiver("zip", {
-      zlib: { level: 9 },
+  const fileStream = createWriteStream(archivePath);
+  const archive = archiver("zip");
+
+  await new Promise((resolve, reject) => {
+    archive.on("error", (err) => reject(err));
+    fileStream.on("close", () => {
+      resolve(null);
     });
-
-    output.on("close", () => resolve());
-    archive.on("error", (err: Error) => reject(err));
-
-    archive.pipe(output);
+    archive.pipe(fileStream);
     archive.directory(folderPath, false);
-    archive.finalize();
+    archive.finalize().catch((error) => {
+      throw error;
+    });
   });
 };
 
