@@ -85,6 +85,7 @@ export {
   CustomStubbing,
   RequestFilter,
   CustomTransformation,
+  CustomTransformationWhere,
 } from "./sdk-bundle-api/sdk-to-bundle/network-stubbing";
 export {
   ConsoleMessageWithStackTracePointer,
