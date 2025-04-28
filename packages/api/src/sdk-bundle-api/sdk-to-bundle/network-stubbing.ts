@@ -85,6 +85,7 @@ interface CustomTransformationBase {
    * - matchRegex= `id_(?<param_name>\w*)=[^&]*`, replacement = `id_$<param_name>=<redacted>`
    */
   replacement: string;
+  requestComponent: keyof TransformableRequestData;
   /*
    * If defined, the transformation will only be applied if the request matches the where clause.
    */
