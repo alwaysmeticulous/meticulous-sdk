@@ -48,22 +48,22 @@ export const completeAssetUpload = async ({
   const { data } = await client.post<
     CompleteAssetUploadParams,
     { data: CompleteAssetUploadResponse }
-  >("project-deployments/complete-asset-upload", params);
+  >("project-deployments/complete-asset-upload-and-maybe-trigger-run", params);
   return data;
 };
 
 export const downloadDeployment = async ({
   client,
   projectId,
-  deploymentId,
+  deploymentUploadId,
 }: {
   client: AxiosInstance;
   projectId: string;
-  deploymentId: string;
+  deploymentUploadId: string;
 }): Promise<DownloadDeploymentResponse> => {
   const { data } = await client.get<
     unknown,
     { data: DownloadDeploymentResponse }
-  >(`project-deployments/download/${projectId}/${deploymentId}`);
+  >(`project-deployments/${projectId}/${deploymentUploadId}`);
   return data;
 };
