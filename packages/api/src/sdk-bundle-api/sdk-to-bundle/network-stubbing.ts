@@ -85,7 +85,10 @@ interface CustomTransformationBase {
    * - matchRegex= `id_(?<param_name>\w*)=[^&]*`, replacement = `id_$<param_name>=<redacted>`
    */
   replacement: string;
-  requestComponent: keyof TransformableRequestData;
+  /*
+   * If defined, the transformation will only be applied if the request matches the where clause.
+   */
+  where?: CustomTransformationWhere;
 }
 
 type TransformableUrlFields = keyof Pick<
@@ -114,3 +117,11 @@ interface CustomRequestTransformation extends CustomTransformationBase {
 export type CustomTransformation =
   | CustomRequestTransformation
   | CustomUrlTransformation;
+
+/*
+ * We use a type union to allow for the where clause to be defined on either a request or url transformation.
+ * We can't reuse CustomTransformation because otherwise the type checker will restrict the where clause to have the same type as the original transformation.
+ */
+export type CustomTransformationWhere =
+  | Omit<CustomRequestTransformation, "replacement">
+  | Omit<CustomUrlTransformation, "replacement">;
