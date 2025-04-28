@@ -15,6 +15,7 @@ import {
   ExecuteRemoteTestRunOptions,
   ExecuteRemoteTestRunResult,
 } from "./types";
+import { uploadAssetsToS3 } from "./upload-assets";
 import { getPort } from "./url.utils";
 
 export { TunnelData } from "./types";
@@ -36,6 +37,7 @@ export const executeRemoteTestRun = async ({
   environment,
   isLockable,
   pullRequestHostingProviderId,
+  rewrites,
 }: ExecuteRemoteTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -54,7 +56,14 @@ export const executeRemoteTestRun = async ({
     url = new URL(appUrl);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error) {
-    throw new Error(`Invalid app URL: ${appUrl}`);
+    // If the app URL is not a valid URL, it must be a local directory and we bundle it and upload to S3
+    const { testRun } = await uploadAssetsToS3({
+      folder: appUrl,
+      client,
+      commitSha,
+      rewrites: rewrites ?? [],
+    });
+    return { testRun };
   }
 
   const port = getPort(url);

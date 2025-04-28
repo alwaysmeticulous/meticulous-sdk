@@ -24,8 +24,12 @@
     "@alwaysmeticulous/common": "^2.214.0",
     "@alwaysmeticulous/tunnels-client": "^2.207.0",
     "@sentry/node": "^9.1.0",
+    "archiver": "^7.0.0",
     "loglevel": "^1.8.0",
     "systeminformation": "^5.25.11"
+  },
+  "devDependencies": {
+    "@types/archiver": "^5.1.1"
   },
   "author": {
     "name": "The Meticulous Team",

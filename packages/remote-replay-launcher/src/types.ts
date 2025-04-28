@@ -1,3 +1,4 @@
+import { AssetUploadMetadata } from "@alwaysmeticulous/api";
 import { TestRun } from "@alwaysmeticulous/client";
 
 export interface TunnelData {
@@ -8,6 +9,12 @@ export interface TunnelData {
 export interface ExecuteRemoteTestRunOptions {
   apiToken: string | null | undefined;
 
+  /**
+   * The URL of the app to test.
+   * This should be either:
+   * - A URL which will result in a tunnel being created.
+   * - A local directory path which will result in the app being bundled and uploaded to S3.
+   */
   appUrl: string;
   commitSha: string;
 
@@ -37,8 +44,14 @@ export interface ExecuteRemoteTestRunOptions {
    * cases (e.g. PRs from forks on GitHub) this may not work, hence one can be provided here.
    */
   pullRequestHostingProviderId?: string;
+
+  /**
+   * A set of rewrite rules to apply. Note these are only applied to bundles uploaded to S3.
+   * If you are opening a tunnel to a server, you should apply any rewrite rules in the server.
+   */
+  rewrites?: AssetUploadMetadata["rewrites"];
 }
 
 export interface ExecuteRemoteTestRunResult {
-  testRun: TestRun;
+  testRun: TestRun | null;
 }
