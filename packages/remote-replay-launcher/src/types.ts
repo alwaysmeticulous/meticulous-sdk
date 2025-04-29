@@ -45,7 +45,7 @@ export interface ExecuteRemoteTestRunResult {
   testRun: TestRun | null;
 }
 
-export interface UploadAssetsToS3AndTriggerTestRunOptions {
+export interface UploadAssetsAndTriggerTestRunOptions {
   apiToken: string | null | undefined;
   appDirectory: string;
   commitSha: string;

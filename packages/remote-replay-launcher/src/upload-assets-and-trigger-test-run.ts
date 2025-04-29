@@ -19,16 +19,16 @@ import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import archiver from "archiver";
 import log from "loglevel";
 import {
-  UploadAssetsToS3AndTriggerTestRunOptions,
+  UploadAssetsAndTriggerTestRunOptions,
   ExecuteRemoteTestRunResult,
 } from "./types";
 
-export const uploadAssetsToS3AndTriggerTestRun = async ({
+export const uploadAssetsAndTriggerTestRun = async ({
   apiToken: apiToken_,
   appDirectory,
   commitSha,
   rewrites,
-}: UploadAssetsToS3AndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
+}: UploadAssetsAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const apiToken = getApiToken(apiToken_);
@@ -74,8 +74,8 @@ export const uploadAssetsToS3AndTriggerTestRun = async ({
   } finally {
     try {
       unlinkSync(zipPath);
-    } catch {
-      // Ignore errors when deleting the temporary file
+    } catch (error) {
+      logger.warn(`Failed to delete temporary file ${zipPath}: ${error}`);
     }
   }
 };
