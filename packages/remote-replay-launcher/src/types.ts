@@ -1,3 +1,4 @@
+import { AssetUploadMetadata } from "@alwaysmeticulous/api";
 import { TestRun } from "@alwaysmeticulous/client";
 
 export interface TunnelData {
@@ -5,6 +6,7 @@ export interface TunnelData {
   basicAuthUser: string;
   basicAuthPassword: string;
 }
+
 export interface ExecuteRemoteTestRunOptions {
   apiToken: string | null | undefined;
 
@@ -40,5 +42,12 @@ export interface ExecuteRemoteTestRunOptions {
 }
 
 export interface ExecuteRemoteTestRunResult {
-  testRun: TestRun;
+  testRun: TestRun | null;
+}
+
+export interface UploadAssetsAndTriggerTestRunOptions {
+  apiToken: string | null | undefined;
+  appDirectory: string;
+  commitSha: string;
+  rewrites?: AssetUploadMetadata["rewrites"];
 }
