@@ -161,7 +161,8 @@ export interface DoNotCompareScreenshots {
 export type ReplayTarget =
   | SnapshottedAssetsReplayTarget
   | URLReplayTarget
-  | OriginalRecordedURLReplayTarget;
+  | OriginalRecordedURLReplayTarget
+  | S3ReplayTarget;
 
 export interface SnapshottedAssetsReplayTarget {
   type: "snapshotted-assets";
@@ -179,6 +180,11 @@ export interface URLReplayTarget {
    * If absent, and no URL provided in test case either, then will use the URL the session was recorded against.
    */
   appUrl: string;
+}
+
+export interface S3ReplayTarget {
+  type: "s3";
+  s3Url: string;
 }
 
 export interface OriginalRecordedURLReplayTarget {
