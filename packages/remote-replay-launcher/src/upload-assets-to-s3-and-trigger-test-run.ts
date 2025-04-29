@@ -1,8 +1,14 @@
-import { createWriteStream, createReadStream, statSync, unlinkSync } from "fs";
+import {
+  createWriteStream,
+  createReadStream,
+  statSync,
+  unlinkSync,
+  existsSync,
+} from "fs";
 import { IncomingMessage } from "http";
 import { request as httpsRequest } from "https";
 import { tmpdir } from "os";
-import { join } from "path";
+import { join, resolve } from "path";
 import {
   completeAssetUpload,
   getApiToken,
@@ -33,10 +39,15 @@ export const uploadAssetsToS3AndTriggerTestRun = async ({
     process.exit(1);
   }
 
+  const resolvedAppDirectory = resolve(appDirectory);
+  if (!existsSync(resolvedAppDirectory)) {
+    throw new Error(`Directory does not exist: ${resolvedAppDirectory}`);
+  }
+
   const client = createClient({ apiToken });
 
   const zipPath = join(tmpdir(), `assets-${Date.now()}.zip`);
-  await createZipFromFolder(appDirectory, zipPath);
+  await createZipFromFolder(resolvedAppDirectory, zipPath);
 
   try {
     const stats = statSync(zipPath);
@@ -52,6 +63,10 @@ export const uploadAssetsToS3AndTriggerTestRun = async ({
       commitSha,
       rewrites: rewrites ?? [],
     });
+    logger.info(`Deployment assets ${uploadId} marked as uploaded`);
+    if (result.testRun) {
+      logger.info(`Test run ${result.testRun.id} triggered`);
+    }
 
     return {
       testRun: result.testRun ?? null,
@@ -90,6 +105,9 @@ const uploadFileToSignedUrl = async (
   signedUrl: string
 ): Promise<void> => {
   const fileStream = createReadStream(filePath);
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const fileSize = statSync(filePath).size;
+  logger.info(`Uploading deployment assets (${fileSize} bytes)...`);
 
   return new Promise((resolve, reject) => {
     const req = httpsRequest(
@@ -97,23 +115,41 @@ const uploadFileToSignedUrl = async (
       {
         method: "PUT",
         headers: {
-          "Content-Length": statSync(filePath).size,
+          "Content-Length": fileSize,
           "Content-Type": "application/zip",
         },
       },
       (response: IncomingMessage) => {
-        if (response.statusCode === 200) {
-          resolve();
-        } else {
-          reject(new Error(`Failed to upload file: ${response.statusCode}`));
-        }
+        let responseData = "";
 
-        response.on("data", () => {});
-        response.on("end", () => {});
+        response.on("data", (chunk) => {
+          responseData += chunk;
+        });
+
+        response.on("end", () => {
+          if (response.statusCode === 200) {
+            logger.info("Successfully uploaded deployment assets");
+            resolve();
+          } else {
+            const errorMessage = `Failed to upload file: Status ${response.statusCode}. Response: ${responseData}`;
+            logger.error(errorMessage);
+            reject(new Error(errorMessage));
+          }
+        });
       }
     );
 
-    req.on("error", reject);
+    req.on("error", (error) => {
+      logger.error(`Upload request error: ${error.message}`);
+      reject(error);
+    });
+
+    fileStream.on("error", (error) => {
+      logger.error(`File stream error: ${error.message}`);
+      req.destroy(error);
+      reject(error);
+    });
+
     fileStream.pipe(req);
   });
 };
