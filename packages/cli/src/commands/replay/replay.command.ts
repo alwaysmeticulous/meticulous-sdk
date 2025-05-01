@@ -215,6 +215,9 @@ export const getReplayTarget = ({
     return { type: "snapshotted-assets", simulationIdForAssets };
   }
   if (appUrl) {
+    if (appUrl.startsWith("s3://")) {
+      return { type: "s3", s3Url: appUrl };
+    }
     return { type: "url", appUrl };
   }
   return { type: "original-recorded-url" };
