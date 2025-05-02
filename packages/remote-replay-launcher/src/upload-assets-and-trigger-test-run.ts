@@ -89,7 +89,7 @@ const createZipFromFolder = async (
     fileStream.on("open", (descriptor) => {
       fd = descriptor;
     });
-    fileStream.on("close", async () => {
+    fileStream.on("finish", async () => {
       try {
         await new Promise<void>((fsyncResolve, fsyncReject) => {
           if (fd !== null) {
