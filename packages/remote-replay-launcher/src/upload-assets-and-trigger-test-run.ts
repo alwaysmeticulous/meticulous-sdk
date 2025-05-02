@@ -92,7 +92,7 @@ const createZipFromFolder = async (
       try {
         await new Promise<void>((fsyncResolve, fsyncReject) => {
           if (fd !== null) {
-            fsync(fd as number, (err) => {
+            fsync(fd, (err) => {
               if (err) fsyncReject(err);
               else fsyncResolve();
             });
