@@ -1,4 +1,4 @@
-import { createWriteStream, createReadStream, existsSync } from "fs";
+import { createWriteStream, createReadStream, existsSync, fsync } from "fs";
 import { stat, unlink } from "fs/promises";
 import { IncomingMessage } from "http";
 import { request as httpsRequest } from "https";
@@ -82,10 +82,29 @@ const createZipFromFolder = async (
   const fileStream = createWriteStream(archivePath);
   const archive = archiver("zip");
 
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     archive.on("error", (err) => reject(err));
-    fileStream.on("close", () => {
-      resolve(null);
+
+    let fd: number | null = null;
+    fileStream.on("open", (descriptor) => {
+      fd = descriptor;
+    });
+    fileStream.on("close", async () => {
+      try {
+        await new Promise<void>((fsyncResolve, fsyncReject) => {
+          if (fd !== null) {
+            fsync(fd as number, (err) => {
+              if (err) fsyncReject(err);
+              else fsyncResolve();
+            });
+          } else {
+            fsyncReject(new Error("File descriptor not found"));
+          }
+        });
+        resolve();
+      } catch (fsyncError) {
+        reject(fsyncError);
+      }
     });
     archive.pipe(fileStream);
     archive.directory(folderPath, false);
