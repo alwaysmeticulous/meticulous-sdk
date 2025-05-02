@@ -1,10 +1,5 @@
-import {
-  createWriteStream,
-  createReadStream,
-  statSync,
-  unlinkSync,
-  existsSync,
-} from "fs";
+import { createWriteStream, createReadStream, existsSync, fsync } from "fs";
+import { stat, unlink } from "fs/promises";
 import { IncomingMessage } from "http";
 import { request as httpsRequest } from "https";
 import { tmpdir } from "os";
@@ -48,15 +43,14 @@ export const uploadAssetsAndTriggerTestRun = async ({
 
   const zipPath = join(tmpdir(), `assets-${Date.now()}.zip`);
   await createZipFromFolder(resolvedAppDirectory, zipPath);
-
   try {
-    const stats = statSync(zipPath);
-    const fileSize = stats.size;
+    const fileStats = await stat(zipPath);
+    const fileSize = fileStats.size;
     const { uploadId, uploadUrl } = await requestAssetUpload({
       client,
       size: fileSize,
     });
-    await uploadFileToSignedUrl(zipPath, uploadUrl);
+    await uploadFileToSignedUrl(zipPath, uploadUrl, fileSize);
     const result = await completeAssetUpload({
       client,
       uploadId,
@@ -73,7 +67,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
     };
   } finally {
     try {
-      unlinkSync(zipPath);
+      await unlink(zipPath);
     } catch (error) {
       logger.warn(`Failed to delete temporary file ${zipPath}: ${error}`);
     }
@@ -87,10 +81,29 @@ const createZipFromFolder = async (
   const fileStream = createWriteStream(archivePath);
   const archive = archiver("zip");
 
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     archive.on("error", (err) => reject(err));
-    fileStream.on("close", () => {
-      resolve(null);
+
+    let fd: number | null = null;
+    fileStream.on("open", (descriptor) => {
+      fd = descriptor;
+    });
+    fileStream.on("finish", async () => {
+      try {
+        await new Promise<void>((fsyncResolve, fsyncReject) => {
+          if (fd !== null) {
+            fsync(fd, (err) => {
+              if (err) fsyncReject(err);
+              else fsyncResolve();
+            });
+          } else {
+            fsyncReject(new Error("File descriptor not found"));
+          }
+        });
+        resolve();
+      } catch (fsyncError) {
+        reject(fsyncError);
+      }
     });
     archive.pipe(fileStream);
     archive.directory(folderPath, false);
@@ -102,11 +115,18 @@ const createZipFromFolder = async (
 
 const uploadFileToSignedUrl = async (
   filePath: string,
-  signedUrl: string
+  signedUrl: string,
+  expectedFileSize: number
 ): Promise<void> => {
   const fileStream = createReadStream(filePath);
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-  const fileSize = statSync(filePath).size;
+  const fileStats = await stat(filePath);
+  const fileSize = fileStats.size;
+  if (fileSize !== expectedFileSize) {
+    throw new Error(
+      `File size mismatch: expected ${expectedFileSize} bytes, got ${fileSize} bytes`
+    );
+  }
   logger.info(`Uploading deployment assets (${fileSize} bytes)...`);
 
   return new Promise((resolve, reject) => {
@@ -131,7 +151,7 @@ const uploadFileToSignedUrl = async (
             logger.info("Successfully uploaded deployment assets");
             resolve();
           } else {
-            const errorMessage = `Failed to upload file: Status ${response.statusCode}. Response: ${responseData}`;
+            const errorMessage = `Failed to upload assets!\nSigned URL: ${signedUrl}\nStatus ${response.statusCode}.\nResponse:\n${responseData}`;
             logger.error(errorMessage);
             reject(new Error(errorMessage));
           }
