@@ -43,10 +43,9 @@ export const uploadAssetsAndTriggerTestRun = async ({
 
   const zipPath = join(tmpdir(), `assets-${Date.now()}.zip`);
   await createZipFromFolder(resolvedAppDirectory, zipPath);
-  const fileStats = await stat(zipPath);
-  const fileSize = fileStats.size;
-
   try {
+    const fileStats = await stat(zipPath);
+    const fileSize = fileStats.size;
     const { uploadId, uploadUrl } = await requestAssetUpload({
       client,
       size: fileSize,
