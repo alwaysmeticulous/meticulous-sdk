@@ -15,6 +15,7 @@ export type MeticulousPublicApi = MeticulousPublicApiCommon &
 
 export interface MeticulousPublicApiCommon {
   isRunningAsTest?: boolean;
+  context: MeticulousPublicContextApi;
 }
 
 export interface MeticulousPublicReplayApi {
@@ -90,12 +91,50 @@ export interface MeticulousPublicRecordApi {
    * Record the id of the logged in user (e.g. a user id from a database for the application Meticulous
    * is testing). This is associated with the session and can make it easier to find sessions for a
    * specific user.
+   * @deprecated Use the same method in window.Meticulous.context instead.
    */
   recordUserId(userId: string): { success: boolean };
 
   /**
    * Record the email address of the logged in user. This is associated with the session
    * and can make it easier to find sessions for a specific user.
+   * @deprecated Use the same method in window.Meticulous.context instead.
+   */
+  recordUserEmail(emailAddress: string): { success: boolean };
+}
+
+export interface MeticulousPublicContextApi {
+  /**
+   * Call this method to record the value of a feature flag. If this method is called multiple times
+   * with the same label, the value will be overwritten.
+   */
+  recordFeatureFlag(
+    label: string,
+    value: string | boolean
+  ): { success: boolean };
+
+  /**
+   * Call this method to record some custom context about the session. For instance, you could use
+   * this to capture whether a user is opted into beta features, or what colour scheme they have
+   * selected in your app. If this method is called multiple times with the same label, the value
+   * will be overwritten.
+   */
+  recordCustomContext(
+    label: string,
+    value: string | boolean
+  ): { success: boolean };
+
+  /**
+   * Record the id of the logged in user (e.g. a user id from a database for the application Meticulous
+   * is testing). This is associated with the session and can make it easier to find sessions for a
+   * specific user. If this method is called multiple times, the value will be overwritten.
+   */
+  recordUserId(userId: string): { success: boolean };
+
+  /**
+   * Record the email address of the logged in user. This is associated with the session
+   * and can make it easier to find sessions for a specific user. If this method is called
+   * multiple times, the value will be overwritten.
    */
   recordUserEmail(emailAddress: string): { success: boolean };
 }
