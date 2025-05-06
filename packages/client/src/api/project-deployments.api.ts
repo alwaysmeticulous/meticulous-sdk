@@ -52,6 +52,7 @@ export const completeAssetUpload = async ({
   return data;
 };
 
+// TODO(edoardo): Drop this once we have migrated to the new format
 export const downloadDeployment = async ({
   client,
   projectId,
@@ -65,5 +66,19 @@ export const downloadDeployment = async ({
     unknown,
     { data: DownloadDeploymentResponse }
   >(`project-deployments/${projectId}/${deploymentUploadId}`);
+  return data;
+};
+
+export const downloadProjectDeployment = async ({
+  client,
+  deploymentUploadId,
+}: {
+  client: AxiosInstance;
+  deploymentUploadId: string;
+}): Promise<DownloadDeploymentResponse> => {
+  const { data } = await client.get<
+    unknown,
+    { data: DownloadDeploymentResponse }
+  >(`project-deployments/${deploymentUploadId}`);
   return data;
 };
