@@ -162,7 +162,8 @@ export type ReplayTarget =
   | SnapshottedAssetsReplayTarget
   | URLReplayTarget
   | OriginalRecordedURLReplayTarget
-  | S3ReplayTarget;
+  | S3ReplayTarget
+  | UploadedAssetsReplayTarget;
 
 export interface SnapshottedAssetsReplayTarget {
   type: "snapshotted-assets";
@@ -182,9 +183,15 @@ export interface URLReplayTarget {
   appUrl: string;
 }
 
+// TODO(edoardo): Delete this once we have migrated to the new format
 export interface S3ReplayTarget {
   type: "s3";
   s3Url: string;
+}
+
+export interface UploadedAssetsReplayTarget {
+  type: "uploaded-assets";
+  deploymentUploadId: string;
 }
 
 export interface OriginalRecordedURLReplayTarget {
