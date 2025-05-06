@@ -33,4 +33,5 @@ export {
   completeAssetUpload,
   DownloadDeploymentResponse,
   downloadDeployment,
+  downloadProjectDeployment,
 } from "./api/project-deployments.api";
