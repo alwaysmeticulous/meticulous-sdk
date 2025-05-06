@@ -162,7 +162,6 @@ export type ReplayTarget =
   | SnapshottedAssetsReplayTarget
   | URLReplayTarget
   | OriginalRecordedURLReplayTarget
-  | S3ReplayTarget
   | UploadedAssetsReplayTarget;
 
 export interface SnapshottedAssetsReplayTarget {
@@ -181,12 +180,6 @@ export interface URLReplayTarget {
    * If absent, and no URL provided in test case either, then will use the URL the session was recorded against.
    */
   appUrl: string;
-}
-
-// TODO(edoardo): Delete this once we have migrated to the new format
-export interface S3ReplayTarget {
-  type: "s3";
-  s3Url: string;
 }
 
 export interface UploadedAssetsReplayTarget {

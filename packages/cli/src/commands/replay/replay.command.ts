@@ -215,10 +215,6 @@ export const getReplayTarget = ({
     return { type: "snapshotted-assets", simulationIdForAssets };
   }
   if (appUrl) {
-    // TODO(edoardo): Delete this once we have migrated to the new format
-    if (appUrl.startsWith("s3://")) {
-      return { type: "s3", s3Url: appUrl };
-    }
     if (appUrl.startsWith("uploaded-assets://")) {
       const deploymentUploadId = appUrl.slice("uploaded-assets://".length);
       return { type: "uploaded-assets", deploymentUploadId };
