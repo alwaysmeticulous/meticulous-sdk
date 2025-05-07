@@ -263,6 +263,12 @@ export enum CustomDataSingletonInternalKey {
    * by calling `window.Meticulous.record.recordUserEmail(email)`.
    */
   UserEmail = "met-user-email",
+
+  /**
+   * The user agent of the browser the session was recorded on. As returned by `navigator.userAgent`.
+   * Present on recordings since ~May 2025.
+   */
+  UserAgent = "met-user-agent",
 }
 
 export type CustomDataSingletonInternalValues = {
@@ -271,6 +277,7 @@ export type CustomDataSingletonInternalValues = {
   [CustomDataSingletonInternalKey.Languages]: string;
   [CustomDataSingletonInternalKey.UserId]: string;
   [CustomDataSingletonInternalKey.UserEmail]: string;
+  [CustomDataSingletonInternalKey.UserAgent]: string;
 };
 
 export type CustomData = {
