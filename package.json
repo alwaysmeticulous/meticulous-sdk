@@ -30,7 +30,7 @@
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "depcheck": "^1.4.3",
-    "esbuild": "^0.17.5",
+    "esbuild": "^0.25.3",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.1.1",
     "eslint-import-resolver-typescript": "^3.7.0",
