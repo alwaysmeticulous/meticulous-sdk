@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/client",
-  "version": "2.218.0",
+  "version": "2.218.1",
   "description": "Helper methods for using the Meticulous backend API",
   "license": "ISC",
   "main": "dist/index.js",
@@ -19,8 +19,8 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/api": "^2.217.0",
-    "@alwaysmeticulous/common": "^2.218.0",
+    "@alwaysmeticulous/api": "^2.218.1",
+    "@alwaysmeticulous/common": "^2.218.1",
     "axios": "^1.7.9",
     "axios-retry": "^4.5.0",
     "loglevel": "^1.8.0"
