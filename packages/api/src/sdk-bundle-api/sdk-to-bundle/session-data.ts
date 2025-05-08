@@ -284,5 +284,8 @@ export type CustomData = {
   singletons: Record<string, string> &
     Partial<CustomDataSingletonInternalValues>;
   arrays: Record<string, string[]>;
-  events: CustomUserEvent[];
+  /**
+   * Only present on recordings since ~November 2024.
+   */
+  events?: CustomUserEvent[];
 };
