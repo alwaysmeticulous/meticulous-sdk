@@ -59,7 +59,12 @@ export const uploadAssetsAndTriggerTestRun = async ({
     });
     logger.info(`Deployment assets ${uploadId} marked as uploaded`);
     if (result.testRun) {
-      logger.info(`Test run ${result.testRun.id} triggered`);
+      const organizationName = encodeURIComponent(
+        result.testRun.project.organization.name
+      );
+      const projectName = encodeURIComponent(result.testRun.project.name);
+      const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${result.testRun.id}`;
+      logger.info(`Test run triggered: ${testRunUrl}`);
     }
 
     return {
