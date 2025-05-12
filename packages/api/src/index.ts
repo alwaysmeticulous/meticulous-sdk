@@ -54,6 +54,7 @@ export {
   CustomDataSingletonInternalValues,
   CustomData,
   CustomUserEvent,
+  SessionContext,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export {
   SequenceNumber,
