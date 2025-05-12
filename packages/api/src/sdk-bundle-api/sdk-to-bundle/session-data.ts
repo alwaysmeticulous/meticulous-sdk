@@ -253,18 +253,6 @@ export enum CustomDataSingletonInternalKey {
   Languages = "met-languages",
 
   /**
-   * The id of the logged in user (e.g. a user id from a database for the application Meticulous is testing).
-   * This must be set by the recording application by calling `window.Meticulous.record.recordUserId(userId)`.
-   */
-  UserId = "met-user-id",
-
-  /**
-   * The email address of the logged in user. This must be set by the recording application
-   * by calling `window.Meticulous.record.recordUserEmail(email)`.
-   */
-  UserEmail = "met-user-email",
-
-  /**
    * The user agent of the browser the session was recorded on. As returned by `navigator.userAgent`.
    * Present on recordings since ~May 2025.
    */
@@ -275,8 +263,6 @@ export type CustomDataSingletonInternalValues = {
   [CustomDataSingletonInternalKey.SystemThemePreferredColor]: "light" | "dark";
   [CustomDataSingletonInternalKey.TimezoneName]: string;
   [CustomDataSingletonInternalKey.Languages]: string;
-  [CustomDataSingletonInternalKey.UserId]: string;
-  [CustomDataSingletonInternalKey.UserEmail]: string;
   [CustomDataSingletonInternalKey.UserAgent]: string;
 };
 
@@ -288,4 +274,15 @@ export type CustomData = {
    * Only present on recordings since ~November 2024.
    */
   events?: CustomUserEvent[];
+  /**
+   * Only present on recordings since ~May 2025.
+   */
+  context?: SessionContext;
+};
+
+export type SessionContext = {
+  customContext: Record<string, string | boolean>;
+  featureFlags: Record<string, string | boolean>;
+  userId?: string;
+  userEmail?: string;
 };
