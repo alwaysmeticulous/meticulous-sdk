@@ -65,6 +65,11 @@ export interface SessionData {
    */
   requestsBeforeNetworkRecordingStarted?: EarlyRequest[];
   applicationSpecificData?: ApplicationSpecificData;
+
+  /**
+   * Only present on recordings since ~May 2025.
+   */
+  context?: SessionContext;
 }
 
 export interface WindowData {
@@ -274,10 +279,6 @@ export type CustomData = {
    * Only present on recordings since ~November 2024.
    */
   events?: CustomUserEvent[];
-  /**
-   * Only present on recordings since ~May 2025.
-   */
-  context?: SessionContext;
 };
 
 export type SessionContext = {
