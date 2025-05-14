@@ -239,6 +239,10 @@ export type CustomUserEvent = {
 };
 
 export enum CustomDataSingletonInternalKey {
+  /**
+   * The preferred color scheme of the device on which the session was recorded.
+   * Present on recordings since ~Jan 2025.
+   */
   SystemThemePreferredColor = "met-system-theme-preferred-color",
 
   /**
@@ -262,6 +266,13 @@ export enum CustomDataSingletonInternalKey {
    * Present on recordings since ~May 2025.
    */
   UserAgent = "met-user-agent",
+
+  /**
+   * When recording custom data, we don't abandon the recording if we encounter an object that is too large to serialize.
+   * However, we still want to track if this happens so we can surface a warning in the UI.
+   * Present on recordings since ~May 2025.
+   */
+  CustomObjectTooLargeToSerialize = "met-custom-object-too-large-to-serialize",
 }
 
 export type CustomDataSingletonInternalValues = {
@@ -269,6 +280,14 @@ export type CustomDataSingletonInternalValues = {
   [CustomDataSingletonInternalKey.TimezoneName]: string;
   [CustomDataSingletonInternalKey.Languages]: string;
   [CustomDataSingletonInternalKey.UserAgent]: string;
+  [CustomDataSingletonInternalKey.CustomObjectTooLargeToSerialize]:
+    | "singleton"
+    | "array"
+    | "event"
+    | "context"
+    | "feature-flag"
+    | "user-id"
+    | "user-email";
 };
 
 export type CustomData = {
