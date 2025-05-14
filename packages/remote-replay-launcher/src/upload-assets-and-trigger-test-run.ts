@@ -29,17 +29,28 @@ const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 export const tryCompleteAssetUpload = async (
   completeAssetUploadArgs: Parameters<typeof completeAssetUpload>[0]
 ): Promise<{ testRun: TestRun | null }> => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const startTime = Date.now();
   let result = await completeAssetUpload(completeAssetUploadArgs);
   let testRun = result?.testRun;
   let baseNotFound = result?.baseNotFound;
+  let lastTimeElapsed = 0;
   while (!testRun && baseNotFound) {
-    if (Date.now() - startTime > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
-      throw new Error(
+    const timeElapsed = Date.now() - startTime;
+    if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
+      logger.log(
         `Timed out after ${
           POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000
         } seconds waiting for test run`
       );
+      break;
+    }
+    if (timeElapsed - lastTimeElapsed >= 30000) {
+      // Log at most once every 30 seconds
+      logger.log(
+        `Waiting for base test run to be created. Time elapsed: ${timeElapsed}ms`
+      );
+      lastTimeElapsed = timeElapsed;
     }
     await new Promise((resolve) =>
       setTimeout(resolve, POLL_FOR_BASE_TEST_RUN_INTERVAL_MS)
