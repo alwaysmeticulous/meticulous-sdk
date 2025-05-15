@@ -38,16 +38,16 @@ export const tryCompleteAssetUpload = async (
   while (!testRun && baseNotFound) {
     const timeElapsed = Date.now() - startTime;
     if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
-      logger.log(
+      logger.warn(
         `Timed out after ${
           POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000
         } seconds waiting for test run`
       );
       break;
     }
-    if (timeElapsed - lastTimeElapsed >= 30000) {
+    if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30_000) {
       // Log at most once every 30 seconds
-      logger.log(
+      logger.info(
         `Waiting for base test run to be created. Time elapsed: ${timeElapsed}ms`
       );
       lastTimeElapsed = timeElapsed;
@@ -61,7 +61,7 @@ export const tryCompleteAssetUpload = async (
   }
 
   if (baseNotFound) {
-    // Trigger a test run without waiting for base
+    logger.info(`Base test run not found, proceeding without it.`);
     testRun = (
       await triggerRunOnDeployment({
         ...completeAssetUploadArgs,
