@@ -14,6 +14,7 @@ interface Options {
   commitSha?: string | undefined;
   appDirectory: string;
   rewrites?: string;
+  waitForBase: boolean;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -21,6 +22,7 @@ const handler: (options: Options) => Promise<void> = async ({
   commitSha: commitSha_,
   appDirectory,
   rewrites,
+  waitForBase,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const commitSha = await getCommitSha(commitSha_);
@@ -40,6 +42,7 @@ const handler: (options: Options) => Promise<void> = async ({
       commitSha,
       appDirectory,
       rewrites: parseRewrites(rewrites),
+      waitForBase,
     });
   } catch (error) {
     if (isOutOfDateClientError(error)) {
@@ -115,6 +118,13 @@ export const uploadAssetsAndExecuteTestRunInCloudCommand = buildCommand(
       default: "[]",
       description:
         "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array",
+    },
+    waitForBase: {
+      demandOption: false,
+      boolean: true,
+      default: true,
+      description:
+        "If true, the launcher will try to wait for a base test run to be created before triggering a test run. If that is not found, it will trigger a test run without waiting for a base test run.",
     },
   } as const)
   .handler(handler);

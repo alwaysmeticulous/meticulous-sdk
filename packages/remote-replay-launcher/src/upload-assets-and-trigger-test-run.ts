@@ -9,7 +9,9 @@ import {
   getApiToken,
   requestAssetUpload,
   createClient,
+  TestRun,
 } from "@alwaysmeticulous/client";
+import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import archiver from "archiver";
 import log from "loglevel";
@@ -18,11 +20,67 @@ import {
   ExecuteRemoteTestRunResult,
 } from "./types";
 
+const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
+const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Polls completeAssetUpload every 10 seconds until result.testRun exists or timeout is reached.
+ */
+export const tryCompleteAssetUpload = async (
+  completeAssetUploadArgs: Parameters<typeof completeAssetUpload>[0]
+): Promise<{ testRun: TestRun | null }> => {
+  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const startTime = Date.now();
+  let result = await completeAssetUpload(completeAssetUploadArgs);
+  let testRun = result?.testRun;
+  let baseNotFound = result?.baseNotFound;
+  let lastTimeElapsed = 0;
+  while (!testRun && baseNotFound) {
+    const timeElapsed = Date.now() - startTime;
+    if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
+      logger.warn(
+        `Timed out after ${
+          POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000
+        } seconds waiting for test run`
+      );
+      break;
+    }
+    if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30_000) {
+      // Log at most once every 30 seconds
+      logger.info(
+        `Waiting for base test run to be created. Time elapsed: ${timeElapsed}ms`
+      );
+      lastTimeElapsed = timeElapsed;
+    }
+    await new Promise((resolve) =>
+      setTimeout(resolve, POLL_FOR_BASE_TEST_RUN_INTERVAL_MS)
+    );
+    result = await triggerRunOnDeployment(completeAssetUploadArgs);
+    testRun = result?.testRun;
+    baseNotFound = result?.baseNotFound;
+  }
+
+  if (baseNotFound) {
+    logger.info(`Base test run not found, proceeding without it.`);
+    testRun = (
+      await triggerRunOnDeployment({
+        ...completeAssetUploadArgs,
+        mustHaveBase: false,
+      })
+    ).testRun;
+  }
+
+  return {
+    testRun: testRun ?? null,
+  };
+};
+
 export const uploadAssetsAndTriggerTestRun = async ({
   apiToken: apiToken_,
   appDirectory,
   commitSha,
   rewrites,
+  waitForBase,
 }: UploadAssetsAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -51,10 +109,11 @@ export const uploadAssetsAndTriggerTestRun = async ({
       size: fileSize,
     });
     await uploadFileToSignedUrl(zipPath, uploadUrl, fileSize);
-    const result = await completeAssetUpload({
+    const result = await tryCompleteAssetUpload({
       client,
       uploadId,
       commitSha,
+      mustHaveBase: waitForBase,
       rewrites: rewrites ?? [],
     });
     logger.info(`Deployment assets ${uploadId} marked as uploaded`);

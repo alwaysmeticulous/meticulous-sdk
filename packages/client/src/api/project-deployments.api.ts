@@ -15,10 +15,12 @@ export interface CompleteAssetUploadParams {
   uploadId: string;
   commitSha: string;
   rewrites: AssetUploadMetadata["rewrites"];
+  mustHaveBase: boolean;
 }
 
 export interface CompleteAssetUploadResponse {
   testRun?: TestRun;
+  baseNotFound?: boolean;
 }
 
 export interface DownloadDeploymentResponse {
@@ -36,6 +38,19 @@ export const requestAssetUpload = async ({
     RequestAssetUploadParams,
     { data: RequestAssetUploadResponse }
   >("project-deployments/request-asset-upload", params);
+  return data;
+};
+
+export const triggerRunOnDeployment = async ({
+  client,
+  ...params
+}: CompleteAssetUploadParams & {
+  client: AxiosInstance;
+}): Promise<CompleteAssetUploadResponse> => {
+  const { data } = await client.post<
+    CompleteAssetUploadParams,
+    { data: CompleteAssetUploadResponse }
+  >("project-deployments/trigger-run", params);
   return data;
 };
 
