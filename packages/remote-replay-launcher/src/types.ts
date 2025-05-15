@@ -49,5 +49,10 @@ export interface UploadAssetsAndTriggerTestRunOptions {
   apiToken: string | null | undefined;
   appDirectory: string;
   commitSha: string;
+  /**
+   * If true, before triggering a test run, the launcher will wait for a base test run to be created. If that is not found,
+   * it will trigger a test run without waiting for a base test run.
+   */
+  waitForBase: boolean;
   rewrites?: AssetUploadMetadata["rewrites"];
 }

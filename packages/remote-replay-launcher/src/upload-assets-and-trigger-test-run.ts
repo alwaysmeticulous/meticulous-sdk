@@ -80,6 +80,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
   appDirectory,
   commitSha,
   rewrites,
+  waitForBase,
 }: UploadAssetsAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -112,7 +113,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
       client,
       uploadId,
       commitSha,
-      mustHaveBase: true,
+      mustHaveBase: waitForBase,
       rewrites: rewrites ?? [],
     });
     logger.info(`Deployment assets ${uploadId} marked as uploaded`);
