@@ -100,8 +100,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
   // If there are no rewrites, check for an index.html in the root directory
   if (!rewrites || rewrites.length === 0) {
     const indexHtmlPath = join(resolvedAppDirectory, "index.html");
-    const indexHtmPath = join(resolvedAppDirectory, "index.htm");
-    if (!existsSync(indexHtmlPath) && !existsSync(indexHtmPath)) {
+    if (!existsSync(indexHtmlPath)) {
       logger.warn(
         `Warning: No index.html found in the app directory (${resolvedAppDirectory}). ` +
           `This may indicate that your build output is not properly configured for static hosting, unless you expect that the root url is invalid. ` +
