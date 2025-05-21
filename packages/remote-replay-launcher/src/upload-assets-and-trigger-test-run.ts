@@ -97,6 +97,20 @@ export const uploadAssetsAndTriggerTestRun = async ({
     throw new Error(`Directory does not exist: ${resolvedAppDirectory}`);
   }
 
+  // If there are no rewrites, check for an index.html in the root directory
+  if (!rewrites || rewrites.length === 0) {
+    const indexHtmlPath = join(resolvedAppDirectory, "index.html");
+    const indexHtmPath = join(resolvedAppDirectory, "index.htm");
+    if (!existsSync(indexHtmlPath) && !existsSync(indexHtmPath)) {
+      logger.warn(
+        `Warning: No index.html found in the app directory (${resolvedAppDirectory}). ` +
+          `This may indicate that your build output is not properly configured for static hosting, unless you expect that the root url is invalid. ` +
+          `If you're using Next.js or another framework that requires server-side rendering, ` +
+          `you should use the \`cloud-compute\` GitHub Action or the \`run-all-tests-in-cloud\` command instead.`
+      );
+    }
+  }
+
   const client = createClient({ apiToken });
 
   const zipPath = join(tmpdir(), `assets-${Date.now()}.zip`);
