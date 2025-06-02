@@ -81,7 +81,8 @@ const REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME = "previously-downloaded.txt";
 export const getOrFetchReplayArchive = async (
   client: AxiosInstance,
   replayId: string,
-  downloadScope: DownloadScope = "everything"
+  downloadScope: DownloadScope = "everything",
+  formatJsonFiles: boolean = false
 ): Promise<{ fileName: string }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -133,6 +134,7 @@ export const getOrFetchReplayArchive = async (
         replayId,
         replayDir,
         downloadScope,
+        formatJsonFiles,
         previouslyDownloadedScope
       );
     } else {
@@ -154,6 +156,7 @@ const downloadReplayV3Files = async (
   replayId: string,
   replayDir: string,
   downloadScope: DownloadScope,
+  formatJsonFiles: boolean,
   previouslyDownloadedScope: DownloadScope | undefined
 ) => {
   const downloadUrls = await getReplayV3DownloadUrls(client, replayId);
@@ -169,7 +172,14 @@ const downloadReplayV3Files = async (
     .filter(([fileType]) => shouldDownloadFile(fileType, downloadScope))
     .map(([fileType, data]) => {
       const filePath = join(replayDir, fileType);
-      return () => downloadAndExtractFile(data.signedUrl, filePath, replayDir);
+      return async () => {
+        await downloadAndExtractFile(data.signedUrl, filePath, replayDir);
+        if (formatJsonFiles && filePath.endsWith(".json")) {
+          const fileContents = readFileSync(filePath, "utf-8");
+          const json = JSON.parse(fileContents);
+          writeFileSync(filePath, JSON.stringify(json, null, 2), "utf-8");
+        }
+      };
     });
 
   if (shouldDownloadFile("screenshots", downloadScope)) {

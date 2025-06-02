@@ -29,7 +29,9 @@ const handler: (options: Options) => Promise<void> = async ({
   logger.info(`Downloaded replay metadata to: ${replayMetadataFileName}`);
   const { fileName: replayFolderFilePath } = await getOrFetchReplayArchive(
     client,
-    replayId
+    replayId,
+    "everything",
+    true
   );
 
   // Generate logs.concise.txt and logs.determinstic.txt files
