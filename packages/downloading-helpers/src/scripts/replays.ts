@@ -1,5 +1,4 @@
-import { readFileSync, writeFileSync } from "fs";
-import { mkdir } from "fs/promises";
+import { readFile, writeFile, mkdir } from "fs/promises";
 import { dirname, join } from "path";
 import { getReplay, getReplayV3DownloadUrls } from "@alwaysmeticulous/client";
 import {
@@ -102,7 +101,7 @@ export const getOrFetchReplayArchive = async (
     // want to overwrite it while it's being read.
     let previouslyDownloadedScope: DownloadScope | undefined = undefined;
     if (await fileExists(previouslyDownloadedFile)) {
-      const fileContents = readFileSync(previouslyDownloadedFile, "utf-8");
+      const fileContents = await readFile(previouslyDownloadedFile, "utf-8");
       if (DOWNLOAD_SCOPES.includes(fileContents as DownloadScope)) {
         previouslyDownloadedScope = fileContents as DownloadScope;
         if (
@@ -143,7 +142,7 @@ export const getOrFetchReplayArchive = async (
       );
     }
 
-    writeFileSync(previouslyDownloadedFile, downloadScope, "utf-8");
+    await writeFile(previouslyDownloadedFile, downloadScope, "utf-8");
     logger.debug(`Extracted replay archive in ${replayDir}`);
     return { fileName: replayDir };
   } finally {
@@ -175,9 +174,9 @@ const downloadReplayV3Files = async (
       return async () => {
         await downloadAndExtractFile(data.signedUrl, filePath, replayDir);
         if (formatJsonFiles && filePath.endsWith(".json")) {
-          const fileContents = readFileSync(filePath, "utf-8");
+          const fileContents = await readFile(filePath, "utf-8");
           const json = JSON.parse(fileContents);
-          writeFileSync(filePath, JSON.stringify(json, null, 2), "utf-8");
+          await writeFile(filePath, JSON.stringify(json, null, 2), "utf-8");
         }
       };
     });
