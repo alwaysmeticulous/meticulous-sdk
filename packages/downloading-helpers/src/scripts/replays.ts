@@ -1,5 +1,4 @@
-import { readFileSync, writeFileSync } from "fs";
-import { mkdir } from "fs/promises";
+import { readFile, writeFile, mkdir } from "fs/promises";
 import { dirname, join } from "path";
 import { getReplay, getReplayV3DownloadUrls } from "@alwaysmeticulous/client";
 import {
@@ -81,7 +80,8 @@ const REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME = "previously-downloaded.txt";
 export const getOrFetchReplayArchive = async (
   client: AxiosInstance,
   replayId: string,
-  downloadScope: DownloadScope = "everything"
+  downloadScope: DownloadScope = "everything",
+  formatJsonFiles: boolean = false
 ): Promise<{ fileName: string }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -101,7 +101,7 @@ export const getOrFetchReplayArchive = async (
     // want to overwrite it while it's being read.
     let previouslyDownloadedScope: DownloadScope | undefined = undefined;
     if (await fileExists(previouslyDownloadedFile)) {
-      const fileContents = readFileSync(previouslyDownloadedFile, "utf-8");
+      const fileContents = await readFile(previouslyDownloadedFile, "utf-8");
       if (DOWNLOAD_SCOPES.includes(fileContents as DownloadScope)) {
         previouslyDownloadedScope = fileContents as DownloadScope;
         if (
@@ -133,6 +133,7 @@ export const getOrFetchReplayArchive = async (
         replayId,
         replayDir,
         downloadScope,
+        formatJsonFiles,
         previouslyDownloadedScope
       );
     } else {
@@ -141,7 +142,7 @@ export const getOrFetchReplayArchive = async (
       );
     }
 
-    writeFileSync(previouslyDownloadedFile, downloadScope, "utf-8");
+    await writeFile(previouslyDownloadedFile, downloadScope, "utf-8");
     logger.debug(`Extracted replay archive in ${replayDir}`);
     return { fileName: replayDir };
   } finally {
@@ -154,6 +155,7 @@ const downloadReplayV3Files = async (
   replayId: string,
   replayDir: string,
   downloadScope: DownloadScope,
+  formatJsonFiles: boolean,
   previouslyDownloadedScope: DownloadScope | undefined
 ) => {
   const downloadUrls = await getReplayV3DownloadUrls(client, replayId);
@@ -169,7 +171,14 @@ const downloadReplayV3Files = async (
     .filter(([fileType]) => shouldDownloadFile(fileType, downloadScope))
     .map(([fileType, data]) => {
       const filePath = join(replayDir, fileType);
-      return () => downloadAndExtractFile(data.signedUrl, filePath, replayDir);
+      return async () => {
+        await downloadAndExtractFile(data.signedUrl, filePath, replayDir);
+        if (formatJsonFiles && filePath.endsWith(".json")) {
+          const fileContents = await readFile(filePath, "utf-8");
+          const json = JSON.parse(fileContents);
+          await writeFile(filePath, JSON.stringify(json, null, 2), "utf-8");
+        }
+      };
     });
 
   if (shouldDownloadFile("screenshots", downloadScope)) {
