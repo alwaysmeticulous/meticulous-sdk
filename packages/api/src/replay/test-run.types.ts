@@ -4,6 +4,7 @@ import { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screensho
  * Relevance of a session
  */
 export enum SessionRelevance {
+  IsPrAuthor = "is-pr-author", // Recent session recorded from the author of the PR
   IsRelevant = "is-relevant",
   NotRelevant = "not-relevant", 
   MaybeRelevant = "maybe-relevant"
