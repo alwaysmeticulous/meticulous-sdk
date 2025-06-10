@@ -78,16 +78,17 @@ const replayCommandHandler = async ({
   networkDebuggingTransformationFns,
   networkDebuggingRequestTypes,
   networkDebuggingWebsocketUrlRegexes,
+  enableCssCoverage,
 }: ReplayCommandHandlerOptions): Promise<void> => {
   if (!takeSnapshots && storyboard) {
     throw new Error(
-      "Cannot take storyboard visual snapshots without taking end state snapshots. Please set '--takeSnapshots' to true, or '--storyboard' to false."
+      "Cannot take storyboard visual snapshots without taking end state snapshots. Please set '--takeSnapshots' to true, or '--storyboard' to false.",
     );
   }
 
   if (headless && enableStepThroughDebugger) {
     throw new Error(
-      "Cannot run with both --debugger flag and --headless flag at the same time."
+      "Cannot run with both --debugger flag and --headless flag at the same time.",
     );
   }
 
@@ -123,6 +124,7 @@ const replayCommandHandler = async ({
     maxEventCount: maxEventCount ?? null,
     essentialFeaturesOnly,
     logPossibleNonDeterminism,
+    enableCssCoverage: enableCssCoverage ?? false,
     ...(networkDebuggingOptions ? { networkDebuggingOptions } : {}),
   };
   const generatedByOption: GeneratedBy = { type: "replayCommand" };
@@ -173,9 +175,7 @@ const replayCommandHandler = async ({
       ...(enableStepThroughDebugger
         ? {
             onBeforeUserEvent: async (options) =>
-              (
-                await getOnBeforeUserEventCallback.promise
-              )(options),
+              (await getOnBeforeUserEventCallback.promise)(options),
             onClosePage: async () => (await getOnClosePageCallback.promise)(),
           }
         : {}),
@@ -189,7 +189,7 @@ const replayCommandHandler = async ({
         replayableEvents: replayExecution.eventsBeingReplayed,
       });
       getOnBeforeUserEventCallback.resolve(
-        stepThroughDebuggerUI.onBeforeUserEvent
+        stepThroughDebuggerUI.onBeforeUserEvent,
       );
       getOnClosePageCallback.resolve(stepThroughDebuggerUI.close);
     }
