@@ -20,6 +20,24 @@ import {
 
 const MAX_DOWNLOAD_CONCURRENCY = 20;
 
+const downloadAndUnzipIntoDirectory = async (
+  archiveData: { signedUrl: string; filePath: string } | null | undefined,
+  replayDir: string,
+  directoryName: string
+): Promise<void> => {
+  if (!archiveData) {
+    return;
+  }
+
+  const targetDir = join(replayDir, directoryName);
+  await mkdir(targetDir, { recursive: true });
+  await downloadAndExtractFile(
+    archiveData.signedUrl,
+    join(replayDir, archiveData.filePath),
+    targetDir
+  );
+};
+
 export const getOrFetchReplay = async (
   client: AxiosInstance,
   replayId: string
@@ -165,7 +183,15 @@ const downloadReplayV3Files = async (
     );
   }
 
-  const { screenshots, diffs, snapshottedAssets, ...rest } = downloadUrls;
+  const {
+    screenshots,
+    diffs,
+    snapshottedAssets,
+    rawPerScreenshotCssCoverage,
+    rawPerScreenshotJsCoverage,
+    mappedPerScreenshotJsCoverage,
+    ...rest
+  } = downloadUrls;
 
   const filePromises = Object.entries(rest)
     .filter(([fileType]) => shouldDownloadFile(fileType, downloadScope))
@@ -237,28 +263,51 @@ const downloadReplayV3Files = async (
       })
     : [];
 
-  const snapshottedAssetsPromises = shouldDownloadFile(
-    "snapshottedAssets",
-    downloadScope
-  )
-    ? [
-        async () => {
-          if (!snapshottedAssets) {
-            return;
-          }
-
-          const snapshottedAssetsDir = join(replayDir, "snapshotted-assets");
-          await mkdir(snapshottedAssetsDir, {
-            recursive: true,
-          });
-          await downloadAndExtractFile(
-            snapshottedAssets.signedUrl,
-            join(replayDir, snapshottedAssets.filePath),
-            snapshottedAssetsDir
-          );
-        },
-      ]
-    : [];
+  const archivePromises = [
+    ...(shouldDownloadFile("snapshottedAssets", downloadScope)
+      ? [
+          () =>
+            downloadAndUnzipIntoDirectory(
+              snapshottedAssets,
+              replayDir,
+              "snapshotted-assets"
+            ),
+        ]
+      : []),
+    ...(shouldDownloadFile("rawPerScreenshotCssCoverage", downloadScope) &&
+    rawPerScreenshotCssCoverage
+      ? [
+          () =>
+            downloadAndUnzipIntoDirectory(
+              rawPerScreenshotCssCoverage,
+              replayDir,
+              "raw-per-screenshot-css-coverage"
+            ),
+        ]
+      : []),
+    ...(shouldDownloadFile("rawPerScreenshotJsCoverage", downloadScope) &&
+    rawPerScreenshotJsCoverage
+      ? [
+          () =>
+            downloadAndUnzipIntoDirectory(
+              rawPerScreenshotJsCoverage,
+              replayDir,
+              "raw-per-screenshot-js-coverage"
+            ),
+        ]
+      : []),
+    ...(shouldDownloadFile("mappedPerScreenshotJsCoverage", downloadScope) &&
+    mappedPerScreenshotJsCoverage
+      ? [
+          () =>
+            downloadAndUnzipIntoDirectory(
+              mappedPerScreenshotJsCoverage,
+              replayDir,
+              "mapped-per-screenshot-js-coverage"
+            ),
+        ]
+      : []),
+  ];
 
   const limited = pLimit(MAX_DOWNLOAD_CONCURRENCY);
   await Promise.all(
@@ -266,7 +315,7 @@ const downloadReplayV3Files = async (
       ...filePromises,
       ...screenshotPromises,
       ...diffsPromises,
-      ...snapshottedAssetsPromises,
+      ...archivePromises,
     ].map((p) => limited(p))
   );
 };
