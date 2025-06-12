@@ -19,7 +19,6 @@ export interface ScreenshottingEnabledOptions {
 
   waitBeforeScreenshotsMs?: number;
   captureFullPage?: boolean;
-  waitForBaseToMatch?: boolean;
 }
 
 export declare type StoryboardOptions = { enabled: false } | { enabled: true };
