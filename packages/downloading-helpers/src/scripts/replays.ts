@@ -83,7 +83,8 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<DownloadScope, RegExp> = {
   everything: /.*/,
   "screenshots-only": /^screenshots/,
   "timeline-only": /^timeline/,
-  "post-test-run-processing-files-only": /^(mappedCoverage|timeline)/,
+  "post-test-run-processing-files-only":
+    /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage)/,
 };
 
 const shouldDownloadFile = (
