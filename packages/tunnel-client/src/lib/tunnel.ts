@@ -72,8 +72,14 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       basic_auth_password,
     } = body;
     const { port: localPort, localHost } = this.opts;
-    const { localHttps, localCert, localKey, localCa, allowInvalidCert } =
-      this.opts;
+    const {
+      localHttps,
+      localCert,
+      localKey,
+      localCa,
+      allowInvalidCert,
+      proxyAllUrls,
+    } = this.opts;
     const parsedHost = new URL(url);
 
     // Drop the client ID (first part of the subdomain) from the URL to get the remote host to establish tunnel connections to.
@@ -103,6 +109,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       localKey,
       localCa,
       allowInvalidCert,
+      proxyAllUrls,
     };
   }
 
@@ -140,7 +147,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
           if (res.status !== 200) {
             const err = new Error(
               (body && (body as CreateTunnelResponseError).error) ||
-                "localtunnel server returned an error, please try again"
+                "localtunnel server returned an error, please try again",
             );
             return cb(err);
           }
@@ -165,7 +172,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     // increase max event listeners so that localtunnel consumers don't get
     // warning messages as soon as they setup even one listener. See #71
     this.setMaxListeners(
-      info.maxConn + (EventEmitter.defaultMaxListeners || 10)
+      info.maxConn + (EventEmitter.defaultMaxListeners || 10),
     );
 
     if (!info.multiplexingRemotePort) {
@@ -243,6 +250,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     localPort,
     localHttps,
     allowInvalidCert,
+    proxyAllUrls,
     useTls,
     tunnelPassphrase,
   }: Omit<TunnelInfo, "multiplexingRemotePort"> & {
@@ -255,7 +263,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       localHost,
       localPort,
       remoteHost,
-      multiplexingRemotePort
+      multiplexingRemotePort,
     );
 
     const commonTunnelOpts = {
@@ -264,6 +272,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       localPort,
       localHttps,
       allowInvalidCert,
+      proxyAllUrls,
     };
 
     const sockets = await Promise.all(
@@ -274,8 +283,8 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
           multiplexingRemotePort,
           tunnelPassphrase,
           sendAuthOkAck: true,
-        })
-      )
+        }),
+      ),
     );
 
     return new TunnelHTTP2Cluster({
@@ -359,8 +368,8 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
         this.emit(
           "error",
           new Error(
-            `connection refused: ${remoteHost}:${multiplexingRemotePort} (check your firewall settings)`
-          )
+            `connection refused: ${remoteHost}:${multiplexingRemotePort} (check your firewall settings)`,
+          ),
         );
       }
 
@@ -370,7 +379,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     socket.on("close", () => {
       if (!this.closed) {
         this.logger.error(
-          "The remote connection was closed unexpectedly. Please check your network connection and try again."
+          "The remote connection was closed unexpectedly. Please check your network connection and try again.",
         );
       }
     });

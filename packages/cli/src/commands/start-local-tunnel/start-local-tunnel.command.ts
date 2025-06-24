@@ -24,6 +24,7 @@ interface Options {
   localKey: string | undefined;
   localCa: string | undefined;
   allowInvalidCert: boolean;
+  proxyAllUrls: boolean;
   printRequests: boolean;
 }
 
@@ -33,7 +34,7 @@ const handler = async (argv: Options) => {
   const apiToken = getApiToken(argv.apiToken);
   if (!apiToken) {
     logger.error(
-      "You must provide an API token by using the --apiToken parameter"
+      "You must provide an API token by using the --apiToken parameter",
     );
     process.exit(1);
   }
@@ -52,6 +53,7 @@ const handler = async (argv: Options) => {
     localKey: argv.localKey,
     localCa: argv.localCa,
     allowInvalidCert: argv.allowInvalidCert,
+    proxyAllUrls: argv.proxyAllUrls,
   }).catch((err) => {
     throw err;
   });
@@ -69,7 +71,7 @@ const handler = async (argv: Options) => {
   });
 
   logger.info(
-    `Your url is: ${tunnel.url} \nuser: ${tunnel.basicAuthUser}, password: ${tunnel.basicAuthPassword}`
+    `Your url is: ${tunnel.url} \nuser: ${tunnel.basicAuthUser}, password: ${tunnel.basicAuthPassword}`,
   );
 
   if (argv.printRequests) {
@@ -142,6 +144,11 @@ export const startLocalTunnelCommand = buildCommand("start-local-tunnel")
     allowInvalidCert: {
       describe:
         "Disable certificate checks for your local HTTPS server (ignore cert/key/ca options)",
+      boolean: true,
+      default: false,
+    },
+    proxyAllUrls: {
+      describe: "Allow any URL to be proxied rather than just the local host",
       boolean: true,
       default: false,
     },
