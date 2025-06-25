@@ -28,6 +28,7 @@ interface Options {
   keepTunnelOpenSec: number;
   allowInvalidCert: boolean;
   proxyAllUrls: boolean;
+  enableDnsCache: boolean;
 }
 
 const environmentToString: (environment: Environment) => string = (
@@ -48,6 +49,7 @@ const handler: (options: Options) => Promise<void> = async ({
   keepTunnelOpenSec,
   allowInvalidCert,
   proxyAllUrls,
+  enableDnsCache,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const commitSha = await getCommitSha(commitSha_);
@@ -173,6 +175,7 @@ const handler: (options: Options) => Promise<void> = async ({
       isLockable: environment.isCI,
       allowInvalidCert,
       proxyAllUrls,
+      enableDnsCache,
     });
   } catch (error) {
     if (isOutOfDateClientError(error)) {
