@@ -26,10 +26,13 @@ interface Options {
   appUrl: string;
   secureTunnelHost?: string | undefined;
   keepTunnelOpenSec: number;
+  allowInvalidCert: boolean;
+  proxyAllUrls: boolean;
+  enableDnsCache: boolean;
 }
 
 const environmentToString: (environment: Environment) => string = (
-  environment
+  environment,
 ) => {
   if (environment.isCI) {
     return `cli-ci-${environment.ci.name}`;
@@ -44,13 +47,16 @@ const handler: (options: Options) => Promise<void> = async ({
   appUrl,
   secureTunnelHost,
   keepTunnelOpenSec,
+  allowInvalidCert,
+  proxyAllUrls,
+  enableDnsCache,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const commitSha = await getCommitSha(commitSha_);
 
   if (!commitSha) {
     logger.error(
-      "No commit sha found, you must be in a git repository or provide one with --commitSha"
+      "No commit sha found, you must be in a git repository or provide one with --commitSha",
     );
     process.exit(1);
   }
@@ -58,12 +64,12 @@ const handler: (options: Options) => Promise<void> = async ({
   logger.info(`Running all tests in cloud for commit ${commitSha}`);
 
   let scheduledTestRunSpinner: ora.Ora | null = ora(
-    "Starting test run execution"
+    "Starting test run execution",
   ).start();
   const progressBar = new cliProgress.SingleBar(
     {
       format: `Test Run execution progress |${chalk.cyan(
-        "{bar}"
+        "{bar}",
       )}| {percentage}% || {value}/{total} tests executed`,
       // We want to still output progress even if not connected to a interactive tty since some CI runners
       // such as CircleCI will timeout the process early if it hasn't outputted anything for a while.
@@ -72,7 +78,7 @@ const handler: (options: Options) => Promise<void> = async ({
       noTTYOutput: true,
       notTTYSchedule: 30000,
     },
-    cliProgress.Presets.shades_classic
+    cliProgress.Presets.shades_classic,
   );
 
   const endProgressBar = () => {
@@ -102,7 +108,7 @@ const handler: (options: Options) => Promise<void> = async ({
       onTunnelCreated: (data) => {
         tunnelData = data;
         logger.info(
-          `\nExposing local service running at ${appUrl}: ${data.url} user: ${data.basicAuthUser} password: ${data.basicAuthPassword}`
+          `\nExposing local service running at ${appUrl}: ${data.url} user: ${data.basicAuthUser} password: ${data.basicAuthPassword}`,
         );
       },
 
@@ -116,7 +122,7 @@ const handler: (options: Options) => Promise<void> = async ({
           Date.now() - lastPrintedStillSchedulingMessage > 30_000
         ) {
           logger.info(
-            "Still waiting for test runner to pick up scheduled run..."
+            "Still waiting for test runner to pick up scheduled run...",
           );
           lastPrintedStillSchedulingMessage = Date.now();
         }
@@ -143,13 +149,13 @@ const handler: (options: Options) => Promise<void> = async ({
 
           if (keepTunnelOpenPromise) {
             logger.info(
-              `Keeping tunnel open for ${keepTunnelOpenSec} seconds...`
+              `Keeping tunnel open for ${keepTunnelOpenSec} seconds...`,
             );
 
             // tunnelData should be set in the onTunnelCreated callback.
             if (tunnelData) {
               logger.info(
-                `Your app can be accessed from ${tunnelData.url} username: ${tunnelData.basicAuthUser} password: ${tunnelData.basicAuthPassword}`
+                `Your app can be accessed from ${tunnelData.url} username: ${tunnelData.basicAuthUser} password: ${tunnelData.basicAuthPassword}`,
               );
             }
             setTimeout(() => {
@@ -161,12 +167,15 @@ const handler: (options: Options) => Promise<void> = async ({
 
       onTunnelStillLocked: () => {
         logger.info(
-          "Keeping tunnel open while additional tasks using it run on the Meticulous platform..."
+          "Keeping tunnel open while additional tasks using it run on the Meticulous platform...",
         );
       },
 
       environment: environmentToString(environment),
       isLockable: environment.isCI,
+      allowInvalidCert,
+      proxyAllUrls,
+      enableDnsCache,
     });
   } catch (error) {
     if (isOutOfDateClientError(error)) {
@@ -199,6 +208,23 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
     secureTunnelHost: {
       string: true,
       description: "The host to use for the secure tunnel server.",
+    },
+    allowInvalidCert: {
+      boolean: true,
+      description: "Allow the tunnel to accept invalid certificates.",
+      default: false,
+    },
+    proxyAllUrls: {
+      boolean: true,
+      description:
+        "Allow all URLs to be proxied to rather than just the app URL.",
+      default: false,
+    },
+    enableDnsCache: {
+      boolean: true,
+      description:
+        "Enable DNS caching, this is recommended if the tunnel will be making requests to a non-localhost domain",
+      default: false,
     },
   } as const)
   .handler(handler);

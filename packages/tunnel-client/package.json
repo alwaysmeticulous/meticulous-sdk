@@ -21,6 +21,7 @@
     "agentkeepalive": "^4.5.0",
     "axios": "^1.7.9",
     "axios-retry": "^4.5.0",
+    "cacheable-lookup": "^7.0.0",
     "loglevel": "^1.8.0"
   },
   "author": {
