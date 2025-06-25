@@ -152,6 +152,10 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
       pipeline(req, clientReq, (err) => {
         if (err) {
           this.logger.error("Request pipeline error", err);
+          if (!res.headersSent) {
+            res.writeHead(502);
+          }
+          res.end();
         }
       });
     });
