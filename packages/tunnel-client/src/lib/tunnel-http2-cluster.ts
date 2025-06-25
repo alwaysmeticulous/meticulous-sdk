@@ -119,6 +119,12 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
         protocolToRequest === "https" ? httpsRequest : httpRequest;
       const agent = protocolToRequest === "https" ? httpsAgent : httpAgent;
 
+      console.log("hostToRequest", hostToRequest);
+      console.log("portToRequest", portToRequest);
+      console.log("protocolToRequest", protocolToRequest);
+      console.log("req.url", req.url);
+      console.log("req.method", req.method);
+      console.log("headersToForward", headersToForward);
       const clientReq = request(
         {
           agent,
@@ -181,13 +187,28 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
     };
     try {
       if (!originalUrl) {
+        console.log(
+          "No original URL provided, using default target",
+          defaultTarget,
+        );
         return defaultTarget;
       }
+
+      console.log(`Processing request with original URL: ${originalUrl}`);
       const parsed = new URL(originalUrl.toString());
       const hostToRequest = parsed.host;
+
+      console.log(
+        `Parsed host: ${hostToRequest}, protocol: ${parsed.protocol}, port: ${parsed.port}`,
+      );
+
       if (this.isRequestToTunnelServer(hostToRequest)) {
         // This is actually a request to the tunnel server itself. If we forward it, we will
         // end up in an infinite loop. We want to dispatch this request to the local server.
+        console.log(
+          `Request to tunnel server detected (${hostToRequest}), routing to local server`,
+          defaultTarget,
+        );
         return defaultTarget;
       }
       if (!this.opts.proxyAllUrls) {
@@ -203,11 +224,13 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
           : parsed.protocol === "https"
             ? 443
             : 80;
-      return {
+      const target = {
         hostToRequest,
         portToRequest,
         protocolToRequest,
       };
+      console.log(`Returning target: ${JSON.stringify(target)}`);
+      return target;
     } catch (error) {
       this.logger.error("Error getting request target", error);
       return defaultTarget;
