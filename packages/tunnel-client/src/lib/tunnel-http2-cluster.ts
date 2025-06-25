@@ -7,6 +7,7 @@ import * as net from "net";
 import { createServer, Http2Server } from "node:http2";
 import { pipeline } from "stream";
 import Agent, { HttpsAgent } from "agentkeepalive";
+import CacheableLookup from "cacheable-lookup";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
 import { TunnelClusterEvents, TunnelClusterOpts } from "./tunnel-cluster.types";
@@ -41,6 +42,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
   private readonly opts: TunnelHTTP2ClusterOpts;
   private readonly sockets: net.Socket[];
   private readonly server: Http2Server;
+  private readonly dnsCache: CacheableLookup;
 
   constructor(opts: TunnelHTTP2ClusterOpts) {
     super();
@@ -61,6 +63,8 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
         session.setLocalWindowSize(HTTP2_WINDOW_SIZE);
       });
     });
+
+    this.dnsCache = new CacheableLookup({});
   }
 
   startListening() {
@@ -72,6 +76,11 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
           }
         : undefined,
     );
+
+    if (this.opts.enableDnsCache) {
+      this.dnsCache.install(httpAgent);
+      this.dnsCache.install(httpsAgent);
+    }
 
     this.server.on("request", (req, res) => {
       this.emit("request", {

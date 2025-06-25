@@ -79,6 +79,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       localCa,
       allowInvalidCert,
       proxyAllUrls,
+      enableDnsCache,
     } = this.opts;
     const parsedHost = new URL(url);
 
@@ -110,6 +111,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       localCa,
       allowInvalidCert,
       proxyAllUrls,
+      enableDnsCache,
     };
   }
 
@@ -251,6 +253,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     localHttps,
     allowInvalidCert,
     proxyAllUrls,
+    enableDnsCache,
     useTls,
     tunnelPassphrase,
   }: Omit<TunnelInfo, "multiplexingRemotePort"> & {
@@ -273,6 +276,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       localHttps,
       allowInvalidCert,
       proxyAllUrls,
+      enableDnsCache,
     };
 
     const sockets = await Promise.all(

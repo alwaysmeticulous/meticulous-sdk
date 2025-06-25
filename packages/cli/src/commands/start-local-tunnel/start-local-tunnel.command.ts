@@ -25,6 +25,7 @@ interface Options {
   localCa: string | undefined;
   allowInvalidCert: boolean;
   proxyAllUrls: boolean;
+  enableDnsCache: boolean;
   printRequests: boolean;
 }
 
@@ -54,6 +55,7 @@ const handler = async (argv: Options) => {
     localCa: argv.localCa,
     allowInvalidCert: argv.allowInvalidCert,
     proxyAllUrls: argv.proxyAllUrls,
+    enableDnsCache: argv.enableDnsCache,
   }).catch((err) => {
     throw err;
   });
@@ -149,6 +151,12 @@ export const startLocalTunnelCommand = buildCommand("start-local-tunnel")
     },
     proxyAllUrls: {
       describe: "Allow any URL to be proxied rather than just the local host",
+      boolean: true,
+      default: false,
+    },
+    enableDnsCache: {
+      describe:
+        "Enable DNS caching, this is recommended if the tunnel will be making requests to a non-localhost domain",
       boolean: true,
       default: false,
     },

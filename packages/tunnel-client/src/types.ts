@@ -18,6 +18,7 @@ export interface TunnelInfo {
   localCa?: string | undefined;
   allowInvalidCert: boolean;
   proxyAllUrls: boolean;
+  enableDnsCache: boolean;
 }
 
 export interface LocalTunnelOptions {
@@ -33,6 +34,7 @@ export interface LocalTunnelOptions {
   localCa?: string | undefined;
   allowInvalidCert: boolean;
   proxyAllUrls: boolean;
+  enableDnsCache: boolean;
 }
 
 export interface IncomingRequestEvent {

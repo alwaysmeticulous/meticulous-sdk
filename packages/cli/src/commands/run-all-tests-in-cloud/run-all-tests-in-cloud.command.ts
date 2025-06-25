@@ -217,5 +217,11 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
         "Allow all URLs to be proxied to rather than just the app URL.",
       default: false,
     },
+    enableDnsCache: {
+      boolean: true,
+      description:
+        "Enable DNS caching, this is recommended if the tunnel will be making requests to a non-localhost domain",
+      default: false,
+    },
   } as const)
   .handler(handler);

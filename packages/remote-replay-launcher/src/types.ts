@@ -42,6 +42,7 @@ export interface ExecuteRemoteTestRunOptions {
 
   allowInvalidCert?: boolean;
   proxyAllUrls?: boolean;
+  enableDnsCache?: boolean;
 }
 
 export interface ExecuteRemoteTestRunResult {
