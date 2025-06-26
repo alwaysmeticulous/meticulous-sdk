@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -51,3 +52,5 @@ jobs:
       - name: Publish packages
         if: github.repository == 'alwaysmeticulous/meticulous-sdk'
         run: yarn run lerna publish from-package --yes --no-verify-access --loglevel verbose
+        env:
+          NPM_CONFIG_PROVENANCE: true
