@@ -188,6 +188,14 @@ export interface ScreenshotDiffResultDifference
    * and this field will be true, otherwise this field will not be present.
    */
   isClassNamesListTruncated?: true;
+
+  /**
+   * Records whether at least part of the diff was in the bounding box of an element that was ignored
+   * in either the base or head screenshot.
+   *
+   * Only present on replays since ~June 2025.
+   */
+  diffInBoundingBoxOfIgnoredElement?: boolean;
 }
 
 /**
@@ -214,6 +222,14 @@ export interface ScreenshotDiffResultFlake {
    * and head means the new head screenshot taken.
    */
   diffsToHeadScreenshotOnRetries: ScreenshotDiffRetryResult[];
+
+  /**
+   * Records whether at least part of the diff was in the bounding box of an element that was ignored
+   * in either the base or head screenshot.
+   *
+   * Only present on replays since ~June 2025.
+   */
+  diffInBoundingBoxOfIgnoredElement?: boolean;
 }
 
 /**
