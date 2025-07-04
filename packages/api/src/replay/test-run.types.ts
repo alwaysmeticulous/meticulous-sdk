@@ -12,6 +12,20 @@ export enum SessionRelevance {
   MaybeRelevant = "maybe-relevant",
 }
 
+export const isPrAuthorRelevance = (
+  relevance: SessionRelevance | null | undefined
+): boolean => {
+  if (!relevance) {
+    return false;
+  }
+
+  return (
+    relevance === SessionRelevance.IsPrAuthor ||
+    relevance === SessionRelevance.IsPrAuthorRelevant ||
+    relevance === SessionRelevance.IsPrAuthorNotRelevant
+  );
+};
+
 export interface TestCase {
   sessionId: string;
   relevanceToPR?: SessionRelevance;
