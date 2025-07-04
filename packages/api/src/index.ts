@@ -22,6 +22,7 @@ export {
 } from "./sdk-bundle-api/bundle-to-sdk/screenshot-diff-result";
 export {
   SessionRelevance,
+  isPrAuthorRelevance,
   TestCase,
   TestCaseReplayOptions,
   TestRunStatus,
