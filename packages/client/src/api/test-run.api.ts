@@ -1,11 +1,24 @@
 import {
   Project,
+  S3Location,
   TestCase,
   TestCaseResult,
   TestRunStatus,
 } from "@alwaysmeticulous/api";
 import { AxiosError, AxiosInstance } from "axios";
 import { maybeEnrichAxiosError } from "../errors";
+export interface TestRunDataLocations {
+  coverage: S3Location;
+  coverageStats: S3Location;
+  coveragePr: S3Location;
+  coverageStatsPr: S3Location;
+  coverageReplaysByFile?: S3Location;
+  coverageReplaysByFileUnmapped?: S3Location;
+  coverageScreenshotReplaysByFile?: S3Location;
+  coverageScreenshotReplaysByFileUnmapped?: S3Location;
+  coverageByReplayPr?: S3Location;
+  relevantReplayContexts: S3Location;
+}
 
 export interface TestRun {
   id: string;
@@ -68,6 +81,16 @@ export const getTestRun: (options: {
 }) => Promise<TestRun> = async ({ client, testRunId }) => {
   const { data } = await client.get<unknown, { data: TestRun }>(
     `test-runs/${testRunId}`
+  );
+  return data;
+};
+
+export const getTestRunData: (options: {
+  client: AxiosInstance;
+  testRunId: string;
+}) => Promise<TestRunDataLocations> = async ({ client, testRunId }) => {
+  const { data } = await client.get<unknown, { data: TestRunDataLocations }>(
+    `test-runs/${testRunId}/data`
   );
   return data;
 };
