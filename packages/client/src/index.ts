@@ -1,5 +1,6 @@
 export * from "./api/github-cloud-replay.api";
 export { getProject, getRepoUrl } from "./api/project.api";
+export type { TestRunDataLocations } from "./api/test-run.api";
 export {
   getReplay,
   getReplayDownloadUrl,
@@ -15,6 +16,7 @@ export {
   ExecuteSecureTunnelTestRunOptions,
   executeSecureTunnelTestRun,
   getTestRun,
+  getTestRunData,
   GetLatestTestRunOptions,
   getLatestTestRunResults,
   TestRun,
