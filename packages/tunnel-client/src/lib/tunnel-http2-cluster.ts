@@ -10,6 +10,7 @@ import Agent, { HttpsAgent } from "agentkeepalive";
 import CacheableLookup from "cacheable-lookup";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
+import { getLocalAddress } from "../utils/get-local-address";
 import { TunnelClusterEvents, TunnelClusterOpts } from "./tunnel-cluster.types";
 
 // Increase the default HTTP2 window size to 32MB.
@@ -136,6 +137,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
           path: req.url,
           method: req.method,
           headers: headersToForward,
+          ...getLocalAddress(),
         },
         (clientRes) => {
           // Drop HTTP1 specific headers
