@@ -33,6 +33,11 @@ export interface MeticulousPublicReplayApi {
   resume: () => void;
 
   /**
+   * Call this method to terminate the replay.
+   */
+  terminate: () => void;
+
+  /**
    * Call this method to retrieve custom data that was recorded during the test run.
    */
   retrieveCustomData(key: string): string | null;
@@ -47,7 +52,7 @@ export interface MeticulousPublicReplayApi {
    */
   addCustomEventListener(
     type: string,
-    callback: (serializedData: string) => void | Promise<void>
+    callback: (serializedData: string) => void | Promise<void>,
   ): void;
 
   /**
@@ -71,7 +76,7 @@ export interface MeticulousPublicRecordApi {
    */
   pushToCustomDataArray(
     arrayId: string,
-    valueToAppend: string
+    valueToAppend: string,
   ): { success: boolean };
 
   /**
@@ -95,7 +100,7 @@ export interface MeticulousPublicContextApi {
    */
   recordFeatureFlag(
     label: string,
-    value: string | boolean
+    value: string | boolean,
   ): { success: boolean };
 
   /**
@@ -106,7 +111,7 @@ export interface MeticulousPublicContextApi {
    */
   recordCustomContext(
     label: string,
-    value: string | boolean
+    value: string | boolean,
   ): { success: boolean };
 
   /**
