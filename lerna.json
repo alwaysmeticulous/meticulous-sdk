@@ -1,10 +1,10 @@
 {
-  "version": "2.226.0",
+  "version": "2.226.1-beta.0",
   "npmClient": "yarn",
   "packages": ["packages/*"],
   "command": {
     "version": {
-      "allowBranch": "main"
+      "allowBranch": ["main", "puppeteer-2410"]
     }
   }
 }
