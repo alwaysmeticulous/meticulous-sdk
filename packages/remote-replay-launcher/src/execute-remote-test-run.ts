@@ -36,13 +36,16 @@ export const executeRemoteTestRun = async ({
   environment,
   isLockable,
   pullRequestHostingProviderId,
+  allowInvalidCert = false,
+  proxyAllUrls = false,
+  enableDnsCache = false,
 }: ExecuteRemoteTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {
     logger.error(
-      "You must provide an API token by using the --apiToken parameter"
+      "You must provide an API token by using the --apiToken parameter",
     );
     process.exit(1);
   }
@@ -68,15 +71,17 @@ export const executeRemoteTestRun = async ({
     localHost: url.hostname,
     ...(secureTunnelHost ? { host: secureTunnelHost } : {}),
     port,
-    localHttps: false,
-    allowInvalidCert: false,
+    localHttps: url.protocol === "https:",
+    allowInvalidCert,
+    proxyAllUrls,
+    enableDnsCache,
   });
 
   logger.debug(`Creating test run`);
 
   if (!tunnel.url || !tunnel.basicAuthUser || !tunnel.basicAuthPassword) {
     throw new Error(
-      "Either Tunnel URL, basic auth user or basic auth password were not set"
+      "Either Tunnel URL, basic auth user or basic auth password were not set",
     );
   }
 
@@ -123,7 +128,7 @@ export const executeRemoteTestRun = async ({
         logger.info(
           `Test run failed with execution error. Waiting for ${
             MS_TO_WAIT_FOR_RETRY / 1_000
-          } seconds to see if it gets automatically retried...`
+          } seconds to see if it gets automatically retried...`,
         );
       }
       return;
@@ -148,7 +153,7 @@ export const executeRemoteTestRun = async ({
       return;
     } else if (startedWaitingForRetryAt !== undefined) {
       logger.info(
-        `Retrying test run... (status is now ${updatedTestRun.status})`
+        `Retrying test run... (status is now ${updatedTestRun.status})`,
       );
       startedWaitingForRetryAt = undefined;
     }

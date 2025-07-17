@@ -1,4 +1,4 @@
-import { Replay } from "@alwaysmeticulous/api";
+import { Replay, S3Location } from "@alwaysmeticulous/api";
 import { AxiosInstance, isAxiosError } from "axios";
 import { maybeEnrichAxiosError } from "../errors";
 
@@ -37,19 +37,11 @@ export const getReplayDownloadUrl: (
   return data;
 };
 
-export interface S3UploadLocation {
-  filePath: string; // e.g. logs.ndjson.gz
-  signedUrl: string; // signed S3 URL
-}
-
-export type ReplayV3UploadLocations = Record<string, S3UploadLocation> & {
-  screenshots: Record<
-    string,
-    { image: S3UploadLocation; metadata?: S3UploadLocation }
-  >;
+export type ReplayV3UploadLocations = Record<string, S3Location> & {
+  screenshots: Record<string, { image: S3Location; metadata?: S3Location }>;
   diffs?: Record<
     string,
-    Record<string, { thumbnail: S3UploadLocation; full: S3UploadLocation }>
+    Record<string, { thumbnail: S3Location; full: S3Location }>
   >;
 };
 

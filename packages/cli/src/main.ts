@@ -9,6 +9,7 @@ import { initSentry } from "@alwaysmeticulous/sentry";
 import yargs from "yargs";
 import { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
 import { downloadSessionCommand } from "./commands/download-session/download-session.command";
+import { downloadTestRunCommand } from "./commands/download-test-run/download-test-run.command";
 import { recordCommand } from "./commands/record/record.command";
 import { recordLoginCommand } from "./commands/record-login/record-login.command";
 import { replayCommand } from "./commands/replay/replay.command";
@@ -40,6 +41,7 @@ export const main: () => void = async () => {
     )
     .command(downloadReplayCommand)
     .command(downloadSessionCommand)
+    .command(downloadTestRunCommand)
     .command(recordCommand)
     .command(recordLoginCommand)
     .command(replayCommand)

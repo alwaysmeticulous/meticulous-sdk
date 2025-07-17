@@ -22,6 +22,7 @@ export {
 } from "./sdk-bundle-api/bundle-to-sdk/screenshot-diff-result";
 export {
   SessionRelevance,
+  isPrAuthorRelevance,
   TestCase,
   TestCaseReplayOptions,
   TestRunStatus,
@@ -117,3 +118,4 @@ export {
   UserEventDivergenceIndicator,
 } from "./sdk-bundle-api/bundle-to-sdk/replay-divergence";
 export { AssetUploadMetadata } from "./sdk-bundle-api/sdk-to-bundle/asset-upload-metadata";
+export { S3Location } from "./s3.types";

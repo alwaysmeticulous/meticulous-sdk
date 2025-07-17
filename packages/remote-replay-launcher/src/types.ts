@@ -39,6 +39,10 @@ export interface ExecuteRemoteTestRunOptions {
    * cases (e.g. PRs from forks on GitHub) this may not work, hence one can be provided here.
    */
   pullRequestHostingProviderId?: string;
+
+  allowInvalidCert?: boolean;
+  proxyAllUrls?: boolean;
+  enableDnsCache?: boolean;
 }
 
 export interface ExecuteRemoteTestRunResult {

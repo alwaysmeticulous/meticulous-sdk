@@ -7,8 +7,10 @@ import * as net from "net";
 import { createServer, Http2Server } from "node:http2";
 import { pipeline } from "stream";
 import Agent, { HttpsAgent } from "agentkeepalive";
+import CacheableLookup from "cacheable-lookup";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
+import { getLocalAddress } from "../utils/get-local-address";
 import { TunnelClusterEvents, TunnelClusterOpts } from "./tunnel-cluster.types";
 
 // Increase the default HTTP2 window size to 32MB.
@@ -20,6 +22,8 @@ import { TunnelClusterEvents, TunnelClusterOpts } from "./tunnel-cluster.types";
 const HTTP2_WINDOW_SIZE = 1024 * 1024 * 32; // 32MB
 
 const HTTP2_MAX_SESSION_MEMORY = 256; // MB
+
+const METICULOUS_SIMULATION_HOST = "meticulous-simulation.localhost";
 
 interface TunnelHTTP2ClusterOpts extends TunnelClusterOpts {
   sockets: net.Socket[];
@@ -39,6 +43,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
   private readonly opts: TunnelHTTP2ClusterOpts;
   private readonly sockets: net.Socket[];
   private readonly server: Http2Server;
+  private readonly dnsCache: CacheableLookup;
 
   constructor(opts: TunnelHTTP2ClusterOpts) {
     super();
@@ -59,6 +64,8 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
         session.setLocalWindowSize(HTTP2_WINDOW_SIZE);
       });
     });
+
+    this.dnsCache = new CacheableLookup({});
   }
 
   startListening() {
@@ -68,8 +75,13 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
         ? {
             rejectUnauthorized: false,
           }
-        : undefined
+        : undefined,
     );
+
+    if (this.opts.enableDnsCache) {
+      this.dnsCache.install(httpAgent);
+      this.dnsCache.install(httpsAgent);
+    }
 
     this.server.on("request", (req, res) => {
       this.emit("request", {
@@ -107,7 +119,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
           }
           return acc;
         },
-        {} as Record<string, string | string[] | undefined>
+        {} as Record<string, string | string[] | undefined>,
       );
 
       // Forward the request to the right target
@@ -125,6 +137,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
           path: req.url,
           method: req.method,
           headers: headersToForward,
+          ...getLocalAddress(),
         },
         (clientRes) => {
           // Drop HTTP1 specific headers
@@ -144,12 +157,16 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
               this.logger.error("Response pipeline error", err);
             }
           });
-        }
+        },
       );
 
       pipeline(req, clientReq, (err) => {
         if (err) {
           this.logger.error("Request pipeline error", err);
+          if (!res.headersSent) {
+            res.writeHead(502);
+          }
+          res.end();
         }
       });
     });
@@ -164,11 +181,18 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
     });
   }
 
+  private isRequestToTunnelServer(host: string) {
+    // A request is a request to the tunnel server itself if either:
+    // - The host is the tunnel server host
+    // - The host is the simulation host which gets rewritten to the tunnel server host
+    return host === this.opts.getHost() || host === METICULOUS_SIMULATION_HOST;
+  }
+
   private getRequestTarget(originalUrl: string | string[] | undefined) {
     const defaultTarget = {
       hostToRequest: this.opts.localHost,
       portToRequest: this.opts.localPort,
-      protocolToRequest: "http",
+      protocolToRequest: this.opts.localHttps ? "https" : "http",
     };
     try {
       if (!originalUrl) {
@@ -176,14 +200,24 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
       }
       const parsed = new URL(originalUrl.toString());
       const hostToRequest = parsed.host;
-      if (hostToRequest === this.opts.getHost()) {
+      if (this.isRequestToTunnelServer(hostToRequest)) {
         // This is actually a request to the tunnel server itself. If we forward it, we will
         // end up in an infinite loop. We want to dispatch this request to the local server.
         return defaultTarget;
       }
+      if (!this.opts.proxyAllUrls) {
+        this.logger.warn(
+          `Refusing to proxy request to ${hostToRequest} because proxyAllUrls is not set!`,
+        );
+        return defaultTarget;
+      }
       const protocolToRequest = (parsed.protocol || "http").replace(":", "");
       const portToRequest =
-        parsed.port || (parsed.protocol === "https" ? 443 : 80);
+        parsed.port.length > 0
+          ? parseInt(parsed.port, 10)
+          : protocolToRequest === "https"
+            ? 443
+            : 80;
       return {
         hostToRequest,
         portToRequest,
