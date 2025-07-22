@@ -116,6 +116,7 @@ export interface ApplicationSpecificData {
     gip?: boolean;
     scriptLoader?: Record<string, unknown>;
     locale?: string;
+    assetPrefix?: string;
   };
   // https://github.com/remix-run/react-router/blob/e099d6927c7ea2bd97bae015e32fa96a6b0c84e0/packages/react-router/lib/dom/global.ts#L5
   reactRouter?: {
