@@ -333,6 +333,59 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     this.emit("close");
   }
 
+  private async createProxyConnection(
+    proxyUrl: string,
+    targetHost: string,
+    targetPort: number,
+  ): Promise<net.Socket> {
+    const url = new URL(proxyUrl);
+    const proxyHost = url.hostname;
+    const proxyPort =
+      parseInt(url.port) || (url.protocol === "https:" ? 443 : 80);
+
+    const proxySocket = net.connect({
+      host: proxyHost,
+      port: proxyPort,
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      proxySocket.once("connect", () => {
+        // Send HTTP CONNECT request
+        const connectRequest = [
+          `CONNECT ${targetHost}:${targetPort} HTTP/1.1`,
+          `Host: ${targetHost}:${targetPort}`,
+          `Proxy-Connection: keep-alive`,
+          "",
+          "",
+        ].join("\r\n");
+
+        proxySocket.write(connectRequest);
+
+        const onData = (data: Buffer) => {
+          const response = data.toString();
+          if (
+            response.includes("200 Connection established") ||
+            response.includes("200 OK")
+          ) {
+            proxySocket.removeListener("data", onData);
+            resolve();
+          } else {
+            proxySocket.removeListener("data", onData);
+            reject(
+              new Error(`Proxy CONNECT failed: ${response.split("\r\n")[0]}`),
+            );
+          }
+        };
+
+        proxySocket.on("data", onData);
+      });
+
+      proxySocket.once("error", reject);
+    });
+
+    return proxySocket;
+  }
+
   async openSocket({
     useTls,
     remoteHost,
@@ -347,7 +400,19 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
   }): Promise<net.Socket | tls.TLSSocket> {
     let socket: net.Socket | tls.TLSSocket;
 
-    if (useTls) {
+    const proxyUrl = process.env.HTTPS_PROXY;
+    if (proxyUrl) {
+      if (useTls) {
+        throw new Error(
+          "Opening a TLS socket through a proxy is not supported yet!",
+        );
+      }
+      socket = await this.createProxyConnection(
+        proxyUrl,
+        remoteHost,
+        multiplexingRemotePort,
+      );
+    } else if (useTls) {
       socket = tls.connect({
         host: remoteHost,
         port: multiplexingRemotePort,
