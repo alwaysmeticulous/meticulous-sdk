@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/tunnels-client",
-  "version": "2.225.1",
+  "version": "2.227.2",
   "description": "Client for the Meticulous Tunnels service",
   "license": "ISC",
   "main": "dist/index.js",
@@ -19,9 +19,9 @@
   },
   "dependencies": {
     "agentkeepalive": "^4.5.0",
-    "node-fetch": "^2.6.9",
     "cacheable-lookup": "^6.1.0",
     "loglevel": "^1.8.0",
+    "node-fetch": "^2.6.9",
     "proxy-agent": "^6.4.0"
   },
   "author": {
