@@ -337,6 +337,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     proxyUrl: string,
     targetHost: string,
     targetPort: number,
+    useTls: boolean,
   ): Promise<net.Socket> {
     const url = new URL(proxyUrl);
     const proxyHost = url.hostname;
@@ -383,6 +384,15 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       proxySocket.once("error", reject);
     });
 
+    if (useTls) {
+      return tls.connect({
+        socket: proxySocket,
+        servername: targetHost,
+        rejectUnauthorized: true,
+        ALPNProtocols: ["meticulous-tunnel"],
+      });
+    }
+
     return proxySocket;
   }
 
@@ -402,15 +412,11 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
 
     const proxyUrl = process.env.HTTPS_PROXY;
     if (proxyUrl) {
-      if (useTls) {
-        throw new Error(
-          "Opening a TLS socket through a proxy is not supported yet!",
-        );
-      }
       socket = await this.createProxyConnection(
         proxyUrl,
         remoteHost,
         multiplexingRemotePort,
+        useTls,
       );
     } else if (useTls) {
       socket = tls.connect({
