@@ -1,11 +1,11 @@
 import { EventEmitter } from "events";
 import net from "net";
 import tls from "tls";
-import axios, { isAxiosError } from "axios";
-import axiosRetry from "axios-retry";
 import { Logger } from "loglevel";
+import fetch from "node-fetch";
 import TypedEmitter from "typed-emitter";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
+import { getProxyAgent } from "../utils/get-proxy-agent";
 import { TunnelHTTP2Cluster } from "./tunnel-http2-cluster";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
@@ -121,31 +121,36 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     const opt = this.opts;
     const getInfo = this._getInfo.bind(this);
 
-    const params = {
-      responseType: "json" as const,
-      headers: {
-        Authorization: opt.apiToken,
-      },
-      params: {
-        supportsHTTP2Multiplexing: true,
-        new: true,
-      },
+    const queryParams = {
+      supportsHTTP2Multiplexing: true,
+      new: true,
     };
 
     const baseUri = `${this.host}/`;
     // no subdomain at first, maybe use requested domain
     const assignedDomain = opt.subdomain;
     // where to quest
-    const uri = baseUri + (assignedDomain || "");
+    const baseUriWithDomain = baseUri + (assignedDomain || "");
+
+    // Construct URL with query parameters
+    const urlSearchParams = new URLSearchParams();
+    Object.entries(queryParams).forEach(([key, value]) => {
+      urlSearchParams.append(key, String(value));
+    });
+    const uri = `${baseUriWithDomain}?${urlSearchParams.toString()}`;
 
     const getUrl = () => {
-      const client = axios.create({ timeout: 30_000 });
-      axiosRetry(client, { retries: 3, shouldResetTimeout: true });
-      client
-        .get<CreateTunnelResponse | CreateTunnelResponseError>(uri, params)
-        .then((res) => {
-          const body = res.data;
-          this.logger.debug("got tunnel information", res.data);
+      fetch(uri, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: opt.apiToken,
+        },
+        agent: getProxyAgent(),
+      })
+        .then(async (res) => {
+          const body = await res.json();
+          this.logger.debug("got tunnel information", body);
           if (res.status !== 200) {
             const err = new Error(
               (body && (body as CreateTunnelResponseError).error) ||
@@ -156,10 +161,8 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
           cb(null, getInfo(body as CreateTunnelResponse));
         })
         .catch((err) => {
-          if (isAxiosError(err)) {
-            if (err.response?.status === 401) {
-              return cb(new Error("Unauthorized. Please check your API token"));
-            }
+          if (err.message?.includes("Unauthorized")) {
+            return cb(new Error("Unauthorized. Please check your API token"));
           }
 
           this.logger.error(`tunnel server offline: ${err.message}, retry 1s`);
