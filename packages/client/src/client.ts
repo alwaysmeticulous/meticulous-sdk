@@ -3,6 +3,7 @@ import axios, { AxiosInstance } from "axios";
 import axiosRetry from "axios-retry";
 import log from "loglevel";
 import { getApiToken } from "./api-token.utils";
+import { getProxyAgent } from "./utils/get-proxy-agent";
 
 const BASE_API_URL = "https://app.meticulous.ai/api/";
 
@@ -17,7 +18,7 @@ export const createClient: (options: ClientOptions) => AxiosInstance = ({
   if (!apiToken) {
     const logger = log.getLogger(METICULOUS_LOGGER_NAME);
     logger.error(
-      "You must provide an API token by using the --apiToken parameter"
+      "You must provide an API token by using the --apiToken parameter",
     );
     process.exit(1);
   }
@@ -28,6 +29,7 @@ export const createClient: (options: ClientOptions) => AxiosInstance = ({
     },
     // 60 seconds default timeout
     timeout: 60_000,
+    httpsAgent: getProxyAgent(),
   });
   axiosRetry(client, {
     retries: 3,
