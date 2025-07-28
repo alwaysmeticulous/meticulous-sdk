@@ -8,6 +8,7 @@ export interface TunnelClusterOpts {
   localHttps: boolean;
   allowInvalidCert: boolean;
   proxyAllUrls: boolean;
+  rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
   localCert?: string | undefined;
   localKey?: string | undefined;

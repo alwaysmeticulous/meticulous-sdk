@@ -18,6 +18,7 @@ export interface TunnelInfo {
   localCa?: string | undefined;
   allowInvalidCert: boolean;
   proxyAllUrls: boolean;
+  rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
 }
 
@@ -34,6 +35,7 @@ export interface LocalTunnelOptions {
   localCa?: string | undefined;
   allowInvalidCert: boolean;
   proxyAllUrls: boolean;
+  rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
 }
 

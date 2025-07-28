@@ -132,7 +132,9 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
       const clientReq = request(
         {
           agent,
-          host: hostToRequest,
+          host: this.opts.rewriteHostnameToAppUrl
+            ? this.opts.localHost
+            : hostToRequest,
           port: portToRequest,
           path: req.url,
           method: req.method,

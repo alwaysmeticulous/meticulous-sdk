@@ -79,6 +79,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       localCa,
       allowInvalidCert,
       proxyAllUrls,
+      rewriteHostnameToAppUrl,
       enableDnsCache,
     } = this.opts;
     const parsedHost = new URL(url);
@@ -111,6 +112,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       localCa,
       allowInvalidCert,
       proxyAllUrls,
+      rewriteHostnameToAppUrl,
       enableDnsCache,
     };
   }
@@ -256,6 +258,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     localHttps,
     allowInvalidCert,
     proxyAllUrls,
+    rewriteHostnameToAppUrl,
     enableDnsCache,
     useTls,
     tunnelPassphrase,
@@ -279,6 +282,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       localHttps,
       allowInvalidCert,
       proxyAllUrls,
+      rewriteHostnameToAppUrl,
       enableDnsCache,
     };
 
