@@ -340,9 +340,11 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     useTls: boolean,
   ): Promise<net.Socket> {
     const url = new URL(proxyUrl);
+    if (url.protocol === "https:") {
+      throw new Error("HTTPS proxy is not supported!");
+    }
     const proxyHost = url.hostname;
-    const proxyPort =
-      parseInt(url.port) || (url.protocol === "https:" ? 443 : 80);
+    const proxyPort = parseInt(url.port) || 80;
 
     const proxySocket = net.connect({
       host: proxyHost,
