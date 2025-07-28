@@ -30,6 +30,7 @@ export const createClient: (options: ClientOptions) => AxiosInstance = ({
     // 60 seconds default timeout
     timeout: 60_000,
     httpsAgent: getProxyAgent(),
+    httpAgent: getProxyAgent(),
   });
   axiosRetry(client, {
     retries: 3,
