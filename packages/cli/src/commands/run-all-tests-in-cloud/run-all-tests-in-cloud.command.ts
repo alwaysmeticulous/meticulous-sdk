@@ -1,3 +1,4 @@
+import { SessionRelevance } from "@alwaysmeticulous/api";
 import { IN_PROGRESS_TEST_RUN_STATUS } from "@alwaysmeticulous/client";
 import {
   defer,
@@ -127,6 +128,15 @@ const handler: (options: Options) => Promise<void> = async ({
           lastPrintedStillSchedulingMessage = Date.now();
         }
 
+        const nonRelevantSessionIds = new Set(
+          testRun.configData.testCases
+            ?.filter(
+              (testCase) =>
+                testCase.relevanceToPR === SessionRelevance.NotRelevant
+            )
+            .map((testCase) => testCase.sessionId) ?? []
+        )
+
         // Note we can't just check 'scheduledTestRunSpinner.isSpinning' because it won't spin
         // if connected to a non-tty terminal.
         if (testRun.status === "Running" && scheduledTestRunSpinner) {
@@ -136,12 +146,12 @@ const handler: (options: Options) => Promise<void> = async ({
           const numTestCases = testRun.configData.testCases?.length || 0;
 
           if (numTestCases > 0) {
-            progressBar.start(numTestCases, 0);
+            progressBar.start(numTestCases, nonRelevantSessionIds.size);
           }
         }
 
         if (progressBar.getTotal() > 0) {
-          progressBar.update(testRun.resultData?.results?.length || 0);
+          progressBar.update((testRun.resultData?.results?.length || 0) + nonRelevantSessionIds.size);
         }
 
         if (!IN_PROGRESS_TEST_RUN_STATUS.includes(testRun.status)) {
