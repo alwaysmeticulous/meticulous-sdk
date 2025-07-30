@@ -29,6 +29,7 @@ interface Options {
   keepTunnelOpenSec: number;
   allowInvalidCert: boolean;
   proxyAllUrls: boolean;
+  rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
 }
 
@@ -50,6 +51,7 @@ const handler: (options: Options) => Promise<void> = async ({
   keepTunnelOpenSec,
   allowInvalidCert,
   proxyAllUrls,
+  rewriteHostnameToAppUrl,
   enableDnsCache,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -185,6 +187,7 @@ const handler: (options: Options) => Promise<void> = async ({
       isLockable: environment.isCI,
       allowInvalidCert,
       proxyAllUrls,
+      rewriteHostnameToAppUrl,
       enableDnsCache,
     });
   } catch (error) {
@@ -228,6 +231,12 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
       boolean: true,
       description:
         "Allow all URLs to be proxied to rather than just the app URL.",
+      default: false,
+    },
+    rewriteHostnameToAppUrl: {
+      boolean: true,
+      description:
+        "Rewrite the hostname of any requests sent through the tunnel to the app URL.",
       default: false,
     },
     enableDnsCache: {

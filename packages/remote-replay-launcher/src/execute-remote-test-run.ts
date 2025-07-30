@@ -38,6 +38,7 @@ export const executeRemoteTestRun = async ({
   pullRequestHostingProviderId,
   allowInvalidCert = false,
   proxyAllUrls = false,
+  rewriteHostnameToAppUrl = false,
   enableDnsCache = false,
 }: ExecuteRemoteTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
@@ -74,6 +75,7 @@ export const executeRemoteTestRun = async ({
     localHttps: url.protocol === "https:",
     allowInvalidCert,
     proxyAllUrls,
+    rewriteHostnameToAppUrl,
     enableDnsCache,
   });
 

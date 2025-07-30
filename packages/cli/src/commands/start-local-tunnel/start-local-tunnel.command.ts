@@ -25,6 +25,7 @@ interface Options {
   localCa: string | undefined;
   allowInvalidCert: boolean;
   proxyAllUrls: boolean;
+  rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
   printRequests: boolean;
 }
@@ -55,6 +56,7 @@ const handler = async (argv: Options) => {
     localCa: argv.localCa,
     allowInvalidCert: argv.allowInvalidCert,
     proxyAllUrls: argv.proxyAllUrls,
+    rewriteHostnameToAppUrl: argv.rewriteHostnameToAppUrl,
     enableDnsCache: argv.enableDnsCache,
   }).catch((err) => {
     throw err;
@@ -152,6 +154,12 @@ export const startLocalTunnelCommand = buildCommand("start-local-tunnel")
     proxyAllUrls: {
       describe: "Allow any URL to be proxied rather than just the local host",
       boolean: true,
+      default: false,
+    },
+    rewriteHostnameToAppUrl: {
+      boolean: true,
+      description:
+        "Rewrite the hostname of any requests sent through the tunnel to the app URL.",
       default: false,
     },
     enableDnsCache: {
