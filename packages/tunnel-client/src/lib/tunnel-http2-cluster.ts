@@ -49,6 +49,11 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
     super();
     this.logger = opts.logger;
     this.opts = opts;
+    if (opts.rewriteHostnameToAppUrl && opts.proxyAllUrls) {
+      opts.logger.warn(
+        "Both --proxyAllUrls and --rewriteHostnameToAppUrl are set. This configuration doesn't make sense, we will only use --rewriteHostnameToAppUrl.",
+      );
+    }
 
     this.sockets = opts.sockets;
 
@@ -132,9 +137,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
       const clientReq = request(
         {
           agent,
-          host: this.opts.rewriteHostnameToAppUrl
-            ? this.opts.localHost
-            : hostToRequest,
+          host: hostToRequest,
           port: portToRequest,
           path: req.url,
           method: req.method,
@@ -197,7 +200,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
       protocolToRequest: this.opts.localHttps ? "https" : "http",
     };
     try {
-      if (!originalUrl) {
+      if (!originalUrl || this.opts.rewriteHostnameToAppUrl) {
         return defaultTarget;
       }
       const parsed = new URL(originalUrl.toString());
