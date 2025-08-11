@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@alwaysmeticulous/common": "^2.227.1",
-    "@sentry/node": "^9.1.0",
+    "@sentry/node": "^10.3.0",
     "luxon": "^3.2.1"
   },
   "devDependencies": {
