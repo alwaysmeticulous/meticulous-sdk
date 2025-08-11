@@ -24,7 +24,7 @@
     "@alwaysmeticulous/client": "^2.228.0",
     "@alwaysmeticulous/common": "^2.227.1",
     "@alwaysmeticulous/tunnels-client": "^2.228.0",
-    "@sentry/node": "^9.1.0",
+    "@sentry/node": "^10.3.0",
     "archiver": "^7.0.0",
     "loglevel": "^1.8.0",
     "systeminformation": "^5.25.11"
