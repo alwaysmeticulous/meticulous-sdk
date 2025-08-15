@@ -1,5 +1,5 @@
 import { AssetUploadMetadata } from "@alwaysmeticulous/api";
-import { AxiosInstance } from "axios";
+import { MeticulousClient } from "../types/client.types";
 import { TestRun } from "./test-run.api";
 
 export interface RequestAssetUploadParams {
@@ -32,7 +32,7 @@ export const requestAssetUpload = async ({
   client,
   ...params
 }: RequestAssetUploadParams & {
-  client: AxiosInstance;
+  client: MeticulousClient;
 }): Promise<RequestAssetUploadResponse> => {
   const { data } = await client.post<
     RequestAssetUploadParams,
@@ -45,7 +45,7 @@ export const triggerRunOnDeployment = async ({
   client,
   ...params
 }: CompleteAssetUploadParams & {
-  client: AxiosInstance;
+  client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
   const { data } = await client.post<
     CompleteAssetUploadParams,
@@ -58,7 +58,7 @@ export const completeAssetUpload = async ({
   client,
   ...params
 }: CompleteAssetUploadParams & {
-  client: AxiosInstance;
+  client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
   const { data } = await client.post<
     CompleteAssetUploadParams,
@@ -71,7 +71,7 @@ export const downloadProjectDeployment = async ({
   client,
   deploymentUploadId,
 }: {
-  client: AxiosInstance;
+  client: MeticulousClient;
   deploymentUploadId: string;
 }): Promise<DownloadDeploymentResponse> => {
   const { data } = await client.get<

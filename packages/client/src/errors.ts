@@ -1,24 +1,33 @@
-import {
-  AxiosError,
-  AxiosRequestConfig,
-  AxiosResponse,
-  InternalAxiosRequestConfig,
-  isAxiosError,
-} from "axios";
+export interface FetchError extends Error {
+  response?: {
+    status: number;
+    statusText: string;
+    data: any;
+    headers: Record<string, string>;
+  } | undefined;
+  config?: {
+    url: string;
+    method?: string;
+  } | undefined;
+}
 
-export const maybeEnrichAxiosError = <T = unknown>(error: T): T => {
-  if (isAxiosError(error)) {
-    return enrichAxiosError(error) as T;
+export const isFetchError = (error: any): error is FetchError => {
+  return error && typeof error === "object" && error.response;
+};
+
+export const maybeEnrichFetchError = <T = unknown>(error: T): T => {
+  if (isFetchError(error)) {
+    return enrichFetchError(error) as T;
   }
   return error;
 };
 
-const enrichAxiosError = (error: AxiosError) => {
+const enrichFetchError = (error: FetchError) => {
   const errorMessage = (error.response?.data as { message?: unknown } | null)
     ?.message;
   const requestAndResponse = requestAndResponseToString(
     error.config ?? null,
-    error.response ?? null
+    error.response ?? null,
   );
   let message = "";
   if (errorMessage && typeof errorMessage === "string") {
@@ -34,20 +43,17 @@ const enrichAxiosError = (error: AxiosError) => {
     return error;
   }
 
-  return new AxiosError(
-    message,
-    error.code,
-    error.config,
-    error.request,
-    error.response
-  );
+  const newError = new Error(message) as FetchError;
+  newError.response = error.response;
+  newError.config = error.config;
+  return newError;
 };
 
 const requestAndResponseToString = (
-  request: InternalAxiosRequestConfig<any> | null,
-  response: AxiosResponse | null
+  request: { url: string; method?: string } | null,
+  response: { status: number; statusText: string; data: any } | null,
 ) => {
-  if (!request || !request.url || !request.method) {
+  if (!request || !request.url) {
     return "";
   }
   if (response == null) {
@@ -57,14 +63,14 @@ const requestAndResponseToString = (
 };
 
 const requestToString = (
-  request: Pick<AxiosRequestConfig, "method" | "url">
+  request: { method?: string; url: string },
 ) => {
   return `${request.method?.toUpperCase()}${request.method ? " " : ""}${
     request.url
   }`;
 };
 
-const responseToString = (response: AxiosResponse) => {
+const responseToString = (response: { status: number; statusText: string; data: any }) => {
   const dataAsString = dataToString(response.data);
   return `${response.status} ${response.statusText}${
     dataAsString ? ` (${dataAsString})` : ""
