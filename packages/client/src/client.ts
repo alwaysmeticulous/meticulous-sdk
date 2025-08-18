@@ -12,7 +12,9 @@ import {
   Response,
 } from "./types/client.types";
 import { getProxyAgent } from "./utils/get-proxy-agent";
+import { AbortSignal } from "node-fetch/externals";
 
+const DEFAULT_TIMEOUT = 60_000;
 const BASE_API_URL = "https://app.meticulous.ai/api/";
 
 export interface ClientOptions {
@@ -35,10 +37,10 @@ const makeSingleRequest = async <T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
-  }, timeout ?? 60_000);
+  }, timeout ?? DEFAULT_TIMEOUT);
   const response = await fetch(url, {
     ...options,
-    signal: controller.signal,
+    signal: controller.signal as AbortSignal,
   });
   clearTimeout(timeoutId);
 
