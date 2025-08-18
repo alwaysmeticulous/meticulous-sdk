@@ -9,7 +9,6 @@ import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
-import { AxiosInstance } from "axios";
 import log from "loglevel";
 import pLimit from "p-limit";
 import {
