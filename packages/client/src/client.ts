@@ -174,6 +174,18 @@ export const createClient: (options: ClientOptions) => MeticulousClient = ({
       }
       return makeRequestWithToken<T>(url, requestOptions) as Promise<R>;
     },
+
+    put: <T = any, R = Response<T>, D = any>(
+      url: string,
+      data?: D,
+    ): Promise<R> => {
+      const body = data !== undefined ? JSON.stringify(data) : undefined;
+      const requestOptions: RequestInit = { method: "PUT" };
+      if (body !== undefined) {
+        requestOptions.body = body;
+      }
+      return makeRequestWithToken<T>(url, requestOptions) as Promise<R>;
+    },
   };
 };
 
