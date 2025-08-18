@@ -1,11 +1,14 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import { getTestRunData, TestRunDataLocations } from "@alwaysmeticulous/client";
+import {
+  getTestRunData,
+  MeticulousClient,
+  TestRunDataLocations,
+} from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
-import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { downloadAndExtractFile } from "./download-file";
 import {
@@ -36,7 +39,7 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<
 
 const shouldDownloadFile = (
   fileType: string,
-  downloadScope: TestRunDownloadScope
+  downloadScope: TestRunDownloadScope,
 ): boolean => {
   return DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD[downloadScope].test(fileType);
 };
@@ -44,16 +47,16 @@ const shouldDownloadFile = (
 const TEST_RUN_PREVIOUSLY_DOWNLOADED_FILE_NAME = "previously-downloaded.txt";
 
 export const getOrFetchTestRunData = async (
-  client: AxiosInstance,
+  client: MeticulousClient,
   testRunId: string,
-  downloadScope: TestRunDownloadScope = "everything"
+  downloadScope: TestRunDownloadScope = "everything",
 ): Promise<{ fileName: string; data: TestRunDataLocations }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const testRunDir = join(
     getMeticulousLocalDataDir(),
     "test-runs",
-    sanitizeFilename(testRunId)
+    sanitizeFilename(testRunId),
   );
 
   await mkdir(testRunDir, { recursive: true });
@@ -62,7 +65,7 @@ export const getOrFetchTestRunData = async (
   try {
     const previouslyDownloadedFile = join(
       testRunDir,
-      TEST_RUN_PREVIOUSLY_DOWNLOADED_FILE_NAME
+      TEST_RUN_PREVIOUSLY_DOWNLOADED_FILE_NAME,
     );
 
     // Check what we have already downloaded. This is passed to the downloading function
@@ -85,13 +88,13 @@ export const getOrFetchTestRunData = async (
           // Instead of trying to reason about how to combine the two scopes, let's bump
           // to downloading everything which is guaranteed to be a superset.
           logger.debug(
-            `Test run data is partially downloaded at ${testRunDir}, will now download everything`
+            `Test run data is partially downloaded at ${testRunDir}, will now download everything`,
           );
           downloadScope = "everything";
         }
       } else {
         throw new Error(
-          `Error: Unknown previously download scope "${fileContents}"`
+          `Error: Unknown previously download scope "${fileContents}"`,
         );
       }
     }
@@ -101,7 +104,7 @@ export const getOrFetchTestRunData = async (
 
     if (!testRunData) {
       logger.error(
-        "Error: Could not retrieve test run data. This may be an invalid test run"
+        "Error: Could not retrieve test run data. This may be an invalid test run",
       );
       process.exit(1);
     }
@@ -124,7 +127,7 @@ export const getOrFetchTestRunData = async (
           await downloadAndExtractFile(
             location.signedUrl,
             filePath,
-            testRunDir
+            testRunDir,
           );
           if (filePath.endsWith(".json")) {
             const fileContents = await readFile(filePath, "utf-8");
