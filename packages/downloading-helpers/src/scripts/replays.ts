@@ -1,11 +1,14 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { dirname, join } from "path";
-import { getReplay, getReplayV3DownloadUrls } from "@alwaysmeticulous/client";
+import {
+  getReplay,
+  getReplayV3DownloadUrls,
+  MeticulousClient,
+} from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
-import { AxiosInstance } from "axios";
 import log from "loglevel";
 import pLimit from "p-limit";
 import {
@@ -23,7 +26,7 @@ const MAX_DOWNLOAD_CONCURRENCY = 20;
 const downloadAndUnzipIntoDirectory = async (
   archiveData: { signedUrl: string; filePath: string } | null | undefined,
   replayDir: string,
-  directoryName: string
+  directoryName: string,
 ): Promise<void> => {
   if (!archiveData) {
     return;
@@ -34,13 +37,13 @@ const downloadAndUnzipIntoDirectory = async (
   await downloadAndExtractFile(
     archiveData.signedUrl,
     join(replayDir, archiveData.filePath),
-    targetDir
+    targetDir,
   );
 };
 
 export const getOrFetchReplay = async (
-  client: AxiosInstance,
-  replayId: string
+  client: MeticulousClient,
+  replayId: string,
 ): Promise<{ fileName: string }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -54,7 +57,7 @@ export const getOrFetchReplay = async (
 
   if (!replay) {
     logger.error(
-      `Error: Could not retrieve replay with id "${replayId}". Is the API token correct?`
+      `Error: Could not retrieve replay with id "${replayId}". Is the API token correct?`,
     );
     process.exit(1);
   }
@@ -89,7 +92,7 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<DownloadScope, RegExp> = {
 
 const shouldDownloadFile = (
   fileType: string,
-  downloadScope: DownloadScope
+  downloadScope: DownloadScope,
 ): boolean => {
   return DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD[downloadScope].test(fileType);
 };
@@ -97,10 +100,10 @@ const shouldDownloadFile = (
 const REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME = "previously-downloaded.txt";
 
 export const getOrFetchReplayArchive = async (
-  client: AxiosInstance,
+  client: MeticulousClient,
   replayId: string,
   downloadScope: DownloadScope = "everything",
-  formatJsonFiles: boolean = false
+  formatJsonFiles: boolean = false,
 ): Promise<{ fileName: string }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -111,7 +114,7 @@ export const getOrFetchReplayArchive = async (
   try {
     const previouslyDownloadedFile = join(
       replayDir,
-      REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME
+      REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME,
     );
 
     // Check what we have already downloaded. This is passed to the downloading function
@@ -133,13 +136,13 @@ export const getOrFetchReplayArchive = async (
           // Instead of trying to reason about how to combine the two scopes, let's bump
           // to downloading everything which is guaranteed to be a superset.
           logger.debug(
-            `Replay archive is partially downloaded at ${replayDir}, will now download everything`
+            `Replay archive is partially downloaded at ${replayDir}, will now download everything`,
           );
           downloadScope = "everything";
         }
       } else {
         throw new Error(
-          `Error: Unknown previously download scope "${fileContents}"`
+          `Error: Unknown previously download scope "${fileContents}"`,
         );
       }
     }
@@ -153,11 +156,11 @@ export const getOrFetchReplayArchive = async (
         replayDir,
         downloadScope,
         formatJsonFiles,
-        previouslyDownloadedScope
+        previouslyDownloadedScope,
       );
     } else {
       throw new Error(
-        `Error: Unknown replay version "${replay.version}". This may be an invalid replay`
+        `Error: Unknown replay version "${replay.version}". This may be an invalid replay`,
       );
     }
 
@@ -170,17 +173,17 @@ export const getOrFetchReplayArchive = async (
 };
 
 const downloadReplayV3Files = async (
-  client: AxiosInstance,
+  client: MeticulousClient,
   replayId: string,
   replayDir: string,
   downloadScope: DownloadScope,
   formatJsonFiles: boolean,
-  previouslyDownloadedScope: DownloadScope | undefined
+  previouslyDownloadedScope: DownloadScope | undefined,
 ) => {
   const downloadUrls = await getReplayV3DownloadUrls(client, replayId);
   if (!downloadUrls) {
     throw new Error(
-      "Error: Could not retrieve replay download URLs. This may be an invalid replay"
+      "Error: Could not retrieve replay download URLs. This may be an invalid replay",
     );
   }
 
@@ -230,7 +233,7 @@ const downloadReplayV3Files = async (
               await downloadAndExtractFile(
                 metadata.signedUrl,
                 metadataFilePath,
-                join(replayDir, dirname(metadata.filePath))
+                join(replayDir, dirname(metadata.filePath)),
               );
             },
           ];
@@ -239,8 +242,8 @@ const downloadReplayV3Files = async (
   const diffsFolder = join(replayDir, "diffs");
   await Promise.all(
     Object.keys(diffs ?? {}).map((baseReplayId) =>
-      mkdir(join(diffsFolder, baseReplayId), { recursive: true })
-    )
+      mkdir(join(diffsFolder, baseReplayId), { recursive: true }),
+    ),
   );
 
   const diffsPromises = shouldDownloadFile("diffs", downloadScope)
@@ -250,13 +253,13 @@ const downloadReplayV3Files = async (
             async () => {
               await downloadFile(
                 urls.full.signedUrl,
-                join(replayDir, urls.full.filePath)
+                join(replayDir, urls.full.filePath),
               );
             },
             async () => {
               await downloadFile(
                 urls.thumbnail.signedUrl,
-                join(replayDir, urls.thumbnail.filePath)
+                join(replayDir, urls.thumbnail.filePath),
               );
             },
           ];
@@ -271,7 +274,7 @@ const downloadReplayV3Files = async (
             downloadAndUnzipIntoDirectory(
               snapshottedAssets,
               replayDir,
-              "snapshotted-assets"
+              "snapshotted-assets",
             ),
         ]
       : []),
@@ -282,7 +285,7 @@ const downloadReplayV3Files = async (
             downloadAndUnzipIntoDirectory(
               rawPerScreenshotCssCoverage,
               replayDir,
-              "raw-per-screenshot-css-coverage"
+              "raw-per-screenshot-css-coverage",
             ),
         ]
       : []),
@@ -293,7 +296,7 @@ const downloadReplayV3Files = async (
             downloadAndUnzipIntoDirectory(
               rawPerScreenshotJsCoverage,
               replayDir,
-              "raw-per-screenshot-js-coverage"
+              "raw-per-screenshot-js-coverage",
             ),
         ]
       : []),
@@ -304,7 +307,7 @@ const downloadReplayV3Files = async (
             downloadAndUnzipIntoDirectory(
               mappedPerScreenshotJsCoverage,
               replayDir,
-              "mapped-per-screenshot-js-coverage"
+              "mapped-per-screenshot-js-coverage",
             ),
         ]
       : []),
@@ -317,7 +320,7 @@ const downloadReplayV3Files = async (
       ...screenshotPromises,
       ...diffsPromises,
       ...archivePromises,
-    ].map((p) => limited(p))
+    ].map((p) => limited(p)),
   );
 };
 

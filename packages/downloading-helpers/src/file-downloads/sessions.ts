@@ -3,25 +3,25 @@ import { SessionData } from "@alwaysmeticulous/api";
 import {
   getRecordedSession,
   getRecordedSessionData,
+  MeticulousClient,
 } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   METICULOUS_LOGGER_NAME,
 } from "@alwaysmeticulous/common";
-import { AxiosInstance } from "axios";
 import log from "loglevel";
 import { getOrDownloadJsonFile, sanitizeFilename } from "./local-data.utils";
 
 export const getOrFetchRecordedSession = async (
-  client: AxiosInstance,
-  sessionId: string
+  client: MeticulousClient,
+  sessionId: string,
 ): Promise<{ fileName: string; data: any }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const sessionFile = join(
     getMeticulousLocalDataDir(),
     "sessions",
-    `${sanitizeFilename(sessionId)}.json`
+    `${sanitizeFilename(sessionId)}.json`,
   );
 
   const session = await getOrDownloadJsonFile({
@@ -31,7 +31,7 @@ export const getOrFetchRecordedSession = async (
   });
   if (!session) {
     logger.error(
-      "Error: Could not retrieve session. Is the API token correct?"
+      "Error: Could not retrieve session. Is the API token correct?",
     );
     process.exit(1);
   }
@@ -40,15 +40,15 @@ export const getOrFetchRecordedSession = async (
 };
 
 export const getOrFetchRecordedSessionData = async (
-  client: AxiosInstance,
-  sessionId: string
+  client: MeticulousClient,
+  sessionId: string,
 ): Promise<{ fileName: string; data: SessionData }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const sessionFile = join(
     getMeticulousLocalDataDir(),
     "sessions",
-    `${sanitizeFilename(sessionId)}_data.json`
+    `${sanitizeFilename(sessionId)}_data.json`,
   );
 
   const sessionData = await getOrDownloadJsonFile({
@@ -58,7 +58,7 @@ export const getOrFetchRecordedSessionData = async (
   });
   if (!sessionData) {
     logger.error(
-      "Error: Could not retrieve session data. This may be an invalid session"
+      "Error: Could not retrieve session data. This may be an invalid session",
     );
     process.exit(1);
   }

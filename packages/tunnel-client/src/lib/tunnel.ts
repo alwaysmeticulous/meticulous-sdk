@@ -25,10 +25,6 @@ interface CreateTunnelResponse {
   basic_auth_password: string;
 }
 
-interface CreateTunnelResponseError {
-  error: string;
-}
-
 type TunnelEvents = {
   close: () => void;
   error: (error: Error) => void;
@@ -155,7 +151,12 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
           this.logger.debug("got tunnel information", body);
           if (res.status !== 200) {
             const err = new Error(
-              (body && (body as CreateTunnelResponseError).error) ||
+              (body &&
+              typeof body === "object" &&
+              "error" in body &&
+              typeof body.error === "string"
+                ? body.error
+                : null) ||
                 "localtunnel server returned an error, please try again",
             );
             return cb(err);

@@ -1,9 +1,9 @@
 import { Project } from "@alwaysmeticulous/api";
-import { AxiosInstance, isAxiosError } from "axios";
-import { maybeEnrichAxiosError } from "../errors";
+import { isFetchError, maybeEnrichFetchError } from "../errors";
+import { MeticulousClient } from "../types/client.types";
 
 export interface GetRepoUrlOptions {
-  client: AxiosInstance;
+  client: MeticulousClient;
 }
 
 export interface RepoUrlResponse {
@@ -11,16 +11,16 @@ export interface RepoUrlResponse {
 }
 
 export const getProject: (
-  client: AxiosInstance
+  client: MeticulousClient,
 ) => Promise<Project | null> = async (client) => {
   const { data } = await client
     .get<Project>("projects/token-info")
     .catch((error) => {
-      if (isAxiosError(error) && error.response?.status === 404) {
+      if (isFetchError(error) && error.response?.status === 404) {
         return { data: null };
       }
 
-      throw maybeEnrichAxiosError(error);
+      throw maybeEnrichFetchError(error);
     });
   return data;
 };
@@ -31,7 +31,7 @@ export const getRepoUrl = async ({
   const { data } = await client
     .get<unknown, { data: RepoUrlResponse }>("projects/repo-url")
     .catch((error) => {
-      if (isAxiosError(error)) {
+      if (isFetchError(error)) {
         const errorMessage = error.response?.data?.message;
 
         if (errorMessage) {
