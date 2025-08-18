@@ -24,3 +24,8 @@ export {
 } from "./constants";
 export { getMeticulousVersion } from "./version.utils";
 export { getCommitSha } from "./commit-sha.utils";
+export {
+  executeWithRetry,
+  defaultShouldRetry,
+  type RetryOptions,
+} from "./http-retry.utils";

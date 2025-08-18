@@ -41,13 +41,13 @@
     "@alwaysmeticulous/sentry": "^2.228.1",
     "@alwaysmeticulous/tunnels-client": "^2.228.0",
     "@sentry/node": "^10.3.0",
-    "axios": "^1.7.9",
     "chalk": "^4.1.2",
     "ci-info": "^4.0.0",
     "cli-progress": "^3.12.0",
     "loglevel": "^1.8.0",
     "ora": "^5.4.1",
     "puppeteer": "24.14.0",
+    "node-fetch": "^3.3.2",
     "yargs": "^17.5.1"
   },
   "devDependencies": {

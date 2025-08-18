@@ -25,7 +25,8 @@ export {
 export { GetIsLockedOptions, getIsLocked } from "./api/deployment-lock.api";
 export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
 export { getApiToken } from "./api-token.utils";
-export { ClientOptions, createClient } from "./client";
+export { ClientOptions, createClient, makeRequest } from "./client";
+export { getProxyAgent } from "./utils/get-proxy-agent";
 export {
   RequestAssetUploadParams,
   RequestAssetUploadResponse,

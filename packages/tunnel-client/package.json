@@ -21,7 +21,7 @@
     "agentkeepalive": "^4.5.0",
     "cacheable-lookup": "^6.1.0",
     "loglevel": "^1.8.0",
-    "node-fetch": "^2.6.9",
+    "node-fetch": "^3.3.2",
     "proxy-agent": "^6.4.0"
   },
   "author": {

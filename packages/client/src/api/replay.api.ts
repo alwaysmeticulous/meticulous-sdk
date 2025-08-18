@@ -1,17 +1,17 @@
 import { Replay, S3Location } from "@alwaysmeticulous/api";
-import { AxiosInstance, isAxiosError } from "axios";
-import { maybeEnrichAxiosError } from "../errors";
+import { isFetchError, maybeEnrichFetchError } from "../errors";
+import { MeticulousClient } from "../types/client.types";
 
 export const getReplay = async (
-  client: AxiosInstance,
-  replayId: string
+  client: MeticulousClient,
+  replayId: string,
 ): Promise<Omit<Replay, "project">> => {
   const { data } = await client.get(`replays/${replayId}`).catch((error) => {
-    if (isAxiosError(error) && error.response?.status === 404) {
+    if (isFetchError(error) && error.response?.status === 404) {
       return { data: null };
     }
 
-    throw maybeEnrichAxiosError(error);
+    throw maybeEnrichFetchError(error);
   });
   return data;
 };
@@ -22,17 +22,17 @@ export interface ReplayDownloadUrlOutput {
 }
 
 export const getReplayDownloadUrl: (
-  client: AxiosInstance,
-  replayId: string
+  client: MeticulousClient,
+  replayId: string,
 ) => Promise<ReplayDownloadUrlOutput | null> = async (client, replayId) => {
   const { data } = await client
     .get<ReplayDownloadUrlOutput>(`replays/${replayId}/archive-url`)
     .catch((error) => {
-      if (isAxiosError(error) && error.response?.status === 404) {
+      if (isFetchError(error) && error.response?.status === 404) {
         return { data: null };
       }
 
-      throw maybeEnrichAxiosError(error);
+      throw maybeEnrichFetchError(error);
     });
   return data;
 };
@@ -46,17 +46,17 @@ export type ReplayV3UploadLocations = Record<string, S3Location> & {
 };
 
 export const getReplayV3DownloadUrls: (
-  client: AxiosInstance,
-  replayId: string
+  client: MeticulousClient,
+  replayId: string,
 ) => Promise<ReplayV3UploadLocations | null> = async (client, replayId) => {
   const { data } = await client
     .get<ReplayV3UploadLocations>(`replays/${replayId}/download-urls`)
     .catch((error) => {
-      if (isAxiosError(error) && error.response?.status === 404) {
+      if (isFetchError(error) && error.response?.status === 404) {
         return { data: null };
       }
 
-      throw maybeEnrichAxiosError(error);
+      throw maybeEnrichFetchError(error);
     });
   return data;
 };
