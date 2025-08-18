@@ -5,6 +5,7 @@ import {
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import fetch, { RequestInit } from "node-fetch";
+import type { AbortSignal } from "node-fetch/externals";
 import { getApiToken } from "./api-token.utils";
 import {
   MeticulousClient,
@@ -12,7 +13,6 @@ import {
   Response,
 } from "./types/client.types";
 import { getProxyAgent } from "./utils/get-proxy-agent";
-import { AbortSignal } from "node-fetch/externals";
 
 const DEFAULT_TIMEOUT = 60_000;
 const BASE_API_URL = "https://app.meticulous.ai/api/";
