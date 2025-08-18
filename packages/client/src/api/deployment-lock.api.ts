@@ -11,12 +11,11 @@ export const getIsLocked = async ({
   deploymentId,
 }: GetIsLockedOptions): Promise<boolean> => {
   const { data } = await client
-    .get<unknown, { data: boolean }>("deployment-locks/is-locked", {
+    .get<unknown, { data: string }>("deployment-locks/is-locked", {
       params: { deploymentId },
     })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
-
-  return data;
+  return data === "true";
 };
