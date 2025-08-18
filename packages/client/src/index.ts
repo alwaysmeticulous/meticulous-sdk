@@ -38,3 +38,4 @@ export {
   DownloadDeploymentResponse,
   downloadProjectDeployment,
 } from "./api/project-deployments.api";
+export { isFetchError } from "./errors";
