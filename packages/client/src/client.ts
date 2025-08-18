@@ -166,25 +166,27 @@ export const createClient: (options: ClientOptions) => MeticulousClient = ({
     post: <T = any, R = Response<T>, D = any>(
       url: string,
       data?: D,
+      config?: RequestConfig<any>,
     ): Promise<R> => {
       const body = data !== undefined ? JSON.stringify(data) : undefined;
       const requestOptions: RequestInit = { method: "POST" };
       if (body !== undefined) {
         requestOptions.body = body;
       }
-      return makeRequestWithToken<T>(url, requestOptions) as Promise<R>;
+      return makeRequestWithToken<T>(url, requestOptions, config) as Promise<R>;
     },
 
     put: <T = any, R = Response<T>, D = any>(
       url: string,
       data?: D,
+      config?: RequestConfig<any>,
     ): Promise<R> => {
       const body = data !== undefined ? JSON.stringify(data) : undefined;
       const requestOptions: RequestInit = { method: "PUT" };
       if (body !== undefined) {
         requestOptions.body = body;
       }
-      return makeRequestWithToken<T>(url, requestOptions) as Promise<R>;
+      return makeRequestWithToken<T>(url, requestOptions, config) as Promise<R>;
     },
   };
 };

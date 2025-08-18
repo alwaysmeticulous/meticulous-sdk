@@ -19,7 +19,15 @@ export interface MeticulousClient {
     config?: RequestConfig<any>,
   ): Promise<R>;
 
-  post<T = any, R = Response<any>>(url: string, data?: T): Promise<R>;
+  post<T = any, R = Response<any>>(
+    url: string,
+    data?: T,
+    config?: RequestConfig<any>,
+  ): Promise<R>;
 
-  put<T = any, R = Response<any>>(url: string, data?: T): Promise<R>;
+  put<T = any, R = Response<any>>(
+    url: string,
+    data?: T,
+    config?: RequestConfig<any>,
+  ): Promise<R>;
 }
