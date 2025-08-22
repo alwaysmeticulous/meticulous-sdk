@@ -28,7 +28,7 @@ const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
  */
 export const tryCompleteAssetUpload = async (
   completeAssetUploadArgs: Parameters<typeof completeAssetUpload>[0]
-): Promise<{ testRun: TestRun | null }> => {
+): Promise<{ testRun: TestRun | null, message?: string }> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const startTime = Date.now();
   let result = await completeAssetUpload(completeAssetUploadArgs);
@@ -72,6 +72,7 @@ export const tryCompleteAssetUpload = async (
 
   return {
     testRun: testRun ?? null,
+    ...(result?.message ? { message: result.message } : {}),
   };
 };
 
@@ -137,6 +138,8 @@ export const uploadAssetsAndTriggerTestRun = async ({
       const projectName = encodeURIComponent(result.testRun.project.name);
       const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${result.testRun.id}`;
       logger.info(`Test run triggered: ${testRunUrl}`);
+    } else {
+      throw new Error(`${result.message ?? "Test run was not created"}`);
     }
 
     return {

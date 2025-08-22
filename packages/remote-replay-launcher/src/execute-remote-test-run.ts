@@ -103,9 +103,8 @@ export const executeRemoteTestRun = async ({
     isLockable,
     ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
   });
-
   if (!response.testRun) {
-    throw new Error("Test run was not created");
+    throw new Error(`${response.message ?? "Test run was not created"}`);
   }
 
   const { testRun, deploymentId } = response;

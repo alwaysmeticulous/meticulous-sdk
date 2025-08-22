@@ -47,6 +47,7 @@ export interface ExecuteSecureTunnelTestRunOptions {
 export interface ExecuteSecureTunnelTestRunResponse {
   testRun?: TestRun;
   deploymentId: string;
+  message?: string;
 }
 
 export const executeSecureTunnelTestRun = async ({
