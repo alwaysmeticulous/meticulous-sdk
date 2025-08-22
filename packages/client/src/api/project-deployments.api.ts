@@ -21,6 +21,7 @@ export interface CompleteAssetUploadParams {
 export interface CompleteAssetUploadResponse {
   testRun?: TestRun;
   baseNotFound?: boolean;
+  message?: string;
 }
 
 export interface DownloadDeploymentResponse {
