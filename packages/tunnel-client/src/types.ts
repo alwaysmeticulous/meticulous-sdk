@@ -37,6 +37,7 @@ export interface LocalTunnelOptions {
   proxyAllUrls: boolean;
   rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
+  http2Connections?: number | undefined;
 }
 
 export interface IncomingRequestEvent {
