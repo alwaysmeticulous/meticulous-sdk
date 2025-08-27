@@ -31,6 +31,7 @@ interface Options {
   proxyAllUrls: boolean;
   rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
+  http2Connections?: number | undefined;
 }
 
 const environmentToString: (environment: Environment) => string = (
@@ -53,6 +54,7 @@ const handler: (options: Options) => Promise<void> = async ({
   proxyAllUrls,
   rewriteHostnameToAppUrl,
   enableDnsCache,
+  http2Connections,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const commitSha = await getCommitSha(commitSha_);
@@ -134,10 +136,10 @@ const handler: (options: Options) => Promise<void> = async ({
           testRun.configData.testCases
             ?.filter(
               (testCase) =>
-                testCase.relevanceToPR === SessionRelevance.NotRelevant
+                testCase.relevanceToPR === SessionRelevance.NotRelevant,
             )
-            .map((testCase) => testCase.sessionId) ?? []
-        )
+            .map((testCase) => testCase.sessionId) ?? [],
+        );
 
         // Note we can't just check 'scheduledTestRunSpinner.isSpinning' because it won't spin
         // if connected to a non-tty terminal.
@@ -153,7 +155,10 @@ const handler: (options: Options) => Promise<void> = async ({
         }
 
         if (progressBar.getTotal() > 0) {
-          progressBar.update((testRun.resultData?.results?.length || 0) + nonRelevantSessionIds.size);
+          progressBar.update(
+            (testRun.resultData?.results?.length || 0) +
+              nonRelevantSessionIds.size,
+          );
         }
 
         if (!IN_PROGRESS_TEST_RUN_STATUS.includes(testRun.status)) {
@@ -189,6 +194,7 @@ const handler: (options: Options) => Promise<void> = async ({
       proxyAllUrls,
       rewriteHostnameToAppUrl,
       enableDnsCache,
+      http2Connections,
     });
   } catch (error) {
     if (isOutOfDateClientError(error)) {
@@ -244,6 +250,10 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
       description:
         "Enable DNS caching, this is recommended if the tunnel will be making requests to a non-localhost domain",
       default: false,
+    },
+    http2Connections: {
+      number: true,
+      description: "Number of HTTP2 connections to establish for multiplexing",
     },
   } as const)
   .handler(handler);

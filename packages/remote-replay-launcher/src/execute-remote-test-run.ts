@@ -40,6 +40,7 @@ export const executeRemoteTestRun = async ({
   proxyAllUrls = false,
   rewriteHostnameToAppUrl = false,
   enableDnsCache = false,
+  http2Connections,
 }: ExecuteRemoteTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
@@ -77,6 +78,7 @@ export const executeRemoteTestRun = async ({
     proxyAllUrls,
     rewriteHostnameToAppUrl,
     enableDnsCache,
+    http2Connections,
   });
 
   logger.debug(`Creating test run`);

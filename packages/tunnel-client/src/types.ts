@@ -20,6 +20,7 @@ export interface TunnelInfo {
   proxyAllUrls: boolean;
   rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
+  http2Connections?: number | undefined;
 }
 
 export interface LocalTunnelOptions {
@@ -37,6 +38,7 @@ export interface LocalTunnelOptions {
   proxyAllUrls: boolean;
   rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
+  http2Connections?: number | undefined;
 }
 
 export interface IncomingRequestEvent {

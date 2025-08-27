@@ -28,6 +28,7 @@ interface Options {
   rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
   printRequests: boolean;
+  http2Connections: number | undefined;
 }
 
 const handler = async (argv: Options) => {
@@ -58,6 +59,7 @@ const handler = async (argv: Options) => {
     proxyAllUrls: argv.proxyAllUrls,
     rewriteHostnameToAppUrl: argv.rewriteHostnameToAppUrl,
     enableDnsCache: argv.enableDnsCache,
+    http2Connections: argv.http2Connections,
   }).catch((err) => {
     throw err;
   });
@@ -172,6 +174,10 @@ export const startLocalTunnelCommand = buildCommand("start-local-tunnel")
       describe: "Print basic request info",
       boolean: true,
       default: false,
+    },
+    http2Connections: {
+      describe: "Number of HTTP2 connections to establish for multiplexing",
+      number: true,
     },
   })
   .handler(handler);

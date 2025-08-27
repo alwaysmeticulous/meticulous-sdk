@@ -11,9 +11,9 @@ import { TunnelHTTP2Cluster } from "./tunnel-http2-cluster";
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
 
 /**
- * Number of connections to establish for HTTP2 multiplexing.
+ * Default number of connections to establish for HTTP2 multiplexing.
  */
-const HTTP2_NUMBER_OF_CONNECTIONS = 2;
+const DEFAULT_HTTP2_NUMBER_OF_CONNECTIONS = 2;
 
 interface CreateTunnelResponse {
   id: string;
@@ -263,6 +263,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     enableDnsCache,
     useTls,
     tunnelPassphrase,
+    http2Connections,
   }: Omit<TunnelInfo, "multiplexingRemotePort"> & {
     multiplexingRemotePort: number;
   }): Promise<TunnelHTTP2Cluster> {
@@ -287,8 +288,10 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       enableDnsCache,
     };
 
+    const numConnections =
+      http2Connections ?? DEFAULT_HTTP2_NUMBER_OF_CONNECTIONS;
     const sockets = await Promise.all(
-      Array.from({ length: HTTP2_NUMBER_OF_CONNECTIONS }).map(() =>
+      Array.from({ length: numConnections }).map(() =>
         this.openSocket({
           useTls,
           remoteHost,
