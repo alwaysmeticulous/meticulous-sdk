@@ -1,7 +1,7 @@
 import cluster from "node:cluster";
 import { initLogger } from "@alwaysmeticulous/common";
-import { openSocket } from "../utils/open-socket";
-import { TunnelHTTP2Cluster } from "./tunnel-http2-cluster";
+import { TunnelHTTP2Cluster } from "./lib/tunnel-http2-cluster";
+import { openSocket } from "./utils/open-socket";
 
 export interface WorkerInitOptions {
   workerId: number;
@@ -21,6 +21,13 @@ export interface WorkerInitOptions {
   localCa?: string;
 }
 
+type InitMessage = {
+  type: "init";
+  options: WorkerInitOptions;
+};
+
+type Message = InitMessage;
+
 const startClusterWorker = async () => {
   const logger = initLogger();
 
@@ -28,13 +35,23 @@ const startClusterWorker = async () => {
     throw new Error("This code must be run as a cluster worker");
   }
 
-  if (!process.env.WORKER_OPTIONS) {
-    throw new Error(
-      "Worker options must be provided via WORKER_OPTIONS environment variable",
-    );
-  }
+  const options = await new Promise<WorkerInitOptions>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error("Timeout waiting for worker init message!"));
+    }, 10_000);
 
-  const options = JSON.parse(process.env.WORKER_OPTIONS) as WorkerInitOptions;
+    process.on("message", (message: Message) => {
+      switch (message.type) {
+        case "init":
+          clearTimeout(timeout);
+          resolve(message.options);
+          break;
+        default:
+          logger.warn(`Unknown message type: ${message.type}`);
+          break;
+      }
+    });
+  });
 
   try {
     const socket = await openSocket({

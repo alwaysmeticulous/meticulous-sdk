@@ -71,6 +71,9 @@ const createProxyConnection = async (
       socket: proxySocket,
       servername: targetHost,
       rejectUnauthorized: true,
+      // The HTTP2 node implementation requires ALPN set.
+      // See https://github.com/nodejs/node/blob/9a9409ff1f45c968173118de4cd37dea784f8ec9/lib/internal/http2/core.js#L3039.
+      // The server should respond with the ALPN protocol "meticulous-tunnel".
       ALPNProtocols: ["meticulous-tunnel"],
     });
   }
@@ -103,6 +106,9 @@ export const openSocket = async ({
       host: remoteHost,
       port: multiplexingRemotePort,
       rejectUnauthorized: true,
+      // The HTTP2 node implementation requires ALPN set.
+      // See https://github.com/nodejs/node/blob/9a9409ff1f45c968173118de4cd37dea784f8ec9/lib/internal/http2/core.js#L3039.
+      // The server should respond with the ALPN protocol "meticulous-tunnel".
       ALPNProtocols: ["meticulous-tunnel"],
     });
   } else {
@@ -117,6 +123,8 @@ export const openSocket = async ({
   socket.on("error", (err: NodeJS.ErrnoException) => {
     logger.debug("got remote connection error", err.message);
 
+    // emit connection refused errors immediately, because they
+    // indicate that the tunnel can't be established.
     if (err.code === "ECONNREFUSED") {
       const connectionError = new Error(
         `connection refused: ${remoteHost}:${multiplexingRemotePort} (check your firewall settings)`,
@@ -139,6 +147,7 @@ export const openSocket = async ({
 
   await new Promise<void>((resolve, reject) => {
     socket.once(connectEvent, () => {
+      // Send the tunnel passphrase to the server
       socket.write(`AUTH ${tunnelPassphrase}`);
 
       socket.once("data", (data) => {
@@ -155,6 +164,7 @@ export const openSocket = async ({
         socket.pause();
 
         if (sendAuthOkAck) {
+          // Some tunnel implementations require an ACK after the AUTH OK message.
           socket.write("AUTH OK ACK", () => {
             resolve();
           });
