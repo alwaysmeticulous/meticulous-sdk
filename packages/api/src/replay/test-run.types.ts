@@ -7,7 +7,6 @@ export enum SessionRelevance {
   IsPrAuthor = "is-pr-author", // Recent session recorded from the author of the PR. This is used to tag sessions before they are executed.
   IsPrAuthorRelevant = "is-pr-author-relevant", // Recent session recorded from the author of the PR, but relevant to the PR
   IsPrAuthorNotRelevant = "is-pr-author-not-relevant", // Recent session recorded from the author of the PR, but not relevant to the PR
-  MissingBaseline = "missing-baseline", // Selected session which lacks a baseline replay for comparison
   IsRelevantBeta = "is-relevant-beta", // Similar to IsRelevant, but used by beta relevance algorithm for A/B testing and internal evaluation
   IsRelevant = "is-relevant",
   NotRelevant = "not-relevant",
