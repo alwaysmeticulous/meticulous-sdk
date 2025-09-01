@@ -253,7 +253,8 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
     },
     http2Connections: {
       number: true,
-      description: "Number of HTTP2 connections to establish for multiplexing",
+      description:
+        "Number of HTTP2 connections to establish for multiplexing (defaults to number of CPU cores)",
     },
   } as const)
   .handler(handler);

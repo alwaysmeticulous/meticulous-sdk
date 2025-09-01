@@ -1,19 +1,21 @@
 import { EventEmitter } from "events";
-import net from "net";
-import tls from "tls";
+import cluster, { Worker } from "node:cluster";
+import { cpus } from "node:os";
+import path from "path";
 import { Logger } from "loglevel";
 import fetch from "node-fetch";
 import TypedEmitter from "typed-emitter";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
 import { getProxyAgent } from "../utils/get-proxy-agent";
-import { TunnelHTTP2Cluster } from "./tunnel-http2-cluster";
+import { WorkerInitOptions } from "./worker-entrypoint";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
 
 /**
  * Default number of connections to establish for HTTP2 multiplexing.
+ * Uses the number of CPU cores available.
  */
-const DEFAULT_HTTP2_NUMBER_OF_CONNECTIONS = 2;
+const DEFAULT_HTTP2_NUMBER_OF_CONNECTIONS = cpus().length;
 
 interface CreateTunnelResponse {
   id: string;
@@ -41,6 +43,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
   private readonly opts: Omit<LocalTunnelOptions, "logger" | "host">;
   private readonly host: string;
   private closed: boolean;
+  private workers: Worker[] = [];
 
   public clientId: string | null = null;
   public url: string | null = null;
@@ -187,67 +190,23 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       throw new Error("multiplexingRemotePort must be set");
     }
 
-    const agentType = "http2-multiplexing";
+    const agentType = "http2-multiplexing-cluster";
 
     this.logger.debug(`using ${agentType} agent`);
-    const tunnelCluster = await this._establishMultiplexingCluster({
+    await this._establishMultiplexingCluster({
       ...info,
       multiplexingRemotePort: info.multiplexingRemotePort,
     });
 
-    // only emit the url the first time
-    tunnelCluster.once("open", () => {
-      this.emit("url", {
-        url: info.url,
-        basicAuthUser: info.basicAuthUser,
-        basicAuthPassword: info.basicAuthPassword,
-      });
+    // emit the url immediately since cluster workers are handling the connections
+    this.emit("url", {
+      url: info.url,
+      basicAuthUser: info.basicAuthUser,
+      basicAuthPassword: info.basicAuthPassword,
     });
-
-    // re-emit socket error
-    tunnelCluster.on("error", (err) => {
-      this.logger.debug("got socket error", err.message);
-      this.emit("error", err);
-    });
-
-    let tunnelCount = 0;
-
-    // track open count
-    tunnelCluster.on("open", (tunnel) => {
-      tunnelCount++;
-      this.logger.debug("tunnel open [total: %d]", tunnelCount);
-
-      const closeHandler = () => {
-        tunnel.destroy();
-      };
-
-      if (this.closed) {
-        return closeHandler();
-      }
-
-      this.once("close", closeHandler);
-      tunnel.once("close", () => {
-        this.removeListener("close", closeHandler);
-      });
-    });
-
-    // when a tunnel dies, open a new one
-    tunnelCluster.on("dead", () => {
-      tunnelCount--;
-      this.logger.debug("tunnel dead [total: %d]", tunnelCount);
-      if (this.closed || !tunnelCluster) {
-        return;
-      }
-    });
-
-    tunnelCluster.on("request", (req: IncomingRequestEvent) => {
-      this.emit("request", req);
-    });
-
-    tunnelCluster.startListening();
 
     this.once("close", () => {
-      tunnelCluster.close();
+      this._terminateWorkers();
     });
   }
 
@@ -257,6 +216,9 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     localHost,
     localPort,
     localHttps,
+    localCert,
+    localKey,
+    localCa,
     allowInvalidCert,
     proxyAllUrls,
     rewriteHostnameToAppUrl,
@@ -266,10 +228,10 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     http2Connections,
   }: Omit<TunnelInfo, "multiplexingRemotePort"> & {
     multiplexingRemotePort: number;
-  }): Promise<TunnelHTTP2Cluster> {
+  }): Promise<void> {
     const localProtocol = localHttps ? "https" : "http";
     this.logger.debug(
-      "establishing tunnel %s://%s:%s <> %s:%s",
+      "establishing tunnel %s://%s:%s <> %s:%s using cluster workers",
       localProtocol,
       localHost,
       localPort,
@@ -277,42 +239,52 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       multiplexingRemotePort,
     );
 
-    const commonTunnelOpts = {
-      logger: this.logger,
-      localHost,
-      localPort,
-      localHttps,
-      allowInvalidCert,
-      proxyAllUrls,
-      rewriteHostnameToAppUrl,
-      enableDnsCache,
-    };
+    const numWorkers = http2Connections || DEFAULT_HTTP2_NUMBER_OF_CONNECTIONS;
+    const workerPath = path.resolve(__dirname, "./worker-entrypoint.js");
 
-    const numConnections =
-      http2Connections ?? DEFAULT_HTTP2_NUMBER_OF_CONNECTIONS;
-    const sockets = await Promise.all(
-      Array.from({ length: numConnections }).map(() =>
-        this.openSocket({
-          useTls,
-          remoteHost,
-          multiplexingRemotePort,
-          tunnelPassphrase,
-          sendAuthOkAck: true,
-        }),
-      ),
-    );
-
-    return new TunnelHTTP2Cluster({
-      ...commonTunnelOpts,
-      sockets,
-      getHost: () => {
-        if (!this.url) {
-          throw new Error("Tried to call getHost before tunnel was opened!");
-        }
-        const parsedUrl = new URL(this.url);
-        return parsedUrl.host;
-      },
+    cluster.setupPrimary({
+      exec: workerPath,
+      silent: false,
+      execArgv: ["--max-old-space-size=2048"],
     });
+
+    for (let i = 1; i <= numWorkers; i++) {
+      const workerOptions: WorkerInitOptions = {
+        workerId: i,
+        useTls,
+        remoteHost,
+        multiplexingRemotePort,
+        tunnelPassphrase,
+        localHost,
+        localPort,
+        localHttps,
+        ...(localCert ? { localCert } : {}),
+        ...(localKey ? { localKey } : {}),
+        ...(localCa ? { localCa } : {}),
+        allowInvalidCert,
+        proxyAllUrls,
+        rewriteHostnameToAppUrl,
+        enableDnsCache,
+      };
+
+      const worker = cluster.fork({
+        WORKER_OPTIONS: JSON.stringify(workerOptions),
+      });
+
+      worker.on("exit", (code) => {
+        if (code !== 0 && !this.closed) {
+          this.logger.error(`Worker ${i} stopped with exit code ${code}`);
+          this.emit(
+            "error",
+            new Error(`Worker ${i} stopped with exit code ${code}`),
+          );
+        }
+      });
+
+      this.workers.push(worker);
+    }
+
+    this.logger.debug(`Started ${numWorkers} cluster workers for tunnel`);
   }
 
   open(cb: (err?: Error) => void) {
@@ -336,169 +308,16 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     });
   }
 
+  private _terminateWorkers() {
+    this.logger.debug(`Terminating ${this.workers.length} workers`);
+    for (const worker of this.workers) {
+      worker.kill();
+    }
+    this.workers = [];
+  }
+
   close() {
     this.closed = true;
     this.emit("close");
-  }
-
-  private async createProxyConnection(
-    proxyUrl: string,
-    targetHost: string,
-    targetPort: number,
-    useTls: boolean,
-  ): Promise<net.Socket> {
-    const url = new URL(proxyUrl);
-    if (url.protocol === "https:") {
-      throw new Error("HTTPS proxy is not supported!");
-    }
-    const proxyHost = url.hostname;
-    const proxyPort = parseInt(url.port) || 80;
-
-    const proxySocket = net.connect({
-      host: proxyHost,
-      port: proxyPort,
-    });
-
-    await new Promise<void>((resolve, reject) => {
-      proxySocket.once("connect", () => {
-        // Send HTTP CONNECT request
-        const connectRequest = [
-          `CONNECT ${targetHost}:${targetPort} HTTP/1.1`,
-          `Host: ${targetHost}:${targetPort}`,
-          `Proxy-Connection: keep-alive`,
-          "",
-          "",
-        ].join("\r\n");
-
-        proxySocket.write(connectRequest);
-
-        const onData = (data: Buffer) => {
-          const response = data.toString();
-          if (
-            response.includes("200 Connection established") ||
-            response.includes("200 OK")
-          ) {
-            proxySocket.removeListener("data", onData);
-            resolve();
-          } else {
-            proxySocket.removeListener("data", onData);
-            reject(
-              new Error(`Proxy CONNECT failed: ${response.split("\r\n")[0]}`),
-            );
-          }
-        };
-
-        proxySocket.on("data", onData);
-      });
-
-      proxySocket.once("error", reject);
-    });
-
-    if (useTls) {
-      return tls.connect({
-        socket: proxySocket,
-        servername: targetHost,
-        rejectUnauthorized: true,
-        ALPNProtocols: ["meticulous-tunnel"],
-      });
-    }
-
-    return proxySocket;
-  }
-
-  async openSocket({
-    useTls,
-    remoteHost,
-    multiplexingRemotePort,
-    tunnelPassphrase,
-    sendAuthOkAck,
-  }: Pick<
-    TunnelInfo,
-    "useTls" | "remoteHost" | "multiplexingRemotePort" | "tunnelPassphrase"
-  > & {
-    sendAuthOkAck?: boolean;
-  }): Promise<net.Socket | tls.TLSSocket> {
-    let socket: net.Socket | tls.TLSSocket;
-
-    const proxyUrl = process.env.HTTPS_PROXY;
-    if (proxyUrl) {
-      socket = await this.createProxyConnection(
-        proxyUrl,
-        remoteHost,
-        multiplexingRemotePort,
-        useTls,
-      );
-    } else if (useTls) {
-      socket = tls.connect({
-        host: remoteHost,
-        port: multiplexingRemotePort,
-        rejectUnauthorized: true,
-        // The HTTP2 node implementation requires ALPN set.
-        // See https://github.com/nodejs/node/blob/9a9409ff1f45c968173118de4cd37dea784f8ec9/lib/internal/http2/core.js#L3039.
-        // The server should respond with the ALPN protocol "meticulous-tunnel".
-        ALPNProtocols: ["meticulous-tunnel"],
-      });
-    } else {
-      socket = net.connect({
-        host: remoteHost,
-        port: multiplexingRemotePort,
-      });
-    }
-
-    socket.setNoDelay(true);
-
-    socket.on("error", (err: NodeJS.ErrnoException) => {
-      this.logger.debug("got remote connection error", err.message);
-
-      // emit connection refused errors immediately, because they
-      // indicate that the tunnel can't be established.
-      if (err.code === "ECONNREFUSED") {
-        this.emit(
-          "error",
-          new Error(
-            `connection refused: ${remoteHost}:${multiplexingRemotePort} (check your firewall settings)`,
-          ),
-        );
-      }
-
-      socket.end();
-    });
-
-    socket.on("close", () => {
-      if (!this.closed) {
-        this.logger.error(
-          "The remote connection was closed unexpectedly. Please check your network connection and try again.",
-        );
-      }
-    });
-
-    const connectEvent = useTls ? "secureConnect" : "connect";
-
-    await new Promise<void>((resolve) => {
-      socket.once(connectEvent, () => {
-        // Send the tunnel passphrase to the server
-        socket.write(`AUTH ${tunnelPassphrase}`);
-
-        socket.once("data", (data) => {
-          if (data.toString() != "AUTH OK") {
-            this.emit("error", new Error("Tunnel auth failed"));
-            socket.end();
-          }
-
-          socket.pause();
-
-          if (sendAuthOkAck) {
-            // Some tunnel implementations require an ACK after the AUTH OK message.
-            socket.write("AUTH OK ACK", () => {
-              resolve();
-            });
-          } else {
-            resolve();
-          }
-        });
-      });
-    });
-
-    return socket;
   }
 }
