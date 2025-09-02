@@ -1,12 +1,12 @@
 import { EventEmitter } from "events";
 import cluster, { Worker } from "node:cluster";
 import { cpus } from "node:os";
-import path from "path";
 import { Logger } from "loglevel";
 import fetch from "node-fetch";
 import TypedEmitter from "typed-emitter";
 import { WorkerInitOptions } from "../tunnel-worker.entrypoint";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
+import { findWorkerFile } from "../utils/find-worker-file";
 import { getProxyAgent } from "../utils/get-proxy-agent";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
@@ -240,13 +240,9 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     );
 
     const numWorkers = http2Connections || DEFAULT_HTTP2_NUMBER_OF_CONNECTIONS;
-    const workerPath = path.resolve(
-      __dirname,
-      "../tunnel-worker.entrypoint.js",
-    );
 
     cluster.setupPrimary({
-      exec: workerPath,
+      exec: findWorkerFile(__dirname),
       silent: false,
     });
 
