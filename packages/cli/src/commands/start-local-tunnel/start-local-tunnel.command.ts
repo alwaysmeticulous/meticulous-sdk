@@ -176,7 +176,8 @@ export const startLocalTunnelCommand = buildCommand("start-local-tunnel")
       default: false,
     },
     http2Connections: {
-      describe: "Number of HTTP2 connections to establish for multiplexing",
+      describe:
+        "Number of HTTP2 connections to establish for multiplexing (defaults to number of CPU cores)",
       number: true,
     },
   })
