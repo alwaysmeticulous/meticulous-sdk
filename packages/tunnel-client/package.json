@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/tunnels-client",
-  "version": "2.230.1",
+  "version": "2.234.0",
   "description": "Client for the Meticulous Tunnels service",
   "license": "ISC",
   "main": "dist/index.js",
