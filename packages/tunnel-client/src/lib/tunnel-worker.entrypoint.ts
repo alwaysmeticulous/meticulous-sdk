@@ -1,7 +1,7 @@
 import cluster from "node:cluster";
 import { initLogger } from "@alwaysmeticulous/common";
-import { TunnelHTTP2Cluster } from "./lib/tunnel-http2-cluster";
-import { openSocket } from "./utils/open-socket";
+import { openSocket } from "../utils/open-socket";
+import { TunnelHTTP2Cluster } from "./tunnel-http2-cluster";
 
 export interface WorkerInitOptions {
   workerId: number;
