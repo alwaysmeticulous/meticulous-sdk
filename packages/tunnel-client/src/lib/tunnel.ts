@@ -13,9 +13,9 @@ const DEFAULT_HOST = "https://tunnels.meticulous.ai";
 
 /**
  * Default number of connections to establish for HTTP2 multiplexing.
- * Uses the number of CPU cores available.
+ * Uses the number of CPU cores available, up to a maximum of 16.
  */
-const DEFAULT_HTTP2_NUMBER_OF_CONNECTIONS = cpus().length;
+const DEFAULT_HTTP2_NUMBER_OF_CONNECTIONS = Math.min(cpus().length, 16);
 
 interface CreateTunnelResponse {
   id: string;
