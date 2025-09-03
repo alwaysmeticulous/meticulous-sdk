@@ -17,11 +17,11 @@ export const replayAndStoreResults = async (
   options: Omit<
     ReplayAndStoreResultsOptions,
     "logLevel" | "chromeExecutablePath" | "projectId"
-  >
+  >,
 ): Promise<ReplayExecution> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const bundleLocation = await fetchAsset(
-    "replay/v3/replay-and-store-results.bundle.js"
+    "replay/v3/replay-and-store-results.bundle.js",
   );
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -39,12 +39,14 @@ export const executeScheduledTestRun = async (
   options: Omit<
     ExecuteScheduledTestRunOptions,
     "logLevel" | "chromeExecutablePath"
-  >
+  > & {
+    executeScheduledTestRunBundlePath?: string;
+  },
 ): Promise<InProgressTestRun> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-  const bundleLocation = await fetchAsset(
-    EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH
-  );
+  const bundleLocation =
+    options.executeScheduledTestRunBundlePath ??
+    (await fetchAsset(EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH));
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return (await require(bundleLocation)).executeTestRunV2({
@@ -58,12 +60,14 @@ export const executeScheduledTestRunChunk = async (
   options: Omit<
     ExecuteScheduledTestRunChunkOptions,
     "logLevel" | "chromeExecutablePath"
-  >
+  > & {
+    executeScheduledTestRunBundlePath?: string;
+  },
 ): Promise<InProgressTestRunChunk> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
-  const bundleLocation = await fetchAsset(
-    EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH
-  );
+  const bundleLocation =
+    options.executeScheduledTestRunBundlePath ??
+    (await fetchAsset(EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH));
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return (await require(bundleLocation)).executeTestRunChunk({
@@ -74,11 +78,11 @@ export const executeScheduledTestRunChunk = async (
 };
 
 export const executeTestRun = async (
-  options: Omit<ExecuteTestRunOptions, "logLevel" | "chromeExecutablePath">
+  options: Omit<ExecuteTestRunOptions, "logLevel" | "chromeExecutablePath">,
 ): Promise<ExecuteTestRunResult> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const bundleLocation = await fetchAsset(
-    "replay/v3/execute-test-run.bundle.js"
+    "replay/v3/execute-test-run.bundle.js",
   );
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
