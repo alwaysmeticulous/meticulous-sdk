@@ -2,6 +2,7 @@ export * from "./api/github-cloud-replay.api";
 export { getProject, getRepoUrl } from "./api/project.api";
 export type { TestRunDataLocations } from "./api/test-run.api";
 export {
+  ReplayV3UploadLocations,
   getReplay,
   getReplayDownloadUrl,
   getReplayV3DownloadUrls,
