@@ -35,6 +35,9 @@ export const replayAndStoreResults = async (
 const EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH =
   "replay/v3/execute-scheduled-test-run.bundle.js";
 
+/**
+ * @deprecated This function is deprecated and will be removed in future versions.
+ */
 export const executeScheduledTestRun = async (
   options: Omit<
     ExecuteScheduledTestRunOptions,
@@ -56,6 +59,9 @@ export const executeScheduledTestRun = async (
   });
 };
 
+/**
+ * @deprecated This function is deprecated and will be removed in future versions.
+ */
 export const executeScheduledTestRunChunk = async (
   options: Omit<
     ExecuteScheduledTestRunChunkOptions,
