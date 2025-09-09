@@ -1,5 +1,6 @@
 import {
   Cookie,
+  CompanionAssetsInfo,
   InjectableRequestHeader,
   NetworkStubbingMode,
   ScreenshotAssertionsEnabledOptions,
@@ -51,7 +52,7 @@ export interface ReplayAndStoreResultsOptions {
    * next event. This allows the caller to pause the replay, or control the playback.
    */
   onBeforeUserEvent?: (
-    opts: BeforeUserEventOptions
+    opts: BeforeUserEventOptions,
   ) => Promise<BeforeUserEventResult>;
 
   /**
@@ -278,6 +279,8 @@ export interface ReplayExecutionOptions {
   enableCssCoverage?: boolean;
 
   networkDebuggingOptions?: NetworkDebuggingOptions;
+
+  companionAssetsInfo?: CompanionAssetsInfo;
 }
 
 export interface StorageEntryOverride extends StorageEntry {
