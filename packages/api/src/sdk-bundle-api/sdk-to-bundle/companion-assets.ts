@@ -6,7 +6,7 @@ export interface CompanionAssetsInfo {
   /**
    * The upload ID of the deployment to serve the companion assets from.
    */
-  uploadId: string;
+  deploymentUploadId: string;
 
   /**
    * A regex to match to determine if a path should be served from the companion assets.
