@@ -29,7 +29,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
   if (!commitSha) {
     logger.error(
-      "No commit sha found, you must be in a git repository or provide one with --commitSha"
+      "No commit sha found, you must be in a git repository or provide one with --commitSha",
     );
     process.exit(1);
   }
@@ -54,7 +54,7 @@ const handler: (options: Options) => Promise<void> = async ({
 };
 
 const parseRewrites = (
-  rewritesString?: string
+  rewritesString?: string,
 ): AssetUploadMetadata["rewrites"] => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   let parsedRewrites: unknown;
@@ -62,7 +62,7 @@ const parseRewrites = (
     parsedRewrites = JSON.parse(rewritesString ?? "[]");
   } catch (error) {
     logger.error(
-      "Error: Could not parse --rewrites flag. Expected a valid JSON array string."
+      "Error: Could not parse --rewrites flag. Expected a valid JSON array string.",
     );
     if (error instanceof Error) {
       logger.error(error.message);
@@ -72,7 +72,7 @@ const parseRewrites = (
 
   if (!Array.isArray(parsedRewrites)) {
     logger.error(
-      "Error: Invalid --rewrites flag. Expected a valid JSON array string."
+      "Error: Invalid --rewrites flag. Expected a valid JSON array string.",
     );
     process.exit(1);
   }
@@ -82,15 +82,15 @@ const parseRewrites = (
       typeof item === "object" &&
       item !== null &&
       typeof item.source === "string" &&
-      typeof item.destination === "string"
+      typeof item.destination === "string",
   );
 
   if (!isValid) {
     logger.error(
-      "Error: Invalid --rewrites flag. Each element in the array must be an object with 'source' and 'destination' string properties."
+      "Error: Invalid --rewrites flag. Each element in the array must be an object with 'source' and 'destination' string properties.",
     );
     logger.error(
-      "See https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array for more details."
+      "See https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array for more details.",
     );
     process.exit(1);
   }
@@ -99,7 +99,7 @@ const parseRewrites = (
 };
 
 export const uploadAssetsAndExecuteTestRunInCloudCommand = buildCommand(
-  "upload-assets-and-execute-test-run-in-cloud"
+  "upload-assets-and-execute-test-run-in-cloud",
 )
   .details({
     describe:

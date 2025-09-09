@@ -1,4 +1,7 @@
-import { AssetUploadMetadata } from "@alwaysmeticulous/api";
+import {
+  AssetUploadMetadata,
+  CompanionAssetsInfo,
+} from "@alwaysmeticulous/api";
 import { TestRun } from "@alwaysmeticulous/client";
 
 export interface TunnelData {
@@ -45,6 +48,7 @@ export interface ExecuteRemoteTestRunOptions {
   rewriteHostnameToAppUrl?: boolean;
   enableDnsCache?: boolean;
   http2Connections?: number | undefined;
+  companionAssetsInfo?: CompanionAssetsInfo;
 }
 
 export interface ExecuteRemoteTestRunResult {
@@ -61,4 +65,5 @@ export interface UploadAssetsAndTriggerTestRunOptions {
    */
   waitForBase: boolean;
   rewrites?: AssetUploadMetadata["rewrites"];
+  createDeployment?: boolean;
 }
