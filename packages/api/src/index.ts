@@ -119,3 +119,4 @@ export {
 } from "./sdk-bundle-api/bundle-to-sdk/replay-divergence";
 export { AssetUploadMetadata } from "./sdk-bundle-api/sdk-to-bundle/asset-upload-metadata";
 export { S3Location } from "./s3.types";
+export { CompanionAssetsInfo } from "./sdk-bundle-api/sdk-to-bundle/companion-assets";
