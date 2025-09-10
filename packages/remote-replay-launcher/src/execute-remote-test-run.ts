@@ -36,6 +36,7 @@ export const executeRemoteTestRun = async ({
   environment,
   isLockable,
   pullRequestHostingProviderId,
+  companionAssetsInfo,
   allowInvalidCert = false,
   proxyAllUrls = false,
   rewriteHostnameToAppUrl = false,
@@ -103,6 +104,7 @@ export const executeRemoteTestRun = async ({
     basicAuthPassword: tunnel.basicAuthPassword,
     environment,
     isLockable,
+    ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
     ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
   });
   if (!response.testRun) {

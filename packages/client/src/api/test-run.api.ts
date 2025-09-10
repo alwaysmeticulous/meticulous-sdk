@@ -3,6 +3,7 @@ import {
   S3Location,
   TestCase,
   TestCaseResult,
+  CompanionAssetsInfo,
   TestRunStatus,
 } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
@@ -41,6 +42,7 @@ export interface ExecuteSecureTunnelTestRunOptions {
   basicAuthPassword: string;
   environment: string;
   isLockable: boolean;
+  companionAssetsInfo?: CompanionAssetsInfo;
   pullRequestHostingProviderId?: string;
 }
 
@@ -58,6 +60,7 @@ export const executeSecureTunnelTestRun = async ({
   basicAuthPassword,
   environment,
   isLockable,
+  companionAssetsInfo,
   pullRequestHostingProviderId,
 }: ExecuteSecureTunnelTestRunOptions): Promise<ExecuteSecureTunnelTestRunResponse> => {
   const { data } = await client
@@ -68,6 +71,7 @@ export const executeSecureTunnelTestRun = async ({
       basicAuthPassword,
       environment,
       isLockable,
+      ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
       ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
     })
     .catch((error) => {

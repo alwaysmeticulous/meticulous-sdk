@@ -1,4 +1,4 @@
-import { SessionRelevance } from "@alwaysmeticulous/api";
+import { CompanionAssetsInfo, SessionRelevance } from "@alwaysmeticulous/api";
 import { IN_PROGRESS_TEST_RUN_STATUS } from "@alwaysmeticulous/client";
 import {
   defer,
@@ -8,6 +8,7 @@ import {
 import {
   executeRemoteTestRun,
   TunnelData,
+  uploadAssets,
 } from "@alwaysmeticulous/remote-replay-launcher";
 import chalk from "chalk";
 import cliProgress from "cli-progress";
@@ -32,6 +33,8 @@ interface Options {
   rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
   http2Connections?: number | undefined;
+  companionAssetsFolder?: string | undefined;
+  companionAssetsRegex?: string | undefined;
 }
 
 const environmentToString: (environment: Environment) => string = (
@@ -55,9 +58,18 @@ const handler: (options: Options) => Promise<void> = async ({
   rewriteHostnameToAppUrl,
   enableDnsCache,
   http2Connections,
+  companionAssetsFolder,
+  companionAssetsRegex,
 }) => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
   const commitSha = await getCommitSha(commitSha_);
+
+  if (!!companionAssetsFolder !== !!companionAssetsRegex) {
+    logger.error(
+      "You must provide both --companionAssetsFolder and --companionAssetsRegex, or neither",
+    );
+    process.exit(1);
+  }
 
   if (!commitSha) {
     logger.error(
@@ -97,6 +109,27 @@ const handler: (options: Options) => Promise<void> = async ({
   let lastPrintedStillSchedulingMessage = Date.now();
   let tunnelData: TunnelData | null = null;
   try {
+    let companionAssetsInfo: CompanionAssetsInfo | undefined = undefined;
+    if (companionAssetsFolder && companionAssetsRegex) {
+      logger.info(
+        `Uploading companion assets from ${companionAssetsFolder}...`,
+      );
+      const { uploadId } = await uploadAssets({
+        apiToken,
+        appDirectory: companionAssetsFolder,
+        commitSha,
+        waitForBase: false,
+        rewrites: [],
+        createDeployment: false,
+        warnIfNoIndexHtml: false,
+      });
+      companionAssetsInfo = {
+        deploymentUploadId: uploadId,
+        regex: companionAssetsRegex,
+      };
+      logger.info(`Companion assets uploaded with ID: ${uploadId}`);
+    }
+
     const environment = getEnvironment();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { testRun } = await executeRemoteTestRun({
@@ -195,6 +228,7 @@ const handler: (options: Options) => Promise<void> = async ({
       rewriteHostnameToAppUrl,
       enableDnsCache,
       http2Connections,
+      ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
     });
   } catch (error) {
     if (isOutOfDateClientError(error)) {
@@ -255,6 +289,16 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
       number: true,
       description:
         "Number of HTTP2 connections to establish for multiplexing (defaults to number of CPU cores)",
+    },
+    companionAssetsFolder: {
+      string: true,
+      description: "The folder to serve the companion assets from.",
+      default: undefined,
+    },
+    companionAssetsRegex: {
+      string: true,
+      description: "The regex to match the companion assets.",
+      default: undefined,
     },
   } as const)
   .handler(handler);

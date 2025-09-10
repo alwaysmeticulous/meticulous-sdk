@@ -16,6 +16,7 @@ export interface CompleteAssetUploadParams {
   commitSha: string;
   rewrites: AssetUploadMetadata["rewrites"];
   mustHaveBase: boolean;
+  createDeployment?: boolean;
 }
 
 export interface CompleteAssetUploadResponse {
