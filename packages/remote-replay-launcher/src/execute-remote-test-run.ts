@@ -1,3 +1,4 @@
+import { CompanionAssetsInfo } from "@alwaysmeticulous/api";
 import {
   createClient,
   executeSecureTunnelTestRun,
@@ -10,6 +11,7 @@ import {
 import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
 import { localtunnel } from "@alwaysmeticulous/tunnels-client";
 import log from "loglevel";
+import { uploadAssets } from "./asset-upload-utils";
 import { ResourceTracker } from "./resource-tracker";
 import {
   ExecuteRemoteTestRunOptions,
@@ -36,7 +38,8 @@ export const executeRemoteTestRun = async ({
   environment,
   isLockable,
   pullRequestHostingProviderId,
-  companionAssetsInfo,
+  companionAssetsFolder,
+  companionAssetsRegex,
   allowInvalidCert = false,
   proxyAllUrls = false,
   rewriteHostnameToAppUrl = false,
@@ -66,6 +69,31 @@ export const executeRemoteTestRun = async ({
   const port = getPort(url);
   if (port === -1) {
     throw new Error(`Invalid app URL port: ${appUrl}`);
+  }
+
+  if (!!companionAssetsFolder !== !!companionAssetsRegex) {
+    throw new Error(
+      "Must provide both 'companionAssetsFolder' and 'companionAssetsRegex', or neither",
+    );
+  }
+
+  let companionAssetsInfo: CompanionAssetsInfo | undefined = undefined;
+  if (companionAssetsFolder && companionAssetsRegex) {
+    logger.info(`Uploading companion assets from ${companionAssetsFolder}...`);
+    const { uploadId } = await uploadAssets({
+      apiToken,
+      appDirectory: companionAssetsFolder,
+      commitSha,
+      waitForBase: false,
+      rewrites: [],
+      createDeployment: false,
+      warnIfNoIndexHtml: false,
+    });
+    companionAssetsInfo = {
+      deploymentUploadId: uploadId,
+      regex: companionAssetsRegex,
+    };
+    logger.info(`Companion assets uploaded with ID: ${uploadId}`);
   }
 
   const tunnel = await localtunnel({
