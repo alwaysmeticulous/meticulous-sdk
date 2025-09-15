@@ -47,8 +47,10 @@
     "cli-progress": "^3.12.0",
     "loglevel": "^1.8.0",
     "ora": "^5.4.1",
-    "puppeteer": "24.14.0",
     "yargs": "^17.5.1"
+  },
+  "optionalDependencies": {
+    "puppeteer": "24.14.0"
   },
   "devDependencies": {
     "@types/cli-progress": "^3.11.5",

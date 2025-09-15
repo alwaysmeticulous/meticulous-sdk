@@ -6,7 +6,7 @@ import {
   BeforeUserEventResult,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import log from "loglevel";
-import { launch, Browser, Page } from "puppeteer";
+import type { Browser, Page } from "puppeteer";
 
 export interface ReplayDebuggerState {
   events: ReplayableEvent[];
@@ -43,11 +43,22 @@ export const openStepThroughDebuggerUI = async ({
 }: ReplayDebuggerUIOptions): Promise<StepThroughDebuggerUI> => {
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
+  // Dynamically import Puppeteer only when needed
+  let puppeteer;
+  try {
+    puppeteer = await import("puppeteer");
+  } catch (error) {
+    throw new Error(
+      "Puppeteer is not installed. Please install puppeteer to use the replay debugger UI.\n" +
+      "Run: npm install puppeteer"
+    );
+  }
+
   // Start the UI server
   const uiServer = await startUIServer();
 
   // Launch the browser
-  const browser: Browser = await launch({
+  const browser: Browser = await puppeteer.launch({
     args: [`--window-size=600,1000`],
     headless: false,
   });
