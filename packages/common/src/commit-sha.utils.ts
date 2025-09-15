@@ -1,6 +1,5 @@
 import { exec } from "child_process";
-import log from "loglevel";
-import { METICULOUS_LOGGER_NAME } from "./logger/console-logger";
+import { initLogger } from "./logger/console-logger";
 
 const getGitRevParseHead: () => Promise<string> = () => {
   return new Promise((resolve, reject) => {
@@ -15,13 +14,13 @@ const getGitRevParseHead: () => Promise<string> = () => {
 };
 
 export const getCommitSha: (
-  commitSha: string | null | undefined
+  commitSha: string | null | undefined,
 ) => Promise<string> = async (commitSha_) => {
   if (commitSha_) {
     return commitSha_;
   }
 
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   try {
     const gitCommitSha = (await getGitRevParseHead()).trim();

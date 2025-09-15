@@ -1,8 +1,7 @@
 import { createClient, getProject } from "@alwaysmeticulous/client";
-import { DebugLogger, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { DebugLogger, initLogger } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import { recordLoginFlowSession } from "@alwaysmeticulous/record";
-import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import { COMMON_RECORD_OPTIONS } from "../../command-utils/common-options";
 import { RECORDING_SNIPPET_PATH } from "../../utils/constants";
@@ -32,7 +31,7 @@ export const recordLoginFlowCommandHandler: (
   captureHttpOnlyCookies,
   appUrl,
 }) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const debugLogger = trace ? await DebugLogger.create() : null;
   debugLogger?.log("Record options:");
   debugLogger?.logObject({

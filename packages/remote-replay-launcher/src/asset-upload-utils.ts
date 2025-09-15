@@ -11,11 +11,11 @@ import {
   createClient,
   completeAssetUpload,
   TestRun,
+  getProxyAgent,
 } from "@alwaysmeticulous/client";
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { initLogger } from "@alwaysmeticulous/common";
 import archiver from "archiver";
-import log from "loglevel";
 
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
 const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -48,7 +48,7 @@ export const uploadAssets = async ({
   warnIfNoIndexHtml = false,
   createDeployment = true,
 }: UploadAssetsOptions): Promise<UploadAssetsResult> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {
@@ -205,7 +205,7 @@ const uploadFileToSignedUrl = async (
   expectedFileSize: number,
 ): Promise<void> => {
   const fileStream = createReadStream(filePath);
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const fileStats = await stat(filePath);
   const fileSize = fileStats.size;
   if (fileSize !== expectedFileSize) {
@@ -219,6 +219,7 @@ const uploadFileToSignedUrl = async (
     const req = httpsRequest(
       signedUrl,
       {
+        agent: getProxyAgent(),
         method: "PUT",
         headers: {
           "Content-Length": fileSize,

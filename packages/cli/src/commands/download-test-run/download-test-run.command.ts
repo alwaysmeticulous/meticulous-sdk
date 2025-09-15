@@ -1,7 +1,6 @@
 import { createClient } from "@alwaysmeticulous/client";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { initLogger } from "@alwaysmeticulous/common";
 import { getOrFetchTestRunData } from "@alwaysmeticulous/downloading-helpers";
-import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 
 interface Options {
@@ -13,7 +12,7 @@ const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   testRunId,
 }) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const client = createClient({ apiToken });
 
   const { fileName: testRunDir } = await getOrFetchTestRunData(

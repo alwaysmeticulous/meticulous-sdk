@@ -1,7 +1,6 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import log from "loglevel";
+import { initLogger } from "@alwaysmeticulous/common";
 import puppeteer, { Browser, launch, PuppeteerNode } from "puppeteer";
 import { RecordSessionOptions } from "../types";
 import {
@@ -31,7 +30,7 @@ export const recordSession = async ({
   appUrl,
   maxPayloadSize,
 }: RecordSessionOptions) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   logger.info("Opening browser...");
 
