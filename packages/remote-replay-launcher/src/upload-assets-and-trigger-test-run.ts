@@ -7,7 +7,7 @@ import {
 } from "./types";
 
 export const uploadAssetsAndTriggerTestRun = async ({
-  apiToken: apiToken_,
+  apiToken,
   appDirectory,
   commitSha,
   rewrites,
@@ -16,7 +16,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
   const logger = log.getLogger(METICULOUS_LOGGER_NAME);
 
   const result = await uploadAssets({
-    apiToken: apiToken_,
+    apiToken,
     appDirectory,
     warnIfNoIndexHtml: !rewrites || rewrites.length === 0,
     commitSha,

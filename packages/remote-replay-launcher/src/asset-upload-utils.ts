@@ -11,6 +11,7 @@ import {
   createClient,
   completeAssetUpload,
   TestRun,
+  getProxyAgent,
 } from "@alwaysmeticulous/client";
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
 import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
@@ -219,6 +220,7 @@ const uploadFileToSignedUrl = async (
     const req = httpsRequest(
       signedUrl,
       {
+        agent: getProxyAgent(),
         method: "PUT",
         headers: {
           "Content-Length": fileSize,
