@@ -1,5 +1,5 @@
 import { Cookie } from "@alwaysmeticulous/api";
-import { Page } from "puppeteer";
+import { Page } from "puppeteer-core";
 import { convertCookieToMeticulous } from "./cookie-helpers";
 
 type ModifiedWindow = {

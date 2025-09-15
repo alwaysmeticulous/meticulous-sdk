@@ -1,4 +1,4 @@
-import { Page } from "puppeteer";
+import { Page } from "puppeteer-core";
 
 /**
  * Injects an iframe that allows the user to finish recording.

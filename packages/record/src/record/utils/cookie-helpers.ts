@@ -1,5 +1,5 @@
 import { Cookie } from "@alwaysmeticulous/api";
-import { Protocol } from "puppeteer";
+import { Protocol } from "puppeteer-core";
 
 export const convertCookieToMeticulous = ({
   sameSite,

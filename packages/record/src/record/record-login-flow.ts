@@ -1,7 +1,11 @@
-import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import {
+  defer,
+  METICULOUS_LOGGER_NAME,
+  ensureBrowser,
+} from "@alwaysmeticulous/common";
 import chalk from "chalk";
 import log, { Logger } from "loglevel";
-import { Browser, launch, Page } from "puppeteer";
+import { Browser, launch, Page } from "puppeteer-core";
 import { RecordLoginFlowOptions } from "../types";
 import {
   COMMON_RECORD_CHROME_LAUNCH_ARGS,
@@ -80,7 +84,9 @@ export const recordLoginFlowSession = async ({
 
   const defaultViewport = width && height ? { width, height } : null;
 
+  const executablePath = await ensureBrowser();
   const browser: Browser = await launch({
+    executablePath,
     defaultViewport,
     headless: false,
     devtools: devTools || false,
@@ -132,7 +138,7 @@ export const recordLoginFlowSession = async ({
       try {
         const recordingSavingScreenPage = await context.newPage();
         await recordingSavingScreenPage.goto(
-          METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL
+          METICULOUS_RECORD_LOGIN_FLOW_SAVING_DOCS_URL,
         );
 
         // Flush any pending payloads from the main login flow recording page and close it
@@ -169,12 +175,12 @@ export const recordLoginFlowSession = async ({
       } finally {
         recordingCompleteCallback.resolve();
       }
-    }
+    },
   );
 
   await injectFinishRecordingFrame(
     loginFlowPage,
-    "__meticulousFinishRecording"
+    "__meticulousFinishRecording",
   );
 
   await bootstrapLoginFlowRecordingPage({
@@ -189,7 +195,7 @@ export const recordLoginFlowSession = async ({
   });
 
   await loginFlowPage.goto(
-    appUrl ?? INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL
+    appUrl ?? INITIAL_METICULOUS_RECORD_LOGIN_FLOW_DOCS_URL,
   );
 
   // Wait for the recording to complete or the page to close.
@@ -215,8 +221,8 @@ export const recordLoginFlowSession = async ({
     chalk.green.bold("Recording complete!") +
       "\n" +
       chalk.green.bold(
-        "Return to https://app.meticulous.ai to finish setting up your project."
-      )
+        "Return to https://app.meticulous.ai to finish setting up your project.",
+      ),
   );
 };
 

@@ -1,8 +1,11 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import {
+  METICULOUS_LOGGER_NAME,
+  ensureBrowser,
+} from "@alwaysmeticulous/common";
 import log from "loglevel";
-import puppeteer, { Browser, launch, PuppeteerNode } from "puppeteer";
+import puppeteer, { Browser, launch, PuppeteerNode } from "puppeteer-core";
 import { RecordSessionOptions } from "../types";
 import {
   COMMON_RECORD_CHROME_LAUNCH_ARGS,
@@ -76,7 +79,9 @@ export const recordSession = async ({
 
   const defaultViewport = width && height ? { width, height } : null;
 
+  const executablePath = await ensureBrowser();
   const browser: Browser = await launch({
+    executablePath,
     defaultViewport,
     headless: false,
     devtools: devTools || false,
@@ -88,7 +93,7 @@ export const recordSession = async ({
     : browser.defaultBrowserContext();
 
   (await browser.defaultBrowserContext().pages()).forEach((page) =>
-    page.close()
+    page.close(),
   );
 
   const page = await context.newPage();
@@ -108,7 +113,7 @@ export const recordSession = async ({
     await mkdir(cookieDir, { recursive: true });
     const cookiesStr = await readFile(
       join(cookieDir, COOKIE_FILENAME),
-      "utf-8"
+      "utf-8",
     ).catch(() => "");
     if (cookiesStr) {
       const cookies = JSON.parse(cookiesStr);
@@ -139,7 +144,7 @@ export const recordSession = async ({
   const interval = setInterval(async () => {
     try {
       const sessionId = await page.evaluate<[], () => string | undefined>(
-        "window?.__meticulous?.config?.sessionId"
+        "window?.__meticulous?.config?.sessionId",
       );
       if (sessionId && !sessionIds.find((id) => id === sessionId)) {
         sessionIds.push(sessionId);
@@ -152,7 +157,7 @@ export const recordSession = async ({
         await writeFile(
           join(cookieDir, COOKIE_FILENAME),
           JSON.stringify(cookies, null, 2),
-          "utf-8"
+          "utf-8",
         );
       }
     } catch (error) {
