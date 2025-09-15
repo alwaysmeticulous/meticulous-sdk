@@ -29,3 +29,4 @@ export {
   defaultShouldRetry,
   type RetryOptions,
 } from "./http-retry.utils";
+export { ensureBrowser } from "./browser-installer";

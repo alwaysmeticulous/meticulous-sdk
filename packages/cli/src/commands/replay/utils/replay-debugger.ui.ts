@@ -1,11 +1,11 @@
 import { ReplayableEvent } from "@alwaysmeticulous/api";
-import { initLogger } from "@alwaysmeticulous/common";
+import { initLogger, ensureBrowser } from "@alwaysmeticulous/common";
 import { startUIServer } from "@alwaysmeticulous/replay-debugger-ui";
 import {
   BeforeUserEventOptions,
   BeforeUserEventResult,
 } from "@alwaysmeticulous/sdk-bundles-api";
-import { launch, Browser, Page } from "puppeteer";
+import { Browser, Page, launch } from "puppeteer-core";
 
 export interface ReplayDebuggerState {
   events: ReplayableEvent[];
@@ -24,7 +24,7 @@ export interface ReplayDebuggerUI {
 }
 
 type OnBeforeUserEventCallback = (
-  options: BeforeUserEventOptions
+  options: BeforeUserEventOptions,
 ) => Promise<BeforeUserEventResult>;
 
 export interface StepThroughDebuggerUI {
@@ -42,11 +42,15 @@ export const openStepThroughDebuggerUI = async ({
 }: ReplayDebuggerUIOptions): Promise<StepThroughDebuggerUI> => {
   const logger = initLogger();
 
+  // Ensure browser is available and get executable path
+  const executablePath = await ensureBrowser();
+
   // Start the UI server
   const uiServer = await startUIServer();
 
-  // Launch the browser
+  // Launch the browser with the correct executable path
   const browser: Browser = await launch({
+    executablePath,
     args: [`--window-size=600,1000`],
     headless: false,
   });
@@ -96,9 +100,9 @@ export const openStepThroughDebuggerUI = async ({
         return onAdvanceToIndex(data.index || 0);
       }
       logger.info(
-        `[debugger-ui] Warning: received unknown event "${eventType}"`
+        `[debugger-ui] Warning: received unknown event "${eventType}"`,
       );
-    }
+    },
   );
 
   const onReady = async () => {
@@ -156,7 +160,7 @@ export const openStepThroughDebuggerUI = async ({
   const status = res && res.status();
   if (status !== 200) {
     throw new Error(
-      `Expected a 200 status when going to the initial URL of the site. Got a ${status} instead.`
+      `Expected a 200 status when going to the initial URL of the site. Got a ${status} instead.`,
     );
   }
   logger.info(`[debugger-ui] Navigated to ${uiServer.url}`);
