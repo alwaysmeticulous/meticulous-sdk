@@ -1,11 +1,10 @@
 import { ReplayableEvent } from "@alwaysmeticulous/api";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { initLogger } from "@alwaysmeticulous/common";
 import { startUIServer } from "@alwaysmeticulous/replay-debugger-ui";
 import {
   BeforeUserEventOptions,
   BeforeUserEventResult,
 } from "@alwaysmeticulous/sdk-bundles-api";
-import log from "loglevel";
 import { launch, Browser, Page } from "puppeteer";
 
 export interface ReplayDebuggerState {
@@ -41,7 +40,7 @@ export const openStepThroughDebuggerUI = async ({
   onLogEventTarget,
   replayableEvents,
 }: ReplayDebuggerUIOptions): Promise<StepThroughDebuggerUI> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   // Start the UI server
   const uiServer = await startUIServer();

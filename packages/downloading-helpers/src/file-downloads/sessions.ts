@@ -7,16 +7,15 @@ import {
 } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
-  METICULOUS_LOGGER_NAME,
+  initLogger,
 } from "@alwaysmeticulous/common";
-import log from "loglevel";
 import { getOrDownloadJsonFile, sanitizeFilename } from "./local-data.utils";
 
 export const getOrFetchRecordedSession = async (
   client: MeticulousClient,
   sessionId: string,
 ): Promise<{ fileName: string; data: any }> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   const sessionFile = join(
     getMeticulousLocalDataDir(),
@@ -43,7 +42,7 @@ export const getOrFetchRecordedSessionData = async (
   client: MeticulousClient,
   sessionId: string,
 ): Promise<{ fileName: string; data: SessionData }> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   const sessionFile = join(
     getMeticulousLocalDataDir(),

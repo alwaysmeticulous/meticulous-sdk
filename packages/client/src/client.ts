@@ -1,5 +1,5 @@
 import {
-  METICULOUS_LOGGER_NAME,
+  initLogger,
   executeWithRetry,
   defaultShouldRetry,
 } from "@alwaysmeticulous/common";
@@ -124,7 +124,7 @@ export const makeRequest = async <T>(
 export const createClient: (options: ClientOptions) => MeticulousClient = ({
   apiToken: apiToken_,
 }) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {
     logger.error(

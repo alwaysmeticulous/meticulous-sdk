@@ -1,8 +1,7 @@
 import { isFetchError } from "@alwaysmeticulous/client";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { initLogger } from "@alwaysmeticulous/common";
 import { SENTRY_FLUSH_TIMEOUT } from "@alwaysmeticulous/sentry";
 import * as Sentry from "@sentry/node";
-import log from "loglevel";
 
 export const setOptions: (options: any) => void = (options) => {
   Sentry.setContext("invoke-options", options);
@@ -41,7 +40,7 @@ export const wrapHandler = function wrapHandler_<T>(
 };
 
 const reportHandlerError: (error: unknown) => Promise<void> = async (error) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   logger.info("");
   if (isFetchError(error)) {
     logger.error(error.message);

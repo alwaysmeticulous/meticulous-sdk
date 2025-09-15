@@ -1,6 +1,5 @@
 import { getProject, createClient } from "@alwaysmeticulous/client";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import log from "loglevel";
+import { initLogger } from "@alwaysmeticulous/common";
 import { buildCommand } from "../../command-utils/command-builder";
 
 interface Options {
@@ -8,7 +7,7 @@ interface Options {
 }
 
 const handler: (options: Options) => Promise<void> = async ({ apiToken }) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const client = createClient({ apiToken });
   const project = await getProject(client);
   if (!project) {

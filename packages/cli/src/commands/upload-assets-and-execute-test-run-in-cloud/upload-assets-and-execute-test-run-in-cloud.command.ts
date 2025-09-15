@@ -1,7 +1,6 @@
 import { AssetUploadMetadata } from "@alwaysmeticulous/api";
-import { getCommitSha, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { uploadAssetsAndTriggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
-import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import { OPTIONS } from "../../command-utils/common-options";
 import {
@@ -24,7 +23,7 @@ const handler: (options: Options) => Promise<void> = async ({
   rewrites,
   waitForBase,
 }) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
 
   if (!commitSha) {
@@ -56,7 +55,7 @@ const handler: (options: Options) => Promise<void> = async ({
 const parseRewrites = (
   rewritesString?: string,
 ): AssetUploadMetadata["rewrites"] => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   let parsedRewrites: unknown;
   try {
     parsedRewrites = JSON.parse(rewritesString ?? "[]");

@@ -2,12 +2,11 @@ import { access, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { ConsoleMessageWithStackTracePointer } from "@alwaysmeticulous/api";
 import { createClient } from "@alwaysmeticulous/client";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { initLogger } from "@alwaysmeticulous/common";
 import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
 } from "@alwaysmeticulous/downloading-helpers";
-import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 
 interface Options {
@@ -19,19 +18,19 @@ const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   replayId,
 }) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const client = createClient({ apiToken });
 
   const { fileName: replayMetadataFileName } = await getOrFetchReplay(
     client,
-    replayId
+    replayId,
   );
   logger.info(`Downloaded replay metadata to: ${replayMetadataFileName}`);
   const { fileName: replayFolderFilePath } = await getOrFetchReplayArchive(
     client,
     replayId,
     "everything",
-    true
+    true,
   );
 
   // Generate logs.concise.txt and logs.determinstic.txt files
@@ -60,11 +59,11 @@ const handler: (options: Options) => Promise<void> = async ({
           } else {
             return `[trace-id: ${log.stackTraceId}] [virtual: ${virtualTime}ms, real: ${log.realTime}ms]${commonPostfix}`;
           }
-        }
+        },
       );
       await writeFile(
         join(replayFolderFilePath, "logs.concise.txt"),
-        conciseLogs.join("\n")
+        conciseLogs.join("\n"),
       );
 
       // Useful for diffing one set of logs against another (excludes the real timestamps, which are non-deterministic)
@@ -99,11 +98,11 @@ const handler: (options: Options) => Promise<void> = async ({
           } else {
             return [`[virtual: ${virtualTime}ms]${commonPostfix}`];
           }
-        }
+        },
       );
       await writeFile(
         join(replayFolderFilePath, "logs.deterministic.txt"),
-        deterministicLogs.join("\n")
+        deterministicLogs.join("\n"),
       );
     } catch (err) {
       logger.error("Error creating concise version of logs file", err);

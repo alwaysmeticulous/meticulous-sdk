@@ -1,4 +1,4 @@
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { initLogger } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import {
   ExecuteScheduledTestRunChunkOptions,
@@ -10,7 +10,6 @@ import {
   ReplayAndStoreResultsOptions,
   ReplayExecution,
 } from "@alwaysmeticulous/sdk-bundles-api";
-import log from "loglevel";
 import { executablePath } from "puppeteer";
 
 export const replayAndStoreResults = async (
@@ -19,7 +18,7 @@ export const replayAndStoreResults = async (
     "logLevel" | "chromeExecutablePath" | "projectId"
   >,
 ): Promise<ReplayExecution> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const bundleLocation = await fetchAsset(
     "replay/v3/replay-and-store-results.bundle.js",
   );
@@ -43,7 +42,7 @@ export const executeScheduledTestRun = async (
     executeScheduledTestRunBundlePath?: string;
   },
 ): Promise<InProgressTestRun> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const bundleLocation =
     options.executeScheduledTestRunBundlePath ??
     (await fetchAsset(EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH));
@@ -64,7 +63,7 @@ export const executeScheduledTestRunChunk = async (
     executeScheduledTestRunBundlePath?: string;
   },
 ): Promise<InProgressTestRunChunk> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const bundleLocation =
     options.executeScheduledTestRunBundlePath ??
     (await fetchAsset(EXECUTE_SCHEDULED_TEST_RUN_BUNDLE_PATH));
@@ -80,7 +79,7 @@ export const executeScheduledTestRunChunk = async (
 export const executeTestRun = async (
   options: Omit<ExecuteTestRunOptions, "logLevel" | "chromeExecutablePath">,
 ): Promise<ExecuteTestRunResult> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const bundleLocation = await fetchAsset(
     "replay/v3/execute-test-run.bundle.js",
   );

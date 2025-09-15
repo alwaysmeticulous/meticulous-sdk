@@ -26,7 +26,6 @@
     "axios": "^1.7.9",
     "axios-retry": "^4.5.0",
     "extract-zip": "^2.0.1",
-    "loglevel": "^1.8.0",
     "luxon": "^3.2.1",
     "p-limit": "^3.1.0",
     "proper-lockfile": "^4.1.2"

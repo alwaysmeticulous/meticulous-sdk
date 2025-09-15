@@ -3,11 +3,10 @@ import {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
-import { getCommitSha, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import chalk from "chalk";
-import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
@@ -97,7 +96,7 @@ const handler: (options: Options) => Promise<void> = async ({
     storyboardOptions,
   };
 
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   if (!noParallelize && headless) {
     logger.info(

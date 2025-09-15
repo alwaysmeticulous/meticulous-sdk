@@ -1,6 +1,6 @@
-import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { defer, initLogger } from "@alwaysmeticulous/common";
 import chalk from "chalk";
-import log, { Logger } from "loglevel";
+import { Logger } from "loglevel";
 import { Browser, launch, Page } from "puppeteer";
 import { RecordLoginFlowOptions } from "../types";
 import {
@@ -74,7 +74,7 @@ export const recordLoginFlowSession = async ({
   captureHttpOnlyCookies,
   appUrl,
 }: RecordLoginFlowOptions) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   logger.info("Opening browser...");
 

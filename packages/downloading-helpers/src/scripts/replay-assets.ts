@@ -2,11 +2,10 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { basename, join } from "path";
 import {
   getMeticulousLocalDataDir,
-  METICULOUS_LOGGER_NAME,
+  initLogger,
 } from "@alwaysmeticulous/common";
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import log from "loglevel";
 import {
   getSnippetsBaseUrl,
   isCustomSnippetsBaseUrl,
@@ -117,7 +116,7 @@ const fetchAndCacheFile = async (
   urlToDownloadFrom: string,
   fileNameToDownloadAs: string
 ): Promise<string> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const client = axios.create({ timeout: 60_000 });
   axiosRetry(client, { retries: 3 });
 

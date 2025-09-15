@@ -7,9 +7,8 @@ import {
 } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
-  METICULOUS_LOGGER_NAME,
+  initLogger,
 } from "@alwaysmeticulous/common";
-import log from "loglevel";
 import { downloadAndExtractFile } from "./download-file";
 import {
   fileExists,
@@ -51,7 +50,7 @@ export const getOrFetchTestRunData = async (
   testRunId: string,
   downloadScope: TestRunDownloadScope = "everything",
 ): Promise<{ fileName: string; data: TestRunDataLocations }> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   const testRunDir = join(
     getMeticulousLocalDataDir(),
