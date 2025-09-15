@@ -9,11 +9,10 @@ import {
   DebugLogger,
   getCommitSha,
   getMeticulousLocalDataDir,
-  METICULOUS_LOGGER_NAME,
+  initLogger,
 } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import { recordSession } from "@alwaysmeticulous/record";
-import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_RECORD_OPTIONS,
@@ -52,7 +51,7 @@ export const recordCommandHandler: (
   appUrl,
   maxPayloadSize,
 }) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const debugLogger = trace ? await DebugLogger.create() : null;
   debugLogger?.log("Record options:");
   debugLogger?.logObject({

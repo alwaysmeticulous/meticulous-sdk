@@ -4,13 +4,12 @@ import { getApiToken } from "@alwaysmeticulous/client";
 import {
   defer,
   IS_METICULOUS_SUPER_USER,
-  METICULOUS_LOGGER_NAME,
+  initLogger,
 } from "@alwaysmeticulous/common";
 import {
   IncomingRequestEvent,
   localtunnel,
 } from "@alwaysmeticulous/tunnels-client";
-import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 
 interface Options {
@@ -32,7 +31,7 @@ interface Options {
 }
 
 const handler = async (argv: Options) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   const apiToken = getApiToken(argv.apiToken);
   if (!apiToken) {

@@ -7,9 +7,8 @@ import {
   TestRun,
   getIsLocked,
 } from "@alwaysmeticulous/client";
-import { defer, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { defer, initLogger } from "@alwaysmeticulous/common";
 import { localtunnel } from "@alwaysmeticulous/tunnels-client";
-import log from "loglevel";
 import { ResourceTracker } from "./resource-tracker";
 import {
   ExecuteRemoteTestRunOptions,
@@ -43,7 +42,7 @@ export const executeRemoteTestRun = async ({
   enableDnsCache = false,
   http2Connections,
 }: ExecuteRemoteTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {

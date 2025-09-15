@@ -3,7 +3,7 @@ import { IN_PROGRESS_TEST_RUN_STATUS } from "@alwaysmeticulous/client";
 import {
   defer,
   getCommitSha,
-  METICULOUS_LOGGER_NAME,
+  initLogger,
 } from "@alwaysmeticulous/common";
 import {
   executeRemoteTestRun,
@@ -12,7 +12,6 @@ import {
 } from "@alwaysmeticulous/remote-replay-launcher";
 import chalk from "chalk";
 import cliProgress from "cli-progress";
-import log from "loglevel";
 import ora from "ora";
 import { buildCommand } from "../../command-utils/command-builder";
 import { OPTIONS } from "../../command-utils/common-options";
@@ -61,7 +60,7 @@ const handler: (options: Options) => Promise<void> = async ({
   companionAssetsFolder,
   companionAssetsRegex,
 }) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
 
   if (!!companionAssetsFolder !== !!companionAssetsRegex) {

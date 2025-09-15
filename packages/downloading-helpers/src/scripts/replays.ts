@@ -7,9 +7,8 @@ import {
 } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
-  METICULOUS_LOGGER_NAME,
+  initLogger,
 } from "@alwaysmeticulous/common";
-import log from "loglevel";
 import pLimit from "p-limit";
 import {
   downloadAndExtractFile,
@@ -45,7 +44,7 @@ export const getOrFetchReplay = async (
   client: MeticulousClient,
   replayId: string,
 ): Promise<{ fileName: string }> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   const replayFile = join(getReplayDir(replayId), `${replayId}.json`);
 
@@ -105,7 +104,7 @@ export const getOrFetchReplayArchive = async (
   downloadScope: DownloadScope = "everything",
   formatJsonFiles: boolean = false,
 ): Promise<{ fileName: string }> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   const replayDir = getReplayDir(replayId);
   await mkdir(replayDir, { recursive: true });

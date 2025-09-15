@@ -1,5 +1,4 @@
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import log from "loglevel";
+import { initLogger } from "@alwaysmeticulous/common";
 import { uploadAssets } from "./asset-upload-utils";
 import {
   UploadAssetsAndTriggerTestRunOptions,
@@ -13,7 +12,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
   rewrites,
   waitForBase,
 }: UploadAssetsAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   const result = await uploadAssets({
     apiToken,
