@@ -160,65 +160,64 @@ export const uploadAssets = async ({
   }
 };
 
-const walkDirectoryFollowingSymlinks = async (
-  dirPath: string,
-  visitedPaths = new Set<string>(),
-): Promise<Array<{ sourcePath: string; relativePath: string }>> => {
-  const resolvedPath = await realpath(dirPath);
+interface DirectoryStackEntry {
+  absolutePath: string;
+  pathInArchive: string;
+  ancestors: Set<string>; // ancestors are always absolute paths
+}
 
-  if (visitedPaths.has(resolvedPath)) {
-    return [];
-  }
-  visitedPaths.add(resolvedPath);
+const walkDirectoryAndAddToArchive = async (
+  folderPath: string,
+  archive: archiver.Archiver,
+): Promise<void> => {
+  const stack: Array<DirectoryStackEntry> = [
+    {
+      absolutePath: await realpath(folderPath),
+      pathInArchive: "",
+      ancestors: new Set<string>(),
+    },
+  ];
 
-  const files: Array<{ sourcePath: string; relativePath: string }> = [];
-  const entries = await readdir(dirPath);
+  while (stack.length > 0) {
+    const { absolutePath, pathInArchive, ancestors } = stack.pop()!;
+    if (ancestors.has(absolutePath)) {
+      continue;
+    }
 
-  for (const entry of entries) {
-    const entryPath = join(dirPath, entry);
-    const stats = await lstat(entryPath);
+    const newAncestors = new Set([...ancestors, absolutePath]);
+    const entries = await readdir(absolutePath);
+    for (const entry of entries) {
+      const entryAbsolutePath = join(absolutePath, entry);
+      const entryPathInArchive = join(pathInArchive, entry);
+      const entryStats = await lstat(entryAbsolutePath);
 
-    if (stats.isSymbolicLink()) {
-      const targetPath = await realpath(entryPath);
-      const targetStats = await stat(targetPath);
+      if (entryStats.isSymbolicLink()) {
+        const targetAbsolutePath = await realpath(entryAbsolutePath);
+        const targetStats = await stat(targetAbsolutePath);
 
-      if (targetStats.isFile()) {
-        files.push({
-          sourcePath: targetPath,
-          relativePath: entry,
+        if (targetStats.isFile()) {
+          archive.file(targetAbsolutePath, { name: entryPathInArchive });
+        } else if (
+          targetStats.isDirectory() &&
+          !newAncestors.has(targetAbsolutePath)
+        ) {
+          stack.push({
+            absolutePath: entryAbsolutePath,
+            pathInArchive: entryPathInArchive,
+            ancestors: newAncestors,
+          });
+        }
+      } else if (entryStats.isFile()) {
+        archive.file(entryAbsolutePath, { name: entryPathInArchive });
+      } else if (entryStats.isDirectory()) {
+        stack.push({
+          absolutePath: entryAbsolutePath,
+          pathInArchive: entryPathInArchive,
+          ancestors: newAncestors,
         });
-      } else if (targetStats.isDirectory()) {
-        const subFiles = await walkDirectoryFollowingSymlinks(
-          entryPath,
-          visitedPaths,
-        );
-        files.push(
-          ...subFiles.map((file) => ({
-            ...file,
-            relativePath: join(entry, file.relativePath),
-          })),
-        );
       }
-    } else if (stats.isFile()) {
-      files.push({
-        sourcePath: entryPath,
-        relativePath: entry,
-      });
-    } else if (stats.isDirectory()) {
-      const subFiles = await walkDirectoryFollowingSymlinks(
-        entryPath,
-        visitedPaths,
-      );
-      files.push(
-        ...subFiles.map((file) => ({
-          ...file,
-          relativePath: join(entry, file.relativePath),
-        })),
-      );
     }
   }
-
-  return files;
 };
 
 const createZipFromFolder = async (
@@ -253,13 +252,8 @@ const createZipFromFolder = async (
       }
     });
     archive.pipe(fileStream);
-    walkDirectoryFollowingSymlinks(folderPath)
-      .then((files) => {
-        for (const file of files) {
-          archive.file(file.sourcePath, { name: file.relativePath });
-        }
-        return archive.finalize();
-      })
+    walkDirectoryAndAddToArchive(folderPath, archive)
+      .then(() => archive.finalize())
       .catch(reject);
   });
 };
