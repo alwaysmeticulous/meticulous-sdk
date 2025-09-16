@@ -1,5 +1,5 @@
 import { createWriteStream, createReadStream, existsSync, fsync } from "fs";
-import { stat, unlink } from "fs/promises";
+import { stat, unlink, lstat, readdir, realpath } from "fs/promises";
 import { IncomingMessage } from "http";
 import { request as httpsRequest } from "https";
 import { tmpdir } from "os";
@@ -160,6 +160,67 @@ export const uploadAssets = async ({
   }
 };
 
+const walkDirectoryFollowingSymlinks = async (
+  dirPath: string,
+  visitedPaths = new Set<string>(),
+): Promise<Array<{ sourcePath: string; relativePath: string }>> => {
+  const resolvedPath = await realpath(dirPath);
+
+  if (visitedPaths.has(resolvedPath)) {
+    return [];
+  }
+  visitedPaths.add(resolvedPath);
+
+  const files: Array<{ sourcePath: string; relativePath: string }> = [];
+  const entries = await readdir(dirPath);
+
+  for (const entry of entries) {
+    const entryPath = join(dirPath, entry);
+    const stats = await lstat(entryPath);
+
+    if (stats.isSymbolicLink()) {
+      const targetPath = await realpath(entryPath);
+      const targetStats = await stat(targetPath);
+
+      if (targetStats.isFile()) {
+        files.push({
+          sourcePath: targetPath,
+          relativePath: entry,
+        });
+      } else if (targetStats.isDirectory()) {
+        const subFiles = await walkDirectoryFollowingSymlinks(
+          entryPath,
+          visitedPaths,
+        );
+        files.push(
+          ...subFiles.map((file) => ({
+            ...file,
+            relativePath: join(entry, file.relativePath),
+          })),
+        );
+      }
+    } else if (stats.isFile()) {
+      files.push({
+        sourcePath: entryPath,
+        relativePath: entry,
+      });
+    } else if (stats.isDirectory()) {
+      const subFiles = await walkDirectoryFollowingSymlinks(
+        entryPath,
+        visitedPaths,
+      );
+      files.push(
+        ...subFiles.map((file) => ({
+          ...file,
+          relativePath: join(entry, file.relativePath),
+        })),
+      );
+    }
+  }
+
+  return files;
+};
+
 const createZipFromFolder = async (
   folderPath: string,
   archivePath: string,
@@ -192,10 +253,14 @@ const createZipFromFolder = async (
       }
     });
     archive.pipe(fileStream);
-    archive.directory(folderPath, false);
-    archive.finalize().catch((error) => {
-      throw error;
-    });
+    walkDirectoryFollowingSymlinks(folderPath)
+      .then((files) => {
+        for (const file of files) {
+          archive.file(file.sourcePath, { name: file.relativePath });
+        }
+        return archive.finalize();
+      })
+      .catch(reject);
   });
 };
 
