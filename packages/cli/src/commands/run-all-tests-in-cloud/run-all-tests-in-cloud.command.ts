@@ -1,14 +1,9 @@
-import { CompanionAssetsInfo, SessionRelevance } from "@alwaysmeticulous/api";
+import { SessionRelevance } from "@alwaysmeticulous/api";
 import { IN_PROGRESS_TEST_RUN_STATUS } from "@alwaysmeticulous/client";
-import {
-  defer,
-  getCommitSha,
-  initLogger,
-} from "@alwaysmeticulous/common";
+import { defer, getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import {
   executeRemoteTestRun,
   TunnelData,
-  uploadAssets,
 } from "@alwaysmeticulous/remote-replay-launcher";
 import chalk from "chalk";
 import cliProgress from "cli-progress";
@@ -108,27 +103,6 @@ const handler: (options: Options) => Promise<void> = async ({
   let lastPrintedStillSchedulingMessage = Date.now();
   let tunnelData: TunnelData | null = null;
   try {
-    let companionAssetsInfo: CompanionAssetsInfo | undefined = undefined;
-    if (companionAssetsFolder && companionAssetsRegex) {
-      logger.info(
-        `Uploading companion assets from ${companionAssetsFolder}...`,
-      );
-      const { uploadId } = await uploadAssets({
-        apiToken,
-        appDirectory: companionAssetsFolder,
-        commitSha,
-        waitForBase: false,
-        rewrites: [],
-        createDeployment: false,
-        warnIfNoIndexHtml: false,
-      });
-      companionAssetsInfo = {
-        deploymentUploadId: uploadId,
-        regex: companionAssetsRegex,
-      };
-      logger.info(`Companion assets uploaded with ID: ${uploadId}`);
-    }
-
     const environment = getEnvironment();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { testRun } = await executeRemoteTestRun({
@@ -227,7 +201,14 @@ const handler: (options: Options) => Promise<void> = async ({
       rewriteHostnameToAppUrl,
       enableDnsCache,
       http2Connections,
-      ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
+      ...(companionAssetsFolder && companionAssetsRegex
+        ? {
+            companionAssets: {
+              folder: companionAssetsFolder,
+              regex: companionAssetsRegex,
+            },
+          }
+        : {}),
     });
   } catch (error) {
     if (isOutOfDateClientError(error)) {
