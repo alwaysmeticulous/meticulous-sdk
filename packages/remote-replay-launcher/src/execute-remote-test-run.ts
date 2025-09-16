@@ -37,8 +37,7 @@ export const executeRemoteTestRun = async ({
   environment,
   isLockable,
   pullRequestHostingProviderId,
-  companionAssetsFolder,
-  companionAssetsRegex,
+  companionAssets,
   allowInvalidCert = false,
   proxyAllUrls = false,
   rewriteHostnameToAppUrl = false,
@@ -70,18 +69,13 @@ export const executeRemoteTestRun = async ({
     throw new Error(`Invalid app URL port: ${appUrl}`);
   }
 
-  if (!!companionAssetsFolder !== !!companionAssetsRegex) {
-    throw new Error(
-      "Must provide both 'companionAssetsFolder' and 'companionAssetsRegex', or neither",
-    );
-  }
-
   let companionAssetsInfo: CompanionAssetsInfo | undefined = undefined;
-  if (companionAssetsFolder && companionAssetsRegex) {
-    logger.info(`Uploading companion assets from ${companionAssetsFolder}...`);
+  if (companionAssets) {
+    const { folder, regex } = companionAssets;
+    logger.info(`Uploading companion assets from ${folder}...`);
     const { uploadId } = await uploadAssets({
       apiToken,
-      appDirectory: companionAssetsFolder,
+      appDirectory: folder,
       commitSha,
       waitForBase: false,
       rewrites: [],
@@ -90,7 +84,7 @@ export const executeRemoteTestRun = async ({
     });
     companionAssetsInfo = {
       deploymentUploadId: uploadId,
-      regex: companionAssetsRegex,
+      regex,
     };
     logger.info(`Companion assets uploaded with ID: ${uploadId}`);
   }

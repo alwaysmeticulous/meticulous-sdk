@@ -1,10 +1,6 @@
 import { SessionRelevance } from "@alwaysmeticulous/api";
 import { IN_PROGRESS_TEST_RUN_STATUS } from "@alwaysmeticulous/client";
-import {
-  defer,
-  getCommitSha,
-  initLogger,
-} from "@alwaysmeticulous/common";
+import { defer, getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import {
   executeRemoteTestRun,
   TunnelData,
@@ -205,8 +201,14 @@ const handler: (options: Options) => Promise<void> = async ({
       rewriteHostnameToAppUrl,
       enableDnsCache,
       http2Connections,
-      ...(companionAssetsFolder ? { companionAssetsFolder } : {}),
-      ...(companionAssetsRegex ? { companionAssetsRegex } : {}),
+      ...(companionAssetsFolder && companionAssetsRegex
+        ? {
+            companionAssets: {
+              folder: companionAssetsFolder,
+              regex: companionAssetsRegex,
+            },
+          }
+        : {}),
     });
   } catch (error) {
     if (isOutOfDateClientError(error)) {

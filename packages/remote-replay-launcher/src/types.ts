@@ -45,8 +45,10 @@ export interface ExecuteRemoteTestRunOptions {
   rewriteHostnameToAppUrl?: boolean;
   enableDnsCache?: boolean;
   http2Connections?: number | undefined;
-  companionAssetsFolder?: string;
-  companionAssetsRegex?: string;
+  companionAssets?: {
+    folder: string;
+    regex: string;
+  };
 }
 
 export interface ExecuteRemoteTestRunResult {
