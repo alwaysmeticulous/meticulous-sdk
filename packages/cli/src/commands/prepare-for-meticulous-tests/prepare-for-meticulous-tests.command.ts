@@ -1,6 +1,7 @@
 import { execSync } from "child_process";
 import {
   createClient,
+  getApiToken,
   getGitHubCloudReplayBaseTestRun,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
@@ -12,7 +13,7 @@ import {
 } from "../../utils/out-of-date-client-error";
 
 interface Options {
-  apiToken: string;
+  apiToken?: string | null | undefined;
   headCommit: string;
   triggerScript: string;
 }
@@ -24,8 +25,16 @@ const handler: (options: Options) => Promise<void> = async ({
 }) => {
   const logger = initLogger();
 
+  // Get API token (auto-fetches if null/undefined)
+  const apiToken_ = getApiToken(apiToken);
+  if (!apiToken_) {
+    throw new Error(
+      "API token is required. Please provide --apiToken or set it via environment/config.",
+    );
+  }
+
   try {
-    const client = createClient({ apiToken });
+    const client = createClient({ apiToken: apiToken_ });
 
     // Non-Github-hosted projects are currently not supported
     const cloudReplayBaseTestRun = await getGitHubCloudReplayBaseTestRun({
@@ -70,7 +79,6 @@ export const prepareForMeticulousTestsCommand = buildCommand(
   .options({
     apiToken: {
       ...OPTIONS.apiToken,
-      required: true,
     },
     headCommit: {
       string: true,
