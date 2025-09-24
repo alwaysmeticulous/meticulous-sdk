@@ -1,0 +1,88 @@
+import { execSync } from "child_process";
+import {
+  createClient,
+  getGitHubCloudReplayBaseTestRun,
+} from "@alwaysmeticulous/client";
+import { initLogger } from "@alwaysmeticulous/common";
+import { buildCommand } from "../../command-utils/command-builder";
+import { OPTIONS } from "../../command-utils/common-options";
+import {
+  isOutOfDateClientError,
+  OutOfDateCLIError,
+} from "../../utils/out-of-date-client-error";
+
+interface Options {
+  apiToken: string;
+  headCommit: string;
+  triggerScript: string;
+}
+
+const handler: (options: Options) => Promise<void> = async ({
+  apiToken,
+  headCommit,
+  triggerScript,
+}) => {
+  const logger = initLogger();
+
+  try {
+    const client = createClient({ apiToken });
+
+    // Non-Github-hosted projects are currently not supported
+    const cloudReplayBaseTestRun = await getGitHubCloudReplayBaseTestRun({
+      client,
+      headCommitSha: headCommit,
+    });
+
+    if (cloudReplayBaseTestRun.baseTestRun === null) {
+      // Execute trigger script with the commit SHA
+      logger.log(
+        `Base test run doesn't exist. Executing trigger script: \`${triggerScript}\` on base commit \`${cloudReplayBaseTestRun.baseCommitSha}\``,
+      );
+      try {
+        execSync(`${triggerScript} ${cloudReplayBaseTestRun.baseCommitSha}`, {
+          stdio: "inherit",
+          encoding: "utf8",
+        });
+        logger.log("Trigger script executed successfully");
+      } catch (error) {
+        logger.error(
+          `Failed to execute trigger script \`${triggerScript} ${cloudReplayBaseTestRun.baseCommitSha}\`: ${error}`,
+        );
+        throw error;
+      }
+    }
+  } catch (error) {
+    if (isOutOfDateClientError(error)) {
+      throw new OutOfDateCLIError();
+    } else {
+      throw error;
+    }
+  }
+};
+
+export const prepareForMeticulousTestsCommand = buildCommand(
+  "prepare-for-meticulous-tests",
+)
+  .details({
+    describe:
+      "Prepare for Meticulous tests. If necessary, triggers the generation of a test run on the base commit against which `headCommit` will be tested against.",
+  })
+  .options({
+    apiToken: {
+      ...OPTIONS.apiToken,
+      required: true,
+    },
+    headCommit: {
+      string: true,
+      required: true,
+      description:
+        "The head commit SHA on which the tests will be executed against.",
+    },
+    triggerScript: {
+      string: true,
+      required: true,
+      description:
+        "Path to script that triggers the generation of a Meticulous test run on a specific commit. The script will be called with the commit SHA as an argument.",
+    },
+  } as const)
+  .handler(handler);
