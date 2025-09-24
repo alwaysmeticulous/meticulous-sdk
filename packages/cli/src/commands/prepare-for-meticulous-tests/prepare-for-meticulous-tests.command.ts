@@ -4,7 +4,7 @@ import {
   getApiToken,
   getGitHubCloudReplayBaseTestRun,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { buildCommand } from "../../command-utils/command-builder";
 import { OPTIONS } from "../../command-utils/common-options";
 import {
@@ -14,23 +14,31 @@ import {
 
 interface Options {
   apiToken?: string | null | undefined;
-  headCommit: string;
+  headCommit: string | null | undefined;
   triggerScript: string;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
   apiToken,
-  headCommit,
+  headCommit: headCommit_,
   triggerScript,
 }) => {
   const logger = initLogger();
 
-  // Get API token (auto-fetches if null/undefined)
   const apiToken_ = getApiToken(apiToken);
   if (!apiToken_) {
-    throw new Error(
-      "API token is required. Please provide --apiToken or set it via environment/config.",
+    logger.error(
+      "You must provide an API token by using the --apiToken parameter",
     );
+    process.exit(1);
+  }
+
+  const headCommit = await getCommitSha(headCommit_);
+  if (!headCommit) {
+    logger.error(
+      "No head commit sha found, you must be in a git repository or provide one with --headCommit",
+    );
+    process.exit(1);
   }
 
   try {
@@ -82,7 +90,6 @@ export const prepareForMeticulousTestsCommand = buildCommand(
     },
     headCommit: {
       string: true,
-      required: true,
       description:
         "The head commit SHA on which the tests will be executed against.",
     },
