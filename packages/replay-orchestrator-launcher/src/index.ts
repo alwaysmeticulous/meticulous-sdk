@@ -1,4 +1,4 @@
-import { initLogger } from "@alwaysmeticulous/common";
+import { ensureBrowser, initLogger } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import {
   ExecuteScheduledTestRunChunkOptions,
@@ -10,7 +10,6 @@ import {
   ReplayAndStoreResultsOptions,
   ReplayExecution,
 } from "@alwaysmeticulous/sdk-bundles-api";
-import { executablePath } from "puppeteer";
 
 export const replayAndStoreResults = async (
   options: Omit<
@@ -26,7 +25,7 @@ export const replayAndStoreResults = async (
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return (await require(bundleLocation)).replayAndStoreResults({
     ...options,
-    chromeExecutablePath: getChromiumExecutablePath(),
+    chromeExecutablePath: await ensureBrowser(),
     logLevel: logger.getLevel(),
   });
 };
@@ -50,7 +49,7 @@ export const executeScheduledTestRun = async (
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return (await require(bundleLocation)).executeTestRunV2({
     ...options,
-    chromeExecutablePath: getChromiumExecutablePath(),
+    chromeExecutablePath: await ensureBrowser(),
     logLevel: logger.getLevel(),
   });
 };
@@ -71,7 +70,7 @@ export const executeScheduledTestRunChunk = async (
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return (await require(bundleLocation)).executeTestRunChunk({
     ...options,
-    chromeExecutablePath: getChromiumExecutablePath(),
+    chromeExecutablePath: await ensureBrowser(),
     logLevel: logger.getLevel(),
   });
 };
@@ -87,16 +86,7 @@ export const executeTestRun = async (
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return (await require(bundleLocation)).executeTestRun({
     ...options,
-    chromeExecutablePath: getChromiumExecutablePath(),
+    chromeExecutablePath: await ensureBrowser(),
     logLevel: logger.getLevel(),
   });
-};
-
-const getChromiumExecutablePath = () => {
-  // replay-orchestrator-launcher has a puppeteer dependency, which ensures
-  // that Chromium gets downloaded at the Yarn/NPM pre-install stage. We need to pass
-  // the reference to this specific version of Chromium to the replay bundle, since
-  // the replay bundle may use a slightly different version of Puppeteer, which
-  // may have a slightly different default Chromium path/version.
-  return executablePath();
 };

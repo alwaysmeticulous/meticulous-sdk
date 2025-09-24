@@ -21,8 +21,7 @@
   "dependencies": {
     "@alwaysmeticulous/common": "^2.236.2",
     "@alwaysmeticulous/downloading-helpers": "^2.236.2",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.235.2",
-    "puppeteer": "24.14.0"
+    "@alwaysmeticulous/sdk-bundles-api": "^2.235.2"
   },
   "author": {
     "name": "The Meticulous Team",

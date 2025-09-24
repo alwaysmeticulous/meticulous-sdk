@@ -1,5 +1,5 @@
 import { readFile } from "fs/promises";
-import { Page } from "puppeteer";
+import { Page } from "puppeteer-core";
 import {
   METICULOUS_BYPASS_CSP_DOCS_URL,
   REQUIRED_CSP_ORIGINS,
