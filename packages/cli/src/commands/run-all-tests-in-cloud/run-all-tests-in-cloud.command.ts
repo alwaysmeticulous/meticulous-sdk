@@ -94,9 +94,10 @@ const handler: (options: Options) => Promise<void> = async ({
     process.exit(1);
   }
 
-  if (triggerScript) {
+  if (!hadPreparedForTests && triggerScript) {
     // If we have a script to trigger a run, this signals that the user is not sure whether the base test run is available.
     // In this case, we trigger the preparation for meticulous tests.
+    // Do this only if we did not prepare for the tests.
     await prepareForMeticulousTests({
       apiToken: apiToken_,
       headCommit: commitSha,
