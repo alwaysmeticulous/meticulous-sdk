@@ -251,52 +251,44 @@ const waitForBase = async ({
   commitSha: string;
   logger: log.Logger;
 }): Promise<void> => {
-  try {
-    const client = createClient({ apiToken });
-    const startTime = Date.now();
+  const client = createClient({ apiToken });
+  const startTime = Date.now();
 
-    // Non-Github-hosted projects are currently not supported
-    let cloudReplayBaseTestRun = await getGitHubCloudReplayBaseTestRun({
+  // Non-Github-hosted projects are currently not supported
+  let cloudReplayBaseTestRun = await getGitHubCloudReplayBaseTestRun({
+    client,
+    headCommitSha: commitSha,
+  });
+
+  let testRun = cloudReplayBaseTestRun.baseTestRun;
+  let lastTimeElapsed = 0;
+
+  while (!testRun) {
+    const timeElapsed = Date.now() - startTime;
+    if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
+      logger.error(
+        `Timed out after ${POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000} seconds waiting for base test run`,
+      );
+      // We cannot proceed without base: hard fail
+      process.exit(1);
+    }
+    if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30000) {
+      // Log at most once every 30 seconds
+      logger.info(
+        `Waiting for base test run to be created. Time elapsed: ${timeElapsed}ms`,
+      );
+      lastTimeElapsed = timeElapsed;
+    }
+    await new Promise((resolve) =>
+      setTimeout(resolve, POLL_FOR_BASE_TEST_RUN_INTERVAL_MS),
+    );
+
+    cloudReplayBaseTestRun = await getGitHubCloudReplayBaseTestRun({
       client,
       headCommitSha: commitSha,
     });
 
-    let testRun = cloudReplayBaseTestRun.baseTestRun;
-    let lastTimeElapsed = 0;
-
-    while (!testRun) {
-      const timeElapsed = Date.now() - startTime;
-      if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
-        logger.error(
-          `Timed out after ${POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000} seconds waiting for base test run`,
-        );
-        // We cannot proceed without base: hard fail
-        process.exit(1);
-      }
-      if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30000) {
-        // Log at most once every 30 seconds
-        logger.info(
-          `Waiting for base test run to be created. Time elapsed: ${timeElapsed}ms`,
-        );
-        lastTimeElapsed = timeElapsed;
-      }
-      await new Promise((resolve) =>
-        setTimeout(resolve, POLL_FOR_BASE_TEST_RUN_INTERVAL_MS),
-      );
-
-      cloudReplayBaseTestRun = await getGitHubCloudReplayBaseTestRun({
-        client,
-        headCommitSha: commitSha,
-      });
-
-      testRun = cloudReplayBaseTestRun.baseTestRun;
-    }
-  } catch (error) {
-    if (isOutOfDateClientError(error)) {
-      throw new OutOfDateCLIError();
-    } else {
-      throw error;
-    }
+    testRun = cloudReplayBaseTestRun.baseTestRun;
   }
 };
 
