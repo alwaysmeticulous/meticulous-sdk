@@ -105,7 +105,7 @@ const handler: (options: Options) => Promise<void> = async ({
     });
   }
 
-  if (hadPreparedForTests) {
+  if (hadPreparedForTests || triggerScript) {
     // If we prepared to run all tests in cloud, then we need to wait for base to be available.
     // The preprocessing step starts to compute base, but it might take some time to have it available.
     await waitForBase({ apiToken: apiToken_, commitSha, logger });
