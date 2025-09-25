@@ -51,27 +51,43 @@ const handler: (options: Options) => Promise<void> = async ({
         headCommitSha: headCommit,
       });
 
-    if (baseTestRun === null && commitIsInPullRequest) {
-      // We execute the trigger script only in case that the commit is in a pull request.
-      // The reason is that otherwise we will start an infinite chain of runs going back through all the Git history.
-
-      // Execute trigger script with the commit SHA
-      logger.log(
-        `Base test run doesn't exist. Executing trigger script: \`${triggerScript}\` on base commit \`${baseCommitSha}\``,
-      );
-      try {
-        execSync(`${triggerScript} ${baseCommitSha}`, {
-          stdio: "inherit",
-          encoding: "utf8",
-        });
-        logger.log("Trigger script executed successfully");
-      } catch (error) {
-        logger.error(
-          `Failed to execute trigger script \`${triggerScript} ${baseCommitSha}\`: ${error}`,
-        );
-        throw error;
-      }
+    if (baseTestRun !== null) {
+      logger.log("Base test run already exists, no preparation needed");
+      logger.log("✅ Preparation for Meticulous tests completed successfully");
+      return;
     }
+
+    if (!commitIsInPullRequest) {
+      logger.log(
+        `Base test run does not exist for commit '${baseCommitSha}', but this commit is not associated with any pull request. Skipping trigger script execution to prevent chain of test runs through Git history`,
+      );
+      logger.log("✅ Preparation for Meticulous tests completed successfully");
+      return;
+    }
+
+    // We execute the trigger script only in case that the commit is in a pull request.
+    // The reason is that otherwise we will start a chain of runs going back through all the Git history.
+    logger.log(
+      `Base test run doesn't exist and commit is associated with a pull request.`,
+    );
+    logger.log(
+      `Executing trigger script: \`${triggerScript}\` on base commit \`${baseCommitSha}\``,
+    );
+
+    try {
+      execSync(`${triggerScript} ${baseCommitSha}`, {
+        stdio: "inherit",
+        encoding: "utf8",
+      });
+      logger.log("Trigger script executed successfully");
+    } catch (error) {
+      logger.error(
+        `Failed to execute trigger script \`${triggerScript} ${baseCommitSha}\`: ${error}`,
+      );
+      throw error;
+    }
+
+    logger.log("✅ Preparation for Meticulous tests completed successfully");
   } catch (error) {
     if (isOutOfDateClientError(error)) {
       throw new OutOfDateCLIError();
