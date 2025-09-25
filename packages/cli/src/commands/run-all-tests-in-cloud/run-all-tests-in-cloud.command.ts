@@ -22,7 +22,7 @@ import {
 } from "../../utils/out-of-date-client-error";
 
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
-const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 interface Options {
   apiToken?: string | undefined;
@@ -239,7 +239,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
 /**
  * Waits for base run to be available, polling until found or timeout.
- * Timeout is set to 10 minutes, and produces an hard fail.
+ * Timeout is set to 30 minutes, and produces an hard fail.
  * Projects that are not hosted on Github are not currently supported.
  */
 const waitForBase = async ({
