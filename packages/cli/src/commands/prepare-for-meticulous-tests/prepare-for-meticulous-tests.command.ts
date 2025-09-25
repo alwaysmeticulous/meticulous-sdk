@@ -45,25 +45,29 @@ const handler: (options: Options) => Promise<void> = async ({
     const client = createClient({ apiToken: apiToken_ });
 
     // Non-Github-hosted projects are currently not supported
-    const cloudReplayBaseTestRun = await getGitHubCloudReplayBaseTestRun({
-      client,
-      headCommitSha: headCommit,
-    });
+    const { baseTestRun, baseCommitSha, commitIsInPullRequest } =
+      await getGitHubCloudReplayBaseTestRun({
+        client,
+        headCommitSha: headCommit,
+      });
 
-    if (cloudReplayBaseTestRun.baseTestRun === null) {
+    if (baseTestRun === null && commitIsInPullRequest) {
+      // We execute the trigger script only in case that the commit is in a pull request.
+      // The reason is that otherwise we will start an infinite chain of runs going back through all the Git history.
+
       // Execute trigger script with the commit SHA
       logger.log(
-        `Base test run doesn't exist. Executing trigger script: \`${triggerScript}\` on base commit \`${cloudReplayBaseTestRun.baseCommitSha}\``,
+        `Base test run doesn't exist. Executing trigger script: \`${triggerScript}\` on base commit \`${baseCommitSha}\``,
       );
       try {
-        execSync(`${triggerScript} ${cloudReplayBaseTestRun.baseCommitSha}`, {
+        execSync(`${triggerScript} ${baseCommitSha}`, {
           stdio: "inherit",
           encoding: "utf8",
         });
         logger.log("Trigger script executed successfully");
       } catch (error) {
         logger.error(
-          `Failed to execute trigger script \`${triggerScript} ${cloudReplayBaseTestRun.baseCommitSha}\`: ${error}`,
+          `Failed to execute trigger script \`${triggerScript} ${baseCommitSha}\`: ${error}`,
         );
         throw error;
       }
