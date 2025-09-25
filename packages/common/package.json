@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/common",
-  "version": "2.237.0",
+  "version": "2.237.1",
   "description": "Meticulous common utilities",
   "license": "ISC",
   "main": "dist/index.js",
@@ -19,11 +19,11 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
+    "@puppeteer/browsers": "2.10.6",
+    "chalk": "^4.1.2",
     "loglevel": "^1.8.0",
     "luxon": "^3.2.1",
-    "chalk": "^4.1.2",
-    "puppeteer-core": "24.14.0",
-    "@puppeteer/browsers": "2.10.6"
+    "puppeteer-core": "24.14.0"
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.235.2",

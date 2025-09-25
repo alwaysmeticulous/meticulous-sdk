@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/client",
-  "version": "2.236.2",
+  "version": "2.237.1",
   "description": "Helper methods for using the Meticulous backend API",
   "license": "ISC",
   "main": "dist/index.js",
@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@alwaysmeticulous/api": "^2.235.2",
-    "@alwaysmeticulous/common": "^2.236.2",
+    "@alwaysmeticulous/common": "^2.237.1",
     "loglevel": "^1.8.0",
     "node-fetch": "^2.6.9",
     "proxy-agent": "^6.4.0"
