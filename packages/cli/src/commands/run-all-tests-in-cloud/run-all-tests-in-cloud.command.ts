@@ -262,7 +262,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
 /**
  * Waits for base run to be available, polling until found or timeout.
- * Timeout is set to 30 minutes, and produces an hard fail.
+ * Timeout is set to 30 minutes, and after that we just proceed without a base.
  * Projects that are not hosted on Github are not currently supported.
  */
 const waitForBase = async ({
@@ -292,8 +292,8 @@ const waitForBase = async ({
       logger.error(
         `Timed out after ${POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000} seconds waiting for base test run`,
       );
-      // We cannot proceed without base: hard fail
-      process.exit(1);
+      // We proceed without base
+      break;
     }
     if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30000) {
       // Log at most once every 30 seconds
