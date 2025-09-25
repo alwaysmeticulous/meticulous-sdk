@@ -5,6 +5,7 @@ import {
   getGitHubCloudReplayBaseTestRun,
 } from "@alwaysmeticulous/client";
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
+import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import { OPTIONS } from "../../command-utils/common-options";
 import {
@@ -18,31 +19,19 @@ interface Options {
   triggerScript: string;
 }
 
-const handler: (options: Options) => Promise<void> = async ({
+export const prepareForMeticulousTests = async ({
   apiToken,
-  headCommit: headCommit_,
+  headCommit,
   triggerScript,
+  logger,
+}: {
+  apiToken: string;
+  headCommit: string;
+  triggerScript: string;
+  logger: log.Logger;
 }) => {
-  const logger = initLogger();
-
-  const apiToken_ = getApiToken(apiToken);
-  if (!apiToken_) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
-  }
-
-  const headCommit = await getCommitSha(headCommit_);
-  if (!headCommit) {
-    logger.error(
-      "No head commit sha found, you must be in a git repository or provide one with --headCommit",
-    );
-    process.exit(1);
-  }
-
   try {
-    const client = createClient({ apiToken: apiToken_ });
+    const client = createClient({ apiToken });
 
     // Non-Github-hosted projects are currently not supported
     const { baseTestRun, baseCommitSha, commitIsInPullRequest } =
@@ -97,6 +86,37 @@ const handler: (options: Options) => Promise<void> = async ({
   }
 };
 
+const handler: (options: Options) => Promise<void> = async ({
+  apiToken,
+  headCommit,
+  triggerScript,
+}) => {
+  const logger = initLogger();
+
+  const apiToken_ = getApiToken(apiToken);
+  if (!apiToken_) {
+    logger.error(
+      "You must provide an API token by using the --apiToken parameter",
+    );
+    process.exit(1);
+  }
+
+  const headCommit_ = await getCommitSha(headCommit);
+  if (!headCommit_) {
+    logger.error(
+      "No head commit sha found, you must be in a git repository or provide one with --headCommit",
+    );
+    process.exit(1);
+  }
+
+  await prepareForMeticulousTests({
+    apiToken: apiToken_,
+    headCommit: headCommit_,
+    triggerScript,
+    logger,
+  });
+};
+
 export const prepareForMeticulousTestsCommand = buildCommand(
   "prepare-for-meticulous-tests",
 )
@@ -117,7 +137,7 @@ export const prepareForMeticulousTestsCommand = buildCommand(
       string: true,
       required: true,
       description:
-        "Path to script that triggers the generation of a Meticulous test run on a specific commit. The script will be called with the commit SHA as an argument.",
+        "Path to script that triggers the generation of a Meticulous test run on a specific commit in case base test run is not available. The script will be called with the commit SHA as an argument.",
     },
   } as const)
   .handler(handler);

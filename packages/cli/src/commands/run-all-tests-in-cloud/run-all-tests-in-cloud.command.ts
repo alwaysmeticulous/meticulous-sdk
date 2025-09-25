@@ -1,6 +1,7 @@
 import { SessionRelevance } from "@alwaysmeticulous/api";
 import {
   createClient,
+  getApiToken,
   getGitHubCloudReplayBaseTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
 } from "@alwaysmeticulous/client";
@@ -20,6 +21,7 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
+import { prepareForMeticulousTests } from "../prepare-for-meticulous-tests/prepare-for-meticulous-tests.command";
 
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
 const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -38,6 +40,7 @@ interface Options {
   companionAssetsFolder?: string | undefined;
   companionAssetsRegex?: string | undefined;
   hadPreparedForTests: boolean;
+  triggerScript?: string | undefined;
 }
 
 const environmentToString: (environment: Environment) => string = (
@@ -64,6 +67,7 @@ const handler: (options: Options) => Promise<void> = async ({
   companionAssetsFolder,
   companionAssetsRegex,
   hadPreparedForTests,
+  triggerScript,
 }) => {
   const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
@@ -82,10 +86,29 @@ const handler: (options: Options) => Promise<void> = async ({
     process.exit(1);
   }
 
+  const apiToken_ = getApiToken(apiToken);
+  if (!apiToken_) {
+    logger.error(
+      "You must provide an API token by using the --apiToken parameter",
+    );
+    process.exit(1);
+  }
+
+  if (triggerScript) {
+    // If we have a script to trigger a run, this signals that the user is not sure whether the base test run is available.
+    // In this case, we trigger the preparation for meticulous tests.
+    await prepareForMeticulousTests({
+      apiToken: apiToken_,
+      headCommit: commitSha,
+      triggerScript,
+      logger,
+    });
+  }
+
   if (hadPreparedForTests) {
     // If we prepared to run all tests in cloud, then we need to wait for base to be available.
     // The preprocessing step starts to compute base, but it might take some time to have it available.
-    await waitForBase({ apiToken, commitSha, logger });
+    await waitForBase({ apiToken: apiToken_, commitSha, logger });
   }
 
   logger.info(`Running all tests in cloud for commit ${commitSha}`);
@@ -122,7 +145,7 @@ const handler: (options: Options) => Promise<void> = async ({
     const environment = getEnvironment();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { testRun } = await executeRemoteTestRun({
-      apiToken,
+      apiToken: apiToken_,
       commitSha,
       appUrl,
 
@@ -247,7 +270,7 @@ const waitForBase = async ({
   commitSha,
   logger,
 }: {
-  apiToken: string | undefined;
+  apiToken: string | null;
   commitSha: string;
   logger: log.Logger;
 }): Promise<void> => {
@@ -356,6 +379,12 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
       description:
         "Enable in case you called `prepare-for-meticulous-tests` before running this command.",
       default: false,
+    },
+    triggerScript: {
+      string: true,
+      description:
+        "Path to script that triggers the generation of a Meticulous test run on a specific commit in case base test run is not available. The script will be called with the commit SHA as an argument.",
+      default: undefined,
     },
   } as const)
   .handler(handler);
