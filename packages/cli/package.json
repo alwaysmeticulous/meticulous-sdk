@@ -49,6 +49,7 @@
     "yargs": "^17.5.1"
   },
   "devDependencies": {
+    "loglevel": "^1.8.0",
     "@types/cli-progress": "^3.11.5",
     "@types/yargs": "^17.0.10"
   },

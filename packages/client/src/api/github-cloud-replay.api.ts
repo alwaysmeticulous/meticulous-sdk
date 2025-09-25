@@ -10,6 +10,7 @@ export interface GetBaseTestRunOptions {
 export interface GitHubBaseTestRunResponse {
   baseCommitSha: string;
   baseTestRun: TestRun | null;
+  commitIsInPullRequest: boolean;
 }
 
 export const getGitHubCloudReplayBaseTestRun = async ({

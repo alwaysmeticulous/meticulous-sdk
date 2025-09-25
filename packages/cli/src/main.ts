@@ -10,6 +10,7 @@ import yargs from "yargs";
 import { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
 import { downloadSessionCommand } from "./commands/download-session/download-session.command";
 import { downloadTestRunCommand } from "./commands/download-test-run/download-test-run.command";
+import { prepareForMeticulousTestsCommand } from "./commands/prepare-for-meticulous-tests/prepare-for-meticulous-tests.command";
 import { recordCommand } from "./commands/record/record.command";
 import { recordLoginCommand } from "./commands/record-login/record-login.command";
 import { replayCommand } from "./commands/replay/replay.command";
@@ -21,7 +22,7 @@ import { uploadAssetsAndExecuteTestRunInCloudCommand } from "./commands/upload-a
 import { setOptions } from "./utils/sentry.utils";
 
 const handleDataDir: (dataDir: string | null | undefined) => void = (
-  dataDir
+  dataDir,
 ) => {
   setMeticulousLocalDataDir(dataDir);
 };
@@ -37,11 +38,12 @@ export const main: () => void = async () => {
     .usage(
       `$0 <command>
 
-      Meticulous CLI`
+      Meticulous CLI`,
     )
     .command(downloadReplayCommand)
     .command(downloadSessionCommand)
     .command(downloadTestRunCommand)
+    .command(prepareForMeticulousTestsCommand)
     .command(recordCommand)
     .command(recordLoginCommand)
     .command(replayCommand)
