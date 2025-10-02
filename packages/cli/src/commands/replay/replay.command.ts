@@ -39,6 +39,7 @@ interface ReplayCommandHandlerOptions
   sessionId: string;
   cookiesFile: string | null | undefined;
   debugger: boolean;
+  startAtEvent: number | undefined;
   baseReplayId: string | null | undefined;
   sessionIdForApplicationStorage: string | null | undefined;
   networkDebuggingRequestRegexes: string[] | undefined;
@@ -74,6 +75,7 @@ const replayCommandHandler = async ({
   logPossibleNonDeterminism,
   sessionIdForApplicationStorage,
   debugger: enableStepThroughDebugger,
+  startAtEvent,
   networkDebuggingRequestRegexes,
   networkDebuggingTransformationFns,
   networkDebuggingRequestTypes,
@@ -90,6 +92,26 @@ const replayCommandHandler = async ({
     throw new Error(
       "Cannot run with both --debugger flag and --headless flag at the same time.",
     );
+  }
+
+  if (startAtEvent != null) {
+    if (!enableStepThroughDebugger) {
+      throw new Error(
+        "The --startAtEvent option requires the --debugger flag to be enabled.",
+      );
+    }
+
+    if (!Number.isInteger(startAtEvent)) {
+      throw new Error(
+        `Invalid --startAtEvent value: ${startAtEvent}. Must be an integer.`,
+      );
+    }
+
+    if (startAtEvent < 0) {
+      throw new Error(
+        `Invalid --startAtEvent value: ${startAtEvent}. Must be non-negative.`,
+      );
+    }
   }
 
   let networkDebuggingOptions: NetworkDebuggingOptions | undefined = undefined;
@@ -187,6 +209,7 @@ const replayCommandHandler = async ({
         onLogEventTarget: replayExecution.logEventTarget,
         onCloseReplayedPage: replayExecution.closePage,
         replayableEvents: replayExecution.eventsBeingReplayed,
+        ...(startAtEvent != null ? { startAtEvent } : {}),
       });
       getOnBeforeUserEventCallback.resolve(
         stepThroughDebuggerUI.onBeforeUserEvent,
@@ -258,6 +281,11 @@ export const replayCommand = buildCommand("simulate")
       description:
         "Opens a step through debugger to advance through the replay event by event",
       default: false,
+    },
+    startAtEvent: {
+      number: true,
+      description:
+        "Automatically advance to this event number when starting the debugger (e.g., to jump to 'Event #95' use --startAtEvent=95). Requires --debugger flag. Events will replay rapidly until reaching the specified event.",
     },
     moveBeforeMouseEvent: OPTIONS.moveBeforeMouseEvent,
     cookiesFile: {
