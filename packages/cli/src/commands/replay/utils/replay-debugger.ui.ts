@@ -17,6 +17,7 @@ export interface ReplayDebuggerUIOptions {
   onCloseReplayedPage: () => void;
   onLogEventTarget: (event: ReplayableEvent) => Promise<void>;
   replayableEvents: ReplayableEvent[];
+  startAtEvent?: number;
 }
 
 export interface ReplayDebuggerUI {
@@ -39,8 +40,65 @@ export const openStepThroughDebuggerUI = async ({
   onCloseReplayedPage,
   onLogEventTarget,
   replayableEvents,
+  startAtEvent,
 }: ReplayDebuggerUIOptions): Promise<StepThroughDebuggerUI> => {
   const logger = initLogger();
+
+  let targetEventIndex: number | undefined = undefined;
+  if (startAtEvent != null) {
+    const arrayIndex = replayableEvents.findIndex(
+      (event) =>
+        "originalEventIndex" in event &&
+        event.originalEventIndex === startAtEvent,
+    );
+
+    if (arrayIndex === -1) {
+      const eventsWithIndices = replayableEvents
+        .map((e, idx) => ({
+          arrayIndex: idx,
+          eventNumber:
+            "originalEventIndex" in e ? e.originalEventIndex : null,
+        }))
+        .filter((e): e is { arrayIndex: number; eventNumber: number } =>
+          e.eventNumber != null
+        );
+
+      if (eventsWithIndices.length === 0) {
+        logger.warn(
+          `[debugger-ui] No events with originalEventIndex found. Starting at beginning.`,
+        );
+        targetEventIndex = 0;
+      } else {
+        const closestEvent = eventsWithIndices.reduce((closest, current) => {
+          if (current.eventNumber >= startAtEvent) return closest;
+          if (!closest || current.eventNumber > closest.eventNumber) {
+            return current;
+          }
+          return closest;
+        }, null as { arrayIndex: number; eventNumber: number } | null);
+
+        const minEvent = Math.min(...eventsWithIndices.map((e) => e.eventNumber));
+        const maxEvent = Math.max(...eventsWithIndices.map((e) => e.eventNumber));
+
+        if (closestEvent) {
+          logger.warn(
+            `[debugger-ui] Event #${startAtEvent} not found. Available events: #${minEvent} to #${maxEvent}. Starting at #${closestEvent.eventNumber}.`,
+          );
+          targetEventIndex = closestEvent.arrayIndex;
+        } else {
+          logger.warn(
+            `[debugger-ui] Event #${startAtEvent} not found. Available events: #${minEvent} to #${maxEvent}. Starting at beginning.`,
+          );
+          targetEventIndex = 0;
+        }
+      }
+    } else {
+      targetEventIndex = arrayIndex;
+      logger.info(
+        `[debugger-ui] Auto-advancing to event #${startAtEvent}...`,
+      );
+    }
+  }
 
   // Ensure browser is available and get executable path
   const executablePath = await ensureBrowser();
@@ -66,11 +124,11 @@ export const openStepThroughDebuggerUI = async ({
    * The index the page is in the process of advancing to. Equal to the current index
    * if the page has already replayed all the so-far-requested user events.
    */
-  let targetIndex = 0;
+  let targetIndex = targetEventIndex ?? 0;
   let state: ReplayDebuggerState = {
     events: replayableEvents,
     index: 0,
-    loading: false,
+    loading: targetEventIndex != null && targetEventIndex > 0,
   };
 
   let readyPromiseResolve: () => void;
