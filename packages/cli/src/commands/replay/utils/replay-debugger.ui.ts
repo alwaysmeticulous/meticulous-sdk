@@ -57,10 +57,8 @@ export const openStepThroughDebuggerUI = async ({
 
   // Create page for the debugger UI
   const debuggerPage = (await browser.pages())[0];
-  await debuggerPage.setViewport({
-    width: 0,
-    height: 0,
-  });
+  // Disable viewport emulation to use the actual window size
+  await debuggerPage.setViewport(null);
 
   /**
    * The index the page is in the process of advancing to. Equal to the current index

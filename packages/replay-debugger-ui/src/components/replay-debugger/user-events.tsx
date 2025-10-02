@@ -124,7 +124,8 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
               "justify-center",
               "items-center",
               "text-base",
-              "font-bold"
+              "font-bold",
+              "select-none"
             )}
             aria-hidden="true"
           >
@@ -365,7 +366,8 @@ export const ReplayUserEvents: FunctionComponent = () => {
               "leading-6",
               "text-base",
               "font-medium",
-              "text-zinc-900"
+              "text-zinc-900",
+              "select-none"
             )}
           >
             Event data
@@ -375,7 +377,8 @@ export const ReplayUserEvents: FunctionComponent = () => {
               "max-h-64",
               "overflow-auto",
               "text-zinc-900",
-              "font-mono"
+              "font-mono",
+              "select-all"
             )}
           >
             <code>
