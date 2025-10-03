@@ -49,6 +49,11 @@ export interface ExecuteRemoteTestRunOptions {
     folder: string;
     regex: string;
   };
+
+  /**
+   * Post a comment for this test run, even if comments are still disabled for the project.
+   */
+  postComment?: boolean;
 }
 
 export interface ExecuteRemoteTestRunResult {

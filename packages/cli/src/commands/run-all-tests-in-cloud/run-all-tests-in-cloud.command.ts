@@ -41,6 +41,7 @@ interface Options {
   companionAssetsRegex?: string | undefined;
   hadPreparedForTests: boolean;
   triggerScript?: string | undefined;
+  postComment?: boolean | undefined;
 }
 
 const environmentToString: (environment: Environment) => string = (
@@ -68,6 +69,7 @@ const handler: (options: Options) => Promise<void> = async ({
   companionAssetsRegex,
   hadPreparedForTests,
   triggerScript,
+  postComment,
 }) => {
   const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
@@ -241,6 +243,7 @@ const handler: (options: Options) => Promise<void> = async ({
       rewriteHostnameToAppUrl,
       enableDnsCache,
       http2Connections,
+      ...(postComment ? { postComment } : {}),
       ...(companionAssetsFolder && companionAssetsRegex
         ? {
             companionAssets: {
@@ -386,6 +389,12 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
       description:
         "Path to script that triggers the generation of a Meticulous test run on a specific commit in case base test run is not available. The script will be called with the commit SHA as an argument.",
       default: undefined,
+    },
+    postComment: {
+      boolean: true,
+      description:
+        "Post comments on the pull request, even if comments are still disabled for the project.",
+      default: false,
     },
   } as const)
   .handler(handler);

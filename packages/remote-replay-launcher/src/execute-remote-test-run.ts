@@ -43,6 +43,7 @@ export const executeRemoteTestRun = async ({
   rewriteHostnameToAppUrl = false,
   enableDnsCache = false,
   http2Connections,
+  postComment = false,
 }: ExecuteRemoteTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = initLogger();
 
@@ -125,6 +126,7 @@ export const executeRemoteTestRun = async ({
     basicAuthPassword: tunnel.basicAuthPassword,
     environment,
     isLockable,
+    postComment,
     ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
     ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
   });
