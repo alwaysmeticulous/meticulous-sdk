@@ -95,7 +95,8 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
               "py-5",
               "border-b",
               "border-zinc-200",
-              "sm:px-6"
+              "sm:px-6",
+              "select-none"
             )}
           >
             <h3
@@ -119,7 +120,8 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
               "bg-zinc-100",
               "text-zinc-900",
               "font-mono",
-              "sm:px-6"
+              "sm:px-6",
+              "select-all"
             )}
           >
             <code className="language-json">
