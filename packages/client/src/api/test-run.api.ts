@@ -44,6 +44,7 @@ export interface ExecuteSecureTunnelTestRunOptions {
   isLockable: boolean;
   companionAssetsInfo?: CompanionAssetsInfo;
   pullRequestHostingProviderId?: string;
+  postComment?: boolean;
 }
 
 export interface ExecuteSecureTunnelTestRunResponse {
@@ -62,6 +63,7 @@ export const executeSecureTunnelTestRun = async ({
   isLockable,
   companionAssetsInfo,
   pullRequestHostingProviderId,
+  postComment,
 }: ExecuteSecureTunnelTestRunOptions): Promise<ExecuteSecureTunnelTestRunResponse> => {
   const { data } = await client
     .post("test-runs/trigger-secure-tunnel-test-run-v2", {
@@ -71,6 +73,7 @@ export const executeSecureTunnelTestRun = async ({
       basicAuthPassword,
       environment,
       isLockable,
+      ...(postComment ? { postComment } : {}),
       ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
       ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
     })
