@@ -18,6 +18,7 @@ export interface TestRunDataLocations {
   coverageScreenshotReplaysByFile?: S3Location;
   coverageScreenshotReplaysByFileUnmapped?: S3Location;
   coverageByReplayPr?: S3Location;
+  diversityByReplay?: S3Location;
   relevantReplayContexts: S3Location;
 }
 
