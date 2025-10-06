@@ -149,18 +149,20 @@ export async function ensureBrowser(
       );
 
       if (matchingBrowser && fs.existsSync(matchingBrowser.executablePath)) {
-        if (expectedVersion) {
-          console.log(
-            chalk.gray(
-              `Found existing browser with expected version ${expectedVersion}: ${matchingBrowser.executablePath}`,
-            ),
-          );
-        } else {
-          console.log(
-            chalk.gray(
-              `Found existing browser: ${matchingBrowser.executablePath}`,
-            ),
-          );
+        if (!process.env.METICULOUS_IS_CLOUD_REPLAY) {
+          if (expectedVersion) {
+            console.log(
+              chalk.gray(
+                `Found existing browser with expected version ${expectedVersion}: ${matchingBrowser.executablePath}`,
+              ),
+            );
+          } else {
+            console.log(
+              chalk.gray(
+                `Found existing browser: ${matchingBrowser.executablePath}`,
+              ),
+            );
+          }
         }
         return matchingBrowser.executablePath;
       } else if (expectedVersion && installedBrowsers.length > 0) {
