@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/sdk-bundles-api",
-  "version": "2.235.2",
+  "version": "2.239.3",
   "description": "Meticulous common types",
   "license": "ISC",
   "main": "dist/index.js",
@@ -19,7 +19,7 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/api": "^2.235.2"
+    "@alwaysmeticulous/api": "^2.239.3"
   },
   "author": {
     "name": "The Meticulous Team",
