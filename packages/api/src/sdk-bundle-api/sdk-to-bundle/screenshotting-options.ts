@@ -41,4 +41,5 @@ export type ElementToIgnore = CSSSelectorToIgnore;
 export interface CSSSelectorToIgnore {
   type: "css-selector";
   selector: string;
+  comment?: string;
 }
