@@ -42,7 +42,7 @@ interface Options {
   hadPreparedForTests: boolean;
   triggerScript?: string | undefined;
   postComment?: boolean | undefined;
-  redactPassword: boolean;
+  redactPassword?: boolean | undefined;
 }
 
 const environmentToString: (environment: Environment) => string = (
