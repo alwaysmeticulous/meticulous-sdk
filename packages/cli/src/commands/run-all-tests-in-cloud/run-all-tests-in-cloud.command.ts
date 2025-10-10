@@ -42,6 +42,7 @@ interface Options {
   hadPreparedForTests: boolean;
   triggerScript?: string | undefined;
   postComment?: boolean | undefined;
+  redactPassword: boolean;
 }
 
 const environmentToString: (environment: Environment) => string = (
@@ -70,6 +71,7 @@ const handler: (options: Options) => Promise<void> = async ({
   hadPreparedForTests,
   triggerScript,
   postComment,
+  redactPassword,
 }) => {
   const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
@@ -160,8 +162,11 @@ const handler: (options: Options) => Promise<void> = async ({
 
       onTunnelCreated: (data) => {
         tunnelData = data;
+        const passwordDisplay = redactPassword
+          ? "[REDACTED]"
+          : data.basicAuthPassword;
         logger.info(
-          `\nExposing local service running at ${appUrl}: ${data.url} user: ${data.basicAuthUser} password: ${data.basicAuthPassword}`,
+          `\nExposing local service running at ${appUrl}: ${data.url} user: ${data.basicAuthUser} password: ${passwordDisplay}`,
         );
       },
 
@@ -219,8 +224,11 @@ const handler: (options: Options) => Promise<void> = async ({
 
             // tunnelData should be set in the onTunnelCreated callback.
             if (tunnelData) {
+              const passwordDisplay = redactPassword
+                ? "[REDACTED]"
+                : tunnelData.basicAuthPassword;
               logger.info(
-                `Your app can be accessed from ${tunnelData.url} username: ${tunnelData.basicAuthUser} password: ${tunnelData.basicAuthPassword}`,
+                `Your app can be accessed from ${tunnelData.url} username: ${tunnelData.basicAuthUser} password: ${passwordDisplay}`,
               );
             }
             setTimeout(() => {
@@ -394,6 +402,11 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
       boolean: true,
       description:
         "Post comments on the pull request, even if comments are still disabled for the project.",
+      default: false,
+    },
+    redactPassword: {
+      boolean: true,
+      description: "Redact the basic tunnel password from log output.",
       default: false,
     },
   } as const)
