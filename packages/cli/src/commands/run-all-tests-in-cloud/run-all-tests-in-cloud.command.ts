@@ -406,7 +406,7 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
     },
     redactPassword: {
       boolean: true,
-      description: "Redact the basic tunnel password from log output.",
+      description: "Redact the tunnel password from log output.",
       default: false,
     },
   } as const)
