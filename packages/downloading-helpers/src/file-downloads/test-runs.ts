@@ -35,7 +35,7 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<
 > = {
   everything: /.*/,
   "coverage-by-replay-pr-only": /^coverageByReplayPr/,
-  "coverage-only": /^coverage.json$/,
+  "coverage-only": /^coverage$/,
 };
 
 const shouldDownloadFile = (
@@ -57,7 +57,9 @@ export const getOrFetchTestRunData = async (
   const testRunDir = join(
     getMeticulousLocalDataDir(),
     "test-runs",
-    sanitizeFilename(testRunId),
+    testRunId === "latest"
+      ? `latest_${Date.now()}`
+      : sanitizeFilename(testRunId),
   );
 
   await mkdir(testRunDir, { recursive: true });
