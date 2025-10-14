@@ -2,9 +2,9 @@ import { createWriteStream, existsSync } from "fs";
 import { rm } from "fs/promises";
 import { Stream, finished } from "stream";
 import { promisify } from "util";
+import AdmZip from "adm-zip";
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import extract from "extract-zip";
 
 const promisifiedFinished = promisify(finished);
 
@@ -109,10 +109,9 @@ export const downloadAndExtractFile: (
   extractTimeoutInMs = 300_000,
 ) => {
   await downloadFile(fileUrl, tmpZipFilePath);
-  const entries: string[] = [];
 
   try {
-    const timeoutPromise = new Promise((_, reject) =>
+    const timeoutPromise = new Promise<string[]>((_, reject) =>
       setTimeout(
         () =>
           reject(
@@ -121,14 +120,24 @@ export const downloadAndExtractFile: (
         extractTimeoutInMs,
       ),
     );
-    const extractPromise = extract(tmpZipFilePath, {
-      dir: extractPath,
-      onEntry: (entry) => entries.push(entry.fileName),
+
+    const extractPromise = new Promise<string[]>((resolve, reject) => {
+      try {
+        const zip = new AdmZip(tmpZipFilePath);
+        zip.extractAllToAsync(extractPath, true, false, (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(zip.getEntries().map((entry) => entry.entryName));
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
     });
-    await Promise.race([extractPromise, timeoutPromise]);
+
+    return Promise.race([extractPromise, timeoutPromise]);
   } finally {
     await rm(tmpZipFilePath);
   }
-
-  return entries;
 };
