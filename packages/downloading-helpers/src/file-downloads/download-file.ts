@@ -106,7 +106,7 @@ export const downloadAndExtractFile: (
   fileUrl,
   tmpZipFilePath,
   extractPath,
-  extractTimeoutInMs = 60_000,
+  extractTimeoutInMs = 300_000,
 ) => {
   await downloadFile(fileUrl, tmpZipFilePath);
   const entries: string[] = [];
