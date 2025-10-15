@@ -70,6 +70,13 @@ export interface SessionData {
    * Only present on recordings since ~May 2025.
    */
   context?: SessionContext;
+
+  /**
+   * Optional array of captured expiring image data.
+   * Used to generate placeholders during replay.
+   * Only present on recordings since ~Oct 2025.
+   */
+  imageResources?: ExpiringImage[];
 }
 
 export interface WindowData {
@@ -307,3 +314,16 @@ export type SessionContext = {
   userId?: string;
   userEmail?: string;
 };
+
+/**
+ * Only present on recordings since ~Oct 2025.
+ */
+export interface ExpiringImage {
+  url: string;
+  initiatorType: "img" | "css";
+  name?: string;
+  width: number;
+  height: number;
+  compressionStrategy: string;
+  data: string;
+}
