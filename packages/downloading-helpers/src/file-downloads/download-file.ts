@@ -131,6 +131,12 @@ export const downloadAndExtractFile: (
             entry.autodrain();
           } else {
             entries.push(entry.path);
+            if (entry.path.includes("..")) {
+              reject(
+                new Error(`Path traversal attempt detected: ${entry.path}`),
+              );
+              return;
+            }
             const filePath = join(extractPath, entry.path);
             await mkdir(dirname(filePath), { recursive: true });
             entry.pipe(createWriteStream(filePath));
