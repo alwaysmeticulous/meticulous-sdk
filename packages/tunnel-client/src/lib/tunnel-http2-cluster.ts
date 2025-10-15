@@ -11,6 +11,7 @@ import CacheableLookup from "cacheable-lookup";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
 import { getLocalAddress } from "../utils/get-local-address";
+import { HarWriter } from "../utils/har-writer";
 import { TunnelClusterEvents, TunnelClusterOpts } from "./tunnel-cluster.types";
 
 // Increase the default HTTP2 window size to 32MB.
@@ -44,6 +45,7 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
   private readonly sockets: net.Socket[];
   private readonly server: Http2Server;
   private readonly dnsCache: CacheableLookup;
+  private readonly harWriter?: HarWriter;
 
   constructor(opts: TunnelHTTP2ClusterOpts) {
     super();
@@ -71,6 +73,12 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
     });
 
     this.dnsCache = new CacheableLookup({});
+
+    // Initialize HAR writer if file path is provided
+    if (opts.harFilePath) {
+      this.logger.info(`Writing requests to HAR file at ${opts.harFilePath}`);
+      this.harWriter = new HarWriter(opts.harFilePath, this.logger);
+    }
   }
 
   startListening() {
@@ -93,6 +101,19 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
         method: req.method ?? "unknown",
         path: req.url ?? "unknown",
       });
+
+      const requestIndex =
+        req.headers["Meticulous-Request-Index"] ??
+        req.headers["meticulous-request-index"];
+
+      // Capture request start time for HAR logging
+      const requestStartTime = Date.now();
+      let requestBytes = 0;
+      let responseBytes = 0;
+      console.log(
+        `[${timeStr()}] [${requestIndex?.toString().padStart(5, "0")}] Received start of request ${req.url}`,
+      );
+      let responseEndTime: number | undefined;
 
       const {
         // (1) Drop host & connection header from the original request. Node will set these correctly for the actual request.
@@ -156,16 +177,79 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
           } = clientRes.headers;
 
           res.writeHead(clientRes.statusCode as number, headersToForward);
+          console.log(
+            `[${timeStr()}] [${requestIndex?.toString().padStart(5, "0")}] Received response start from forwarded request ${req.url}`,
+          );
+
+          // Track response bytes
+          clientRes.on("data", (chunk) => {
+            responseBytes += chunk.length;
+          });
+
+          // console.log(
+          //   `Processing response ${req.url} (${JSON.stringify(
+          //     {
+          //       request: stripEmptyKeys({
+          //         cacheControl: clientRes.headers["cache-control"],
+          //         ifNoneMatch: clientRes.headers["if-none-match"],
+          //         ifModifiedSince: clientRes.headers["if-modified-since"],
+          //         ifUnmodifiedSince: clientRes.headers["if-unmodified-since"],
+          //         hasAuthorizationHeader:
+          //           clientRes.headers["authorization"] !== undefined,
+          //       }),
+          //       response: stripEmptyKeys({
+          //         statusCode: clientRes.statusCode,
+          //         cacheControl: clientRes.headers["cache-control"],
+          //         expires: clientRes.headers["expires"],
+          //         vary: clientRes.headers["vary"],
+          //         lastModified: clientRes.headers["last-modified"],
+          //         etag: clientRes.headers["etag"],
+          //       }),
+          //     },
+          //     null,
+          //     2,
+          //   )})`,
+          // );
 
           pipeline(clientRes, res, (err) => {
             if (err) {
               this.logger.error("Response pipeline error", err);
             }
+            responseEndTime = Date.now();
+            console.log(
+              `[${timeStr()}] [${requestIndex?.toString().padStart(5, "0")}] Finished streaming response from forwarded request through tunnel (${responseBytes} bytes)`,
+            );
+
+            // Update HAR entry with final timing if enabled
+            if (this.harWriter && responseEndTime) {
+              const { hostToRequest, portToRequest, protocolToRequest } =
+                this.getRequestTarget(originalUrl);
+              const fullUrl = `${protocolToRequest}://${hostToRequest}:${portToRequest}${req.url}`;
+
+              this.harWriter.addRequest(
+                req.method || "GET",
+                fullUrl,
+                req.headers,
+                requestStartTime,
+                clientRes.statusCode,
+                clientRes.headers,
+                responseEndTime,
+              );
+            }
           });
         },
       );
 
+      // Track request bytes
+      req.on("data", (chunk) => {
+        requestBytes += chunk.length;
+      });
+
       pipeline(req, clientReq, (err) => {
+        console.log(
+          `[${timeStr()}] [${requestIndex?.toString().padStart(5, "0")}] Finished streaming request to target (${requestBytes} bytes)`,
+        );
+
         if (err) {
           this.logger.error("Request pipeline error", err);
           if (!res.headersSent) {
@@ -236,5 +320,22 @@ export class TunnelHTTP2Cluster extends (EventEmitter as new () => TypedEmitter<
 
   close() {
     this.server.close();
+    if (this.harWriter) {
+      this.harWriter.close();
+    }
   }
 }
+
+const stripEmptyKeys = (obj: Record<string, unknown>) => {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, value]) => value != null),
+  );
+};
+
+const timeStr = () => {
+  const iso = new Date().toISOString();
+  // iso looks like 2024-06-07T19:44:11.279Z
+  const timePart = iso.split("T")[1]; // "19:44:11.279Z"
+  // Remove Z and keep everything
+  return timePart.replace("Z", "");
+};

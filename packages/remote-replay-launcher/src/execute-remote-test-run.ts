@@ -44,6 +44,7 @@ export const executeRemoteTestRun = async ({
   enableDnsCache = false,
   http2Connections,
   postComment = false,
+  harFilePath,
 }: ExecuteRemoteTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = initLogger();
 
@@ -102,6 +103,7 @@ export const executeRemoteTestRun = async ({
     rewriteHostnameToAppUrl,
     enableDnsCache,
     http2Connections,
+    ...(harFilePath ? { harFilePath } : {}),
   });
 
   logger.debug(`Creating test run`);

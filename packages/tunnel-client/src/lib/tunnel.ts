@@ -80,6 +80,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       proxyAllUrls,
       rewriteHostnameToAppUrl,
       enableDnsCache,
+      harFilePath,
     } = this.opts;
     const parsedHost = new URL(url);
 
@@ -113,6 +114,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
       proxyAllUrls,
       rewriteHostnameToAppUrl,
       enableDnsCache,
+      harFilePath,
     };
   }
 
@@ -226,8 +228,10 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     useTls,
     tunnelPassphrase,
     http2Connections,
+    harFilePath,
   }: Omit<TunnelInfo, "multiplexingRemotePort"> & {
     multiplexingRemotePort: number;
+    harFilePath?: string | undefined;
   }): Promise<void> {
     const localProtocol = localHttps ? "https" : "http";
     this.logger.debug(
@@ -264,6 +268,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
         proxyAllUrls,
         rewriteHostnameToAppUrl,
         enableDnsCache,
+        ...(harFilePath ? { harFilePath } : {}),
       };
 
       const worker = cluster.fork();

@@ -54,6 +54,11 @@ export interface ExecuteRemoteTestRunOptions {
    * Post a comment for this test run, even if comments are still disabled for the project.
    */
   postComment?: boolean;
+
+  /**
+   * The path to the HAR file to save the requests forwarded to.
+   */
+  harFilePath?: string | undefined;
 }
 
 export interface ExecuteRemoteTestRunResult {

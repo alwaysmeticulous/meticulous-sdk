@@ -13,6 +13,9 @@ export interface TunnelClusterOpts {
   localCert?: string | undefined;
   localKey?: string | undefined;
   localCa?: string | undefined;
+
+  /** Set if you want to save a HAR file of all the forwarded requests and responses */
+  harFilePath?: string | undefined;
 }
 
 export type TunnelClusterEvents = {

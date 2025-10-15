@@ -28,6 +28,7 @@ interface Options {
   enableDnsCache: boolean;
   printRequests: boolean;
   http2Connections: number | undefined;
+  harFilePath: string | undefined;
 }
 
 const handler = async (argv: Options) => {
@@ -59,6 +60,7 @@ const handler = async (argv: Options) => {
     rewriteHostnameToAppUrl: argv.rewriteHostnameToAppUrl,
     enableDnsCache: argv.enableDnsCache,
     http2Connections: argv.http2Connections,
+    ...(argv.harFilePath ? { harFilePath: argv.harFilePath } : {}),
   }).catch((err) => {
     throw err;
   });
@@ -178,6 +180,11 @@ export const startLocalTunnelCommand = buildCommand("start-local-tunnel")
       describe:
         "Number of HTTP2 connections to establish for multiplexing (defaults to number of CPU cores)",
       number: true,
+    },
+    harFilePath: {
+      describe:
+        "Path to HAR file to store request/response data with timestamps",
+      string: true,
     },
   })
   .handler(handler);

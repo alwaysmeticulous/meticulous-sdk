@@ -1,9 +1,11 @@
 import cluster from "node:cluster";
 import { initLogger } from "@alwaysmeticulous/common";
 import { openSocket } from "../utils/open-socket";
+import { TunnelClusterOpts } from "./tunnel-cluster.types";
 import { TunnelHTTP2Cluster } from "./tunnel-http2-cluster";
 
-export interface WorkerInitOptions {
+export interface WorkerInitOptions
+  extends Pick<TunnelClusterOpts, "harFilePath"> {
   workerId: number;
   useTls: boolean;
   remoteHost: string;
@@ -89,6 +91,7 @@ const startClusterWorker = async () => {
       localKey: options.localKey,
       localCa: options.localCa,
       sockets: [socket],
+      harFilePath: options.harFilePath,
       getHost: () => options.remoteHost,
     });
     tunnelCluster.startListening();

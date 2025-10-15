@@ -43,6 +43,7 @@ interface Options {
   triggerScript?: string | undefined;
   postComment?: boolean | undefined;
   redactPassword?: boolean | undefined;
+  harFilePath?: string | undefined;
 }
 
 const environmentToString: (environment: Environment) => string = (
@@ -72,6 +73,7 @@ const handler: (options: Options) => Promise<void> = async ({
   triggerScript,
   postComment,
   redactPassword,
+  harFilePath,
 }) => {
   const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
@@ -251,6 +253,7 @@ const handler: (options: Options) => Promise<void> = async ({
       rewriteHostnameToAppUrl,
       enableDnsCache,
       http2Connections,
+      ...(harFilePath ? { harFilePath } : {}),
       ...(postComment ? { postComment } : {}),
       ...(companionAssetsFolder && companionAssetsRegex
         ? {
@@ -408,6 +411,12 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
       boolean: true,
       description: "Redact the tunnel password from log output.",
       default: false,
+    },
+    harFilePath: {
+      string: true,
+      description:
+        "The path to the HAR file to save the requests forwarded to.",
+      default: undefined,
     },
   } as const)
   .handler(handler);

@@ -1,6 +1,7 @@
 import type { Logger } from "loglevel";
+import type { WorkerInitOptions } from "./lib/tunnel-worker.entrypoint";
 
-export interface TunnelInfo {
+export interface TunnelInfo extends Pick<WorkerInitOptions, "harFilePath"> {
   name: string;
   url: string;
   maxConn: number;
@@ -23,7 +24,8 @@ export interface TunnelInfo {
   http2Connections?: number | undefined;
 }
 
-export interface LocalTunnelOptions {
+export interface LocalTunnelOptions
+  extends Pick<WorkerInitOptions, "harFilePath"> {
   logger: Logger;
   apiToken: string;
   port: number;
