@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/remote-replay-launcher",
-  "version": "2.239.3",
+  "version": "2.240.3",
   "description": "Executes a remote replay on Meticulous' infrastructure",
   "license": "ISC",
   "main": "dist/index.js",
@@ -20,10 +20,10 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "@alwaysmeticulous/api": "^2.239.3",
-    "@alwaysmeticulous/client": "^2.239.3",
-    "@alwaysmeticulous/common": "^2.239.3",
-    "@alwaysmeticulous/tunnels-client": "^2.239.3",
+    "@alwaysmeticulous/api": "^2.240.3",
+    "@alwaysmeticulous/client": "^2.240.3",
+    "@alwaysmeticulous/common": "^2.240.3",
+    "@alwaysmeticulous/tunnels-client": "^2.240.3",
     "@sentry/node": "^10.3.0",
     "archiver": "^7.0.0",
     "loglevel": "^1.8.0",
