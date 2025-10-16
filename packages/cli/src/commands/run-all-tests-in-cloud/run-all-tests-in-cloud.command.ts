@@ -337,6 +337,23 @@ const waitForBase = async ({
     });
 
     testRun = cloudReplayBaseTestRun.baseTestRun;
+    if (testRun) {
+      const waitTimeMs = Date.now() - startTime;
+      Sentry.captureEvent({
+        message: "Base test run found after waiting for it",
+        level: "info",
+        tags: {
+          command: "run-all-tests-in-cloud",
+          eventType: "base-test-run-found",
+        },
+        extra: {
+          commitSha,
+          baseCommitSha: cloudReplayBaseTestRun.baseCommitSha,
+          waitTimeMs,
+          waitTimeSec: Math.round(waitTimeMs / 1000),
+        },
+      });
+    }
   }
 };
 
