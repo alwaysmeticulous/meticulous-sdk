@@ -5,6 +5,7 @@ import {
   getGitHubCloudReplayBaseTestRun,
 } from "@alwaysmeticulous/client";
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
+import * as Sentry from "@sentry/node";
 import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import { OPTIONS } from "../../command-utils/common-options";
@@ -73,6 +74,16 @@ export const prepareForMeticulousTests = async ({
       logger.error(
         `Failed to execute trigger script \`${triggerScript} ${baseCommitSha}\`: ${error}`,
       );
+      Sentry.captureException(error, {
+        tags: {
+          command: "prepare-for-meticulous-tests",
+          failureType: "trigger-script-execution",
+        },
+        extra: {
+          triggerScript,
+          baseCommitSha,
+        },
+      });
       throw error;
     }
 

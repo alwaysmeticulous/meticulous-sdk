@@ -10,6 +10,7 @@ import {
   executeRemoteTestRun,
   TunnelData,
 } from "@alwaysmeticulous/remote-replay-launcher";
+import * as Sentry from "@sentry/node";
 import chalk from "chalk";
 import cliProgress from "cli-progress";
 import log from "loglevel";
@@ -301,9 +302,21 @@ const waitForBase = async ({
   while (!testRun) {
     const timeElapsed = Date.now() - startTime;
     if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
-      logger.error(
+      const timeoutError = new Error(
         `Timed out after ${POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000} seconds waiting for base test run`,
       );
+      logger.error(timeoutError.message);
+      Sentry.captureException(timeoutError, {
+        tags: {
+          command: "run-all-tests-in-cloud",
+          failureType: "base-test-run-timeout",
+        },
+        extra: {
+          commitSha,
+          timeoutMs: POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS,
+          baseCommitSha: cloudReplayBaseTestRun.baseCommitSha,
+        },
+      });
       // We proceed without base
       break;
     }
