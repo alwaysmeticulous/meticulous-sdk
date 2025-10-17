@@ -105,7 +105,6 @@ export class HarWriter {
   public addEntry(entry: HarEntry): void {
     this.initializeFile();
     this.harFile.log.entries.push(entry);
-    this.writeToFile();
   }
 
   public addRequest(
