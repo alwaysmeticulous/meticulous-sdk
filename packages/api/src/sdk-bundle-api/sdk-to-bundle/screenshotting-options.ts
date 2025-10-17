@@ -41,5 +41,10 @@ export type ElementToIgnore = CSSSelectorToIgnore;
 export interface CSSSelectorToIgnore {
   type: "css-selector";
   selector: string;
+  /**
+   * Optional CSS selector for a shadow host element. If specified, the selector will also be
+   * searched within the shadow DOM of elements matching this shadow host selector.
+   */
+  shadowHostSelector?: string;
   comment?: string;
 }
