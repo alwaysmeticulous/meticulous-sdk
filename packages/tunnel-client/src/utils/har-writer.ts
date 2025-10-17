@@ -72,7 +72,7 @@ export class HarWriter {
 
   public addEntry(entry: HarEntry): void {
     this.initializeFile();
-    fs.appendFileSync(this.filePath, JSON.stringify(entry, null, 2) + "\n");
+    fs.appendFileSync(this.filePath, JSON.stringify(entry) + "\n");
   }
 
   public addRequest(
