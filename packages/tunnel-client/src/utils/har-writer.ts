@@ -42,39 +42,17 @@ export interface HarEntry {
 }
 
 export interface HarFile {
-  log: {
-    version: string;
-    creator: {
-      name: string;
-      version: string;
-    };
-    entries: HarEntry[];
-  };
+  entries: HarEntry[];
 }
 
 export class HarWriter {
   private readonly logger: Logger;
   private readonly filePath: string;
-  private harFile: HarFile;
   private isInitialized = false;
 
   constructor(filePath: string, logger: Logger) {
     this.filePath = filePath;
     this.logger = logger;
-    this.harFile = this.createEmptyHarFile();
-  }
-
-  private createEmptyHarFile(): HarFile {
-    return {
-      log: {
-        version: "1.2",
-        creator: {
-          name: "Meticulous Tunnel Client",
-          version: "1.0.0",
-        },
-        entries: [],
-      },
-    };
   }
 
   private ensureDirectoryExists(): void {
@@ -88,23 +66,13 @@ export class HarWriter {
     if (this.isInitialized) return;
 
     this.ensureDirectoryExists();
-    this.writeToFile();
+    fs.appendFileSync(this.filePath, "");
     this.isInitialized = true;
-  }
-
-  private writeToFile(): void {
-    try {
-      this.logger.debug(`Writing HAR file to ${this.filePath}`);
-      fs.writeFileSync(this.filePath, JSON.stringify(this.harFile, null, 2));
-      this.logger.debug(`HAR file written to ${this.filePath}`);
-    } catch (error) {
-      this.logger.error("Failed to write HAR file", error);
-    }
   }
 
   public addEntry(entry: HarEntry): void {
     this.initializeFile();
-    this.harFile.log.entries.push(entry);
+    fs.appendFileSync(this.filePath, JSON.stringify(entry, null, 2) + "\n");
   }
 
   public addRequest(
@@ -190,10 +158,5 @@ export class HarWriter {
       503: "Service Unavailable",
     };
     return statusTexts[status] || "Unknown";
-  }
-
-  public close(): void {
-    // Final write to ensure all data is saved
-    this.writeToFile();
   }
 }
