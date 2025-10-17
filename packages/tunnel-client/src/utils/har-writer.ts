@@ -159,4 +159,8 @@ export class HarWriter {
     };
     return statusTexts[status] || "Unknown";
   }
+
+  close(): void {
+    // Do nothing
+  }
 }
