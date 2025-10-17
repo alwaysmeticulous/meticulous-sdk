@@ -1,10 +1,11 @@
-import { createWriteStream, existsSync } from "fs";
-import { rm } from "fs/promises";
+import { createReadStream, createWriteStream, existsSync } from "fs";
+import { mkdir, rm } from "fs/promises";
+import { dirname, join } from "path";
 import { Stream, finished } from "stream";
 import { promisify } from "util";
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import extract from "extract-zip";
+import unzipper from "unzipper";
 
 const promisifiedFinished = promisify(finished);
 
@@ -121,10 +122,30 @@ export const downloadAndExtractFile: (
         extractTimeoutInMs,
       ),
     );
-    const extractPromise = extract(tmpZipFilePath, {
-      dir: extractPath,
-      onEntry: (entry) => entries.push(entry.fileName),
+
+    const extractPromise = new Promise<void>((resolve, reject) => {
+      createReadStream(tmpZipFilePath)
+        .pipe(unzipper.Parse())
+        .on("entry", async (entry: unzipper.Entry) => {
+          if (entry.type === "Directory") {
+            entry.autodrain();
+          } else {
+            entries.push(entry.path);
+            if (entry.path.includes("..")) {
+              reject(
+                new Error(`Path traversal attempt detected: ${entry.path}`),
+              );
+              return;
+            }
+            const filePath = join(extractPath, entry.path);
+            await mkdir(dirname(filePath), { recursive: true });
+            entry.pipe(createWriteStream(filePath));
+          }
+        })
+        .on("close", () => resolve())
+        .on("error", (err) => reject(err));
     });
+
     await Promise.race([extractPromise, timeoutPromise]);
   } finally {
     await rm(tmpZipFilePath);
