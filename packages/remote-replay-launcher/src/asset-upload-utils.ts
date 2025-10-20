@@ -130,21 +130,21 @@ export const uploadAssets = async ({
       result = await triggerRunOnDeployment(completeAssetUploadArgs);
       testRun = result?.testRun ?? null;
       baseNotFound = result?.baseNotFound;
-
-      if (baseNotFound) {
-        logger.info(`Base test run not found, proceeding without it.`);
-        testRun =
-          (
-            await triggerRunOnDeployment({
-              ...completeAssetUploadArgs,
-              mustHaveBase: false,
-            })
-          ).testRun ?? null;
-      }
-
-      message = result?.message;
-      logger.info(`Deployment assets ${uploadId} marked as uploaded`);
     }
+
+    if (baseNotFound) {
+      logger.info(`Base test run not found, proceeding without it.`);
+      testRun =
+        (
+          await triggerRunOnDeployment({
+            ...completeAssetUploadArgs,
+            mustHaveBase: false,
+          })
+        ).testRun ?? null;
+    }
+
+    message = result?.message;
+    logger.info(`Deployment assets ${uploadId} marked as uploaded`);
 
     return {
       uploadId,
