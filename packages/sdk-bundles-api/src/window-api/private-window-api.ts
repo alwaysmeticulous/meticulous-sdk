@@ -13,5 +13,5 @@ export interface MeticulousPrivateApi {
 
   stopRecording?: () => void;
 
-  flushPendingPayloads?: Promise<void>;
+  flushPendingPayloads?: () => Promise<void>;
 }

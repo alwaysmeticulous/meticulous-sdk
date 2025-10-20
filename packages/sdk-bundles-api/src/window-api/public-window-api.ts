@@ -97,7 +97,7 @@ export interface MeticulousPublicRecordApi {
    * are recording automated tests, it is recommended to call this at the end of each test
    * and before any full-page navigation.
    */
-  flush(): Promise<void>;
+  flush(): () => Promise<void>;
 }
 
 export interface MeticulousPublicContextApi {
