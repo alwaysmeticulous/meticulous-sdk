@@ -91,6 +91,13 @@ export interface MeticulousPublicRecordApi {
    * is of course only accessible by users with access to the Meticulous project.
    */
   getSessionUrl(): string;
+
+  /**
+   * Ensure all data held in memory by the Meticulous recorder has been sent back. If you
+   * are recording automated tests, it is recommended to call this at the end of each test
+   * and before any full-page navigation.
+   */
+  flush(): Promise<void>;
 }
 
 export interface MeticulousPublicContextApi {
