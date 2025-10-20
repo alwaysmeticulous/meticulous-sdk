@@ -239,15 +239,8 @@ const createZipFromFolder = async (
         await new Promise<void>((fsyncResolve, fsyncReject) => {
           if (fd !== null) {
             fsync(fd, (err) => {
-              if (err) {
-                const errorWithFd = new Error(
-                  `fsync failed for file descriptor ${fd}: ${err.message}`,
-                );
-                errorWithFd.stack = err.stack ?? "";
-                fsyncReject(errorWithFd);
-              } else {
-                fsyncResolve();
-              }
+              if (err) fsyncReject(err);
+              else fsyncResolve();
             });
           } else {
             fsyncReject(new Error("File descriptor not found"));
