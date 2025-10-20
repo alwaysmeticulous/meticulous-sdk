@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/common",
-  "version": "2.242.2",
+  "version": "2.242.3",
   "description": "Meticulous common utilities",
   "license": "ISC",
   "main": "dist/index.js",
@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.241.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.242.2",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.242.3",
     "@types/luxon": "^3.2.0"
   },
   "author": {

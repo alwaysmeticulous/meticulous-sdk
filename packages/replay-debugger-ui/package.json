@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replay-debugger-ui",
-  "version": "2.242.2",
+  "version": "2.242.3",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -26,7 +26,7 @@
     "luxon": "^3.2.1"
   },
   "devDependencies": {
-    "@alwaysmeticulous/sdk-bundles-api": "^2.242.2",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.242.3",
     "@heroicons/react": "^2.0.14",
     "@tailwindcss/forms": "0.5.10",
     "@types/express": "^5.0.2",

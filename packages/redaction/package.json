@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/redaction",
-  "version": "2.242.2",
+  "version": "2.242.3",
   "license": "ISC",
   "source": "src/index.ts",
   "main": "dist/index.js",
@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.241.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.242.2"
+    "@alwaysmeticulous/sdk-bundles-api": "^2.242.3"
   },
   "author": {
     "name": "The Meticulous Team",
