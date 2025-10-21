@@ -4,6 +4,7 @@ import {
   HarResponse,
   StorageEntry,
   WebSocketConnectionData,
+  EventSourceConnectionData,
 } from "@alwaysmeticulous/api";
 
 /**
@@ -60,7 +61,7 @@ export interface RecorderMiddleware {
    * See JSDoc for {@link RecorderMiddleware} before implementing.
    */
   transformIndexedDBEntries?: (
-    entries: IndexedDBStoreEntries
+    entries: IndexedDBStoreEntries,
   ) => IndexedDBStoreEntries | null;
 
   /**
@@ -114,7 +115,7 @@ export interface RecorderMiddleware {
    */
   transformNetworkRequest?: (
     request: Omit<HarRequest, "queryString">,
-    metadata: NetworkRequestMetadata
+    metadata: NetworkRequestMetadata,
   ) => Omit<HarRequest, "queryString"> | null;
 
   /**
@@ -127,7 +128,7 @@ export interface RecorderMiddleware {
    */
   transformNetworkResponse?: (
     response: HarResponse,
-    metadata: NetworkResponseMetadata
+    metadata: NetworkResponseMetadata,
   ) => HarResponse;
 
   /**
@@ -143,8 +144,24 @@ export interface RecorderMiddleware {
    * See JSDoc for {@link RecorderMiddleware} before implementing.
    */
   transformWebSocketConnectionData?: (
-    entry: Omit<WebSocketConnectionData, "id">
+    entry: Omit<WebSocketConnectionData, "id">,
   ) => Omit<WebSocketConnectionData, "id"> | null;
+
+  /**
+   * Transforms EventSource messages before they are sent to Meticulous's servers.
+   *
+   * Returning null will cause the data to be dropped from the payload.
+   *
+   * Please note that the messages received from a connection to a single URL may be split across multiple payloads.
+   *
+   * Note: we pass the EventSourceConnectionData to your middleware without the id field, and re-add the id field after
+   * you return the transformed data.
+   *
+   * See JSDoc for {@link RecorderMiddleware} before implementing.
+   */
+  transformEventSourceConnectionData?: (
+    entry: Omit<EventSourceConnectionData, "id">,
+  ) => Omit<EventSourceConnectionData, "id"> | null;
 
   /**
    * Defaults to true. Set to false if transformNetworkRequest only transforms the headers and not the URL or body of the request,
