@@ -32,6 +32,17 @@ export interface ReplayAndStoreResultsOptions {
    */
   gitRef: string | null | undefined;
 
+  /**
+   * The commit date in ISO 8601 format (e.g., "2025-01-15T10:30:00Z")
+   */
+  commitDate: string | null | undefined;
+
+  /**
+   * True only in case the performance data associated with this replay is
+   * significant to benchmark the performance of the application.
+   */
+  isBenchmarkableReplay: boolean | null | undefined;
+
   projectId: string;
   sessionId: string;
   /**
