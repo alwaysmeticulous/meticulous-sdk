@@ -60,6 +60,82 @@ export interface MeticulousPublicReplayApi {
    * this may trigger custom events to be fired.
    */
   recordCustomEvent(type: string, serializedData: string): { success: boolean };
+
+  /**
+   * True only in case the performance data associated with this replay is
+   * significant to benchmark the performance of the application.
+   */
+  isBenchmarkableReplay: boolean;
+
+  /**
+   * Native (non-stubbed) browser APIs that provide real performance metrics.
+   * These return actual values and are not affected by virtual time/stubbing.
+   *
+   * @remarks
+   * These APIs bypass Meticulous's deterministic stubbing to provide real
+   * performance data.
+   */
+  native: {
+    performance: {
+      /**
+       * Returns the real elapsed time in milliseconds (not virtual time).
+       * Uses the native performance.now() that was captured before stubbing.
+       */
+      now: typeof window.performance.now;
+
+      /**
+       * Returns actual browser memory usage (not the stubbed fixed values).
+       * Only available in Chrome/Chromium-based browsers.
+       */
+      memory?: {
+        jsHeapSizeLimit: number;
+        totalJSHeapSize: number;
+        usedJSHeapSize: number;
+      };
+
+      /**
+       * Measures actual cross-origin memory usage of the page.
+       * Uses the native performance.measureUserAgentSpecificMemory() captured before stubbing.
+       *
+       * @returns A promise that resolves with detailed memory breakdown
+       * @see https://developer.mozilla.org/en-US/docs/Web/API/Performance/measureUserAgentSpecificMemory
+       */
+      measureUserAgentSpecificMemory?: () => Promise<any>;
+    };
+  };
+
+  /**
+   * Information about the commit being tested.
+   * Only populated during replay when commit context is available.
+   */
+  commitUnderTest:
+    | {
+        /**
+         * The full commit SHA being test
+         */
+        sha: string;
+
+        /**
+         * The git branch name (e.g., "main", "feature/foo"). Null if not available
+         */
+        branchName: string | null;
+
+        /**
+         * The commit date in ISO 8601 format (e.g., "2025-01-15T10:30:00Z")
+         */
+        date: string;
+      }
+    | undefined;
+
+  /**
+   * Information about the session being replayed.
+   */
+  sessionBeingReplayed: {
+    /**
+     * The ID of the session being replayed.
+     */
+    id: string;
+  };
 }
 
 export interface MeticulousPublicRecordApi {
