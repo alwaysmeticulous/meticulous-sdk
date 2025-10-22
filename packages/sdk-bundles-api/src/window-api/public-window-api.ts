@@ -70,6 +70,18 @@ export interface MeticulousPublicReplayApi {
   /**
    * Native (non-stubbed) browser APIs that provide real performance metrics.
    * These return actual values and are not affected by virtual time/stubbing.
+   * Report these values to analytics platforms only in case
+   * isBenchmarkableReplay is true.
+   *
+   * @example
+   * ```
+   * // Use native performance.now() only during benchmarkable replays
+   * const now = (
+   *   window.Meticulous?.replay?.isBenchmarkableReplay
+   *     ? window.Meticulous.replay.native
+   *     : window
+   *   ).performance.now();
+   * ```
    *
    * @remarks
    * These APIs bypass Meticulous's deterministic stubbing to provide real
