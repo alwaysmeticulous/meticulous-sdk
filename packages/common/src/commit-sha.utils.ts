@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 import { initLogger } from "./logger/console-logger";
 
 const getGitRevParseHead: () => Promise<string> = () => {
@@ -42,8 +42,9 @@ const getGitCommitDate: (commitSha: string) => Promise<string> = (
   commitSha,
 ) => {
   return new Promise((resolve, reject) => {
-    exec(
-      `git show -s --format=%cI ${commitSha}`,
+    execFile(
+      "git",
+      ["show", "-s", "--format=%cI", commitSha],
       { encoding: "utf-8" },
       (error, output) => {
         if (error) {
