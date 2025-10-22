@@ -74,18 +74,27 @@ export interface MeticulousPublicReplayApi {
    * @remarks
    * These APIs bypass Meticulous's deterministic stubbing to provide real
    * performance data.
+   * Use to log performance information to analytics dashboards, performance
+   * monitors, or custom logging systems.
+   * Avoid using these APIs to report performance metrics in the web application
+   * UI directly, as this could produce unexpected visual differences.
+   * For this use case, use the standard performance APIs available on window.
    */
   native: {
     performance: {
       /**
        * Returns the real elapsed time in milliseconds (not virtual time).
        * Uses the native performance.now() that was captured before stubbing.
+       *
+       * @see https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
        */
       now: typeof window.performance.now;
 
       /**
        * Returns actual browser memory usage (not the stubbed fixed values).
        * Only available in Chrome/Chromium-based browsers.
+       *
+       * @see https://developer.mozilla.org/en-US/docs/Web/API/Performance/memory
        */
       memory?: {
         jsHeapSizeLimit: number;
@@ -102,6 +111,16 @@ export interface MeticulousPublicReplayApi {
        */
       measureUserAgentSpecificMemory?: () => Promise<any>;
     };
+
+    /**
+     * The native PerformanceObserver API for monitoring real performance metrics.
+     * Use this to observe actual performance entries (e.g., navigation,
+     * resource, measure) that are not affected by Meticulous's virtual
+     * time/stubbing.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/PerformanceObserver
+     */
+    PerformanceObserver: typeof window.PerformanceObserver;
   };
 
   /**
