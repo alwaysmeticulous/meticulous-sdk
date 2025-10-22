@@ -57,7 +57,7 @@ export interface RequestFilter {
    */
   urlRegex: string;
 
-  /** Defaults to `{ fetch: true, xhr: true, webSockets: true }` */
+  /** Defaults to `{ fetch: true, xhr: true, webSockets: true, eventSources: true }` */
   connectionTypes?: ConnectionTypesFilter;
 }
 
@@ -69,6 +69,7 @@ export interface ConnectionTypesFilter {
   fetch: boolean;
   xhr: boolean;
   webSockets: boolean;
+  eventSources: boolean;
 }
 
 type TransformableRequestData = Pick<Request, "body" | "method" | "url">;
