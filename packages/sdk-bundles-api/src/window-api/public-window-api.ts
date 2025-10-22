@@ -91,6 +91,11 @@ export interface MeticulousPublicReplayApi {
    * Avoid using these APIs to report performance metrics in the web application
    * UI directly, as this could produce unexpected visual differences.
    * For this use case, use the standard performance APIs available on window.
+   *
+   * When sending data to an analytics dashboard, ensure that Meticulous
+   * allows these requests to pass through.
+   * Add the "meticulous-passthrough" header to the requests to prevent them
+   * from being blocked.
    */
   native: {
     performance: {
