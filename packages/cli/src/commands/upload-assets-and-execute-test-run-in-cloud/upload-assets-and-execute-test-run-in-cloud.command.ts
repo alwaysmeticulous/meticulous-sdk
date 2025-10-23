@@ -1,6 +1,7 @@
 import { AssetUploadMetadata } from "@alwaysmeticulous/api";
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { uploadAssetsAndTriggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
+import * as Sentry from "@sentry/node";
 import { buildCommand } from "../../command-utils/command-builder";
 import { OPTIONS } from "../../command-utils/common-options";
 import {
@@ -34,6 +35,12 @@ const handler: (options: Options) => Promise<void> = async ({
   }
 
   logger.info(`Uploading build artifacts for commit ${commitSha}`);
+  Sentry.captureMessage("Received upload assets request", {
+    level: "debug",
+    extra: {
+      commitSha: commitSha
+    }
+  });
 
   try {
     await uploadAssetsAndTriggerTestRun({
