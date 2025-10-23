@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/common",
-  "version": "2.242.5",
+  "version": "2.242.6",
   "description": "Meticulous common utilities",
   "license": "ISC",
   "main": "dist/index.js",
@@ -26,8 +26,8 @@
     "puppeteer-core": "24.14.0"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.242.5",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.242.5",
+    "@alwaysmeticulous/api": "^2.242.6",
+    "@alwaysmeticulous/sdk-bundles-api": "^2.242.6",
     "@types/luxon": "^3.2.0"
   },
   "author": {
