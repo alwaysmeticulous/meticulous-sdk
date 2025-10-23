@@ -18,16 +18,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Use Node.js LTS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
-          node-version: 18
+          node-version: 20
           cache: yarn
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Cache turborepo output
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             node_modules/.cache/turbo
@@ -42,12 +43,6 @@ jobs:
 
       - name: Lint
         run: yarn lint
-
-      - name: Setup access to NPM registry
-        if: github.repository == 'alwaysmeticulous/meticulous-sdk'
-        run: npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish packages
         if: github.repository == 'alwaysmeticulous/meticulous-sdk'
