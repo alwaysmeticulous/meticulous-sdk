@@ -94,8 +94,8 @@ export interface MeticulousPublicReplayApi {
    *
    * When sending data to an analytics dashboard, ensure that Meticulous
    * allows these requests to pass through.
-   * Add the "meticulous-passthrough" header to the requests to prevent them
-   * from being blocked.
+   * Add the "meticulous-passthrough" header (set to the string "true") to the
+   * requests to prevent them from being blocked.
    */
   native: {
     performance: {
@@ -109,7 +109,6 @@ export interface MeticulousPublicReplayApi {
 
       /**
        * Returns actual browser memory usage (not the stubbed fixed values).
-       * Only available in Chrome/Chromium-based browsers.
        *
        * @see https://developer.mozilla.org/en-US/docs/Web/API/Performance/memory
        */
