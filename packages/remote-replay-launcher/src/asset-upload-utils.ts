@@ -15,6 +15,7 @@ import {
 } from "@alwaysmeticulous/client";
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
 import { initLogger } from "@alwaysmeticulous/common";
+import * as Sentry from "@sentry/node";
 import archiver from "archiver";
 
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
@@ -143,6 +144,15 @@ export const uploadAssets = async ({
         ).testRun ?? null;
     }
 
+    Sentry.captureMessage("Deployment assets marked as uploaded", {
+      level: "debug",
+      extra: {
+        uploadId: uploadId,
+        commitSha: commitSha,
+        testRunId: testRun?.id,
+        baseNotFound: baseNotFound
+      } 
+    });
     message = result?.message;
     logger.info(`Deployment assets ${uploadId} marked as uploaded`);
 
