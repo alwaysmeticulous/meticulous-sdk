@@ -19,11 +19,11 @@ export interface Recorder {
  * Load and start the Meticulous Recorder
  */
 export const tryLoadAndStartRecorder = async (
-  options: LoaderOptions
+  options: LoaderOptions,
 ): Promise<Recorder> => {
   if (window.Meticulous?.isRunningAsTest) {
     console.debug(
-      "Running as part of a Meticulous test case, so skipping loading the Meticulous recorder."
+      "Running as part of a Meticulous test case, so skipping loading the Meticulous recorder.",
     );
     return {
       stopRecording: async () => {
@@ -56,6 +56,7 @@ const unsafeLoadAndStartRecorder = ({
   responseSanitizers,
   isProduction,
   version,
+  integrity,
 }: LoaderOptions): Promise<Recorder> => {
   let abandoned = false;
 
@@ -78,10 +79,16 @@ const unsafeLoadAndStartRecorder = ({
     const baseSnippetsUrl = snippetsBaseUrl || SNIPPETS_BASE_URL;
     script.src = new URL(
       `${version != null ? "record/" : ""}${getSnippetVersionFolder(
-        version ?? null
+        version ?? null,
       )}/meticulous-manual-init.js`,
-      baseSnippetsUrl
+      baseSnippetsUrl,
     ).href;
+
+    // Set integrity attribute for subresource integrity verification if version and integrity are provided
+    if (version != null && integrity != null) {
+      script.integrity = integrity;
+      script.crossOrigin = "anonymous";
+    }
 
     // Setup configuration
     const typedWindow = window;
@@ -119,7 +126,7 @@ const unsafeLoadAndStartRecorder = ({
     script.onload = function () {
       if (abandoned) {
         console.debug(
-          "Meticulous snippet abandoned due to max blocking time reached."
+          "Meticulous snippet abandoned due to max blocking time reached.",
         );
         // At this point the promise has already resolved.
         return;
@@ -144,7 +151,7 @@ const unsafeLoadAndStartRecorder = ({
             ?.stopRecording;
           if (!stopRecording) {
             throw new Error(
-              "Recorder not initialised: window.__meticulous.stopRecording is not defined."
+              "Recorder not initialised: window.__meticulous.stopRecording is not defined.",
             );
           }
           await stopRecording();

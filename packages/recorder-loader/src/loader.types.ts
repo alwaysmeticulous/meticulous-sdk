@@ -3,7 +3,7 @@ import {
   RecorderMiddleware,
 } from "@alwaysmeticulous/sdk-bundles-api";
 
-export interface LoaderOptions {
+interface BaseLoaderOptions {
   /**
    * @deprecated Renamed to recordingToken. Please use the same value but pass it as the recordingToken instead.
    */
@@ -53,14 +53,36 @@ export interface LoaderOptions {
    * Please see JSDoc on {@link RecorderMiddleware} before implementing custom middleware.
    */
   middleware?: RecorderMiddleware[];
-
-  /**
-   * Load a specific fixed version of the snippet. If not set will load the
-   * latest minor/patch version of the recorder. Bumping to a new major
-   * version requires a bump of your @alwaysmeticulous/recorder-loader
-   * dependency.
-   *
-   * Recommendation: leave this unset
-   */
-  version?: string;
 }
+
+/**
+ * Options for loading the Meticulous recorder.
+ *
+ * The `integrity` parameter can only be provided when `version` is also specified,
+ * enabling Subresource Integrity (SRI) verification for the loaded script.
+ */
+export type LoaderOptions = BaseLoaderOptions &
+  (
+    | {
+        /**
+         * Load a specific fixed version of the snippet. If not set will load the
+         * latest minor/patch version of the recorder. Bumping to a new major
+         * version requires a bump of your @alwaysmeticulous/recorder-loader
+         * dependency.
+         *
+         * Recommendation: leave this unset
+         */
+        version: string;
+        /**
+         * Optional integrity hash for subresource integrity (SRI) verification of the loaded snippet.
+         * This ensures the loaded script matches the expected hash.
+         *
+         * Example: "sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"
+         */
+        integrity?: string;
+      }
+    | {
+        version?: undefined;
+        integrity?: undefined;
+      }
+  );
