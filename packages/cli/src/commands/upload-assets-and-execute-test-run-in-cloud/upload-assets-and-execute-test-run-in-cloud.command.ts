@@ -123,7 +123,8 @@ export const uploadAssetsAndExecuteTestRunInCloudCommand = buildCommand(
       string: true,
       default: "[]",
       description:
-        "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array",
+        "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array."
+        + " Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule '{ source: \"**\", destination: \"/index.html\" }'.",
     },
     waitForBase: {
       demandOption: false,
