@@ -10,17 +10,17 @@ export function extractHostnameAndPort(urlString: string): {
     throw new Error(`Invalid app URL: '${urlString}'`);
   }
 
-  if (!["http:"].includes(url.protocol)) {
-    if (["https:", "ws:", "wss:", "ftp:"].includes(url.protocol)) {
+  if (!["http:", "https:"].includes(url.protocol)) {
+    if (["ws:", "wss:", "ftp:"].includes(url.protocol)) {
       throw new Error(
-        `Protocol '${url.protocol}' not supported yet: '${urlString}'. Only 'http:' is supported.`
+        `Protocol '${url.protocol}' not supported yet: '${urlString}'. Only 'http:' and 'https:' are supported.`,
       );
     }
 
     // If user omits the protocol, and puts e.g. 'localhost:3000' then it'll parse the protocol as 'localhost' and the
     // hostname as '3000'.
     throw new Error(
-      `Protocol '${url.protocol}' not supported yet: '${urlString}'. Only 'http:' is supported. Are you missing a 'http://' prefix?`
+      `Protocol '${url.protocol}' not supported yet: '${urlString}'. Only 'http:' and 'https:' are supported. Are you missing a 'http://' or 'https://' prefix?`,
     );
   }
 
