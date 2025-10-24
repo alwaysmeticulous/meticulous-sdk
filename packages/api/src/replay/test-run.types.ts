@@ -1,7 +1,35 @@
 import { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screenshotting-options";
 
+/**
+ * Relevance of a session
+ */
+export enum SessionRelevance {
+  IsPrAuthor = "is-pr-author", // Recent session recorded from the author of the PR. This is used to tag sessions before they are executed.
+  IsPrAuthorRelevant = "is-pr-author-relevant", // Recent session recorded from the author of the PR, but relevant to the PR
+  IsPrAuthorNotRelevant = "is-pr-author-not-relevant", // Recent session recorded from the author of the PR, but not relevant to the PR
+  IsRelevantBeta = "is-relevant-beta", // Similar to IsRelevant, but used by beta relevance algorithm for A/B testing and internal evaluation
+  IsRelevant = "is-relevant",
+  NotRelevant = "not-relevant",
+  MaybeRelevant = "maybe-relevant",
+}
+
+export const isPrAuthorRelevance = (
+  relevance: SessionRelevance | null | undefined,
+): boolean => {
+  if (!relevance) {
+    return false;
+  }
+
+  return (
+    relevance === SessionRelevance.IsPrAuthor ||
+    relevance === SessionRelevance.IsPrAuthorRelevant ||
+    relevance === SessionRelevance.IsPrAuthorNotRelevant
+  );
+};
+
 export interface TestCase {
   sessionId: string;
+  relevanceToPR?: SessionRelevance;
   title?: string;
   options?: TestCaseReplayOptions;
 }
@@ -20,6 +48,8 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
  *
  * `Running` = a worker is actively running the test run.
  *
+ * `PostProcessing` = the replays have completed and the test run is being post-processed. This is only used for session selection runs.
+ *
  * `Failure` = completed, and at least one replay had notable differences - a diff, missing-head or different-size (see has-notable-differences.ts in the main repo)
  *
  * `Success` = completed, and no replays had notable differences
@@ -30,6 +60,7 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
 export type TestRunStatus =
   | "Scheduled"
   | "Running"
+  | "PostProcessing"
   | "Success"
   | "Failure"
   | "ExecutionError";
@@ -37,9 +68,10 @@ export type TestRunStatus =
 /**
  * Execution of a chunk of a test run chunk.
  *
- * The values and their meanings are the same as for {@link TestRunStatus}.
+ * The values and their meanings are the same as for {@link TestRunStatus}, except
+ * it's not possible for a test run chunk to be in the `PostProcessing` status.
  */
-export type TestRunChunkStatus = TestRunStatus;
+export type TestRunChunkStatus = Omit<TestRunStatus, "PostProcessing">;
 
 export type TestCaseResultStatus = "pass" | "fail" | "flake";
 

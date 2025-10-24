@@ -1,23 +1,22 @@
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { isFetchError } from "@alwaysmeticulous/client";
+import { initLogger } from "@alwaysmeticulous/common";
 import { SENTRY_FLUSH_TIMEOUT } from "@alwaysmeticulous/sentry";
 import * as Sentry from "@sentry/node";
-import { isAxiosError } from "axios";
-import log from "loglevel";
 
 export const setOptions: (options: any) => void = (options) => {
   Sentry.setContext("invoke-options", options);
 };
 
 export const wrapHandler = function wrapHandler_<T>(
-  handler: (args: T) => Promise<void>
+  handler: (args: T) => Promise<void>,
 ): (args: T) => Promise<void> {
   return async (args: T) => {
     await handler(args)
       .then(async () => {
-        const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
-        if (transaction !== undefined) {
-          transaction.setStatus("ok");
-          transaction.finish();
+        const currentSpan = Sentry.getActiveSpan();
+        if (currentSpan) {
+          currentSpan.setStatus({ code: 1 });
+          currentSpan.end();
         }
         await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 
@@ -27,12 +26,11 @@ export const wrapHandler = function wrapHandler_<T>(
       })
       .catch(async (error) => {
         await reportHandlerError(error);
-        const transaction = Sentry.getCurrentHub().getScope()?.getTransaction();
-        if (transaction !== undefined) {
-          transaction.setStatus("unknown_error");
-          transaction.finish();
+        const currentSpan = Sentry.getActiveSpan();
+        if (currentSpan) {
+          currentSpan.setStatus({ code: 2 });
+          currentSpan.end();
         }
-
         await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 
         // Don't display the help text which can obscure the error
@@ -42,9 +40,9 @@ export const wrapHandler = function wrapHandler_<T>(
 };
 
 const reportHandlerError: (error: unknown) => Promise<void> = async (error) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   logger.info("");
-  if (isAxiosError(error)) {
+  if (isFetchError(error)) {
     logger.error(error.message);
     if (
       error.response?.data &&
@@ -62,7 +60,7 @@ const reportHandlerError: (error: unknown) => Promise<void> = async (error) => {
   }
   logger.info("");
   logger.info(
-    "Tip: run `meticulous <command> --help` for help on a particular command, or `meticulous --help` for a list of the available commands."
+    "Tip: run `meticulous <command> --help` for help on a particular command, or `meticulous --help` for a list of the available commands.",
   );
   Sentry.captureException(error);
 };

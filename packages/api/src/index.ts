@@ -21,6 +21,8 @@ export {
   RedactedScreenshotsComparison,
 } from "./sdk-bundle-api/bundle-to-sdk/screenshot-diff-result";
 export {
+  SessionRelevance,
+  isPrAuthorRelevance,
   TestCase,
   TestCaseReplayOptions,
   TestRunStatus,
@@ -53,6 +55,8 @@ export {
   CustomDataSingletonInternalValues,
   CustomData,
   CustomUserEvent,
+  SessionContext,
+  ExpiringImage,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export {
   SequenceNumber,
@@ -84,6 +88,7 @@ export {
   CustomStubbing,
   RequestFilter,
   CustomTransformation,
+  CustomTransformationWhere,
 } from "./sdk-bundle-api/sdk-to-bundle/network-stubbing";
 export {
   ConsoleMessageWithStackTracePointer,
@@ -113,3 +118,6 @@ export {
   UrlChangeEventDivergenceIndicator,
   UserEventDivergenceIndicator,
 } from "./sdk-bundle-api/bundle-to-sdk/replay-divergence";
+export { AssetUploadMetadata } from "./sdk-bundle-api/sdk-to-bundle/asset-upload-metadata";
+export { S3Location } from "./s3.types";
+export { CompanionAssetsInfo } from "./sdk-bundle-api/sdk-to-bundle/companion-assets";

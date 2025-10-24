@@ -8,6 +8,7 @@ import {
   BeforeUserEventOptions,
   BeforeUserEventResult,
   GeneratedBy,
+  NetworkDebuggingOptions,
   ReplayExecutionOptions,
   ReplayTarget,
   ScreenshotComparisonOptions,
@@ -38,8 +39,13 @@ interface ReplayCommandHandlerOptions
   sessionId: string;
   cookiesFile: string | null | undefined;
   debugger: boolean;
+  startAtEvent: number | undefined;
   baseReplayId: string | null | undefined;
   sessionIdForApplicationStorage: string | null | undefined;
+  networkDebuggingRequestRegexes: string[] | undefined;
+  networkDebuggingTransformationFns: string[] | undefined;
+  networkDebuggingRequestTypes: string[] | undefined;
+  networkDebuggingWebsocketUrlRegexes: string[] | undefined;
 }
 
 const replayCommandHandler = async ({
@@ -69,17 +75,61 @@ const replayCommandHandler = async ({
   logPossibleNonDeterminism,
   sessionIdForApplicationStorage,
   debugger: enableStepThroughDebugger,
+  startAtEvent,
+  networkDebuggingRequestRegexes,
+  networkDebuggingTransformationFns,
+  networkDebuggingRequestTypes,
+  networkDebuggingWebsocketUrlRegexes,
+  enableCssCoverage,
 }: ReplayCommandHandlerOptions): Promise<void> => {
   if (!takeSnapshots && storyboard) {
     throw new Error(
-      "Cannot take storyboard visual snapshots without taking end state snapshots. Please set '--takeSnapshots' to true, or '--storyboard' to false."
+      "Cannot take storyboard visual snapshots without taking end state snapshots. Please set '--takeSnapshots' to true, or '--storyboard' to false.",
     );
   }
 
   if (headless && enableStepThroughDebugger) {
     throw new Error(
-      "Cannot run with both --debugger flag and --headless flag at the same time."
+      "Cannot run with both --debugger flag and --headless flag at the same time.",
     );
+  }
+
+  if (startAtEvent != null) {
+    if (!enableStepThroughDebugger) {
+      throw new Error(
+        "The --startAtEvent option requires the --debugger flag to be enabled.",
+      );
+    }
+
+    if (!Number.isInteger(startAtEvent)) {
+      throw new Error(
+        `Invalid --startAtEvent value: ${startAtEvent}. Must be an integer.`,
+      );
+    }
+
+    if (startAtEvent < 0) {
+      throw new Error(
+        `Invalid --startAtEvent value: ${startAtEvent}. Must be non-negative.`,
+      );
+    }
+  }
+
+  let networkDebuggingOptions: NetworkDebuggingOptions | undefined = undefined;
+
+  if (
+    networkDebuggingRequestRegexes ||
+    networkDebuggingTransformationFns ||
+    networkDebuggingRequestTypes ||
+    networkDebuggingWebsocketUrlRegexes
+  ) {
+    networkDebuggingOptions = {
+      requestRegexes: networkDebuggingRequestRegexes ?? [],
+      transformationsFns: networkDebuggingTransformationFns ?? [],
+      requestTypes: (networkDebuggingRequestTypes as Array<
+        "original-recorded-request" | "request-to-match"
+      >) ?? ["original-recorded-request", "request-to-match"],
+      websocketUrlRegexes: networkDebuggingWebsocketUrlRegexes ?? [],
+    } as NetworkDebuggingOptions;
   }
 
   const executionOptions: ReplayExecutionOptions = {
@@ -96,6 +146,8 @@ const replayCommandHandler = async ({
     maxEventCount: maxEventCount ?? null,
     essentialFeaturesOnly,
     logPossibleNonDeterminism,
+    enableCssCoverage: enableCssCoverage ?? false,
+    ...(networkDebuggingOptions ? { networkDebuggingOptions } : {}),
   };
   const generatedByOption: GeneratedBy = { type: "replayCommand" };
   const storyboardOptions: StoryboardOptions = storyboard
@@ -145,9 +197,7 @@ const replayCommandHandler = async ({
       ...(enableStepThroughDebugger
         ? {
             onBeforeUserEvent: async (options) =>
-              (
-                await getOnBeforeUserEventCallback.promise
-              )(options),
+              (await getOnBeforeUserEventCallback.promise)(options),
             onClosePage: async () => (await getOnClosePageCallback.promise)(),
           }
         : {}),
@@ -159,9 +209,10 @@ const replayCommandHandler = async ({
         onLogEventTarget: replayExecution.logEventTarget,
         onCloseReplayedPage: replayExecution.closePage,
         replayableEvents: replayExecution.eventsBeingReplayed,
+        ...(startAtEvent != null ? { startAtEvent } : {}),
       });
       getOnBeforeUserEventCallback.resolve(
-        stepThroughDebuggerUI.onBeforeUserEvent
+        stepThroughDebuggerUI.onBeforeUserEvent,
       );
       getOnClosePageCallback.resolve(stepThroughDebuggerUI.close);
     }
@@ -187,6 +238,10 @@ export const getReplayTarget = ({
     return { type: "snapshotted-assets", simulationIdForAssets };
   }
   if (appUrl) {
+    if (appUrl.startsWith("uploaded-assets://")) {
+      const deploymentUploadId = appUrl.slice("uploaded-assets://".length);
+      return { type: "uploaded-assets", deploymentUploadId };
+    }
     return { type: "url", appUrl };
   }
   return { type: "original-recorded-url" };
@@ -227,6 +282,11 @@ export const replayCommand = buildCommand("simulate")
         "Opens a step through debugger to advance through the replay event by event",
       default: false,
     },
+    startAtEvent: {
+      number: true,
+      description:
+        "Automatically advance to this event number when starting the debugger (e.g., to jump to 'Event #95' use --startAtEvent=95). Requires --debugger flag. Events will replay rapidly until reaching the specified event.",
+    },
     moveBeforeMouseEvent: OPTIONS.moveBeforeMouseEvent,
     cookiesFile: {
       string: true,
@@ -236,6 +296,28 @@ export const replayCommand = buildCommand("simulate")
       string: true,
       description: "Base simulation id to diff the visual snapshots against",
       alias: "baseSimulationId",
+    },
+    networkDebuggingRequestRegexes: {
+      type: "array",
+      string: true,
+      description: "Regexes to match requests against for debug logging",
+    },
+    networkDebuggingTransformationFns: {
+      type: "array",
+      string: true,
+      description:
+        "Request transformations to log. Will log all if not specified.",
+    },
+    networkDebuggingRequestTypes: {
+      type: "array",
+      string: true,
+      description: "Types of requests to capture",
+      choices: ["original-recorded-request", "request-to-match"],
+    },
+    networkDebuggingWebsocketUrlRegexes: {
+      type: "array",
+      string: true,
+      description: "Regexes to match websocket URLs against for debug logging",
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,

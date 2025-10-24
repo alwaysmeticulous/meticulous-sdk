@@ -5,7 +5,16 @@ export type NetworkStubbingMode =
 
 interface NetworkStubbingBase {
   /**
-   * When looking for a request to use as a stub, these transformations will be applied to the request before any other transformations.
+   * When looking for a request to use as a stub, these transformations will be applied to the request first.
+   * If not defined, the default identity transformation will be used (i.e., exact matching of the request).
+   * These transformations take precedence over any other transformations.
+   * They will be applied in the order they are defined.
+   */
+  identityRequestTransformations?: CustomTransformation[];
+
+  /**
+   * When looking for a request to use as a stub, these transformations will be applied after the identity transformations.
+   * These transformations are applied in addition to (and after) any identity transformations.
    * They will be applied in the order they are defined.
    */
   customRequestTransformations?: CustomTransformation[];
@@ -77,6 +86,10 @@ interface CustomTransformationBase {
    */
   replacement: string;
   requestComponent: keyof TransformableRequestData;
+  /*
+   * If defined, the transformation will only be applied if the request matches the where clause.
+   */
+  where?: CustomTransformationWhere;
 }
 
 type TransformableUrlFields = keyof Pick<
@@ -105,3 +118,11 @@ interface CustomRequestTransformation extends CustomTransformationBase {
 export type CustomTransformation =
   | CustomRequestTransformation
   | CustomUrlTransformation;
+
+/*
+ * We use a type union to allow for the where clause to be defined on either a request or url transformation.
+ * We can't reuse CustomTransformation because otherwise the type checker will restrict the where clause to have the same type as the original transformation.
+ */
+export type CustomTransformationWhere =
+  | Omit<CustomRequestTransformation, "replacement">
+  | Omit<CustomUrlTransformation, "replacement">;

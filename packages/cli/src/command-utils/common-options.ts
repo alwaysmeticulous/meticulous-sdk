@@ -138,6 +138,11 @@ export const OPTIONS = {
     default: true,
     description: "Capture http-only cookies in addition to regular cookies",
   },
+  enableCssCoverage: {
+    boolean: true,
+    default: false,
+    description: "Enable CSS coverage for the replay",
+  },
 } as const;
 
 export const SCREENSHOT_DIFF_OPTIONS = {
@@ -163,6 +168,7 @@ export const COMMON_REPLAY_OPTIONS = {
   essentialFeaturesOnly: OPTIONS.essentialFeaturesOnly,
   logPossibleNonDeterminism: OPTIONS.logPossibleNonDeterminism,
   sessionIdForApplicationStorage: OPTIONS.sessionIdForApplicationStorage,
+  enableCssCoverage: OPTIONS.enableCssCoverage,
 };
 
 /**
@@ -182,5 +188,9 @@ export const COMMON_RECORD_OPTIONS = {
       "Will skip straight to starting recording at the provided URL. Advanced option used to accelerate testing. Hidden from help menus.",
     string: true,
     hidden: !IS_METICULOUS_SUPER_USER,
+  } as const,
+  maxPayloadSize: {
+    number: true,
+    description: "The maximum payload size for the session",
   } as const,
 };

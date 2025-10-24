@@ -15,6 +15,7 @@ export type MeticulousPublicApi = MeticulousPublicApiCommon &
 
 export interface MeticulousPublicApiCommon {
   isRunningAsTest?: boolean;
+  context: MeticulousPublicContextApi;
 }
 
 export interface MeticulousPublicReplayApi {
@@ -32,6 +33,11 @@ export interface MeticulousPublicReplayApi {
   resume: () => void;
 
   /**
+   * Call this method to terminate the replay.
+   */
+  terminate: () => void;
+
+  /**
    * Call this method to retrieve custom data that was recorded during the test run.
    */
   retrieveCustomData(key: string): string | null;
@@ -46,8 +52,14 @@ export interface MeticulousPublicReplayApi {
    */
   addCustomEventListener(
     type: string,
-    callback: (serializedData: string) => void | Promise<void>
+    callback: (serializedData: string) => void | Promise<void>,
   ): void;
+
+  /**
+   * Record a custom event. If a mock communication channel is configured,
+   * this may trigger custom events to be fired.
+   */
+  recordCustomEvent(type: string, serializedData: string): { success: boolean };
 }
 
 export interface MeticulousPublicRecordApi {
@@ -64,7 +76,7 @@ export interface MeticulousPublicRecordApi {
    */
   pushToCustomDataArray(
     arrayId: string,
-    valueToAppend: string
+    valueToAppend: string,
   ): { success: boolean };
 
   /**
@@ -79,4 +91,47 @@ export interface MeticulousPublicRecordApi {
    * is of course only accessible by users with access to the Meticulous project.
    */
   getSessionUrl(): string;
+
+  /**
+   * Ensure all data held in memory by the Meticulous recorder has been sent back. If you
+   * are recording automated tests, it is recommended to call this at the end of each test
+   * and before any full-page navigation.
+   */
+  flush(): Promise<void>;
+}
+
+export interface MeticulousPublicContextApi {
+  /**
+   * Call this method to record the value of a feature flag. If this method is called multiple times
+   * with the same label, the value will be overwritten.
+   */
+  recordFeatureFlag(
+    label: string,
+    value: string | boolean,
+  ): { success: boolean };
+
+  /**
+   * Call this method to record some custom context about the session. For instance, you could use
+   * this to capture whether a user is opted into beta features, or what colour scheme they have
+   * selected in your app. If this method is called multiple times with the same label, the value
+   * will be overwritten.
+   */
+  recordCustomContext(
+    label: string,
+    value: string | boolean,
+  ): { success: boolean };
+
+  /**
+   * Record the id of the logged in user (e.g. a user id from a database for the application Meticulous
+   * is testing). This is associated with the session and can make it easier to find sessions for a
+   * specific user. If this method is called multiple times, the value will be overwritten.
+   */
+  recordUserId(userId: string): { success: boolean };
+
+  /**
+   * Record the email address of the logged in user. This is associated with the session
+   * and can make it easier to find sessions for a specific user. If this method is called
+   * multiple times, the value will be overwritten.
+   */
+  recordUserEmail(emailAddress: string): { success: boolean };
 }

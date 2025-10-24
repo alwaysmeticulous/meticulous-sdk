@@ -1,8 +1,8 @@
-import { AxiosInstance } from "axios";
-import { maybeEnrichAxiosError } from "../errors";
+import { maybeEnrichFetchError } from "../errors";
+import { MeticulousClient } from "../types/client.types";
 
 export interface GetIsLockedOptions {
-  client: AxiosInstance;
+  client: MeticulousClient;
   deploymentId: string;
 }
 
@@ -11,12 +11,11 @@ export const getIsLocked = async ({
   deploymentId,
 }: GetIsLockedOptions): Promise<boolean> => {
   const { data } = await client
-    .get<unknown, { data: boolean }>("deployment-locks/is-locked", {
+    .get<unknown, { data: string }>("deployment-locks/is-locked", {
       params: { deploymentId },
     })
     .catch((error) => {
-      throw maybeEnrichAxiosError(error);
+      throw maybeEnrichFetchError(error);
     });
-
-  return data;
+  return data === "true";
 };

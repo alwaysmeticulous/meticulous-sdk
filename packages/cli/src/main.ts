@@ -9,6 +9,8 @@ import { initSentry } from "@alwaysmeticulous/sentry";
 import yargs from "yargs";
 import { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
 import { downloadSessionCommand } from "./commands/download-session/download-session.command";
+import { downloadTestRunCommand } from "./commands/download-test-run/download-test-run.command";
+import { prepareForMeticulousTestsCommand } from "./commands/prepare-for-meticulous-tests/prepare-for-meticulous-tests.command";
 import { recordCommand } from "./commands/record/record.command";
 import { recordLoginCommand } from "./commands/record-login/record-login.command";
 import { replayCommand } from "./commands/replay/replay.command";
@@ -16,10 +18,11 @@ import { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.comma
 import { runAllTestsInCloudCommand } from "./commands/run-all-tests-in-cloud/run-all-tests-in-cloud.command";
 import { showProjectCommand } from "./commands/show-project/show-project.command";
 import { startLocalTunnelCommand } from "./commands/start-local-tunnel/start-local-tunnel.command";
+import { uploadAssetsAndExecuteTestRunInCloudCommand } from "./commands/upload-assets-and-execute-test-run-in-cloud/upload-assets-and-execute-test-run-in-cloud.command";
 import { setOptions } from "./utils/sentry.utils";
 
 const handleDataDir: (dataDir: string | null | undefined) => void = (
-  dataDir
+  dataDir,
 ) => {
   setMeticulousLocalDataDir(dataDir);
 };
@@ -35,10 +38,12 @@ export const main: () => void = async () => {
     .usage(
       `$0 <command>
 
-      Meticulous CLI`
+      Meticulous CLI`,
     )
     .command(downloadReplayCommand)
     .command(downloadSessionCommand)
+    .command(downloadTestRunCommand)
+    .command(prepareForMeticulousTestsCommand)
     .command(recordCommand)
     .command(recordLoginCommand)
     .command(replayCommand)
@@ -46,6 +51,7 @@ export const main: () => void = async () => {
     .command(runAllTestsInCloudCommand)
     .command(showProjectCommand)
     .command(startLocalTunnelCommand)
+    .command(uploadAssetsAndExecuteTestRunInCloudCommand)
     .help()
     .strict()
     .demandCommand()

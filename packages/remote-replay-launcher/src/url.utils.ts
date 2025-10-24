@@ -1,6 +1,7 @@
-export function extractHostnameAndPort(urlString: string): {
+export function validateAndParseUrl(urlString: string): {
   hostname: string;
   port: number;
+  protocol: string;
 } {
   let url: URL;
   try {
@@ -29,7 +30,7 @@ export function extractHostnameAndPort(urlString: string): {
     throw new Error(`Invalid app URL port: '${urlString}'`);
   }
 
-  return { hostname: url.hostname, port };
+  return { hostname: url.hostname, port, protocol: url.protocol };
 }
 
 function getPort(url: URL): number {

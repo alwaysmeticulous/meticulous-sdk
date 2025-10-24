@@ -3,11 +3,10 @@ import {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
-import { getCommitSha, METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import chalk from "chalk";
-import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_REPLAY_OPTIONS,
@@ -38,6 +37,7 @@ interface Options
   storyboard: boolean;
   baseTestRunId?: string | undefined;
   sessionIdForApplicationStorage?: string | undefined;
+  enableCssCoverage?: boolean;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -69,6 +69,7 @@ const handler: (options: Options) => Promise<void> = async ({
   logPossibleNonDeterminism,
   baseTestRunId,
   sessionIdForApplicationStorage,
+  enableCssCoverage,
 }) => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -84,6 +85,7 @@ const handler: (options: Options) => Promise<void> = async ({
     maxEventCount: maxEventCount ?? null,
     logPossibleNonDeterminism,
     essentialFeaturesOnly,
+    enableCssCoverage: enableCssCoverage ?? false,
   };
   const storyboardOptions: StoryboardOptions = storyboard
     ? { enabled: true }
@@ -94,25 +96,25 @@ const handler: (options: Options) => Promise<void> = async ({
     storyboardOptions,
   };
 
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   if (!noParallelize && headless) {
     logger.info(
       `\nRunning tests in parallel. Run with ${chalk.bold(
-        NO_PARALLELIZE_FLAG
-      )} to run tests sequentially.`
+        NO_PARALLELIZE_FLAG,
+      )} to run tests sequentially.`,
     );
   } else if (!noParallelize && !headless) {
     logger.info(
       `\nRunning tests in parallel. Run with ${chalk.bold(
-        NO_PARALLELIZE_FLAG
+        NO_PARALLELIZE_FLAG,
       )} to run tests sequentially, or with ${chalk.bold(
-        HEADLESS_FLAG
-      )} to hide the windows.`
+        HEADLESS_FLAG,
+      )} to hide the windows.`,
     );
   } else if (!headless) {
     logger.info(
-      `\nTip: run with ${chalk.bold(HEADLESS_FLAG)} to hide the windows.`
+      `\nTip: run with ${chalk.bold(HEADLESS_FLAG)} to hide the windows.`,
     );
   }
 

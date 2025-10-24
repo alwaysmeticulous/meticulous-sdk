@@ -104,6 +104,7 @@ describe("redactNestedFields", () => {
         strings: {
           tag: doNotRedact,
           media_key: doNotRedact,
+          expanded_url: doNotRedact,
         },
       });
 
@@ -159,7 +160,7 @@ describe("redactNestedFields", () => {
           "urls": [
             {
               "display_url": "https://redacted.com/",
-              "expanded_url": "https://redacted.com/",
+              "expanded_url": "https://example.com",
               "url": "https://redacted.com/",
             },
           ],

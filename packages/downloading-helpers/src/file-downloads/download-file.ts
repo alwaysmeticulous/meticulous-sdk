@@ -21,7 +21,7 @@ export const downloadFile = async (
     downloadCompleteTimeoutInMs?: number;
     maxDownloadContentRetries?: number;
     downloadContentRetryDelay?: number;
-  } = {}
+  } = {},
 ): Promise<void> => {
   // Using the same timeout as the standard client in meticulous-sdk/packages/client/src/client.ts
   const firstDataTimeoutInMs = opts.firstDataTimeoutInMs ?? 60_000;
@@ -73,7 +73,7 @@ export const downloadFile = async (
 
     // Let's try again after a short delay
     await new Promise((resolve) =>
-      setTimeout(resolve, downloadContentRetryDelay)
+      setTimeout(resolve, downloadContentRetryDelay),
     );
     await downloadFile(fileUrl, path, {
       firstDataTimeoutInMs,
@@ -94,21 +94,38 @@ export const downloadFile = async (
  * @param extractPath The path to a directory which we will extract files from a gzip into.
  * Do not try extracting to a dir that may already be in use by another process b/c overlapping
  * file names can cause data corruption.
+ * @param extractTimeoutInMs The timeout for the zip extraction, in milliseconds.
  * @returns The list of the extracted files.
  */
 export const downloadAndExtractFile: (
   fileUrl: string,
   tmpZipFilePath: string,
-  extractPath: string
-) => Promise<string[]> = async (fileUrl, tmpZipFilePath, extractPath) => {
+  extractPath: string,
+  extractTimeoutInMs?: number,
+) => Promise<string[]> = async (
+  fileUrl,
+  tmpZipFilePath,
+  extractPath,
+  extractTimeoutInMs = 300_000,
+) => {
   await downloadFile(fileUrl, tmpZipFilePath);
   const entries: string[] = [];
 
   try {
-    await extract(tmpZipFilePath, {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(
+        () =>
+          reject(
+            new Error(`Zip extraction timed out after ${extractTimeoutInMs}ms`),
+          ),
+        extractTimeoutInMs,
+      ),
+    );
+    const extractPromise = extract(tmpZipFilePath, {
       dir: extractPath,
       onEntry: (entry) => entries.push(entry.fileName),
     });
+    await Promise.race([extractPromise, timeoutPromise]);
   } finally {
     await rm(tmpZipFilePath);
   }

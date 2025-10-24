@@ -8,8 +8,6 @@ export interface TunnelInfo {
   useTls: boolean;
   tunnelPassphrase: string;
   multiplexingRemotePort: number;
-  useNoPoolMultiplexing?: boolean | undefined;
-  useHTTP2ForMultiplexing?: boolean | undefined;
   basicAuthUser: string;
   basicAuthPassword: string;
   localPort: number;
@@ -19,6 +17,10 @@ export interface TunnelInfo {
   localKey?: string | undefined;
   localCa?: string | undefined;
   allowInvalidCert: boolean;
+  proxyAllUrls: boolean;
+  rewriteHostnameToAppUrl: boolean;
+  enableDnsCache: boolean;
+  http2Connections?: number | undefined;
 }
 
 export interface LocalTunnelOptions {
@@ -33,6 +35,10 @@ export interface LocalTunnelOptions {
   localKey?: string | undefined;
   localCa?: string | undefined;
   allowInvalidCert: boolean;
+  proxyAllUrls: boolean;
+  rewriteHostnameToAppUrl: boolean;
+  enableDnsCache: boolean;
+  http2Connections?: number | undefined;
 }
 
 export interface IncomingRequestEvent {

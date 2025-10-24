@@ -9,11 +9,10 @@ import {
   DebugLogger,
   getCommitSha,
   getMeticulousLocalDataDir,
-  METICULOUS_LOGGER_NAME,
+  initLogger,
 } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import { recordSession } from "@alwaysmeticulous/record";
-import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 import {
   COMMON_RECORD_OPTIONS,
@@ -33,6 +32,7 @@ export interface RecordCommandHandlerOptions {
   trace: boolean | null | undefined;
   captureHttpOnlyCookies: boolean;
   appUrl: string | null | undefined;
+  maxPayloadSize: number | null | undefined;
 }
 
 export const recordCommandHandler: (
@@ -49,8 +49,9 @@ export const recordCommandHandler: (
   trace,
   captureHttpOnlyCookies,
   appUrl,
+  maxPayloadSize,
 }) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const debugLogger = trace ? await DebugLogger.create() : null;
   debugLogger?.log("Record options:");
   debugLogger?.logObject({
@@ -133,6 +134,7 @@ export const recordCommandHandler: (
     onDetectedSession,
     captureHttpOnlyCookies,
     appUrl,
+    maxPayloadSize,
   }).catch((error) => {
     debugLogger?.log(`${error}`);
     throw error;

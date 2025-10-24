@@ -1,12 +1,11 @@
 import { ReplayableEvent } from "@alwaysmeticulous/api";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { initLogger, ensureBrowser } from "@alwaysmeticulous/common";
 import { startUIServer } from "@alwaysmeticulous/replay-debugger-ui";
 import {
   BeforeUserEventOptions,
   BeforeUserEventResult,
 } from "@alwaysmeticulous/sdk-bundles-api";
-import log from "loglevel";
-import { launch, Browser, Page } from "puppeteer";
+import { Browser, Page, launch } from "puppeteer-core";
 
 export interface ReplayDebuggerState {
   events: ReplayableEvent[];
@@ -18,6 +17,7 @@ export interface ReplayDebuggerUIOptions {
   onCloseReplayedPage: () => void;
   onLogEventTarget: (event: ReplayableEvent) => Promise<void>;
   replayableEvents: ReplayableEvent[];
+  startAtEvent?: number;
 }
 
 export interface ReplayDebuggerUI {
@@ -25,7 +25,7 @@ export interface ReplayDebuggerUI {
 }
 
 type OnBeforeUserEventCallback = (
-  options: BeforeUserEventOptions
+  options: BeforeUserEventOptions,
 ) => Promise<BeforeUserEventResult>;
 
 export interface StepThroughDebuggerUI {
@@ -40,34 +40,93 @@ export const openStepThroughDebuggerUI = async ({
   onCloseReplayedPage,
   onLogEventTarget,
   replayableEvents,
+  startAtEvent,
 }: ReplayDebuggerUIOptions): Promise<StepThroughDebuggerUI> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
+
+  let targetEventIndex: number | undefined = undefined;
+  if (startAtEvent != null) {
+    const arrayIndex = replayableEvents.findIndex(
+      (event) =>
+        "originalEventIndex" in event &&
+        event.originalEventIndex === startAtEvent,
+    );
+
+    if (arrayIndex === -1) {
+      const eventsWithIndices = replayableEvents
+        .map((e, idx) => ({
+          arrayIndex: idx,
+          eventNumber:
+            "originalEventIndex" in e ? e.originalEventIndex : null,
+        }))
+        .filter((e): e is { arrayIndex: number; eventNumber: number } =>
+          e.eventNumber != null
+        );
+
+      if (eventsWithIndices.length === 0) {
+        logger.warn(
+          `[debugger-ui] No events with originalEventIndex found. Starting at beginning.`,
+        );
+        targetEventIndex = 0;
+      } else {
+        const closestEvent = eventsWithIndices.reduce((closest, current) => {
+          if (current.eventNumber >= startAtEvent) return closest;
+          if (!closest || current.eventNumber > closest.eventNumber) {
+            return current;
+          }
+          return closest;
+        }, null as { arrayIndex: number; eventNumber: number } | null);
+
+        const minEvent = Math.min(...eventsWithIndices.map((e) => e.eventNumber));
+        const maxEvent = Math.max(...eventsWithIndices.map((e) => e.eventNumber));
+
+        if (closestEvent) {
+          logger.warn(
+            `[debugger-ui] Event #${startAtEvent} not found. Available events: #${minEvent} to #${maxEvent}. Starting at #${closestEvent.eventNumber}.`,
+          );
+          targetEventIndex = closestEvent.arrayIndex;
+        } else {
+          logger.warn(
+            `[debugger-ui] Event #${startAtEvent} not found. Available events: #${minEvent} to #${maxEvent}. Starting at beginning.`,
+          );
+          targetEventIndex = 0;
+        }
+      }
+    } else {
+      targetEventIndex = arrayIndex;
+      logger.info(
+        `[debugger-ui] Auto-advancing to event #${startAtEvent}...`,
+      );
+    }
+  }
+
+  // Ensure browser is available and get executable path
+  const executablePath = await ensureBrowser();
 
   // Start the UI server
   const uiServer = await startUIServer();
 
-  // Launch the browser
+  // Launch the browser with the correct executable path
   const browser: Browser = await launch({
+    executablePath,
     args: [`--window-size=600,1000`],
     headless: false,
   });
 
   // Create page for the debugger UI
   const debuggerPage = (await browser.pages())[0];
-  await debuggerPage.setViewport({
-    width: 0,
-    height: 0,
-  });
+  // Disable viewport emulation to use the actual window size
+  await debuggerPage.setViewport(null);
 
   /**
    * The index the page is in the process of advancing to. Equal to the current index
    * if the page has already replayed all the so-far-requested user events.
    */
-  let targetIndex = 0;
+  let targetIndex = targetEventIndex ?? 0;
   let state: ReplayDebuggerState = {
     events: replayableEvents,
     index: 0,
-    loading: false,
+    loading: targetEventIndex != null && targetEventIndex > 0,
   };
 
   let readyPromiseResolve: () => void;
@@ -97,9 +156,9 @@ export const openStepThroughDebuggerUI = async ({
         return onAdvanceToIndex(data.index || 0);
       }
       logger.info(
-        `[debugger-ui] Warning: received unknown event "${eventType}"`
+        `[debugger-ui] Warning: received unknown event "${eventType}"`,
       );
-    }
+    },
   );
 
   const onReady = async () => {
@@ -157,7 +216,7 @@ export const openStepThroughDebuggerUI = async ({
   const status = res && res.status();
   if (status !== 200) {
     throw new Error(
-      `Expected a 200 status when going to the initial URL of the site. Got a ${status} instead.`
+      `Expected a 200 status when going to the initial URL of the site. Got a ${status} instead.`,
     );
   }
   logger.info(`[debugger-ui] Navigated to ${uiServer.url}`);

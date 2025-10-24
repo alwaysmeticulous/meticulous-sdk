@@ -1,7 +1,6 @@
 import { access, mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, join } from "path";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
-import log from "loglevel";
+import { initLogger } from "@alwaysmeticulous/common";
 import { Duration } from "luxon";
 import { lock, LockOptions } from "proper-lockfile";
 
@@ -32,7 +31,7 @@ export const getOrDownloadJsonFile = async <T>({
   downloadJson,
   dataDescription,
 }: LoadOrDownloadJsonFileOptions<T>): Promise<T | null> => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   await mkdir(dirname(filePath), { recursive: true });
 

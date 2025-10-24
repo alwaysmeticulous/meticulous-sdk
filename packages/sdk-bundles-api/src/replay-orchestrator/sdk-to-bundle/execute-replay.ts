@@ -1,5 +1,6 @@
 import {
   Cookie,
+  CompanionAssetsInfo,
   InjectableRequestHeader,
   NetworkStubbingMode,
   ScreenshotAssertionsEnabledOptions,
@@ -51,7 +52,7 @@ export interface ReplayAndStoreResultsOptions {
    * next event. This allows the caller to pause the replay, or control the playback.
    */
   onBeforeUserEvent?: (
-    opts: BeforeUserEventOptions
+    opts: BeforeUserEventOptions,
   ) => Promise<BeforeUserEventResult>;
 
   /**
@@ -161,7 +162,8 @@ export interface DoNotCompareScreenshots {
 export type ReplayTarget =
   | SnapshottedAssetsReplayTarget
   | URLReplayTarget
-  | OriginalRecordedURLReplayTarget;
+  | OriginalRecordedURLReplayTarget
+  | UploadedAssetsReplayTarget;
 
 export interface SnapshottedAssetsReplayTarget {
   type: "snapshotted-assets";
@@ -179,6 +181,11 @@ export interface URLReplayTarget {
    * If absent, and no URL provided in test case either, then will use the URL the session was recorded against.
    */
   appUrl: string;
+}
+
+export interface UploadedAssetsReplayTarget {
+  type: "uploaded-assets";
+  deploymentUploadId: string;
 }
 
 export interface OriginalRecordedURLReplayTarget {
@@ -259,12 +266,21 @@ export interface ReplayExecutionOptions {
    */
   disableSharedWorkers?: boolean;
 
+  /**
+   * If true disables the rrweb recorder.
+   */
+  disableRrweb?: boolean;
+
   appUrlConfig?: AppUrlConfig;
 
   /**
    * If true records CSS coverage for the replay.
    */
   enableCssCoverage?: boolean;
+
+  networkDebuggingOptions?: NetworkDebuggingOptions;
+
+  companionAssetsInfo?: CompanionAssetsInfo;
 }
 
 export interface StorageEntryOverride extends StorageEntry {
@@ -335,6 +351,13 @@ export interface AppUrlConfig {
    * if pre-navigation (navigating to a URL to get cookies before starting the main replay) is enabled.
    */
   ignoreAppUrlPathAfterPreNavigation?: boolean;
+}
+
+export interface NetworkDebuggingOptions {
+  requestRegexes: string[];
+  transformationsFns: string[];
+  requestTypes: ("original-recorded-request" | "request-to-match")[];
+  websocketUrlRegexes: string[];
 }
 
 // See https://spin.atomicobject.com/2018/01/15/typescript-flexible-nominal-typing/

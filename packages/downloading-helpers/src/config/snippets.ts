@@ -14,6 +14,10 @@ export const getSnippetsBaseUrl = (): string => {
   }
 };
 
+export const isCustomSnippetsBaseUrl = (): boolean => {
+  return !!process.env["METICULOUS_SNIPPETS_BASE_URL"];
+};
+
 export class ConfigurationError extends Error {
   constructor(message: string) {
     super(message);

@@ -1,10 +1,9 @@
 import { createClient } from "@alwaysmeticulous/client";
-import { METICULOUS_LOGGER_NAME } from "@alwaysmeticulous/common";
+import { initLogger } from "@alwaysmeticulous/common";
 import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
 } from "@alwaysmeticulous/downloading-helpers";
-import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 
 interface Options {
@@ -16,7 +15,7 @@ const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   sessionId,
 }) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
   const client = createClient({ apiToken });
 
   const { fileName: sessionMetadataFileName } = await getOrFetchRecordedSession(

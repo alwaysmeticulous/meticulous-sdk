@@ -4,13 +4,12 @@ import { getApiToken } from "@alwaysmeticulous/client";
 import {
   defer,
   IS_METICULOUS_SUPER_USER,
-  METICULOUS_LOGGER_NAME,
+  initLogger,
 } from "@alwaysmeticulous/common";
 import {
   IncomingRequestEvent,
   localtunnel,
 } from "@alwaysmeticulous/tunnels-client";
-import log from "loglevel";
 import { buildCommand } from "../../command-utils/command-builder";
 
 interface Options {
@@ -24,16 +23,20 @@ interface Options {
   localKey: string | undefined;
   localCa: string | undefined;
   allowInvalidCert: boolean;
+  proxyAllUrls: boolean;
+  rewriteHostnameToAppUrl: boolean;
+  enableDnsCache: boolean;
   printRequests: boolean;
+  http2Connections: number | undefined;
 }
 
 const handler = async (argv: Options) => {
-  const logger = log.getLogger(METICULOUS_LOGGER_NAME);
+  const logger = initLogger();
 
   const apiToken = getApiToken(argv.apiToken);
   if (!apiToken) {
     logger.error(
-      "You must provide an API token by using the --apiToken parameter"
+      "You must provide an API token by using the --apiToken parameter",
     );
     process.exit(1);
   }
@@ -52,6 +55,10 @@ const handler = async (argv: Options) => {
     localKey: argv.localKey,
     localCa: argv.localCa,
     allowInvalidCert: argv.allowInvalidCert,
+    proxyAllUrls: argv.proxyAllUrls,
+    rewriteHostnameToAppUrl: argv.rewriteHostnameToAppUrl,
+    enableDnsCache: argv.enableDnsCache,
+    http2Connections: argv.http2Connections,
   }).catch((err) => {
     throw err;
   });
@@ -69,7 +76,7 @@ const handler = async (argv: Options) => {
   });
 
   logger.info(
-    `Your url is: ${tunnel.url} \nuser: ${tunnel.basicAuthUser}, password: ${tunnel.basicAuthPassword}`
+    `Your url is: ${tunnel.url} \nuser: ${tunnel.basicAuthUser}, password: ${tunnel.basicAuthPassword}`,
   );
 
   if (argv.printRequests) {
@@ -145,10 +152,32 @@ export const startLocalTunnelCommand = buildCommand("start-local-tunnel")
       boolean: true,
       default: false,
     },
+    proxyAllUrls: {
+      describe: "Allow any URL to be proxied rather than just the local host",
+      boolean: true,
+      default: false,
+    },
+    rewriteHostnameToAppUrl: {
+      boolean: true,
+      description:
+        "Rewrite the hostname of any requests sent through the tunnel to the app URL.",
+      default: false,
+    },
+    enableDnsCache: {
+      describe:
+        "Enable DNS caching, this is recommended if the tunnel will be making requests to a non-localhost domain",
+      boolean: true,
+      default: false,
+    },
     printRequests: {
       describe: "Print basic request info",
       boolean: true,
       default: false,
+    },
+    http2Connections: {
+      describe:
+        "Number of HTTP2 connections to establish for multiplexing (defaults to number of CPU cores)",
+      number: true,
     },
   })
   .handler(handler);

@@ -65,6 +65,18 @@ export interface SessionData {
    */
   requestsBeforeNetworkRecordingStarted?: EarlyRequest[];
   applicationSpecificData?: ApplicationSpecificData;
+
+  /**
+   * Only present on recordings since ~May 2025.
+   */
+  context?: SessionContext;
+
+  /**
+   * Optional array of captured expiring image data.
+   * Used to generate placeholders during replay.
+   * Only present on recordings since ~Oct 2025.
+   */
+  imageResources?: ExpiringImage[];
 }
 
 export interface WindowData {
@@ -111,6 +123,27 @@ export interface ApplicationSpecificData {
     gip?: boolean;
     scriptLoader?: Record<string, unknown>;
     locale?: string;
+    assetPrefix?: string;
+  };
+  // https://github.com/remix-run/react-router/blob/e099d6927c7ea2bd97bae015e32fa96a6b0c84e0/packages/react-router/lib/dom/global.ts#L5
+  reactRouter?: {
+    context?: {
+      state?: {
+        loaderData?: {
+          [routeIndex: string]: unknown;
+        };
+        actionData?: {
+          [routeIndex: string]: unknown;
+        } | null;
+        errors?: {
+          [routeIndex: string]: unknown;
+        } | null;
+      };
+      future?: Record<string, unknown>;
+      basename?: string;
+    };
+    // https://github.com/remix-run/react-router/blob/e099d6927c7ea2bd97bae015e32fa96a6b0c84e0/packages/react-router/lib/dom/global.ts#L33
+    version?: string;
   };
 }
 
@@ -214,16 +247,83 @@ export type CustomUserEvent = {
 };
 
 export enum CustomDataSingletonInternalKey {
+  /**
+   * The preferred color scheme of the device on which the session was recorded.
+   * Present on recordings since ~Jan 2025.
+   */
   SystemThemePreferredColor = "met-system-theme-preferred-color",
+
+  /**
+   * System timezone of the browser the session was recorded on. This is an IANA timezone string,
+   * as defined in https://data.iana.org/time-zones/tzdb-2021a/zone1970.tab
+   * For example, "America/New_York" or "Europe/Paris".
+   * Present on recordings since ~Feb 2025.
+   */
+  TimezoneName = "met-timezone-name",
+
+  /**
+   * The browser's languages as given by `navigator.languages`. This is a comma-separated list of
+   * language tags, as defined in RFC 5646:
+   * https://datatracker.ietf.org/doc/html/rfc5646
+   * Present on recordings since ~Feb 2025.
+   */
+  Languages = "met-languages",
+
+  /**
+   * The user agent of the browser the session was recorded on. As returned by `navigator.userAgent`.
+   * Present on recordings since ~May 2025.
+   */
+  UserAgent = "met-user-agent",
+
+  /**
+   * When recording custom data, we don't abandon the recording if we encounter an object that is too large to serialize.
+   * However, we still want to track if this happens so we can surface a warning in the UI.
+   * Present on recordings since ~May 2025.
+   */
+  CustomObjectTooLargeToSerialize = "met-custom-object-too-large-to-serialize",
 }
 
 export type CustomDataSingletonInternalValues = {
   [CustomDataSingletonInternalKey.SystemThemePreferredColor]: "light" | "dark";
+  [CustomDataSingletonInternalKey.TimezoneName]: string;
+  [CustomDataSingletonInternalKey.Languages]: string;
+  [CustomDataSingletonInternalKey.UserAgent]: string;
+  [CustomDataSingletonInternalKey.CustomObjectTooLargeToSerialize]:
+    | "singleton"
+    | "array"
+    | "event"
+    | "context"
+    | "feature-flag"
+    | "user-id"
+    | "user-email";
 };
 
 export type CustomData = {
   singletons: Record<string, string> &
     Partial<CustomDataSingletonInternalValues>;
   arrays: Record<string, string[]>;
-  events: CustomUserEvent[];
+  /**
+   * Only present on recordings since ~November 2024.
+   */
+  events?: CustomUserEvent[];
 };
+
+export type SessionContext = {
+  customContext: Record<string, string | boolean>;
+  featureFlags: Record<string, string | boolean>;
+  userId?: string;
+  userEmail?: string;
+};
+
+/**
+ * Only present on recordings since ~Oct 2025.
+ */
+export interface ExpiringImage {
+  url: string;
+  initiatorType: "img" | "css";
+  name?: string;
+  width: number;
+  height: number;
+  compressionStrategy: string;
+  data: string;
+}
