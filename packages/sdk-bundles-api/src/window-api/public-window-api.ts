@@ -60,6 +60,121 @@ export interface MeticulousPublicReplayApi {
    * this may trigger custom events to be fired.
    */
   recordCustomEvent(type: string, serializedData: string): { success: boolean };
+
+  /**
+   * True only in case the performance data associated with this replay is
+   * significant to benchmark the performance of the application.
+   */
+  isBenchmarkableReplay: boolean;
+
+  /**
+   * Native (non-stubbed) browser APIs that provide real performance metrics.
+   * These return actual values and are not affected by virtual time/stubbing.
+   * Report these values to analytics platforms only in case
+   * isBenchmarkableReplay is true.
+   *
+   * @example
+   * ```
+   * // Use native performance.now() only during benchmarkable replays
+   * const now = (
+   *   window.Meticulous?.replay?.isBenchmarkableReplay
+   *     ? window.Meticulous.replay.native
+   *     : window
+   *   ).performance.now();
+   * ```
+   *
+   * @remarks
+   * These APIs bypass Meticulous's deterministic stubbing to provide real
+   * performance data.
+   * Use to log performance information to analytics dashboards, performance
+   * monitors, or custom logging systems.
+   * Avoid using these APIs to report performance metrics in the web application
+   * UI directly, as this could produce unexpected visual differences.
+   * For this use case, use the standard performance APIs available on window.
+   *
+   * When sending data to an analytics dashboard, ensure that Meticulous
+   * allows these requests to pass through.
+   * Add the "meticulous-passthrough" header (set to the string "true") to the
+   * requests to prevent them from being blocked.
+   */
+  native: {
+    performance: {
+      /**
+       * Returns the real elapsed time in milliseconds (not virtual time).
+       * Uses the native performance.now() that was captured before stubbing.
+       *
+       * @see https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
+       */
+      now: typeof window.performance.now;
+
+      /**
+       * Returns actual browser memory usage (not the stubbed fixed values).
+       *
+       * @see https://developer.mozilla.org/en-US/docs/Web/API/Performance/memory
+       */
+      memory?: {
+        jsHeapSizeLimit: number;
+        totalJSHeapSize: number;
+        usedJSHeapSize: number;
+      };
+
+      /**
+       * Measures actual cross-origin memory usage of the page.
+       * Uses the native performance.measureUserAgentSpecificMemory() captured before stubbing.
+       *
+       * @returns A promise that resolves with detailed memory breakdown.
+       * Returns `Promise<any>` because this API is experimental and not widely
+       * available in all browsers. The return type is not well-defined in
+       * TypeScript's standard library definitions.
+       *
+       * @see https://developer.mozilla.org/en-US/docs/Web/API/Performance/measureUserAgentSpecificMemory
+       */
+      measureUserAgentSpecificMemory?: () => Promise<any>;
+    };
+
+    /**
+     * The native PerformanceObserver API for monitoring real performance metrics.
+     * Use this to observe actual performance entries (e.g., navigation,
+     * resource, measure) that are not affected by Meticulous's virtual
+     * time/stubbing.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/PerformanceObserver
+     */
+    PerformanceObserver: typeof window.PerformanceObserver;
+  };
+
+  /**
+   * Information about the commit being tested.
+   * Only populated during replay when commit context is available.
+   */
+  commitUnderTest:
+    | {
+        /**
+         * The full commit SHA being test
+         */
+        sha: string;
+
+        /**
+         * The git branch name (e.g., "main", "feature/foo"). Null if not available
+         */
+        branchName: string | null;
+
+        /**
+         * The commit date in ISO 8601 format (e.g., "2025-01-15T10:30:00Z")
+         */
+        date: string;
+      }
+    | undefined;
+
+  /**
+   * Information about the session being replayed.
+   */
+  sessionBeingReplayed: {
+    /**
+     * The ID of the session being replayed.
+     */
+    id: string;
+  };
 }
 
 export interface MeticulousPublicRecordApi {
