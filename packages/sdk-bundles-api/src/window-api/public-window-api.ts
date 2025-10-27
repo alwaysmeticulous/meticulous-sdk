@@ -122,7 +122,11 @@ export interface MeticulousPublicReplayApi {
        * Measures actual cross-origin memory usage of the page.
        * Uses the native performance.measureUserAgentSpecificMemory() captured before stubbing.
        *
-       * @returns A promise that resolves with detailed memory breakdown
+       * @returns A promise that resolves with detailed memory breakdown.
+       * Returns `Promise<any>` because this API is experimental and not widely
+       * available in all browsers. The return type is not well-defined in
+       * TypeScript's standard library definitions.
+       *
        * @see https://developer.mozilla.org/en-US/docs/Web/API/Performance/measureUserAgentSpecificMemory
        */
       measureUserAgentSpecificMemory?: () => Promise<any>;
