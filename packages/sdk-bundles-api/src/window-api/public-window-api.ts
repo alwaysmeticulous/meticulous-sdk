@@ -160,9 +160,10 @@ export interface MeticulousPublicReplayApi {
         branchName: string | null;
 
         /**
-         * The commit date in ISO 8601 format (e.g., "2025-01-15T10:30:00Z")
+         * The commit date in ISO 8601 format (e.g., "2025-01-15T10:30:00Z").
+         * If the commit date is unknown, this is null.
          */
-        date: string;
+        date: string | null;
       }
     | undefined;
 
