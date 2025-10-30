@@ -1,7 +1,7 @@
 import { RecorderMiddleware } from "@alwaysmeticulous/sdk-bundles-api";
 
 /**
- * Redacts cookie values from network requests by replacing them with asterisks.
+ * Redacts cookie values from network requests during recording, by replacing them with asterisks.
  *
  * @param cookieNames - Array of cookie names to redact.
  */
@@ -33,7 +33,22 @@ export const redactCookies = (
       return {
         ...request,
         headers: request.headers.map((header) => {
-          if (["cookie", "set-cookie"].includes(header.name.toLowerCase())) {
+          if (header.name.toLowerCase() === "cookie") {
+            return {
+              ...header,
+              value: redactCookieHeaderValue(header.value),
+            };
+          }
+          return header;
+        }),
+      };
+    },
+
+    transformNetworkResponse: (response) => {
+      return {
+        ...response,
+        headers: response.headers.map((header) => {
+          if (header.name.toLowerCase() === "set-cookie") {
             return {
               ...header,
               value: redactCookieHeaderValue(header.value),
