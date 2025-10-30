@@ -80,6 +80,10 @@ const unsafeLoadAndStartRecorder = ({
     const script = document.createElement("script");
     if (integrity) {
       script.integrity = integrity;
+      // We need to set the crossOrigin to anonymous to avoid CORS issues. Without this we get a failure like:
+      // "... has an integrity attribute, but the resource requires the request to be CORS enabled to check the
+      // integrity, and it is not. The resource has been blocked because the integrity cannot be enforced."
+      script.crossOrigin = "anonymous";
     }
     if (nonce) {
       script.nonce = nonce;
