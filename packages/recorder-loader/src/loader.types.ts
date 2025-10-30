@@ -65,10 +65,15 @@ export interface LoaderOptions {
   version?: string;
 
   /**
-   * If set, we will use this integrity tag. This is useful if you have pinned the version above, and additionally
-   * want to ensure that the snippet is not corrupted.
+   * If set, we will use this integrity attribute on the script tag we create. This is useful if you have
+   * pinned the version above, and additionally want to ensure that the snippet is not corrupted.
    */
-  integrityTag?: string;
+  integrity?: string;
+
+  /**
+   * If set, we will use this nonce attribute on the script tag we create.
+   */
+  nonce?: string;
 
   /**
    * If set, this will disable reporting of errors to Meticulous. This is useful if you can't allow the script

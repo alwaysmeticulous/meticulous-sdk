@@ -56,7 +56,8 @@ const unsafeLoadAndStartRecorder = ({
   responseSanitizers,
   isProduction,
   version,
-  integrityTag,
+  integrity,
+  nonce,
   disableErrorReporting,
   disableTrackerId,
 }: LoaderOptions): Promise<Recorder> => {
@@ -77,8 +78,11 @@ const unsafeLoadAndStartRecorder = ({
     }
 
     const script = document.createElement("script");
-    if (integrityTag) {
-      script.integrity = integrityTag;
+    if (integrity) {
+      script.integrity = integrity;
+    }
+    if (nonce) {
+      script.nonce = nonce;
     }
     script.type = "text/javascript";
     const baseSnippetsUrl = snippetsBaseUrl || SNIPPETS_BASE_URL;
