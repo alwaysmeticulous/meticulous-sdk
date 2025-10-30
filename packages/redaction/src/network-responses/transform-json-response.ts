@@ -28,9 +28,7 @@ export interface TransformJSONResponseMetadata extends NetworkResponseMetadata {
 }
 
 /**
- * Drops a request header from network requests.
- *
- * @param headerName - Case-insensitive header name to drop.
+ * Creates a recorder middleware that transforms JSON responses to network requests.
  */
 export const transformJsonResponse = <T>({
   urlRegExp,
@@ -40,7 +38,7 @@ export const transformJsonResponse = <T>({
   return {
     transformNetworkResponse: (
       response: HarResponse,
-      metadata: NetworkResponseMetadata
+      metadata: NetworkResponseMetadata,
     ) => {
       if (urlRegExp && !urlRegExp.test(metadata.request.url)) {
         return response;

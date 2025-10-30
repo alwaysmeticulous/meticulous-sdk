@@ -63,4 +63,27 @@ export interface LoaderOptions {
    * Recommendation: leave this unset
    */
   version?: string;
+
+  /**
+   * If set, we will use this integrity attribute on the script tag we create. This is useful if you have
+   * pinned the version above, and additionally want to ensure that the snippet is not corrupted.
+   */
+  integrity?: string;
+
+  /**
+   * If set, we will use this nonce attribute on the script tag we create.
+   */
+  nonce?: string;
+
+  /**
+   * If set, this will disable reporting of errors to Meticulous. This is useful if you can't allow the script
+   * to communicate out to Sentry.
+   */
+  disableErrorReporting?: boolean;
+
+  /**
+   * If set, this will disable a tracker ID that is used to link developer's sessions to their Meticulous account.
+   * This is particularly useful if you can't allow the script to create an iframe to meticulous.ai to track the session.
+   */
+  disableTrackerId?: boolean;
 }
