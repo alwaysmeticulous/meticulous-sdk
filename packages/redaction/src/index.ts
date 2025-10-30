@@ -1,5 +1,6 @@
 export * from "./network-requests/drop-request-header";
 export * from "./network-responses/transform-json-response";
+export * from "./network-requests/redact-cookies";
 export * from "./generic/redact-recursively";
 export * from "./generic/asterix-out";
 export * from "./generic/redact-nested-fields/redact-nested-fields";
