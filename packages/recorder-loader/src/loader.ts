@@ -79,6 +79,11 @@ const unsafeLoadAndStartRecorder = ({
 
     const script = document.createElement("script");
     if (integrity) {
+      if (!version) {
+        throw new Error(
+          "Meticulous failed to initialise: integrity can only be provided when version is also provided",
+        );
+      }
       script.integrity = integrity;
       // We need to set the crossOrigin to anonymous to avoid CORS issues. Without this we get a failure like:
       // "... has an integrity attribute, but the resource requires the request to be CORS enabled to check the

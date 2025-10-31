@@ -3,7 +3,7 @@ import {
   RecorderMiddleware,
 } from "@alwaysmeticulous/sdk-bundles-api";
 
-export interface LoaderOptions {
+interface BaseLoaderOptions {
   /**
    * @deprecated Renamed to recordingToken. Please use the same value but pass it as the recordingToken instead.
    */
@@ -55,22 +55,6 @@ export interface LoaderOptions {
   middleware?: RecorderMiddleware[];
 
   /**
-   * Load a specific fixed version of the snippet. If not set will load the
-   * latest minor/patch version of the recorder. Bumping to a new major
-   * version requires a bump of your @alwaysmeticulous/recorder-loader
-   * dependency.
-   *
-   * Recommendation: leave this unset
-   */
-  version?: string;
-
-  /**
-   * If set, we will use this integrity attribute on the script tag we create. This is useful if you have
-   * pinned the version above, and additionally want to ensure that the snippet is not corrupted.
-   */
-  integrity?: string;
-
-  /**
    * If set, we will use this nonce attribute on the script tag we create.
    */
   nonce?: string;
@@ -87,3 +71,35 @@ export interface LoaderOptions {
    */
   disableTrackerId?: boolean;
 }
+
+/**
+ * Options for loading a specific version of the Meticulous recorder.
+ * The `integrity` parameter can only be provided when `version` is also specified.
+ */
+type VersioningLoaderOptions =
+  | {
+      /**
+       * Load a specific fixed version of the snippet. If not set will load the
+       * latest minor/patch version of the recorder. Bumping to a new major
+       * version requires a bump of your @alwaysmeticulous/recorder-loader
+       * dependency.
+       *
+       * Recommendation: leave this unset
+       */
+      version: string;
+
+      /**
+       * If set, we will use this integrity attribute on the script tag we create. This is useful if you have
+       * pinned the version above, and additionally want to ensure that the snippet is not corrupted.
+       */
+      integrity?: string;
+    }
+  | {
+      version?: undefined;
+      integrity?: undefined;
+    };
+
+/**
+ * Options for loading the Meticulous recorder.
+ */
+export type LoaderOptions = BaseLoaderOptions & VersioningLoaderOptions;
