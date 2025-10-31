@@ -74,7 +74,7 @@ export const getCommitDate: (
     // Suppress error logging if not in a git repository
     if (error instanceof Error) {
       if (error.message.startsWith("Command failed")) {
-        logger.info(
+        logger.debug(
           "Notice: not running in a git repository (cannot get commit date)",
         );
         return "";
