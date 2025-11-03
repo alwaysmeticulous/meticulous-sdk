@@ -14,7 +14,7 @@ export enum SessionRelevance {
 }
 
 export const isPrAuthorRelevance = (
-  relevance: SessionRelevance | null | undefined
+  relevance: SessionRelevance | null | undefined,
 ): boolean => {
   if (!relevance) {
     return false;
@@ -48,6 +48,8 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
  *
  * `Running` = a worker is actively running the test run.
  *
+ * `PostProcessing` = the replays have completed and the test run is being post-processed. This is only used for session selection runs.
+ *
  * `Failure` = completed, and at least one replay had notable differences - a diff, missing-head or different-size (see has-notable-differences.ts in the main repo)
  *
  * `Success` = completed, and no replays had notable differences
@@ -58,6 +60,7 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
 export type TestRunStatus =
   | "Scheduled"
   | "Running"
+  | "PostProcessing"
   | "Success"
   | "Failure"
   | "ExecutionError";
@@ -65,9 +68,10 @@ export type TestRunStatus =
 /**
  * Execution of a chunk of a test run chunk.
  *
- * The values and their meanings are the same as for {@link TestRunStatus}.
+ * The values and their meanings are the same as for {@link TestRunStatus}, except
+ * it's not possible for a test run chunk to be in the `PostProcessing` status.
  */
-export type TestRunChunkStatus = TestRunStatus;
+export type TestRunChunkStatus = Omit<TestRunStatus, "PostProcessing">;
 
 export type TestCaseResultStatus = "pass" | "fail" | "flake";
 

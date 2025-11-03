@@ -19,11 +19,11 @@ export interface Recorder {
  * Load and start the Meticulous Recorder
  */
 export const tryLoadAndStartRecorder = async (
-  options: LoaderOptions
+  options: LoaderOptions,
 ): Promise<Recorder> => {
   if (window.Meticulous?.isRunningAsTest) {
     console.debug(
-      "Running as part of a Meticulous test case, so skipping loading the Meticulous recorder."
+      "Running as part of a Meticulous test case, so skipping loading the Meticulous recorder.",
     );
     return {
       stopRecording: async () => {
@@ -56,6 +56,10 @@ const unsafeLoadAndStartRecorder = ({
   responseSanitizers,
   isProduction,
   version,
+  integrity,
+  nonce,
+  disableErrorReporting,
+  disableTrackerId,
 }: LoaderOptions): Promise<Recorder> => {
   let abandoned = false;
 
@@ -74,13 +78,28 @@ const unsafeLoadAndStartRecorder = ({
     }
 
     const script = document.createElement("script");
+    if (integrity) {
+      if (!version) {
+        throw new Error(
+          "Meticulous failed to initialise: integrity can only be provided when version is also provided",
+        );
+      }
+      script.integrity = integrity;
+      // We need to set the crossOrigin to anonymous to avoid CORS issues. Without this we get a failure like:
+      // "... has an integrity attribute, but the resource requires the request to be CORS enabled to check the
+      // integrity, and it is not. The resource has been blocked because the integrity cannot be enforced."
+      script.crossOrigin = "anonymous";
+    }
+    if (nonce) {
+      script.nonce = nonce;
+    }
     script.type = "text/javascript";
     const baseSnippetsUrl = snippetsBaseUrl || SNIPPETS_BASE_URL;
     script.src = new URL(
       `${version != null ? "record/" : ""}${getSnippetVersionFolder(
-        version ?? null
+        version ?? null,
       )}/meticulous-manual-init.js`,
-      baseSnippetsUrl
+      baseSnippetsUrl,
     ).href;
 
     // Setup configuration
@@ -116,10 +135,18 @@ const unsafeLoadAndStartRecorder = ({
       typedWindow.METICULOUS_RECORDER_MIDDLEWARE_V1 = middleware;
     }
 
+    if (disableErrorReporting != null) {
+      typedWindow.METICULOUS_DISABLE_ERROR_REPORTING = disableErrorReporting;
+    }
+
+    if (disableTrackerId != null) {
+      typedWindow.METICULOUS_DISABLE_TRACKER_ID = disableTrackerId;
+    }
+
     script.onload = function () {
       if (abandoned) {
         console.debug(
-          "Meticulous snippet abandoned due to max blocking time reached."
+          "Meticulous snippet abandoned due to max blocking time reached.",
         );
         // At this point the promise has already resolved.
         return;
@@ -144,7 +171,7 @@ const unsafeLoadAndStartRecorder = ({
             ?.stopRecording;
           if (!stopRecording) {
             throw new Error(
-              "Recorder not initialised: window.__meticulous.stopRecording is not defined."
+              "Recorder not initialised: window.__meticulous.stopRecording is not defined.",
             );
           }
           await stopRecording();
