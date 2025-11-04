@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/downloading-helpers",
-  "version": "2.244.5",
+  "version": "2.245.0",
   "description": "Helper utilities for downloading files & scripts required to execute replays",
   "license": "ISC",
   "main": "dist/index.js",
@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "@alwaysmeticulous/api": "^2.242.6",
-    "@alwaysmeticulous/client": "^2.244.5",
-    "@alwaysmeticulous/common": "^2.244.5",
+    "@alwaysmeticulous/client": "^2.245.0",
+    "@alwaysmeticulous/common": "^2.245.0",
     "axios": "^1.7.9",
     "axios-retry": "^4.5.0",
     "extract-zip": "^2.0.1",
