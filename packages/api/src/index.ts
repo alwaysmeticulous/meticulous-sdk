@@ -70,6 +70,7 @@ export {
   WebSocketConnectionErrorEvent,
   WebSocketConnectionClosedEvent,
 } from "./sdk-bundle-api/sdk-to-bundle/websocket-data";
+export * from "./sdk-bundle-api/sdk-to-bundle/event-source-data";
 export { Replay } from "./replay/replay.types";
 export {
   ScreenshotAssertionsOptions,

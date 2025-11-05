@@ -1,4 +1,5 @@
 import { ReplayableEvent } from "../bidirectional/replayable-event";
+import { EventSourceConnectionData } from "./event-source-data";
 import { HarLog } from "./har-log";
 import { WebSocketConnectionData } from "./websocket-data";
 
@@ -46,6 +47,11 @@ export interface SessionData {
    * Only present on recordings since ~March 2024
    */
   webSocketData?: WebSocketConnectionData[];
+
+  /**
+   * Only present on recordings since ~Oct 2025
+   */
+  eventSourceData?: EventSourceConnectionData[];
 
   cookies: Cookie[];
   urlHistory: UrlHistoryEvent[];
