@@ -8,6 +8,7 @@ export interface GetRepoUrlOptions {
 
 export interface RepoUrlResponse {
   repoUrl: string;
+  caCertificate?: string;
 }
 
 export const getProject: (
