@@ -1,26 +1,13 @@
 import {
   Project,
-  S3Location,
   TestCase,
   TestCaseResult,
   CompanionAssetsInfo,
   TestRunStatus,
+  TestRunDataLocations,
 } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
 import { MeticulousClient } from "../types/client.types";
-export interface TestRunDataLocations {
-  coverage: S3Location;
-  coverageStats: S3Location;
-  coveragePr: S3Location;
-  coverageStatsPr: S3Location;
-  coverageReplaysByFile?: S3Location;
-  coverageReplaysByFileUnmapped?: S3Location;
-  coverageScreenshotReplaysByFile?: S3Location;
-  coverageScreenshotReplaysByFileUnmapped?: S3Location;
-  coverageByReplayPr?: S3Location;
-  diversityByReplay?: S3Location;
-  relevantReplayContexts: S3Location;
-}
 
 export interface TestRun {
   id: string;
