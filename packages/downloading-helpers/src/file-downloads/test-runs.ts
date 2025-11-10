@@ -1,10 +1,7 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import {
-  getTestRunData,
-  MeticulousClient,
-  TestRunDataLocations,
-} from "@alwaysmeticulous/client";
+import { TestRunDataLocations } from "@alwaysmeticulous/api";
+import { getTestRunData, MeticulousClient } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   initLogger,

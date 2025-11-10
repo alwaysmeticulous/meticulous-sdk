@@ -1,3 +1,4 @@
+import { S3Location } from "../s3.types";
 import { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screenshotting-options";
 
 /**
@@ -84,4 +85,18 @@ export interface TestCaseResult extends TestCase {
    * a different screenshot to the original screenshot taken on head.
    */
   result: TestCaseResultStatus;
+}
+
+export interface TestRunDataLocations {
+  coverage: S3Location;
+  coverageStats: S3Location;
+  coveragePr: S3Location;
+  coverageStatsPr: S3Location;
+  coverageReplaysByFile?: S3Location;
+  coverageReplaysByFileUnmapped?: S3Location;
+  coverageScreenshotReplaysByFile?: S3Location;
+  coverageScreenshotReplaysByFileUnmapped?: S3Location;
+  coverageByReplayPr?: S3Location;
+  diversityByReplay?: S3Location;
+  relevantReplayContexts: S3Location;
 }
