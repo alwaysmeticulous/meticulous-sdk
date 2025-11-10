@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/record",
-  "version": "2.247.1",
+  "version": "2.248.0",
   "description": "The Meticulous toolkit to record user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -20,8 +20,8 @@
     "test": "jest"
   },
   "dependencies": {
-    "@alwaysmeticulous/api": "^2.246.0",
-    "@alwaysmeticulous/common": "^2.247.1",
+    "@alwaysmeticulous/api": "^2.248.0",
+    "@alwaysmeticulous/common": "^2.248.0",
     "chalk": "^4.1.2",
     "loglevel": "^1.8.0",
     "puppeteer-core": "24.14.0"
