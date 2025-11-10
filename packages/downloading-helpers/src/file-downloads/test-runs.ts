@@ -129,7 +129,7 @@ export const getOrFetchTestRunData = async (
           logger.info(`Downloading and extracting ${fileType}...`);
           await downloadAndExtractFile(
             location.signedUrl,
-            filePath,
+            join(testRunDir, filePath),
             testRunDir,
           );
           if (filePath.endsWith(".json")) {
