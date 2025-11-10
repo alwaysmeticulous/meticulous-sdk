@@ -54,6 +54,11 @@ export interface ReplayAndStoreResultsOptions {
   logLevel: LogLevelNumbers;
 
   /**
+   * The retry number for this replay. 0 for the initial attempt, 1 for the first retry, etc.
+   */
+  retryNumber?: number;
+
+  /**
    * Called when the user or runner closes the page or browser window
    */
   onClosePage?: () => void;
