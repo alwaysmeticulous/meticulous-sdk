@@ -1,4 +1,5 @@
 import { ReplayableEvent } from "../bidirectional/replayable-event";
+import { EventSourceConnectionData } from "./event-source-data";
 import { HarLog } from "./har-log";
 import { WebSocketConnectionData } from "./websocket-data";
 
@@ -47,6 +48,11 @@ export interface SessionData {
    */
   webSocketData?: WebSocketConnectionData[];
 
+  /**
+   * Only present on recordings since ~Oct 2025
+   */
+  eventSourceData?: EventSourceConnectionData[];
+
   cookies: Cookie[];
   urlHistory: UrlHistoryEvent[];
   rrwebEvents: unknown[];
@@ -70,6 +76,13 @@ export interface SessionData {
    * Only present on recordings since ~May 2025.
    */
   context?: SessionContext;
+
+  /**
+   * Optional array of captured expiring image data.
+   * Used to generate placeholders during replay.
+   * Only present on recordings since ~Oct 2025.
+   */
+  imageResources?: ExpiringImage[];
 }
 
 export interface WindowData {
@@ -307,3 +320,16 @@ export type SessionContext = {
   userId?: string;
   userEmail?: string;
 };
+
+/**
+ * Only present on recordings since ~Oct 2025.
+ */
+export interface ExpiringImage {
+  url: string;
+  initiatorType: "img" | "css";
+  name?: string;
+  width: number;
+  height: number;
+  compressionStrategy: string;
+  data: string;
+}

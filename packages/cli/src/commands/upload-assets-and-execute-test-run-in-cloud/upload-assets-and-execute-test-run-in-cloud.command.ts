@@ -1,6 +1,7 @@
 import { AssetUploadMetadata } from "@alwaysmeticulous/api";
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { uploadAssetsAndTriggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
+import * as Sentry from "@sentry/node";
 import { buildCommand } from "../../command-utils/command-builder";
 import { OPTIONS } from "../../command-utils/common-options";
 import {
@@ -34,6 +35,12 @@ const handler: (options: Options) => Promise<void> = async ({
   }
 
   logger.info(`Uploading build artifacts for commit ${commitSha}`);
+  Sentry.captureMessage("Received upload assets request", {
+    level: "debug",
+    extra: {
+      commitSha: commitSha
+    }
+  });
 
   try {
     await uploadAssetsAndTriggerTestRun({
@@ -116,7 +123,8 @@ export const uploadAssetsAndExecuteTestRunInCloudCommand = buildCommand(
       string: true,
       default: "[]",
       description:
-        "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array",
+        "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array."
+        + " Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule '{ source: \"**\", destination: \"/index.html\" }'.",
     },
     waitForBase: {
       demandOption: false,

@@ -28,6 +28,7 @@ export {
   TestRunStatus,
   TestCaseResult,
   TestCaseResultStatus,
+  TestRunDataLocations,
 } from "./replay/test-run.types";
 export { TestRunChunkStatus } from "./replay/test-run-chunk.types";
 export * from "./sdk-bundle-api/sdk-to-bundle/test-run-environment";
@@ -56,6 +57,7 @@ export {
   CustomData,
   CustomUserEvent,
   SessionContext,
+  ExpiringImage,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export {
   SequenceNumber,
@@ -69,6 +71,7 @@ export {
   WebSocketConnectionErrorEvent,
   WebSocketConnectionClosedEvent,
 } from "./sdk-bundle-api/sdk-to-bundle/websocket-data";
+export * from "./sdk-bundle-api/sdk-to-bundle/event-source-data";
 export { Replay } from "./replay/replay.types";
 export {
   ScreenshotAssertionsOptions,

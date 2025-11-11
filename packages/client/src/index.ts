@@ -1,6 +1,9 @@
 export * from "./api/github-cloud-replay.api";
 export { getProject, getRepoUrl } from "./api/project.api";
-export type { TestRunDataLocations } from "./api/test-run.api";
+/**
+ * @deprecated Use TestRunDataLocations from `@alwaysmeticulous/api` instead.
+ */
+export { TestRunDataLocations } from "@alwaysmeticulous/api";
 export {
   ReplayV3UploadLocations,
   getReplay,

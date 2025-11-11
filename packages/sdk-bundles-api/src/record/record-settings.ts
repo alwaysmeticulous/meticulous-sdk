@@ -11,6 +11,8 @@ export interface MeticulousWindowConfig {
   METICULOUS_IS_PRODUCTION_ENVIRONMENT?: boolean;
   METICULOUS_NETWORK_RESPONSE_SANITIZERS?: NetworkResponseSanitizer[];
   METICULOUS_RECORDER_MIDDLEWARE_V1: RecorderMiddleware[];
+  METICULOUS_DISABLE_ERROR_REPORTING?: boolean;
+  METICULOUS_DISABLE_TRACKER_ID?: boolean;
 }
 
 /**

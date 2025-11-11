@@ -15,6 +15,7 @@ import {
 } from "@alwaysmeticulous/client";
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
 import { initLogger } from "@alwaysmeticulous/common";
+import * as Sentry from "@sentry/node";
 import archiver from "archiver";
 
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
@@ -130,21 +131,30 @@ export const uploadAssets = async ({
       result = await triggerRunOnDeployment(completeAssetUploadArgs);
       testRun = result?.testRun ?? null;
       baseNotFound = result?.baseNotFound;
-
-      if (baseNotFound) {
-        logger.info(`Base test run not found, proceeding without it.`);
-        testRun =
-          (
-            await triggerRunOnDeployment({
-              ...completeAssetUploadArgs,
-              mustHaveBase: false,
-            })
-          ).testRun ?? null;
-      }
-
-      message = result?.message;
-      logger.info(`Deployment assets ${uploadId} marked as uploaded`);
     }
+
+    if (baseNotFound) {
+      logger.info(`Base test run not found, proceeding without it.`);
+      testRun =
+        (
+          await triggerRunOnDeployment({
+            ...completeAssetUploadArgs,
+            mustHaveBase: false,
+          })
+        ).testRun ?? null;
+    }
+
+    Sentry.captureMessage("Deployment assets marked as uploaded", {
+      level: "debug",
+      extra: {
+        uploadId: uploadId,
+        commitSha: commitSha,
+        testRunId: testRun?.id,
+        baseNotFound: baseNotFound
+      } 
+    });
+    message = result?.message;
+    logger.info(`Deployment assets ${uploadId} marked as uploaded`);
 
     return {
       uploadId,

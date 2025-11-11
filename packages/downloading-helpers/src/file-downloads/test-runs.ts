@@ -1,10 +1,7 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import {
-  getTestRunData,
-  MeticulousClient,
-  TestRunDataLocations,
-} from "@alwaysmeticulous/client";
+import { TestRunDataLocations } from "@alwaysmeticulous/api";
+import { getTestRunData, MeticulousClient } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   initLogger,
@@ -129,7 +126,7 @@ export const getOrFetchTestRunData = async (
           logger.info(`Downloading and extracting ${fileType}...`);
           await downloadAndExtractFile(
             location.signedUrl,
-            filePath,
+            join(testRunDir, filePath),
             testRunDir,
           );
           if (filePath.endsWith(".json")) {

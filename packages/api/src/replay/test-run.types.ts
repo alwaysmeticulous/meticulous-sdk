@@ -1,3 +1,4 @@
+import { S3Location } from "../s3.types";
 import { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screenshotting-options";
 
 /**
@@ -48,6 +49,8 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
  *
  * `Running` = a worker is actively running the test run.
  *
+ * `PostProcessing` = the replays have completed and the test run is being post-processed. This is only used for session selection runs.
+ *
  * `Failure` = completed, and at least one replay had notable differences - a diff (see has-notable-differences.ts in the main repo)
  *
  * `Success` = completed, and no replays had notable differences (i.e. just no differences, flakes, missing heads, missing bases or different sizes)
@@ -58,6 +61,7 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
 export type TestRunStatus =
   | "Scheduled"
   | "Running"
+  | "PostProcessing"
   | "Success"
   | "Failure"
   | "ExecutionError";
@@ -65,9 +69,10 @@ export type TestRunStatus =
 /**
  * Execution of a chunk of a test run chunk.
  *
- * The values and their meanings are the same as for {@link TestRunStatus}.
+ * The values and their meanings are the same as for {@link TestRunStatus}, except
+ * it's not possible for a test run chunk to be in the `PostProcessing` status.
  */
-export type TestRunChunkStatus = TestRunStatus;
+export type TestRunChunkStatus = Omit<TestRunStatus, "PostProcessing">;
 
 export type TestCaseResultStatus = "pass" | "fail" | "flake";
 
@@ -82,4 +87,18 @@ export interface TestCaseResult extends TestCase {
    * Otherwise a test case is marked as a pass: all screenshots had no differences and no flakes.
    */
   result: TestCaseResultStatus;
+}
+
+export interface TestRunDataLocations {
+  coverage: S3Location;
+  coverageStats: S3Location;
+  coveragePr: S3Location;
+  coverageStatsPr: S3Location;
+  coverageReplaysByFile?: S3Location;
+  coverageReplaysByFileUnmapped?: S3Location;
+  coverageScreenshotReplaysByFile?: S3Location;
+  coverageScreenshotReplaysByFileUnmapped?: S3Location;
+  coverageByReplayPr?: S3Location;
+  diversityByReplay?: S3Location;
+  relevantReplayContexts: S3Location;
 }
