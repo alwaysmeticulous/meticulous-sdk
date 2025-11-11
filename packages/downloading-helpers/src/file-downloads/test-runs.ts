@@ -48,6 +48,7 @@ export const getOrFetchTestRunData = async (
   client: MeticulousClient,
   testRunId: string,
   downloadScope: TestRunDownloadScope = "everything",
+  humanReadable: boolean = true,
 ): Promise<{ fileName: string; data: TestRunDataLocations }> => {
   const logger = initLogger();
 
@@ -121,18 +122,19 @@ export const getOrFetchTestRunData = async (
         if (typeof url !== "string" || typeof filePath !== "string") {
           return null;
         }
+        const targetFilePath = join(testRunDir, filePath);
 
         return async () => {
           logger.info(`Downloading and extracting ${fileType}...`);
           await downloadAndExtractFile(
             location.signedUrl,
-            join(testRunDir, filePath),
+            targetFilePath,
             testRunDir,
           );
-          if (filePath.endsWith(".json")) {
-            const fileContents = await readFile(filePath, "utf-8");
+          if (humanReadable && targetFilePath.endsWith(".json")) {
+            const fileContents = await readFile(targetFilePath, "utf-8");
             const json = JSON.parse(fileContents);
-            await writeFile(filePath, JSON.stringify(json, null, 2), "utf-8");
+            await writeFile(targetFilePath, JSON.stringify(json, null, 2), "utf-8");
           }
         };
       })
