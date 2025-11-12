@@ -44,21 +44,6 @@ export const redactCookies = (
       };
     },
 
-    transformNetworkResponse: (response) => {
-      return {
-        ...response,
-        headers: response.headers.map((header) => {
-          if (header.name.toLowerCase() === "set-cookie") {
-            return {
-              ...header,
-              value: redactCookieHeaderValue(header.value),
-            };
-          }
-          return header;
-        }),
-      };
-    },
-
     // We're only transforming headers so don't need to apply the transformation at replay time
     applyRequestTransformationAtReplayTime: false,
   };
