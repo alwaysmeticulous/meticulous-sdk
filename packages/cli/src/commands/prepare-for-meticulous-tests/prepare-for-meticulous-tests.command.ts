@@ -83,14 +83,15 @@ export const prepareForMeticulousTests = async ({
           headCommit,
         },
       });
+      logger.log("✅ Preparation for Meticulous tests completed successfully");
     } catch (error) {
       logger.error(
         `Failed to execute trigger script \`${triggerScript} ${baseCommitSha}\`: ${error}`,
       );
-      throw error;
+      logger.log(
+        "❌ Preparation for Meticulous tests failed, will continue without triggering a base",
+      );
     }
-
-    logger.log("✅ Preparation for Meticulous tests completed successfully");
   } catch (error) {
     if (isOutOfDateClientError(error)) {
       throw new OutOfDateCLIError();
