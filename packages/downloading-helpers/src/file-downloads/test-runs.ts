@@ -22,6 +22,7 @@ export const DOWNLOAD_SCOPES = [
   "everything",
   "coverage-by-replay-pr-only",
   "coverage-only",
+  "coverage-pr-only",
 ] as const;
 
 export type TestRunDownloadScope = (typeof DOWNLOAD_SCOPES)[number];
@@ -33,6 +34,7 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<
   everything: /.*/,
   "coverage-by-replay-pr-only": /^coverageByReplayPr/,
   "coverage-only": /^coverage$/,
+  "coverage-pr-only": /^coveragePr/
 };
 
 const shouldDownloadFile = (
