@@ -46,7 +46,8 @@ export interface ExecuteRemoteTestRunOptions {
   enableDnsCache?: boolean;
   http2Connections?: number | undefined;
   companionAssets?: {
-    folder: string;
+    folder?: string | undefined;
+    zip?: string | undefined;
     regex: string;
   };
 

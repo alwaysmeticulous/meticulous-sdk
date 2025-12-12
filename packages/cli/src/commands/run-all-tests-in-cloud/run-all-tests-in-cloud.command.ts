@@ -39,6 +39,7 @@ interface Options {
   enableDnsCache: boolean;
   http2Connections?: number | undefined;
   companionAssetsFolder?: string | undefined;
+  companionAssetsZip?: string | undefined;
   companionAssetsRegex?: string | undefined;
   hadPreparedForTests: boolean;
   triggerScript?: string | undefined;
@@ -68,6 +69,7 @@ const handler: (options: Options) => Promise<void> = async ({
   enableDnsCache,
   http2Connections,
   companionAssetsFolder,
+  companionAssetsZip,
   companionAssetsRegex,
   hadPreparedForTests,
   triggerScript,
@@ -77,9 +79,17 @@ const handler: (options: Options) => Promise<void> = async ({
   const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
 
-  if (!!companionAssetsFolder !== !!companionAssetsRegex) {
+  if (!!companionAssetsFolder && !!companionAssetsZip) {
     logger.error(
-      "You must provide both --companionAssetsFolder and --companionAssetsRegex, or neither",
+      "You cannot provide both --companionAssetsFolder and --companionAssetsZip. Please provide only one.",
+    );
+    process.exit(1);
+  }
+
+  const hasCompanionAssets = !!companionAssetsFolder || !!companionAssetsZip;
+  if (hasCompanionAssets !== !!companionAssetsRegex) {
+    logger.error(
+      "You must provide both --companionAssetsFolder/--companionAssetsZip and --companionAssetsRegex, or neither",
     );
     process.exit(1);
   }
@@ -253,10 +263,11 @@ const handler: (options: Options) => Promise<void> = async ({
       enableDnsCache,
       http2Connections,
       ...(postComment ? { postComment } : {}),
-      ...(companionAssetsFolder && companionAssetsRegex
+      ...(hasCompanionAssets && companionAssetsRegex
         ? {
             companionAssets: {
               folder: companionAssetsFolder,
+              zip: companionAssetsZip,
               regex: companionAssetsRegex,
             },
           }
@@ -409,6 +420,11 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
     companionAssetsFolder: {
       string: true,
       description: "The folder to serve the companion assets from.",
+      default: undefined,
+    },
+    companionAssetsZip: {
+      string: true,
+      description: "The zip file to serve the companion assets from.",
       default: undefined,
     },
     companionAssetsRegex: {

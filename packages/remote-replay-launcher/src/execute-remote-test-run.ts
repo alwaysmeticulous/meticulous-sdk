@@ -10,7 +10,7 @@ import {
 } from "@alwaysmeticulous/client";
 import { defer, initLogger } from "@alwaysmeticulous/common";
 import { localtunnel } from "@alwaysmeticulous/tunnels-client";
-import { uploadAssets } from "./asset-upload-utils";
+import { uploadAssets, uploadAssetsFromZip } from "./asset-upload-utils";
 import { ResourceTracker } from "./resource-tracker";
 import {
   ExecuteRemoteTestRunOptions,
@@ -72,17 +72,29 @@ export const executeRemoteTestRun = async ({
 
   let companionAssetsInfo: CompanionAssetsInfo | undefined = undefined;
   if (companionAssets) {
-    const { folder, regex } = companionAssets;
-    logger.info(`Uploading companion assets from ${folder}...`);
-    const { uploadId } = await uploadAssets({
+    const { folder, zip, regex } = companionAssets;
+    logger.info(`Uploading companion assets from ${folder ?? zip}`);
+    const opts = {
       apiToken,
-      appDirectory: folder,
       commitSha,
       waitForBase: false,
       rewrites: [],
       createDeployment: false,
       warnIfNoIndexHtml: false,
-    });
+    };
+    const result = folder
+      ? await uploadAssets({
+          ...opts,
+          appDirectory: folder,
+          warnIfNoIndexHtml: false,
+        })
+      : zip
+        ? await uploadAssetsFromZip({ ...opts, zipPath: zip })
+        : undefined;
+    if (!result) {
+      throw new Error("Expected either folder or zip to be provided!");
+    }
+    const { uploadId } = result;
     companionAssetsInfo = {
       deploymentUploadId: uploadId,
       regex,
