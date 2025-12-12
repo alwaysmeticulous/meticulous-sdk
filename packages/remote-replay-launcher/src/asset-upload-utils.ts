@@ -66,7 +66,7 @@ export const uploadAssets = async (
 
   const zipPath = join(tmpdir(), `assets-${Date.now()}.zip`);
   await createZipFromFolder(resolvedAppDirectory, zipPath);
-  return uploadAssetsFromZip({ ...opts, zipPath });
+  return uploadAssetsFromZip({ ...opts, zipPath, deleteAfterUpload: true });
 };
 
 export const uploadAssetsFromZip = async ({
@@ -76,8 +76,10 @@ export const uploadAssetsFromZip = async ({
   waitForBase = false,
   rewrites = [],
   createDeployment = true,
+  deleteAfterUpload = false,
 }: UploadAssetsOptions & {
   zipPath: string;
+  deleteAfterUpload?: boolean;
 }): Promise<UploadAssetsResult> => {
   const logger = initLogger();
 
@@ -173,10 +175,12 @@ export const uploadAssetsFromZip = async ({
       ...(message ? { message } : {}),
     };
   } finally {
-    try {
-      await unlink(zipPath);
-    } catch (error) {
-      logger.warn(`Failed to delete temporary file ${zipPath}: ${error}`);
+    if (deleteAfterUpload) {
+      try {
+        await unlink(zipPath);
+      } catch (error) {
+        logger.warn(`Failed to delete temporary file ${zipPath}: ${error}`);
+      }
     }
   }
 };
