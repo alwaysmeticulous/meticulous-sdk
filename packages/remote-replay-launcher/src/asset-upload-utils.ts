@@ -23,11 +23,9 @@ const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 export interface UploadAssetsOptions {
   apiToken: string | null | undefined;
-  appDirectory: string;
   commitSha: string;
   waitForBase?: boolean;
   rewrites?: AssetUploadMetadata["rewrites"];
-  warnIfNoIndexHtml?: boolean;
   createDeployment?: boolean;
 }
 
@@ -40,24 +38,14 @@ export interface UploadAssetsResult {
 /**
  * Uploads assets from a directory and returns the upload ID and client for further operations
  */
-export const uploadAssets = async ({
-  apiToken: apiToken_,
-  appDirectory,
-  commitSha,
-  waitForBase = false,
-  rewrites = [],
-  warnIfNoIndexHtml = false,
-  createDeployment = true,
-}: UploadAssetsOptions): Promise<UploadAssetsResult> => {
+export const uploadAssets = async (
+  opts: UploadAssetsOptions & {
+    appDirectory: string;
+    warnIfNoIndexHtml?: boolean;
+  },
+): Promise<UploadAssetsResult> => {
   const logger = initLogger();
-
-  const apiToken = getApiToken(apiToken_);
-  if (!apiToken) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
-  }
+  const { appDirectory, warnIfNoIndexHtml } = opts;
 
   const resolvedAppDirectory = resolve(appDirectory);
   if (!existsSync(resolvedAppDirectory)) {
@@ -76,10 +64,35 @@ export const uploadAssets = async ({
     }
   }
 
-  const client = createClient({ apiToken });
-
   const zipPath = join(tmpdir(), `assets-${Date.now()}.zip`);
   await createZipFromFolder(resolvedAppDirectory, zipPath);
+  return uploadAssetsFromZip({ ...opts, zipPath, deleteAfterUpload: true });
+};
+
+export const uploadAssetsFromZip = async ({
+  apiToken: apiToken_,
+  zipPath,
+  commitSha,
+  waitForBase = false,
+  rewrites = [],
+  createDeployment = true,
+  deleteAfterUpload = false,
+}: UploadAssetsOptions & {
+  zipPath: string;
+  deleteAfterUpload?: boolean;
+}): Promise<UploadAssetsResult> => {
+  const logger = initLogger();
+
+  const apiToken = getApiToken(apiToken_);
+  if (!apiToken) {
+    logger.error(
+      "You must provide an API token by using the --apiToken parameter",
+    );
+    process.exit(1);
+  }
+
+  const client = createClient({ apiToken });
+
   try {
     const fileStats = await stat(zipPath);
     const fileSize = fileStats.size;
@@ -150,8 +163,8 @@ export const uploadAssets = async ({
         uploadId: uploadId,
         commitSha: commitSha,
         testRunId: testRun?.id,
-        baseNotFound: baseNotFound
-      } 
+        baseNotFound: baseNotFound,
+      },
     });
     message = result?.message;
     logger.info(`Deployment assets ${uploadId} marked as uploaded`);
@@ -162,10 +175,12 @@ export const uploadAssets = async ({
       ...(message ? { message } : {}),
     };
   } finally {
-    try {
-      await unlink(zipPath);
-    } catch (error) {
-      logger.warn(`Failed to delete temporary file ${zipPath}: ${error}`);
+    if (deleteAfterUpload) {
+      try {
+        await unlink(zipPath);
+      } catch (error) {
+        logger.warn(`Failed to delete temporary file ${zipPath}: ${error}`);
+      }
     }
   }
 };
