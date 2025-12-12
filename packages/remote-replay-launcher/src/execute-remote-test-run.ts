@@ -10,7 +10,7 @@ import {
 } from "@alwaysmeticulous/client";
 import { defer, initLogger } from "@alwaysmeticulous/common";
 import { localtunnel } from "@alwaysmeticulous/tunnels-client";
-import { uploadAssets } from "./asset-upload-utils";
+import { uploadAssetsFromDirectory } from "./asset-upload-utils";
 import { ResourceTracker } from "./resource-tracker";
 import {
   ExecuteRemoteTestRunOptions,
@@ -74,7 +74,7 @@ export const executeRemoteTestRun = async ({
   if (companionAssets) {
     const { folder, regex } = companionAssets;
     logger.info(`Uploading companion assets from ${folder}...`);
-    const { uploadId } = await uploadAssets({
+    const { uploadId } = await uploadAssetsFromDirectory({
       apiToken,
       appDirectory: folder,
       commitSha,

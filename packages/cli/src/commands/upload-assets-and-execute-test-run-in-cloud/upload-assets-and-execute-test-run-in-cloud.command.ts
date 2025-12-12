@@ -12,7 +12,8 @@ import {
 interface Options {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
-  appDirectory: string;
+  appDirectory?: string | undefined;
+  appZip?: string | undefined;
   rewrites?: string;
   waitForBase: boolean;
 }
@@ -21,11 +22,19 @@ const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   commitSha: commitSha_,
   appDirectory,
+  appZip,
   rewrites,
   waitForBase,
 }) => {
   const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
+
+  if (!appDirectory && !appZip) {
+    logger.error(
+      "No app directory or app zip provided, you must provide one with --appDirectory or --appZip",
+    );
+    process.exit(1);
+  }
 
   if (!commitSha) {
     logger.error(
@@ -38,8 +47,8 @@ const handler: (options: Options) => Promise<void> = async ({
   Sentry.captureMessage("Received upload assets request", {
     level: "debug",
     extra: {
-      commitSha: commitSha
-    }
+      commitSha: commitSha,
+    },
   });
 
   try {
@@ -47,6 +56,7 @@ const handler: (options: Options) => Promise<void> = async ({
       apiToken,
       commitSha,
       appDirectory,
+      appZip,
       rewrites: parseRewrites(rewrites),
       waitForBase,
     });
@@ -115,16 +125,23 @@ export const uploadAssetsAndExecuteTestRunInCloudCommand = buildCommand(
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
     appDirectory: {
-      demandOption: true,
+      demandOption: false,
       string: true,
-      description: "The directory containing the application's static assets",
+      description:
+        "The directory containing the application's static assets. Either this or --appZip must be provided.",
+    },
+    appZip: {
+      demandOption: false,
+      string: true,
+      description:
+        "The zip file containing the application's static assets. Either this or --appDirectory must be provided.",
     },
     rewrites: {
       string: true,
       default: "[]",
       description:
-        "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array."
-        + " Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule '{ source: \"**\", destination: \"/index.html\" }'.",
+        "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array." +
+        ' Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule \'{ source: "**", destination: "/index.html" }\'.',
     },
     waitForBase: {
       demandOption: false,

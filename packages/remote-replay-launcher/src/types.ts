@@ -62,7 +62,8 @@ export interface ExecuteRemoteTestRunResult {
 
 export interface UploadAssetsAndTriggerTestRunOptions {
   apiToken: string | null | undefined;
-  appDirectory: string;
+  appDirectory?: string | undefined;
+  appZip?: string | undefined;
   commitSha: string;
   /**
    * If true, before triggering a test run, the launcher will wait for a base test run to be created. If that is not found,

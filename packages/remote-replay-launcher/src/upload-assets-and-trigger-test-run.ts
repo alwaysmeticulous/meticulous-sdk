@@ -1,5 +1,5 @@
 import { initLogger } from "@alwaysmeticulous/common";
-import { uploadAssets } from "./asset-upload-utils";
+import { uploadAssets, uploadAssetsFromZip } from "./asset-upload-utils";
 import {
   UploadAssetsAndTriggerTestRunOptions,
   ExecuteRemoteTestRunResult,
@@ -8,13 +8,14 @@ import {
 export const uploadAssetsAndTriggerTestRun = async ({
   apiToken,
   appDirectory,
+  appZip,
   commitSha,
   rewrites,
   waitForBase,
 }: UploadAssetsAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = initLogger();
 
-  const result = await uploadAssets({
+  const opts = {
     apiToken,
     appDirectory,
     warnIfNoIndexHtml: !rewrites || rewrites.length === 0,
@@ -22,7 +23,17 @@ export const uploadAssetsAndTriggerTestRun = async ({
     waitForBase,
     rewrites: rewrites ?? [],
     createDeployment: true,
-  });
+  };
+
+  const result = appDirectory
+    ? await uploadAssets({ ...opts, appDirectory })
+    : appZip
+      ? await uploadAssetsFromZip({ ...opts, zipPath: appZip })
+      : undefined;
+
+  if (!result) {
+    throw new Error("Expected either appDirectory or appZip to be provided!");
+  }
 
   if (result.testRun) {
     const organizationName = encodeURIComponent(
