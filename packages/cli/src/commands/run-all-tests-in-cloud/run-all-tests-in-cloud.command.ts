@@ -79,9 +79,15 @@ const handler: (options: Options) => Promise<void> = async ({
   const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
 
-  if (
-    (!!companionAssetsFolder || !!companionAssetsZip) !== !!companionAssetsRegex
-  ) {
+  if (!!companionAssetsFolder && !!companionAssetsZip) {
+    logger.error(
+      "You cannot provide both --companionAssetsFolder and --companionAssetsZip. Please provide only one.",
+    );
+    process.exit(1);
+  }
+
+  const hasCompanionAssets = !!companionAssetsFolder || !!companionAssetsZip;
+  if (hasCompanionAssets !== !!companionAssetsRegex) {
     logger.error(
       "You must provide both --companionAssetsFolder/--companionAssetsZip and --companionAssetsRegex, or neither",
     );
@@ -257,7 +263,7 @@ const handler: (options: Options) => Promise<void> = async ({
       enableDnsCache,
       http2Connections,
       ...(postComment ? { postComment } : {}),
-      ...((companionAssetsFolder || companionAssetsZip) && companionAssetsRegex
+      ...(hasCompanionAssets && companionAssetsRegex
         ? {
             companionAssets: {
               folder: companionAssetsFolder,
