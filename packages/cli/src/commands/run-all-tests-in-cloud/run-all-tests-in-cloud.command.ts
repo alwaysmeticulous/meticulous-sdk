@@ -8,7 +8,6 @@ import {
   executeRemoteTestRun,
   TunnelData,
 } from "@alwaysmeticulous/remote-replay-launcher";
-import * as Sentry from "@sentry/node";
 import chalk from "chalk";
 import cliProgress from "cli-progress";
 import ora from "ora";
