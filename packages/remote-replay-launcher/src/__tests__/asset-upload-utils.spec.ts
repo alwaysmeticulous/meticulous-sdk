@@ -38,7 +38,7 @@ describe("createZipFromFolder", () => {
       createZipFromFolder(tempDir, join(outputDir, `test-${i}.zip`))
     );
 
-    await expect(Promise.all(promises)).resolves.not.toThrow();
+    await Promise.all(promises);
 
     // Verify all zips were created
     for (let i = 0; i < 100; i++) {
