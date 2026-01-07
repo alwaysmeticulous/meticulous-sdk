@@ -1,8 +1,6 @@
 import { SessionRelevance } from "@alwaysmeticulous/api";
 import {
-  createClient,
   getApiToken,
-  getGitHubCloudReplayBaseTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
 } from "@alwaysmeticulous/client";
 import { defer, getCommitSha, initLogger } from "@alwaysmeticulous/common";
@@ -13,7 +11,6 @@ import {
 import * as Sentry from "@sentry/node";
 import chalk from "chalk";
 import cliProgress from "cli-progress";
-import log from "loglevel";
 import ora from "ora";
 import { buildCommand } from "../../command-utils/command-builder";
 import { OPTIONS } from "../../command-utils/common-options";
@@ -22,10 +19,8 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
+import { waitForBase } from "../../utils/wait-for-base.utils";
 import { prepareForMeticulousTests } from "../prepare-for-meticulous-tests/prepare-for-meticulous-tests.command";
-
-const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
-const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 interface Options {
   apiToken?: string | undefined;
@@ -124,7 +119,12 @@ const handler: (options: Options) => Promise<void> = async ({
   if (hadPreparedForTests || triggerScript) {
     // If we prepared to run all tests in cloud, then we need to wait for base to be available.
     // The preprocessing step starts to compute base, but it might take some time to have it available.
-    await waitForBase({ apiToken: apiToken_, commitSha, logger });
+    await waitForBase({
+      apiToken: apiToken_,
+      commitSha,
+      logger,
+      commandName: "run-all-tests-in-cloud",
+    });
   }
 
   logger.info(`Running all tests in cloud for commit ${commitSha}`);
@@ -281,90 +281,6 @@ const handler: (options: Options) => Promise<void> = async ({
     }
   } finally {
     endProgressBar();
-  }
-};
-
-/**
- * Waits for base run to be available, polling until found or timeout.
- * Timeout is set to 30 minutes, and after that we just proceed without a base.
- * Projects that are not hosted on Github are not currently supported.
- */
-const waitForBase = async ({
-  apiToken,
-  commitSha,
-  logger,
-}: {
-  apiToken: string | null;
-  commitSha: string;
-  logger: log.Logger;
-}): Promise<void> => {
-  const client = createClient({ apiToken });
-  const startTime = Date.now();
-
-  // Non-Github-hosted projects are currently not supported
-  let cloudReplayBaseTestRun = await getGitHubCloudReplayBaseTestRun({
-    client,
-    headCommitSha: commitSha,
-  });
-
-  let testRun = cloudReplayBaseTestRun.baseTestRun;
-  let lastTimeElapsed = 0;
-
-  while (!testRun) {
-    const timeElapsed = Date.now() - startTime;
-    if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
-      const timeoutError = new Error(
-        `Timed out after ${POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000} seconds waiting for base test run`,
-      );
-      logger.error(timeoutError.message);
-      Sentry.captureException(timeoutError, {
-        tags: {
-          command: "run-all-tests-in-cloud",
-          failureType: "base-test-run-timeout",
-        },
-        extra: {
-          commitSha,
-          timeoutMs: POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS,
-          baseCommitSha: cloudReplayBaseTestRun.baseCommitSha,
-        },
-      });
-      // We proceed without base
-      break;
-    }
-    if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30000) {
-      // Log at most once every 30 seconds
-      logger.info(
-        `Waiting for base test run to be created. Time elapsed: ${timeElapsed}ms`,
-      );
-      lastTimeElapsed = timeElapsed;
-    }
-    await new Promise((resolve) =>
-      setTimeout(resolve, POLL_FOR_BASE_TEST_RUN_INTERVAL_MS),
-    );
-
-    cloudReplayBaseTestRun = await getGitHubCloudReplayBaseTestRun({
-      client,
-      headCommitSha: commitSha,
-    });
-
-    testRun = cloudReplayBaseTestRun.baseTestRun;
-    if (testRun) {
-      const waitTimeMs = Date.now() - startTime;
-      Sentry.captureEvent({
-        message: "Base test run found after waiting for it",
-        level: "info",
-        tags: {
-          command: "run-all-tests-in-cloud",
-          eventType: "base-test-run-found",
-        },
-        extra: {
-          commitSha,
-          baseCommitSha: cloudReplayBaseTestRun.baseCommitSha,
-          waitTimeMs,
-          waitTimeSec: Math.round(waitTimeMs / 1000),
-        },
-      });
-    }
   }
 };
 

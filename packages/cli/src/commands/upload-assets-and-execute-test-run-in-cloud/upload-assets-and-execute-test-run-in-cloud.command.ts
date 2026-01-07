@@ -8,6 +8,8 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
+import { waitForBase as waitForBaseTestRun } from "../../utils/wait-for-base.utils";
+import { prepareForMeticulousTests } from "../prepare-for-meticulous-tests/prepare-for-meticulous-tests.command";
 
 interface Options {
   apiToken?: string | undefined;
@@ -16,6 +18,8 @@ interface Options {
   appZip?: string | undefined;
   rewrites?: string;
   waitForBase: boolean;
+  hadPreparedForTests: boolean;
+  triggerScript?: string | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -25,6 +29,8 @@ const handler: (options: Options) => Promise<void> = async ({
   appZip,
   rewrites,
   waitForBase,
+  hadPreparedForTests,
+  triggerScript,
 }) => {
   const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
@@ -41,6 +47,29 @@ const handler: (options: Options) => Promise<void> = async ({
       "No commit sha found, you must be in a git repository or provide one with --commitSha",
     );
     process.exit(1);
+  }
+
+  if (!hadPreparedForTests && triggerScript) {
+    // If we have a script to trigger a run, this signals that the user is not sure whether the base test run is available.
+    // In this case, we trigger the preparation for meticulous tests.
+    // Do this only if we did not prepare for the tests.
+    await prepareForMeticulousTests({
+      apiToken: apiToken!,
+      headCommit: commitSha,
+      triggerScript,
+      logger,
+    });
+  }
+
+  if (hadPreparedForTests || triggerScript) {
+    // If we prepared to run all tests in cloud, then we need to wait for base to be available.
+    // The preprocessing step starts to compute base, but it might take some time to have it available.
+    await waitForBaseTestRun({
+      apiToken,
+      commitSha,
+      logger,
+      commandName: "upload-assets-and-execute-test-run-in-cloud",
+    });
   }
 
   logger.info(`Uploading build artifacts for commit ${commitSha}`);
@@ -149,6 +178,18 @@ export const uploadAssetsAndExecuteTestRunInCloudCommand = buildCommand(
       default: true,
       description:
         "If true, the launcher will try to wait for a base test run to be created before triggering a test run. If that is not found, it will trigger a test run without waiting for a base test run.",
+    },
+    hadPreparedForTests: {
+      boolean: true,
+      description:
+        "Enable in case you called `prepare-for-meticulous-tests` before running this command.",
+      default: false,
+    },
+    triggerScript: {
+      string: true,
+      description:
+        "Path to script that triggers the generation of a Meticulous test run on a specific commit in case base test run is not available. The script will be called with the commit SHA as an argument.",
+      default: undefined,
     },
   } as const)
   .handler(handler);
