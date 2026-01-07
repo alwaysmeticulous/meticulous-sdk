@@ -1,4 +1,10 @@
-import { createWriteStream, createReadStream, existsSync, fsync } from "fs";
+import {
+  createWriteStream,
+  createReadStream,
+  existsSync,
+  fsync,
+  close,
+} from "fs";
 import { stat, unlink, lstat, readdir, realpath } from "fs/promises";
 import { IncomingMessage } from "http";
 import { request as httpsRequest } from "https";
@@ -245,11 +251,13 @@ const walkDirectoryAndAddToArchive = async (
   }
 };
 
-const createZipFromFolder = async (
+export const createZipFromFolder = async (
   folderPath: string,
   archivePath: string,
 ): Promise<void> => {
-  const fileStream = createWriteStream(archivePath);
+  // autoClose: false is required to prevent the file descriptor from being
+  // closed before we can fsync it
+  const fileStream = createWriteStream(archivePath, { autoClose: false });
   const archive = archiver("zip");
 
   await new Promise<void>((resolve, reject) => {
@@ -271,8 +279,15 @@ const createZipFromFolder = async (
             fsyncReject(new Error("File descriptor not found"));
           }
         });
-        resolve();
+        // Manually close the fd since autoClose is disabled
+        // Note: We use fs.close(fd) instead of fileStream.close() because
+        // WriteStream.close() doesn't invoke its callback when autoClose is false
+        close(fd!, (closeErr) => {
+          if (closeErr) reject(closeErr);
+          else resolve();
+        });
       } catch (fsyncError) {
+        if (fd !== null) close(fd, () => {});
         reject(fsyncError);
       }
     });
