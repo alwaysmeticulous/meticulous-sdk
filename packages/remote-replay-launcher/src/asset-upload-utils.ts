@@ -261,13 +261,29 @@ export const createZipFromFolder = async (
   const archive = archiver("zip");
 
   await new Promise<void>((resolve, reject) => {
-    archive.on("error", (err) => reject(err));
-
     let fd: number | null = null;
+    let rejected = false;
+
+    // Helper to close fd and reject, ensuring we only reject once
+    const closeAndReject = (err: Error) => {
+      if (rejected) return;
+      rejected = true;
+      if (fd !== null) {
+        close(fd, () => reject(err));
+      } else {
+        reject(err);
+      }
+    };
+
+    archive.on("error", (err) => closeAndReject(err));
+
+    fileStream.on("error", (err) => closeAndReject(err));
+
     fileStream.on("open", (descriptor) => {
       fd = descriptor;
     });
     fileStream.on("finish", async () => {
+      if (rejected) return;
       try {
         await new Promise<void>((fsyncResolve, fsyncReject) => {
           if (fd !== null) {
@@ -294,7 +310,7 @@ export const createZipFromFolder = async (
     archive.pipe(fileStream);
     walkDirectoryAndAddToArchive(folderPath, archive)
       .then(() => archive.finalize())
-      .catch(reject);
+      .catch(closeAndReject);
   });
 };
 
