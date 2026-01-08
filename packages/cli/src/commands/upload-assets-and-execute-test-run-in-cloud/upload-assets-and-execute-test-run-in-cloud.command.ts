@@ -1,4 +1,5 @@
 import { AssetUploadMetadata } from "@alwaysmeticulous/api";
+import { getApiToken } from "@alwaysmeticulous/client";
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { uploadAssetsAndTriggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
@@ -53,8 +54,16 @@ const handler: (options: Options) => Promise<void> = async ({
     // If we have a script to trigger a run, this signals that the user is not sure whether the base test run is available.
     // In this case, we trigger the preparation for meticulous tests.
     // Do this only if we did not prepare for the tests.
+    const apiToken_ = getApiToken(apiToken);
+    if (!apiToken_) {
+      logger.error(
+        "You must provide an API token by using the --apiToken parameter",
+      );
+      process.exit(1);
+    }
+
     await prepareForMeticulousTests({
-      apiToken: apiToken!,
+      apiToken: apiToken_,
       headCommit: commitSha,
       triggerScript,
       logger,
