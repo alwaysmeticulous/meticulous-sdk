@@ -1,4 +1,10 @@
-import { createWriteStream, createReadStream, existsSync, fsync } from "fs";
+import {
+  createWriteStream,
+  createReadStream,
+  existsSync,
+  fsync,
+  close,
+} from "fs";
 import { stat, unlink, lstat, readdir, realpath } from "fs/promises";
 import { IncomingMessage } from "http";
 import { request as httpsRequest } from "https";
@@ -245,21 +251,39 @@ const walkDirectoryAndAddToArchive = async (
   }
 };
 
-const createZipFromFolder = async (
+export const createZipFromFolder = async (
   folderPath: string,
   archivePath: string,
 ): Promise<void> => {
-  const fileStream = createWriteStream(archivePath);
+  // autoClose: false is required to prevent the file descriptor from being
+  // closed before we can fsync it
+  const fileStream = createWriteStream(archivePath, { autoClose: false });
   const archive = archiver("zip");
 
   await new Promise<void>((resolve, reject) => {
-    archive.on("error", (err) => reject(err));
-
     let fd: number | null = null;
+    let rejected = false;
+
+    // Helper to close fd and reject, ensuring we only reject once
+    const closeAndReject = (err: Error) => {
+      if (rejected) return;
+      rejected = true;
+      if (fd !== null) {
+        close(fd, () => reject(err));
+      } else {
+        reject(err);
+      }
+    };
+
+    archive.on("error", (err) => closeAndReject(err));
+
+    fileStream.on("error", (err) => closeAndReject(err));
+
     fileStream.on("open", (descriptor) => {
       fd = descriptor;
     });
     fileStream.on("finish", async () => {
+      if (rejected) return;
       try {
         await new Promise<void>((fsyncResolve, fsyncReject) => {
           if (fd !== null) {
@@ -271,15 +295,22 @@ const createZipFromFolder = async (
             fsyncReject(new Error("File descriptor not found"));
           }
         });
-        resolve();
+        // Manually close the fd since autoClose is disabled
+        // Note: We use fs.close(fd) instead of fileStream.close() because
+        // WriteStream.close() doesn't invoke its callback when autoClose is false
+        close(fd!, (closeErr) => {
+          if (closeErr) reject(closeErr);
+          else resolve();
+        });
       } catch (fsyncError) {
+        if (fd !== null) close(fd, () => {});
         reject(fsyncError);
       }
     });
     archive.pipe(fileStream);
     walkDirectoryAndAddToArchive(folderPath, archive)
       .then(() => archive.finalize())
-      .catch(reject);
+      .catch(closeAndReject);
   });
 };
 
