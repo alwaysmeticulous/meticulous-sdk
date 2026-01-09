@@ -27,8 +27,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 20
-          cache: yarn
+          cache: pnpm
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
 
       - name: Cache turborepo output
         uses: actions/cache@v4
@@ -36,19 +39,19 @@ jobs:
           path: |
             node_modules/.cache/turbo
             packages/*/.turbo
-          key: ${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile --non-interactive
+        run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: yarn build
+        run: pnpm build
 
       - name: Lint
-        run: yarn lint
+        run: pnpm lint
 
       - name: Publish packages
         if: github.repository == 'alwaysmeticulous/meticulous-sdk'
-        run: yarn run lerna publish from-package --yes --no-verify-access --loglevel verbose
+        run: pnpm run lerna publish from-package --yes --no-verify-access --loglevel verbose
         env:
           NPM_CONFIG_PROVENANCE: true

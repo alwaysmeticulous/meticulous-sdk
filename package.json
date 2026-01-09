@@ -12,11 +12,11 @@
     "lint:commit": "turbo run lint:commit",
     "lint:fix": "turbo run lint:fix --no-bail",
     "test": "turbo run test",
-    "cli": "yarn workspace @alwaysmeticulous/cli cli",
-    "cli:debug": "yarn workspace @alwaysmeticulous/cli cli:debug",
-    "cli:dev": "yarn workspace @alwaysmeticulous/cli cli:dev",
-    "cli:dev-staging": "yarn workspace @alwaysmeticulous/cli cli:dev-staging",
-    "cli:dev-localhost": "yarn workspace @alwaysmeticulous/cli cli:dev-localhost",
+    "cli": "pnpm --filter @alwaysmeticulous/cli cli",
+    "cli:debug": "pnpm --filter @alwaysmeticulous/cli cli:debug",
+    "cli:dev": "pnpm --filter @alwaysmeticulous/cli cli:dev",
+    "cli:dev-staging": "pnpm --filter @alwaysmeticulous/cli cli:dev-staging",
+    "cli:dev-localhost": "pnpm --filter @alwaysmeticulous/cli cli:dev-localhost",
     "publish": "lerna version",
     "depcheck": "turbo run depcheck"
   },
@@ -46,10 +46,14 @@
     "turbo": "^2.2.2",
     "typescript": "^4.9.4"
   },
-  "resolutions": {
-    "//": "https://nvd.nist.gov/vuln/detail/CVE-2022-46175",
-    "json5": "^2.2.2"
+  "pnpm": {
+    "overrideNotes": {
+      "json5": "https://nvd.nist.gov/vuln/detail/CVE-2022-46175"
+    },
+    "overrides": {
+      "json5": "^2.2.2"
+    }
   },
   "version": "0.0.0",
-  "packageManager": "yarn@1.22.22"
+  "packageManager": "pnpm@9.0.0"
 }

@@ -50,14 +50,14 @@ This monorepo contains the following packages. Each package has its own detailed
 
 ## Development
 
-This repository uses [Lerna](https://lerna.js.org/) and [Yarn workspaces](https://yarnpkg.com/features/workspaces) for monorepo management.
+This repository uses [Lerna](https://lerna.js.org/) and [pnpm workspaces](https://pnpm.io/workspaces) for monorepo management.
 
 ### Making a Release
 
 To publish a new release:
 
 ```bash
-git checkout main && git pull && yarn run publish
+git checkout main && git pull && pnpm run publish
 ```
 
 ## Support
