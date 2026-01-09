@@ -140,7 +140,7 @@ const handler: (options: Options) => Promise<void> = async ({
       // We want to still output progress even if not connected to a interactive tty since some CI runners
       // such as CircleCI will timeout the process early if it hasn't outputted anything for a while.
       // You can test this by running:
-      //  `yarn cli:dev run-all-tests-in-cloud --appUrl <your app URL> --commitSha <a valid commit SHA> 2>&1 | cat`
+      //  `pnpm cli:dev run-all-tests-in-cloud --appUrl <your app URL> --commitSha <a valid commit SHA> 2>&1 | cat`
       noTTYOutput: true,
       notTTYSchedule: 30000,
     },

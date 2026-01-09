@@ -23,7 +23,10 @@
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "^2.248.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.248.0"
+    "@alwaysmeticulous/sdk-bundles-api": "^2.248.0",
+    "@parcel/packager-ts": "^2.15.2",
+    "@parcel/transformer-typescript-types": "^2.15.2",
+    "parcel": "^2.15.2"
   },
   "author": {
     "name": "The Meticulous Team",

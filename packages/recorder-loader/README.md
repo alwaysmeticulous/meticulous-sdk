@@ -8,6 +8,8 @@ Utility package used to aid the injection of the Meticulous recorder snippet on 
 npm install @alwaysmeticulous/recorder-loader --save
 # or with yarn
 yarn add @alwaysmeticulous/recorder-loader
+# or with pnpm
+pnpm add @alwaysmeticulous/recorder-loader
 ```
 
 ## Usage
