@@ -22,8 +22,9 @@
     "test": "jest"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.248.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.248.0"
+    "@alwaysmeticulous/api": "workspace:*",
+    "@alwaysmeticulous/sdk-bundles-api": "workspace:*",
+    "parcel": "^2.15.2"
   },
   "author": {
     "name": "The Meticulous Team",

@@ -16,11 +16,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Use Node.js LTS
         uses: actions/setup-node@v6
         with:
           node-version: 20
-          cache: yarn
+          cache: pnpm
 
       - name: Cache turborepo output
         uses: actions/cache@v4
@@ -28,19 +31,19 @@ jobs:
           path: |
             node_modules/.cache/turbo
             packages/*/.turbo
-          key: ${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile --non-interactive
+        run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: yarn build
+        run: pnpm build
 
       - name: Lint
-        run: yarn lint
+        run: pnpm lint
 
       - name: Test
-        run: yarn test
+        run: pnpm test
 
       - name: Depcheck
-        run: yarn depcheck
+        run: pnpm depcheck
