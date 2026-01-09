@@ -23,15 +23,15 @@ jobs:
           # We need the full history for version calculation
           fetch-depth: 0
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Use Node.js LTS
         uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
           registry-url: 'https://registry.npmjs.org'
-
-      - name: Enable corepack
-        run: corepack enable
 
       - name: Cache turborepo output
         uses: actions/cache@v4
@@ -52,6 +52,6 @@ jobs:
 
       - name: Publish packages
         if: github.repository == 'alwaysmeticulous/meticulous-sdk'
-        run: pnpm run lerna publish from-package --yes --no-verify-access --loglevel verbose
+        run: pnpm exec lerna publish from-package --yes --no-verify-access --loglevel verbose
         env:
           NPM_CONFIG_PROVENANCE: true

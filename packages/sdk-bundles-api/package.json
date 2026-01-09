@@ -19,7 +19,7 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/api": "^2.248.0"
+    "@alwaysmeticulous/api": "workspace:*"
   },
   "author": {
     "name": "The Meticulous Team",

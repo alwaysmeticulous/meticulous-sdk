@@ -16,14 +16,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Use Node.js LTS
         uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
-
-      - name: Enable corepack
-        run: corepack enable
 
       - name: Cache turborepo output
         uses: actions/cache@v4

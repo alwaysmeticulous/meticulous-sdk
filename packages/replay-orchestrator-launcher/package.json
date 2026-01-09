@@ -19,9 +19,9 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.248.0",
-    "@alwaysmeticulous/downloading-helpers": "^2.248.5",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.248.0"
+    "@alwaysmeticulous/common": "workspace:*",
+    "@alwaysmeticulous/downloading-helpers": "workspace:*",
+    "@alwaysmeticulous/sdk-bundles-api": "workspace:*"
   },
   "author": {
     "name": "The Meticulous Team",

@@ -22,10 +22,8 @@
     "test": "jest"
   },
   "devDependencies": {
-    "@alwaysmeticulous/api": "^2.248.0",
-    "@alwaysmeticulous/sdk-bundles-api": "^2.248.0",
-    "@parcel/packager-ts": "^2.15.2",
-    "@parcel/transformer-typescript-types": "^2.15.2",
+    "@alwaysmeticulous/api": "workspace:*",
+    "@alwaysmeticulous/sdk-bundles-api": "workspace:*",
     "parcel": "^2.15.2"
   },
   "author": {

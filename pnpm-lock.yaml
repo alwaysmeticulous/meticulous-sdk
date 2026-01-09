@@ -14,6 +14,12 @@ importers:
       '@eslint/compat':
         specifier: ^1.2.4
         version: 1.4.1(eslint@9.39.2(jiti@1.21.7))
+      '@eslint/eslintrc':
+        specifier: ^3.3.3
+        version: 3.3.3
+      '@eslint/js':
+        specifier: ^9.39.2
+        version: 9.39.2
       '@parcel/packager-ts':
         specifier: ^2.15.2
         version: 2.16.3(@parcel/core@2.16.3(@swc/helpers@0.5.18))
@@ -89,38 +95,38 @@ importers:
   packages/cli:
     dependencies:
       '@alwaysmeticulous/api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../api
       '@alwaysmeticulous/client':
-        specifier: ^2.248.2
-        version: 2.248.2(encoding@0.1.13)
+        specifier: workspace:*
+        version: link:../client
       '@alwaysmeticulous/common':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../common
       '@alwaysmeticulous/downloading-helpers':
-        specifier: ^2.248.5
-        version: 2.248.5(encoding@0.1.13)
+        specifier: workspace:*
+        version: link:../downloading-helpers
       '@alwaysmeticulous/record':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../record
       '@alwaysmeticulous/remote-replay-launcher':
-        specifier: ^2.248.8
-        version: 2.248.8(encoding@0.1.13)
+        specifier: workspace:*
+        version: link:../remote-replay-launcher
       '@alwaysmeticulous/replay-debugger-ui':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../replay-debugger-ui
       '@alwaysmeticulous/replay-orchestrator-launcher':
-        specifier: ^2.248.5
-        version: 2.248.5(encoding@0.1.13)
+        specifier: workspace:*
+        version: link:../replay-orchestrator-launcher
       '@alwaysmeticulous/sdk-bundles-api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../sdk-bundles-api
       '@alwaysmeticulous/sentry':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../sentry
       '@alwaysmeticulous/tunnels-client':
-        specifier: ^2.248.0
-        version: 2.248.0(encoding@0.1.13)
+        specifier: workspace:*
+        version: link:../tunnel-client
       '@sentry/node':
         specifier: ^10.3.0
         version: 10.32.1
@@ -156,11 +162,11 @@ importers:
   packages/client:
     dependencies:
       '@alwaysmeticulous/api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../api
       '@alwaysmeticulous/common':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../common
       loglevel:
         specifier: ^1.8.0
         version: 1.9.2
@@ -170,6 +176,10 @@ importers:
       proxy-agent:
         specifier: ^6.4.0
         version: 6.5.0
+    devDependencies:
+      '@types/node-fetch':
+        specifier: ^2.6.13
+        version: 2.6.13
 
   packages/common:
     dependencies:
@@ -190,11 +200,11 @@ importers:
         version: 24.14.0
     devDependencies:
       '@alwaysmeticulous/api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../api
       '@alwaysmeticulous/sdk-bundles-api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../sdk-bundles-api
       '@types/luxon':
         specifier: ^3.2.0
         version: 3.7.1
@@ -202,14 +212,14 @@ importers:
   packages/downloading-helpers:
     dependencies:
       '@alwaysmeticulous/api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../api
       '@alwaysmeticulous/client':
-        specifier: ^2.248.2
-        version: 2.248.2(encoding@0.1.13)
+        specifier: workspace:*
+        version: link:../client
       '@alwaysmeticulous/common':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../common
       axios:
         specifier: ^1.7.9
         version: 1.13.2
@@ -239,11 +249,11 @@ importers:
   packages/record:
     dependencies:
       '@alwaysmeticulous/api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../api
       '@alwaysmeticulous/common':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../common
       chalk:
         specifier: ^4.1.2
         version: 4.1.2
@@ -257,15 +267,9 @@ importers:
   packages/recorder-loader:
     dependencies:
       '@alwaysmeticulous/sdk-bundles-api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../sdk-bundles-api
     devDependencies:
-      '@parcel/packager-ts':
-        specifier: ^2.15.2
-        version: 2.16.3(@parcel/core@2.16.3(@swc/helpers@0.5.18))
-      '@parcel/transformer-typescript-types':
-        specifier: ^2.15.2
-        version: 2.16.3(@parcel/core@2.16.3(@swc/helpers@0.5.18))(typescript@4.9.5)
       parcel:
         specifier: ^2.15.2
         version: 2.16.3(@swc/helpers@0.5.18)
@@ -273,17 +277,11 @@ importers:
   packages/redaction:
     devDependencies:
       '@alwaysmeticulous/api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../api
       '@alwaysmeticulous/sdk-bundles-api':
-        specifier: ^2.248.0
-        version: 2.248.0
-      '@parcel/packager-ts':
-        specifier: ^2.15.2
-        version: 2.16.3(@parcel/core@2.16.3(@swc/helpers@0.5.18))
-      '@parcel/transformer-typescript-types':
-        specifier: ^2.15.2
-        version: 2.16.3(@parcel/core@2.16.3(@swc/helpers@0.5.18))(typescript@4.9.5)
+        specifier: workspace:*
+        version: link:../sdk-bundles-api
       parcel:
         specifier: ^2.15.2
         version: 2.16.3(@swc/helpers@0.5.18)
@@ -291,17 +289,17 @@ importers:
   packages/remote-replay-launcher:
     dependencies:
       '@alwaysmeticulous/api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../api
       '@alwaysmeticulous/client':
-        specifier: ^2.248.2
-        version: 2.248.2(encoding@0.1.13)
+        specifier: workspace:*
+        version: link:../client
       '@alwaysmeticulous/common':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../common
       '@alwaysmeticulous/tunnels-client':
-        specifier: ^2.248.0
-        version: 2.248.0(encoding@0.1.13)
+        specifier: workspace:*
+        version: link:../tunnel-client
       '@sentry/node':
         specifier: ^10.3.0
         version: 10.32.1
@@ -329,8 +327,8 @@ importers:
         version: 3.7.2
     devDependencies:
       '@alwaysmeticulous/sdk-bundles-api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../sdk-bundles-api
       '@heroicons/react':
         specifier: ^2.0.14
         version: 2.2.0(react@18.3.1)
@@ -368,26 +366,26 @@ importers:
   packages/replay-orchestrator-launcher:
     dependencies:
       '@alwaysmeticulous/common':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../common
       '@alwaysmeticulous/downloading-helpers':
-        specifier: ^2.248.5
-        version: 2.248.5(encoding@0.1.13)
+        specifier: workspace:*
+        version: link:../downloading-helpers
       '@alwaysmeticulous/sdk-bundles-api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../sdk-bundles-api
 
   packages/sdk-bundles-api:
     dependencies:
       '@alwaysmeticulous/api':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../api
 
   packages/sentry:
     dependencies:
       '@alwaysmeticulous/common':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../common
       '@sentry/node':
         specifier: ^10.3.0
         version: 10.32.1
@@ -402,8 +400,8 @@ importers:
   packages/tunnel-client:
     dependencies:
       '@alwaysmeticulous/common':
-        specifier: ^2.248.0
-        version: 2.248.0
+        specifier: workspace:*
+        version: link:../common
       agentkeepalive:
         specifier: ^4.5.0
         version: 4.6.0
@@ -432,50 +430,6 @@ packages:
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
-
-  '@alwaysmeticulous/api@2.248.0':
-    resolution: {integrity: sha512-OGXDaUUrmLNN98H1asb0Z9iHzkkuTucIKYLD1YT44vVd2M0h0tvojtiKH3XjJ979Z4w6TLVTJcJqUYY8XoG79Q==}
-    engines: {node: '>= 12'}
-
-  '@alwaysmeticulous/client@2.248.2':
-    resolution: {integrity: sha512-J7Fdou9e2FViCrk79Bu/LyF0gWlu/A0rIyG/qgOqryqrDDfEUtHEnrGQRyljKiWkmeer72MrqarCDdmsv6D80A==}
-    engines: {node: '>= 12'}
-
-  '@alwaysmeticulous/common@2.248.0':
-    resolution: {integrity: sha512-FF5bzMuVTTVWjmL0Id/0qgwlRpoeE/F2AmNMEIYNkJja9Vu1rTci02D54mDPcbWvfcfKbsiDKr0hrdHZ1Bvbpw==}
-    engines: {node: '>= 12'}
-
-  '@alwaysmeticulous/downloading-helpers@2.248.5':
-    resolution: {integrity: sha512-kX3oxjUz5hhS/ftydg2GQnUUjaa7e2sRuFnkY+UtZd1RJc/iJf9ErRjNCG+uY9WLerdiM9Hq8G7I5LlRqGFnyQ==}
-    engines: {node: '>= 12'}
-
-  '@alwaysmeticulous/record@2.248.0':
-    resolution: {integrity: sha512-JQcwatq46JDun7u+x2AU1NMz26n3BnIAWOsbew60Fs+mncOt9pGv/LPmDiBIzJxmrzcMe/pft2GldnMaj8vbDA==}
-    engines: {node: '>= 12'}
-
-  '@alwaysmeticulous/remote-replay-launcher@2.248.8':
-    resolution: {integrity: sha512-AcTVwpoj5mHxjBYK6esXE7dp0ENz5U5st6NO8YsqOHrR9FmnxfvxBuwHEa7kiSTckgzF82MvGoisAHZT7sAUTg==}
-    engines: {node: '>= 12'}
-
-  '@alwaysmeticulous/replay-debugger-ui@2.248.0':
-    resolution: {integrity: sha512-wj5ECdGaayfPjO9/3mSVOQ6x7uPB+acUCM1HGL3JDrV8+1nBhXKSt/1cb76n0mFqmGL2KIFS6voDE4+RoCy3Jw==}
-    engines: {node: '>= 12'}
-
-  '@alwaysmeticulous/replay-orchestrator-launcher@2.248.5':
-    resolution: {integrity: sha512-+eXLomagC9wLtb7kh+2XFlaa1RgemYXAlP+Y6Kgl+lq8TbL35YrqvXplyFyO7PROj3IQ8NGMFoQs29xOL970OA==}
-    engines: {node: '>= 12'}
-
-  '@alwaysmeticulous/sdk-bundles-api@2.248.0':
-    resolution: {integrity: sha512-Ucd2MsR5QgIEAnl4BLVIP02PiBnAVW6q/9rXO3VQHPULnf6MdNft38wdQsSNlMKzGJWjaVtDjOV5OFMmZhYdJA==}
-    engines: {node: '>= 12'}
-
-  '@alwaysmeticulous/sentry@2.248.0':
-    resolution: {integrity: sha512-J5kDC2XbcnlTj96pJ3TvGSQmJOYTqj/A4qWyjj96PKiqA8ufUHNTsxFWHHN29dAvepybQqG4LB4YSYXZ0Ae7Dg==}
-    engines: {node: '>= 12'}
-
-  '@alwaysmeticulous/tunnels-client@2.248.0':
-    resolution: {integrity: sha512-NsTb+uSY4fxiiru3Tix7i89avEObYnYOf9eCSx4eYlsc+wY1zXFxScHI670wmMeXiwCmRkwnpgy9DTWwYDJKCA==}
-    engines: {node: '>= 14'}
 
   '@apm-js-collab/code-transformer@0.8.2':
     resolution: {integrity: sha512-YRjJjNq5KFSjDUoqu5pFUWrrsvGOxl6c3bu+uMFc9HNNptZ2rNU/TI2nLw4jnhQNtka972Ee2m3uqbvDQtPeCA==}
@@ -6775,150 +6729,6 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@alwaysmeticulous/api@2.248.0': {}
-
-  '@alwaysmeticulous/client@2.248.2(encoding@0.1.13)':
-    dependencies:
-      '@alwaysmeticulous/api': 2.248.0
-      '@alwaysmeticulous/common': 2.248.0
-      loglevel: 1.9.2
-      node-fetch: 2.7.0(encoding@0.1.13)
-      proxy-agent: 6.5.0
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - bufferutil
-      - encoding
-      - react-native-b4a
-      - supports-color
-      - utf-8-validate
-
-  '@alwaysmeticulous/common@2.248.0':
-    dependencies:
-      '@puppeteer/browsers': 2.10.6
-      chalk: 4.1.2
-      loglevel: 1.9.2
-      luxon: 3.7.2
-      puppeteer-core: 24.14.0
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - bufferutil
-      - react-native-b4a
-      - supports-color
-      - utf-8-validate
-
-  '@alwaysmeticulous/downloading-helpers@2.248.5(encoding@0.1.13)':
-    dependencies:
-      '@alwaysmeticulous/api': 2.248.0
-      '@alwaysmeticulous/client': 2.248.2(encoding@0.1.13)
-      '@alwaysmeticulous/common': 2.248.0
-      axios: 1.13.2
-      axios-retry: 4.5.0(axios@1.13.2)
-      extract-zip: 2.0.1
-      luxon: 3.7.2
-      p-limit: 3.1.0
-      proper-lockfile: 4.1.2
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - bufferutil
-      - debug
-      - encoding
-      - react-native-b4a
-      - supports-color
-      - utf-8-validate
-
-  '@alwaysmeticulous/record@2.248.0':
-    dependencies:
-      '@alwaysmeticulous/api': 2.248.0
-      '@alwaysmeticulous/common': 2.248.0
-      chalk: 4.1.2
-      loglevel: 1.9.2
-      puppeteer-core: 24.14.0
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - bufferutil
-      - react-native-b4a
-      - supports-color
-      - utf-8-validate
-
-  '@alwaysmeticulous/remote-replay-launcher@2.248.8(encoding@0.1.13)':
-    dependencies:
-      '@alwaysmeticulous/api': 2.248.0
-      '@alwaysmeticulous/client': 2.248.2(encoding@0.1.13)
-      '@alwaysmeticulous/common': 2.248.0
-      '@alwaysmeticulous/tunnels-client': 2.248.0(encoding@0.1.13)
-      '@sentry/node': 10.32.1
-      archiver: 7.0.1
-      loglevel: 1.9.2
-      systeminformation: 5.30.2
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - bufferutil
-      - encoding
-      - react-native-b4a
-      - supports-color
-      - utf-8-validate
-
-  '@alwaysmeticulous/replay-debugger-ui@2.248.0':
-    dependencies:
-      express: 5.2.1
-      luxon: 3.7.2
-    transitivePeerDependencies:
-      - supports-color
-
-  '@alwaysmeticulous/replay-orchestrator-launcher@2.248.5(encoding@0.1.13)':
-    dependencies:
-      '@alwaysmeticulous/common': 2.248.0
-      '@alwaysmeticulous/downloading-helpers': 2.248.5(encoding@0.1.13)
-      '@alwaysmeticulous/sdk-bundles-api': 2.248.0
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - bufferutil
-      - debug
-      - encoding
-      - react-native-b4a
-      - supports-color
-      - utf-8-validate
-
-  '@alwaysmeticulous/sdk-bundles-api@2.248.0':
-    dependencies:
-      '@alwaysmeticulous/api': 2.248.0
-
-  '@alwaysmeticulous/sentry@2.248.0':
-    dependencies:
-      '@alwaysmeticulous/common': 2.248.0
-      '@sentry/node': 10.32.1
-      luxon: 3.7.2
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - bufferutil
-      - react-native-b4a
-      - supports-color
-      - utf-8-validate
-
-  '@alwaysmeticulous/tunnels-client@2.248.0(encoding@0.1.13)':
-    dependencies:
-      '@alwaysmeticulous/common': 2.248.0
-      agentkeepalive: 4.6.0
-      cacheable-lookup: 6.1.0
-      loglevel: 1.9.2
-      node-fetch: 2.7.0(encoding@0.1.13)
-      proxy-agent: 6.5.0
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - bufferutil
-      - encoding
-      - react-native-b4a
-      - supports-color
-      - utf-8-validate
-
   '@apm-js-collab/code-transformer@0.8.2': {}
 
   '@apm-js-collab/tracing-hooks@0.3.1':
@@ -10791,7 +10601,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.52.0(eslint@9.39.2(jiti@1.21.7))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.2(jiti@1.21.7)))(eslint@9.39.2(jiti@1.21.7)):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.52.0(eslint@9.39.2(jiti@1.21.7))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.2(jiti@1.21.7)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -10813,7 +10623,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.2(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.52.0(eslint@9.39.2(jiti@1.21.7))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.2(jiti@1.21.7)))(eslint@9.39.2(jiti@1.21.7))
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.52.0(eslint@9.39.2(jiti@1.21.7))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.2(jiti@1.21.7))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
