@@ -6,3 +6,5 @@ allowBuilds:
 blockExoticSubdeps: true
 minimumReleaseAge: 7200 # 5 days - we should increase to 7 days in the future
 trustPolicy: no-downgrade
+minimumReleaseAgeExclude:
+  - '@alwaysmeticulous/*'
