@@ -19,7 +19,7 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/common": "^2.248.0",
+    "@alwaysmeticulous/common": "workspace:*",
     "@sentry/node": "^10.3.0",
     "luxon": "^3.2.1"
   },

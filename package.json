@@ -12,15 +12,18 @@
     "lint:commit": "turbo run lint:commit",
     "lint:fix": "turbo run lint:fix --no-bail",
     "test": "turbo run test",
-    "cli": "yarn workspace @alwaysmeticulous/cli cli",
-    "cli:debug": "yarn workspace @alwaysmeticulous/cli cli:debug",
-    "cli:dev": "yarn workspace @alwaysmeticulous/cli cli:dev",
-    "cli:dev-staging": "yarn workspace @alwaysmeticulous/cli cli:dev-staging",
-    "cli:dev-localhost": "yarn workspace @alwaysmeticulous/cli cli:dev-localhost",
+    "cli": "pnpm --filter @alwaysmeticulous/cli cli",
+    "cli:debug": "pnpm --filter @alwaysmeticulous/cli cli:debug",
+    "cli:dev": "pnpm --filter @alwaysmeticulous/cli cli:dev",
+    "cli:dev-staging": "pnpm --filter @alwaysmeticulous/cli cli:dev-staging",
+    "cli:dev-localhost": "pnpm --filter @alwaysmeticulous/cli cli:dev-localhost",
     "publish": "lerna version",
     "depcheck": "turbo run depcheck"
   },
   "devDependencies": {
+    "@eslint/compat": "^1.2.4",
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^9.39.2",
     "@parcel/packager-ts": "^2.15.2",
     "@parcel/transformer-typescript-types": "^2.15.2",
     "@types/jest": "^29.5.6",
@@ -35,7 +38,6 @@
     "eslint-config-next": "^15.1.1",
     "eslint-import-resolver-typescript": "^3.7.0",
     "eslint-plugin-import": "^2.31.0",
-    "@eslint/compat": "^1.2.4",
     "jest": "^29.7.0",
     "lerna": "^9.0.0",
     "parcel": "^2.15.2",
@@ -46,10 +48,14 @@
     "turbo": "^2.2.2",
     "typescript": "^4.9.4"
   },
-  "resolutions": {
-    "//": "https://nvd.nist.gov/vuln/detail/CVE-2022-46175",
-    "json5": "^2.2.2"
+  "pnpm": {
+    "overrideNotes": {
+      "json5": "https://nvd.nist.gov/vuln/detail/CVE-2022-46175"
+    },
+    "overrides": {
+      "json5": "^2.2.2"
+    }
   },
   "version": "0.0.0",
-  "packageManager": "yarn@1.22.22"
+  "packageManager": "pnpm@10.27.0"
 }

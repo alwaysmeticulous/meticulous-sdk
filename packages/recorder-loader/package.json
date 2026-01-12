@@ -21,7 +21,10 @@
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
-    "@alwaysmeticulous/sdk-bundles-api": "^2.248.0"
+    "@alwaysmeticulous/sdk-bundles-api": "workspace:*"
+  },
+  "devDependencies": {
+    "parcel": "^2.15.2"
   },
   "author": {
     "name": "The Meticulous Team",
