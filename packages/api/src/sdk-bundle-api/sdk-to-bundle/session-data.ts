@@ -161,8 +161,11 @@ export interface EarlyRequest {
 }
 
 export interface IDBObjectStoreMetadata {
-  databaseName: string;
-  objectStoreName: string;
+  databaseName?: string;
+  objectStoreName?: string;
+  databaseNameRegex?: string;
+  objectStoreNameRegex?: string;
+
   /**
    * If true, then we only snapshot the entries as they are read from the object store.
    * This can be useful if the object store is typically large and we don't want to snapshot
@@ -295,18 +298,18 @@ export type CustomDataSingletonInternalValues = {
   [CustomDataSingletonInternalKey.Languages]: string;
   [CustomDataSingletonInternalKey.UserAgent]: string;
   [CustomDataSingletonInternalKey.CustomObjectTooLargeToSerialize]:
-    | "singleton"
-    | "array"
-    | "event"
-    | "context"
-    | "feature-flag"
-    | "user-id"
-    | "user-email";
+  | "singleton"
+  | "array"
+  | "event"
+  | "context"
+  | "feature-flag"
+  | "user-id"
+  | "user-email";
 };
 
 export type CustomData = {
   singletons: Record<string, string> &
-    Partial<CustomDataSingletonInternalValues>;
+  Partial<CustomDataSingletonInternalValues>;
   arrays: Record<string, string[]>;
   /**
    * Only present on recordings since ~November 2024.
