@@ -16,7 +16,7 @@ import {
   ExecuteRemoteTestRunOptions,
   ExecuteRemoteTestRunResult,
 } from "./types";
-import { getPort } from "./url.utils";
+import { validateAndParseUrl } from "./url.utils";
 
 export { TunnelData } from "./types";
 
@@ -57,18 +57,7 @@ export const executeRemoteTestRun = async ({
 
   const client = createClient({ apiToken });
 
-  let url: URL;
-  try {
-    url = new URL(appUrl);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_error) {
-    throw new Error(`Invalid app URL: ${appUrl}`);
-  }
-
-  const port = getPort(url);
-  if (port === -1) {
-    throw new Error(`Invalid app URL port: ${appUrl}`);
-  }
+  const { hostname, port, protocol } = validateAndParseUrl(appUrl);
 
   let companionAssetsInfo: CompanionAssetsInfo | undefined = undefined;
   if (companionAssets) {
@@ -105,10 +94,10 @@ export const executeRemoteTestRun = async ({
   const tunnel = await localtunnel({
     logger,
     apiToken,
-    localHost: url.hostname,
+    localHost: hostname,
     ...(secureTunnelHost ? { host: secureTunnelHost } : {}),
     port,
-    localHttps: url.protocol === "https:",
+    localHttps: protocol === "https:",
     allowInvalidCert,
     proxyAllUrls,
     rewriteHostnameToAppUrl,
