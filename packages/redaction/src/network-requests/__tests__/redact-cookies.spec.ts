@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { HarRequest, HarResponse } from "@alwaysmeticulous/api";
 import { redactCookies } from "../redact-cookies";
 

@@ -1,10 +1,20 @@
 packages:
-  - 'packages/*'
+  - "packages/*"
 allowBuilds:
   esbuild: true
 
 blockExoticSubdeps: true
 minimumReleaseAge: 7200 # 5 days - we should increase to 7 days in the future
-trustPolicy: no-downgrade
 minimumReleaseAgeExclude:
-  - '@alwaysmeticulous/*'
+  - "@alwaysmeticulous/*"
+
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - eslint-import-resolver-typescript@3.10.1
+  - eslint-plugin-import@2.32.0
+  - semver@5.7.2 || 6.3.1
+  - undici-types@6.21.0
+  - "@octokit/endpoint@9.0.6"
+
+catalog:
+  vitest: ^4.0.17

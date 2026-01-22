@@ -1,9 +1,10 @@
+import { describe, expect, it } from "vitest";
 import { redactEmail } from "../redact-email";
 
 describe("redactEmail", () => {
   it("redacts an email", () => {
     expect(redactEmail("test@example.com")).toMatchInlineSnapshot(
-      `"----@-------.com"`
+      `"----@-------.com"`,
     );
   });
 });

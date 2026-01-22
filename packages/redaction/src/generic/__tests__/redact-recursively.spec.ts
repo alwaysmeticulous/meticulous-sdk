@@ -1,3 +1,4 @@
+import { describe, expect, it, vi } from "vitest";
 import { asterixOut } from "../asterix-out";
 import { redactRecursively } from "../redact-recursively";
 
@@ -45,7 +46,7 @@ describe("redactRecursively", () => {
   });
 
   it("passes the json path to the redaction function", () => {
-    const redactString = jest.fn((str) => asterixOut(str));
+    const redactString = vi.fn((str) => asterixOut(str));
     redactRecursively(
       {
         a: {

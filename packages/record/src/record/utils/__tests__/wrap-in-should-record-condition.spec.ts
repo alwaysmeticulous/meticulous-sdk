@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { wrapInShouldRecordCondition } from "../wrap-in-should-record-condition";
 
 describe("wrapInShouldRecordCondition", () => {
