@@ -15,20 +15,15 @@ const compat = new FlatCompat({
 
 export default [
   {
-    ignores: [
-      "**/jest.config.js",
-      "**/webpack.config.js",
-      "packages/*/dist/**/*",
-      "**/dist",
-    ],
+    ignores: ["**/webpack.config.js", "packages/*/dist/**/*", "**/dist"],
   },
   ...fixupConfigRules(
     compat.extends(
       "eslint:recommended",
       "plugin:@typescript-eslint/recommended",
       "plugin:import/recommended",
-      "plugin:import/typescript"
-    )
+      "plugin:import/typescript",
+    ),
   ),
   {
     settings: {

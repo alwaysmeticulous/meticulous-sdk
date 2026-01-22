@@ -1,22 +1,10 @@
 {
   "$schema": "https://turborepo.org/schema.json",
-  "globalDependencies": [
-    "tsconfig.base.json",
-    "jest.config.base.js",
-    "jest.config.js",
-    ".eslintrc.js"
-  ],
+  "globalDependencies": ["tsconfig.base.json", ".eslintrc.js"],
   "tasks": {
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [
-        "dist/**",
-        "out/**",
-        ".next/**",
-        "tsconfig.tsbuildinfo"
-      ]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "out/**", ".next/**", "tsconfig.tsbuildinfo"]
     },
     "depcheck": {
       "dependsOn": [],
@@ -29,9 +17,7 @@
       "cache": false
     },
     "lint": {
-      "outputs": [
-        ".eslintcache"
-      ],
+      "outputs": [".eslintcache"],
       "outputLogs": "new-only"
     },
     "lint:commit": {
@@ -41,9 +27,7 @@
       "cache": false
     },
     "test": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "outputs": [],
       "outputLogs": "new-only"
     }

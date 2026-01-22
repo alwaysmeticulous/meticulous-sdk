@@ -17,7 +17,7 @@
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
     "depcheck": "depcheck --ignore-patterns=dist",
-    "test": "jest --passWithNoTests"
+    "test": "vitest run"
   },
   "dependencies": {
     "@alwaysmeticulous/api": "workspace:*",
@@ -30,7 +30,8 @@
     "systeminformation": "^5.25.11"
   },
   "devDependencies": {
-    "@types/archiver": "^5.1.1"
+    "@types/archiver": "^5.1.1",
+    "vitest": "catalog:"
   },
   "author": {
     "name": "The Meticulous Team",
@@ -48,8 +49,5 @@
   },
   "bugs": {
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
-  },
-  "jest": {
-    "preset": "../../jest.config.js"
   }
 }

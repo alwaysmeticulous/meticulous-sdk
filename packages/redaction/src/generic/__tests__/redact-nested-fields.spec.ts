@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { asterixOut } from "../asterix-out";
 import { doNotRedact } from "../redact-nested-fields/common-redactors";
 import { redactKey } from "../redact-nested-fields/pattern-based-redactors";

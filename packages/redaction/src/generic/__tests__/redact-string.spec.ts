@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { redactString } from "../redact-string";
 
 describe("redactString", () => {

@@ -25,7 +25,7 @@
     "cli:dev": "ts-node src/main.ts",
     "cli:dev-localhost": "METICULOUS_API_URL=http://localhost:3000/api/ ts-node src/main.ts",
     "cli:dev-staging": "METICULOUS_API_URL=https://staging-backend.alb.meticulous.ai/api/ ts-node src/main.ts",
-    "test": "jest --passWithNoTests",
+    "test": "vitest run --passWithNoTests",
     "depcheck": "depcheck --ignore-patterns=dist"
   },
   "dependencies": {
@@ -51,7 +51,8 @@
   "devDependencies": {
     "@types/cli-progress": "^3.11.5",
     "@types/yargs": "^17.0.10",
-    "loglevel": "^1.8.0"
+    "loglevel": "^1.8.0",
+    "vitest": "catalog:"
   },
   "author": {
     "name": "The Meticulous Team",
@@ -69,8 +70,5 @@
   },
   "bugs": {
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
-  },
-  "jest": {
-    "preset": "../../jest.config.js"
   }
 }
