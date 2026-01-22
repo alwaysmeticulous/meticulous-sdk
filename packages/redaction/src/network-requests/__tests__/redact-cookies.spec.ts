@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { HarRequest, HarResponse } from "@alwaysmeticulous/api";
+import { describe, expect, it } from "vitest";
 import { redactCookies } from "../redact-cookies";
 
 describe("redactCookies", () => {

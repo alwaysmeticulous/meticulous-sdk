@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
 import { existsSync } from "fs";
 import { readFile, rm } from "fs/promises";
 import http from "http";
+import { describe, expect, it } from "vitest";
 import { downloadFile } from "../download-file";
 
 describe("downloadFile", () => {
