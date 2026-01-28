@@ -43,6 +43,7 @@ export const executeRemoteTestRun = async ({
   rewriteHostnameToAppUrl = false,
   enableDnsCache = false,
   http2Connections,
+  silenceTunnelWorker = false,
   postComment = false,
 }: ExecuteRemoteTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = initLogger();
@@ -114,6 +115,7 @@ export const executeRemoteTestRun = async ({
     rewriteHostnameToAppUrl,
     enableDnsCache,
     http2Connections,
+    silenceTunnelWorker,
   });
 
   logger.debug(`Creating test run`);

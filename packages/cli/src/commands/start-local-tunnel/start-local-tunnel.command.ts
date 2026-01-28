@@ -26,6 +26,7 @@ interface Options {
   proxyAllUrls: boolean;
   rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
+  silenceTunnelWorker: boolean;
   printRequests: boolean;
   http2Connections: number | undefined;
 }
@@ -59,6 +60,7 @@ const handler = async (argv: Options) => {
     rewriteHostnameToAppUrl: argv.rewriteHostnameToAppUrl,
     enableDnsCache: argv.enableDnsCache,
     http2Connections: argv.http2Connections,
+    silenceTunnelWorker: argv.silenceTunnelWorker,
   }).catch((err) => {
     throw err;
   });
@@ -178,6 +180,11 @@ export const startLocalTunnelCommand = buildCommand("start-local-tunnel")
       describe:
         "Number of HTTP2 connections to establish for multiplexing (defaults to number of CPU cores)",
       number: true,
+    },
+    silenceTunnelWorker: {
+      describe: "Suppress logs from tunnel worker processes",
+      boolean: true,
+      default: false,
     },
   })
   .handler(handler);
