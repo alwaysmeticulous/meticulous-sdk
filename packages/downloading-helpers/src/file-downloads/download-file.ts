@@ -1,12 +1,34 @@
 import { createWriteStream, existsSync } from "fs";
 import { rm } from "fs/promises";
-import { Stream, finished } from "stream";
+import { Stream, finished, Transform } from "stream";
 import { promisify } from "util";
 import axios from "axios";
 import axiosRetry from "axios-retry";
+import cliProgress from "cli-progress";
 import extract from "extract-zip";
 
 const promisifiedFinished = promisify(finished);
+
+const shouldShowProgressBar = (): boolean => {
+  return process.env.METICULOUS_IS_CLOUD_REPLAY !== "true";
+};
+
+const formatBytes = (bytes: number): string => {
+  if (bytes === 0) {
+    return "0 B";
+  }
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+};
+
+interface DownloadFileOptions {
+  firstDataTimeoutInMs?: number;
+  downloadCompleteTimeoutInMs?: number;
+  maxDownloadContentRetries?: number;
+  downloadContentRetryDelay?: number;
+}
 
 /**
  * Warning: this function is not thread safe. Do not try downloading a file to a path that may already be in use by another process.
@@ -16,12 +38,7 @@ const promisifiedFinished = promisify(finished);
 export const downloadFile = async (
   fileUrl: string,
   path: string,
-  opts: {
-    firstDataTimeoutInMs?: number;
-    downloadCompleteTimeoutInMs?: number;
-    maxDownloadContentRetries?: number;
-    downloadContentRetryDelay?: number;
-  } = {},
+  opts: DownloadFileOptions = {},
 ): Promise<void> => {
   // Using the same timeout as the standard client in meticulous-sdk/packages/client/src/client.ts
   const firstDataTimeoutInMs = opts.firstDataTimeoutInMs ?? 60_000;
@@ -41,8 +58,42 @@ export const downloadFile = async (
     cancelToken: source.token,
   });
 
+  const contentLength = parseInt(response.headers["content-length"] ?? "0", 10);
+
+  let progressBar: cliProgress.SingleBar | null = null;
+  let downloadedBytes = 0;
+
+  if (shouldShowProgressBar() && contentLength > 0) {
+    progressBar = new cliProgress.SingleBar(
+      {
+        format: `Downloading |{bar}| {percentage}% | {downloaded}/{total}`,
+        hideCursor: true,
+        noTTYOutput: true,
+        notTTYSchedule: 5000,
+      },
+      cliProgress.Presets.shades_classic,
+    );
+    progressBar.start(contentLength, 0, {
+      downloaded: formatBytes(0),
+      total: formatBytes(contentLength),
+    });
+  }
+
+  const progressTransform = new Transform({
+    transform(chunk, _encoding, callback) {
+      downloadedBytes += chunk.length;
+      if (progressBar) {
+        progressBar.update(downloadedBytes, {
+          downloaded: formatBytes(downloadedBytes),
+          total: formatBytes(contentLength),
+        });
+      }
+      callback(null, chunk);
+    },
+  });
+
   const writer = createWriteStream(path);
-  (response.data as Stream).pipe(writer);
+  (response.data as Stream).pipe(progressTransform).pipe(writer);
   const timeoutId = setTimeout(async () => {
     const error = `Download timed out after ${downloadCompleteTimeoutInMs}ms`;
     source.cancel(error);
@@ -54,10 +105,12 @@ export const downloadFile = async (
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
+    progressBar?.stop();
   } catch (err) {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
+    progressBar?.stop();
 
     await new Promise((resolve) => writer.close(resolve));
 
