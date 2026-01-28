@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/record",
-  "version": "2.248.0",
+  "version": "2.248.9",
   "description": "The Meticulous toolkit to record user sessions",
   "license": "ISC",
   "main": "dist/index.js",
