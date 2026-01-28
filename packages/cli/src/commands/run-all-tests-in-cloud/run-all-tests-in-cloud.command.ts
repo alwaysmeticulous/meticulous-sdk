@@ -37,6 +37,7 @@ interface Options {
   proxyAllUrls: boolean;
   rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
+  silenceTunnelWorker: boolean;
   http2Connections?: number | undefined;
   companionAssetsFolder?: string | undefined;
   companionAssetsZip?: string | undefined;
@@ -68,6 +69,7 @@ const handler: (options: Options) => Promise<void> = async ({
   rewriteHostnameToAppUrl,
   enableDnsCache,
   http2Connections,
+  silenceTunnelWorker,
   companionAssetsFolder,
   companionAssetsZip,
   companionAssetsRegex,
@@ -262,6 +264,7 @@ const handler: (options: Options) => Promise<void> = async ({
       rewriteHostnameToAppUrl,
       enableDnsCache,
       http2Connections,
+      silenceTunnelWorker,
       ...(postComment ? { postComment } : {}),
       ...(hasCompanionAssets && companionAssetsRegex
         ? {
@@ -416,6 +419,11 @@ export const runAllTestsInCloudCommand = buildCommand("run-all-tests-in-cloud")
       number: true,
       description:
         "Number of HTTP2 connections to establish for multiplexing (defaults to number of CPU cores)",
+    },
+    silenceTunnelWorker: {
+      boolean: true,
+      description: "Suppress logs from tunnel worker processes",
+      default: false,
     },
     companionAssetsFolder: {
       string: true,

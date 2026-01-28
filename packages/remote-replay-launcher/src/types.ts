@@ -45,6 +45,7 @@ export interface ExecuteRemoteTestRunOptions {
   rewriteHostnameToAppUrl?: boolean;
   enableDnsCache?: boolean;
   http2Connections?: number | undefined;
+  silenceTunnelWorker?: boolean;
   companionAssets?: {
     folder?: string | undefined;
     zip?: string | undefined;

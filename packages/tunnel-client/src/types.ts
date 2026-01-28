@@ -39,6 +39,7 @@ export interface LocalTunnelOptions {
   rewriteHostnameToAppUrl: boolean;
   enableDnsCache: boolean;
   http2Connections?: number | undefined;
+  silenceTunnelWorker?: boolean;
 }
 
 export interface IncomingRequestEvent {

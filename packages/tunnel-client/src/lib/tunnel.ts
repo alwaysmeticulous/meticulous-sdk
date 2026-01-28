@@ -244,7 +244,7 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
 
     cluster.setupPrimary({
       exec: workerPath,
-      silent: false,
+      silent: this.opts.silenceTunnelWorker ?? false,
     });
 
     for (let i = 1; i <= numWorkers; i++) {
