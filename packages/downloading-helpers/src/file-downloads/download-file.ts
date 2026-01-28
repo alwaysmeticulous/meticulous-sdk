@@ -23,6 +23,8 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 };
 
+const MIN_BYTES_TO_SHOW_PROGRESS_BAR = 10_000;
+
 interface DownloadFileOptions {
   firstDataTimeoutInMs?: number;
   downloadCompleteTimeoutInMs?: number;
@@ -63,10 +65,13 @@ export const downloadFile = async (
   let progressBar: cliProgress.SingleBar | null = null;
   let downloadedBytes = 0;
 
-  if (shouldShowProgressBar() && contentLength > 0) {
+  if (
+    shouldShowProgressBar() &&
+    contentLength >= MIN_BYTES_TO_SHOW_PROGRESS_BAR
+  ) {
     progressBar = new cliProgress.SingleBar(
       {
-        format: `Downloading |{bar}| {percentage}% | {downloaded}/{total}`,
+        format: `Downloading |{bar}| {percentage}% | {downloaded}/{totalSize}`,
         hideCursor: true,
         noTTYOutput: true,
         notTTYSchedule: 5000,
@@ -75,7 +80,7 @@ export const downloadFile = async (
     );
     progressBar.start(contentLength, 0, {
       downloaded: formatBytes(0),
-      total: formatBytes(contentLength),
+      totalSize: formatBytes(contentLength),
     });
   }
 
@@ -85,7 +90,7 @@ export const downloadFile = async (
       if (progressBar) {
         progressBar.update(downloadedBytes, {
           downloaded: formatBytes(downloadedBytes),
-          total: formatBytes(contentLength),
+          totalSize: formatBytes(contentLength),
         });
       }
       callback(null, chunk);
