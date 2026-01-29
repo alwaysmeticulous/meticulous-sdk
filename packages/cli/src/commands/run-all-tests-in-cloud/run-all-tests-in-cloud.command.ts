@@ -111,10 +111,15 @@ const handler: (options: Options) => Promise<void> = async ({
     process.exit(1);
   }
 
-  if (!hadPreparedForTests && triggerScript) {
+  if (
+    !hadPreparedForTests &&
+    triggerScript &&
+    !process.env.METICULOUS_DISABLE_RECURSIVE_TRIGGER
+  ) {
     // If we have a script to trigger a run, this signals that the user is not sure whether the base test run is available.
     // In this case, we trigger the preparation for meticulous tests.
     // Do this only if we did not prepare for the tests.
+    // Skip if METICULOUS_DISABLE_RECURSIVE_TRIGGER is set to prevent infinite recursion.
     await prepareForMeticulousTests({
       apiToken: apiToken_,
       headCommit: commitSha,

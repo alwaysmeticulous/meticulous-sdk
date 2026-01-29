@@ -68,6 +68,10 @@ export const prepareForMeticulousTests = async ({
       execSync(`${triggerScript} ${baseCommitSha}`, {
         stdio: "inherit",
         encoding: "utf8",
+        env: {
+          ...process.env,
+          METICULOUS_DISABLE_RECURSIVE_TRIGGER: "true",
+        },
       });
       logger.log("Trigger script executed successfully");
       Sentry.captureEvent({
