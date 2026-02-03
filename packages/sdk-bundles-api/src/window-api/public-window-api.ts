@@ -85,7 +85,16 @@ export interface MeticulousPublicReplayApi {
    *
    * @remarks
    * These APIs bypass Meticulous's deterministic stubbing to provide real
-   * performance data.
+   * performance data for frontend operations.
+   *
+   * IMPORTANT: During replays, all network traffic to your backend is mocked
+   * using previously recorded responses. These performance APIs measure actual
+   * browser performance (rendering, JavaScript execution, memory usage) but
+   * NOT network or backend performance. Network requests return mocked responses
+   * instantly from the recording, so measuring network timing or backend latency
+   * with these APIs is not meaningful. Use these APIs to measure frontend
+   * performance only.
+   *
    * Use to log performance information to analytics dashboards, performance
    * monitors, or custom logging systems.
    * Avoid using these APIs to report performance metrics in the web application
