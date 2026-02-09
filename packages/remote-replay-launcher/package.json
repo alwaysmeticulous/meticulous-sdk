@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/remote-replay-launcher",
-  "version": "2.248.12",
+  "version": "2.248.13",
   "description": "Executes a remote replay on Meticulous' infrastructure",
   "license": "ISC",
   "main": "dist/index.js",

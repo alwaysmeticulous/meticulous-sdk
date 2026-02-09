@@ -1,3 +1,4 @@
+import { existsSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { basename, join } from "path";
 import {
@@ -78,12 +79,19 @@ export const checkIfAssetsOutdated = async (
 
   // Get etag for downloaded assets
   const assetMetadata = await readAssetMetadata();
+  const assetsDir = await getOrCreateAssetsDir();
   return Object.fromEntries(
     withEtags.map(({ path, etag, fileNameToDownloadAs }) => {
       const entry = assetMetadata.assets.find(
         (item) => item.fileName === fileNameToDownloadAs
       );
-      return [path, !entry || !entry.etag || etag !== entry.etag];
+      const fileExistsOnDisk = existsSync(
+        join(assetsDir, fileNameToDownloadAs)
+      );
+      return [
+        path,
+        !entry || !entry.etag || etag !== entry.etag || !fileExistsOnDisk,
+      ];
     })
   );
 };
@@ -131,7 +139,7 @@ const fetchAndCacheFile = async (
     );
     const filePath = join(await getOrCreateAssetsDir(), fileNameToDownloadAs);
 
-    if (entry && etag !== "" && etag === entry.etag) {
+    if (entry && etag !== "" && etag === entry.etag && existsSync(filePath)) {
       logger.debug(`${urlToDownloadFrom} already present`);
       await releaseLock();
       return filePath;
