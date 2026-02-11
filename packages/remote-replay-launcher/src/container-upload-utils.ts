@@ -8,6 +8,7 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import Docker from "dockerode";
+import ora from "ora";
 import { Readable } from "stream";
 
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
@@ -89,6 +90,7 @@ const pushImage = async (
   docker: Docker,
   imageReference: string,
   authconfig: Docker.AuthConfig,
+  spinner: ora.Ora | null,
   onProgress?: (progress: any) => void
 ): Promise<void> => {
   const logger = initLogger();
@@ -115,11 +117,16 @@ const pushImage = async (
         stream as Readable,
         (err, output) => {
           if (err) {
+            if (spinner) {
+              spinner.fail(`Failed to push image ${imageReference}`);
+            }
             logger.error(`Error during image push: ${err.message}`);
             reject(err);
             return;
           }
-          logger.info(`Successfully pushed image ${imageReference}`);
+          if (spinner) {
+            spinner.succeed(`Successfully pushed image ${imageReference}`);
+          }
           resolve();
         },
         (event) => {
@@ -130,15 +137,26 @@ const pushImage = async (
           if (event.status && event.progress) {
             const progressStr = `${event.status}: ${event.progress}`;
             if (progressStr !== lastProgress) {
-              logger.info(progressStr);
+              if (spinner) {
+                spinner.text = progressStr;
+              } else {
+                logger.info(progressStr);
+              }
               lastProgress = progressStr;
             }
           } else if (event.status && event.status !== lastProgress) {
-            logger.info(event.status);
+            if (spinner) {
+              spinner.text = event.status;
+            } else {
+              logger.info(event.status);
+            }
             lastProgress = event.status;
           }
           
           if (event.error) {
+            if (spinner) {
+              spinner.fail(`Push error: ${event.error}`);
+            }
             logger.error(`Push error: ${event.error}`);
             reject(new Error(event.error));
           }
@@ -168,19 +186,28 @@ export const uploadContainer = async ({
 
   const docker = getDockerClient();
 
-  logger.info("Verifying Docker connection...");
-  await verifyDockerConnection(docker);
+  let spinner = ora("Verifying Docker connection").start();
+  try {
+    await verifyDockerConnection(docker);
+    spinner.succeed("Docker connection verified");
+  } catch (error) {
+    spinner.fail("Failed to connect to Docker");
+    throw error;
+  }
 
-  logger.info(`Verifying local Docker image: ${localImageTag}`);
+  spinner = ora(`Verifying local Docker image: ${localImageTag}`).start();
   const imageInfo = await getImageInfo(docker, localImageTag);
   if (!imageInfo) {
+    spinner.fail(`Docker image '${localImageTag}' not found`);
     throw new Error(
       `Docker image '${localImageTag}' not found locally. Please build the image first.`
     );
   }
+  spinner.succeed(`Found Docker image: ${localImageTag}`);
 
-  logger.info("Getting registry credentials...");
+  spinner = ora("Getting registry credentials").start();
   const registryAuth = await getRegistryAuth({ client });
+  spinner.succeed("Registry credentials obtained");
   
   const { uploadId, imageReference, registryUrl, robotAccountName, robotAccountSecret } = registryAuth;
   
@@ -188,19 +215,25 @@ export const uploadContainer = async ({
   logger.info(`Upload ID: ${uploadId}`);
   logger.info(`Image reference: ${imageReference}`);
 
-  logger.info("Tagging image for registry...");
-  await tagImage(docker, localImageTag, imageReference);
+  spinner = ora(`Tagging image for registry`).start();
+  try {
+    await tagImage(docker, localImageTag, imageReference);
+    spinner.succeed(`Tagged image as ${imageReference}`);
+  } catch (error) {
+    spinner.fail("Failed to tag image");
+    throw error;
+  }
 
-  logger.info(`Pushing image to registry: ${imageReference}`);
+  spinner = ora(`Pushing image to registry`).start();
   const authconfig: Docker.AuthConfig = {
     username: robotAccountName,
     password: robotAccountSecret,
     serveraddress: registryUrl,
   };
 
-  await pushImage(docker, imageReference, authconfig);
+  await pushImage(docker, imageReference, authconfig, spinner);
 
-  logger.info("Completing container upload and triggering test run...");
+  spinner = ora("Completing container upload and triggering test run").start();
   
   const completeResult = await completeContainerUpload({
     client,
@@ -215,13 +248,13 @@ export const uploadContainer = async ({
   let lastTimeElapsed = 0;
 
   if (waitForBase && baseNotFound && !testRun) {
+    spinner.text = "Waiting for base test run to be created";
     const startTime = Date.now();
-    logger.info("Waiting for base test run to be created...");
 
     while (!testRun && baseNotFound) {
       const timeElapsed = Date.now() - startTime;
       if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
-        logger.warn(
+        spinner.warn(
           `Timed out after ${
             POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000
           } seconds waiting for base test run`
@@ -229,9 +262,7 @@ export const uploadContainer = async ({
         break;
       }
       if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30_000) {
-        logger.info(
-          `Waiting for base test run to be created. Time elapsed: ${timeElapsed}ms`
-        );
+        spinner.text = `Waiting for base test run. Time elapsed: ${Math.round(timeElapsed / 1000)}s`;
         lastTimeElapsed = timeElapsed;
       }
       await new Promise((resolve) =>
@@ -250,7 +281,7 @@ export const uploadContainer = async ({
     }
 
     if (baseNotFound && !testRun) {
-      logger.info("Base test run not found, proceeding without it.");
+      spinner.text = "Base test run not found, proceeding without it";
       const finalResult = await completeContainerUpload({
         client,
         uploadId,
@@ -260,6 +291,12 @@ export const uploadContainer = async ({
       testRun = finalResult.testRun ?? null;
       message = finalResult.message;
     }
+  }
+
+  if (testRun) {
+    spinner.succeed("Container upload complete and test run triggered");
+  } else {
+    spinner.warn("Container upload complete but test run not created");
   }
 
   Sentry.captureMessage("Container uploaded and deployment created", {
