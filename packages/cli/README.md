@@ -51,7 +51,33 @@ npx @alwaysmeticulous/cli simulate \
   --appUrl="http://localhost:3000"
 ```
 
-### 3. Run in CI
+### 3. Upload and Test Static Assets
+
+Upload static build artifacts and trigger a test run:
+
+```bash
+npx @alwaysmeticulous/cli upload-assets-and-execute-test-run-in-cloud \
+  --apiToken="<API_TOKEN>" \
+  --appDirectory="./build" \
+  --commitSha="$(git rev-parse HEAD)"
+```
+
+### 4. Upload and Test Docker Container
+
+Upload a Docker container and trigger a test run:
+
+```bash
+# Build your container
+docker build -t myapp:latest .
+
+# Upload and test
+npx @alwaysmeticulous/cli upload-container-and-execute-test-run-in-cloud \
+  --apiToken="<API_TOKEN>" \
+  --localImageTag="myapp:latest" \
+  --commitSha="$(git rev-parse HEAD)"
+```
+
+### 5. Run in CI
 
 Add Meticulous to your CI pipeline to automatically test every pull request. See the [documentation](https://app.meticulous.ai/docs) for detailed CI setup instructions.
 
@@ -64,6 +90,9 @@ Common commands:
 - `record` - Record a new session
 - `simulate` - Simulate a recorded session locally
 - `run-all-tests` - Run all replay test cases
+- `run-all-tests-in-cloud` - Run all tests remotely against a local or preview URL
+- `upload-assets-and-execute-test-run-in-cloud` - Upload static assets and trigger test run
+- `upload-container-and-execute-test-run-in-cloud` - Upload Docker container and trigger test run
 - Additional commands available via `--help`
 
 ## Configuration
