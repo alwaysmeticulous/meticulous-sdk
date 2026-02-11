@@ -75,3 +75,14 @@ export interface UploadAssetsAndTriggerTestRunOptions {
   rewrites?: AssetUploadMetadata["rewrites"];
   createDeployment?: boolean;
 }
+
+export interface UploadContainerAndTriggerTestRunOptions {
+  apiToken: string | null | undefined;
+  localImageTag: string;
+  commitSha: string;
+  /**
+   * If true, before triggering a test run, the launcher will wait for a base test run to be created. If that is not found,
+   * it will trigger a test run without waiting for a base test run.
+   */
+  waitForBase: boolean;
+}

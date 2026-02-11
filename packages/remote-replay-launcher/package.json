@@ -26,11 +26,13 @@
     "@alwaysmeticulous/tunnels-client": "workspace:*",
     "@sentry/node": "^10.3.0",
     "archiver": "^7.0.0",
+    "dockerode": "^4.0.2",
     "loglevel": "^1.8.0",
     "systeminformation": "^5.25.11"
   },
   "devDependencies": {
     "@types/archiver": "^5.1.1",
+    "@types/dockerode": "^3.3.31",
     "vitest": "catalog:"
   },
   "author": {
