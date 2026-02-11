@@ -1,3 +1,4 @@
+import { Readable } from "stream";
 import {
   getApiToken,
   createClient,
@@ -8,7 +9,6 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import Docker from "dockerode";
-import { Readable } from "stream";
 
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
 const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -52,20 +52,20 @@ const verifyDockerConnection = async (docker: Docker): Promise<void> => {
     await docker.ping();
   } catch (error) {
     logger.error(
-      "Failed to connect to Docker daemon. Please ensure Docker is running and try again."
+      "Failed to connect to Docker daemon. Please ensure Docker is running and try again.",
     );
     if (error instanceof Error) {
       logger.error(`Docker error: ${error.message}`);
     }
     throw new Error(
-      "Docker daemon is not running or unreachable. Please start Docker and try again."
+      "Docker daemon is not running or unreachable. Please start Docker and try again.",
     );
   }
 };
 
 const getImageInfo = async (
   docker: Docker,
-  imageTag: string
+  imageTag: string,
 ): Promise<Docker.ImageInspectInfo | null> => {
   const logger = initLogger();
   try {
@@ -84,7 +84,7 @@ const getImageInfo = async (
 const tagImage = async (
   docker: Docker,
   sourceImage: string,
-  targetImage: string
+  targetImage: string,
 ): Promise<void> => {
   const logger = initLogger();
   try {
@@ -105,13 +105,13 @@ const pushImage = async (
   docker: Docker,
   imageReference: string,
   authconfig: Docker.AuthConfig,
-  onProgress?: (progress: DockerPushProgress) => void
+  onProgress?: (progress: DockerPushProgress) => void,
 ): Promise<void> => {
   const logger = initLogger();
-  
+
   return new Promise((resolve, reject) => {
     const image = docker.getImage(imageReference);
-    
+
     image.push({ authconfig }, (err, stream) => {
       if (err) {
         logger.error(`Failed to push image ${imageReference}`);
@@ -126,10 +126,10 @@ const pushImage = async (
       }
 
       let lastProgressStr = "";
-      
+
       docker.modem.followProgress(
         stream as Readable,
-        (err, output) => {
+        (err) => {
           if (err) {
             logger.error(`Error during image push: ${err.message}`);
             reject(err);
@@ -142,7 +142,7 @@ const pushImage = async (
           if (onProgress) {
             onProgress(event);
           }
-          
+
           if (event.status && event.progress) {
             const progressStr = `${event.status}: ${event.progress}`;
             if (progressStr !== lastProgressStr) {
@@ -153,12 +153,12 @@ const pushImage = async (
             logger.info(event.status);
             lastProgressStr = event.status;
           }
-          
+
           if (event.error) {
             logger.error(`Push error: ${event.error}`);
             reject(new Error(event.error));
           }
-        }
+        },
       );
     });
   });
@@ -176,7 +176,7 @@ export const uploadContainer = async ({
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {
     logger.error(
-      "You must provide an API token by using the --apiToken parameter"
+      "You must provide an API token by using the --apiToken parameter",
     );
     process.exit(1);
   }
@@ -193,16 +193,22 @@ export const uploadContainer = async ({
   const imageInfo = await getImageInfo(docker, localImageTag);
   if (!imageInfo) {
     throw new Error(
-      `Docker image '${localImageTag}' not found locally. Please build the image first.`
+      `Docker image '${localImageTag}' not found locally. Please build the image first.`,
     );
   }
   logger.info(`Found Docker image: ${localImageTag}`);
 
   logger.info("Getting registry credentials...");
   const registryAuth = await getRegistryAuth({ client });
-  
-  const { uploadId, imageReference, registryUrl, robotAccountName, robotAccountSecret } = registryAuth;
-  
+
+  const {
+    uploadId,
+    imageReference,
+    registryUrl,
+    robotAccountName,
+    robotAccountSecret,
+  } = registryAuth;
+
   logger.info(`Registry: ${registryUrl}`);
   logger.info(`Upload ID: ${uploadId}`);
   logger.info(`Image reference: ${imageReference}`);
@@ -218,11 +224,16 @@ export const uploadContainer = async ({
     serveraddress: registryUrl,
   };
 
-  await pushImage(docker, imageReference, authconfig, callbacks?.onPushProgress);
+  await pushImage(
+    docker,
+    imageReference,
+    authconfig,
+    callbacks?.onPushProgress,
+  );
   logger.info(`Successfully pushed image ${imageReference}`);
 
   logger.info("Completing container upload and triggering test run...");
-  
+
   const completeResult = await completeContainerUpload({
     client,
     uploadId,
@@ -245,18 +256,18 @@ export const uploadContainer = async ({
         logger.warn(
           `Timed out after ${
             POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000
-          } seconds waiting for base test run`
+          } seconds waiting for base test run`,
         );
         break;
       }
       if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30_000) {
         logger.info(
-          `Waiting for base test run to be created. Time elapsed: ${Math.round(timeElapsed / 1000)}s`
+          `Waiting for base test run to be created. Time elapsed: ${Math.round(timeElapsed / 1000)}s`,
         );
         lastTimeElapsed = timeElapsed;
       }
       await new Promise((resolve) =>
-        setTimeout(resolve, POLL_FOR_BASE_TEST_RUN_INTERVAL_MS)
+        setTimeout(resolve, POLL_FOR_BASE_TEST_RUN_INTERVAL_MS),
       );
 
       const retryResult = await completeContainerUpload({
@@ -285,7 +296,7 @@ export const uploadContainer = async ({
 
   if (testRun) {
     const organizationName = encodeURIComponent(
-      testRun.project.organization.name
+      testRun.project.organization.name,
     );
     const projectName = encodeURIComponent(testRun.project.name);
     const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${testRun.id}`;

@@ -1,6 +1,10 @@
-import { createClient, getRegistryAuth, completeContainerUpload } from "@alwaysmeticulous/client";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import {
+  createClient,
+  getRegistryAuth,
+  completeContainerUpload,
+} from "@alwaysmeticulous/client";
 import Docker from "dockerode";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { uploadContainer } from "../container-upload-utils";
 
 // Mock the dependencies
@@ -63,7 +67,7 @@ describe("uploadContainer", () => {
     };
 
     // Mock Docker constructor as a class
-    vi.mocked(Docker).mockImplementation(function() {
+    vi.mocked(Docker).mockImplementation(function () {
       return mockDockerClient;
     } as any);
 
@@ -135,7 +139,9 @@ describe("uploadContainer", () => {
   });
 
   it("should handle Docker daemon not running", async () => {
-    mockDockerClient.ping.mockRejectedValue(new Error("Cannot connect to Docker daemon"));
+    mockDockerClient.ping.mockRejectedValue(
+      new Error("Cannot connect to Docker daemon"),
+    );
 
     await expect(
       uploadContainer({
@@ -143,7 +149,7 @@ describe("uploadContainer", () => {
         localImageTag: "myapp:latest",
         commitSha: "abc123def456",
         waitForBase: false,
-      })
+      }),
     ).rejects.toThrow("Docker daemon is not running or unreachable");
   });
 
@@ -156,7 +162,7 @@ describe("uploadContainer", () => {
         localImageTag: "nonexistent:latest",
         commitSha: "abc123def456",
         waitForBase: false,
-      })
+      }),
     ).rejects.toThrow("Docker image 'nonexistent:latest' not found locally");
   });
 
@@ -172,7 +178,7 @@ describe("uploadContainer", () => {
         localImageTag: "myapp:latest",
         commitSha: "abc123def456",
         waitForBase: false,
-      })
+      }),
     ).rejects.toThrow("Failed to push Docker image");
   });
 
@@ -185,7 +191,7 @@ describe("uploadContainer", () => {
         localImageTag: "myapp:latest",
         commitSha: "abc123def456",
         waitForBase: false,
-      })
+      }),
     ).rejects.toThrow("Failed to tag Docker image");
   });
 
@@ -239,7 +245,8 @@ describe("uploadContainer", () => {
     (completeContainerUpload as any).mockImplementation(async () => {
       callCount++;
       // Keep returning baseNotFound for multiple calls (simulating timeout scenario)
-      if (callCount <= 30) { // Simulate many polls
+      if (callCount <= 30) {
+        // Simulate many polls
         return {
           testRun: null,
           baseNotFound: true,
@@ -274,20 +281,20 @@ describe("uploadContainer", () => {
 
     expect(result.testRun?.id).toBe("test-run-789");
     expect(callCount).toBeGreaterThan(1); // Should have polled multiple times
-    
+
     vi.useRealTimers();
   });
 
   it("should handle progress events during push", async () => {
-    const progressEvents: any[] = [];
-    
-    mockDockerClient.modem.followProgress.mockImplementation((stream: any, onFinished: any, onProgress: any) => {
-      onProgress({ status: "Preparing", progressDetail: {} });
-      onProgress({ status: "Pushing", progress: "[==>  ] 25%" });
-      onProgress({ status: "Pushing", progress: "[====> ] 75%" });
-      onProgress({ status: "Pushed" });
-      onFinished(null, []);
-    });
+    mockDockerClient.modem.followProgress.mockImplementation(
+      (stream: any, onFinished: any, onProgress: any) => {
+        onProgress({ status: "Preparing", progressDetail: {} });
+        onProgress({ status: "Pushing", progress: "[==>  ] 25%" });
+        onProgress({ status: "Pushing", progress: "[====> ] 75%" });
+        onProgress({ status: "Pushed" });
+        onFinished(null, []);
+      },
+    );
 
     await uploadContainer({
       apiToken: "test-token",
