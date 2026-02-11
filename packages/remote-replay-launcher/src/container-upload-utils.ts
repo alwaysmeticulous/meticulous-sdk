@@ -8,17 +8,32 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import Docker from "dockerode";
-import ora from "ora";
 import { Readable } from "stream";
 
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
 const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+export interface DockerPushProgress {
+  status: string;
+  progress?: string;
+  progressDetail?: {
+    current?: number;
+    total?: number;
+  };
+  id?: string;
+  error?: string;
+}
+
+export interface UploadContainerCallbacks {
+  onPushProgress?: (progress: DockerPushProgress) => void;
+}
 
 export interface UploadContainerOptions {
   apiToken: string | null | undefined;
   localImageTag: string;
   commitSha: string;
   waitForBase?: boolean;
+  callbacks?: UploadContainerCallbacks;
 }
 
 export interface UploadContainerResult {
@@ -90,8 +105,7 @@ const pushImage = async (
   docker: Docker,
   imageReference: string,
   authconfig: Docker.AuthConfig,
-  spinner: ora.Ora | null,
-  onProgress?: (progress: any) => void
+  onProgress?: (progress: DockerPushProgress) => void
 ): Promise<void> => {
   const logger = initLogger();
   
@@ -111,52 +125,36 @@ const pushImage = async (
         return;
       }
 
-      let lastProgress = "";
+      let lastProgressStr = "";
       
       docker.modem.followProgress(
         stream as Readable,
         (err, output) => {
           if (err) {
-            if (spinner) {
-              spinner.fail(`Failed to push image ${imageReference}`);
-            }
             logger.error(`Error during image push: ${err.message}`);
             reject(err);
             return;
           }
-          if (spinner) {
-            spinner.succeed(`Successfully pushed image ${imageReference}`);
-          }
+          logger.info(`Successfully pushed image ${imageReference}`);
           resolve();
         },
-        (event) => {
+        (event: DockerPushProgress) => {
           if (onProgress) {
             onProgress(event);
           }
           
           if (event.status && event.progress) {
             const progressStr = `${event.status}: ${event.progress}`;
-            if (progressStr !== lastProgress) {
-              if (spinner) {
-                spinner.text = progressStr;
-              } else {
-                logger.info(progressStr);
-              }
-              lastProgress = progressStr;
+            if (progressStr !== lastProgressStr) {
+              logger.info(progressStr);
+              lastProgressStr = progressStr;
             }
-          } else if (event.status && event.status !== lastProgress) {
-            if (spinner) {
-              spinner.text = event.status;
-            } else {
-              logger.info(event.status);
-            }
-            lastProgress = event.status;
+          } else if (event.status && event.status !== lastProgressStr) {
+            logger.info(event.status);
+            lastProgressStr = event.status;
           }
           
           if (event.error) {
-            if (spinner) {
-              spinner.fail(`Push error: ${event.error}`);
-            }
             logger.error(`Push error: ${event.error}`);
             reject(new Error(event.error));
           }
@@ -171,6 +169,7 @@ export const uploadContainer = async ({
   localImageTag,
   commitSha,
   waitForBase = false,
+  callbacks,
 }: UploadContainerOptions): Promise<UploadContainerResult> => {
   const logger = initLogger();
 
@@ -186,28 +185,21 @@ export const uploadContainer = async ({
 
   const docker = getDockerClient();
 
-  let spinner = ora("Verifying Docker connection").start();
-  try {
-    await verifyDockerConnection(docker);
-    spinner.succeed("Docker connection verified");
-  } catch (error) {
-    spinner.fail("Failed to connect to Docker");
-    throw error;
-  }
+  logger.info("Verifying Docker connection...");
+  await verifyDockerConnection(docker);
+  logger.info("Docker connection verified");
 
-  spinner = ora(`Verifying local Docker image: ${localImageTag}`).start();
+  logger.info(`Verifying local Docker image: ${localImageTag}`);
   const imageInfo = await getImageInfo(docker, localImageTag);
   if (!imageInfo) {
-    spinner.fail(`Docker image '${localImageTag}' not found`);
     throw new Error(
       `Docker image '${localImageTag}' not found locally. Please build the image first.`
     );
   }
-  spinner.succeed(`Found Docker image: ${localImageTag}`);
+  logger.info(`Found Docker image: ${localImageTag}`);
 
-  spinner = ora("Getting registry credentials").start();
+  logger.info("Getting registry credentials...");
   const registryAuth = await getRegistryAuth({ client });
-  spinner.succeed("Registry credentials obtained");
   
   const { uploadId, imageReference, registryUrl, robotAccountName, robotAccountSecret } = registryAuth;
   
@@ -215,25 +207,21 @@ export const uploadContainer = async ({
   logger.info(`Upload ID: ${uploadId}`);
   logger.info(`Image reference: ${imageReference}`);
 
-  spinner = ora(`Tagging image for registry`).start();
-  try {
-    await tagImage(docker, localImageTag, imageReference);
-    spinner.succeed(`Tagged image as ${imageReference}`);
-  } catch (error) {
-    spinner.fail("Failed to tag image");
-    throw error;
-  }
+  logger.info("Tagging image for registry...");
+  await tagImage(docker, localImageTag, imageReference);
+  logger.info(`Tagged image as ${imageReference}`);
 
-  spinner = ora(`Pushing image to registry`).start();
+  logger.info(`Pushing image to registry: ${imageReference}`);
   const authconfig: Docker.AuthConfig = {
     username: robotAccountName,
     password: robotAccountSecret,
     serveraddress: registryUrl,
   };
 
-  await pushImage(docker, imageReference, authconfig, spinner);
+  await pushImage(docker, imageReference, authconfig, callbacks?.onPushProgress);
+  logger.info(`Successfully pushed image ${imageReference}`);
 
-  spinner = ora("Completing container upload and triggering test run").start();
+  logger.info("Completing container upload and triggering test run...");
   
   const completeResult = await completeContainerUpload({
     client,
@@ -248,13 +236,13 @@ export const uploadContainer = async ({
   let lastTimeElapsed = 0;
 
   if (waitForBase && baseNotFound && !testRun) {
-    spinner.text = "Waiting for base test run to be created";
     const startTime = Date.now();
+    logger.info("Waiting for base test run to be created...");
 
     while (!testRun && baseNotFound) {
       const timeElapsed = Date.now() - startTime;
       if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
-        spinner.warn(
+        logger.warn(
           `Timed out after ${
             POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000
           } seconds waiting for base test run`
@@ -262,7 +250,9 @@ export const uploadContainer = async ({
         break;
       }
       if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30_000) {
-        spinner.text = `Waiting for base test run. Time elapsed: ${Math.round(timeElapsed / 1000)}s`;
+        logger.info(
+          `Waiting for base test run to be created. Time elapsed: ${Math.round(timeElapsed / 1000)}s`
+        );
         lastTimeElapsed = timeElapsed;
       }
       await new Promise((resolve) =>
@@ -281,7 +271,7 @@ export const uploadContainer = async ({
     }
 
     if (baseNotFound && !testRun) {
-      spinner.text = "Base test run not found, proceeding without it";
+      logger.info("Base test run not found, proceeding without it.");
       const finalResult = await completeContainerUpload({
         client,
         uploadId,
@@ -294,9 +284,12 @@ export const uploadContainer = async ({
   }
 
   if (testRun) {
-    spinner.succeed("Container upload complete and test run triggered");
-  } else {
-    spinner.warn("Container upload complete but test run not created");
+    const organizationName = encodeURIComponent(
+      testRun.project.organization.name
+    );
+    const projectName = encodeURIComponent(testRun.project.name);
+    const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${testRun.id}`;
+    logger.info(`Test run triggered: ${testRunUrl}`);
   }
 
   Sentry.captureMessage("Container uploaded and deployment created", {

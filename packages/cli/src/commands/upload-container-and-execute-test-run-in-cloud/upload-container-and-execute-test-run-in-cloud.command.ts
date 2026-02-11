@@ -1,6 +1,10 @@
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
-import { uploadContainerAndTriggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
+import {
+  uploadContainer,
+  DockerPushProgress,
+} from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
+import { SingleBar, Presets } from "cli-progress";
 import { buildCommand } from "../../command-utils/command-builder";
 import { OPTIONS } from "../../command-utils/common-options";
 import {
@@ -42,14 +46,72 @@ const handler: (options: Options) => Promise<void> = async ({
     },
   });
 
+  const progressBar = new SingleBar(
+    {
+      format: "Pushing | {bar} | {percentage}% | {layer}",
+      hideCursor: true,
+    },
+    Presets.shades_classic
+  );
+  const layerProgress = new Map<string, { current: number; total: number }>();
+  let progressBarStarted = false;
+
   try {
-    await uploadContainerAndTriggerTestRun({
+    const result = await uploadContainer({
       apiToken,
       localImageTag,
       commitSha,
       waitForBase,
+      callbacks: {
+        onPushProgress: (progress: DockerPushProgress) => {
+          if (!progressBarStarted) {
+            progressBar.start(100, 0, { layer: "Starting..." });
+            progressBarStarted = true;
+          }
+
+          if (
+            progress.id &&
+            progress.progressDetail?.current &&
+            progress.progressDetail?.total
+          ) {
+            layerProgress.set(progress.id, {
+              current: progress.progressDetail.current,
+              total: progress.progressDetail.total,
+            });
+          }
+
+          let totalCurrent = 0;
+          let totalSize = 0;
+          for (const layer of layerProgress.values()) {
+            totalCurrent += layer.current;
+            totalSize += layer.total;
+          }
+
+          if (totalSize > 0) {
+            const percentage = Math.floor((totalCurrent / totalSize) * 100);
+            progressBar.update(percentage, {
+              layer: progress.status || "Pushing...",
+            });
+          } else if (progress.status) {
+            progressBar.update(0, { layer: progress.status });
+          }
+        },
+      },
     });
+
+    if (progressBarStarted) {
+      progressBar.update(100, { layer: "Complete" });
+      progressBar.stop();
+    }
+
+    if (!result.testRun) {
+      logger.warn("Container upload complete but test run not created");
+    }
   } catch (error) {
+    if (progressBarStarted) {
+      progressBar.stop();
+    }
+
     if (isOutOfDateClientError(error)) {
       throw new OutOfDateCLIError();
     } else {

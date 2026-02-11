@@ -21,15 +21,6 @@ vi.mock("@sentry/node", () => ({
   captureMessage: vi.fn(),
 }));
 vi.mock("dockerode");
-vi.mock("ora", () => ({
-  default: vi.fn(() => ({
-    start: vi.fn().mockReturnThis(),
-    succeed: vi.fn().mockReturnThis(),
-    fail: vi.fn().mockReturnThis(),
-    warn: vi.fn().mockReturnThis(),
-    text: "",
-  })),
-}));
 
 describe("uploadContainer", () => {
   let mockDockerClient: any;
