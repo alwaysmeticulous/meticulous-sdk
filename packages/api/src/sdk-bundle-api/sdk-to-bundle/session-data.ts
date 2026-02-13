@@ -326,7 +326,7 @@ export type SessionContext = {
  */
 export interface ExpiringImage {
   url: string;
-  initiatorType: "img" | "css";
+  initiatorType: "img" | "css" | "video";
   name?: string;
   width: number;
   height: number;
