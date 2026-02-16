@@ -36,7 +36,7 @@ describe("createZipFromFolder", () => {
     // Before the fix (autoClose: false), this would intermittently fail with:
     // "EBADF: bad file descriptor, fsync"
     const promises = Array.from({ length: 100 }, (_, i) =>
-      createZipFromFolder(tempDir, join(outputDir, `test-${i}.zip`))
+      createZipFromFolder(tempDir, join(outputDir, `test-${i}.zip`)),
     );
 
     await Promise.all(promises);
