@@ -13,6 +13,7 @@ import { MultipartBufferManager } from "./multipart-buffer-manager";
 
 const MAX_CONCURRENT_UPLOADS = 4;
 const FS_CONCURRENCY = 10;
+const ZIP_COMPRESSION_LEVEL = 3;
 
 const allWithLimit = async <I, O>(
   items: I[],
@@ -110,7 +111,7 @@ export class MultipartZipUploader {
 
   private createArchive() {
     return archiver("zip", {
-      zlib: { level: 3 },
+      zlib: { level: ZIP_COMPRESSION_LEVEL },
     });
   }
 
@@ -148,7 +149,6 @@ export class MultipartZipUploader {
   }
 
   private async walkAndZipDirectory(archive: archiver.Archiver): Promise<void> {
-    let fileCount = 0;
     const stack: DirectoryStackEntry[] = [
       {
         absolutePath: await realpath(this.args.folderPath),
@@ -170,17 +170,10 @@ export class MultipartZipUploader {
       );
 
       for (const entry of entriesWithStats) {
-        const filesAdded = await this.processDirectoryEntry(
-          archive,
-          entry,
-          newAncestors,
-          stack,
-        );
-        fileCount += filesAdded;
+        await this.processDirectoryEntry(archive, entry, newAncestors, stack);
       }
     }
 
-    this.logger.info(`Uploading ${fileCount} files...`);
     await archive.finalize();
   }
 
@@ -206,22 +199,23 @@ export class MultipartZipUploader {
     },
     ancestors: Set<string>,
     stack: DirectoryStackEntry[],
-  ): Promise<number> {
+  ): Promise<void> {
     const { entryAbsolutePath, entryPathInArchive, entryStats } = entry;
 
     if (entryStats.isSymbolicLink()) {
-      return this.processSymbolicLink(
+      await this.processSymbolicLink(
         archive,
         entryAbsolutePath,
         entryPathInArchive,
         ancestors,
         stack,
       );
+      return;
     }
 
     if (entryStats.isFile()) {
       archive.file(entryAbsolutePath, { name: entryPathInArchive });
-      return 1;
+      return;
     }
 
     if (entryStats.isDirectory()) {
@@ -230,10 +224,8 @@ export class MultipartZipUploader {
         pathInArchive: entryPathInArchive,
         ancestors,
       });
-      return 0;
+      return;
     }
-
-    return 0;
   }
 
   private async processSymbolicLink(
@@ -242,13 +234,13 @@ export class MultipartZipUploader {
     entryPathInArchive: string,
     ancestors: Set<string>,
     stack: DirectoryStackEntry[],
-  ): Promise<number> {
+  ): Promise<void> {
     const targetAbsolutePath = await realpath(entryAbsolutePath);
     const targetStats = await stat(targetAbsolutePath);
 
     if (targetStats.isFile()) {
       archive.file(targetAbsolutePath, { name: entryPathInArchive });
-      return 1;
+      return;
     }
 
     if (targetStats.isDirectory() && !ancestors.has(targetAbsolutePath)) {
@@ -257,8 +249,7 @@ export class MultipartZipUploader {
         pathInArchive: entryPathInArchive,
         ancestors,
       });
+      return;
     }
-
-    return 0;
   }
 }
