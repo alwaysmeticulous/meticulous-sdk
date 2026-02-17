@@ -1,3 +1,4 @@
+import type { Stats } from "fs";
 import { stat, lstat, readdir, realpath } from "fs/promises";
 import { join } from "path";
 import { Writable } from "stream";
@@ -195,7 +196,7 @@ export class MultipartZipUploader {
     entry: {
       entryAbsolutePath: string;
       entryPathInArchive: string;
-      entryStats: ReturnType<typeof lstat> extends Promise<infer T> ? T : never;
+      entryStats: Stats;
     },
     ancestors: Set<string>,
     stack: DirectoryStackEntry[],
