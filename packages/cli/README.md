@@ -64,7 +64,6 @@ Common commands:
 - `record` - Record a new session
 - `simulate` - Simulate a recorded session locally
 - `run-all-tests` - Run all replay test cases
-- `run-all-tests-in-cloud` - Run all tests remotely against a local or preview URL
 - Additional commands available via `--help`
 
 ## Configuration
