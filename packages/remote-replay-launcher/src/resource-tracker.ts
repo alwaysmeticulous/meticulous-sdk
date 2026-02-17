@@ -38,7 +38,7 @@ export class ResourceTracker {
           Detected that there may be resource contention on the machine (${cpuUsagePercentage.toFixed()}% CPU usage, ${memoryUsagePercentage.toFixed()}% memory usage).
           Heavy load may result in network requests not being processed and lead to flaky tests.
           We recommend running tests on a machine with more resources.
-          `
+          `,
       );
       Sentry.captureMessage("Detected resource contention on tunnel machine", {
         level: "warning",
@@ -61,7 +61,7 @@ export class ResourceTracker {
         active: acc.active + cpu.times.user + cpu.times.nice + cpu.times.sys,
         idle: acc.idle + cpu.times.idle,
       }),
-      { active: 0, idle: 0 }
+      { active: 0, idle: 0 },
     );
   }
 }

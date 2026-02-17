@@ -11,12 +11,36 @@ export interface RequestAssetUploadResponse {
   uploadUrl: string;
 }
 
+export interface RequestMultipartAssetUploadResponse {
+  uploadId: string;
+  awsUploadId: string;
+  uploadPartUrls: string[];
+  uploadChunkSize: number;
+}
+
+export interface RequestUploadPartParams {
+  uploadId: string;
+  awsUploadId: string;
+  size: number;
+  partNumber: number;
+}
+
+export interface RequestUploadPartResponse {
+  uploadPartUrl: string;
+}
+
+export interface MultiPartUploadInfo {
+  awsUploadId: string;
+  eTags: string[];
+}
+
 export interface CompleteAssetUploadParams {
   uploadId: string;
   commitSha: string;
   rewrites: AssetUploadMetadata["rewrites"];
   mustHaveBase: boolean;
   createDeployment?: boolean;
+  multipartUploadInfo?: MultiPartUploadInfo;
 }
 
 export interface CompleteAssetUploadResponse {
@@ -54,6 +78,31 @@ export const requestAssetUpload = async ({
     RequestAssetUploadParams,
     { data: RequestAssetUploadResponse }
   >("project-deployments/request-asset-upload", params);
+  return data;
+};
+
+export const requestMultipartAssetUpload = async ({
+  client,
+}: {
+  client: MeticulousClient;
+}): Promise<RequestMultipartAssetUploadResponse> => {
+  const { data } = await client.post<
+    Record<string, never>,
+    { data: RequestMultipartAssetUploadResponse }
+  >("project-deployments/request-multipart-asset-upload", {});
+  return data;
+};
+
+export const requestUploadPart = async ({
+  client,
+  ...params
+}: RequestUploadPartParams & {
+  client: MeticulousClient;
+}): Promise<RequestUploadPartResponse> => {
+  const { data } = await client.post<
+    RequestUploadPartParams,
+    { data: RequestUploadPartResponse }
+  >("project-deployments/request-upload-part", params);
   return data;
 };
 
