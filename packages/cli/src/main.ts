@@ -19,6 +19,7 @@ import { runAllTestsInCloudCommand } from "./commands/run-all-tests-in-cloud/run
 import { showProjectCommand } from "./commands/show-project/show-project.command";
 import { startLocalTunnelCommand } from "./commands/start-local-tunnel/start-local-tunnel.command";
 import { uploadAssetsAndExecuteTestRunInCloudCommand } from "./commands/upload-assets-and-execute-test-run-in-cloud/upload-assets-and-execute-test-run-in-cloud.command";
+import { uploadContainerAndExecuteTestRunInCloudCommand } from "./commands/upload-container-and-execute-test-run-in-cloud/upload-container-and-execute-test-run-in-cloud.command";
 import { setOptions } from "./utils/sentry.utils";
 
 const handleDataDir: (dataDir: string | null | undefined) => void = (
@@ -52,6 +53,7 @@ export const main: () => void = async () => {
     .command(showProjectCommand)
     .command(startLocalTunnelCommand)
     .command(uploadAssetsAndExecuteTestRunInCloudCommand)
+    .command(uploadContainerAndExecuteTestRunInCloudCommand)
     .help()
     .strict()
     .demandCommand()

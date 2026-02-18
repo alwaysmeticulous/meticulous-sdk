@@ -44,8 +44,15 @@ export {
   CompleteAssetUploadParams,
   CompleteAssetUploadResponse,
   completeAssetUpload,
+  CompleteContainerUploadParams,
+  CompleteContainerUploadResponse,
+  completeContainerUpload,
   MultiPartUploadInfo,
   DownloadDeploymentResponse,
   downloadProjectDeployment,
 } from "./api/project-deployments.api";
+export {
+  GetRegistryAuthResponse,
+  getRegistryAuth,
+} from "./api/registry.api";
 export { isFetchError } from "./errors";
