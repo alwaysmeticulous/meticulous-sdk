@@ -1,4 +1,3 @@
-import { Readable } from "stream";
 import {
   getApiToken,
   createClient,
@@ -13,27 +12,11 @@ import Docker from "dockerode";
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
 const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
-export interface DockerPushProgress {
-  status: string;
-  progress?: string;
-  progressDetail?: {
-    current?: number;
-    total?: number;
-  };
-  id?: string;
-  error?: string;
-}
-
-export interface UploadContainerCallbacks {
-  onPushProgress?: (progress: DockerPushProgress) => void;
-}
-
 export interface UploadContainerOptions {
   apiToken: string | null | undefined;
   localImageTag: string;
   commitSha: string;
   waitForBase?: boolean;
-  callbacks?: UploadContainerCallbacks;
 }
 
 export interface UploadContainerResult {
@@ -105,7 +88,6 @@ const pushImage = async (
   docker: Docker,
   imageReference: string,
   authconfig: Docker.AuthConfig,
-  onProgress?: (progress: DockerPushProgress) => void,
 ): Promise<void> => {
   const logger = initLogger();
 
@@ -125,41 +107,15 @@ const pushImage = async (
         return;
       }
 
-      let lastProgressStr = "";
-
-      docker.modem.followProgress(
-        stream as Readable,
-        (err) => {
-          if (err) {
-            logger.error(`Error during image push: ${err.message}`);
-            reject(err);
-            return;
-          }
-          logger.info(`Successfully pushed image ${imageReference}`);
-          resolve();
-        },
-        (event: DockerPushProgress) => {
-          if (onProgress) {
-            onProgress(event);
-          }
-
-          if (event.status && event.progress) {
-            const progressStr = `${event.status}: ${event.progress}`;
-            if (progressStr !== lastProgressStr) {
-              logger.info(progressStr);
-              lastProgressStr = progressStr;
-            }
-          } else if (event.status && event.status !== lastProgressStr) {
-            logger.info(event.status);
-            lastProgressStr = event.status;
-          }
-
-          if (event.error) {
-            logger.error(`Push error: ${event.error}`);
-            reject(new Error(event.error));
-          }
-        },
-      );
+      docker.modem.followProgress(stream, (err) => {
+        if (err) {
+          logger.error(`Error during image push: ${err.message}`);
+          reject(err);
+          return;
+        }
+        logger.info(`Successfully pushed image ${imageReference}`);
+        resolve();
+      });
     });
   });
 };
@@ -169,7 +125,6 @@ export const uploadContainer = async ({
   localImageTag,
   commitSha,
   waitForBase = false,
-  callbacks,
 }: UploadContainerOptions): Promise<UploadContainerResult> => {
   const logger = initLogger();
 
@@ -224,12 +179,7 @@ export const uploadContainer = async ({
     serveraddress: registryUrl,
   };
 
-  await pushImage(
-    docker,
-    imageReference,
-    authconfig,
-    callbacks?.onPushProgress,
-  );
+  await pushImage(docker, imageReference, authconfig);
   logger.info(`Successfully pushed image ${imageReference}`);
 
   logger.info("Completing container upload and triggering test run...");
