@@ -1,9 +1,9 @@
 import { initLogger } from "@alwaysmeticulous/common";
-import { uploadContainer } from "./upload-container";
 import {
   UploadContainerAndTriggerTestRunOptions,
   ExecuteRemoteTestRunResult,
 } from "./types";
+import { uploadContainer } from "./upload-container";
 
 export const uploadContainerAndTriggerTestRun = async ({
   apiToken,
