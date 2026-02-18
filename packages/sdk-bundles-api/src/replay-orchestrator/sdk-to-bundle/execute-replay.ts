@@ -140,8 +140,7 @@ export type ScreenshotComparisonOptions =
     }
   | ScreenshotComparisonEnabledOptions;
 
-export interface ScreenshotComparisonEnabledOptions
-  extends ScreenshottingEnabledOptions {
+export interface ScreenshotComparisonEnabledOptions extends ScreenshottingEnabledOptions {
   compareTo: CompareScreenshotsTo;
 }
 
@@ -179,7 +178,8 @@ export type ReplayTarget =
   | SnapshottedAssetsReplayTarget
   | URLReplayTarget
   | OriginalRecordedURLReplayTarget
-  | UploadedAssetsReplayTarget;
+  | UploadedAssetsReplayTarget
+  | UploadedContainerReplayTarget;
 
 export interface SnapshottedAssetsReplayTarget {
   type: "snapshotted-assets";
@@ -202,6 +202,11 @@ export interface URLReplayTarget {
 export interface UploadedAssetsReplayTarget {
   type: "uploaded-assets";
   deploymentUploadId: string;
+}
+
+export interface UploadedContainerReplayTarget {
+  type: "uploaded-container";
+  containerUploadId: string;
 }
 
 export interface OriginalRecordedURLReplayTarget {

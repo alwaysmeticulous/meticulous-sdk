@@ -26,7 +26,8 @@ import {
 import { openStepThroughDebuggerUI } from "./utils/replay-debugger.ui";
 
 interface ReplayCommandHandlerOptions
-  extends ScreenshotDiffOptions,
+  extends
+    ScreenshotDiffOptions,
     Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount"> {
   takeSnapshots: boolean;
   appUrl: string | null | undefined;
@@ -243,6 +244,10 @@ export const getReplayTarget = ({
     if (appUrl.startsWith("uploaded-assets://")) {
       const deploymentUploadId = appUrl.slice("uploaded-assets://".length);
       return { type: "uploaded-assets", deploymentUploadId };
+    }
+    if (appUrl.startsWith("uploaded-container://")) {
+      const containerUploadId = appUrl.slice("uploaded-container://".length);
+      return { type: "uploaded-container", containerUploadId };
     }
     return { type: "url", appUrl };
   }
