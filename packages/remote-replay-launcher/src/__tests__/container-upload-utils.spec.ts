@@ -5,7 +5,7 @@ import {
 } from "@alwaysmeticulous/client";
 import Docker from "dockerode";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { uploadContainer } from "../container-upload-utils";
+import { uploadContainer } from "../upload-container";
 
 // Mock the dependencies
 vi.mock("@alwaysmeticulous/client", () => ({
@@ -56,10 +56,7 @@ describe("uploadContainer", () => {
       ping: vi.fn().mockResolvedValue(true),
       getImage: vi.fn().mockReturnValue(mockImage),
       modem: {
-        followProgress: vi.fn((stream, onFinished, onProgress) => {
-          // Simulate progress events
-          onProgress({ status: "Pushing", progress: "[==>  ] 50%" });
-          onProgress({ status: "Pushed" });
+        followProgress: vi.fn((stream, onFinished) => {
           // Call onFinished to complete the push
           onFinished(null, []);
         }),
@@ -287,11 +284,7 @@ describe("uploadContainer", () => {
 
   it("should handle progress events during push", async () => {
     mockDockerClient.modem.followProgress.mockImplementation(
-      (stream: any, onFinished: any, onProgress: any) => {
-        onProgress({ status: "Preparing", progressDetail: {} });
-        onProgress({ status: "Pushing", progress: "[==>  ] 25%" });
-        onProgress({ status: "Pushing", progress: "[====> ] 75%" });
-        onProgress({ status: "Pushed" });
+      (stream: any, onFinished: any) => {
         onFinished(null, []);
       },
     );

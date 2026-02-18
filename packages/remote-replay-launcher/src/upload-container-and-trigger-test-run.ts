@@ -1,5 +1,5 @@
 import { initLogger } from "@alwaysmeticulous/common";
-import { uploadContainer } from "./container-upload-utils";
+import { uploadContainer } from "./upload-container";
 import {
   UploadContainerAndTriggerTestRunOptions,
   ExecuteRemoteTestRunResult,
@@ -22,7 +22,7 @@ export const uploadContainerAndTriggerTestRun = async ({
 
   if (result.testRun) {
     const organizationName = encodeURIComponent(
-      result.testRun.project.organization.name
+      result.testRun.project.organization.name,
     );
     const projectName = encodeURIComponent(result.testRun.project.name);
     const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${result.testRun.id}`;

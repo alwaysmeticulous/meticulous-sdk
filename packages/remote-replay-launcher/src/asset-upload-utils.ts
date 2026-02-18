@@ -17,10 +17,8 @@ import {
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
+import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 import { MultipartZipUploader } from "./upload-utils/multipart-zip-uploader";
-
-const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
-const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 export interface UploadAssetsOptions {
   apiToken: string | null | undefined;
@@ -104,9 +102,6 @@ const completeUploadAndWaitForBase = async ({
 }> => {
   const logger = initLogger();
 
-  let testRun: TestRun | null = null;
-  let message: string | undefined = undefined;
-
   const completeAssetUploadArgs = {
     client,
     uploadId,
@@ -117,46 +112,20 @@ const completeUploadAndWaitForBase = async ({
     ...(multipartUploadInfo ? { multipartUploadInfo } : {}),
   };
 
-  const startTime = Date.now();
-  let result = await completeAssetUpload(completeAssetUploadArgs);
-  testRun = result?.testRun ?? null;
-  let baseNotFound = result?.baseNotFound;
-  let lastTimeElapsed = 0;
-
-  while (!testRun && baseNotFound) {
-    const timeElapsed = Date.now() - startTime;
-    if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
-      logger.warn(
-        `Timed out after ${
-          POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000
-        } seconds waiting for test run`,
-      );
-      break;
-    }
-    if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30_000) {
-      logger.info(
-        `Waiting for base test run to be created. Time elapsed: ${timeElapsed}ms`,
-      );
-      lastTimeElapsed = timeElapsed;
-    }
-    await new Promise((resolve) =>
-      setTimeout(resolve, POLL_FOR_BASE_TEST_RUN_INTERVAL_MS),
-    );
-    result = await triggerRunOnDeployment(completeAssetUploadArgs);
-    testRun = result?.testRun ?? null;
-    baseNotFound = result?.baseNotFound;
-  }
-
-  if (baseNotFound) {
-    logger.info(`Base test run not found, proceeding without it.`);
-    testRun =
-      (
-        await triggerRunOnDeployment({
-          ...completeAssetUploadArgs,
-          mustHaveBase: false,
-        })
-      ).testRun ?? null;
-  }
+  const initialResult = await completeAssetUpload(completeAssetUploadArgs);
+  const { testRun, baseNotFound, message } = await pollWhileBaseNotFound({
+    initialResult: {
+      testRun: initialResult?.testRun ?? null,
+      baseNotFound: initialResult?.baseNotFound,
+      message: initialResult?.message,
+    },
+    retryFn: () => triggerRunOnDeployment(completeAssetUploadArgs),
+    fallbackFn: () =>
+      triggerRunOnDeployment({
+        ...completeAssetUploadArgs,
+        mustHaveBase: false,
+      }),
+  });
 
   Sentry.captureMessage("Deployment assets marked as uploaded", {
     level: "debug",
@@ -167,11 +136,10 @@ const completeUploadAndWaitForBase = async ({
       baseNotFound: baseNotFound,
     },
   });
-  message = result?.message;
   logger.info(`Deployment assets ${uploadId} marked as uploaded`);
 
   return {
-    testRun,
+    testRun: testRun ?? null,
     ...(message ? { message } : {}),
   };
 };
