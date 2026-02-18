@@ -56,9 +56,9 @@ export const uploadAssets = async (
     if (!existsSync(indexHtmlPath)) {
       logger.warn(
         `Warning: No index.html found in the app directory (${resolvedAppDirectory}). ` +
-          `This may indicate that your build output is not properly configured for static hosting, unless you expect that the root url is invalid. ` +
-          `If you're using Next.js or another framework that requires server-side rendering, ` +
-          `you should use the \`cloud-compute\` GitHub Action or the \`run-all-tests-in-cloud\` command instead.`,
+        `This may indicate that your build output is not properly configured for static hosting, unless you expect that the root url is invalid. ` +
+        `If you're using Next.js or another framework that requires server-side rendering, ` +
+        `you should use the \`cloud-compute\` GitHub Action or the \`run-all-tests-in-cloud\` command instead.`,
       );
     }
   }
@@ -112,20 +112,45 @@ const completeUploadAndWaitForBase = async ({
     ...(multipartUploadInfo ? { multipartUploadInfo } : {}),
   };
 
-  const initialResult = await completeAssetUpload(completeAssetUploadArgs);
-  const { testRun, baseNotFound, message } = await pollWhileBaseNotFound({
-    initialResult: {
-      testRun: initialResult?.testRun ?? null,
-      baseNotFound: initialResult?.baseNotFound,
-      message: initialResult?.message,
-    },
-    retryFn: () => triggerRunOnDeployment(completeAssetUploadArgs),
-    fallbackFn: () =>
-      triggerRunOnDeployment({
-        ...completeAssetUploadArgs,
-        mustHaveBase: false,
-      }),
-  });
+  const startTime = Date.now();
+  let result = await completeAssetUpload(completeAssetUploadArgs);
+  testRun = result?.testRun ?? null;
+  let baseNotFound = result?.baseNotFound;
+  let lastTimeElapsed = 0;
+
+  while (!testRun && baseNotFound) {
+    const timeElapsed = Date.now() - startTime;
+    if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
+      logger.warn(
+        `Timed out after ${POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000
+        } seconds waiting for test run`,
+      );
+      break;
+    }
+    if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30_000) {
+      logger.info(
+        `Waiting for base test run to be created. Time elapsed: ${timeElapsed}ms`,
+      );
+      lastTimeElapsed = timeElapsed;
+    }
+    await new Promise((resolve) =>
+      setTimeout(resolve, POLL_FOR_BASE_TEST_RUN_INTERVAL_MS),
+    );
+    result = await triggerRunOnDeployment(completeAssetUploadArgs);
+    testRun = result?.testRun ?? null;
+    baseNotFound = result?.baseNotFound;
+  }
+
+  if (baseNotFound) {
+    logger.info(`Base test run not found, proceeding without it.`);
+    testRun =
+      (
+        await triggerRunOnDeployment({
+          ...completeAssetUploadArgs,
+          mustHaveBase: false,
+        })
+      ).testRun ?? null;
+  }
 
   Sentry.captureMessage("Deployment assets marked as uploaded", {
     level: "debug",
@@ -171,9 +196,15 @@ const uploadAssetsStreaming = async ({
     client,
     uploadBufferToSignedUrl,
   });
-  const multipartUploadInfo = await uploader.execute();
 
-  logger.info(`Deployment assets ${uploadId} uploaded successfully`);
+  const uploadStartTime = Date.now();
+  const multipartUploadInfo = await uploader.execute();
+  const uploadDurationMs = Date.now() - uploadStartTime;
+  logger.info(
+    `Deployment assets ${uploadId} uploaded successfully in ${uploadDurationMs / 1000}s`,
+  );
+  throw new Error("End test");
+
 
   const { testRun, message } = await completeUploadAndWaitForBase({
     client,

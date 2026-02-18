@@ -3,36 +3,21 @@ import { stat, lstat, readdir, realpath } from "fs/promises";
 import { join } from "path";
 import { Writable } from "stream";
 import { DeploymentArchiveType } from "@alwaysmeticulous/api";
+import { constants as zlibConstants } from "zlib";
 import {
   createClient,
   requestUploadPart,
   MultiPartUploadInfo,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
-import archiver from "archiver";
-import pLimit from "p-limit";
+import { DeflateRaw } from "fast-zlib";
+import { create as tarCreate } from "tar";
 import { MultipartBufferManager } from "./multipart-buffer-manager";
 
 const MAX_CONCURRENT_UPLOADS = 4;
-const FS_CONCURRENCY = 10;
-const ZIP_COMPRESSION_LEVEL = 3;
+export const UPLOAD_ARCHIVE_FILE_FORMAT: DeploymentArchiveType = "tar.d";
 
-export const UPLOAD_ARCHIVE_FILE_FORMAT: DeploymentArchiveType = "zip";
-
-const allWithLimit = async <I, O>(
-  items: I[],
-  limit: number,
-  handler: (item: I) => Promise<O>,
-): Promise<Awaited<O>[]> => {
-  const limited = pLimit(limit);
-  return Promise.all(items.map((item) => limited(() => handler(item))));
-};
-
-interface DirectoryStackEntry {
-  absolutePath: string;
-  pathInArchive: string;
-  ancestors: Set<string>;
-}
+const COMPRESSION_LEVEL = 3;
 
 export interface MultipartZipUploaderArgs {
   folderPath: string;
@@ -59,15 +44,50 @@ export class MultipartZipUploader {
   }
 
   async execute(): Promise<MultiPartUploadInfo> {
-    return new Promise<MultiPartUploadInfo>((resolve, reject) => {
-      const archive = this.createArchive();
-      const uploadStream = this.createUploadStream(resolve, reject);
+    const deflate = new DeflateRaw({ level: COMPRESSION_LEVEL });
 
-      archive.on("error", reject);
-      uploadStream.on("error", reject);
-      archive.pipe(uploadStream);
+    await this.streamTarCompressed(deflate);
 
-      this.walkAndZipDirectory(archive).catch(reject);
+    const finalChunk = deflate.process(
+      Buffer.alloc(0),
+      zlibConstants.Z_FINISH,
+    );
+    if (finalChunk.length > 0) {
+      this.bufferManager.addChunk(finalChunk);
+    }
+    await this.bufferManager.flush(true);
+
+    const eTags = await this.bufferManager.finalize();
+    return { awsUploadId: this.args.awsUploadId, eTags };
+  }
+
+  private streamTarCompressed(deflate: DeflateRaw): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const tarStream = tarCreate(
+        {
+          cwd: this.args.folderPath,
+          follow: true,
+          portable: true,
+        },
+        ["."],
+      );
+
+      tarStream.on("data", (chunk: Buffer) => {
+        const compressed = deflate.process(chunk);
+        if (compressed.length > 0) {
+          this.bufferManager.addChunk(compressed);
+          if (this.bufferManager.getBufferSize() >= this.args.uploadChunkSize) {
+            tarStream.pause();
+            this.bufferManager
+              .flush(false)
+              .then(() => tarStream.resume())
+              .catch(reject);
+          }
+        }
+      });
+
+      tarStream.on("end", resolve);
+      tarStream.on("error", reject);
     });
   }
 
@@ -111,149 +131,5 @@ export class MultipartZipUploader {
     });
 
     return uploadPartUrl;
-  }
-
-  private createArchive() {
-    return archiver("zip", {
-      zlib: { level: ZIP_COMPRESSION_LEVEL },
-    });
-  }
-
-  private createUploadStream(
-    resolve: (value: MultiPartUploadInfo) => void,
-    reject: (reason: unknown) => void,
-  ): Writable {
-    return new Writable({
-      write: (chunk: Buffer, _encoding, callback) => {
-        this.bufferManager.addChunk(chunk);
-
-        if (this.bufferManager.getBufferSize() >= this.args.uploadChunkSize) {
-          this.bufferManager
-            .flush(false)
-            .then(() => callback())
-            .catch(callback);
-        } else {
-          callback();
-        }
-      },
-      final: (callback) => {
-        this.bufferManager
-          .flush(true)
-          .then(() => this.bufferManager.finalize())
-          .then((sortedETags) => {
-            resolve({ awsUploadId: this.args.awsUploadId, eTags: sortedETags });
-            callback();
-          })
-          .catch((err) => {
-            callback(err);
-            reject(err);
-          });
-      },
-    });
-  }
-
-  private async walkAndZipDirectory(archive: archiver.Archiver): Promise<void> {
-    const stack: DirectoryStackEntry[] = [
-      {
-        absolutePath: await realpath(this.args.folderPath),
-        pathInArchive: "",
-        ancestors: new Set<string>(),
-      },
-    ];
-
-    while (stack.length > 0) {
-      const { absolutePath, pathInArchive, ancestors } = stack.pop()!;
-      if (ancestors.has(absolutePath)) {
-        continue;
-      }
-
-      const newAncestors = new Set([...ancestors, absolutePath]);
-      const entriesWithStats = await this.getDirectoryEntriesWithStats(
-        absolutePath,
-        pathInArchive,
-      );
-
-      for (const entry of entriesWithStats) {
-        await this.processDirectoryEntry(archive, entry, newAncestors, stack);
-      }
-    }
-
-    await archive.finalize();
-  }
-
-  private async getDirectoryEntriesWithStats(
-    absolutePath: string,
-    pathInArchive: string,
-  ) {
-    const entries = await readdir(absolutePath);
-    return allWithLimit(entries, FS_CONCURRENCY, async (entry) => {
-      const entryAbsolutePath = join(absolutePath, entry);
-      const entryPathInArchive = join(pathInArchive, entry);
-      const entryStats = await lstat(entryAbsolutePath);
-      return { entryAbsolutePath, entryPathInArchive, entryStats };
-    });
-  }
-
-  private async processDirectoryEntry(
-    archive: archiver.Archiver,
-    entry: {
-      entryAbsolutePath: string;
-      entryPathInArchive: string;
-      entryStats: Stats;
-    },
-    ancestors: Set<string>,
-    stack: DirectoryStackEntry[],
-  ): Promise<void> {
-    const { entryAbsolutePath, entryPathInArchive, entryStats } = entry;
-
-    if (entryStats.isSymbolicLink()) {
-      await this.processSymbolicLink(
-        archive,
-        entryAbsolutePath,
-        entryPathInArchive,
-        ancestors,
-        stack,
-      );
-      return;
-    }
-
-    if (entryStats.isFile()) {
-      archive.file(entryAbsolutePath, { name: entryPathInArchive });
-      return;
-    }
-
-    if (entryStats.isDirectory()) {
-      stack.push({
-        absolutePath: entryAbsolutePath,
-        pathInArchive: entryPathInArchive,
-        ancestors,
-      });
-      return;
-    }
-  }
-
-  private async processSymbolicLink(
-    archive: archiver.Archiver,
-    entryAbsolutePath: string,
-    entryPathInArchive: string,
-    ancestors: Set<string>,
-    stack: DirectoryStackEntry[],
-  ): Promise<void> {
-    const targetAbsolutePath = await realpath(entryAbsolutePath);
-    const targetStats = await stat(targetAbsolutePath);
-
-    if (targetStats.isFile()) {
-      archive.file(targetAbsolutePath, { name: entryPathInArchive });
-      return;
-    }
-
-    if (targetStats.isDirectory() && !ancestors.has(targetAbsolutePath)) {
-      stack.push({
-        absolutePath: entryAbsolutePath,
-        pathInArchive: entryPathInArchive,
-        ancestors,
-      });
-      return;
-    }
   }
 }
