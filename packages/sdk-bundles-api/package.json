@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/sdk-bundles-api",
-  "version": "2.248.14",
+  "version": "2.250.1",
   "description": "Meticulous common types",
   "license": "ISC",
   "main": "dist/index.js",
