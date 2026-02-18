@@ -1,5 +1,5 @@
-import { ScreenshotAssertionsEnabledOptions } from "@alwaysmeticulous/api";
-import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
+import type { ScreenshotAssertionsEnabledOptions } from "@alwaysmeticulous/api";
+import type { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
 
 export const BASE_SNIPPETS_URL = "https://snippet.meticulous.ai/";
 
