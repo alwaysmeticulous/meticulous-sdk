@@ -189,8 +189,6 @@ export const downloadAndExtractFile: (
     } finally {
       clearTimeout(timeoutId!);
     }
-  } catch (err) {
-    throw err;
   } finally {
     await rm(tmpZipFilePath);
   }
