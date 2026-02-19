@@ -170,20 +170,25 @@ export const downloadAndExtractFile: (
   const entries: string[] = [];
 
   try {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
         () =>
           reject(
             new Error(`Zip extraction timed out after ${extractTimeoutInMs}ms`),
           ),
         extractTimeoutInMs,
-      ),
-    );
-    const extractPromise = extract(tmpZipFilePath, {
-      dir: extractPath,
-      onEntry: (entry) => entries.push(entry.fileName),
+      );
     });
-    await Promise.race([extractPromise, timeoutPromise]);
+    try {
+      const extractPromise = extract(tmpZipFilePath, {
+        dir: extractPath,
+        onEntry: (entry) => entries.push(entry.fileName),
+      });
+      await Promise.race([extractPromise, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId!);
+    }
   } finally {
     await rm(tmpZipFilePath);
   }
