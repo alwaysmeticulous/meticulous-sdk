@@ -1,3 +1,5 @@
+import { InitialNavigationResponse } from "@alwaysmeticulous/api";
+
 /**
  * This API is exposed on the window under `window.Meticulous`.
  */
@@ -216,7 +218,7 @@ export interface MeticulousPublicRecordApi {
    * of server-side rendering (SSR) when running Meticulous. It is unlikely you will need
    * to call this method unless you have been directed to do so by Meticulous support.
    */
-  recordInitialNavigationResponse(har: InitialNavigationResponse): {
+  recordInitialNavigationResponse(response: InitialNavigationResponse): {
     success: boolean;
   };
 
@@ -232,23 +234,6 @@ export interface MeticulousPublicRecordApi {
    * and before any full-page navigation.
    */
   flush(): Promise<void>;
-}
-
-export interface InitialNavigationResponse {
-  /**
-   * The status code of the initial navigation response.
-   */
-  status: number;
-
-  /**
-   * The headers of the initial navigation response.
-   */
-  headers: Record<string, string>;
-
-  /**
-   * The body of the initial navigation response.
-   */
-  body: string;
 }
 
 export interface MeticulousPublicContextApi {
