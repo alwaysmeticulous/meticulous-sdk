@@ -42,6 +42,7 @@ export {
 export {
   Cookie,
   SessionData,
+  InitialNavigationResponse,
   UrlHistoryEvent,
   WindowData,
   ApplicationSpecificData,
