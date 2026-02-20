@@ -1,5 +1,5 @@
 import { AssetUploadMetadata } from "@alwaysmeticulous/api";
-import { TestRun } from "@alwaysmeticulous/client";
+import { ContainerEnvVariable, TestRun } from "@alwaysmeticulous/client";
 
 export interface TunnelData {
   url: string;
@@ -85,4 +85,7 @@ export interface UploadContainerAndTriggerTestRunOptions {
    * it will trigger a test run without waiting for a base test run.
    */
   waitForBase: boolean;
+
+  containerPort?: number;
+  containerEnv?: ContainerEnvVariable[];
 }
