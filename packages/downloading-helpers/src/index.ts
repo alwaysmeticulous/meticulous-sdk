@@ -17,5 +17,6 @@ export { fetchAsset, checkIfAssetsOutdated } from "./scripts/replay-assets";
 export {
   downloadFile,
   downloadAndExtractFile,
+  downloadAndExtractTar,
 } from "./file-downloads/download-file";
 export { getReplayDir } from "./scripts/replays";
