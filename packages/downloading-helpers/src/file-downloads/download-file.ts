@@ -1,5 +1,5 @@
 import { createWriteStream, existsSync } from "fs";
-import { readFile, rm } from "fs/promises";
+import { mkdir, readFile, rm } from "fs/promises";
 import { Readable, Stream, finished, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { promisify } from "util";
@@ -206,8 +206,8 @@ export const downloadAndExtractFile: (
  * __Warning__: this function is not thread safe.
  *
  * @param fileUrl The URL of the deflated tar blob to download.
- * @param tmpZipFilePath The path to save the downloaded file. Do not try downloading a file to a
- * `tmpZipFilePath` that may already be in use by another process b/c this can corrupt the data.
+ * @param tmpTarFilePath The path to save the downloaded file. Do not try downloading a file to a
+ * `tmpTarFilePath` that may already be in use by another process b/c this can corrupt the data.
  * @param extractPath The path to a directory which we will extract tar entries into.
  * Do not try extracting to a dir that may already be in use by another process b/c overlapping
  * file names can cause data corruption.
@@ -216,16 +216,16 @@ export const downloadAndExtractFile: (
  */
 export const downloadAndExtractTar: (
   fileUrl: string,
-  tmpZipFilePath: string,
+  tmpTarFilePath: string,
   extractPath: string,
   extractTimeoutInMs?: number,
 ) => Promise<string[]> = async (
   fileUrl,
-  tmpZipFilePath,
+  tmpTarFilePath,
   extractPath,
   extractTimeoutInMs = 300_000,
 ) => {
-  await downloadFile(fileUrl, tmpZipFilePath);
+  await downloadFile(fileUrl, tmpTarFilePath);
   const entries: string[] = [];
 
   try {
@@ -240,7 +240,8 @@ export const downloadAndExtractTar: (
       );
     });
     try {
-      const compressed = await readFile(tmpZipFilePath);
+      await mkdir(extractPath, { recursive: true });
+      const compressed = await readFile(tmpTarFilePath);
       const inflateRaw = new InflateRaw();
       const decompressed = inflateRaw.process(compressed);
       inflateRaw.close();
@@ -257,7 +258,7 @@ export const downloadAndExtractTar: (
       clearTimeout(timeoutId!);
     }
   } finally {
-    await rm(tmpZipFilePath);
+    await rm(tmpTarFilePath);
   }
 
   return entries;
