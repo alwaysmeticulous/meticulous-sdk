@@ -55,12 +55,27 @@ export interface CompleteContainerUploadParams {
   mustHaveBase: boolean;
   isUserVisible?: boolean;
   skipPreprocessing?: boolean;
+  containerPort?: number | undefined;
+  containerEnv?: ContainerEnvVariable[] | undefined;
 }
 
 export interface CompleteContainerUploadResponse {
   testRun?: TestRun;
   message?: string;
   baseNotFound?: boolean;
+}
+
+export interface GetContainerDeploymentResponse {
+  digest: string;
+  size: number;
+  pushedAt: string;
+  containerPort?: number;
+  containerEnv?: ContainerEnvVariable[];
+}
+
+export interface ContainerEnvVariable {
+  name: string;
+  value: string;
 }
 
 export interface DownloadDeploymentResponse {
@@ -156,5 +171,19 @@ export const downloadProjectDeployment = async ({
     unknown,
     { data: DownloadDeploymentResponse }
   >(`project-deployments/${deploymentUploadId}`);
+  return data;
+};
+
+export const getContainerDeployment = async ({
+  client,
+  deploymentUploadId,
+}: {
+  client: MeticulousClient;
+  deploymentUploadId: string;
+}): Promise<GetContainerDeploymentResponse> => {
+  const { data } = await client.get<
+    unknown,
+    { data: GetContainerDeploymentResponse }
+  >(`project-deployments/container/${deploymentUploadId}`);
   return data;
 };

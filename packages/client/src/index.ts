@@ -50,9 +50,9 @@ export {
   MultiPartUploadInfo,
   DownloadDeploymentResponse,
   downloadProjectDeployment,
+  GetContainerDeploymentResponse,
+  getContainerDeployment,
+  ContainerEnvVariable,
 } from "./api/project-deployments.api";
-export {
-  GetRegistryAuthResponse,
-  getRegistryAuth,
-} from "./api/registry.api";
+export { GetRegistryAuthResponse, getRegistryAuth } from "./api/registry.api";
 export { isFetchError } from "./errors";

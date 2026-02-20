@@ -304,6 +304,13 @@ export interface ReplayExecutionOptions {
   companionAssetsInfo?: CompanionAssetsInfo;
 
   uploadedContainerPort?: number;
+
+  uploadedContainerEnv?: ContainerEnvVariable[];
+}
+
+export interface ContainerEnvVariable {
+  name: string;
+  value: string;
 }
 
 export interface StorageEntryOverride extends StorageEntry {
