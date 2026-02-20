@@ -14,6 +14,7 @@ export interface Project {
   settings: {
     networkStubbingMode?: NetworkStubbingMode;
     defaultScreenshottingOptions?: ProjectSettingsScreenshottingOptions;
+    uploadedContainerPort?: number | null;
   };
 
   experimentValues: Record<string, string>;
