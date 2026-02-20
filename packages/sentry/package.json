@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/sentry",
-  "version": "2.250.4",
+  "version": "2.250.5",
   "description": "Helper methods for connecting to Sentry",
   "license": "ISC",
   "main": "dist/index.js",
