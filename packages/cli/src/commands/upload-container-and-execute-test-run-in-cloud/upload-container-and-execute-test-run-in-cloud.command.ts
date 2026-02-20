@@ -102,7 +102,11 @@ export const uploadContainerAndExecuteTestRunInCloudCommand = buildCommand(
       array: true,
       coerce: (value: string[]) =>
         value.map((v) => {
-          const [name, value] = v.split("=");
+          const [name, ...rest] = v.split("=");
+          const value = rest.join("=");
+          if (!name || !value) {
+            throw new Error(`Invalid environment variable: ${v}`);
+          }
           return { name, value };
         }),
       description: "The environment variables to set in the container.",
