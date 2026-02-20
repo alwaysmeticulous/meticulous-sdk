@@ -302,6 +302,8 @@ export interface ReplayExecutionOptions {
   networkDebuggingOptions?: NetworkDebuggingOptions;
 
   companionAssetsInfo?: CompanionAssetsInfo;
+
+  uploadedContainerPort?: number;
 }
 
 export interface StorageEntryOverride extends StorageEntry {
