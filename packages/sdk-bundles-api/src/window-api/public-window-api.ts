@@ -212,6 +212,15 @@ export interface MeticulousPublicRecordApi {
   recordCustomEvent(type: string, serializedData: string): { success: boolean };
 
   /**
+   * Record the initial navigation for this session. This is used to bypass certain types
+   * of server-side rendering (SSR) when running Meticulous. It is unlikely you will need
+   * to call this method unless you have been directed to do so by Meticulous support.
+   */
+  recordInitialNavigationResponse(har: InitialNavigationResponse): {
+    success: boolean;
+  };
+
+  /**
    * Provides a link to view the session in the Meticulous UI. This link
    * is of course only accessible by users with access to the Meticulous project.
    */
@@ -223,6 +232,23 @@ export interface MeticulousPublicRecordApi {
    * and before any full-page navigation.
    */
   flush(): Promise<void>;
+}
+
+export interface InitialNavigationResponse {
+  /**
+   * The status code of the initial navigation response.
+   */
+  status: number;
+
+  /**
+   * The headers of the initial navigation response.
+   */
+  headers: Record<string, string>;
+
+  /**
+   * The body of the initial navigation response.
+   */
+  body: string;
 }
 
 export interface MeticulousPublicContextApi {
