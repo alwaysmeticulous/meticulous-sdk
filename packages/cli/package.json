@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "2.250.7",
+  "version": "2.251.0",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
