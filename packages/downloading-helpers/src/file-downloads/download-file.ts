@@ -1,11 +1,14 @@
 import { createWriteStream, existsSync } from "fs";
-import { rm } from "fs/promises";
-import { Stream, finished, Transform } from "stream";
+import { mkdir, readFile, rm } from "fs/promises";
+import { Readable, Stream, finished, Transform } from "stream";
+import { pipeline } from "stream/promises";
 import { promisify } from "util";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import cliProgress from "cli-progress";
 import extract from "extract-zip";
+import { InflateRaw } from "fast-zlib";
+import { extract as tarExtract } from "tar";
 
 const promisifiedFinished = promisify(finished);
 
@@ -191,6 +194,71 @@ export const downloadAndExtractFile: (
     }
   } finally {
     await rm(tmpZipFilePath);
+  }
+
+  return entries;
+};
+
+/**
+ * Download a raw deflated tar blob from a URL, inflate it using fast-zlib's InflateRaw,
+ * and extract the tar contents to a directory.
+ * The downloaded file will be deleted after extraction, keeping only the extracted files.
+ * __Warning__: this function is not thread safe.
+ *
+ * @param fileUrl The URL of the deflated tar blob to download.
+ * @param tmpTarFilePath The path to save the downloaded file. Do not try downloading a file to a
+ * `tmpTarFilePath` that may already be in use by another process b/c this can corrupt the data.
+ * @param extractPath The path to a directory which we will extract tar entries into.
+ * Do not try extracting to a dir that may already be in use by another process b/c overlapping
+ * file names can cause data corruption.
+ * @param extractTimeoutInMs The timeout for the tar extraction, in milliseconds.
+ * @returns The list of the extracted files.
+ */
+export const downloadAndExtractTar: (
+  fileUrl: string,
+  tmpTarFilePath: string,
+  extractPath: string,
+  extractTimeoutInMs?: number,
+) => Promise<string[]> = async (
+  fileUrl,
+  tmpTarFilePath,
+  extractPath,
+  extractTimeoutInMs = 300_000,
+) => {
+  await downloadFile(fileUrl, tmpTarFilePath);
+  const entries: string[] = [];
+
+  try {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
+        () =>
+          reject(
+            new Error(`Tar extraction timed out after ${extractTimeoutInMs}ms`),
+          ),
+        extractTimeoutInMs,
+      );
+    });
+    try {
+      await mkdir(extractPath, { recursive: true });
+      const compressed = await readFile(tmpTarFilePath);
+      const inflateRaw = new InflateRaw();
+      const decompressed = inflateRaw.process(compressed);
+      inflateRaw.close();
+
+      const extractPromise = pipeline(
+        Readable.from(decompressed),
+        tarExtract({
+          cwd: extractPath,
+          onReadEntry: (entry) => entries.push(entry.path),
+        }),
+      );
+      await Promise.race([extractPromise, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId!);
+    }
+  } finally {
+    await rm(tmpTarFilePath);
   }
 
   return entries;
