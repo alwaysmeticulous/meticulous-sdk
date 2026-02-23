@@ -307,7 +307,8 @@ export type CustomDataSingletonInternalValues = {
     | "context"
     | "feature-flag"
     | "user-id"
-    | "user-email";
+    | "user-email"
+    | "initial-navigation-response";
 };
 
 export type CustomData = {
