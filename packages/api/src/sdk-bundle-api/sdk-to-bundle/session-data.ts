@@ -1,6 +1,6 @@
 import { ReplayableEvent } from "../bidirectional/replayable-event";
 import { EventSourceConnectionData } from "./event-source-data";
-import { HarLog } from "./har-log";
+import { HarLog, HarResponse } from "./har-log";
 import { WebSocketConnectionData } from "./websocket-data";
 
 export interface SessionData {
@@ -88,24 +88,7 @@ export interface SessionData {
    * The recorded initial navigation response when provided by the customer's code.
    * Only present on some recordings since ~Feb 2026.
    */
-  initialNavigationResponse?: InitialNavigationResponse;
-}
-
-export interface InitialNavigationResponse {
-  /**
-   * The status code of the initial navigation response.
-   */
-  status: number;
-
-  /**
-   * The headers of the initial navigation response.
-   */
-  headers: Record<string, string>;
-
-  /**
-   * The body of the initial navigation response.
-   */
-  body: string;
+  initialNavigationResponse?: HarResponse;
 }
 
 export interface WindowData {

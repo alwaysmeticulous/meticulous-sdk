@@ -1,4 +1,4 @@
-import { InitialNavigationResponse } from "@alwaysmeticulous/api";
+import { HarResponse } from "@alwaysmeticulous/api";
 
 /**
  * This API is exposed on the window under `window.Meticulous`.
@@ -218,7 +218,7 @@ export interface MeticulousPublicRecordApi {
    * of server-side rendering (SSR) when running Meticulous. It is unlikely you will need
    * to call this method unless you have been directed to do so by Meticulous support.
    */
-  recordInitialNavigationResponse(response: InitialNavigationResponse): {
+  recordInitialNavigationResponse(response: HarResponse): {
     success: boolean;
   };
 
