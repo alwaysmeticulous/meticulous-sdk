@@ -295,19 +295,22 @@ export enum CustomDataSingletonInternalKey {
   CustomObjectTooLargeToSerialize = "met-custom-object-too-large-to-serialize",
 }
 
+export type CustomRecordingType =
+  | "context"
+  | "feature-flag"
+  | "user-id"
+  | "user-email"
+  | "singleton"
+  | "array"
+  | "event"
+  | "initial-navigation-response";
+
 export type CustomDataSingletonInternalValues = {
   [CustomDataSingletonInternalKey.SystemThemePreferredColor]: "light" | "dark";
   [CustomDataSingletonInternalKey.TimezoneName]: string;
   [CustomDataSingletonInternalKey.Languages]: string;
   [CustomDataSingletonInternalKey.UserAgent]: string;
-  [CustomDataSingletonInternalKey.CustomObjectTooLargeToSerialize]:
-    | "singleton"
-    | "array"
-    | "event"
-    | "context"
-    | "feature-flag"
-    | "user-id"
-    | "user-email";
+  [CustomDataSingletonInternalKey.CustomObjectTooLargeToSerialize]: CustomRecordingType;
 };
 
 export type CustomData = {
