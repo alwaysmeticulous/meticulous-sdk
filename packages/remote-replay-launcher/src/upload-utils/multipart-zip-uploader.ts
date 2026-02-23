@@ -11,10 +11,13 @@ import { initLogger } from "@alwaysmeticulous/common";
 import archiver from "archiver";
 import pLimit from "p-limit";
 import { MultipartBufferManager } from "./multipart-buffer-manager";
+import { DeploymentArchiveType } from "@alwaysmeticulous/api";
 
 const MAX_CONCURRENT_UPLOADS = 4;
 const FS_CONCURRENCY = 10;
 const ZIP_COMPRESSION_LEVEL = 3;
+
+export const UPLOAD_ARCHIVE_TYPE: DeploymentArchiveType = "zip";
 
 const allWithLimit = async <I, O>(
   items: I[],
