@@ -58,6 +58,7 @@ export {
   CustomUserEvent,
   SessionContext,
   ExpiringImage,
+  CustomRecordingType,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export {
   SequenceNumber,
