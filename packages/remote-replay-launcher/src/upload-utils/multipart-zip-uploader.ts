@@ -2,6 +2,7 @@ import type { Stats } from "fs";
 import { stat, lstat, readdir, realpath } from "fs/promises";
 import { join } from "path";
 import { Writable } from "stream";
+import { DeploymentArchiveType } from "@alwaysmeticulous/api";
 import {
   createClient,
   requestUploadPart,
@@ -11,7 +12,6 @@ import { initLogger } from "@alwaysmeticulous/common";
 import archiver from "archiver";
 import pLimit from "p-limit";
 import { MultipartBufferManager } from "./multipart-buffer-manager";
-import { DeploymentArchiveType } from "@alwaysmeticulous/api";
 
 const MAX_CONCURRENT_UPLOADS = 4;
 const FS_CONCURRENCY = 10;
