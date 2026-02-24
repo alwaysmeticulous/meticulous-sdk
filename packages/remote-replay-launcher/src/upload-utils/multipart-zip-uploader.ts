@@ -1,7 +1,3 @@
-import type { Stats } from "fs";
-import { stat, lstat, readdir, realpath } from "fs/promises";
-import { join } from "path";
-import { Writable } from "stream";
 import { DeploymentArchiveType } from "@alwaysmeticulous/api";
 import { constants as zlibConstants } from "zlib";
 import {
@@ -19,7 +15,7 @@ export const UPLOAD_ARCHIVE_FILE_FORMAT: DeploymentArchiveType = "tar.d";
 
 const COMPRESSION_LEVEL = 3;
 
-export interface MultipartZipUploaderArgs {
+export interface MultipartCompressingUploaderArgs {
   folderPath: string;
   uploadPartUrls: string[];
   uploadChunkSize: number;
@@ -29,13 +25,13 @@ export interface MultipartZipUploaderArgs {
   uploadBufferToSignedUrl: (url: string, buffer: Buffer) => Promise<string>;
 }
 
-export class MultipartZipUploader {
+export class MultipartCompressingUploader {
   private totalUploadedBytes = 0;
   private preSignedUrlIndex = 0;
   private readonly logger = initLogger();
   private readonly bufferManager: MultipartBufferManager;
 
-  constructor(private readonly args: MultipartZipUploaderArgs) {
+  constructor(private readonly args: MultipartCompressingUploaderArgs) {
     this.bufferManager = new MultipartBufferManager({
       uploadChunkSize: args.uploadChunkSize,
       uploadPart: this.uploadPart.bind(this),

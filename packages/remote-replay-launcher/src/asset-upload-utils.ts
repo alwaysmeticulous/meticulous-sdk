@@ -18,7 +18,7 @@ import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/projec
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
-import { MultipartZipUploader } from "./upload-utils/multipart-zip-uploader";
+import { MultipartCompressingUploader } from "./upload-utils/multipart-zip-uploader";
 
 export interface UploadAssetsOptions {
   apiToken: string | null | undefined;
@@ -162,7 +162,7 @@ const uploadAssetsStreaming = async ({
 
   logger.info(`Starting streaming upload for deployment ${uploadId}`);
 
-  const uploader = new MultipartZipUploader({
+  const uploader = new MultipartCompressingUploader({
     folderPath,
     uploadPartUrls,
     uploadChunkSize,

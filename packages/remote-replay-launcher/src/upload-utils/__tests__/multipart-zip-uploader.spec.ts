@@ -3,8 +3,8 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
-  MultipartZipUploader,
-  MultipartZipUploaderArgs,
+  MultipartCompressingUploader,
+  MultipartCompressingUploaderArgs,
 } from "../multipart-zip-uploader";
 
 vi.mock("@alwaysmeticulous/client", async () => {
@@ -36,9 +36,9 @@ describe("MultipartZipUploader", () => {
   });
 
   const createUploader = (
-    overrides: Partial<MultipartZipUploaderArgs> = {},
-  ): MultipartZipUploader => {
-    const args: MultipartZipUploaderArgs = {
+    overrides: Partial<MultipartCompressingUploaderArgs> = {},
+  ): MultipartCompressingUploader => {
+    const args: MultipartCompressingUploaderArgs = {
       folderPath: testDir,
       uploadPartUrls: [
         "https://example.com/part1",
@@ -55,12 +55,12 @@ describe("MultipartZipUploader", () => {
       },
       ...overrides,
     };
-    return new MultipartZipUploader(args);
+    return new MultipartCompressingUploader(args);
   };
 
   it("should create an instance with valid args", () => {
     const uploader = createUploader();
-    expect(uploader).toBeInstanceOf(MultipartZipUploader);
+    expect(uploader).toBeInstanceOf(MultipartCompressingUploader);
   });
 
   it("should zip and upload a single file", async () => {
