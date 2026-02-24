@@ -1,7 +1,7 @@
 import { access, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { ConsoleMessageWithStackTracePointer } from "@alwaysmeticulous/api";
-import { createClient } from "@alwaysmeticulous/client";
+import { createClientWithOAuth } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import {
   getOrFetchReplay,
@@ -19,7 +19,10 @@ const handler: (options: Options) => Promise<void> = async ({
   replayId,
 }) => {
   const logger = initLogger();
-  const client = createClient({ apiToken });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
 
   const { fileName: replayMetadataFileName } = await getOrFetchReplay(
     client,

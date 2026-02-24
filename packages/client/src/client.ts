@@ -6,7 +6,8 @@ import {
 import log from "loglevel";
 import fetch, { RequestInit } from "node-fetch";
 import type { AbortSignal } from "node-fetch/externals";
-import { getApiToken } from "./api-token.utils";
+import { getApiToken, getAuthToken } from "./api-token.utils";
+import { performOAuthLogin } from "./oauth/oauth-login";
 import {
   MeticulousClient,
   RequestConfig,
@@ -121,25 +122,14 @@ export const makeRequest = async <T>(
   );
 };
 
-export const createClient: (options: ClientOptions) => MeticulousClient = ({
-  apiToken: apiToken_,
-}) => {
-  const logger = initLogger();
-  const apiToken = getApiToken(apiToken_);
-  if (!apiToken) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
-  }
-
+const buildClient = (token: string, logger: log.Logger): MeticulousClient => {
   const makeRequestWithToken = async <T>(
     url: string,
     options: RequestInit = {},
     config?: RequestConfig<any>,
   ): Promise<Response<T>> => {
     const headers = {
-      authorization: apiToken,
+      authorization: token,
     };
 
     return makeRequest<T>({
@@ -189,6 +179,49 @@ export const createClient: (options: ClientOptions) => MeticulousClient = ({
       return makeRequestWithToken<T>(url, requestOptions, config) as Promise<R>;
     },
   };
+};
+
+export const createClient: (options: ClientOptions) => MeticulousClient = ({
+  apiToken: apiToken_,
+}) => {
+  const logger = initLogger();
+  const apiToken = getApiToken(apiToken_);
+  if (!apiToken) {
+    logger.error(
+      "You must provide an API token by using the --apiToken parameter",
+    );
+    process.exit(1);
+  }
+
+  return buildClient(apiToken, logger);
+};
+
+export const createClientWithOAuth = async (
+  options: ClientOptions & { enableOAuthLogin?: boolean },
+): Promise<MeticulousClient> => {
+  const logger = initLogger();
+
+  let apiToken = await getAuthToken(options.apiToken);
+
+  const isInteractive =
+    options.enableOAuthLogin &&
+    process.stdin.isTTY === true &&
+    !process.env["CI"];
+
+  if (!apiToken && isInteractive) {
+    const tokens = await performOAuthLogin();
+    apiToken = tokens.accessToken;
+  }
+
+  if (!apiToken) {
+    const message = isInteractive
+      ? "No authentication found. Use --apiToken, set METICULOUS_API_TOKEN, or log in via browser."
+      : "No authentication found. Set METICULOUS_API_TOKEN or pass --apiToken.";
+    logger.error(message);
+    return process.exit(1);
+  }
+
+  return buildClient(apiToken, logger);
 };
 
 const getApiUrl = () => {

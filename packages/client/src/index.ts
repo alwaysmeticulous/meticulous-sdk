@@ -28,8 +28,11 @@ export {
 } from "./api/test-run.api";
 export { GetIsLockedOptions, getIsLocked } from "./api/deployment-lock.api";
 export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
-export { getApiToken } from "./api-token.utils";
-export { ClientOptions, createClient, makeRequest } from "./client";
+export { getApiToken, getAuthToken } from "./api-token.utils";
+export { ClientOptions, createClient, createClientWithOAuth, makeRequest } from "./client";
+export { performOAuthLogin } from "./oauth/oauth-login";
+export { getValidAccessToken } from "./oauth/oauth-refresh";
+export { clearOAuthTokens } from "./oauth/oauth-token-store";
 export type { MeticulousClient } from "./types/client.types";
 export { getProxyAgent } from "./utils/get-proxy-agent";
 export {
