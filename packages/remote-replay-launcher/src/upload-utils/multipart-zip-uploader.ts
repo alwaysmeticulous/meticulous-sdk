@@ -1,5 +1,5 @@
-import { DeploymentArchiveType } from "@alwaysmeticulous/api";
 import { constants as zlibConstants } from "zlib";
+import { DeploymentArchiveType } from "@alwaysmeticulous/api";
 import {
   createClient,
   requestUploadPart,
