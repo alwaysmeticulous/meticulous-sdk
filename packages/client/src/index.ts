@@ -1,4 +1,5 @@
 export * from "./api/github-cloud-replay.api";
+export { WhoamiResponse, getWhoami } from "./api/oauth.api";
 export { getProject, getRepoUrl } from "./api/project.api";
 /**
  * @deprecated Use TestRunDataLocations from `@alwaysmeticulous/api` instead.
