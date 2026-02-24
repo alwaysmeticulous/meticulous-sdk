@@ -66,6 +66,7 @@ export interface CompleteContainerUploadResponse {
 export interface DownloadDeploymentResponse {
   assetsUrl: string;
   metadataUrl: string;
+  archiveType: string;
 }
 
 export const requestAssetUpload = async ({
