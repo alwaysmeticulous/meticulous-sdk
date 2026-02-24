@@ -171,6 +171,7 @@ const uploadAssetsStreaming = async ({
     client,
     uploadBufferToSignedUrl,
   });
+  const multipartUploadInfo = await uploader.execute();
 
   logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
