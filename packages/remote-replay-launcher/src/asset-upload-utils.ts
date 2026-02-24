@@ -175,7 +175,6 @@ const uploadAssetsStreaming = async ({
 
   logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
-
   const { testRun, message } = await completeUploadAndWaitForBase({
     client,
     uploadId,
