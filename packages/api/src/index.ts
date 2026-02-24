@@ -124,3 +124,4 @@ export {
 export { AssetUploadMetadata } from "./sdk-bundle-api/sdk-to-bundle/asset-upload-metadata";
 export { S3Location } from "./s3.types";
 export { CompanionAssetsInfo } from "./sdk-bundle-api/sdk-to-bundle/companion-assets";
+export { DeploymentArchiveType } from "./sdk-bundle-api/sdk-to-bundle/deployment-archive-type";

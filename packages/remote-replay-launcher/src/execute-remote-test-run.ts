@@ -16,6 +16,7 @@ import {
   ExecuteRemoteTestRunOptions,
   ExecuteRemoteTestRunResult,
 } from "./types";
+import { UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-zip-uploader";
 import { getPort } from "./url.utils";
 
 export { TunnelData } from "./types";
@@ -99,6 +100,7 @@ export const executeRemoteTestRun = async ({
     companionAssetsInfo = {
       deploymentUploadId: uploadId,
       regex,
+      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     };
     logger.info(`Companion assets uploaded with ID: ${uploadId}`);
   }
