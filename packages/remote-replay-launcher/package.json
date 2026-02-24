@@ -33,6 +33,7 @@
     "systeminformation": "^5.25.11"
   },
   "devDependencies": {
+    "@types/dockerode": "^4.0.1",
     "vitest": "catalog:"
   },
   "author": {
