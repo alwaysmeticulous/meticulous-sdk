@@ -1,3 +1,4 @@
+import { ContainerEnvVariable } from "@alwaysmeticulous/client";
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { uploadContainer } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
@@ -13,6 +14,8 @@ interface Options {
   commitSha?: string | undefined;
   localImageTag: string;
   waitForBase: boolean;
+  containerPort?: number | undefined;
+  containerEnv?: ContainerEnvVariable[] | undefined;
 }
 
 const handler: (options: Options) => Promise<void> = async ({
@@ -20,6 +23,8 @@ const handler: (options: Options) => Promise<void> = async ({
   commitSha: commitSha_,
   localImageTag,
   waitForBase,
+  containerPort,
+  containerEnv,
 }) => {
   const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
@@ -48,6 +53,8 @@ const handler: (options: Options) => Promise<void> = async ({
       localImageTag,
       commitSha,
       waitForBase,
+      containerPort,
+      containerEnv,
     });
 
     if (!result.testRun) {
@@ -84,6 +91,25 @@ export const uploadContainerAndExecuteTestRunInCloudCommand = buildCommand(
       default: true,
       description:
         "If true, the launcher will try to wait for a base test run to be created before triggering a test run. If that is not found, it will trigger a test run without waiting for a base test run.",
+    },
+    containerPort: {
+      demandOption: false,
+      number: true,
+      description: "The port to expose the container on.",
+    },
+    containerEnv: {
+      demandOption: false,
+      array: true,
+      coerce: (value: string[]) =>
+        value.map((v) => {
+          const [name, ...rest] = v.split("=");
+          const value = rest.join("=");
+          if (!name || !value) {
+            throw new Error(`Invalid environment variable: ${v}`);
+          }
+          return { name, value };
+        }),
+      description: "The environment variables to set in the container.",
     },
   } as const)
   .handler(handler);

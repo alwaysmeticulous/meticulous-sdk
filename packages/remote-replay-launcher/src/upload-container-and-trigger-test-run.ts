@@ -10,6 +10,8 @@ export const uploadContainerAndTriggerTestRun = async ({
   localImageTag,
   commitSha,
   waitForBase,
+  containerPort,
+  containerEnv,
 }: UploadContainerAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = initLogger();
 
@@ -18,6 +20,8 @@ export const uploadContainerAndTriggerTestRun = async ({
     localImageTag,
     commitSha,
     waitForBase,
+    containerPort,
+    containerEnv,
   });
 
   if (result.testRun) {

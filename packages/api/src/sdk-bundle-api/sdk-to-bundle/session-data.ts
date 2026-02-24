@@ -1,6 +1,6 @@
 import { ReplayableEvent } from "../bidirectional/replayable-event";
 import { EventSourceConnectionData } from "./event-source-data";
-import { HarLog } from "./har-log";
+import { HarLog, HarResponse } from "./har-log";
 import { WebSocketConnectionData } from "./websocket-data";
 
 export interface SessionData {
@@ -83,6 +83,12 @@ export interface SessionData {
    * Only present on recordings since ~Oct 2025.
    */
   imageResources?: ExpiringImage[];
+
+  /**
+   * The recorded initial navigation response when provided by the customer's code.
+   * Only present on some recordings since ~Feb 2026.
+   */
+  initialNavigationResponse?: HarResponse;
 }
 
 export interface WindowData {
@@ -289,19 +295,22 @@ export enum CustomDataSingletonInternalKey {
   CustomObjectTooLargeToSerialize = "met-custom-object-too-large-to-serialize",
 }
 
+export type CustomRecordingType =
+  | "context"
+  | "feature-flag"
+  | "user-id"
+  | "user-email"
+  | "singleton"
+  | "array"
+  | "event"
+  | "initial-navigation-response";
+
 export type CustomDataSingletonInternalValues = {
   [CustomDataSingletonInternalKey.SystemThemePreferredColor]: "light" | "dark";
   [CustomDataSingletonInternalKey.TimezoneName]: string;
   [CustomDataSingletonInternalKey.Languages]: string;
   [CustomDataSingletonInternalKey.UserAgent]: string;
-  [CustomDataSingletonInternalKey.CustomObjectTooLargeToSerialize]:
-    | "singleton"
-    | "array"
-    | "event"
-    | "context"
-    | "feature-flag"
-    | "user-id"
-    | "user-email";
+  [CustomDataSingletonInternalKey.CustomObjectTooLargeToSerialize]: CustomRecordingType;
 };
 
 export type CustomData = {

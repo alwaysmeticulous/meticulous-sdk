@@ -4,6 +4,7 @@ import {
   getRegistryAuth,
   completeContainerUpload,
   TestRun,
+  ContainerEnvVariable,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
@@ -15,6 +16,8 @@ export interface UploadContainerOptions {
   localImageTag: string;
   commitSha: string;
   waitForBase?: boolean;
+  containerPort?: number | undefined;
+  containerEnv?: ContainerEnvVariable[] | undefined;
 }
 
 export interface UploadContainerResult {
@@ -28,6 +31,8 @@ export const uploadContainer = async ({
   localImageTag,
   commitSha,
   waitForBase = false,
+  containerPort,
+  containerEnv,
 }: UploadContainerOptions): Promise<UploadContainerResult> => {
   const logger = initLogger();
 
@@ -92,6 +97,8 @@ export const uploadContainer = async ({
     uploadId,
     commitSha,
     mustHaveBase: waitForBase,
+    containerPort,
+    containerEnv,
   });
 
   const pollResult = await pollWhileBaseNotFound({
@@ -106,6 +113,8 @@ export const uploadContainer = async ({
         uploadId,
         commitSha,
         mustHaveBase: true,
+        containerPort,
+        containerEnv,
       }),
     fallbackFn: () => {
       logger.info("No base test run found, creating test run without base");
@@ -114,6 +123,8 @@ export const uploadContainer = async ({
         uploadId,
         commitSha,
         mustHaveBase: false,
+        containerPort,
+        containerEnv,
       });
     },
   });

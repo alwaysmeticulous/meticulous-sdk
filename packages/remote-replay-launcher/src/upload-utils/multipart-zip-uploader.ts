@@ -2,6 +2,7 @@ import type { Stats } from "fs";
 import { stat, lstat, readdir, realpath } from "fs/promises";
 import { join } from "path";
 import { Writable } from "stream";
+import { DeploymentArchiveType } from "@alwaysmeticulous/api";
 import {
   createClient,
   requestUploadPart,
@@ -15,6 +16,8 @@ import { MultipartBufferManager } from "./multipart-buffer-manager";
 const MAX_CONCURRENT_UPLOADS = 4;
 const FS_CONCURRENCY = 10;
 const ZIP_COMPRESSION_LEVEL = 3;
+
+export const UPLOAD_ARCHIVE_FILE_FORMAT: DeploymentArchiveType = "zip";
 
 const allWithLimit = async <I, O>(
   items: I[],

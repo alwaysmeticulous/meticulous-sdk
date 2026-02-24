@@ -1,3 +1,5 @@
+import { HarResponse } from "@alwaysmeticulous/api";
+
 /**
  * This API is exposed on the window under `window.Meticulous`.
  */
@@ -210,6 +212,15 @@ export interface MeticulousPublicRecordApi {
    * time see the addCustomEventListener method in the replay API.
    */
   recordCustomEvent(type: string, serializedData: string): { success: boolean };
+
+  /**
+   * Record the initial navigation for this session. This is used to bypass certain types
+   * of server-side rendering (SSR) when running Meticulous. It is unlikely you will need
+   * to call this method unless you have been directed to do so by Meticulous support.
+   */
+  recordInitialNavigationResponse(response: HarResponse): {
+    success: boolean;
+  };
 
   /**
    * Provides a link to view the session in the Meticulous UI. This link

@@ -1,6 +1,7 @@
 export { defer, Deferred, DeferredStatus } from "./defer";
 export {
   getMeticulousLocalDataDir,
+  runWithLocalDataDir,
   setMeticulousLocalDataDir,
 } from "./local-data/local-data";
 export {
