@@ -1,4 +1,4 @@
-import { createClient } from "@alwaysmeticulous/client";
+import { createClientWithOAuth } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import {
   getOrFetchRecordedSession,
@@ -16,7 +16,10 @@ const handler: (options: Options) => Promise<void> = async ({
   sessionId,
 }) => {
   const logger = initLogger();
-  const client = createClient({ apiToken });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
 
   const { fileName: sessionMetadataFileName } = await getOrFetchRecordedSession(
     client,

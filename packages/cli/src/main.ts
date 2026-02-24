@@ -10,6 +10,7 @@ import yargs from "yargs";
 import { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
 import { downloadSessionCommand } from "./commands/download-session/download-session.command";
 import { downloadTestRunCommand } from "./commands/download-test-run/download-test-run.command";
+import { logoutCommand } from "./commands/logout/logout.command";
 import { prepareForMeticulousTestsCommand } from "./commands/prepare-for-meticulous-tests/prepare-for-meticulous-tests.command";
 import { recordCommand } from "./commands/record/record.command";
 import { recordLoginCommand } from "./commands/record-login/record-login.command";
@@ -20,6 +21,7 @@ import { showProjectCommand } from "./commands/show-project/show-project.command
 import { startLocalTunnelCommand } from "./commands/start-local-tunnel/start-local-tunnel.command";
 import { uploadAssetsAndExecuteTestRunInCloudCommand } from "./commands/upload-assets-and-execute-test-run-in-cloud/upload-assets-and-execute-test-run-in-cloud.command";
 import { uploadContainerAndExecuteTestRunInCloudCommand } from "./commands/upload-container-and-execute-test-run-in-cloud/upload-container-and-execute-test-run-in-cloud.command";
+import { whoamiCommand } from "./commands/whoami/whoami.command";
 import { setOptions } from "./utils/sentry.utils";
 
 const handleDataDir: (dataDir: string | null | undefined) => void = (
@@ -54,6 +56,8 @@ export const main: () => void = async () => {
     .command(startLocalTunnelCommand)
     .command(uploadAssetsAndExecuteTestRunInCloudCommand)
     .command(uploadContainerAndExecuteTestRunInCloudCommand)
+    .command(whoamiCommand)
+    .command(logoutCommand)
     .help()
     .strict()
     .demandCommand()

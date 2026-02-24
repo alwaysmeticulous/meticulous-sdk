@@ -2,6 +2,7 @@ import {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
+import { getAuthToken, isInteractiveContext, performOAuthLogin } from "@alwaysmeticulous/client";
 import { defer } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import {
@@ -171,6 +172,17 @@ const replayCommandHandler = async ({
       }
     : { enabled: false };
 
+  const isInteractive = isInteractiveContext();
+
+  let finalToken: string | undefined;
+  if (isInteractive) {
+    const resolvedToken = await getAuthToken(apiToken);
+    finalToken =
+      resolvedToken ?? (await performOAuthLogin()).accessToken;
+  } else {
+    finalToken = apiToken ?? undefined;
+  }
+
   const getOnBeforeUserEventCallback =
     defer<
       (options: BeforeUserEventOptions) => Promise<BeforeUserEventResult>
@@ -185,7 +197,7 @@ const replayCommandHandler = async ({
       }),
       executionOptions,
       screenshottingOptions,
-      apiToken,
+      apiToken: finalToken,
       commitSha,
       commitDate: null,
       gitRef: null,
