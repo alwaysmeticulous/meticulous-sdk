@@ -109,6 +109,7 @@ const completeUploadAndWaitForBase = async ({
     mustHaveBase: waitForBase,
     rewrites,
     createDeployment,
+    archiveType: "tar.d",
     ...(multipartUploadInfo ? { multipartUploadInfo } : {}),
   };
 
@@ -158,7 +159,7 @@ const uploadAssetsStreaming = async ({
   const logger = initLogger();
 
   const { uploadId, awsUploadId, uploadPartUrls, uploadChunkSize } =
-    await requestMultipartAssetUpload({ client });
+    await requestMultipartAssetUpload({ client, archiveType: "tar.d" });
 
   logger.info(`Starting streaming upload for deployment ${uploadId}`);
 

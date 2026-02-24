@@ -124,6 +124,7 @@ export class MultipartCompressingUploader {
       awsUploadId: this.args.awsUploadId,
       partNumber,
       size: buffer.length,
+      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     });
 
     return uploadPartUrl;
