@@ -112,45 +112,20 @@ const completeUploadAndWaitForBase = async ({
     ...(multipartUploadInfo ? { multipartUploadInfo } : {}),
   };
 
-  const startTime = Date.now();
-  let result = await completeAssetUpload(completeAssetUploadArgs);
-  testRun = result?.testRun ?? null;
-  let baseNotFound = result?.baseNotFound;
-  let lastTimeElapsed = 0;
-
-  while (!testRun && baseNotFound) {
-    const timeElapsed = Date.now() - startTime;
-    if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
-      logger.warn(
-        `Timed out after ${POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000
-        } seconds waiting for test run`,
-      );
-      break;
-    }
-    if (lastTimeElapsed == 0 || timeElapsed - lastTimeElapsed >= 30_000) {
-      logger.info(
-        `Waiting for base test run to be created. Time elapsed: ${timeElapsed}ms`,
-      );
-      lastTimeElapsed = timeElapsed;
-    }
-    await new Promise((resolve) =>
-      setTimeout(resolve, POLL_FOR_BASE_TEST_RUN_INTERVAL_MS),
-    );
-    result = await triggerRunOnDeployment(completeAssetUploadArgs);
-    testRun = result?.testRun ?? null;
-    baseNotFound = result?.baseNotFound;
-  }
-
-  if (baseNotFound) {
-    logger.info(`Base test run not found, proceeding without it.`);
-    testRun =
-      (
-        await triggerRunOnDeployment({
-          ...completeAssetUploadArgs,
-          mustHaveBase: false,
-        })
-      ).testRun ?? null;
-  }
+  const initialResult = await completeAssetUpload(completeAssetUploadArgs);
+  const { testRun, baseNotFound, message } = await pollWhileBaseNotFound({
+    initialResult: {
+      testRun: initialResult?.testRun ?? null,
+      baseNotFound: initialResult?.baseNotFound,
+      message: initialResult?.message,
+    },
+    retryFn: () => triggerRunOnDeployment(completeAssetUploadArgs),
+    fallbackFn: () =>
+      triggerRunOnDeployment({
+        ...completeAssetUploadArgs,
+        mustHaveBase: false,
+      }),
+  });
 
   Sentry.captureMessage("Deployment assets marked as uploaded", {
     level: "debug",
@@ -197,13 +172,7 @@ const uploadAssetsStreaming = async ({
     uploadBufferToSignedUrl,
   });
 
-  const uploadStartTime = Date.now();
-  const multipartUploadInfo = await uploader.execute();
-  const uploadDurationMs = Date.now() - uploadStartTime;
-  logger.info(
-    `Deployment assets ${uploadId} uploaded successfully in ${uploadDurationMs / 1000}s`,
-  );
-  throw new Error("End test");
+  logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
 
   const { testRun, message } = await completeUploadAndWaitForBase({
