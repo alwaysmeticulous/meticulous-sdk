@@ -381,6 +381,11 @@ export interface AppUrlConfig {
    * if pre-navigation (navigating to a URL to get cookies before starting the main replay) is enabled.
    */
   ignoreAppUrlPathAfterPreNavigation?: boolean;
+
+  /**
+   * List of query parameters to strip from the app URL before the initial navigation.
+   */
+  queryParamsToStrip?: string[];
 }
 
 export interface NetworkDebuggingOptions {
