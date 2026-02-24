@@ -81,6 +81,7 @@ export interface ContainerEnvVariable {
 export interface DownloadDeploymentResponse {
   assetsUrl: string;
   metadataUrl: string;
+  archiveType: string;
 }
 
 export const requestAssetUpload = async ({
