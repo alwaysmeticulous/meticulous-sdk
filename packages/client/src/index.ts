@@ -30,7 +30,7 @@ export {
 export { GetIsLockedOptions, getIsLocked } from "./api/deployment-lock.api";
 export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
 export { getApiToken, getAuthToken } from "./api-token.utils";
-export { ClientOptions, createClient, createClientWithOAuth, makeRequest } from "./client";
+export { ClientOptions, createClient, createClientWithOAuth, isInteractiveContext, makeRequest } from "./client";
 export { performOAuthLogin } from "./oauth/oauth-login";
 export { getValidAccessToken } from "./oauth/oauth-refresh";
 export { clearOAuthTokens } from "./oauth/oauth-token-store";

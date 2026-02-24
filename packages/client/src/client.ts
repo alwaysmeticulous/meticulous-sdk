@@ -196,6 +196,9 @@ export const createClient: (options: ClientOptions) => MeticulousClient = ({
   return buildClient(apiToken, logger);
 };
 
+export const isInteractiveContext = (): boolean =>
+  process.stdin.isTTY === true && !process.env["CI"];
+
 export const createClientWithOAuth = async (
   options: ClientOptions & { enableOAuthLogin?: boolean },
 ): Promise<MeticulousClient> => {
@@ -204,9 +207,7 @@ export const createClientWithOAuth = async (
   let apiToken = await getAuthToken(options.apiToken);
 
   const isInteractive =
-    options.enableOAuthLogin &&
-    process.stdin.isTTY === true &&
-    !process.env["CI"];
+    options.enableOAuthLogin && isInteractiveContext();
 
   if (!apiToken && isInteractive) {
     const tokens = await performOAuthLogin();
