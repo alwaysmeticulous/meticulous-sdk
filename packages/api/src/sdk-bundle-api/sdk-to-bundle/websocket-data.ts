@@ -2,6 +2,10 @@ export interface WebSocketConnectionData {
   id: SequenceNumber;
   url: string;
   events: WebSocketConnectionEvent[];
+  /**
+   * Only present on recordings since ~Feb 2026.
+   */
+  frameId?: string;
 }
 
 export type SequenceNumber = number;
@@ -27,13 +31,11 @@ export interface WebSocketConnectionGenericEvent {
   data?: unknown;
 }
 
-export interface WebSocketConnectionCreatedEvent
-  extends WebSocketConnectionGenericEvent {
+export interface WebSocketConnectionCreatedEvent extends WebSocketConnectionGenericEvent {
   type: "created";
 }
 
-export interface WebSocketConnectionOpenedEvent
-  extends WebSocketConnectionGenericEvent {
+export interface WebSocketConnectionOpenedEvent extends WebSocketConnectionGenericEvent {
   type: "opened";
 }
 
@@ -51,19 +53,16 @@ export interface EncodedBlob {
   mimeType: string;
 }
 
-export interface WebSocketConnectionMessageEvent
-  extends WebSocketConnectionGenericEvent {
+export interface WebSocketConnectionMessageEvent extends WebSocketConnectionGenericEvent {
   type: "message-sent" | "message-received";
   data: string | EncodedArrayBuffer | EncodedBlob;
 }
 
-export interface WebSocketConnectionErrorEvent
-  extends WebSocketConnectionGenericEvent {
+export interface WebSocketConnectionErrorEvent extends WebSocketConnectionGenericEvent {
   type: "error";
 }
 
-export interface WebSocketConnectionClosedEvent
-  extends WebSocketConnectionGenericEvent {
+export interface WebSocketConnectionClosedEvent extends WebSocketConnectionGenericEvent {
   type: "closed";
   data: {
     code: number;
