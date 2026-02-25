@@ -18,7 +18,7 @@ import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/projec
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
-import { MultipartCompressingUploader, UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-zip-uploader";
+import { MultipartCompressingUploader, UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
 
 export interface UploadAssetsOptions {
   apiToken: string | null | undefined;

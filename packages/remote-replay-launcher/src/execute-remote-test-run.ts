@@ -16,7 +16,7 @@ import {
   ExecuteRemoteTestRunOptions,
   ExecuteRemoteTestRunResult,
 } from "./types";
-import { UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-zip-uploader";
+import { UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
 import { getPort } from "./url.utils";
 
 export { TunnelData } from "./types";
