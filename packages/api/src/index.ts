@@ -73,6 +73,10 @@ export {
   WebSocketConnectionClosedEvent,
 } from "./sdk-bundle-api/sdk-to-bundle/websocket-data";
 export * from "./sdk-bundle-api/sdk-to-bundle/event-source-data";
+export {
+  StreamingFetchChunk,
+  StreamingFetchResponseData,
+} from "./sdk-bundle-api/sdk-to-bundle/streaming-fetch-data";
 export { Replay } from "./replay/replay.types";
 export {
   ScreenshotAssertionsOptions,
