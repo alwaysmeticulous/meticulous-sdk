@@ -18,7 +18,7 @@ import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/projec
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
-import { MultipartCompressingUploader } from "./upload-utils/multipart-zip-uploader";
+import { MultipartCompressingUploader, UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-zip-uploader";
 
 export interface UploadAssetsOptions {
   apiToken: string | null | undefined;
@@ -109,7 +109,7 @@ const completeUploadAndWaitForBase = async ({
     mustHaveBase: waitForBase,
     rewrites,
     createDeployment,
-    archiveType: "tar.d",
+    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     ...(multipartUploadInfo ? { multipartUploadInfo } : {}),
   };
 
@@ -159,7 +159,7 @@ const uploadAssetsStreaming = async ({
   const logger = initLogger();
 
   const { uploadId, awsUploadId, uploadPartUrls, uploadChunkSize } =
-    await requestMultipartAssetUpload({ client, archiveType: "tar.d" });
+    await requestMultipartAssetUpload({ client, archiveType: UPLOAD_ARCHIVE_FILE_FORMAT });
 
   logger.info(`Starting streaming upload for deployment ${uploadId}`);
 

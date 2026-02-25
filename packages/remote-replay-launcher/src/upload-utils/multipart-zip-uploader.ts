@@ -13,6 +13,10 @@ import { MultipartBufferManager } from "./multipart-buffer-manager";
 const MAX_CONCURRENT_UPLOADS = 4;
 export const UPLOAD_ARCHIVE_FILE_FORMAT: DeploymentArchiveType = "tar.d";
 
+/**
+ * Compression level of the deflate algorithm. Ranges from 0 (uncompressed)
+ * to 9 (maximum compression).
+ */
 const COMPRESSION_LEVEL = 3;
 
 export interface MultipartCompressingUploaderArgs {
@@ -73,10 +77,8 @@ export class MultipartCompressingUploader {
         if (compressed.length > 0) {
           this.bufferManager.addChunk(compressed);
           if (this.bufferManager.getBufferSize() >= this.args.uploadChunkSize) {
-            tarStream.pause();
             this.bufferManager
               .flush(false)
-              .then(() => tarStream.resume())
               .catch(reject);
           }
         }
