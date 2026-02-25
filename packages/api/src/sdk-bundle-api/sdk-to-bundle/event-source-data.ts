@@ -5,6 +5,10 @@ export interface EventSourceConnectionData {
   url: string;
   withCredentials: boolean;
   events: EventSourceConnectionEvent[];
+  /**
+   * Only present on recordings since ~Feb 2026.
+   */
+  frameId?: string;
 }
 
 export type EventSourceConnectionEvent =
@@ -20,18 +24,15 @@ export interface EventSourceConnectionGenericEvent {
   type: unknown;
 }
 
-export interface EventSourceConnectionCreatedEvent
-  extends EventSourceConnectionGenericEvent {
+export interface EventSourceConnectionCreatedEvent extends EventSourceConnectionGenericEvent {
   type: "created";
 }
 
-export interface EventSourceConnectionOpenedEvent
-  extends EventSourceConnectionGenericEvent {
+export interface EventSourceConnectionOpenedEvent extends EventSourceConnectionGenericEvent {
   type: "opened";
 }
 
-export interface EventSourceConnectionMessageEvent
-  extends EventSourceConnectionGenericEvent {
+export interface EventSourceConnectionMessageEvent extends EventSourceConnectionGenericEvent {
   type: "message-received";
   data: {
     /** The event type (e.g., "message" for unnamed events, or custom event names) */
@@ -43,12 +44,10 @@ export interface EventSourceConnectionMessageEvent
   };
 }
 
-export interface EventSourceConnectionErrorEvent
-  extends EventSourceConnectionGenericEvent {
+export interface EventSourceConnectionErrorEvent extends EventSourceConnectionGenericEvent {
   type: "error";
 }
 
-export interface EventSourceConnectionClosedEvent
-  extends EventSourceConnectionGenericEvent {
+export interface EventSourceConnectionClosedEvent extends EventSourceConnectionGenericEvent {
   type: "closed";
 }
