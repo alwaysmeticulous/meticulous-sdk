@@ -32,6 +32,9 @@ const ASSET_METADATA_FILE_NAME = "assets.json";
  *
  * The associated source map will also be downloaded if present to sit alongside the main JS file and if the base snippets URL is a localhost URL.
  *
+ * If METICULOUS_PRELOADED_SNIPPETS_DIR is set and the asset exists there, it is returned directly without any
+ * network calls. This is used in the cloud replay worker where the bundles are baked in at build time.
+ *
  * Warning: this function is not thread safe. Do not try downloading a file to a path that may already be in use by another process.
  *
  * (for example most downloads are generally done at the test run level rather than the replay level)
@@ -40,9 +43,19 @@ export const fetchAsset = async (path: string): Promise<string> => {
   const { snippetsBaseUrl, urlToDownloadFrom, fileNameToDownloadAs } =
     getAssetDownloadPaths(path);
 
+  if (!isCustomSnippetsBaseUrl()) {
+    const preloadedDir = process.env["METICULOUS_PRELOADED_SNIPPETS_DIR"];
+    if (preloadedDir) {
+      const preloadedPath = join(preloadedDir, fileNameToDownloadAs);
+      if (existsSync(preloadedPath)) {
+        return preloadedPath;
+      }
+    }
+  }
+
   const jsFilePath = await fetchAndCacheFile(
     urlToDownloadFrom,
-    fileNameToDownloadAs
+    fileNameToDownloadAs,
   );
   if (
     snippetsBaseUrl.includes("localhost") &&
@@ -51,7 +64,7 @@ export const fetchAsset = async (path: string): Promise<string> => {
   ) {
     await fetchAndCacheFile(
       `${urlToDownloadFrom}.map`,
-      `${basename(new URL(urlToDownloadFrom).pathname)}.map`
+      `${basename(new URL(urlToDownloadFrom).pathname)}.map`,
     );
   }
 
@@ -62,7 +75,7 @@ export const fetchAsset = async (path: string): Promise<string> => {
  * Returns a record from asset path to a boolean indicating if the asset is outdated.
  */
 export const checkIfAssetsOutdated = async (
-  assetPaths: string[]
+  assetPaths: string[],
 ): Promise<Record<string, boolean>> => {
   const client = axios.create({ timeout: 60_000 });
   axiosRetry(client, { retries: 3 });
@@ -74,7 +87,7 @@ export const checkIfAssetsOutdated = async (
         getAssetDownloadPaths(path);
       const etag = (await client.head(urlToDownloadFrom)).headers["etag"] || "";
       return { path, etag, fileNameToDownloadAs };
-    })
+    }),
   );
 
   // Get etag for downloaded assets
@@ -83,16 +96,16 @@ export const checkIfAssetsOutdated = async (
   return Object.fromEntries(
     withEtags.map(({ path, etag, fileNameToDownloadAs }) => {
       const entry = assetMetadata.assets.find(
-        (item) => item.fileName === fileNameToDownloadAs
+        (item) => item.fileName === fileNameToDownloadAs,
       );
       const fileExistsOnDisk = existsSync(
-        join(assetsDir, fileNameToDownloadAs)
+        join(assetsDir, fileNameToDownloadAs),
       );
       return [
         path,
         !entry || !entry.etag || etag !== entry.etag || !fileExistsOnDisk,
       ];
-    })
+    }),
   );
 };
 
@@ -122,7 +135,7 @@ const getAssetDownloadPaths = (path: string) => {
 
 const fetchAndCacheFile = async (
   urlToDownloadFrom: string,
-  fileNameToDownloadAs: string
+  fileNameToDownloadAs: string,
 ): Promise<string> => {
   const logger = initLogger();
   const client = axios.create({ timeout: 60_000 });
@@ -135,7 +148,7 @@ const fetchAndCacheFile = async (
     const etag = (await client.head(urlToDownloadFrom)).headers["etag"] || "";
 
     const entry = assetMetadata.assets.find(
-      (item) => item.fileName === fileNameToDownloadAs
+      (item) => item.fileName === fileNameToDownloadAs,
     );
     const filePath = join(await getOrCreateAssetsDir(), fileNameToDownloadAs);
 
@@ -172,7 +185,7 @@ const getOrCreateAssetsDir: () => Promise<string> = async () => {
     const assetsDir = join(
       getMeticulousLocalDataDir(),
       ASSETS_FOLDER_NAME,
-      urlToValidFolderName(getSnippetsBaseUrl())
+      urlToValidFolderName(getSnippetsBaseUrl()),
     );
     await mkdir(assetsDir, { recursive: true });
     return assetsDir;
@@ -209,11 +222,11 @@ const loadAssetMetadata: () => Promise<AssetMetadata> = async () => {
 };
 
 const saveAssetMetadata: (
-  assetMetadata: AssetMetadata
+  assetMetadata: AssetMetadata,
 ) => Promise<void> = async (assetMetadata) => {
   const assetsFile = join(
     await getOrCreateAssetsDir(),
-    ASSET_METADATA_FILE_NAME
+    ASSET_METADATA_FILE_NAME,
   );
 
   await writeFile(assetsFile, JSON.stringify(assetMetadata, null, 2));
