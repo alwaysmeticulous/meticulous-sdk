@@ -1,4 +1,4 @@
-import { AssetUploadMetadata } from "@alwaysmeticulous/api";
+import { AssetUploadMetadata, DeploymentArchiveType } from "@alwaysmeticulous/api";
 import { MeticulousClient } from "../types/client.types";
 import { TestRun } from "./test-run.api";
 
@@ -9,6 +9,10 @@ export interface RequestAssetUploadParams {
 export interface RequestAssetUploadResponse {
   uploadId: string;
   uploadUrl: string;
+}
+
+export interface RequestMultipartAssetUploadParams {
+  archiveType: DeploymentArchiveType;
 }
 
 export interface RequestMultipartAssetUploadResponse {
@@ -23,6 +27,7 @@ export interface RequestUploadPartParams {
   awsUploadId: string;
   size: number;
   partNumber: number;
+  archiveType: DeploymentArchiveType;
 }
 
 export interface RequestUploadPartResponse {
@@ -81,7 +86,7 @@ export interface ContainerEnvVariable {
 export interface DownloadDeploymentResponse {
   assetsUrl: string;
   metadataUrl: string;
-  archiveType: string;
+  archiveType: DeploymentArchiveType;
 }
 
 export const requestAssetUpload = async ({
@@ -99,13 +104,14 @@ export const requestAssetUpload = async ({
 
 export const requestMultipartAssetUpload = async ({
   client,
-}: {
+  ...params
+}: RequestMultipartAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestMultipartAssetUploadResponse> => {
   const { data } = await client.post<
-    Record<string, never>,
+    RequestMultipartAssetUploadParams,
     { data: RequestMultipartAssetUploadResponse }
-  >("project-deployments/request-multipart-asset-upload", {});
+  >("project-deployments/request-multipart-asset-upload", params);
   return data;
 };
 

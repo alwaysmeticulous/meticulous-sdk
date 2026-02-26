@@ -18,7 +18,7 @@ import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/projec
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
-import { MultipartZipUploader } from "./upload-utils/multipart-zip-uploader";
+import { MultipartCompressingUploader, UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
 
 export interface UploadAssetsOptions {
   apiToken: string | null | undefined;
@@ -56,9 +56,9 @@ export const uploadAssets = async (
     if (!existsSync(indexHtmlPath)) {
       logger.warn(
         `Warning: No index.html found in the app directory (${resolvedAppDirectory}). ` +
-          `This may indicate that your build output is not properly configured for static hosting, unless you expect that the root url is invalid. ` +
-          `If you're using Next.js or another framework that requires server-side rendering, ` +
-          `you should use the \`cloud-compute\` GitHub Action or the \`run-all-tests-in-cloud\` command instead.`,
+        `This may indicate that your build output is not properly configured for static hosting, unless you expect that the root url is invalid. ` +
+        `If you're using Next.js or another framework that requires server-side rendering, ` +
+        `you should use the \`cloud-compute\` GitHub Action or the \`run-all-tests-in-cloud\` command instead.`,
       );
     }
   }
@@ -109,6 +109,7 @@ const completeUploadAndWaitForBase = async ({
     mustHaveBase: waitForBase,
     rewrites,
     createDeployment,
+    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     ...(multipartUploadInfo ? { multipartUploadInfo } : {}),
   };
 
@@ -158,11 +159,11 @@ const uploadAssetsStreaming = async ({
   const logger = initLogger();
 
   const { uploadId, awsUploadId, uploadPartUrls, uploadChunkSize } =
-    await requestMultipartAssetUpload({ client });
+    await requestMultipartAssetUpload({ client, archiveType: UPLOAD_ARCHIVE_FILE_FORMAT });
 
   logger.info(`Starting streaming upload for deployment ${uploadId}`);
 
-  const uploader = new MultipartZipUploader({
+  const uploader = new MultipartCompressingUploader({
     folderPath,
     uploadPartUrls,
     uploadChunkSize,

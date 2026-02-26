@@ -3,9 +3,9 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
-  MultipartZipUploader,
-  MultipartZipUploaderArgs,
-} from "../multipart-zip-uploader";
+  MultipartCompressingUploader,
+  MultipartCompressingUploaderArgs,
+} from "../multipart-compressing-uploader";
 
 vi.mock("@alwaysmeticulous/client", async () => {
   const actual = await vi.importActual("@alwaysmeticulous/client");
@@ -17,12 +17,12 @@ vi.mock("@alwaysmeticulous/client", async () => {
   };
 });
 
-describe("MultipartZipUploader", () => {
+describe("MultipartCompressingUploader", () => {
   let testDir: string;
   const uploadedParts: Array<{ url: string; size: number }> = [];
 
   beforeEach(async () => {
-    testDir = join(tmpdir(), `test-multipart-zip-${Date.now()}`);
+    testDir = join(tmpdir(), `test-multipart-compressing-${Date.now()}`);
     await mkdir(testDir, { recursive: true });
     uploadedParts.length = 0;
   });
@@ -36,9 +36,9 @@ describe("MultipartZipUploader", () => {
   });
 
   const createUploader = (
-    overrides: Partial<MultipartZipUploaderArgs> = {},
-  ): MultipartZipUploader => {
-    const args: MultipartZipUploaderArgs = {
+    overrides: Partial<MultipartCompressingUploaderArgs> = {},
+  ): MultipartCompressingUploader => {
+    const args: MultipartCompressingUploaderArgs = {
       folderPath: testDir,
       uploadPartUrls: [
         "https://example.com/part1",
@@ -55,15 +55,15 @@ describe("MultipartZipUploader", () => {
       },
       ...overrides,
     };
-    return new MultipartZipUploader(args);
+    return new MultipartCompressingUploader(args);
   };
 
   it("should create an instance with valid args", () => {
     const uploader = createUploader();
-    expect(uploader).toBeInstanceOf(MultipartZipUploader);
+    expect(uploader).toBeInstanceOf(MultipartCompressingUploader);
   });
 
-  it("should zip and upload a single file", async () => {
+  it("should compress and upload a single file", async () => {
     await writeFile(join(testDir, "test.txt"), "Hello World");
 
     const uploader = createUploader();
@@ -74,7 +74,7 @@ describe("MultipartZipUploader", () => {
     expect(uploadedParts.length).toBeGreaterThan(0);
   });
 
-  it("should zip and upload multiple files", async () => {
+  it("should compress and upload multiple files", async () => {
     await writeFile(join(testDir, "file1.txt"), "Content 1");
     await writeFile(join(testDir, "file2.txt"), "Content 2");
     await writeFile(join(testDir, "file3.txt"), "Content 3");
