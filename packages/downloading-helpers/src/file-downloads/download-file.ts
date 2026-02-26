@@ -76,7 +76,7 @@ export const downloadFile = async (
       {
         format: `Downloading |{bar}| {percentage}% | {downloaded}/{totalSize}`,
         hideCursor: true,
-        noTTYOutput: true,
+        noTTYOutput: false,
         notTTYSchedule: 5000,
       },
       cliProgress.Presets.shades_classic,
