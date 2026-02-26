@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/remote-replay-launcher",
-  "version": "2.255.0",
+  "version": "2.255.2",
   "description": "Executes a remote replay on Meticulous' infrastructure",
   "license": "ISC",
   "main": "dist/index.js",
@@ -27,10 +27,10 @@
     "@sentry/node": "^10.3.0",
     "dockerode": "^4.0.2",
     "fast-zlib": "^2.0.1",
-    "tar": "^7.0.0",
     "loglevel": "^1.8.0",
     "p-limit": "^3.1.0",
-    "systeminformation": "^5.25.11"
+    "systeminformation": "^5.25.11",
+    "tar": "^7.0.0"
   },
   "devDependencies": {
     "@types/dockerode": "^4.0.1",
