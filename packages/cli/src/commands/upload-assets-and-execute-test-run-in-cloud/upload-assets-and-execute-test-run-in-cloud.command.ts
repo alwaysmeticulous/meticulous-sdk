@@ -141,7 +141,8 @@ export const uploadAssetsAndExecuteTestRunInCloudCommand = buildCommand(
       default: "[]",
       description:
         "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array." +
-        ' Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule \'{ source: "**", destination: "/index.html" }\'.',
+        ' Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule \'{ source: "**/*.!(.js|.css|.html|...)", destination: "/index.html" }\'.' +
+        ' which redirects every path that does not look like an asset reference to index.html.'
     },
     waitForBase: {
       demandOption: false,
