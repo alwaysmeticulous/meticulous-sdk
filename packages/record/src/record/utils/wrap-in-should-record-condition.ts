@@ -9,14 +9,11 @@ import {
  *
  * - PollyJS has top-level (outside-function) code that executes as soon as the script is
  *   loaded. Running it in `about:blank`, `chrome-error://`, or other non-web frames causes
- *   Chrome to hang or show an "Aw Snap" crash.
+ *   Chrome to hang or show an "Aw Snap" crash. These are blocked via FORBIDDEN_PROTOCOLS.
  * - Sentry and PollyJS each create hidden iframes as part of their initialization. If the
  *   recorder runs inside a sandboxed iframe (`sandbox` attribute without `allow-same-origin`,
  *   giving `window.origin === "null"`), those nested iframes appear blank and the recorder
- *   cannot function correctly anyway.
- *
- * We therefore wrap the script in a condition that limits execution to frames with a real
- * http/https URL and a non-null origin.
+ *   cannot function correctly anyway. These are blocked via the `window.origin !== 'null'` check.
  *
  * This isn't ideal, but unfortunately there's not a way to run page.evaluateOnNewDocument
  * conditionally (we could listen for frames being attached, and then inject the script,
@@ -36,11 +33,10 @@ const constructShouldRecordCondition = () => {
   /**
    * The recorder crashes if it tries to initialize on a chrome-error page
    * (Chrome e.g. uses this page for HTTP basic auth popups before the user has authenticated)
+   * because the recorder tries inserting an iframe into the head, which crashes Chrome on that page.
    *
-   * This is because the recorder tries inserting an iframe into the head, and this crashes Chrome
-   * if done on a chrome-error page.
-   *
-   * These protocols are redundant with the http/https check below, but are kept for clarity.
+   * `about:` covers `about:blank` frames, which browsers use as the initial state of iframes before
+   * their real URL loads — running PollyJS there causes the page to hang.
    */
   const FORBIDDEN_PROTOCOLS = ["chrome://", "chrome-error://", "about:"];
 
