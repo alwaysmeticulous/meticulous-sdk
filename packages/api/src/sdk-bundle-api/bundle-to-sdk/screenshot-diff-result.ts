@@ -28,6 +28,9 @@ export interface EndStateScreenshot extends LogicVersioned {
 
   /** If unset is normal variant */
   variant?: ScreenshotVariant;
+
+  /** Optional image hash of the screenshot */
+  imageHash?: string;
 }
 
 export interface ScreenshotAfterEvent extends LogicVersioned {
@@ -38,6 +41,9 @@ export interface ScreenshotAfterEvent extends LogicVersioned {
 
   /** If unset is normal variant */
   variant?: ScreenshotVariant;
+
+  /** Optional image hash of the screenshot */
+  imageHash?: string;
 }
 
 /**
@@ -137,8 +143,7 @@ export type RedactedScreenshotsComparison =
   | "redacted-vs-unredacted"
   | "unredacted-vs-redacted";
 
-export interface ScreenshotDiffResultNoDifference
-  extends ScreenshotDiffResultCompared {
+export interface ScreenshotDiffResultNoDifference extends ScreenshotDiffResultCompared {
   outcome: "no-diff";
 }
 
@@ -166,8 +171,7 @@ export interface RedactedScreenshotIncompatible {
   type: "missing-base" | "missing-head" | "different-size";
 }
 
-export interface ScreenshotDiffResultDifference
-  extends ScreenshotDiffResultCompared {
+export interface ScreenshotDiffResultDifference extends ScreenshotDiffResultCompared {
   outcome: "diff";
 
   /**
