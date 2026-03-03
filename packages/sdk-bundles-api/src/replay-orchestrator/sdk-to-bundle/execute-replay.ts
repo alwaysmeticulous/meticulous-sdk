@@ -386,6 +386,11 @@ export interface AppUrlConfig {
    * List of query parameters to strip from the app URL before the initial navigation.
    */
   queryParamsToStrip?: string[];
+
+  /**
+   * List of query parameters to set to `""` from the app URL before the initial navigation.
+   */
+  queryParamsToEmpty?: string[];
 }
 
 export interface NetworkDebuggingOptions {
