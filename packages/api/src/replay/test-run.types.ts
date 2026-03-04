@@ -55,6 +55,8 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
  *
  * `Success` = completed, and no replays had notable differences
  *
+ * `Aborted` = the test run was stopped before it could complete
+ *
  * `ExecutionError` = the test run failed fatally, and didn't complete. To get accurate results it'll need to be re-run. The test run may shortly switch back
  * into 'Running' in this case, if the worker retries it.
  */
@@ -64,6 +66,7 @@ export type TestRunStatus =
   | "PostProcessing"
   | "Success"
   | "Failure"
+  | "Aborted"
   | "ExecutionError";
 
 /**
