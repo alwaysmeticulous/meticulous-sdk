@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/redaction",
-  "version": "2.257.0",
+  "version": "2.257.1",
   "license": "ISC",
   "source": "src/index.ts",
   "main": "dist/index.js",
