@@ -23,6 +23,7 @@ import { MultipartCompressingUploader, UPLOAD_ARCHIVE_FILE_FORMAT } from "./uplo
 export interface UploadAssetsOptions {
   apiToken: string | null | undefined;
   commitSha: string;
+  baseSha?: string | undefined;
   waitForBase?: boolean;
   rewrites?: AssetUploadMetadata["rewrites"];
   createDeployment?: boolean;
@@ -84,6 +85,7 @@ const completeUploadAndWaitForBase = async ({
   client,
   uploadId,
   commitSha,
+  baseSha,
   waitForBase,
   rewrites,
   createDeployment,
@@ -92,6 +94,7 @@ const completeUploadAndWaitForBase = async ({
   client: ReturnType<typeof createClient>;
   uploadId: string;
   commitSha: string;
+  baseSha?: string | undefined;
   waitForBase: boolean;
   rewrites: AssetUploadMetadata["rewrites"];
   createDeployment: boolean;
@@ -106,6 +109,7 @@ const completeUploadAndWaitForBase = async ({
     client,
     uploadId,
     commitSha,
+    ...(baseSha ? { baseSha } : {}),
     mustHaveBase: waitForBase,
     rewrites,
     createDeployment,
@@ -149,6 +153,7 @@ const uploadAssetsStreaming = async ({
   client,
   folderPath,
   commitSha,
+  baseSha,
   waitForBase = false,
   rewrites = [],
   createDeployment = true,
@@ -180,6 +185,7 @@ const uploadAssetsStreaming = async ({
     client,
     uploadId,
     commitSha,
+    baseSha,
     waitForBase,
     rewrites,
     createDeployment,
@@ -243,6 +249,7 @@ export const uploadAssetsFromZip = async ({
   apiToken: apiToken_,
   zipPath,
   commitSha,
+  baseSha,
   waitForBase = false,
   rewrites = [],
   createDeployment = true,
@@ -277,6 +284,7 @@ export const uploadAssetsFromZip = async ({
       client,
       uploadId,
       commitSha,
+      baseSha,
       waitForBase,
       rewrites,
       createDeployment,
