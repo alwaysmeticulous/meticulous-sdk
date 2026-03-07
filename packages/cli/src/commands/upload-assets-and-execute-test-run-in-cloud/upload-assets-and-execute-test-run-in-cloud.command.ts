@@ -8,7 +8,6 @@ import {
 import {
   getCommitSha,
   getLocalBaseSha,
-  hasUncommittedChanges,
   initLogger,
 } from "@alwaysmeticulous/common";
 import { uploadAssetsAndTriggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
@@ -47,7 +46,7 @@ const handler: (options: Options) => Promise<void> = async ({
 }) => {
   const logger = initLogger();
   const gitOpts = repoDirectory ? { cwd: repoDirectory } : undefined;
-  const commitSha = commitSha_ || await getCommitSha(null, gitOpts);
+  const commitSha = await getCommitSha(commitSha_, gitOpts);
 
   if (!appDirectory && !appZip) {
     logger.error(
@@ -67,21 +66,11 @@ const handler: (options: Options) => Promise<void> = async ({
     ? await getLocalBaseSha(gitOpts)
     : undefined) || undefined;
 
-  if (repoDirectory && !commitSha_) {
-    const hasChanges = await hasUncommittedChanges(gitOpts);
-    if (hasChanges) {
-      logger.warn(
-        "You have uncommitted changes. Please commit your changes before uploading.",
-      );
-      process.exit(1);
-    }
-
-    if (baseSha && baseSha === commitSha) {
-      logger.info(
-        "Base SHA equals head SHA — nothing to test.",
-      );
-      return;
-    }
+  if (baseSha && baseSha === commitSha) {
+    logger.info(
+      "Base SHA equals head SHA — nothing to test.",
+    );
+    return;
   }
 
   logger.info(`Uploading build artifacts for commit ${commitSha}`);
@@ -208,7 +197,6 @@ export const uploadAssetsAndExecuteTestRunInCloudCommand = buildCommand(
     repoDirectory: {
       demandOption: false,
       string: true,
-      default: ".",
       description:
         "The path to the git repository to use for auto-detecting --commitSha and the base SHA. " +
         "Defaults to the current working directory.",
