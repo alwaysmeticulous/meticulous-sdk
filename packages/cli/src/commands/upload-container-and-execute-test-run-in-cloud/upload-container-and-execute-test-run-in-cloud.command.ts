@@ -25,6 +25,7 @@ const POLL_INTERVAL_MS = 10_000;
 interface Options {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
+  baseSha?: string | undefined;
   repoDirectory?: string | undefined;
   localImageTag: string;
   waitForBase: boolean;
@@ -36,6 +37,7 @@ interface Options {
 const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   commitSha: commitSha_,
+  baseSha: baseSha_,
   repoDirectory,
   localImageTag,
   waitForBase,
@@ -45,7 +47,7 @@ const handler: (options: Options) => Promise<void> = async ({
 }) => {
   const logger = initLogger();
   const gitOpts = repoDirectory ? { cwd: repoDirectory } : undefined;
-  const commitSha = await getCommitSha(commitSha_, gitOpts);
+  const commitSha = commitSha_ || await getCommitSha(null, gitOpts);
 
   if (!commitSha) {
     logger.error(
@@ -54,11 +56,11 @@ const handler: (options: Options) => Promise<void> = async ({
     process.exit(1);
   }
 
-  const baseSha = repoDirectory
+  const baseSha = baseSha_ || (repoDirectory
     ? await getLocalBaseSha(gitOpts)
-    : undefined;
+    : undefined) || undefined;
 
-  if (repoDirectory) {
+  if (repoDirectory && !commitSha_) {
     const hasChanges = await hasUncommittedChanges(gitOpts);
     if (hasChanges) {
       logger.warn(
@@ -152,6 +154,12 @@ export const uploadContainerAndExecuteTestRunInCloudCommand = buildCommand(
   .options({
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
+    baseSha: {
+      demandOption: false,
+      string: true,
+      description:
+        "The base commit SHA to compare against. If not provided, inferred from --repoDirectory via merge-base with origin/main.",
+    },
     repoDirectory: {
       demandOption: false,
       string: true,
