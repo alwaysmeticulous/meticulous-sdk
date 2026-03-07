@@ -1,9 +1,21 @@
 import { exec, execFile } from "child_process";
 import { initLogger } from "./logger/console-logger";
 
-const getGitRevParseHead: () => Promise<string> = () => {
+const execPromise = (command: string, cwd?: string): Promise<string> => {
   return new Promise((resolve, reject) => {
-    exec("git rev-parse HEAD", { encoding: "utf-8" }, (error, output) => {
+    exec(command, { encoding: "utf-8", cwd }, (error, output) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(output.trim());
+    });
+  });
+};
+
+const getGitRevParseHead: (cwd?: string) => Promise<string> = (cwd) => {
+  return new Promise((resolve, reject) => {
+    exec("git rev-parse HEAD", { encoding: "utf-8", cwd }, (error, output) => {
       if (error) {
         reject(error);
         return;
@@ -15,7 +27,8 @@ const getGitRevParseHead: () => Promise<string> = () => {
 
 export const getCommitSha: (
   commitSha: string | null | undefined,
-) => Promise<string> = async (commitSha_) => {
+  options?: { cwd?: string },
+) => Promise<string> = async (commitSha_, options) => {
   if (commitSha_) {
     return commitSha_;
   }
@@ -23,7 +36,7 @@ export const getCommitSha: (
   const logger = initLogger();
 
   try {
-    const gitCommitSha = (await getGitRevParseHead()).trim();
+    const gitCommitSha = (await getGitRevParseHead(options?.cwd)).trim();
     return gitCommitSha;
   } catch (error) {
     // Suppress error logging if not in a git repository
@@ -38,14 +51,15 @@ export const getCommitSha: (
   }
 };
 
-const getGitCommitDate: (commitSha: string) => Promise<string> = (
+const getGitCommitDate: (commitSha: string, cwd?: string) => Promise<string> = (
   commitSha,
+  cwd,
 ) => {
   return new Promise((resolve, reject) => {
     execFile(
       "git",
       ["show", "-s", "--format=%cI", commitSha],
-      { encoding: "utf-8" },
+      { encoding: "utf-8", cwd },
       (error, output) => {
         if (error) {
           reject(error);
@@ -55,6 +69,91 @@ const getGitCommitDate: (commitSha: string) => Promise<string> = (
       },
     );
   });
+};
+
+/**
+ * Computes the base SHA for local development:
+ * - On main/master (or detached HEAD at main): returns HEAD sha
+ * - On a branch: returns `git merge-base main HEAD` (or master if main doesn't exist)
+ *
+ * Returns null if not in a git repository or if computation fails.
+ */
+export const getLocalBaseSha = async (options?: {
+  cwd?: string;
+}): Promise<string | null> => {
+  const logger = initLogger();
+  const cwd = options?.cwd;
+
+  let branchName: string;
+  try {
+    branchName = await execPromise("git rev-parse --abbrev-ref HEAD", cwd);
+  } catch (error) {
+    logger.info(
+      `Could not determine current branch (not in a git repository?): ${error instanceof Error ? error.message : error}`,
+    );
+    return null;
+  }
+
+  logger.info(`Current branch: ${branchName}`);
+
+  // Fetch latest remote refs so origin/main is up-to-date
+  try {
+    await execPromise("git fetch origin", cwd);
+  } catch (error) {
+    logger.warn(
+      `Could not fetch from origin: ${error instanceof Error ? error.message : error}`,
+    );
+  }
+
+  if (branchName === "main" || branchName === "master" || branchName === "HEAD") {
+    try {
+      const headSha = await execPromise("git rev-parse HEAD", cwd);
+      logger.info(
+        `On ${branchName === "HEAD" ? "detached HEAD" : branchName}, using HEAD as base SHA: ${headSha}`,
+      );
+      return headSha;
+    } catch (error) {
+      logger.warn(
+        `On ${branchName === "HEAD" ? "detached HEAD" : branchName}, but could not get HEAD SHA: ${error instanceof Error ? error.message : error}`,
+      );
+      return null;
+    }
+  }
+
+  // On a branch: compute merge-base with origin/main (or origin/master).
+  const baseCandidates = ["origin/main", "origin/master"];
+
+  for (const candidate of baseCandidates) {
+    try {
+      const mergeBase = await execPromise(
+        `git merge-base ${candidate} HEAD`,
+        cwd,
+      );
+      logger.info(`Computed merge-base with '${candidate}': ${mergeBase}`);
+      return mergeBase;
+    } catch {
+      // Try next candidate
+    }
+  }
+
+  logger.warn(
+    "Could not compute base SHA: no 'origin/main' or 'origin/master' branch found.",
+  );
+  return null;
+};
+
+/**
+ * Returns true if the git working tree has uncommitted changes (staged or unstaged).
+ */
+export const hasUncommittedChanges = async (options?: {
+  cwd?: string;
+}): Promise<boolean> => {
+  try {
+    const output = await execPromise("git status --porcelain", options?.cwd);
+    return output.length > 0;
+  } catch {
+    return false;
+  }
 };
 
 export const getCommitDate: (

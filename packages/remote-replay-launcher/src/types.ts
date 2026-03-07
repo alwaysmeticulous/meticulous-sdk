@@ -67,6 +67,7 @@ export interface UploadAssetsAndTriggerTestRunOptions {
   appDirectory?: string | undefined;
   appZip?: string | undefined;
   commitSha: string;
+  baseSha?: string | undefined;
   /**
    * If true, before triggering a test run, the launcher will wait for a base test run to be created. If that is not found,
    * it will trigger a test run without waiting for a base test run.
@@ -80,6 +81,7 @@ export interface UploadContainerAndTriggerTestRunOptions {
   apiToken: string | null | undefined;
   localImageTag: string;
   commitSha: string;
+  baseSha?: string | undefined;
   /**
    * If true, before triggering a test run, the launcher will wait for a base test run to be created. If that is not found,
    * it will trigger a test run without waiting for a base test run.
