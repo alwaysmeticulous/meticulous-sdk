@@ -90,6 +90,11 @@ export interface TestCaseResult extends TestCase {
   result: TestCaseResultStatus;
 }
 
+export interface AppContainerLogsLocations {
+  signedBaseUrl: string;
+  pods: Array<{ podName: string; chunkKeys: string[] }>;
+}
+
 export interface TestRunDataLocations {
   coverage: S3Location;
   coverageStats: S3Location;
@@ -102,4 +107,5 @@ export interface TestRunDataLocations {
   coverageByReplayPr?: S3Location;
   diversityByReplay?: S3Location;
   relevantReplayContexts: S3Location;
+  appContainerLogs?: AppContainerLogsLocations;
 }

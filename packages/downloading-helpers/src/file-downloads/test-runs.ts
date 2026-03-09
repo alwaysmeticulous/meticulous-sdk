@@ -6,6 +6,7 @@ import {
   getMeticulousLocalDataDir,
   initLogger,
 } from "@alwaysmeticulous/common";
+import { downloadAppContainerLogs } from "./app-container-logs";
 import { downloadAndExtractFile } from "./download-file";
 import {
   fileExists,
@@ -16,10 +17,12 @@ import {
 /**
  * Download scope for test run data:
  * - `everything`: Download all available test run data
+ * - `app-container-logs`: Download app container logs only
  * - `coverageByReplayPrOnly`: Download only coverageByReplayPr
  */
 export const DOWNLOAD_SCOPES = [
   "everything",
+  "app-container-logs",
   "coverage-by-replay-pr-only",
   "coverage-only",
   "coverage-pr-only",
@@ -27,14 +30,18 @@ export const DOWNLOAD_SCOPES = [
 
 export type TestRunDownloadScope = (typeof DOWNLOAD_SCOPES)[number];
 
+const includesAppContainerLogs = (scope: TestRunDownloadScope): boolean =>
+  scope === "everything" || scope === "app-container-logs";
+
 const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<
   TestRunDownloadScope,
   RegExp
 > = {
   everything: /.*/,
+  "app-container-logs": /^$/,
   "coverage-by-replay-pr-only": /^coverageByReplayPr/,
   "coverage-only": /^coverage$/,
-  "coverage-pr-only": /^coveragePr/
+  "coverage-pr-only": /^coveragePr/,
 };
 
 const shouldDownloadFile = (
@@ -103,7 +110,11 @@ export const getOrFetchTestRunData = async (
     }
 
     logger.info("Fetching test run data locations...");
-    const testRunData = await getTestRunData({ client, testRunId });
+    const testRunData = await getTestRunData({
+      client,
+      testRunId,
+      includeAppContainerLogs: includesAppContainerLogs(downloadScope),
+    });
 
     if (!testRunData) {
       logger.error(
@@ -143,6 +154,11 @@ export const getOrFetchTestRunData = async (
       .filter((promise): promise is () => Promise<void> => promise !== null);
 
     await Promise.all(downloadPromises.map((fn) => fn()));
+
+    if (testRunData.appContainerLogs != null) {
+      logger.info("Downloading app container logs...");
+      await downloadAppContainerLogs(testRunData.appContainerLogs, testRunDir);
+    }
 
     await writeFile(previouslyDownloadedFile, downloadScope, "utf-8");
     logger.info("Test run data downloaded.");

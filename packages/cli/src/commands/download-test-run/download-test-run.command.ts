@@ -13,7 +13,10 @@ interface Options {
   scope?: string | null | undefined;
 }
 
-const ALLOWED_SCOPES: TestRunDownloadScope[] = ["coverage-only"];
+const ALLOWED_SCOPES: TestRunDownloadScope[] = [
+  "coverage-only",
+  "app-container-logs",
+];
 
 const handler: (options: Options) => Promise<void> = async ({
   apiToken,
