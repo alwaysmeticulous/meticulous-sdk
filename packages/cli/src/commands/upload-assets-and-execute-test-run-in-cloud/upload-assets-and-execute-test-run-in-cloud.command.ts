@@ -198,8 +198,7 @@ export const uploadAssetsAndExecuteTestRunInCloudCommand = buildCommand(
       demandOption: false,
       string: true,
       description:
-        "The path to the git repository to use for auto-detecting --commitSha and the base SHA. " +
-        "Defaults to the current working directory.",
+        "The path to the git repository to use for auto-detecting --commitSha and the base SHA.",
     },
     appDirectory: {
       demandOption: false,
