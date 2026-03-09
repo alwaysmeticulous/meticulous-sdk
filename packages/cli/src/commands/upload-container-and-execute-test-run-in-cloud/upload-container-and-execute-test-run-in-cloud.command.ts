@@ -1,5 +1,15 @@
-import { ContainerEnvVariable } from "@alwaysmeticulous/client";
-import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
+import {
+  ContainerEnvVariable,
+  createClient,
+  getApiToken,
+  getTestRun,
+  IN_PROGRESS_TEST_RUN_STATUS,
+} from "@alwaysmeticulous/client";
+import {
+  getCommitSha,
+  getLocalBaseSha,
+  initLogger,
+} from "@alwaysmeticulous/common";
 import { uploadContainer } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
 import { buildCommand } from "../../command-utils/command-builder";
@@ -9,11 +19,16 @@ import {
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
 
+const POLL_INTERVAL_MS = 10_000;
+
 interface Options {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
+  baseSha?: string | undefined;
+  repoDirectory?: string | undefined;
   localImageTag: string;
   waitForBase: boolean;
+  waitForTestRunToComplete: boolean;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
 }
@@ -21,13 +36,17 @@ interface Options {
 const handler: (options: Options) => Promise<void> = async ({
   apiToken,
   commitSha: commitSha_,
+  baseSha: baseSha_,
+  repoDirectory,
   localImageTag,
   waitForBase,
+  waitForTestRunToComplete,
   containerPort,
   containerEnv,
 }) => {
   const logger = initLogger();
-  const commitSha = await getCommitSha(commitSha_);
+  const gitOpts = repoDirectory ? { cwd: repoDirectory } : undefined;
+  const commitSha = await getCommitSha(commitSha_, gitOpts);
 
   if (!commitSha) {
     logger.error(
@@ -36,26 +55,45 @@ const handler: (options: Options) => Promise<void> = async ({
     process.exit(1);
   }
 
+  const baseSha = baseSha_ || (repoDirectory
+    ? await getLocalBaseSha(gitOpts)
+    : undefined) || undefined;
+
+  if (baseSha && baseSha === commitSha) {
+    logger.info(
+      "Base SHA equals head SHA — nothing to test.",
+    );
+    return;
+  }
+
   logger.info(
     `Uploading Docker container ${localImageTag} for commit ${commitSha}`,
   );
+  if (baseSha) {
+    logger.info(`Base SHA: ${baseSha}`);
+  }
+
   Sentry.captureMessage("Received upload container request", {
     level: "debug",
     extra: {
-      commitSha: commitSha,
-      localImageTag: localImageTag,
+      commitSha,
+      localImageTag,
     },
   });
+
+  let testRunId: string | null = null;
 
   try {
     const result = await uploadContainer({
       apiToken,
       localImageTag,
       commitSha,
-      waitForBase,
+      ...(baseSha ? { baseSha } : {}),
+      waitForBase: waitForBase || waitForTestRunToComplete,
       containerPort,
       containerEnv,
     });
+    testRunId = result.testRun?.id ?? null;
 
     if (!result.testRun) {
       logger.warn("Container upload complete but test run not created");
@@ -67,6 +105,32 @@ const handler: (options: Options) => Promise<void> = async ({
       throw error;
     }
   }
+
+  if (!waitForTestRunToComplete || !testRunId) {
+    return;
+  }
+
+  const apiTokenToUse = getApiToken(apiToken);
+  if (!apiTokenToUse) {
+    logger.error(
+      "No API token found. Cannot wait for test run to complete.",
+    );
+    process.exit(1);
+  }
+  const client = createClient({ apiToken: apiTokenToUse });
+
+  logger.info(`Waiting for test run ${testRunId} to complete...`);
+
+  let completedTestRun = await getTestRun({ client, testRunId });
+  while (IN_PROGRESS_TEST_RUN_STATUS.includes(completedTestRun.status)) {
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    completedTestRun = await getTestRun({ client, testRunId });
+    logger.info(`Test run status: ${completedTestRun.status}`);
+  }
+
+  logger.info(
+    `Test run ${testRunId} finished with status: ${completedTestRun.status}`,
+  );
 };
 
 export const uploadContainerAndExecuteTestRunInCloudCommand = buildCommand(
@@ -79,6 +143,18 @@ export const uploadContainerAndExecuteTestRunInCloudCommand = buildCommand(
   .options({
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
+    baseSha: {
+      demandOption: false,
+      string: true,
+      description:
+        "The base commit SHA to compare against. If not provided, inferred from --repoDirectory via merge-base with origin/main.",
+    },
+    repoDirectory: {
+      demandOption: false,
+      string: true,
+      description:
+        "The path to the git repository to use for auto-detecting --commitSha and the base SHA.",
+    },
     localImageTag: {
       demandOption: true,
       string: true,
@@ -92,6 +168,13 @@ export const uploadContainerAndExecuteTestRunInCloudCommand = buildCommand(
       description:
         "If true, the launcher will try to wait for a base test run to be created before triggering a test run. If that is not found, it will trigger a test run without waiting for a base test run.",
     },
+    waitForTestRunToComplete: {
+      demandOption: false,
+      boolean: true,
+      default: false,
+      description:
+        "If true, block and wait until the triggered test run is complete, then report results. Implies --waitForBase.",
+    },
     containerPort: {
       demandOption: false,
       number: true,
@@ -103,11 +186,11 @@ export const uploadContainerAndExecuteTestRunInCloudCommand = buildCommand(
       coerce: (value: string[]) =>
         value.map((v) => {
           const [name, ...rest] = v.split("=");
-          const value = rest.join("=");
-          if (!name || !value) {
+          const envValue = rest.join("=");
+          if (!name || !envValue) {
             throw new Error(`Invalid environment variable: ${v}`);
           }
-          return { name, value };
+          return { name, value: envValue };
         }),
       description: "The environment variables to set in the container.",
     },

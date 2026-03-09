@@ -15,6 +15,7 @@ export interface UploadContainerOptions {
   apiToken: string | null | undefined;
   localImageTag: string;
   commitSha: string;
+  baseSha?: string | undefined;
   waitForBase?: boolean;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
@@ -30,6 +31,7 @@ export const uploadContainer = async ({
   apiToken: apiToken_,
   localImageTag,
   commitSha,
+  baseSha,
   waitForBase = false,
   containerPort,
   containerEnv,
@@ -96,6 +98,7 @@ export const uploadContainer = async ({
     client,
     uploadId,
     commitSha,
+    ...(baseSha ? { baseSha } : {}),
     mustHaveBase: waitForBase,
     containerPort,
     containerEnv,
@@ -112,6 +115,7 @@ export const uploadContainer = async ({
         client,
         uploadId,
         commitSha,
+        ...(baseSha ? { baseSha } : {}),
         mustHaveBase: true,
         containerPort,
         containerEnv,
@@ -122,6 +126,7 @@ export const uploadContainer = async ({
         client,
         uploadId,
         commitSha,
+        ...(baseSha ? { baseSha } : {}),
         mustHaveBase: false,
         containerPort,
         containerEnv,
