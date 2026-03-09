@@ -1,13 +1,7 @@
-import { mkdir, writeFile } from "fs/promises";
+import { appendFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { AppContainerLogsLocations } from "@alwaysmeticulous/api";
 import { initLogger } from "@alwaysmeticulous/common";
-
-const buildChunkUrl = (signedBaseUrl: string, chunkKey: string): string => {
-  const url = new URL(signedBaseUrl);
-  url.pathname = `/${chunkKey}`;
-  return url.toString();
-};
 
 export const downloadAppContainerLogs = async (
   appContainerLogs: AppContainerLogsLocations,
@@ -25,21 +19,43 @@ export const downloadAppContainerLogs = async (
 
   await Promise.all(
     appContainerLogs.pods.map(async ({ podName, chunkKeys }) => {
-      const chunks = await Promise.all(
-        chunkKeys.map(async (key) => {
-          const url = buildChunkUrl(appContainerLogs.signedBaseUrl, key);
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(
-              `Failed to download log chunk for pod ${podName}: ${response.status} ${response.statusText}`,
-            );
-          }
-          return Buffer.from(await response.arrayBuffer());
-        }),
-      );
-      const logContent = Buffer.concat(chunks);
-      await writeFile(join(logsDir, `${podName}.log.gz`), logContent);
+      await downloadPodLogs({
+        podName,
+        chunkKeys,
+        signedBaseUrl: appContainerLogs.signedBaseUrl,
+        logsDir,
+      });
       logger.info(`Downloaded app container logs for ${podName}`);
     }),
   );
+};
+
+const downloadPodLogs = async ({
+  podName,
+  chunkKeys,
+  signedBaseUrl,
+  logsDir,
+}: {
+  podName: string;
+  chunkKeys: string[];
+  signedBaseUrl: string;
+  logsDir: string;
+}): Promise<void> => {
+  const outputPath = join(logsDir, `${podName}.log.gz`);
+  for (const chunkKey of chunkKeys) {
+    const url = buildChunkUrl(signedBaseUrl, chunkKey);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download log chunk for pod ${podName}: ${response.status} ${response.statusText}`,
+      );
+    }
+    await appendFile(outputPath, Buffer.from(await response.arrayBuffer()));
+  }
+};
+
+const buildChunkUrl = (signedBaseUrl: string, chunkKey: string): string => {
+  const url = new URL(signedBaseUrl);
+  url.pathname = `/${chunkKey}`;
+  return url.toString();
 };
