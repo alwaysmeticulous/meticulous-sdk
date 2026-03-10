@@ -268,7 +268,7 @@ const getReplayTarget = ({
 };
 
 export const replayCommand: CommandModule<unknown, Options> = {
-  command: "replay",
+  command: ["replay", "simulate"],
   describe: "Replay a recorded session",
   builder: {
     apiToken: OPTIONS.apiToken,
