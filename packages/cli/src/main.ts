@@ -7,57 +7,44 @@ import {
 } from "@alwaysmeticulous/common";
 import { initSentry } from "@alwaysmeticulous/sentry";
 import yargs from "yargs";
-import { downloadReplayCommand } from "./commands/download-replay/download-replay.command";
-import { downloadSessionCommand } from "./commands/download-session/download-session.command";
-import { downloadTestRunCommand } from "./commands/download-test-run/download-test-run.command";
-import { logoutCommand } from "./commands/logout/logout.command";
-import { prepareForMeticulousTestsCommand } from "./commands/prepare-for-meticulous-tests/prepare-for-meticulous-tests.command";
-import { recordCommand } from "./commands/record/record.command";
-import { recordLoginCommand } from "./commands/record-login/record-login.command";
-import { replayCommand } from "./commands/replay/replay.command";
-import { runAllTestsCommand } from "./commands/run-all-tests/run-all-tests.command";
-import { runAllTestsInCloudCommand } from "./commands/run-all-tests-in-cloud/run-all-tests-in-cloud.command";
-import { showProjectCommand } from "./commands/show-project/show-project.command";
-import { startLocalTunnelCommand } from "./commands/start-local-tunnel/start-local-tunnel.command";
-import { uploadAssetsAndExecuteTestRunInCloudCommand } from "./commands/upload-assets-and-execute-test-run-in-cloud/upload-assets-and-execute-test-run-in-cloud.command";
-import { uploadContainerAndExecuteTestRunInCloudCommand } from "./commands/upload-container-and-execute-test-run-in-cloud/upload-container-and-execute-test-run-in-cloud.command";
-import { whoamiCommand } from "./commands/whoami/whoami.command";
-import { setOptions } from "./utils/sentry.utils";
+import { setOptions } from "./command-utils/sentry.utils";
+import { authCommand } from "./commands/auth/index";
+import { ciCommand } from "./commands/ci/index";
+import { deprecatedAliases } from "./commands/deprecated-aliases";
+import { downloadCommand } from "./commands/download/index";
+import { projectCommand } from "./commands/project/index";
+import { recordCommand } from "./commands/record/index";
+import { replayCommand } from "./commands/replay.command";
 
-const handleDataDir: (dataDir: string | null | undefined) => void = (
-  dataDir,
-) => {
+const handleDataDir = (dataDir: string | null | undefined): void => {
   setMeticulousLocalDataDir(dataDir);
 };
 
-export const main: () => void = async () => {
+export const main = async (): Promise<void> => {
   initLogger();
   const packageJsonPath = normalize(join(__dirname, "../package.json"));
   const meticulousVersion = await getMeticulousVersion(packageJsonPath);
   await initSentry(meticulousVersion);
 
-  await yargs
+  const cli = yargs
     .scriptName("meticulous")
     .usage(
       `$0 <command>
 
       Meticulous CLI`,
     )
-    .command(downloadReplayCommand)
-    .command(downloadSessionCommand)
-    .command(downloadTestRunCommand)
-    .command(prepareForMeticulousTestsCommand)
+    .command(authCommand)
+    .command(ciCommand)
+    .command(downloadCommand)
+    .command(projectCommand)
     .command(recordCommand)
-    .command(recordLoginCommand)
-    .command(replayCommand)
-    .command(runAllTestsCommand)
-    .command(runAllTestsInCloudCommand)
-    .command(showProjectCommand)
-    .command(startLocalTunnelCommand)
-    .command(uploadAssetsAndExecuteTestRunInCloudCommand)
-    .command(uploadContainerAndExecuteTestRunInCloudCommand)
-    .command(whoamiCommand)
-    .command(logoutCommand)
+    .command(replayCommand);
+
+  for (const alias of deprecatedAliases) {
+    cli.command(alias);
+  }
+
+  await cli
     .help()
     .strict()
     .demandCommand()
@@ -78,4 +65,4 @@ export const main: () => void = async () => {
     ]).argv;
 };
 
-main();
+void main();

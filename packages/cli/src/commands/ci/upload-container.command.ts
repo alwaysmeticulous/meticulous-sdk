@@ -12,8 +12,9 @@ import {
 } from "@alwaysmeticulous/common";
 import { uploadContainer } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
-import { buildCommand } from "../../command-utils/command-builder";
+import { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
+import { wrapHandler } from "../../command-utils/sentry.utils";
 import {
   isOutOfDateClientError,
   OutOfDateCLIError,
@@ -33,7 +34,7 @@ interface Options {
   containerEnv?: ContainerEnvVariable[] | undefined;
 }
 
-const handler: (options: Options) => Promise<void> = async ({
+const handler = async ({
   apiToken,
   commitSha: commitSha_,
   baseSha: baseSha_,
@@ -43,7 +44,7 @@ const handler: (options: Options) => Promise<void> = async ({
   waitForTestRunToComplete,
   containerPort,
   containerEnv,
-}) => {
+}: Options): Promise<void> => {
   const logger = initLogger();
   const gitOpts = repoDirectory ? { cwd: repoDirectory } : undefined;
   const commitSha = await getCommitSha(commitSha_, gitOpts);
@@ -55,14 +56,13 @@ const handler: (options: Options) => Promise<void> = async ({
     process.exit(1);
   }
 
-  const baseSha = baseSha_ || (repoDirectory
-    ? await getLocalBaseSha(gitOpts)
-    : undefined) || undefined;
+  const baseSha =
+    baseSha_ ||
+    (repoDirectory ? await getLocalBaseSha(gitOpts) : undefined) ||
+    undefined;
 
   if (baseSha && baseSha === commitSha) {
-    logger.info(
-      "Base SHA equals head SHA — nothing to test.",
-    );
+    logger.info("Base SHA equals head SHA — nothing to test.");
     return;
   }
 
@@ -75,10 +75,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
   Sentry.captureMessage("Received upload container request", {
     level: "debug",
-    extra: {
-      commitSha,
-      localImageTag,
-    },
+    extra: { commitSha, localImageTag },
   });
 
   let testRunId: string | null = null;
@@ -112,9 +109,7 @@ const handler: (options: Options) => Promise<void> = async ({
 
   const apiTokenToUse = getApiToken(apiToken);
   if (!apiTokenToUse) {
-    logger.error(
-      "No API token found. Cannot wait for test run to complete.",
-    );
+    logger.error("No API token found. Cannot wait for test run to complete.");
     process.exit(1);
   }
   const client = createClient({ apiToken: apiTokenToUse });
@@ -133,24 +128,19 @@ const handler: (options: Options) => Promise<void> = async ({
   );
 };
 
-export const uploadContainerAndExecuteTestRunInCloudCommand = buildCommand(
-  "upload-container-and-execute-test-run-in-cloud",
-)
-  .details({
-    describe:
-      "Upload a Docker container to Meticulous and trigger a test run against it",
-  })
-  .options({
+export const ciUploadContainerCommand: CommandModule<unknown, Options> = {
+  command: "upload-container",
+  describe:
+    "Upload a Docker container to Meticulous and trigger a test run against it",
+  builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
     baseSha: {
-      demandOption: false,
       string: true,
       description:
         "The base commit SHA to compare against. If not provided, inferred from --repoDirectory via merge-base with origin/main.",
     },
     repoDirectory: {
-      demandOption: false,
       string: true,
       description:
         "The path to the git repository to use for auto-detecting --commitSha and the base SHA.",
@@ -162,26 +152,22 @@ export const uploadContainerAndExecuteTestRunInCloudCommand = buildCommand(
         "The local Docker image tag to upload (e.g., 'myapp:latest' or image SHA)",
     },
     waitForBase: {
-      demandOption: false,
       boolean: true,
       default: true,
       description:
-        "If true, the launcher will try to wait for a base test run to be created before triggering a test run. If that is not found, it will trigger a test run without waiting for a base test run.",
+        "If true, the launcher will try to wait for a base test run to be created before triggering a test run.",
     },
     waitForTestRunToComplete: {
-      demandOption: false,
       boolean: true,
       default: false,
       description:
         "If true, block and wait until the triggered test run is complete, then report results. Implies --waitForBase.",
     },
     containerPort: {
-      demandOption: false,
       number: true,
       description: "The port to expose the container on.",
     },
     containerEnv: {
-      demandOption: false,
       array: true,
       coerce: (value: string[]) =>
         value.map((v) => {
@@ -194,5 +180,6 @@ export const uploadContainerAndExecuteTestRunInCloudCommand = buildCommand(
         }),
       description: "The environment variables to set in the container.",
     },
-  } as const)
-  .handler(handler);
+  },
+  handler: wrapHandler(handler),
+};

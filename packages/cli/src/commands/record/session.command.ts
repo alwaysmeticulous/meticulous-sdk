@@ -13,14 +13,12 @@ import {
 } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import { recordSession } from "@alwaysmeticulous/record";
-import { buildCommand } from "../../command-utils/command-builder";
-import {
-  COMMON_RECORD_OPTIONS,
-  OPTIONS,
-} from "../../command-utils/common-options";
+import { CommandModule } from "yargs";
+import { COMMON_RECORD_OPTIONS, OPTIONS } from "../../command-utils/common-options";
+import { wrapHandler } from "../../command-utils/sentry.utils";
 import { RECORDING_SNIPPET_PATH } from "../../utils/constants";
 
-export interface RecordCommandHandlerOptions {
+interface Options {
   apiToken: string | null | undefined;
   commitSha: string | null | undefined;
   devTools: boolean | null | undefined;
@@ -35,9 +33,7 @@ export interface RecordCommandHandlerOptions {
   maxPayloadSize: number | null | undefined;
 }
 
-export const recordCommandHandler: (
-  options: RecordCommandHandlerOptions
-) => Promise<void> = async ({
+const handler = async ({
   apiToken,
   commitSha: commitSha_,
   devTools,
@@ -50,55 +46,30 @@ export const recordCommandHandler: (
   captureHttpOnlyCookies,
   appUrl,
   maxPayloadSize,
-}) => {
+}: Options): Promise<void> => {
   const logger = initLogger();
   const debugLogger = trace ? await DebugLogger.create() : null;
-  debugLogger?.log("Record options:");
-  debugLogger?.logObject({
-    apiToken,
-    commitSha: commitSha_,
-    devTools,
-    width,
-    height,
-    uploadIntervalMs,
-    incognito,
-    trace,
-  });
 
   logger.info("Preparing recording...");
 
-  // 1. Fetch the recording token
   const client = createClient({ apiToken });
   const project = await getProject(client);
   if (!project) {
     logger.error("Could not retrieve project data. Is the API token correct?");
-    debugLogger?.log(
-      "Could not retrieve project data. Is the API token correct?"
-    );
     process.exit(1);
   }
 
   const recordingToken = project.recordingToken;
   if (!recordingToken) {
     logger.error("Could not retrieve recording token.");
-    debugLogger?.log("Could not retrieve recording token.");
     process.exit(1);
   }
-  logger.debug(`Recording token: ${recordingToken}`);
 
-  // 2. Guess commit SHA1
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
-  logger.debug(`Commit: ${commitSha}`);
-
-  // 3. Load recording snippets
   const recordingSnippet = await fetchAsset(RECORDING_SNIPPET_PATH);
-
   const cookieDir = join(getMeticulousLocalDataDir(), "cookies");
-
-  // Report recording start
   const recordingCommandId = await getRecordingCommandId(client);
 
-  // 5. Start recording
   const onDetectedSession = (sessionId: string) => {
     const organizationName = encodeURIComponent(project.organization.name);
     const projectName = encodeURIComponent(project.name);
@@ -108,14 +79,14 @@ export const recordCommandHandler: (
     postSessionIdNotification(client, sessionId, recordingCommandId).catch(
       (error) => {
         logger.error(
-          `Warning: error while notifying session recording ${sessionId}`
+          `Warning: error while notifying session recording ${sessionId}`,
         );
         logger.error(error);
         debugLogger?.log(
-          `Warning: error while notifying session recording ${sessionId}`
+          `Warning: error while notifying session recording ${sessionId}`,
         );
         debugLogger?.log(`${error}`);
-      }
+      },
     );
   };
 
@@ -141,11 +112,10 @@ export const recordCommandHandler: (
   });
 };
 
-export const recordCommand = buildCommand("record")
-  .details({
-    describe: "Record a session",
-  })
-  .options({
+export const recordSessionCommand: CommandModule<unknown, Options> = {
+  command: "session",
+  describe: "Record a session",
+  builder: {
     ...COMMON_RECORD_OPTIONS,
     commitSha: OPTIONS.commitSha,
     incognito: {
@@ -153,5 +123,6 @@ export const recordCommand = buildCommand("record")
       description: "Use an incognito browsing context",
       default: true,
     },
-  })
-  .handler(recordCommandHandler);
+  },
+  handler: wrapHandler(handler),
+};

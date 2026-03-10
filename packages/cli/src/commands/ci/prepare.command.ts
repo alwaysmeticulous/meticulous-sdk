@@ -7,8 +7,9 @@ import {
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import log from "loglevel";
-import { buildCommand } from "../../command-utils/command-builder";
+import { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
+import { wrapHandler } from "../../command-utils/sentry.utils";
 import {
   isOutOfDateClientError,
   OutOfDateCLIError,
@@ -30,7 +31,7 @@ export const prepareForMeticulousTests = async ({
   headCommit: string;
   triggerScript: string;
   logger: log.Logger;
-}) => {
+}): Promise<void> => {
   try {
     const client = createClient({ apiToken });
 
@@ -73,19 +74,12 @@ export const prepareForMeticulousTests = async ({
           METICULOUS_DISABLE_RECURSIVE_TRIGGER: "true",
         },
       });
-      logger.log("Trigger script executed successfully");
+      logger.log("✅ Trigger script executed successfully");
       Sentry.captureEvent({
         message: "Trigger script executed successfully",
         level: "info",
-        tags: {
-          command: "prepare-for-meticulous-tests",
-          eventType: "trigger-script-executed",
-        },
-        extra: {
-          triggerScript,
-          baseCommitSha,
-          headCommit,
-        },
+        tags: { command: "ci prepare", eventType: "trigger-script-executed" },
+        extra: { triggerScript, baseCommitSha, headCommit },
       });
       logger.log("✅ Preparation for Meticulous tests completed successfully");
     } catch (error) {
@@ -105,11 +99,11 @@ export const prepareForMeticulousTests = async ({
   }
 };
 
-const handler: (options: Options) => Promise<void> = async ({
+const handler = async ({
   apiToken,
   headCommit,
   triggerScript,
-}) => {
+}: Options): Promise<void> => {
   const logger = initLogger();
 
   const apiToken_ = getApiToken(apiToken);
@@ -136,17 +130,12 @@ const handler: (options: Options) => Promise<void> = async ({
   });
 };
 
-export const prepareForMeticulousTestsCommand = buildCommand(
-  "prepare-for-meticulous-tests",
-)
-  .details({
-    describe:
-      "Prepare for Meticulous tests. If necessary, triggers the generation of a test run on the base commit against which `headCommit` will be tested against.",
-  })
-  .options({
-    apiToken: {
-      ...OPTIONS.apiToken,
-    },
+export const ciPrepareCommand: CommandModule<unknown, Options> = {
+  command: "prepare",
+  describe:
+    "Prepare for Meticulous tests. If necessary, triggers the generation of a test run on the base commit.",
+  builder: {
+    apiToken: { ...OPTIONS.apiToken },
     headCommit: {
       string: true,
       description:
@@ -158,5 +147,6 @@ export const prepareForMeticulousTestsCommand = buildCommand(
       description:
         "Path to script that triggers the generation of a Meticulous test run on a specific commit in case base test run is not available. The script will be called with the commit SHA as an argument.",
     },
-  } as const)
-  .handler(handler);
+  },
+  handler: wrapHandler(handler),
+};
