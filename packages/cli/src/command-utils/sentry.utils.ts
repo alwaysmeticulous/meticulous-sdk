@@ -3,8 +3,8 @@ import { initLogger } from "@alwaysmeticulous/common";
 import { SENTRY_FLUSH_TIMEOUT } from "@alwaysmeticulous/sentry";
 import * as Sentry from "@sentry/node";
 
-export const setOptions: (options: any) => void = (options) => {
-  Sentry.setContext("invoke-options", options);
+export const setOptions: (options: unknown) => void = (options) => {
+  Sentry.setContext("invoke-options", options as Record<string, unknown>);
 };
 
 export const wrapHandler = function wrapHandler_<T>(

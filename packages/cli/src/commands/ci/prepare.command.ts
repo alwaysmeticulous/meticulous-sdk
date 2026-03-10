@@ -7,8 +7,9 @@ import {
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import log from "loglevel";
-import { buildCommand } from "../../command-utils/command-builder";
+import { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
+import { wrapHandler } from "../../command-utils/sentry.utils";
 import {
   isOutOfDateClientError,
   OutOfDateCLIError,
@@ -30,11 +31,10 @@ export const prepareForMeticulousTests = async ({
   headCommit: string;
   triggerScript: string;
   logger: log.Logger;
-}) => {
+}): Promise<void> => {
   try {
     const client = createClient({ apiToken });
 
-    // Non-Github-hosted projects are currently not supported
     const { baseTestRun, baseCommitSha, commitIsInPullRequest } =
       await getGitHubCloudReplayBaseTestRun({
         client,
@@ -43,7 +43,7 @@ export const prepareForMeticulousTests = async ({
 
     if (baseTestRun !== null) {
       logger.log("Base test run already exists, no preparation needed");
-      logger.log("✅ Preparation for Meticulous tests completed successfully");
+      logger.log("Preparation for Meticulous tests completed successfully");
       return;
     }
 
@@ -51,12 +51,10 @@ export const prepareForMeticulousTests = async ({
       logger.log(
         `Base test run does not exist for commit '${baseCommitSha}', but this commit is not associated with any pull request. Skipping trigger script execution to prevent chain of test runs through Git history`,
       );
-      logger.log("✅ Preparation for Meticulous tests completed successfully");
+      logger.log("Preparation for Meticulous tests completed successfully");
       return;
     }
 
-    // We execute the trigger script only in case that the commit is in a pull request.
-    // The reason is that otherwise we will start a chain of runs going back through all the Git history.
     logger.log(
       `Base test run doesn't exist and commit is associated with a pull request.`,
     );
@@ -77,23 +75,16 @@ export const prepareForMeticulousTests = async ({
       Sentry.captureEvent({
         message: "Trigger script executed successfully",
         level: "info",
-        tags: {
-          command: "prepare-for-meticulous-tests",
-          eventType: "trigger-script-executed",
-        },
-        extra: {
-          triggerScript,
-          baseCommitSha,
-          headCommit,
-        },
+        tags: { command: "ci prepare", eventType: "trigger-script-executed" },
+        extra: { triggerScript, baseCommitSha, headCommit },
       });
-      logger.log("✅ Preparation for Meticulous tests completed successfully");
+      logger.log("Preparation for Meticulous tests completed successfully");
     } catch (error) {
       logger.error(
         `Failed to execute trigger script \`${triggerScript} ${baseCommitSha}\`: ${error}`,
       );
       logger.log(
-        "❌ Preparation for Meticulous tests failed, will continue without triggering a base",
+        "Preparation for Meticulous tests failed, will continue without triggering a base",
       );
     }
   } catch (error) {
@@ -105,11 +96,11 @@ export const prepareForMeticulousTests = async ({
   }
 };
 
-const handler: (options: Options) => Promise<void> = async ({
+const handler = async ({
   apiToken,
   headCommit,
   triggerScript,
-}) => {
+}: Options): Promise<void> => {
   const logger = initLogger();
 
   const apiToken_ = getApiToken(apiToken);
@@ -136,17 +127,12 @@ const handler: (options: Options) => Promise<void> = async ({
   });
 };
 
-export const prepareForMeticulousTestsCommand = buildCommand(
-  "prepare-for-meticulous-tests",
-)
-  .details({
-    describe:
-      "Prepare for Meticulous tests. If necessary, triggers the generation of a test run on the base commit against which `headCommit` will be tested against.",
-  })
-  .options({
-    apiToken: {
-      ...OPTIONS.apiToken,
-    },
+export const ciPrepareCommand: CommandModule<unknown, Options> = {
+  command: "prepare",
+  describe:
+    "Prepare for Meticulous tests. If necessary, triggers the generation of a test run on the base commit.",
+  builder: {
+    apiToken: { ...OPTIONS.apiToken },
     headCommit: {
       string: true,
       description:
@@ -158,5 +144,6 @@ export const prepareForMeticulousTestsCommand = buildCommand(
       description:
         "Path to script that triggers the generation of a Meticulous test run on a specific commit in case base test run is not available. The script will be called with the commit SHA as an argument.",
     },
-  } as const)
-  .handler(handler);
+  },
+  handler: wrapHandler(handler),
+};

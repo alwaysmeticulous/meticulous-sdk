@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { getApiToken } from "@alwaysmeticulous/client";
 import {
   defer,
@@ -10,7 +8,8 @@ import {
   IncomingRequestEvent,
   localtunnel,
 } from "@alwaysmeticulous/tunnels-client";
-import { buildCommand } from "../../command-utils/command-builder";
+import { CommandModule } from "yargs";
+import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {
   apiToken: string | undefined;
@@ -31,7 +30,7 @@ interface Options {
   http2Connections: number | undefined;
 }
 
-const handler = async (argv: Options) => {
+const handler = async (argv: Options): Promise<void> => {
   const logger = initLogger();
 
   const apiToken = getApiToken(argv.apiToken);
@@ -67,9 +66,7 @@ const handler = async (argv: Options) => {
 
   tunnel.on("error", (err) => {
     tunnel.close();
-
     logger.error(err);
-
     throw err;
   });
 
@@ -95,14 +92,12 @@ const handler = async (argv: Options) => {
   await tunnelClosedCallback.promise;
 };
 
-export const startLocalTunnelCommand = buildCommand("start-local-tunnel")
-  .details({
-    // Hide this command from the help menu if the user is not a super user.
-    describe: IS_METICULOUS_SUPER_USER
-      ? "Expose a local service via Meticulous' secure tunnels service"
-      : false,
-  })
-  .options({
+export const ciStartTunnelCommand: CommandModule<unknown, Options> = {
+  command: "start-tunnel",
+  describe: IS_METICULOUS_SUPER_USER
+    ? "Expose a local service via Meticulous' secure tunnels service"
+    : false,
+  builder: {
     apiToken: {
       string: true,
       description: "Meticulous API token",
@@ -186,5 +181,6 @@ export const startLocalTunnelCommand = buildCommand("start-local-tunnel")
       boolean: true,
       default: false,
     },
-  })
-  .handler(handler);
+  },
+  handler: wrapHandler(handler),
+};

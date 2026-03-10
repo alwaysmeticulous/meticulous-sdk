@@ -7,13 +7,14 @@ import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import chalk from "chalk";
-import { buildCommand } from "../../command-utils/command-builder";
+import { CommandModule } from "yargs";
 import {
   COMMON_REPLAY_OPTIONS,
   HEADLESS_FLAG,
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../../command-utils/common-options";
+import { wrapHandler } from "../../command-utils/sentry.utils";
 import {
   isOutOfDateClientError,
   OutOfDateCLIError,
@@ -40,7 +41,9 @@ interface Options
   enableCssCoverage?: boolean;
 }
 
-const handler: (options: Options) => Promise<void> = async ({
+const NO_PARALLELIZE_FLAG = "--no-parallelize";
+
+const handler = async ({
   apiToken,
   commitSha: commitSha_,
   baseCommitSha,
@@ -54,7 +57,7 @@ const handler: (options: Options) => Promise<void> = async ({
   networkStubbing,
   githubSummary,
   noParallelize,
-  parallelTasks: parrelelTasks_,
+  parallelTasks: parallelTasks_,
   maxRetriesOnFailure,
   rerunTestsNTimes,
   testsFile,
@@ -70,7 +73,7 @@ const handler: (options: Options) => Promise<void> = async ({
   baseTestRunId,
   sessionIdForApplicationStorage,
   enableCssCoverage,
-}) => {
+}: Options): Promise<void> => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
     devTools,
@@ -118,8 +121,9 @@ const handler: (options: Options) => Promise<void> = async ({
     );
   }
 
-  const parrelelTasks = noParallelize ? 1 : parrelelTasks_;
+  const parallelTasks = noParallelize ? 1 : parallelTasks_;
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
+
   try {
     const { testRun } = await executeTestRun({
       testsFile: testsFile ?? null,
@@ -130,7 +134,7 @@ const handler: (options: Options) => Promise<void> = async ({
       baseCommitSha: baseCommitSha ?? null,
       baseTestRunId: baseTestRunId ?? null,
       appUrl: appUrl ?? null,
-      parallelTasks: parrelelTasks ?? null,
+      parallelTasks: parallelTasks ?? null,
       maxRetriesOnFailure,
       rerunTestsNTimes,
       githubSummary,
@@ -150,11 +154,10 @@ const handler: (options: Options) => Promise<void> = async ({
   }
 };
 
-const NO_PARALLELIZE_FLAG = "--no-parallelize";
-
-export const runAllTestsCommand = buildCommand("run-all-tests")
-  .details({ describe: "Run all replay test cases" })
-  .options({
+export const ciRunLocalCommand: CommandModule<unknown, Options> = {
+  command: "run-local",
+  describe: "Run all replay test cases locally",
+  builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
     baseCommitSha: {
@@ -192,20 +195,19 @@ export const runAllTestsCommand = buildCommand("run-all-tests")
     maxRetriesOnFailure: {
       number: true,
       description:
-        "If set to a value greater than 0 then will re-run any replays that give a visual diff and mark them as a flake if the snapshot generated on one of the retryed replays differs from that in the first replay.",
+        "If set to a value greater than 0 then will re-run any replays that give a visual diff and mark them as a flake if the snapshot generated on one of the retried replays differs from that in the first replay.",
       default: 0,
     },
     rerunTestsNTimes: {
       number: true,
       description:
-        "If set to a value greater than 0 then will re-run all replays the specified number of times and mark them as a flake if the visual snapshot generated on one of the retryed replays differs from that in the first replay.",
+        "If set to a value greater than 0 then will re-run all replays the specified number of times and mark them as a flake if the visual snapshot generated on one of the retried replays differs from that in the first replay.",
       default: 0,
     },
     testsFile: {
       string: true,
       description:
-        "The path to the meticulous.json file containing the list of tests you want to run." +
-        " If not set a search will be performed to find a meticulous.json file in the current directory or the nearest parent directory.",
+        "The path to the meticulous.json file containing the list of tests you want to run. If not set a search will be performed to find a meticulous.json file in the current directory or the nearest parent directory.",
     },
     baseTestRunId: {
       string: true,
@@ -214,5 +216,6 @@ export const runAllTestsCommand = buildCommand("run-all-tests")
     moveBeforeMouseEvent: OPTIONS.moveBeforeMouseEvent,
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
-  } as const)
-  .handler(handler);
+  },
+  handler: wrapHandler(handler),
+};

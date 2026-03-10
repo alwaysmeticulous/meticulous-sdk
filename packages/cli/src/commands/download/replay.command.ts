@@ -7,17 +7,15 @@ import {
   getOrFetchReplay,
   getOrFetchReplayArchive,
 } from "@alwaysmeticulous/downloading-helpers";
-import { buildCommand } from "../../command-utils/command-builder";
+import { CommandModule } from "yargs";
+import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
   replayId: string;
 }
 
-const handler: (options: Options) => Promise<void> = async ({
-  apiToken,
-  replayId,
-}) => {
+const handler = async ({ apiToken, replayId }: Options): Promise<void> => {
   const logger = initLogger();
   const client = await createClientWithOAuth({
     apiToken,
@@ -36,17 +34,18 @@ const handler: (options: Options) => Promise<void> = async ({
     true,
   );
 
-  // Generate logs.concise.txt and logs.determinstic.txt files
   const logsFile = join(replayFolderFilePath, "logs.ndjson");
   const logsFileExists = await access(logsFile)
     .then(() => true)
     .catch(() => false);
+
   if (logsFileExists) {
     try {
       const logs = (await readFile(logsFile, "utf8"))
         .split("\n")
         .filter((line) => line !== "")
         .map((line) => JSON.parse(line));
+
       let virtualTime = 0;
       const conciseLogs = logs.map(
         (log: ConsoleMessageWithStackTracePointer) => {
@@ -69,7 +68,6 @@ const handler: (options: Options) => Promise<void> = async ({
         conciseLogs.join("\n"),
       );
 
-      // Useful for diffing one set of logs against another (excludes the real timestamps, which are non-deterministic)
       virtualTime = 0;
       const deterministicLogs = logs.flatMap(
         (log: ConsoleMessageWithStackTracePointer) => {
@@ -82,8 +80,7 @@ const handler: (options: Options) => Promise<void> = async ({
             return [];
           }
 
-          // Event ids are unstable (one difference at the start of a replay can affect all subsequent event ids) and so we
-          // filter them out to minimize noise
+          // Event ids are unstable so filter them out to minimize noise
           const message = log.message.startsWith("Executing event")
             ? log.message.replace(/"id": ?\d+/g, '"id": "<non-deterministic>"')
             : log.message;
@@ -93,8 +90,6 @@ const handler: (options: Options) => Promise<void> = async ({
           } ${message}`;
 
           if (log.source === "application") {
-            // Application logs are not guaranteed to be deterministic since code can get executed e.g. when a script loads,
-            // but they are low volume and high signal so we include them anyway
             return [
               `[virtual: ${virtualTime}ms] [application]${commonPostfix}`,
             ];
@@ -115,12 +110,10 @@ const handler: (options: Options) => Promise<void> = async ({
   logger.info(`Downloaded replay data to: ${replayFolderFilePath}`);
 };
 
-export const downloadReplayCommand = buildCommand("download-simulation")
-  .details({
-    aliases: ["download-replay"],
-    describe: "Download a simulation from Meticulous",
-  })
-  .options({
+export const downloadReplayCommand: CommandModule<unknown, Options> = {
+  command: "replay",
+  describe: "Download a replay from Meticulous",
+  builder: {
     apiToken: {
       string: true,
     },
@@ -128,5 +121,6 @@ export const downloadReplayCommand = buildCommand("download-simulation")
       string: true,
       demandOption: true,
     },
-  })
-  .handler(handler);
+  },
+  handler: wrapHandler(handler),
+};

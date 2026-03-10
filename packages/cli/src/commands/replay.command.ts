@@ -2,7 +2,11 @@ import {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
-import { getAuthToken, isInteractiveContext, performOAuthLogin } from "@alwaysmeticulous/client";
+import {
+  getAuthToken,
+  isInteractiveContext,
+  performOAuthLogin,
+} from "@alwaysmeticulous/client";
 import { defer } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import {
@@ -14,21 +18,21 @@ import {
   ReplayTarget,
   ScreenshotComparisonOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
-import { buildCommand } from "../../command-utils/command-builder";
+import { CommandModule } from "yargs";
 import {
   COMMON_REPLAY_OPTIONS,
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
-} from "../../command-utils/common-options";
+} from "../command-utils/common-options";
+import { wrapHandler } from "../command-utils/sentry.utils";
 import {
   isOutOfDateClientError,
   OutOfDateCLIError,
-} from "../../utils/out-of-date-client-error";
-import { openStepThroughDebuggerUI } from "./utils/replay-debugger.ui";
+} from "../utils/out-of-date-client-error";
+import { openStepThroughDebuggerUI } from "./replay-debugger.ui";
 
-interface ReplayCommandHandlerOptions
-  extends
-    ScreenshotDiffOptions,
+interface Options
+  extends ScreenshotDiffOptions,
     Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount"> {
   takeSnapshots: boolean;
   appUrl: string | null | undefined;
@@ -50,7 +54,7 @@ interface ReplayCommandHandlerOptions
   networkDebuggingWebsocketUrlRegexes: string[] | undefined;
 }
 
-const replayCommandHandler = async ({
+const handler = async ({
   apiToken,
   commitSha,
   sessionId,
@@ -83,7 +87,7 @@ const replayCommandHandler = async ({
   networkDebuggingRequestTypes,
   networkDebuggingWebsocketUrlRegexes,
   enableCssCoverage,
-}: ReplayCommandHandlerOptions): Promise<void> => {
+}: Options): Promise<void> => {
   if (!takeSnapshots && storyboard) {
     throw new Error(
       "Cannot take storyboard visual snapshots without taking end state snapshots. Please set '--takeSnapshots' to true, or '--storyboard' to false.",
@@ -177,16 +181,13 @@ const replayCommandHandler = async ({
   let finalToken: string | undefined;
   if (isInteractive) {
     const resolvedToken = await getAuthToken(apiToken);
-    finalToken =
-      resolvedToken ?? (await performOAuthLogin()).accessToken;
+    finalToken = resolvedToken ?? (await performOAuthLogin()).accessToken;
   } else {
     finalToken = apiToken ?? undefined;
   }
 
   const getOnBeforeUserEventCallback =
-    defer<
-      (options: BeforeUserEventOptions) => Promise<BeforeUserEventResult>
-    >();
+    defer<(options: BeforeUserEventOptions) => Promise<BeforeUserEventResult>>();
   const getOnClosePageCallback = defer<() => Promise<void>>();
 
   try {
@@ -242,7 +243,7 @@ const replayCommandHandler = async ({
   }
 };
 
-export const getReplayTarget = ({
+const getReplayTarget = ({
   appUrl,
   simulationIdForAssets,
 }: {
@@ -266,12 +267,10 @@ export const getReplayTarget = ({
   return { type: "original-recorded-url" };
 };
 
-export const replayCommand = buildCommand("simulate")
-  .details({
-    aliases: ["replay"],
-    describe: "Simulate (replay) a recorded session",
-  })
-  .options({
+export const replayCommand: CommandModule<unknown, Options> = {
+  command: "replay",
+  describe: "Replay a recorded session",
+  builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
     sessionId: {
@@ -304,7 +303,7 @@ export const replayCommand = buildCommand("simulate")
     startAtEvent: {
       number: true,
       description:
-        "Automatically advance to this event number when starting the debugger (e.g., to jump to 'Event #95' use --startAtEvent=95). Requires --debugger flag. Events will replay rapidly until reaching the specified event.",
+        "Automatically advance to this event number when starting the debugger (e.g., to jump to 'Event #95' use --startAtEvent=95). Requires --debugger flag.",
     },
     moveBeforeMouseEvent: OPTIONS.moveBeforeMouseEvent,
     cookiesFile: {
@@ -313,7 +312,7 @@ export const replayCommand = buildCommand("simulate")
     },
     baseReplayId: {
       string: true,
-      description: "Base simulation id to diff the visual snapshots against",
+      description: "Base replay id to diff the visual snapshots against",
       alias: "baseSimulationId",
     },
     networkDebuggingRequestRegexes: {
@@ -340,7 +339,6 @@ export const replayCommand = buildCommand("simulate")
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,
-  })
-  .handler(async (options) => {
-    await replayCommandHandler(options);
-  });
+  },
+  handler: wrapHandler(handler),
+};

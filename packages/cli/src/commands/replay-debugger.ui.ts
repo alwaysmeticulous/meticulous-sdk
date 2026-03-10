@@ -60,7 +60,7 @@ export const openStepThroughDebuggerUI = async ({
             "originalEventIndex" in e ? e.originalEventIndex : null,
         }))
         .filter((e): e is { arrayIndex: number; eventNumber: number } =>
-          e.eventNumber != null
+          e.eventNumber != null,
         );
 
       if (eventsWithIndices.length === 0) {
@@ -69,16 +69,23 @@ export const openStepThroughDebuggerUI = async ({
         );
         targetEventIndex = 0;
       } else {
-        const closestEvent = eventsWithIndices.reduce((closest, current) => {
-          if (current.eventNumber >= startAtEvent) return closest;
-          if (!closest || current.eventNumber > closest.eventNumber) {
-            return current;
-          }
-          return closest;
-        }, null as { arrayIndex: number; eventNumber: number } | null);
+        const closestEvent = eventsWithIndices.reduce(
+          (closest, current) => {
+            if (current.eventNumber >= startAtEvent) return closest;
+            if (!closest || current.eventNumber > closest.eventNumber) {
+              return current;
+            }
+            return closest;
+          },
+          null as { arrayIndex: number; eventNumber: number } | null,
+        );
 
-        const minEvent = Math.min(...eventsWithIndices.map((e) => e.eventNumber));
-        const maxEvent = Math.max(...eventsWithIndices.map((e) => e.eventNumber));
+        const minEvent = Math.min(
+          ...eventsWithIndices.map((e) => e.eventNumber),
+        );
+        const maxEvent = Math.max(
+          ...eventsWithIndices.map((e) => e.eventNumber),
+        );
 
         if (closestEvent) {
           logger.warn(
@@ -94,28 +101,20 @@ export const openStepThroughDebuggerUI = async ({
       }
     } else {
       targetEventIndex = arrayIndex;
-      logger.info(
-        `[debugger-ui] Auto-advancing to event #${startAtEvent}...`,
-      );
+      logger.info(`[debugger-ui] Auto-advancing to event #${startAtEvent}...`);
     }
   }
 
-  // Ensure browser is available and get executable path
   const executablePath = await ensureBrowser();
-
-  // Start the UI server
   const uiServer = await startUIServer();
 
-  // Launch the browser with the correct executable path
   const browser: Browser = await launch({
     executablePath,
     args: [`--window-size=600,1000`],
     headless: false,
   });
 
-  // Create page for the debugger UI
   const debuggerPage = (await browser.pages())[0];
-  // Disable viewport emulation to use the actual window size
   await debuggerPage.setViewport(null);
 
   /**
@@ -134,10 +133,9 @@ export const openStepThroughDebuggerUI = async ({
     readyPromiseResolve = resolve;
   });
 
-  // This function is called by the UI itself
   await debuggerPage.exposeFunction(
     "__meticulous__replayDebuggerDispatchEvent",
-    (eventType: string, data: any) => {
+    (eventType: string, data: { index?: number }) => {
       if (eventType === "ready") {
         return onReady();
       }
@@ -169,13 +167,16 @@ export const openStepThroughDebuggerUI = async ({
   const setState = async (newState: Partial<ReplayDebuggerState>) => {
     await readyPromise;
     state = { ...state, ...newState };
-    await debuggerPage.evaluate((state) => {
-      (window as any).__meticulous__replayDebuggerSetState(state);
-    }, state as any);
+    await debuggerPage.evaluate((s) => {
+      (window as unknown as Record<string, unknown>)[
+        "__meticulous__replayDebuggerSetState"
+      ] = s;
+    }, state as unknown as Record<string, unknown>);
   };
 
   let advanceToEvent: ((advanceTo: BeforeUserEventResult) => void) | null =
     null;
+
   const onBeforeUserEvent = async ({
     userEventIndex,
   }: BeforeUserEventOptions): Promise<BeforeUserEventResult> => {
@@ -186,7 +187,7 @@ export const openStepThroughDebuggerUI = async ({
 
     if (state.index < targetIndex) {
       advanceToEvent = null;
-      return { nextEventIndexToPauseBefore: targetIndex }; // keep going
+      return { nextEventIndexToPauseBefore: targetIndex };
     }
 
     return new Promise<BeforeUserEventResult>((resolve) => {
@@ -202,7 +203,7 @@ export const openStepThroughDebuggerUI = async ({
 
   const onAdvanceToIndex = async (newTargetIndex: number) => {
     if (newTargetIndex <= state.index) {
-      return; // Do nothing
+      return;
     }
     targetIndex = newTargetIndex;
     await setState({ loading: true });

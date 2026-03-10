@@ -1,11 +1,12 @@
 import { createClient } from "@alwaysmeticulous/client";
 import { initLogger, IS_METICULOUS_SUPER_USER } from "@alwaysmeticulous/common";
 import {
-  TEST_RUN_DOWNLOAD_SCOPES,
   getOrFetchTestRunData,
+  TEST_RUN_DOWNLOAD_SCOPES,
   TestRunDownloadScope,
 } from "@alwaysmeticulous/downloading-helpers";
-import { buildCommand } from "../../command-utils/command-builder";
+import { CommandModule } from "yargs";
+import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -18,11 +19,11 @@ const ALLOWED_SCOPES: TestRunDownloadScope[] = [
   "app-container-logs",
 ];
 
-const handler: (options: Options) => Promise<void> = async ({
+const handler = async ({
   apiToken,
   testRunId,
   scope: _scope,
-}) => {
+}: Options): Promise<void> => {
   const logger = initLogger();
   const client = createClient({ apiToken });
 
@@ -46,11 +47,10 @@ const handler: (options: Options) => Promise<void> = async ({
   logger.info(`Downloaded test run data to: ${testRunDir}`);
 };
 
-export const downloadTestRunCommand = buildCommand("download-test-run")
-  .details({
-    describe: "Download a Meticulous test run",
-  })
-  .options({
+export const downloadTestRunCommand: CommandModule<unknown, Options> = {
+  command: "test-run",
+  describe: "Download a Meticulous test run",
+  builder: {
     apiToken: {
       string: true,
     },
@@ -65,5 +65,6 @@ export const downloadTestRunCommand = buildCommand("download-test-run")
       default: "coverage-only",
       hidden: !IS_METICULOUS_SUPER_USER,
     },
-  })
-  .handler(handler);
+  },
+  handler: wrapHandler(handler),
+};
