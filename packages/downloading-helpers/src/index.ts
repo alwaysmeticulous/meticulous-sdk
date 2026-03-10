@@ -1,4 +1,5 @@
 export { sanitizeFilename } from "./file-downloads/local-data.utils";
+export { downloadAppContainerLogs } from "./file-downloads/app-container-logs";
 export {
   getOrFetchReplay,
   getOrFetchReplayArchive,

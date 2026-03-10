@@ -84,9 +84,18 @@ export const getTestRun: (options: {
 export const getTestRunData: (options: {
   client: MeticulousClient;
   testRunId: string;
-}) => Promise<TestRunDataLocations> = async ({ client, testRunId }) => {
+  includeAppContainerLogs?: boolean;
+}) => Promise<TestRunDataLocations> = async ({
+  client,
+  testRunId,
+  includeAppContainerLogs,
+}) => {
+  const params = includeAppContainerLogs
+    ? { params: { includeAppContainerLogs: true } }
+    : {};
   const { data } = await client.get<unknown, { data: TestRunDataLocations }>(
     `test-runs/${testRunId}/data`,
+    params,
   );
   return data;
 };

@@ -28,6 +28,7 @@ export {
   TestRunStatus,
   TestCaseResult,
   TestCaseResultStatus,
+  AppContainerLogsLocations,
   TestRunDataLocations,
 } from "./replay/test-run.types";
 export { TestRunChunkStatus } from "./replay/test-run-chunk.types";
