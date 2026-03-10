@@ -37,7 +37,6 @@ interface Options {
   allowInvalidCert: boolean;
   proxyAllUrls: boolean;
   rewriteHostnameToAppUrl: boolean;
-  enableDnsCache: boolean;
   silenceTunnelWorker: boolean;
   http2Connections?: number | undefined;
   companionAssetsFolder?: string | undefined;
@@ -65,7 +64,6 @@ const handler = async ({
   allowInvalidCert,
   proxyAllUrls,
   rewriteHostnameToAppUrl,
-  enableDnsCache,
   http2Connections,
   silenceTunnelWorker,
   companionAssetsFolder,
@@ -109,6 +107,10 @@ const handler = async ({
     process.exit(1);
   }
 
+  // If we have a script to trigger a run, this signals that the user is not sure whether the base test run is available.
+  // In this case, we trigger the preparation for meticulous tests.
+  // Do this only if we did not prepare for the tests.
+  // Skip if METICULOUS_DISABLE_RECURSIVE_TRIGGER is set to prevent infinite recursion.
   if (
     !hadPreparedForTests &&
     triggerScript &&
@@ -123,6 +125,8 @@ const handler = async ({
   }
 
   if (hadPreparedForTests || triggerScript) {
+    // If we prepared to run all tests in cloud, then we need to wait for base to be available.
+    // The preprocessing step starts to compute base, but it might take some time to have it available.
     await waitForBase({ apiToken: apiToken_, commitSha, logger });
   }
 
@@ -136,6 +140,10 @@ const handler = async ({
       format: `Test Run execution progress |${chalk.cyan(
         "{bar}",
       )}| {percentage}% || {value}/{total} tests executed`,
+      // We want to still output progress even if not connected to an interactive tty since some CI runners
+      // such as CircleCI will timeout the process early if it hasn't outputted anything for a while.
+      // You can test this by running:
+      //  `pnpm cli:dev ci run-with-tunnel --appUrl <your app URL> --commitSha <a valid commit SHA> 2>&1 | cat`
       noTTYOutput: true,
       notTTYSchedule: 30000,
     },
@@ -149,6 +157,7 @@ const handler = async ({
 
   const keepTunnelOpenPromise = keepTunnelOpenSec > 0 ? defer<void>() : null;
 
+  // Tunnel data set within the onTunnelCreated callback below.
   let lastPrintedStillSchedulingMessage = Date.now();
   let tunnelData: TunnelData | null = null;
   try {
@@ -193,6 +202,8 @@ const handler = async ({
             .map((testCase) => testCase.sessionId) ?? [],
         );
 
+        // Note we can't just check 'scheduledTestRunSpinner.isSpinning' because it won't spin
+        // if connected to a non-tty terminal.
         if (testRun.status === "Running" && scheduledTestRunSpinner) {
           scheduledTestRunSpinner.stop();
           scheduledTestRunSpinner = null;
@@ -217,6 +228,7 @@ const handler = async ({
             logger.info(
               `Keeping tunnel open for ${keepTunnelOpenSec} seconds...`,
             );
+            // tunnelData should be set in the onTunnelCreated callback.
             if (tunnelData) {
               const passwordDisplay = redactPassword
                 ? "[REDACTED]"
@@ -241,7 +253,7 @@ const handler = async ({
       allowInvalidCert,
       proxyAllUrls,
       rewriteHostnameToAppUrl,
-      enableDnsCache,
+      enableDnsCache: true,
       http2Connections,
       silenceTunnelWorker,
       ...(postComment ? { postComment } : {}),
@@ -283,6 +295,7 @@ const waitForBase = async ({
   const client = createClient({ apiToken });
   const startTime = Date.now();
 
+  // Non-Github-hosted projects are currently not supported
   let cloudReplayBaseTestRun = await getGitHubCloudReplayBaseTestRun({
     client,
     headCommitSha: commitSha,
@@ -306,9 +319,11 @@ const waitForBase = async ({
           baseCommitSha: cloudReplayBaseTestRun.baseCommitSha,
         },
       });
+      // We proceed without base
       break;
     }
     if (lastTimeElapsed === 0 || timeElapsed - lastTimeElapsed >= 30000) {
+      // Log at most once every 30 seconds
       logger.info(
         `Waiting for base test run to be created. Time elapsed: ${timeElapsed}ms`,
       );
@@ -377,12 +392,6 @@ export const ciRunCommand: CommandModule<unknown, Options> = {
       boolean: true,
       description:
         "Rewrite the hostname of any requests sent through the tunnel to the app URL.",
-      default: false,
-    },
-    enableDnsCache: {
-      boolean: true,
-      description:
-        "Enable DNS caching, recommended if the tunnel will be making requests to a non-localhost domain.",
       default: false,
     },
     http2Connections: {

@@ -35,6 +35,7 @@ export const prepareForMeticulousTests = async ({
   try {
     const client = createClient({ apiToken });
 
+    // Non-Github-hosted projects are currently not supported
     const { baseTestRun, baseCommitSha, commitIsInPullRequest } =
       await getGitHubCloudReplayBaseTestRun({
         client,
@@ -43,7 +44,7 @@ export const prepareForMeticulousTests = async ({
 
     if (baseTestRun !== null) {
       logger.log("Base test run already exists, no preparation needed");
-      logger.log("Preparation for Meticulous tests completed successfully");
+      logger.log("✅ Preparation for Meticulous tests completed successfully");
       return;
     }
 
@@ -51,10 +52,12 @@ export const prepareForMeticulousTests = async ({
       logger.log(
         `Base test run does not exist for commit '${baseCommitSha}', but this commit is not associated with any pull request. Skipping trigger script execution to prevent chain of test runs through Git history`,
       );
-      logger.log("Preparation for Meticulous tests completed successfully");
+      logger.log("✅ Preparation for Meticulous tests completed successfully");
       return;
     }
 
+    // We execute the trigger script only in case that the commit is in a pull request.
+    // The reason is that otherwise we will start a chain of runs going back through all the Git history.
     logger.log(
       `Base test run doesn't exist and commit is associated with a pull request.`,
     );
@@ -71,14 +74,14 @@ export const prepareForMeticulousTests = async ({
           METICULOUS_DISABLE_RECURSIVE_TRIGGER: "true",
         },
       });
-      logger.log("Trigger script executed successfully");
+      logger.log("✅ Trigger script executed successfully");
       Sentry.captureEvent({
         message: "Trigger script executed successfully",
         level: "info",
         tags: { command: "ci prepare", eventType: "trigger-script-executed" },
         extra: { triggerScript, baseCommitSha, headCommit },
       });
-      logger.log("Preparation for Meticulous tests completed successfully");
+      logger.log("✅ Preparation for Meticulous tests completed successfully");
     } catch (error) {
       logger.error(
         `Failed to execute trigger script \`${triggerScript} ${baseCommitSha}\`: ${error}`,

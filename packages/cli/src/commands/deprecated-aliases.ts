@@ -1,9 +1,6 @@
-import { initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { ciPrepareCommand } from "./ci/prepare.command";
-import { ciRunLocalCommand } from "./ci/run-local.command";
 import { ciRunCommand } from "./ci/run.command";
-import { ciStartTunnelCommand } from "./ci/start-tunnel.command";
 import { ciUploadAssetsCommand } from "./ci/upload-assets.command";
 import { ciUploadContainerCommand } from "./ci/upload-container.command";
 
@@ -16,8 +13,9 @@ const createDeprecatedAlias = (
   describe: false, // hidden from help
   builder: target.builder ?? {},
   handler: (args) => {
-    initLogger().warn(
-      `Warning: '${oldName}' is deprecated and will be removed in a future version. Use 'meticulous ${newName}' instead.`,
+    const separator = "=".repeat(72);
+    process.stderr.write(
+      `\n${separator}\nDEPRECATION WARNING\n'${oldName}' has been renamed. Use 'meticulous ${newName}' instead.\nThis old name will be removed in a future version.\n${separator}\n\n`,
     );
     return (target.handler as (args: unknown) => void | Promise<void>)(args);
   },
@@ -30,19 +28,9 @@ export const deprecatedAliases: CommandModule[] = [
     ciRunCommand,
   ),
   createDeprecatedAlias(
-    "run-all-tests",
-    "ci run-local",
-    ciRunLocalCommand,
-  ),
-  createDeprecatedAlias(
     "prepare-for-meticulous-tests",
     "ci prepare",
     ciPrepareCommand,
-  ),
-  createDeprecatedAlias(
-    "start-local-tunnel",
-    "ci start-tunnel",
-    ciStartTunnelCommand,
   ),
   createDeprecatedAlias(
     "upload-assets-and-execute-test-run-in-cloud",

@@ -133,6 +133,7 @@ export const openStepThroughDebuggerUI = async ({
     readyPromiseResolve = resolve;
   });
 
+  // This function is called by the UI itself
   await debuggerPage.exposeFunction(
     "__meticulous__replayDebuggerDispatchEvent",
     (eventType: string, data: { index?: number }) => {
@@ -187,7 +188,7 @@ export const openStepThroughDebuggerUI = async ({
 
     if (state.index < targetIndex) {
       advanceToEvent = null;
-      return { nextEventIndexToPauseBefore: targetIndex };
+      return { nextEventIndexToPauseBefore: targetIndex }; // keep going
     }
 
     return new Promise<BeforeUserEventResult>((resolve) => {
@@ -203,7 +204,7 @@ export const openStepThroughDebuggerUI = async ({
 
   const onAdvanceToIndex = async (newTargetIndex: number) => {
     if (newTargetIndex <= state.index) {
-      return;
+      return; // Do nothing
     }
     targetIndex = newTargetIndex;
     await setState({ loading: true });

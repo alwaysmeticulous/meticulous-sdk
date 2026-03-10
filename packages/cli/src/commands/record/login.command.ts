@@ -70,6 +70,7 @@ export const recordLoginCommand: CommandModule<unknown, Options> = {
     "Record a login flow session (warning: sessions recorded with this command will store credentials)",
   builder: {
     ...COMMON_RECORD_OPTIONS,
+    // We explicitly set the default to true for this command.
     bypassCSP: {
       ...COMMON_RECORD_OPTIONS.bypassCSP,
       default: true,
