@@ -87,7 +87,7 @@ export const prepareForMeticulousTests = async ({
         `Failed to execute trigger script \`${triggerScript} ${baseCommitSha}\`: ${error}`,
       );
       logger.log(
-        "Preparation for Meticulous tests failed, will continue without triggering a base",
+        "❌ Preparation for Meticulous tests failed, will continue without triggering a base",
       );
     }
   } catch (error) {
