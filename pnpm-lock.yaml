@@ -249,7 +249,7 @@ importers:
         version: 4.1.2
       tar:
         specifier: ^7.5.8
-        version: 7.5.9
+        version: 7.5.10
     devDependencies:
       '@types/cli-progress':
         specifier: ^3.11.6
@@ -345,7 +345,7 @@ importers:
         version: 5.31.1
       tar:
         specifier: ^7.5.8
-        version: 7.5.9
+        version: 7.5.10
     devDependencies:
       '@types/dockerode':
         specifier: ^4.0.1
@@ -6157,12 +6157,12 @@ packages:
   tar-stream@3.1.7:
     resolution: {integrity: sha512-qJj60CXt7IU1Ffyc3NJMjh6EkuCFej46zUqJ4J7pqYlThyd9bO0XBTmcOIhSzZJVWfsLks0+nle/j538YAW9RQ==}
 
-  tar@7.5.8:
-    resolution: {integrity: sha512-SYkBtK99u0yXa+IWL0JRzzcl7RxNpvX/U08Z+8DKnysfno7M+uExnTZH8K+VGgShf2qFPKtbNr9QBl8n7WBP6Q==}
+  tar@7.5.10:
+    resolution: {integrity: sha512-8mOPs1//5q/rlkNSPcCegA6hiHJYDmSLEI8aMH/CdSQJNWztHC9WHNam5zdQlfpTwB9Xp7IBEsHfV5LKMJGVAw==}
     engines: {node: '>=18'}
 
-  tar@7.5.9:
-    resolution: {integrity: sha512-BTLcK0xsDh2+PUe9F6c2TlRp4zOOBMTkoQHQIWSIzI0R7KG46uEwq4OPk2W7bZcprBMsuaeFsqwYr7pjh6CuHg==}
+  tar@7.5.8:
+    resolution: {integrity: sha512-SYkBtK99u0yXa+IWL0JRzzcl7RxNpvX/U08Z+8DKnysfno7M+uExnTZH8K+VGgShf2qFPKtbNr9QBl8n7WBP6Q==}
     engines: {node: '>=18'}
 
   temp-dir@1.0.0:
@@ -11883,7 +11883,7 @@ snapshots:
       nopt: 9.0.0
       proc-log: 6.1.0
       semver: 7.7.4
-      tar: 7.5.9
+      tar: 7.5.8
       tinyglobby: 0.2.15
       which: 6.0.0
     transitivePeerDependencies:
@@ -12238,7 +12238,7 @@ snapshots:
       promise-retry: 2.0.1
       sigstore: 4.1.0
       ssri: 12.0.0
-      tar: 7.5.9
+      tar: 7.5.8
     transitivePeerDependencies:
       - supports-color
 
@@ -12260,7 +12260,7 @@ snapshots:
       promise-retry: 2.0.1
       sigstore: 4.1.0
       ssri: 13.0.0
-      tar: 7.5.9
+      tar: 7.5.8
     transitivePeerDependencies:
       - supports-color
 
@@ -13215,7 +13215,7 @@ snapshots:
       - bare-abort-controller
       - react-native-b4a
 
-  tar@7.5.8:
+  tar@7.5.10:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0
@@ -13223,7 +13223,7 @@ snapshots:
       minizlib: 3.1.0
       yallist: 5.0.0
 
-  tar@7.5.9:
+  tar@7.5.8:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0
