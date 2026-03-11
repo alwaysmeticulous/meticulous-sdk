@@ -13,6 +13,22 @@ const execPromise = (command: string, cwd?: string): Promise<string> => {
   });
 };
 
+const execFilePromise = (
+  file: string,
+  args: string[],
+  cwd?: string,
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    execFile(file, args, { encoding: "utf-8", cwd }, (error, output) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(output.trim());
+    });
+  });
+};
+
 const getGitRevParseHead: (cwd?: string) => Promise<string> = (cwd) => {
   return new Promise((resolve, reject) => {
     exec("git rev-parse HEAD", { encoding: "utf-8", cwd }, (error, output) => {
@@ -167,10 +183,10 @@ export const getGitDiff = async (
   headSha: string | undefined,
   options?: { cwd?: string },
 ): Promise<string> => {
-  const command = headSha
-    ? `git diff ${baseSha} ${headSha}`
-    : `git diff ${baseSha}`;
-  return execPromise(command, options?.cwd);
+  const args = headSha
+    ? ["diff", baseSha, headSha]
+    : ["diff", baseSha];
+  return execFilePromise("git", args, options?.cwd);
 };
 
 export const getCommitDate: (
