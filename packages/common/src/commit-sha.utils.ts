@@ -94,7 +94,7 @@ export const getLocalBaseSha = async (options?: {
     return null;
   }
 
-  logger.info(`Current branch: ${branchName}`);
+  logger.debug(`Current branch: ${branchName}`);
 
   // Fetch latest remote refs so origin/main is up-to-date
   try {
@@ -108,7 +108,7 @@ export const getLocalBaseSha = async (options?: {
   if (branchName === "main" || branchName === "master" || branchName === "HEAD") {
     try {
       const headSha = await execPromise("git rev-parse HEAD", cwd);
-      logger.info(
+      logger.debug(
         `On ${branchName === "HEAD" ? "detached HEAD" : branchName}, using HEAD as base SHA: ${headSha}`,
       );
       return headSha;
@@ -129,7 +129,7 @@ export const getLocalBaseSha = async (options?: {
         `git merge-base ${candidate} HEAD`,
         cwd,
       );
-      logger.info(`Computed merge-base with '${candidate}': ${mergeBase}`);
+      logger.debug(`Computed merge-base with '${candidate}': ${mergeBase}`);
       return mergeBase;
     } catch {
       // Try next candidate
@@ -154,6 +154,23 @@ export const hasUncommittedChanges = async (options?: {
   } catch {
     return false;
   }
+};
+
+
+/**
+ * Returns the raw `git diff` output between baseSha and either a specific commit or the working tree.
+ * - If headSha is provided: `git diff baseSha headSha`
+ * - If headSha is omitted: `git diff baseSha` (compares to working tree)
+ */
+export const getGitDiff = async (
+  baseSha: string,
+  headSha: string | undefined,
+  options?: { cwd?: string },
+): Promise<string> => {
+  const command = headSha
+    ? `git diff ${baseSha} ${headSha}`
+    : `git diff ${baseSha}`;
+  return execPromise(command, options?.cwd);
 };
 
 export const getCommitDate: (

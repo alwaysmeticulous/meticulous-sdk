@@ -43,6 +43,7 @@ export interface CompleteAssetUploadParams {
   uploadId: string;
   commitSha: string;
   baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
   rewrites: AssetUploadMetadata["rewrites"];
   mustHaveBase: boolean;
   createDeployment?: boolean;
@@ -59,6 +60,7 @@ export interface CompleteContainerUploadParams {
   uploadId: string;
   commitSha: string;
   baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
   mustHaveBase: boolean;
   isUserVisible?: boolean;
   skipPreprocessing?: boolean;

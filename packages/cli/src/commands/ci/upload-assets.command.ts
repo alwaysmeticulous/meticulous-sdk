@@ -7,7 +7,9 @@ import {
 } from "@alwaysmeticulous/client";
 import {
   getCommitSha,
+  getGitDiff,
   getLocalBaseSha,
+  hasUncommittedChanges,
   initLogger,
 } from "@alwaysmeticulous/common";
 import { uploadAssetsAndTriggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
@@ -26,6 +28,7 @@ interface Options {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
   baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
   repoDirectory?: string | undefined;
   appDirectory?: string | undefined;
   appZip?: string | undefined;
@@ -39,6 +42,7 @@ const handler = async ({
   apiToken,
   commitSha: commitSha_,
   baseSha: baseSha_,
+  gitDiffOutput: gitDiffOutput_,
   repoDirectory,
   appDirectory,
   appZip,
@@ -48,8 +52,6 @@ const handler = async ({
   dryRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
-  const gitOpts = repoDirectory ? { cwd: repoDirectory } : undefined;
-  const commitSha = await getCommitSha(commitSha_, gitOpts);
 
   if (!appDirectory && !appZip) {
     logger.error(
@@ -58,27 +60,84 @@ const handler = async ({
     process.exit(1);
   }
 
-  if (!commitSha) {
+  if (repoDirectory && (commitSha_ || baseSha_ || gitDiffOutput_)) {
     logger.error(
-      "No commit sha found, you must be in a git repository or provide one with --commitSha",
+      "--repoDirectory cannot be combined with --commitSha, --baseSha, or --gitDiffOutput. " +
+      "When --repoDirectory is provided, all git options are inferred automatically.",
     );
     process.exit(1);
   }
 
-  const baseSha =
-    baseSha_ ||
-    (repoDirectory ? await getLocalBaseSha(gitOpts) : undefined) ||
-    undefined;
+  if (gitDiffOutput_ && !baseSha_) {
+    logger.error(
+      "--gitDiffOutput requires --baseSha.",
+    );
+    process.exit(1);
+  }
+
+  let commitSha: string | undefined;
+  let baseSha: string | undefined;
+  let gitDiffOutput: string | undefined;
+
+  let uncommitted = false;
+
+  if (repoDirectory) {
+    const gitOpts = { cwd: repoDirectory };
+
+    commitSha = await getCommitSha(undefined, gitOpts);
+    if (!commitSha) {
+      logger.error(
+        `Could not determine commit SHA from --repoDirectory: ${repoDirectory}`,
+      );
+      process.exit(1);
+    }
+
+    uncommitted = await hasUncommittedChanges(gitOpts);
+
+    baseSha = (await getLocalBaseSha(gitOpts)) || undefined;
+
+    if (baseSha) {
+      if (uncommitted) {
+        gitDiffOutput = await getGitDiff(baseSha, undefined, gitOpts);
+        commitSha = commitSha + "-modified";
+      } else {
+        gitDiffOutput = await getGitDiff(baseSha, commitSha, gitOpts);
+      }
+    }
+  } else {
+    commitSha = await getCommitSha(commitSha_);
+    if (!commitSha) {
+      logger.error(
+        "No commit SHA found. Provide one with --commitSha or use --repoDirectory.",
+      );
+      process.exit(1);
+    }
+
+    baseSha = baseSha_ || undefined;
+    gitDiffOutput = gitDiffOutput_ || undefined;
+  }
+
+  if (repoDirectory) {
+    logger.info(`Commit SHA inferred from repo${uncommitted ? " (uncommitted changes)" : ""}: ${commitSha}`);
+  } else if (commitSha_) {
+    logger.info(`Commit SHA provided: ${commitSha}`);
+  } else {
+    logger.info(`Commit SHA inferred from local repo: ${commitSha}`);
+  }
 
   if (baseSha && baseSha === commitSha) {
     logger.info("Base SHA equals head SHA — nothing to test.");
     return;
   }
 
-  logger.info(`Uploading build artifacts for commit ${commitSha}`);
   if (baseSha) {
-    logger.info(`Base SHA: ${baseSha}`);
+    logger.info(`Base SHA ${repoDirectory ? "inferred from merge-base" : "provided"}: ${baseSha}`);
   }
+  if (gitDiffOutput) {
+    logger.info(`Git diff output ${repoDirectory ? "computed" : "provided"}: ${gitDiffOutput.length} chars`);
+  }
+
+  logger.info(`Uploading build artifacts for commit ${commitSha}`);
 
   if (dryRun) {
     logger.info(
@@ -99,6 +158,7 @@ const handler = async ({
       apiToken,
       commitSha,
       ...(baseSha ? { baseSha } : {}),
+      ...(gitDiffOutput ? { gitDiffOutput } : {}),
       appDirectory,
       appZip,
       rewrites: parseRewrites(rewrites),
@@ -193,12 +253,19 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
     baseSha: {
       string: true,
       description:
-        "The base commit SHA to compare against. If not provided, inferred from --repoDirectory via merge-base with origin/main.",
+        "The base commit SHA to compare against. Cannot be combined with --repoDirectory.",
+    },
+    gitDiffOutput: {
+      demandOption: false,
+      string: true,
+      description:
+        "Raw git diff output between the base and head commits. Requires --baseSha. Cannot be combined with --repoDirectory.",
     },
     repoDirectory: {
       string: true,
       description:
-        "The path to the git repository to use for auto-detecting --commitSha and the base SHA.",
+        "The path to a git repository. Automatically infers --commitSha, --baseSha, and --gitDiffOutput. " +
+        "Cannot be combined with --commitSha, --baseSha, or --gitDiffOutput.",
     },
     appDirectory: {
       string: true,

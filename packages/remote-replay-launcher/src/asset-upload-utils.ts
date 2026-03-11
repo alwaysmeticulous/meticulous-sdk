@@ -24,6 +24,7 @@ export interface UploadAssetsOptions {
   apiToken: string | null | undefined;
   commitSha: string;
   baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
   waitForBase?: boolean;
   rewrites?: AssetUploadMetadata["rewrites"];
   createDeployment?: boolean;
@@ -86,6 +87,7 @@ const completeUploadAndWaitForBase = async ({
   uploadId,
   commitSha,
   baseSha,
+  gitDiffOutput,
   waitForBase,
   rewrites,
   createDeployment,
@@ -95,6 +97,7 @@ const completeUploadAndWaitForBase = async ({
   uploadId: string;
   commitSha: string;
   baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
   waitForBase: boolean;
   rewrites: AssetUploadMetadata["rewrites"];
   createDeployment: boolean;
@@ -110,6 +113,7 @@ const completeUploadAndWaitForBase = async ({
     uploadId,
     commitSha,
     ...(baseSha ? { baseSha } : {}),
+    ...(gitDiffOutput ? { gitDiffOutput } : {}),
     mustHaveBase: waitForBase,
     rewrites,
     createDeployment,
@@ -154,6 +158,7 @@ const uploadAssetsStreaming = async ({
   folderPath,
   commitSha,
   baseSha,
+  gitDiffOutput,
   waitForBase = false,
   rewrites = [],
   createDeployment = true,
@@ -186,6 +191,7 @@ const uploadAssetsStreaming = async ({
     uploadId,
     commitSha,
     baseSha,
+    gitDiffOutput,
     waitForBase,
     rewrites,
     createDeployment,
@@ -250,6 +256,7 @@ export const uploadAssetsFromZip = async ({
   zipPath,
   commitSha,
   baseSha,
+  gitDiffOutput,
   waitForBase = false,
   rewrites = [],
   createDeployment = true,
@@ -285,6 +292,7 @@ export const uploadAssetsFromZip = async ({
       uploadId,
       commitSha,
       baseSha,
+      gitDiffOutput,
       waitForBase,
       rewrites,
       createDeployment,

@@ -11,6 +11,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
   appZip,
   commitSha,
   baseSha,
+  gitDiffOutput,
   rewrites,
   waitForBase,
 }: UploadAssetsAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
@@ -22,6 +23,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
     warnIfNoIndexHtml: !rewrites || rewrites.length === 0,
     commitSha,
     baseSha,
+    gitDiffOutput,
     waitForBase,
     rewrites: rewrites ?? [],
     createDeployment: true,

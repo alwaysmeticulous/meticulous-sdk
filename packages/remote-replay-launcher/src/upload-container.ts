@@ -16,6 +16,7 @@ export interface UploadContainerOptions {
   localImageTag: string;
   commitSha: string;
   baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
   waitForBase?: boolean;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
@@ -32,6 +33,7 @@ export const uploadContainer = async ({
   localImageTag,
   commitSha,
   baseSha,
+  gitDiffOutput,
   waitForBase = false,
   containerPort,
   containerEnv,
@@ -99,6 +101,7 @@ export const uploadContainer = async ({
     uploadId,
     commitSha,
     ...(baseSha ? { baseSha } : {}),
+    ...(gitDiffOutput ? { gitDiffOutput } : {}),
     mustHaveBase: waitForBase,
     containerPort,
     containerEnv,
@@ -116,6 +119,7 @@ export const uploadContainer = async ({
         uploadId,
         commitSha,
         ...(baseSha ? { baseSha } : {}),
+        ...(gitDiffOutput ? { gitDiffOutput } : {}),
         mustHaveBase: true,
         containerPort,
         containerEnv,
@@ -127,6 +131,7 @@ export const uploadContainer = async ({
         uploadId,
         commitSha,
         ...(baseSha ? { baseSha } : {}),
+        ...(gitDiffOutput ? { gitDiffOutput } : {}),
         mustHaveBase: false,
         containerPort,
         containerEnv,
