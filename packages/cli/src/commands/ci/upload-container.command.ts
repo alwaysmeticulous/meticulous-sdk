@@ -32,6 +32,7 @@ interface Options {
   waitForTestRunToComplete: boolean;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
+  dryRun?: boolean;
 }
 
 const handler = async ({
@@ -44,6 +45,7 @@ const handler = async ({
   waitForTestRunToComplete,
   containerPort,
   containerEnv,
+  dryRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
   const gitOpts = repoDirectory ? { cwd: repoDirectory } : undefined;
@@ -71,6 +73,13 @@ const handler = async ({
   );
   if (baseSha) {
     logger.info(`Base SHA: ${baseSha}`);
+  }
+
+  if (dryRun) {
+    logger.info(
+      `Dry run: would push container image "${localImageTag}" and trigger a test run for commit ${commitSha}${baseSha ? ` (base: ${baseSha})` : ""}`,
+    );
+    return;
   }
 
   Sentry.captureMessage("Received upload container request", {

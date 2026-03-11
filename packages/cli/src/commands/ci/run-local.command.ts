@@ -39,6 +39,7 @@ interface Options
   baseTestRunId?: string | undefined;
   sessionIdForApplicationStorage?: string | undefined;
   enableCssCoverage?: boolean;
+  dryRun?: boolean;
 }
 
 const NO_PARALLELIZE_FLAG = "--no-parallelize";
@@ -73,6 +74,7 @@ const handler = async ({
   baseTestRunId,
   sessionIdForApplicationStorage,
   enableCssCoverage,
+  dryRun,
 }: Options): Promise<void> => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -123,6 +125,13 @@ const handler = async ({
 
   const parallelTasks = noParallelize ? 1 : parallelTasks_;
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
+
+  if (dryRun) {
+    logger.info(
+      `Dry run: would run all tests locally for commit ${commitSha}${appUrl ? ` against ${appUrl}` : ""}`,
+    );
+    return;
+  }
 
   try {
     const { testRun } = await executeTestRun({

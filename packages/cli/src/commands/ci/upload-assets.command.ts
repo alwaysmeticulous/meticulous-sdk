@@ -32,6 +32,7 @@ interface Options {
   rewrites?: string;
   waitForBase: boolean;
   waitForTestRunToComplete: boolean;
+  dryRun?: boolean;
 }
 
 const handler = async ({
@@ -44,6 +45,7 @@ const handler = async ({
   rewrites,
   waitForBase,
   waitForTestRunToComplete,
+  dryRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
   const gitOpts = repoDirectory ? { cwd: repoDirectory } : undefined;
@@ -76,6 +78,13 @@ const handler = async ({
   logger.info(`Uploading build artifacts for commit ${commitSha}`);
   if (baseSha) {
     logger.info(`Base SHA: ${baseSha}`);
+  }
+
+  if (dryRun) {
+    logger.info(
+      `Dry run: would upload ${appDirectory ?? appZip} and trigger a test run for commit ${commitSha}${baseSha ? ` (base: ${baseSha})` : ""}`,
+    );
+    return;
   }
 
   Sentry.captureMessage("Received upload assets request", {

@@ -64,6 +64,12 @@ export const main = async (): Promise<void> => {
         description:
           "Pass all options as a JSON string (for agent/programmatic use)",
       },
+      dryRun: {
+        boolean: true,
+        description:
+          "Print what the command would do without making any changes",
+        default: false,
+      },
     })
     .middleware(
       [
