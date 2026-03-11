@@ -39,11 +39,12 @@ const GLOBAL_OPTIONS: Record<string, OptionSchema> = {
   },
   rawJson: {
     type: "string",
-    description: "Pass all options as a JSON string (for agent/programmatic use)",
+    description:
+      "Pass all options as a JSON string (for agent/programmatic use)",
   },
 };
 
-const ALL_COMMANDS: CommandModule[] = [
+const ALL_COMMANDS: CommandModule<unknown, any>[] = [
   authCommand,
   ciCommand,
   downloadCommand,
@@ -157,11 +158,27 @@ const findInSchema = (
   return findInSchema(match.subcommands, rest);
 };
 
+const stripOptions = (
+  node: CommandSchema,
+): Omit<CommandSchema, "options"> => ({
+  command: node.command,
+  describe: node.describe,
+  ...(node.subcommands
+    ? { subcommands: node.subcommands.map(stripOptions) }
+    : {}),
+});
+
 const handler = async ({ command }: Options): Promise<void> => {
   const schema = buildCommandSchema(ALL_COMMANDS);
   const result =
     command && command.length > 0 ? findInSchema(schema, command) : schema;
-  process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+
+  const isLeaf = !Array.isArray(result) && !result.subcommands;
+  const output = isLeaf ? result : Array.isArray(result)
+    ? result.map(stripOptions)
+    : stripOptions(result);
+
+  process.stdout.write(JSON.stringify(output, null, 2) + "\n");
 };
 
 export const schemaCommand: CommandModule<unknown, Options> = {
