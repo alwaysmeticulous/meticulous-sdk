@@ -9,7 +9,7 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import Docker from "dockerode";
-import { maybeUploadGitDiffToS3 } from "./asset-upload-utils";
+import { uploadGitDiffToS3 } from "./asset-upload-utils";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 
 export interface UploadContainerOptions {
@@ -97,14 +97,16 @@ export const uploadContainer = async ({
 
   logger.info("Completing container upload and triggering test run...");
 
-  const hasGitDiff = await maybeUploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+  if (gitDiffOutput) {
+    await uploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+  }
 
   const completeContainerArgs = {
     client,
     uploadId,
     commitSha,
     ...(baseSha ? { baseSha } : {}),
-    ...(hasGitDiff ? { hasGitDiff } : {}),
+    ...(gitDiffOutput ? { hasGitDiff: true } : {}),
     mustHaveBase: waitForBase,
     containerPort,
     containerEnv,

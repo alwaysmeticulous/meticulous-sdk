@@ -187,14 +187,16 @@ const uploadAssetsStreaming = async ({
 
   logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
-  const hasGitDiff = await maybeUploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+  if (gitDiffOutput) {
+    await uploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+  }
 
   const { testRun, message } = await completeUploadAndWaitForBase({
     client,
     uploadId,
     commitSha,
     baseSha,
-    hasGitDiff,
+    hasGitDiff: !!gitDiffOutput,
     waitForBase,
     rewrites,
     createDeployment,
@@ -297,19 +299,15 @@ const uploadStringToSignedUrl = async (
   });
 };
 
-export const maybeUploadGitDiffToS3 = async ({
+export const uploadGitDiffToS3 = async ({
   client,
   uploadId,
   gitDiffOutput,
 }: {
   client: ReturnType<typeof createClient>;
   uploadId: string;
-  gitDiffOutput?: string | undefined;
-}): Promise<boolean> => {
-  if (!gitDiffOutput) {
-    return false;
-  }
-
+  gitDiffOutput: string;
+}): Promise<void> => {
   const logger = initLogger();
   const buffer = Buffer.from(gitDiffOutput, "utf-8");
 
@@ -324,7 +322,6 @@ export const maybeUploadGitDiffToS3 = async ({
   await uploadStringToSignedUrl(uploadUrl, gitDiffOutput);
 
   logger.info("Git diff uploaded to S3 successfully");
-  return true;
 };
 
 export const uploadAssetsFromZip = async ({
@@ -363,14 +360,16 @@ export const uploadAssetsFromZip = async ({
     await uploadFileToSignedUrl(zipPath, uploadUrl, fileSize);
     logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
-    const hasGitDiff = await maybeUploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+    if (gitDiffOutput) {
+      await uploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+    }
 
     const { testRun, message } = await completeUploadAndWaitForBase({
       client,
       uploadId,
       commitSha,
       baseSha,
-      hasGitDiff,
+      hasGitDiff: !!gitDiffOutput,
       waitForBase,
       rewrites,
       createDeployment,
