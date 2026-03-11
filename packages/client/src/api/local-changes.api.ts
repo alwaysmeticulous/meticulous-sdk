@@ -16,6 +16,8 @@ export interface EditedFileWithLines {
 export type CompactRange = [number, number];
 
 export type GetRelevantSessionsResponse = {
+  baseTestRunId?: string;
+  baseTestRunUrl?: string;
   testCases: RelevantSession[];
   error?: string;
 };

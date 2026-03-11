@@ -70,5 +70,6 @@ export {
   EditedFileWithLines,
   GetRelevantSessionsParams,
   GetRelevantSessionsResponse,
+  RelevantSession,
   getRelevantSessions,
 } from "./api/local-changes.api";
