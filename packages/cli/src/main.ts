@@ -15,6 +15,7 @@ import { downloadCommand } from "./commands/download/index";
 import { projectCommand } from "./commands/project/index";
 import { recordCommand } from "./commands/record/index";
 import { replayCommand } from "./commands/replay.command";
+import { schemaCommand } from "./commands/schema.command";
 
 const handleDataDir = (dataDir: string | null | undefined): void => {
   setMeticulousLocalDataDir(dataDir);
@@ -38,7 +39,8 @@ export const main = async (): Promise<void> => {
     .command(downloadCommand)
     .command(projectCommand)
     .command(recordCommand)
-    .command(replayCommand);
+    .command(replayCommand)
+    .command(schemaCommand);
 
   for (const alias of deprecatedAliases) {
     cli.command(alias);
