@@ -67,6 +67,7 @@ export {
 export { GetRegistryAuthResponse, getRegistryAuth } from "./api/registry.api";
 export { isFetchError } from "./errors";
 export {
+  EditedFileWithLines,
   GetRelevantSessionsParams,
   GetRelevantSessionsResponse,
   getRelevantSessions,

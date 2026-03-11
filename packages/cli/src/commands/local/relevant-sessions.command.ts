@@ -7,6 +7,10 @@ import { getLocalBaseSha, initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import {
+  getGitDiff,
+  parseGitDiffToEditedFiles,
+} from "./get-edited-files.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -30,18 +34,18 @@ const handler = async ({ apiToken }: Options) => {
     );
     process.exit(1);
   }
-  /**
-   *   Steps:
-   *   1. Get the base commit SHA as the merge base of the current branch and the main branch (determined as the HEAD of the remote origin)
-   *   2. Get the edited files with lines: we'll need to move or copy the util from the main repo to convert to the format expected by the client
-   *   3. Get the relevant sessions
-   */
+
+  const gitDiff = await getGitDiff(baseCommitSha);
+
+  const editedFilesWithLines = parseGitDiffToEditedFiles(gitDiff);
+
+  logger.info(JSON.stringify(editedFilesWithLines, null, 2));
+
   const relevantSessions = await getRelevantSessions(client, {
     projectId: project.id,
     baseCommitSha,
-    editedFilesWithLines: [],
+    editedFilesWithLines,
   });
-  logger.info(relevantSessions);
 };
 
 export const relevantSessionsCommand: CommandModule<unknown, Options> = {
