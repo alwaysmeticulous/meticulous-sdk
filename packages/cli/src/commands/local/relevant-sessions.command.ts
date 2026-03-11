@@ -18,9 +18,14 @@ import {
 interface Options {
   apiToken?: string | null | undefined;
   showMaybeRelevant?: boolean;
+  startingPointSha?: string | null | undefined;
 }
 
-const handler = async ({ apiToken, showMaybeRelevant }: Options) => {
+const handler = async ({
+  apiToken,
+  showMaybeRelevant,
+  startingPointSha,
+}: Options) => {
   const logger = initLogger();
   // TODO: support OAuth
   const client = createClient({ apiToken });
@@ -39,7 +44,8 @@ const handler = async ({ apiToken, showMaybeRelevant }: Options) => {
     process.exit(1);
   }
 
-  const gitDiff = await getGitDiff(baseCommitSha);
+  const diffFromSha = startingPointSha ?? baseCommitSha;
+  const gitDiff = await getGitDiff(diffFromSha);
 
   const editedFilesWithLines = parseGitDiffToEditedFiles(gitDiff);
 
@@ -125,6 +131,11 @@ export const relevantSessionsCommand: CommandModule<unknown, Options> = {
       type: "boolean",
       description: "Also show maybe-relevant sessions",
       default: false,
+    },
+    startingPointSha: {
+      type: "string",
+      description:
+        "Only consider changes since this commit SHA. The merge-base is still used to find the base test run, but the diff is computed from this SHA instead. Useful in agentic workflows to avoid re-running tests for already-verified changes.",
     },
   },
   handler: wrapHandler(handler),
