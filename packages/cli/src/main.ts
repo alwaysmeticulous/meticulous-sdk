@@ -57,7 +57,22 @@ export const main = async (): Promise<void> => {
         string: true,
         description: "Where Meticulous stores data (sessions, replays, etc.)",
       },
+      rawJson: {
+        string: true,
+        description:
+          "Pass all options as a JSON string (for agent/programmatic use)",
+      },
     })
+    .middleware(
+      [
+        (argv) => {
+          if (argv.rawJson) {
+            Object.assign(argv, JSON.parse(argv.rawJson as string));
+          }
+        },
+      ],
+      true,
+    )
     .middleware([
       (argv) => setLogLevel(argv.logLevel),
       (argv) => handleDataDir(argv.dataDir),
