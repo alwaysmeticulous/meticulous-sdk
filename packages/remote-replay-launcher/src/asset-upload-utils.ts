@@ -213,16 +213,22 @@ const uploadAssetsStreaming = async ({
 const uploadBufferToSignedUrl = async (
   signedUrl: string,
   buffer: Buffer,
+  options?: { contentType?: string },
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
+    const headers: Record<string, string | number> = {
+      "Content-Length": buffer.length,
+    };
+    if (options?.contentType) {
+      headers["Content-Type"] = options.contentType;
+    }
+
     const req = httpsRequest(
       signedUrl,
       {
         agent: getProxyAgent(),
         method: "PUT",
-        headers: {
-          "Content-Length": buffer.length,
-        },
+        headers,
       },
       (response: IncomingMessage) => {
         let responseData = "";
@@ -233,57 +239,9 @@ const uploadBufferToSignedUrl = async (
 
         response.on("end", () => {
           if (response.statusCode === 200) {
-            const eTag = response.headers["etag"];
-            if (!eTag) {
-              reject(new Error("No ETag returned from S3"));
-              return;
-            }
-            resolve(eTag);
+            resolve(response.headers["etag"] ?? "");
           } else {
-            const errorMessage = `Failed to upload part!\nStatus ${response.statusCode}.\nResponse:\n${responseData}`;
-            reject(new Error(errorMessage));
-          }
-        });
-      },
-    );
-
-    req.on("error", (error) => {
-      reject(error);
-    });
-
-    req.write(buffer);
-    req.end();
-  });
-};
-
-const uploadStringToSignedUrl = async (
-  signedUrl: string,
-  content: string,
-): Promise<void> => {
-  const buffer = Buffer.from(content, "utf-8");
-  return new Promise((resolve, reject) => {
-    const req = httpsRequest(
-      signedUrl,
-      {
-        agent: getProxyAgent(),
-        method: "PUT",
-        headers: {
-          "Content-Length": buffer.length,
-          "Content-Type": "text/plain",
-        },
-      },
-      (response: IncomingMessage) => {
-        let responseData = "";
-
-        response.on("data", (chunk) => {
-          responseData += chunk;
-        });
-
-        response.on("end", () => {
-          if (response.statusCode === 200) {
-            resolve();
-          } else {
-            const errorMessage = `Failed to upload git diff!\nStatus ${response.statusCode}.\nResponse:\n${responseData}`;
+            const errorMessage = `Failed to upload!\nStatus ${response.statusCode}.\nResponse:\n${responseData}`;
             reject(new Error(errorMessage));
           }
         });
@@ -319,7 +277,9 @@ export const uploadGitDiffToS3 = async ({
     size: buffer.length,
   });
 
-  await uploadStringToSignedUrl(uploadUrl, gitDiffOutput);
+  await uploadBufferToSignedUrl(uploadUrl, buffer, {
+    contentType: "text/plain",
+  });
 
   logger.info("Git diff uploaded to S3 successfully");
 };

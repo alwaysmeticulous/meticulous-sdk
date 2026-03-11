@@ -172,7 +172,6 @@ export const hasUncommittedChanges = async (options?: {
   }
 };
 
-
 /**
  * Returns the raw `git diff` output between baseSha and either a specific commit or the working tree.
  * - If headSha is provided: `git diff baseSha headSha`
