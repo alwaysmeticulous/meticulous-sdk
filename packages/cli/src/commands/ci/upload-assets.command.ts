@@ -253,7 +253,7 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
     baseSha: {
       string: true,
       description:
-        "The base commit SHA to compare against. Cannot be combined with --repoDirectory.",
+        "The base commit SHA to compare against. Intended for custom test run triggers. Cannot be combined with --repoDirectory.",
     },
     gitDiffOutput: {
       demandOption: false,
@@ -264,7 +264,8 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
     repoDirectory: {
       string: true,
       description:
-        "The path to a git repository. Automatically infers --commitSha, --baseSha, and --gitDiffOutput. " +
+        "The path to a git repository. Intended for custom test run triggers. " +
+        "Automatically infers --commitSha, --baseSha, and --gitDiffOutput from the repo. " +
         "Cannot be combined with --commitSha, --baseSha, or --gitDiffOutput.",
     },
     appDirectory: {
