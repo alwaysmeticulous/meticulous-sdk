@@ -39,11 +39,20 @@ export interface MultiPartUploadInfo {
   eTags: string[];
 }
 
+export interface RequestGitDiffUploadParams {
+  uploadId: string;
+  size: number;
+}
+
+export interface RequestGitDiffUploadResponse {
+  uploadUrl: string;
+}
+
 export interface CompleteAssetUploadParams {
   uploadId: string;
   commitSha: string;
   baseSha?: string | undefined;
-  gitDiffOutput?: string | undefined;
+  hasGitDiff?: boolean | undefined;
   rewrites: AssetUploadMetadata["rewrites"];
   mustHaveBase: boolean;
   createDeployment?: boolean;
@@ -60,7 +69,7 @@ export interface CompleteContainerUploadParams {
   uploadId: string;
   commitSha: string;
   baseSha?: string | undefined;
-  gitDiffOutput?: string | undefined;
+  hasGitDiff?: boolean | undefined;
   mustHaveBase: boolean;
   isUserVisible?: boolean;
   skipPreprocessing?: boolean;
@@ -129,6 +138,19 @@ export const requestUploadPart = async ({
     RequestUploadPartParams,
     { data: RequestUploadPartResponse }
   >("project-deployments/request-upload-part", params);
+  return data;
+};
+
+export const requestGitDiffUpload = async ({
+  client,
+  ...params
+}: RequestGitDiffUploadParams & {
+  client: MeticulousClient;
+}): Promise<RequestGitDiffUploadResponse> => {
+  const { data } = await client.post<
+    RequestGitDiffUploadParams,
+    { data: RequestGitDiffUploadResponse }
+  >("project-deployments/request-git-diff-upload", params);
   return data;
 };
 

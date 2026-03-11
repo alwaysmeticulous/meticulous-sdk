@@ -9,6 +9,7 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import Docker from "dockerode";
+import { maybeUploadGitDiffToS3 } from "./asset-upload-utils";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 
 export interface UploadContainerOptions {
@@ -96,16 +97,20 @@ export const uploadContainer = async ({
 
   logger.info("Completing container upload and triggering test run...");
 
-  const completeResult = await completeContainerUpload({
+  const hasGitDiff = await maybeUploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+
+  const completeContainerArgs = {
     client,
     uploadId,
     commitSha,
     ...(baseSha ? { baseSha } : {}),
-    ...(gitDiffOutput ? { gitDiffOutput } : {}),
+    ...(hasGitDiff ? { hasGitDiff } : {}),
     mustHaveBase: waitForBase,
     containerPort,
     containerEnv,
-  });
+  };
+
+  const completeResult = await completeContainerUpload(completeContainerArgs);
 
   const pollResult = await pollWhileBaseNotFound({
     initialResult: {
@@ -115,26 +120,14 @@ export const uploadContainer = async ({
     },
     retryFn: () =>
       completeContainerUpload({
-        client,
-        uploadId,
-        commitSha,
-        ...(baseSha ? { baseSha } : {}),
-        ...(gitDiffOutput ? { gitDiffOutput } : {}),
+        ...completeContainerArgs,
         mustHaveBase: true,
-        containerPort,
-        containerEnv,
       }),
     fallbackFn: () => {
       logger.info("No base test run found, creating test run without base");
       return completeContainerUpload({
-        client,
-        uploadId,
-        commitSha,
-        ...(baseSha ? { baseSha } : {}),
-        ...(gitDiffOutput ? { gitDiffOutput } : {}),
+        ...completeContainerArgs,
         mustHaveBase: false,
-        containerPort,
-        containerEnv,
       });
     },
   });

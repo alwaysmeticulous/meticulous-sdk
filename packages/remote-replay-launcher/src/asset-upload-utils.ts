@@ -7,6 +7,7 @@ import { AssetUploadMetadata } from "@alwaysmeticulous/api";
 import {
   getApiToken,
   requestAssetUpload,
+  requestGitDiffUpload,
   createClient,
   completeAssetUpload,
   TestRun,
@@ -87,7 +88,7 @@ const completeUploadAndWaitForBase = async ({
   uploadId,
   commitSha,
   baseSha,
-  gitDiffOutput,
+  hasGitDiff,
   waitForBase,
   rewrites,
   createDeployment,
@@ -97,7 +98,7 @@ const completeUploadAndWaitForBase = async ({
   uploadId: string;
   commitSha: string;
   baseSha?: string | undefined;
-  gitDiffOutput?: string | undefined;
+  hasGitDiff?: boolean | undefined;
   waitForBase: boolean;
   rewrites: AssetUploadMetadata["rewrites"];
   createDeployment: boolean;
@@ -113,7 +114,7 @@ const completeUploadAndWaitForBase = async ({
     uploadId,
     commitSha,
     ...(baseSha ? { baseSha } : {}),
-    ...(gitDiffOutput ? { gitDiffOutput } : {}),
+    ...(hasGitDiff ? { hasGitDiff } : {}),
     mustHaveBase: waitForBase,
     rewrites,
     createDeployment,
@@ -186,12 +187,14 @@ const uploadAssetsStreaming = async ({
 
   logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
+  const hasGitDiff = await maybeUploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+
   const { testRun, message } = await completeUploadAndWaitForBase({
     client,
     uploadId,
     commitSha,
     baseSha,
-    gitDiffOutput,
+    hasGitDiff,
     waitForBase,
     rewrites,
     createDeployment,
@@ -251,6 +254,79 @@ const uploadBufferToSignedUrl = async (
   });
 };
 
+const uploadStringToSignedUrl = async (
+  signedUrl: string,
+  content: string,
+): Promise<void> => {
+  const buffer = Buffer.from(content, "utf-8");
+  return new Promise((resolve, reject) => {
+    const req = httpsRequest(
+      signedUrl,
+      {
+        agent: getProxyAgent(),
+        method: "PUT",
+        headers: {
+          "Content-Length": buffer.length,
+          "Content-Type": "text/plain",
+        },
+      },
+      (response: IncomingMessage) => {
+        let responseData = "";
+
+        response.on("data", (chunk) => {
+          responseData += chunk;
+        });
+
+        response.on("end", () => {
+          if (response.statusCode === 200) {
+            resolve();
+          } else {
+            const errorMessage = `Failed to upload git diff!\nStatus ${response.statusCode}.\nResponse:\n${responseData}`;
+            reject(new Error(errorMessage));
+          }
+        });
+      },
+    );
+
+    req.on("error", (error) => {
+      reject(error);
+    });
+
+    req.write(buffer);
+    req.end();
+  });
+};
+
+export const maybeUploadGitDiffToS3 = async ({
+  client,
+  uploadId,
+  gitDiffOutput,
+}: {
+  client: ReturnType<typeof createClient>;
+  uploadId: string;
+  gitDiffOutput?: string | undefined;
+}): Promise<boolean> => {
+  if (!gitDiffOutput) {
+    return false;
+  }
+
+  const logger = initLogger();
+  const buffer = Buffer.from(gitDiffOutput, "utf-8");
+
+  logger.info(`Uploading git diff to S3 (${buffer.length} bytes)...`);
+
+  const { uploadUrl } = await requestGitDiffUpload({
+    client,
+    uploadId,
+    size: buffer.length,
+  });
+
+  await uploadStringToSignedUrl(uploadUrl, gitDiffOutput);
+
+  logger.info("Git diff uploaded to S3 successfully");
+  return true;
+};
+
 export const uploadAssetsFromZip = async ({
   apiToken: apiToken_,
   zipPath,
@@ -287,12 +363,14 @@ export const uploadAssetsFromZip = async ({
     await uploadFileToSignedUrl(zipPath, uploadUrl, fileSize);
     logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
+    const hasGitDiff = await maybeUploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+
     const { testRun, message } = await completeUploadAndWaitForBase({
       client,
       uploadId,
       commitSha,
       baseSha,
-      gitDiffOutput,
+      hasGitDiff,
       waitForBase,
       rewrites,
       createDeployment,
