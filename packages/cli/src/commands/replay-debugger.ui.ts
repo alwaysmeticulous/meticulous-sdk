@@ -169,10 +169,8 @@ export const openStepThroughDebuggerUI = async ({
     await readyPromise;
     state = { ...state, ...newState };
     await debuggerPage.evaluate((s) => {
-      (window as unknown as Record<string, unknown>)[
-        "__meticulous__replayDebuggerSetState"
-      ] = s;
-    }, state as unknown as Record<string, unknown>);
+      (window as any).__meticulous__replayDebuggerSetState(s);
+    }, state as any);
   };
 
   let advanceToEvent: ((advanceTo: BeforeUserEventResult) => void) | null =
