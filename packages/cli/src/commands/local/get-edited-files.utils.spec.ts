@@ -15,7 +15,7 @@ index 1234567..abcdefg 100644
  const d = 4;`;
 
     const result = parseGitDiffToEditedFiles(diff);
-    expect(result[0].filePath).toBe("file.js");
+    expect(result[0].filePath).toBe("/file.js");
     expect(result[0].editedRanges).toEqual([[11, 12]]);
   });
 
@@ -31,7 +31,7 @@ index 1234567..abcdefg 100644
  const b = 2;`;
 
     const result = parseGitDiffToEditedFiles(diff);
-    expect(result[0].filePath).toBe("file.js");
+    expect(result[0].filePath).toBe("/file.js");
     // Should include line before (10) and after (11) the addition
     expect(result[0].editedRanges).toContainEqual([10, 11]);
   });
