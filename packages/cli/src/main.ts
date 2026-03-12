@@ -12,6 +12,7 @@ import { authCommand } from "./commands/auth/index";
 import { ciCommand } from "./commands/ci/index";
 import { deprecatedAliases } from "./commands/deprecated-aliases";
 import { downloadCommand } from "./commands/download/index";
+import { localCommand } from "./commands/local";
 import { projectCommand } from "./commands/project/index";
 import { recordCommand } from "./commands/record/index";
 import { replayCommand } from "./commands/replay.command";
@@ -36,6 +37,7 @@ export const main = async (): Promise<void> => {
     .command(authCommand)
     .command(ciCommand)
     .command(downloadCommand)
+    .command(localCommand)
     .command(projectCommand)
     .command(recordCommand)
     .command(replayCommand);
