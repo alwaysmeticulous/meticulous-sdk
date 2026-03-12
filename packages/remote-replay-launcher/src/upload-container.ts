@@ -18,6 +18,7 @@ export interface UploadContainerOptions {
   commitSha: string;
   baseSha?: string | undefined;
   gitDiffOutput?: string | undefined;
+  withUncommittedChanges?: boolean | undefined;
   waitForBase?: boolean;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
@@ -35,6 +36,7 @@ export const uploadContainer = async ({
   commitSha,
   baseSha,
   gitDiffOutput,
+  withUncommittedChanges,
   waitForBase = false,
   containerPort,
   containerEnv,
@@ -107,6 +109,7 @@ export const uploadContainer = async ({
     commitSha,
     ...(baseSha ? { baseSha } : {}),
     ...(gitDiffOutput ? { hasGitDiff: true } : {}),
+    ...(withUncommittedChanges ? { withUncommittedChanges } : {}),
     mustHaveBase: waitForBase,
     containerPort,
     containerEnv,

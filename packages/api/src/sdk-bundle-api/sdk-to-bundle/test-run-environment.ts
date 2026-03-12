@@ -3,7 +3,8 @@ export interface TestRunEnvironment {
   context?:
     | TestRunGitHubContext
     | TestRunGitLabContext
-    | TestRunBitbucketContext;
+    | TestRunBitbucketContext
+    | TestRunCustomTriggerContext;
   [key: string]: unknown;
 }
 
@@ -169,6 +170,20 @@ export interface TestRunBitbucketPushContext {
 
   /** Git ref for the branch (/refs/heads/<branch>) */
   ref: string;
+}
+
+export interface TestRunCustomTriggerContext {
+  type: "custom-trigger";
+  event: "custom-trigger";
+
+  /** Base commit hash */
+  baseSha: string;
+
+  /** Head commit hash */
+  headSha: string;
+
+  /** Whether the test run includes uncommitted changes from the working directory */
+  withUncommittedChanges?: boolean;
 }
 
 export type ReasonPullRequestIsNotAvailable =

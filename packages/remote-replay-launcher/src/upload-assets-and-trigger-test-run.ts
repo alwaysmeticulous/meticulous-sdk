@@ -12,6 +12,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
   commitSha,
   baseSha,
   gitDiffOutput,
+  withUncommittedChanges,
   rewrites,
   waitForBase,
 }: UploadAssetsAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
@@ -24,6 +25,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
     commitSha,
     baseSha,
     gitDiffOutput,
+    withUncommittedChanges,
     waitForBase,
     rewrites: rewrites ?? [],
     createDeployment: true,

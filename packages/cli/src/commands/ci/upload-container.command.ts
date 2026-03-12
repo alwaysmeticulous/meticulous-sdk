@@ -48,7 +48,7 @@ const handler = async ({
 }: Options): Promise<void> => {
   const logger = initLogger();
 
-  const { commitSha, baseSha, gitDiffOutput } = await resolveGitOptions({
+  const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } = await resolveGitOptions({
     commitSha: commitSha_,
     baseSha: baseSha_,
     gitDiffOutput: gitDiffOutput_,
@@ -83,6 +83,7 @@ const handler = async ({
       commitSha,
       ...(baseSha ? { baseSha } : {}),
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
+      ...(withUncommittedChanges ? { withUncommittedChanges } : {}),
       waitForBase: waitForBase || waitForTestRunToComplete,
       containerPort,
       containerEnv,

@@ -53,6 +53,7 @@ export interface CompleteAssetUploadParams {
   commitSha: string;
   baseSha?: string | undefined;
   hasGitDiff?: boolean | undefined;
+  withUncommittedChanges?: boolean | undefined;
   rewrites: AssetUploadMetadata["rewrites"];
   mustHaveBase: boolean;
   createDeployment?: boolean;
@@ -70,6 +71,7 @@ export interface CompleteContainerUploadParams {
   commitSha: string;
   baseSha?: string | undefined;
   hasGitDiff?: boolean | undefined;
+  withUncommittedChanges?: boolean | undefined;
   mustHaveBase: boolean;
   isUserVisible?: boolean;
   skipPreprocessing?: boolean;

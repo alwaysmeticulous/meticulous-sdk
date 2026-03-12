@@ -10,6 +10,7 @@ export interface ResolvedGitOptions {
   commitSha: string;
   baseSha: string | undefined;
   gitDiffOutput: string | undefined;
+  withUncommittedChanges: boolean;
 }
 
 /**
@@ -58,7 +59,7 @@ const resolveFromRepoDirectory = async (
   const logger = initLogger();
   const gitOpts = { cwd: repoDirectory };
 
-  let commitSha = await getCommitSha(undefined, gitOpts);
+  const commitSha = await getCommitSha(undefined, gitOpts);
   if (!commitSha) {
     logger.error(
       `Could not determine commit SHA from --repoDirectory: ${repoDirectory}`,
@@ -77,13 +78,9 @@ const resolveFromRepoDirectory = async (
     process.exit(1);
   }
 
-  let gitDiffOutput: string;
-  if (uncommitted) {
-    gitDiffOutput = await getGitDiff(baseSha, undefined, gitOpts);
-    commitSha = commitSha + "-modified";
-  } else {
-    gitDiffOutput = await getGitDiff(baseSha, commitSha, gitOpts);
-  }
+  const gitDiffOutput = uncommitted
+    ? await getGitDiff(baseSha, undefined, gitOpts)
+    : await getGitDiff(baseSha, commitSha, gitOpts);
 
   logger.info(
     `Commit SHA inferred from repo${uncommitted ? " (uncommitted changes)" : ""}: ${commitSha}`,
@@ -93,7 +90,7 @@ const resolveFromRepoDirectory = async (
     `Git diff output computed: ${gitDiffOutput.length} chars`,
   );
 
-  return { commitSha, baseSha, gitDiffOutput };
+  return { commitSha, baseSha, gitDiffOutput, withUncommittedChanges: uncommitted };
 };
 
 const resolveFromExplicitArgs = async ({
@@ -131,5 +128,5 @@ const resolveFromExplicitArgs = async ({
     logger.info(`Git diff output provided: ${gitDiffOutput.length} chars`);
   }
 
-  return { commitSha, baseSha, gitDiffOutput };
+  return { commitSha, baseSha, gitDiffOutput, withUncommittedChanges: false };
 };
