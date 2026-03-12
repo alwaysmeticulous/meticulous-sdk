@@ -24,6 +24,7 @@ export type GetRelevantSessionsResponse = {
 
 export type RelevantSession = TestCase & {
   description: string | null;
+  baseReplayId: string | null;
 };
 
 export const getRelevantSessions = async (

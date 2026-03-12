@@ -56,12 +56,12 @@ const handler = async ({
   });
 
   if (response.baseTestRunId) {
-    logger.info(
-      `${chalk.cyan("Base test run ID:")} ${response.baseTestRunId}`,
-    );
+    logger.info(`${chalk.cyan("Base test run ID:")} ${response.baseTestRunId}`);
   }
   if (response.baseTestRunUrl) {
-    logger.info(`${chalk.cyan("Base test run URL:")} ${response.baseTestRunUrl}`);
+    logger.info(
+      `${chalk.cyan("Base test run URL:")} ${response.baseTestRunUrl}`,
+    );
   }
   if (response.baseTestRunId || response.baseTestRunUrl) {
     logger.info("");
@@ -79,7 +79,9 @@ const handler = async ({
   if (maybeSessions.length > 0) {
     if (showMaybeRelevant) {
       logger.info(
-        chalk.bold(`Also found ${maybeSessions.length} maybe relevant sessions:`),
+        chalk.bold(
+          `Also found ${maybeSessions.length} maybe relevant sessions:`,
+        ),
       );
       maybeSessions.forEach((session) => {
         logger.info(formatSession(session));
@@ -113,6 +115,9 @@ const formatSession = (session: RelevantSession): string => {
   }
   if (session.description) {
     parts.push(`  ${chalk.cyan("Description:")} ${session.description}`);
+  }
+  if (session.baseReplayId) {
+    parts.push(`  ${chalk.cyan("Base replay ID:")} ${session.baseReplayId}`);
   }
   if (session.relevanceToPR) {
     parts.push(
