@@ -3,6 +3,7 @@ import { wrapHandler } from "../command-utils/sentry.utils";
 import { authCommand } from "./auth/index";
 import { ciCommand } from "./ci/index";
 import { downloadCommand } from "./download/index";
+import { localCommand } from "./local";
 import { projectCommand } from "./project/index";
 import { recordCommand } from "./record/index";
 import { replayCommand } from "./replay.command";
@@ -51,6 +52,7 @@ const ALL_COMMANDS: CommandModule<unknown, any>[] = [
   projectCommand,
   recordCommand,
   replayCommand,
+  localCommand,
 ];
 
 const buildCommandSchema = (commands: CommandModule[]): CommandSchema[] => {
@@ -158,9 +160,7 @@ const findInSchema = (
   return findInSchema(match.subcommands, rest);
 };
 
-const stripOptions = (
-  node: CommandSchema,
-): Omit<CommandSchema, "options"> => ({
+const stripOptions = (node: CommandSchema): Omit<CommandSchema, "options"> => ({
   command: node.command,
   describe: node.describe,
   ...(node.subcommands
@@ -174,9 +174,11 @@ const handler = async ({ command }: Options): Promise<void> => {
     command && command.length > 0 ? findInSchema(schema, command) : schema;
 
   const isLeaf = !Array.isArray(result) && !result.subcommands;
-  const output = isLeaf ? result : Array.isArray(result)
-    ? result.map(stripOptions)
-    : stripOptions(result);
+  const output = isLeaf
+    ? result
+    : Array.isArray(result)
+      ? result.map(stripOptions)
+      : stripOptions(result);
 
   process.stdout.write(JSON.stringify(output, null, 2) + "\n");
 };
