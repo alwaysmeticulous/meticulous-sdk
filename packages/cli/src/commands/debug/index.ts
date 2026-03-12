@@ -170,8 +170,15 @@ const replaysCommand: CommandModule<any, any> = {
 const cleanCommand: CommandModule<any, any> = {
   command: "clean",
   describe: "Clean up debug workspaces",
-  handler: wrapHandler(async () => {
-    await cleanWorkspaces();
+  builder: (yargs) =>
+    yargs.option("all", {
+      boolean: true,
+      description:
+        "Delete all workspaces without prompting (useful for non-interactive environments)",
+      default: false,
+    }),
+  handler: wrapHandler(async (args) => {
+    await cleanWorkspaces({ all: args.all });
   }),
 };
 

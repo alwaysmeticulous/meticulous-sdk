@@ -5,7 +5,13 @@ import inquirer from "inquirer";
 import { getDebugSessionsDir } from "./debug-constants";
 import { removeProjectWorktree } from "./project-worktree";
 
-export const cleanWorkspaces = async (): Promise<void> => {
+interface CleanWorkspacesOptions {
+  all?: boolean;
+}
+
+export const cleanWorkspaces = async (
+  options: CleanWorkspacesOptions = {},
+): Promise<void> => {
   const debugSessionsDir = getDebugSessionsDir();
 
   if (!existsSync(debugSessionsDir)) {
@@ -35,6 +41,14 @@ export const cleanWorkspaces = async (): Promise<void> => {
 
   const totalSize = workspaceInfos.reduce((sum, ws) => sum + ws.size, 0);
   console.log(`\nTotal: ${formatSize(totalSize)}`);
+
+  if (options.all) {
+    for (const ws of workspaceInfos) {
+      deleteWorkspace(ws.path, ws.name);
+    }
+    console.log(`\nDeleted ${entries.length} workspace(s).`);
+    return;
+  }
 
   const { action } = await inquirer.prompt<{ action: string }>([
     {
