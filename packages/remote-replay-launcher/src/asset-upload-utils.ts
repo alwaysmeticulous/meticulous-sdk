@@ -7,6 +7,7 @@ import { AssetUploadMetadata } from "@alwaysmeticulous/api";
 import {
   getApiToken,
   requestAssetUpload,
+  requestGitDiffUpload,
   createClient,
   completeAssetUpload,
   TestRun,
@@ -24,6 +25,8 @@ export interface UploadAssetsOptions {
   apiToken: string | null | undefined;
   commitSha: string;
   baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
+  withUncommittedChanges?: boolean | undefined;
   waitForBase?: boolean;
   rewrites?: AssetUploadMetadata["rewrites"];
   createDeployment?: boolean;
@@ -86,6 +89,8 @@ const completeUploadAndWaitForBase = async ({
   uploadId,
   commitSha,
   baseSha,
+  hasGitDiff,
+  withUncommittedChanges,
   waitForBase,
   rewrites,
   createDeployment,
@@ -95,6 +100,8 @@ const completeUploadAndWaitForBase = async ({
   uploadId: string;
   commitSha: string;
   baseSha?: string | undefined;
+  hasGitDiff?: boolean | undefined;
+  withUncommittedChanges?: boolean | undefined;
   waitForBase: boolean;
   rewrites: AssetUploadMetadata["rewrites"];
   createDeployment: boolean;
@@ -110,6 +117,8 @@ const completeUploadAndWaitForBase = async ({
     uploadId,
     commitSha,
     ...(baseSha ? { baseSha } : {}),
+    ...(hasGitDiff ? { hasGitDiff } : {}),
+    ...(withUncommittedChanges ? { withUncommittedChanges } : {}),
     mustHaveBase: waitForBase,
     rewrites,
     createDeployment,
@@ -154,6 +163,8 @@ const uploadAssetsStreaming = async ({
   folderPath,
   commitSha,
   baseSha,
+  gitDiffOutput,
+  withUncommittedChanges,
   waitForBase = false,
   rewrites = [],
   createDeployment = true,
@@ -181,11 +192,17 @@ const uploadAssetsStreaming = async ({
 
   logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
+  if (gitDiffOutput) {
+    await uploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+  }
+
   const { testRun, message } = await completeUploadAndWaitForBase({
     client,
     uploadId,
     commitSha,
     baseSha,
+    hasGitDiff: !!gitDiffOutput,
+    withUncommittedChanges,
     waitForBase,
     rewrites,
     createDeployment,
@@ -202,16 +219,22 @@ const uploadAssetsStreaming = async ({
 const uploadBufferToSignedUrl = async (
   signedUrl: string,
   buffer: Buffer,
+  options?: { contentType?: string },
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
+    const headers: Record<string, string | number> = {
+      "Content-Length": buffer.length,
+    };
+    if (options?.contentType) {
+      headers["Content-Type"] = options.contentType;
+    }
+
     const req = httpsRequest(
       signedUrl,
       {
         agent: getProxyAgent(),
         method: "PUT",
-        headers: {
-          "Content-Length": buffer.length,
-        },
+        headers,
       },
       (response: IncomingMessage) => {
         let responseData = "";
@@ -222,14 +245,9 @@ const uploadBufferToSignedUrl = async (
 
         response.on("end", () => {
           if (response.statusCode === 200) {
-            const eTag = response.headers["etag"];
-            if (!eTag) {
-              reject(new Error("No ETag returned from S3"));
-              return;
-            }
-            resolve(eTag);
+            resolve(response.headers["etag"] ?? "");
           } else {
-            const errorMessage = `Failed to upload part!\nStatus ${response.statusCode}.\nResponse:\n${responseData}`;
+            const errorMessage = `Failed to upload!\nStatus ${response.statusCode}.\nResponse:\n${responseData}`;
             reject(new Error(errorMessage));
           }
         });
@@ -245,11 +263,40 @@ const uploadBufferToSignedUrl = async (
   });
 };
 
+export const uploadGitDiffToS3 = async ({
+  client,
+  uploadId,
+  gitDiffOutput,
+}: {
+  client: ReturnType<typeof createClient>;
+  uploadId: string;
+  gitDiffOutput: string;
+}): Promise<void> => {
+  const logger = initLogger();
+  const buffer = Buffer.from(gitDiffOutput, "utf-8");
+
+  logger.info(`Uploading git diff to S3 (${buffer.length} bytes)...`);
+
+  const { uploadUrl } = await requestGitDiffUpload({
+    client,
+    uploadId,
+    size: buffer.length,
+  });
+
+  await uploadBufferToSignedUrl(uploadUrl, buffer, {
+    contentType: "text/plain",
+  });
+
+  logger.info("Git diff uploaded to S3 successfully");
+};
+
 export const uploadAssetsFromZip = async ({
   apiToken: apiToken_,
   zipPath,
   commitSha,
   baseSha,
+  gitDiffOutput,
+  withUncommittedChanges,
   waitForBase = false,
   rewrites = [],
   createDeployment = true,
@@ -280,11 +327,17 @@ export const uploadAssetsFromZip = async ({
     await uploadFileToSignedUrl(zipPath, uploadUrl, fileSize);
     logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
+    if (gitDiffOutput) {
+      await uploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+    }
+
     const { testRun, message } = await completeUploadAndWaitForBase({
       client,
       uploadId,
       commitSha,
       baseSha,
+      hasGitDiff: !!gitDiffOutput,
+      withUncommittedChanges,
       waitForBase,
       rewrites,
       createDeployment,

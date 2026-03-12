@@ -24,7 +24,7 @@ export {
   IS_METICULOUS_SUPER_USER,
 } from "./constants";
 export { getMeticulousVersion } from "./version.utils";
-export { getCommitSha, getCommitDate, getLocalBaseSha, hasUncommittedChanges } from "./commit-sha.utils";
+export { getCommitSha, getCommitDate, getLocalBaseSha, hasUncommittedChanges, getGitDiff } from "./commit-sha.utils";
 export {
   executeWithRetry,
   defaultShouldRetry,

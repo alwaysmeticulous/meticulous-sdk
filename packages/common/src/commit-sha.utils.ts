@@ -13,6 +13,22 @@ const execPromise = (command: string, cwd?: string): Promise<string> => {
   });
 };
 
+const execFilePromise = (
+  file: string,
+  args: string[],
+  cwd?: string,
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    execFile(file, args, { encoding: "utf-8", cwd }, (error, output) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(output.trim());
+    });
+  });
+};
+
 const getGitRevParseHead: (cwd?: string) => Promise<string> = (cwd) => {
   return new Promise((resolve, reject) => {
     exec("git rev-parse HEAD", { encoding: "utf-8", cwd }, (error, output) => {
@@ -94,7 +110,7 @@ export const getLocalBaseSha = async (options?: {
     return null;
   }
 
-  logger.info(`Current branch: ${branchName}`);
+  logger.debug(`Current branch: ${branchName}`);
 
   // Fetch latest remote refs so origin/main is up-to-date
   try {
@@ -108,7 +124,7 @@ export const getLocalBaseSha = async (options?: {
   if (branchName === "main" || branchName === "master" || branchName === "HEAD") {
     try {
       const headSha = await execPromise("git rev-parse HEAD", cwd);
-      logger.info(
+      logger.debug(
         `On ${branchName === "HEAD" ? "detached HEAD" : branchName}, using HEAD as base SHA: ${headSha}`,
       );
       return headSha;
@@ -129,7 +145,7 @@ export const getLocalBaseSha = async (options?: {
         `git merge-base ${candidate} HEAD`,
         cwd,
       );
-      logger.info(`Computed merge-base with '${candidate}': ${mergeBase}`);
+      logger.debug(`Computed merge-base with '${candidate}': ${mergeBase}`);
       return mergeBase;
     } catch {
       // Try next candidate
@@ -149,11 +165,27 @@ export const hasUncommittedChanges = async (options?: {
   cwd?: string;
 }): Promise<boolean> => {
   try {
-    const output = await execPromise("git status --porcelain", options?.cwd);
+    const output = await execPromise("git status --porcelain --untracked-files=no", options?.cwd);
     return output.length > 0;
   } catch {
     return false;
   }
+};
+
+/**
+ * Returns the raw `git diff` output between baseSha and either a specific commit or the working tree.
+ * - If headSha is provided: `git diff baseSha headSha`
+ * - If headSha is omitted: `git diff baseSha` (compares to working tree)
+ */
+export const getGitDiff = async (
+  baseSha: string,
+  headSha: string | undefined,
+  options?: { cwd?: string },
+): Promise<string> => {
+  const args = headSha
+    ? ["diff", baseSha, headSha]
+    : ["diff", baseSha];
+  return execFilePromise("git", args, options?.cwd);
 };
 
 export const getCommitDate: (

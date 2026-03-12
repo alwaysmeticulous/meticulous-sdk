@@ -9,6 +9,7 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import Docker from "dockerode";
+import { uploadGitDiffToS3 } from "./asset-upload-utils";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 
 export interface UploadContainerOptions {
@@ -16,6 +17,8 @@ export interface UploadContainerOptions {
   localImageTag: string;
   commitSha: string;
   baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
+  withUncommittedChanges?: boolean | undefined;
   waitForBase?: boolean;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
@@ -32,6 +35,8 @@ export const uploadContainer = async ({
   localImageTag,
   commitSha,
   baseSha,
+  gitDiffOutput,
+  withUncommittedChanges,
   waitForBase = false,
   containerPort,
   containerEnv,
@@ -94,15 +99,23 @@ export const uploadContainer = async ({
 
   logger.info("Completing container upload and triggering test run...");
 
-  const completeResult = await completeContainerUpload({
+  if (gitDiffOutput) {
+    await uploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+  }
+
+  const completeContainerArgs = {
     client,
     uploadId,
     commitSha,
     ...(baseSha ? { baseSha } : {}),
+    ...(gitDiffOutput ? { hasGitDiff: true } : {}),
+    ...(withUncommittedChanges ? { withUncommittedChanges } : {}),
     mustHaveBase: waitForBase,
     containerPort,
     containerEnv,
-  });
+  };
+
+  const completeResult = await completeContainerUpload(completeContainerArgs);
 
   const pollResult = await pollWhileBaseNotFound({
     initialResult: {
@@ -112,24 +125,14 @@ export const uploadContainer = async ({
     },
     retryFn: () =>
       completeContainerUpload({
-        client,
-        uploadId,
-        commitSha,
-        ...(baseSha ? { baseSha } : {}),
+        ...completeContainerArgs,
         mustHaveBase: true,
-        containerPort,
-        containerEnv,
       }),
     fallbackFn: () => {
       logger.info("No base test run found, creating test run without base");
       return completeContainerUpload({
-        client,
-        uploadId,
-        commitSha,
-        ...(baseSha ? { baseSha } : {}),
+        ...completeContainerArgs,
         mustHaveBase: false,
-        containerPort,
-        containerEnv,
       });
     },
   });

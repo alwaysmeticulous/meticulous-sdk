@@ -5,11 +5,7 @@ import {
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
 } from "@alwaysmeticulous/client";
-import {
-  getCommitSha,
-  getLocalBaseSha,
-  initLogger,
-} from "@alwaysmeticulous/common";
+import { initLogger } from "@alwaysmeticulous/common";
 import { uploadAssetsAndTriggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
 import { CommandModule } from "yargs";
@@ -19,6 +15,7 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
+import { resolveGitOptions } from "./resolve-git-options";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -26,6 +23,7 @@ interface Options {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
   baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
   repoDirectory?: string | undefined;
   appDirectory?: string | undefined;
   appZip?: string | undefined;
@@ -39,6 +37,7 @@ const handler = async ({
   apiToken,
   commitSha: commitSha_,
   baseSha: baseSha_,
+  gitDiffOutput: gitDiffOutput_,
   repoDirectory,
   appDirectory,
   appZip,
@@ -48,8 +47,6 @@ const handler = async ({
   dryRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
-  const gitOpts = repoDirectory ? { cwd: repoDirectory } : undefined;
-  const commitSha = await getCommitSha(commitSha_, gitOpts);
 
   if (!appDirectory && !appZip) {
     logger.error(
@@ -58,17 +55,12 @@ const handler = async ({
     process.exit(1);
   }
 
-  if (!commitSha) {
-    logger.error(
-      "No commit sha found, you must be in a git repository or provide one with --commitSha",
-    );
-    process.exit(1);
-  }
-
-  const baseSha =
-    baseSha_ ||
-    (repoDirectory ? await getLocalBaseSha(gitOpts) : undefined) ||
-    undefined;
+  const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } = await resolveGitOptions({
+    commitSha: commitSha_,
+    baseSha: baseSha_,
+    gitDiffOutput: gitDiffOutput_,
+    repoDirectory,
+  });
 
   if (baseSha && baseSha === commitSha) {
     logger.info("Base SHA equals head SHA — nothing to test.");
@@ -76,9 +68,6 @@ const handler = async ({
   }
 
   logger.info(`Uploading build artifacts for commit ${commitSha}`);
-  if (baseSha) {
-    logger.info(`Base SHA: ${baseSha}`);
-  }
 
   if (dryRun) {
     logger.info(
@@ -99,6 +88,8 @@ const handler = async ({
       apiToken,
       commitSha,
       ...(baseSha ? { baseSha } : {}),
+      ...(gitDiffOutput ? { gitDiffOutput } : {}),
+      ...(withUncommittedChanges ? { withUncommittedChanges } : {}),
       appDirectory,
       appZip,
       rewrites: parseRewrites(rewrites),
@@ -193,12 +184,19 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
     baseSha: {
       string: true,
       description:
-        "The base commit SHA to compare against. If not provided, inferred from --repoDirectory via merge-base with origin/main.",
+        "The base commit SHA to compare against. Intended for custom test run triggers. Cannot be combined with --repoDirectory.",
+    },
+    gitDiffOutput: {
+      string: true,
+      description:
+        "Raw git diff output between the base and head commits. Requires --baseSha. Cannot be combined with --repoDirectory.",
     },
     repoDirectory: {
       string: true,
       description:
-        "The path to the git repository to use for auto-detecting --commitSha and the base SHA.",
+        "The path to a git repository. Intended for custom test run triggers. " +
+        "Automatically infers --commitSha, --baseSha, and --gitDiffOutput from the repo. " +
+        "Cannot be combined with --commitSha, --baseSha, or --gitDiffOutput.",
     },
     appDirectory: {
       string: true,

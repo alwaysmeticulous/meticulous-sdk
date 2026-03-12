@@ -68,6 +68,8 @@ export interface UploadAssetsAndTriggerTestRunOptions {
   appZip?: string | undefined;
   commitSha: string;
   baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
+  withUncommittedChanges?: boolean | undefined;
   /**
    * If true, before triggering a test run, the launcher will wait for a base test run to be created. If that is not found,
    * it will trigger a test run without waiting for a base test run.
@@ -82,6 +84,8 @@ export interface UploadContainerAndTriggerTestRunOptions {
   localImageTag: string;
   commitSha: string;
   baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
+  withUncommittedChanges?: boolean | undefined;
   /**
    * If true, before triggering a test run, the launcher will wait for a base test run to be created. If that is not found,
    * it will trigger a test run without waiting for a base test run.
