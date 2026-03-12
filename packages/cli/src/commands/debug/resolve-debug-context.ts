@@ -1,13 +1,20 @@
-import chalk from "chalk";
 import {
   createClientWithOAuth,
-  getReplay,
   getReplayDiff,
   getTestRun,
   getTestRunReplayDiffs,
   MeticulousClient,
 } from "@alwaysmeticulous/client";
+import chalk from "chalk";
 import { DebugContext, ReplayDiffInfo } from "./debug.types";
+
+interface ReplayApiResponse {
+  id: string;
+  sessionId?: string;
+  projectId?: string;
+  commitSha?: string;
+  version?: string;
+}
 
 interface ResolveDebugContextOptions {
   apiToken: string | null | undefined;
@@ -168,12 +175,8 @@ const resolveFromTestRun = async (
     replayDiffs.flatMap((d) => [d.headReplayId, d.baseReplayId]),
   );
   const sessionIds = collectUniqueIds(
-    replayDiffs
-      .map((d) => d.sessionId)
-      .filter((s): s is string => s != null),
+    replayDiffs.map((d) => d.sessionId).filter((s): s is string => s != null),
   );
-
-  const firstHeadReplay = selectedDiffs[0]?.headReplay;
 
   return {
     testRunId,
@@ -190,6 +193,21 @@ const resolveFromTestRun = async (
   };
 };
 
+const fetchReplayDetails = async (
+  client: MeticulousClient,
+  replayId: string,
+): Promise<ReplayApiResponse | null> => {
+  const { data } = await client
+    .get(`replays/${replayId}`)
+    .catch((error: any) => {
+      if (error?.response?.status === 404) {
+        return { data: null };
+      }
+      throw error;
+    });
+  return data as ReplayApiResponse | null;
+};
+
 const resolveFromReplayIds = async (
   client: MeticulousClient,
   replayIds: string[],
@@ -201,7 +219,7 @@ const resolveFromReplayIds = async (
   const replayDetails = await Promise.all(
     replayIds.map(async (id) => {
       console.log(chalk.cyan(`    Fetching replay ${id}...`));
-      const replay = await getReplay(client, id);
+      const replay = await fetchReplayDetails(client, id);
       if (!replay) {
         console.warn(`Warning: Replay ${id} not found, skipping.`);
         return null;
@@ -212,7 +230,7 @@ const resolveFromReplayIds = async (
   console.log(chalk.green(`  All replays fetched.`));
 
   const validReplays = replayDetails.filter(
-    (r): r is NonNullable<typeof r> => r != null,
+    (r): r is ReplayApiResponse => r != null,
   );
 
   if (validReplays.length === 0) {

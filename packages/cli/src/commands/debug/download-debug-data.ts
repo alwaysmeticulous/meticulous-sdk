@@ -1,11 +1,4 @@
-import chalk from "chalk";
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  writeFileSync,
-} from "fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import {
   createClientWithOAuth,
@@ -18,6 +11,7 @@ import {
   getOrFetchReplayArchive,
   getOrFetchRecordedSessionData,
 } from "@alwaysmeticulous/downloading-helpers";
+import chalk from "chalk";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import { DebugContext } from "./debug.types";
 
@@ -62,9 +56,7 @@ const downloadReplays = async (
   );
 
   console.log(
-    chalk.cyan(
-      `  Downloading ${debugContext.replayIds.length} replays...`,
-    ),
+    chalk.cyan(`  Downloading ${debugContext.replayIds.length} replays...`),
   );
 
   const results = await inParallel(

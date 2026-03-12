@@ -10,6 +10,7 @@ import yargs from "yargs";
 import { setOptions } from "./command-utils/sentry.utils";
 import { authCommand } from "./commands/auth/index";
 import { ciCommand } from "./commands/ci/index";
+import { debugCommand } from "./commands/debug/index";
 import { deprecatedAliases } from "./commands/deprecated-aliases";
 import { downloadCommand } from "./commands/download/index";
 import { localCommand } from "./commands/local";
@@ -37,6 +38,7 @@ export const main = async (): Promise<void> => {
     )
     .command(authCommand)
     .command(ciCommand)
+    .command(debugCommand)
     .command(downloadCommand)
     .command(localCommand)
     .command(projectCommand)

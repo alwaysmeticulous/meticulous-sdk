@@ -17,8 +17,8 @@ Use this guide when investigating unexpected visual differences between head and
 
 ### 2. Correlate with Code Changes
 
-- Check `commitSha` in `context.json` to identify the customer's code changes.
-- If `debug-data/customer-repo/` is available, use `git log` and `git diff` to see what changed.
+- Check `commitSha` in `context.json` to identify the code changes.
+- If `project-repo/` is available, use `git log` and `git diff` to see what changed.
 - Focus on CSS changes, component rendering logic, and layout modifications.
 
 ### 3. Compare Logs at Screenshot Time

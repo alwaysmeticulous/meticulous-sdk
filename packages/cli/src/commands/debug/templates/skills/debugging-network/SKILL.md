@@ -41,5 +41,5 @@ Use this guide when replays fail or diverge due to network request problems.
 
 ### 6. Verify API Compatibility
 
-- If the customer changed their API, recorded responses may no longer be valid.
+- If the API was changed, recorded responses may no longer be valid.
 - Check for schema changes, new required fields, or renamed endpoints.

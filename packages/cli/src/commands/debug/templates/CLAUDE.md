@@ -10,13 +10,13 @@ metadata, and what data is available in this workspace. You do not need to read 
 
 ## How Meticulous Works
 
-Meticulous records user sessions by injecting a JavaScript recorder snippet into customer
-applications. These sessions capture user activity and network requests. When a customer makes
+Meticulous records user sessions by injecting a JavaScript recorder snippet into your
+application. These sessions capture user activity and network requests. When you make
 a commit, Meticulous triggers a test run that replays selected sessions against the new code,
 taking screenshots at key moments. If there is a base test run to compare against, screenshot
 diffs are computed and surfaced to the developer.
 
-- A **replay** is a single session being replayed against a version of the customer's app.
+- A **replay** is a single session being replayed against a version of your app.
 - A **test run** is a collection of replays triggered by a commit.
 - A **replay diff** compares a head replay (new code) against a base replay (old code) and
   contains the screenshot diff results.
@@ -32,8 +32,8 @@ the `debug-data/` subdirectory.
   you do not need to read it again.
 - **`debug-data/`** -- All downloaded replay data, session recordings, diffs, and
   pre-computed analysis artifacts.
-- **`customer-repo/`** -- (Optional) The customer's codebase checked out at the relevant commit.
-  Only present if `--clone` was passed.
+- **`project-repo/`** -- (Optional) Your codebase checked out at the relevant commit.
+  Only present if the command was run from within a git repository.
 
 ## debug-data/ Contents
 
@@ -118,8 +118,8 @@ These files are only generated when comparing replays -- i.e. when using `meticu
   the database. May not be present if no PR is associated with the test run.
 - `debug-data/pr-diff.txt` -- Source code changes between the base and head commits. May not be present if
   commit SHAs are unavailable.
-- `debug-data/customer-repo/` -- Customer's codebase checked out at the relevant commit. Only present if
-  `--clone` was passed.
+- `debug-data/project-repo/` -- Your codebase checked out at the relevant commit. Only present if
+  the command was run from within a git repository.
 
 ## Screenshot Mapping
 
@@ -169,9 +169,9 @@ for files over ~5000 lines instead of reading them in full.
    correlate with screenshot diffs.
 10. **Trace through formatted assets** -- Use `debug-data/formatted-assets/` (pretty-printed JS/CSS)
     instead of raw minified bundles when tracing code execution.
-11. **Review customer code** -- If `debug-data/customer-repo/` is present (requires `--clone`),
-    check it for the relevant changes. For library source code, use `debug-data/formatted-assets/`
-    which contains the bundled and pretty-printed versions of third-party code.
+11. **Review your code** -- If `project-repo/` is present, check it for the relevant changes.
+    For library source code, use `debug-data/formatted-assets/` which contains the bundled and
+    pretty-printed versions of third-party code.
 
 ## Subagents
 

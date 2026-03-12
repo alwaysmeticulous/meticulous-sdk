@@ -7,8 +7,8 @@ import {
   TestRunDataLocations,
 } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
-import { ReplayDiffResponse } from "./replay-diff.api";
 import { MeticulousClient } from "../types/client.types";
+import { ReplayDiffResponse } from "./replay-diff.api";
 
 export interface TestRun {
   id: string;
