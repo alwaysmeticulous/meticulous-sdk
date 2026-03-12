@@ -64,10 +64,21 @@ export interface ReplayComparisonEntry {
 
 const TEMPLATES_DIR = join(__dirname, "templates");
 
-interface GenerateDebugWorkspaceOptions {
+export interface GenerateDebugWorkspaceOptions {
   debugContext: DebugContext;
   workspaceDir: string;
   projectRepoDir: string | undefined;
+  additionalTemplatesDir?: string | undefined;
+  writeContextJson?:
+    | ((
+        debugContext: DebugContext,
+        workspaceDir: string,
+        fileMetadata: FileMetadataEntry[],
+        projectRepoDir: string | undefined,
+        screenshotMap: Record<string, ScreenshotMapEntry>,
+        replayComparison: ReplayComparisonEntry[],
+      ) => void)
+    | undefined;
 }
 
 export const generateDebugWorkspace = (
@@ -78,7 +89,7 @@ export const generateDebugWorkspace = (
   const claudeDir = join(workspaceDir, ".claude");
   mkdirSync(claudeDir, { recursive: true });
 
-  copyClaudeMd(workspaceDir);
+  copyClaudeMd(workspaceDir, options.additionalTemplatesDir);
   generateFilteredLogs(workspaceDir);
   generateLogDiffs(debugContext, workspaceDir);
   generateDiffSummaries(workspaceDir);
@@ -92,7 +103,9 @@ export const generateDebugWorkspace = (
   generateScreenshotContext(debugContext, workspaceDir, screenshotMap);
   const replayComparison = buildReplayComparison(debugContext, workspaceDir);
   const fileMetadata = collectFileMetadata(debugContext, workspaceDir);
-  writeContextJson(
+
+  const writeCtx = options.writeContextJson ?? defaultWriteContextJson;
+  writeCtx(
     debugContext,
     workspaceDir,
     fileMetadata,
@@ -100,61 +113,124 @@ export const generateDebugWorkspace = (
     screenshotMap,
     replayComparison,
   );
-  copyClaudeSubdir(workspaceDir, "rules");
-  copyClaudeSubdir(workspaceDir, "hooks");
-  copyClaudeSubdir(workspaceDir, "agents");
-  copySkills(workspaceDir);
 
-  const settingsSrc = join(TEMPLATES_DIR, "settings.json");
-  if (existsSync(settingsSrc)) {
+  copyClaudeSubdir(workspaceDir, "rules", options.additionalTemplatesDir);
+  copyClaudeSubdir(workspaceDir, "hooks", options.additionalTemplatesDir);
+  copyClaudeSubdir(workspaceDir, "agents", options.additionalTemplatesDir);
+  copySkills(workspaceDir, options.additionalTemplatesDir);
+
+  const settingsSrc = resolveTemplateFile(
+    "settings.json",
+    options.additionalTemplatesDir,
+  );
+  if (settingsSrc) {
     copyFileSync(settingsSrc, join(claudeDir, "settings.json"));
   }
 };
 
 // ---------------------------------------------------------------------------
-// Template copying
+// Template copying (with overlay support)
 // ---------------------------------------------------------------------------
 
-const copyClaudeMd = (workspaceDir: string): void => {
-  const src = join(TEMPLATES_DIR, "CLAUDE.md");
-  if (existsSync(src)) {
+const resolveTemplateFile = (
+  relativePath: string,
+  additionalTemplatesDir: string | undefined,
+): string | undefined => {
+  if (additionalTemplatesDir) {
+    const overlayPath = join(additionalTemplatesDir, relativePath);
+    if (existsSync(overlayPath)) {
+      return overlayPath;
+    }
+  }
+  const basePath = join(TEMPLATES_DIR, relativePath);
+  if (existsSync(basePath)) {
+    return basePath;
+  }
+  return undefined;
+};
+
+const copyClaudeMd = (
+  workspaceDir: string,
+  additionalTemplatesDir: string | undefined,
+): void => {
+  const src = resolveTemplateFile("CLAUDE.md", additionalTemplatesDir);
+  if (src) {
     copyFileSync(src, join(workspaceDir, ".claude", "CLAUDE.md"));
   }
 };
 
-const copyClaudeSubdir = (workspaceDir: string, subdir: string): void => {
-  const srcDir = join(TEMPLATES_DIR, subdir);
-  if (!existsSync(srcDir)) {
-    return;
-  }
-
-  const entries = readdirSync(srcDir).filter(
-    (f) => !statSync(join(srcDir, f)).isDirectory(),
-  );
-  if (entries.length === 0) {
-    return;
-  }
-
+const copyClaudeSubdir = (
+  workspaceDir: string,
+  subdir: string,
+  additionalTemplatesDir: string | undefined,
+): void => {
   const destDir = join(workspaceDir, ".claude", subdir);
-  mkdirSync(destDir, { recursive: true });
+  let copied = false;
 
-  for (const filename of entries) {
-    copyFileSync(join(srcDir, filename), join(destDir, filename));
+  const baseSrcDir = join(TEMPLATES_DIR, subdir);
+  if (existsSync(baseSrcDir)) {
+    const entries = readdirSync(baseSrcDir).filter(
+      (f) => !statSync(join(baseSrcDir, f)).isDirectory(),
+    );
+    if (entries.length > 0) {
+      mkdirSync(destDir, { recursive: true });
+      for (const filename of entries) {
+        copyFileSync(join(baseSrcDir, filename), join(destDir, filename));
+      }
+      copied = true;
+    }
+  }
+
+  if (additionalTemplatesDir) {
+    const overlaySrcDir = join(additionalTemplatesDir, subdir);
+    if (existsSync(overlaySrcDir)) {
+      const entries = readdirSync(overlaySrcDir).filter(
+        (f) => !statSync(join(overlaySrcDir, f)).isDirectory(),
+      );
+      if (entries.length > 0) {
+        if (!copied) {
+          mkdirSync(destDir, { recursive: true });
+        }
+        for (const filename of entries) {
+          copyFileSync(join(overlaySrcDir, filename), join(destDir, filename));
+        }
+      }
+    }
   }
 };
 
-const copySkills = (workspaceDir: string): void => {
-  const srcDir = join(TEMPLATES_DIR, "skills");
-  if (!existsSync(srcDir)) {
-    return;
+const copySkills = (
+  workspaceDir: string,
+  additionalTemplatesDir: string | undefined,
+): void => {
+  const skillDirNames = new Set<string>();
+
+  const baseSrcDir = join(TEMPLATES_DIR, "skills");
+  if (existsSync(baseSrcDir)) {
+    for (const entry of readdirSync(baseSrcDir)) {
+      if (statSync(join(baseSrcDir, entry)).isDirectory()) {
+        skillDirNames.add(entry);
+      }
+    }
   }
 
-  const skillDirs = readdirSync(srcDir).filter((entry) =>
-    statSync(join(srcDir, entry)).isDirectory(),
-  );
+  if (additionalTemplatesDir) {
+    const overlaySrcDir = join(additionalTemplatesDir, "skills");
+    if (existsSync(overlaySrcDir)) {
+      for (const entry of readdirSync(overlaySrcDir)) {
+        if (statSync(join(overlaySrcDir, entry)).isDirectory()) {
+          skillDirNames.add(entry);
+        }
+      }
+    }
+  }
 
-  for (const skillName of skillDirs) {
-    copyClaudeSubdir(workspaceDir, join("skills", skillName));
+  for (const skillName of skillDirNames) {
+    copyClaudeSubdir(
+      workspaceDir,
+      join("skills", skillName),
+      additionalTemplatesDir,
+    );
   }
 };
 
@@ -1747,7 +1823,6 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
     "",
   ];
 
-  // Window info
   const win = data.userEvents?.window;
   parts.push(`Window: ${win?.startUrl ?? "unknown"}`);
   if (win?.width != null && win?.height != null) {
@@ -1758,7 +1833,6 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
   parts.push(`Abandoned: ${data.abandoned ? "yes" : "no"}`);
   parts.push("");
 
-  // URL history
   const history = data.urlHistory ?? [];
   if (history.length > 0) {
     parts.push(`URL History (${history.length} pages):`);
@@ -1772,7 +1846,6 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
     parts.push("");
   }
 
-  // User events
   const events = data.userEvents?.event_log ?? [];
   if (events.length > 0) {
     const typeCounts: Record<string, number> = {};
@@ -1789,7 +1862,6 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
     parts.push("");
   }
 
-  // Network requests
   const harContainer = data.pollyHAR?.pollyHAR;
   if (harContainer) {
     const allEntries = Object.values(harContainer).flatMap(
@@ -1812,7 +1884,6 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
     }
   }
 
-  // Storage
   const localStorage = data.randomEvents?.localStorage?.state?.length ?? 0;
   const sessionStorage = data.randomEvents?.sessionStorage?.state?.length ?? 0;
   const cookies = data.cookies?.length ?? 0;
@@ -1822,7 +1893,6 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
   parts.push(`  Cookies: ${cookies}`);
   parts.push("");
 
-  // WebSockets
   const connections = data.webSocketData ?? [];
   if (connections.length > 0) {
     parts.push(`WebSocket Connections: ${connections.length}`);
@@ -1834,7 +1904,6 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
     parts.push("");
   }
 
-  // Session context
   const ctx = data.context;
   if (ctx) {
     parts.push("Session Context:");
@@ -1852,7 +1921,6 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
     parts.push("");
   }
 
-  // Framework info
   const appData = data.applicationSpecificData;
   if (appData?.nextJs) {
     parts.push("Framework: Next.js");
@@ -1869,10 +1937,10 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
 };
 
 // ---------------------------------------------------------------------------
-// Context JSON generation
+// Context JSON generation (default implementation)
 // ---------------------------------------------------------------------------
 
-const writeContextJson = (
+const defaultWriteContextJson = (
   debugContext: DebugContext,
   workspaceDir: string,
   fileMetadata: FileMetadataEntry[],

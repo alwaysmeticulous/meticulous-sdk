@@ -17,4 +17,6 @@ export interface DebugContext {
   baseCommitSha: string | undefined;
   testRunStatus: string | undefined;
   screenshot: string | undefined;
+  meticulousSha: string | undefined;
+  executionSha: string | undefined;
 }

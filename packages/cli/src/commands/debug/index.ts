@@ -1,16 +1,14 @@
-import { mkdirSync } from "fs";
-import { join } from "path";
-import chalk from "chalk";
+import { createClientWithOAuth } from "@alwaysmeticulous/client";
+import { runDebugPipeline } from "@alwaysmeticulous/debug-workspace";
 import { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { cleanWorkspaces } from "./clean-workspaces";
-import { createProjectWorktree } from "./project-worktree";
-import { getDebugSessionsDir } from "./debug-constants";
-import { downloadDebugData } from "./download-debug-data";
-import { generateDebugWorkspace } from "./generate-debug-workspace";
 import { presentWorkspace } from "./present-workspace";
-import { resolveDebugContext } from "./resolve-debug-context";
+import {
+  createProjectWorktree,
+  removeProjectWorktree,
+} from "./project-worktree";
 
 const SHARED_OPTIONS = {
   apiToken: OPTIONS.apiToken,
@@ -25,16 +23,7 @@ const SHARED_OPTIONS = {
   },
 };
 
-const createWorkspaceDir = (workspaceName: string | undefined): string => {
-  const debugSessionsDir = getDebugSessionsDir();
-  const name =
-    workspaceName || `debug-${new Date().toISOString().replace(/[:.]/g, "-")}`;
-  const workspaceDir = join(debugSessionsDir, name);
-  mkdirSync(workspaceDir, { recursive: true });
-  return workspaceDir;
-};
-
-const runDebugPipeline = async (opts: {
+const runPipeline = async (opts: {
   apiToken: string | undefined;
   workspaceName: string | undefined;
   screenshot: string | undefined;
@@ -44,46 +33,27 @@ const runDebugPipeline = async (opts: {
   sessionId?: string | undefined;
   maxDiffs?: number | undefined;
 }): Promise<void> => {
-  const debugContext = await resolveDebugContext({
+  const client = await createClientWithOAuth({
     apiToken: opts.apiToken,
+    enableOAuthLogin: true,
+  });
+
+  await runDebugPipeline({
+    client,
+    workspaceName: opts.workspaceName,
+    screenshot: opts.screenshot,
     replayDiffId: opts.replayDiffId,
     testRunId: opts.testRunId,
-    replayIds: opts.replayIds ?? [],
+    replayIds: opts.replayIds,
     sessionId: opts.sessionId,
-    maxDiffs: opts.maxDiffs ?? 5,
-    screenshot: opts.screenshot,
+    maxDiffs: opts.maxDiffs,
+    createWorktree: (ctx, workspaceDir) =>
+      createProjectWorktree({ debugContext: ctx, workspaceDir }),
+    onWorkspaceReady: (workspaceDir, projectRepoDir) =>
+      presentWorkspace({ workspaceDir, projectRepoDir }),
   });
-
-  console.log(
-    chalk.bold(`\nProject: ${chalk.cyan(debugContext.orgAndProject)}`),
-  );
-
-  const workspaceDir = createWorkspaceDir(opts.workspaceName);
-  console.log(`\nWorkspace: ${chalk.cyan(workspaceDir)}\n`);
-
-  console.log(chalk.bold("Downloading data..."));
-  await downloadDebugData({
-    apiToken: opts.apiToken,
-    debugContext,
-    workspaceDir,
-  });
-
-  console.log(chalk.bold("\nSetting up workspace..."));
-  const projectRepoDir = createProjectWorktree({
-    debugContext,
-    workspaceDir,
-  });
-
-  generateDebugWorkspace({
-    debugContext,
-    workspaceDir,
-    projectRepoDir,
-  });
-
-  presentWorkspace({ workspaceDir, projectRepoDir });
 };
 
- 
 const replayDiffCommand: CommandModule<any, any> = {
   command: "replay-diff <replayDiffId>",
   describe: "Debug a specific replay diff",
@@ -100,7 +70,7 @@ const replayDiffCommand: CommandModule<any, any> = {
       })
       .option(SHARED_OPTIONS),
   handler: wrapHandler(async (args) => {
-    await runDebugPipeline({
+    await runPipeline({
       apiToken: args.apiToken,
       workspaceName: args.workspaceName,
       screenshot: args.screenshot,
@@ -110,7 +80,6 @@ const replayDiffCommand: CommandModule<any, any> = {
   }),
 };
 
- 
 const testRunCommand: CommandModule<any, any> = {
   command: "test-run <testRunId>",
   describe: "Debug all diffs in a test run",
@@ -128,7 +97,7 @@ const testRunCommand: CommandModule<any, any> = {
       })
       .option(SHARED_OPTIONS),
   handler: wrapHandler(async (args) => {
-    await runDebugPipeline({
+    await runPipeline({
       apiToken: args.apiToken,
       workspaceName: args.workspaceName,
       screenshot: args.screenshot,
@@ -138,7 +107,6 @@ const testRunCommand: CommandModule<any, any> = {
   }),
 };
 
- 
 const replaysCommand: CommandModule<any, any> = {
   command: "replays <replayIds..>",
   describe: "Debug one or more replays by ID",
@@ -156,7 +124,7 @@ const replaysCommand: CommandModule<any, any> = {
       })
       .option(SHARED_OPTIONS),
   handler: wrapHandler(async (args) => {
-    await runDebugPipeline({
+    await runPipeline({
       apiToken: args.apiToken,
       workspaceName: args.workspaceName,
       screenshot: args.screenshot,
@@ -166,7 +134,6 @@ const replaysCommand: CommandModule<any, any> = {
   }),
 };
 
- 
 const cleanCommand: CommandModule<any, any> = {
   command: "clean",
   describe: "Clean up debug workspaces",
@@ -178,7 +145,10 @@ const cleanCommand: CommandModule<any, any> = {
       default: false,
     }),
   handler: wrapHandler(async (args) => {
-    await cleanWorkspaces({ all: args.all });
+    await cleanWorkspaces({
+      all: args.all,
+      beforeDelete: removeProjectWorktree,
+    });
   }),
 };
 

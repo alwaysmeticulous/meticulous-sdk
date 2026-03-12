@@ -15,7 +15,6 @@
   "scripts": {
     "clean": "rimraf dist tsconfig.tsbuildinfo",
     "build": "tsc --build tsconfig.json",
-    "postbuild": "cp -r src/commands/debug/templates dist/commands/debug/templates",
     "dev": "tsc --build tsconfig.json --watch",
     "format": "prettier --write src",
     "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
@@ -33,6 +32,7 @@
     "@alwaysmeticulous/api": "workspace:*",
     "@alwaysmeticulous/client": "workspace:*",
     "@alwaysmeticulous/common": "workspace:*",
+    "@alwaysmeticulous/debug-workspace": "workspace:*",
     "@alwaysmeticulous/downloading-helpers": "workspace:*",
     "@alwaysmeticulous/record": "workspace:*",
     "@alwaysmeticulous/remote-replay-launcher": "workspace:*",

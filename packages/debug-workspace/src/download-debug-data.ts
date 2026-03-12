@@ -1,7 +1,6 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import {
-  createClientWithOAuth,
   getReplayDiff,
   getPrDiff,
   getTestRun,
@@ -16,37 +15,47 @@ import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import { DebugContext } from "./debug.types";
 
 const REPLAY_SKIP_DIRS = new Set(["screenshots"]);
-const MAX_REPLAY_DOWNLOADS_IN_PARALLEL = 8;
+const DEFAULT_MAX_REPLAY_DOWNLOADS = 8;
 
-interface DownloadDebugDataOptions {
-  apiToken: string | null | undefined;
+export interface DownloadDebugDataOptions {
+  client: MeticulousClient;
   debugContext: DebugContext;
   workspaceDir: string;
+  maxReplayDownloads?: number | undefined;
+  additionalDownloads?:
+    | ((
+        debugContext: DebugContext,
+        debugDataDir: string,
+      ) => void | Promise<void>)
+    | undefined;
 }
 
 export const downloadDebugData = async (
   options: DownloadDebugDataOptions,
 ): Promise<void> => {
-  const { debugContext, workspaceDir } = options;
-  const client = await createClientWithOAuth({
-    apiToken: options.apiToken,
-    enableOAuthLogin: true,
-  });
+  const { client, debugContext, workspaceDir } = options;
+  const maxConcurrency =
+    options.maxReplayDownloads ?? DEFAULT_MAX_REPLAY_DOWNLOADS;
 
   const debugDataDir = join(workspaceDir, DEBUG_DATA_DIRECTORY);
   mkdirSync(debugDataDir, { recursive: true });
 
-  await downloadReplays(client, debugContext, debugDataDir);
+  await downloadReplays(client, debugContext, debugDataDir, maxConcurrency);
   await downloadSessionData(client, debugContext, debugDataDir);
   await downloadReplayDiffs(client, debugContext, debugDataDir);
   await downloadTestRunMetadata(client, debugContext, debugDataDir);
   await downloadPrDiffFromApi(client, debugContext, debugDataDir);
+
+  if (options.additionalDownloads) {
+    await options.additionalDownloads(debugContext, debugDataDir);
+  }
 };
 
 const downloadReplays = async (
   client: MeticulousClient,
   debugContext: DebugContext,
   debugDataDir: string,
+  maxConcurrency: number,
 ): Promise<void> => {
   const headReplayIds = new Set(
     debugContext.replayDiffs.map((d) => d.headReplayId),
@@ -70,7 +79,7 @@ const downloadReplays = async (
       console.log(chalk.cyan(`  Downloaded replay ${replayId}`));
       return { replayId, cachedPath };
     }),
-    MAX_REPLAY_DOWNLOADS_IN_PARALLEL,
+    maxConcurrency,
   );
 
   for (const { replayId, cachedPath } of results) {

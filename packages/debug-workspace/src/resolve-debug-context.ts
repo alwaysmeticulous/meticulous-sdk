@@ -1,5 +1,4 @@
 import {
-  createClientWithOAuth,
   getReplayDiff,
   getTestRun,
   getTestRunReplayDiffs,
@@ -13,11 +12,12 @@ interface ReplayApiResponse {
   sessionId?: string;
   projectId?: string;
   commitSha?: string;
+  meticulousSha?: string;
   version?: string;
 }
 
-interface ResolveDebugContextOptions {
-  apiToken: string | null | undefined;
+export interface ResolveDebugContextOptions {
+  client: MeticulousClient;
   replayDiffId: string | undefined;
   testRunId: string | undefined;
   replayIds: string[];
@@ -29,10 +29,7 @@ interface ResolveDebugContextOptions {
 export const resolveDebugContext = async (
   options: ResolveDebugContextOptions,
 ): Promise<DebugContext> => {
-  const client = await createClientWithOAuth({
-    apiToken: options.apiToken,
-    enableOAuthLogin: true,
-  });
+  const { client } = options;
 
   const overrides = {
     screenshot: options.screenshot,
@@ -94,6 +91,7 @@ const resolveFromReplayDiff = async (
   const sessionIds = sessionId ? collectUniqueIds([sessionId]) : [];
 
   let baseCommitSha: string | undefined;
+  let executionSha: string | undefined;
   if (testRunId) {
     try {
       console.log(
@@ -102,6 +100,7 @@ const resolveFromReplayDiff = async (
       const testRun = await getTestRun({ client, testRunId });
       baseCommitSha =
         (testRun?.configData as any)?.arguments?.baseCommitSha ?? undefined;
+      executionSha = (testRun as any)?.executionSha ?? undefined;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(
@@ -127,6 +126,8 @@ const resolveFromReplayDiff = async (
     sessionIds,
     projectId,
     orgAndProject: formatOrgAndProject(diff.project),
+    meticulousSha: diff.headReplay.meticulousSha,
+    executionSha,
     commitSha: diff.headReplay.commitSha,
     baseCommitSha,
     testRunStatus: diff.testRun?.status,
@@ -178,6 +179,8 @@ const resolveFromTestRun = async (
     replayDiffs.map((d) => d.sessionId).filter((s): s is string => s != null),
   );
 
+  const firstHeadReplay = selectedDiffs[0]?.headReplay;
+
   return {
     testRunId,
     replayDiffs,
@@ -185,6 +188,8 @@ const resolveFromTestRun = async (
     sessionIds,
     projectId: testRun.project?.id,
     orgAndProject: formatOrgAndProject(testRun.project),
+    meticulousSha: firstHeadReplay?.meticulousSha,
+    executionSha: (testRun as any).executionSha ?? undefined,
     commitSha: (testRun as any).commitSha,
     baseCommitSha:
       (testRun?.configData as any)?.arguments?.baseCommitSha ?? undefined,
@@ -255,6 +260,8 @@ const resolveFromReplayIds = async (
     sessionIds,
     projectId: firstReplay.projectId,
     orgAndProject: `project/${firstReplay.projectId}`,
+    meticulousSha: firstReplay.meticulousSha,
+    executionSha: undefined,
     commitSha: firstReplay.commitSha,
     baseCommitSha: undefined,
     testRunStatus: undefined,

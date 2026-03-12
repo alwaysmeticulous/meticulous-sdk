@@ -1,12 +1,12 @@
 import { existsSync, readdirSync, rmSync, statSync } from "fs";
 import { join } from "path";
+import { getDebugSessionsDir } from "@alwaysmeticulous/debug-workspace";
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { getDebugSessionsDir } from "./debug-constants";
-import { removeProjectWorktree } from "./project-worktree";
 
 interface CleanWorkspacesOptions {
   all?: boolean;
+  beforeDelete?: (workspaceDir: string) => void;
 }
 
 export const cleanWorkspaces = async (
@@ -44,7 +44,7 @@ export const cleanWorkspaces = async (
 
   if (options.all) {
     for (const ws of workspaceInfos) {
-      deleteWorkspace(ws.path, ws.name);
+      deleteWorkspace(ws.path, ws.name, options.beforeDelete);
     }
     console.log(`\nDeleted ${entries.length} workspace(s).`);
     return;
@@ -84,7 +84,7 @@ export const cleanWorkspaces = async (
     }
 
     for (const ws of workspaceInfos) {
-      deleteWorkspace(ws.path, ws.name);
+      deleteWorkspace(ws.path, ws.name, options.beforeDelete);
     }
     console.log(`Deleted ${entries.length} workspace(s).`);
     return;
@@ -110,14 +110,20 @@ export const cleanWorkspaces = async (
 
     for (const path of selected) {
       const ws = workspaceInfos.find((w) => w.path === path);
-      deleteWorkspace(path, ws?.name ?? path);
+      deleteWorkspace(path, ws?.name ?? path, options.beforeDelete);
     }
     console.log(`Deleted ${selected.length} workspace(s).`);
   }
 };
 
-const deleteWorkspace = (fullPath: string, name: string): void => {
-  removeProjectWorktree(fullPath);
+const deleteWorkspace = (
+  fullPath: string,
+  name: string,
+  beforeDelete?: (workspaceDir: string) => void,
+): void => {
+  if (beforeDelete) {
+    beforeDelete(fullPath);
+  }
   try {
     rmSync(fullPath, { recursive: true, force: true });
     console.log(`  Deleted: ${name}`);
