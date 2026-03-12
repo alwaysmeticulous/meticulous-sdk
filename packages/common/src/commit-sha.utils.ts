@@ -165,7 +165,7 @@ export const hasUncommittedChanges = async (options?: {
   cwd?: string;
 }): Promise<boolean> => {
   try {
-    const output = await execPromise("git status --porcelain", options?.cwd);
+    const output = await execPromise("git status --porcelain --untracked-files=no", options?.cwd);
     return output.length > 0;
   } catch {
     return false;

@@ -83,7 +83,7 @@ const resolveFromRepoDirectory = async (
     : await getGitDiff(baseSha, commitSha, gitOpts);
 
   logger.info(
-    `Commit SHA inferred from repo${uncommitted ? " (uncommitted changes)" : ""}: ${commitSha}`,
+    `Commit SHA inferred from repo${uncommitted ? " (with uncommitted changes)" : ""}: ${commitSha}`,
   );
   logger.info(`Base SHA inferred from merge-base: ${baseSha}`);
   logger.info(
