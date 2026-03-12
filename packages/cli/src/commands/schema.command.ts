@@ -2,6 +2,7 @@ import { CommandModule, Options as YargsOptions } from "yargs";
 import { wrapHandler } from "../command-utils/sentry.utils";
 import { authCommand } from "./auth/index";
 import { ciCommand } from "./ci/index";
+import { debugCommand } from "./debug";
 import { downloadCommand } from "./download/index";
 import { localCommand } from "./local";
 import { projectCommand } from "./project/index";
@@ -53,6 +54,7 @@ const ALL_COMMANDS: CommandModule<unknown, any>[] = [
   recordCommand,
   replayCommand,
   localCommand,
+  debugCommand,
 ];
 
 const buildCommandSchema = (commands: CommandModule[]): CommandSchema[] => {
@@ -72,10 +74,11 @@ const commandModuleToSchema = (cmd: CommandModule): CommandSchema => {
     const submodules: CommandModule[] = [];
     const mockYargs = createMockYargs(submodules);
     (cmd.builder as (y: unknown) => unknown)(mockYargs);
+    const subcommands = buildCommandSchema(submodules);
     return {
       command: name,
       describe,
-      subcommands: buildCommandSchema(submodules),
+      ...(subcommands.length > 0 ? { subcommands } : {}),
     };
   }
 

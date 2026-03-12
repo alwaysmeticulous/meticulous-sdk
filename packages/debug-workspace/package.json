@@ -1,0 +1,49 @@
+{
+  "name": "@alwaysmeticulous/debug-workspace",
+  "version": "2.260.0",
+  "description": "Shared debug workspace pipeline for investigating Meticulous diffs and replays",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "build": "tsc --build tsconfig.json",
+    "postbuild": "cp -r src/templates dist/templates",
+    "dev": "tsc --build tsconfig.json --watch",
+    "format": "prettier --write src",
+    "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
+    "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
+    "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
+    "depcheck": "depcheck --ignore-patterns=dist",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@alwaysmeticulous/client": "workspace:*",
+    "@alwaysmeticulous/common": "workspace:*",
+    "@alwaysmeticulous/downloading-helpers": "workspace:*",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "engines": {
+    "node": ">= 12"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/debug-workspace"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}

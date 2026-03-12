@@ -8,6 +8,7 @@ import {
 } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
 import { MeticulousClient } from "../types/client.types";
+import { ReplayDiffResponse } from "./replay-diff.api";
 
 export interface TestRun {
   id: string;
@@ -136,6 +137,33 @@ export const getLatestTestRunResults = async ({
       throw error;
     });
   return (data as TestRun | null) ?? null;
+};
+
+export const getTestRunReplayDiffs = async ({
+  client,
+  testRunId,
+}: {
+  client: MeticulousClient;
+  testRunId: string;
+}): Promise<ReplayDiffResponse[]> => {
+  const BATCH_SIZE = 500;
+  const replayDiffs: ReplayDiffResponse[] = [];
+
+  let offset = 0;
+  let hasMore = true;
+  while (hasMore) {
+    const { data } = await client.get<unknown, { data: ReplayDiffResponse[] }>(
+      `test-runs/${testRunId}/replay-diffs?limit=${BATCH_SIZE}&offset=${offset}`,
+    );
+    replayDiffs.push(...data);
+    if (data.length < BATCH_SIZE) {
+      hasMore = false;
+    } else {
+      offset += BATCH_SIZE;
+    }
+  }
+
+  return replayDiffs;
 };
 
 export const emitTelemetry = async ({
