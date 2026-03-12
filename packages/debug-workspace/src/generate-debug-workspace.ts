@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { createHash } from "crypto";
 import {
   copyFileSync,
@@ -402,10 +402,15 @@ const generateLogDiffPair = (
   const diffDir = join(workspaceDir, DEBUG_DATA_DIRECTORY, "log-diffs");
   mkdirSync(diffDir, { recursive: true });
 
-  const rawDiff = execSync(`diff -u "${basePath}" "${headPath}" || true`, {
-    encoding: "utf8",
-    maxBuffer: 10 * 1024 * 1024,
-  });
+  let rawDiff: string;
+  try {
+    rawDiff = execFileSync("diff", ["-u", basePath, headPath], {
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    });
+  } catch (error: any) {
+    rawDiff = error?.stdout ?? "";
+  }
 
   if (!rawDiff.trim()) {
     return;
@@ -677,10 +682,16 @@ const generatePrDiff = (
     return;
   }
 
-  const diffOutput = execSync(
-    `git diff ${effectiveBaseSha}..${headSha} || true`,
-    { cwd: projectRepoDir, encoding: "utf8", maxBuffer: 50 * 1024 * 1024 },
-  );
+  let diffOutput: string;
+  try {
+    diffOutput = execFileSync(
+      "git",
+      ["diff", `${effectiveBaseSha}..${headSha}`],
+      { cwd: projectRepoDir, encoding: "utf8", maxBuffer: 50 * 1024 * 1024 },
+    );
+  } catch (error: any) {
+    diffOutput = error?.stdout ?? "";
+  }
 
   if (diffOutput.trim()) {
     writeFileSync(
@@ -701,10 +712,11 @@ const resolveBaseShaFromGit = (
 ): string | undefined => {
   for (const branch of ["origin/main", "origin/master"]) {
     try {
-      const mergeBase = execSync(`git merge-base ${branch} ${headSha}`, {
-        cwd: repoDir,
-        encoding: "utf8",
-      }).trim();
+      const mergeBase = execFileSync(
+        "git",
+        ["merge-base", branch, headSha],
+        { cwd: repoDir, encoding: "utf8" },
+      ).trim();
       if (mergeBase) {
         return mergeBase;
       }
@@ -793,10 +805,12 @@ const generateParamsDiffs = (
 
       let diffOutput: string;
       try {
-        diffOutput = execSync(`diff -u "${tmpA}" "${tmpB}" || true`, {
+        diffOutput = execFileSync("diff", ["-u", tmpA, tmpB], {
           encoding: "utf8",
           maxBuffer: 5 * 1024 * 1024,
         });
+      } catch (diffError: any) {
+        diffOutput = diffError?.stdout ?? "";
       } finally {
         safeUnlink(tmpA);
         safeUnlink(tmpB);
@@ -1244,8 +1258,9 @@ const prettifySnapshotAssets = (workspaceDir: string): void => {
     "formatted-assets",
   );
   try {
-    execSync(
-      `"${prettierPath}" --write "${formattedAssetsDir}/**/*.{js,css}"`,
+    execFileSync(
+      prettierPath,
+      ["--write", `${formattedAssetsDir}/**/*.{js,css}`],
       {
         timeout: 120000,
         stdio: "ignore",
@@ -1275,7 +1290,9 @@ const prettifySnapshotAssets = (workspaceDir: string): void => {
 
 const findPrettier = (): string | undefined => {
   try {
-    const whichResult = execSync("which prettier", { encoding: "utf8" }).trim();
+    const whichResult = execFileSync("which", ["prettier"], {
+      encoding: "utf8",
+    }).trim();
     if (whichResult) {
       return whichResult;
     }
