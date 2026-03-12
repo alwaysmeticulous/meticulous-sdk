@@ -55,6 +55,10 @@ const handler = async ({
     editedFilesWithLines,
   });
 
+  if (response.error) {
+    logger.error(`${chalk.red("Error:")} ${response.error}`);
+  }
+
   if (response.baseTestRunId) {
     logger.info(`${chalk.cyan("Base test run ID:")} ${response.baseTestRunId}`);
   }
@@ -70,11 +74,15 @@ const handler = async ({
   const mainSessions = response.testCases.filter(isMainRelevant);
   const maybeSessions = response.testCases.filter((s) => !isMainRelevant(s));
 
-  logger.info(chalk.bold(`Found ${mainSessions.length} relevant sessions:`));
-  mainSessions.forEach((session) => {
-    logger.info(formatSession(session));
-    logger.info("");
-  });
+  if (mainSessions.length === 0) {
+    logger.info(chalk.dim("No relevant sessions found for the current changes."));
+  } else {
+    logger.info(chalk.bold(`Found ${mainSessions.length} relevant sessions:`));
+    mainSessions.forEach((session) => {
+      logger.info(formatSession(session));
+      logger.info("");
+    });
+  }
 
   if (maybeSessions.length > 0) {
     if (showMaybeRelevant) {
