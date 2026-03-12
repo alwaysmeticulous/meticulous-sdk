@@ -18,10 +18,16 @@ export {
   postSessionIdNotification,
 } from "./api/session.api";
 export {
+  ReplayDiffResponse,
+  getReplayDiff,
+} from "./api/replay-diff.api";
+export { getPrDiff } from "./api/source-code.api";
+export {
   ExecuteSecureTunnelTestRunOptions,
   executeSecureTunnelTestRun,
   getTestRun,
   getTestRunData,
+  getTestRunReplayDiffs,
   GetLatestTestRunOptions,
   getLatestTestRunResults,
   TestRun,

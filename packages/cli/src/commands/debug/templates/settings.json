@@ -1,0 +1,82 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Edit",
+      "Write",
+      "Task",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(ls *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git status)",
+      "Bash(git rev-parse *)",
+      "Bash(git blame *)",
+      "Bash(git grep *)",
+      "Bash(diff *)",
+      "Bash(wc *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(jq *)",
+      "Bash(cat *)"
+    ],
+    "ask": ["WebFetch", "WebSearch"],
+    "deny": [
+      "Edit(debug-data/**)",
+      "Write(debug-data/**)",
+      "mcp__*",
+      "ToolSearch",
+      "ListMcpResourcesTool",
+      "ReadMcpResourceTool"
+    ],
+    "defaultMode": "default"
+  },
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": [
+      "Analyzing",
+      "Investigating",
+      "Comparing",
+      "Searching",
+      "Processing",
+      "Squinting at screenshots",
+      "Traversing tangled timelines",
+      "Fighting fickle flakes",
+      "Diagnosing dubious diffs",
+      "Reconciling replays",
+      "Deciphering devious divergences",
+      "Debugging flakes",
+      "Patching network sessions",
+      "Determining nondeterminism"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/load-context.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/check-file-size.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
