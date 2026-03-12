@@ -1,3 +1,4 @@
+import { execSync } from "child_process";
 import chalk from "chalk";
 
 interface PresentWorkspaceOptions {
@@ -8,10 +9,14 @@ interface PresentWorkspaceOptions {
 export const presentWorkspace = (options: PresentWorkspaceOptions): void => {
   const { workspaceDir, projectRepoDir } = options;
 
+  copyToClipboard(workspaceDir);
+
   console.log("");
   console.log(chalk.bold.green("Debug workspace ready!"));
   console.log("");
-  console.log(`  ${chalk.cyan("Workspace:")} ${workspaceDir}`);
+  console.log(
+    `  ${chalk.cyan("Workspace:")} ${workspaceDir}  ${chalk.gray("(copied to clipboard)")}`,
+  );
   console.log("");
   console.log("  Contents:");
   console.log(
@@ -37,4 +42,21 @@ export const presentWorkspace = (options: PresentWorkspaceOptions): void => {
     "  Or open the workspace directory in any editor or AI tool of your choice.",
   );
   console.log("");
+};
+
+const copyToClipboard = (text: string): void => {
+  try {
+    if (process.platform === "darwin") {
+      execSync("pbcopy", { input: text, stdio: ["pipe", "ignore", "ignore"] });
+    } else if (process.platform === "linux") {
+      execSync("xclip -selection clipboard", {
+        input: text,
+        stdio: ["pipe", "ignore", "ignore"],
+      });
+    } else if (process.platform === "win32") {
+      execSync("clip", { input: text, stdio: ["pipe", "ignore", "ignore"] });
+    }
+  } catch {
+    // Clipboard not available (e.g. headless environment) -- silently skip
+  }
 };
