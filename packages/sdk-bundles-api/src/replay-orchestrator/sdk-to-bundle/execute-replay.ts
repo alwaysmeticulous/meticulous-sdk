@@ -306,6 +306,12 @@ export interface ReplayExecutionOptions {
   uploadedContainerPort?: number;
 
   uploadedContainerEnv?: ContainerEnvVariable[];
+
+  /**
+   * Disable sending the Meticulous-Simulated-Date header. This improves performance (particularly when there are lots of
+   * small network requests), but breaks scenarios where this is used.
+   */
+  disableSimulatedDateHeader?: boolean;
 }
 
 export interface ContainerEnvVariable {
