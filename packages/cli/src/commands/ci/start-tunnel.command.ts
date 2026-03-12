@@ -28,6 +28,7 @@ interface Options {
   silenceTunnelWorker: boolean;
   printRequests: boolean;
   http2Connections: number | undefined;
+  dryRun?: boolean;
 }
 
 const handler = async (argv: Options): Promise<void> => {
@@ -39,6 +40,13 @@ const handler = async (argv: Options): Promise<void> => {
       "You must provide an API token by using the --apiToken parameter",
     );
     process.exit(1);
+  }
+
+  if (argv.dryRun) {
+    logger.info(
+      `Dry run: would open tunnel on port ${argv.port}${argv.subdomain ? ` with subdomain "${argv.subdomain}"` : ""}${argv.host ? ` via host ${argv.host}` : ""}`,
+    );
+    return;
   }
 
   const tunnelClosedCallback = defer<null>();

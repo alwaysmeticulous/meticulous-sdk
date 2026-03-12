@@ -46,6 +46,7 @@ interface Options {
   triggerScript?: string | undefined;
   postComment?: boolean | undefined;
   redactPassword?: boolean | undefined;
+  dryRun?: boolean;
 }
 
 const environmentToString = (environment: Environment): string => {
@@ -73,6 +74,7 @@ const handler = async ({
   triggerScript,
   postComment,
   redactPassword,
+  dryRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
   const commitSha = await getCommitSha(commitSha_);
@@ -131,6 +133,13 @@ const handler = async ({
   }
 
   logger.info(`Running all tests in cloud for commit ${commitSha}`);
+
+  if (dryRun) {
+    logger.info(
+      `Dry run: would start tunnel and trigger a cloud test run for commit ${commitSha} against ${appUrl}`,
+    );
+    return;
+  }
 
   let scheduledTestRunSpinner: ora.Ora | null = ora(
     "Starting test run execution",

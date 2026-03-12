@@ -7,7 +7,7 @@ import {
   isInteractiveContext,
   performOAuthLogin,
 } from "@alwaysmeticulous/client";
-import { defer } from "@alwaysmeticulous/common";
+import { defer, initLogger } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import {
   BeforeUserEventOptions,
@@ -52,6 +52,7 @@ interface Options
   networkDebuggingTransformationFns: string[] | undefined;
   networkDebuggingRequestTypes: string[] | undefined;
   networkDebuggingWebsocketUrlRegexes: string[] | undefined;
+  dryRun?: boolean;
 }
 
 const handler = async ({
@@ -87,6 +88,7 @@ const handler = async ({
   networkDebuggingRequestTypes,
   networkDebuggingWebsocketUrlRegexes,
   enableCssCoverage,
+  dryRun,
 }: Options): Promise<void> => {
   if (!takeSnapshots && storyboard) {
     throw new Error(
@@ -184,6 +186,13 @@ const handler = async ({
     finalToken = resolvedToken ?? (await performOAuthLogin()).accessToken;
   } else {
     finalToken = apiToken ?? undefined;
+  }
+
+  if (dryRun) {
+    initLogger().info(
+      `Dry run: would replay session ${sessionId}${appUrl ? ` against ${appUrl}` : ""}`,
+    );
+    return;
   }
 
   const getOnBeforeUserEventCallback =

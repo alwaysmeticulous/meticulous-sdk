@@ -19,6 +19,7 @@ interface Options {
   apiToken?: string | null | undefined;
   headCommit: string | null | undefined;
   triggerScript: string;
+  dryRun?: boolean;
 }
 
 export const prepareForMeticulousTests = async ({
@@ -103,6 +104,7 @@ const handler = async ({
   apiToken,
   headCommit,
   triggerScript,
+  dryRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
 
@@ -120,6 +122,13 @@ const handler = async ({
       "No head commit sha found, you must be in a git repository or provide one with --headCommit",
     );
     process.exit(1);
+  }
+
+  if (dryRun) {
+    logger.info(
+      `Dry run: would run trigger script "${triggerScript}" for head commit ${headCommit_}`,
+    );
+    return;
   }
 
   await prepareForMeticulousTests({

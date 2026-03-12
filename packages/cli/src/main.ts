@@ -16,6 +16,7 @@ import { localCommand } from "./commands/local";
 import { projectCommand } from "./commands/project/index";
 import { recordCommand } from "./commands/record/index";
 import { replayCommand } from "./commands/replay.command";
+import { schemaCommand } from "./commands/schema.command";
 
 const handleDataDir = (dataDir: string | null | undefined): void => {
   setMeticulousLocalDataDir(dataDir);
@@ -40,7 +41,8 @@ export const main = async (): Promise<void> => {
     .command(localCommand)
     .command(projectCommand)
     .command(recordCommand)
-    .command(replayCommand);
+    .command(replayCommand)
+    .command(schemaCommand);
 
   for (const alias of deprecatedAliases) {
     cli.command(alias);
@@ -59,7 +61,28 @@ export const main = async (): Promise<void> => {
         string: true,
         description: "Where Meticulous stores data (sessions, replays, etc.)",
       },
+      rawJson: {
+        string: true,
+        description:
+          "Pass all options as a JSON string (for agent/programmatic use)",
+      },
+      dryRun: {
+        boolean: true,
+        description:
+          "Print what the command would do without making any changes",
+        default: false,
+      },
     })
+    .middleware(
+      [
+        (argv) => {
+          if (argv.rawJson) {
+            Object.assign(argv, JSON.parse(argv.rawJson as string));
+          }
+        },
+      ],
+      true,
+    )
     .middleware([
       (argv) => setLogLevel(argv.logLevel),
       (argv) => handleDataDir(argv.dataDir),
