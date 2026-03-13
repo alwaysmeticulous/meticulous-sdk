@@ -2,7 +2,6 @@ import {
   createClient,
   triggerTestRunDiffsSummary,
   getTestRunDiffsSummaryStatus,
-  DiffsSummaryScreenshot,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";

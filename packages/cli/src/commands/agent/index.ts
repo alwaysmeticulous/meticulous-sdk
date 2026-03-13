@@ -1,7 +1,7 @@
 import { CommandModule } from "yargs";
-import { testRunDiffsCommand } from "./test-run-diffs.command";
 import { screenshotDomDiffCommand } from "./screenshot-dom-diff.command";
 import { screenshotImageCommand } from "./screenshot-image.command";
+import { testRunDiffsCommand } from "./test-run-diffs.command";
 import { timelineCommand } from "./timeline.command";
 
 export const agentCommand: CommandModule = {
