@@ -91,7 +91,9 @@ const handler = async ({
     testRunId = result.testRun?.id ?? null;
 
     if (!result.testRun) {
-      logger.warn("Container upload complete but test run not created");
+      throw new Error(
+        `${result.message ?? "Container upload complete but test run not created"}`,
+      );
     }
   } catch (error) {
     if (isOutOfDateClientError(error)) {
