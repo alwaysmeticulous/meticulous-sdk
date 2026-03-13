@@ -8,6 +8,7 @@ import {
 import { initSentry } from "@alwaysmeticulous/sentry";
 import yargs from "yargs";
 import { setOptions } from "./command-utils/sentry.utils";
+import { agentCommand } from "./commands/agent/index";
 import { authCommand } from "./commands/auth/index";
 import { ciCommand } from "./commands/ci/index";
 import { debugCommand } from "./commands/debug/index";
@@ -36,6 +37,7 @@ export const main = async (): Promise<void> => {
 
       Meticulous CLI`,
     )
+    .command(agentCommand)
     .command(authCommand)
     .command(ciCommand)
     .command(debugCommand)
