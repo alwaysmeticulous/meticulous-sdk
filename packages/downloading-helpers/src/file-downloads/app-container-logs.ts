@@ -41,7 +41,9 @@ const downloadPodLogs = async ({
   signedBaseUrl: string;
   logsDir: string;
 }): Promise<void> => {
-  const outputPath = join(logsDir, `${podName}.log.gz`);
+  // The S3 objects have both Content-Type: application/gzip and Content-Encoding: gzip set,
+  // so fetch automatically decompresses the response body. We save as .log (not .log.gz).
+  const outputPath = join(logsDir, `${podName}.log`);
   for (const chunkKey of chunkKeys) {
     const url = buildChunkUrl(signedBaseUrl, chunkKey);
     const response = await fetch(url);
