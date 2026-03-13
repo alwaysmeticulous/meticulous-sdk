@@ -1,3 +1,18 @@
+export {
+  DiffsSummaryOptions,
+  DiffsSummaryScreenshot,
+  DiffsSummaryReplayDiff,
+  DiffsSummaryResponse,
+  ScreenshotDomDiffResponse,
+  ScreenshotUrlsResponse,
+  TimelineDiffEntry,
+  TimelineDiffResponse,
+  triggerTestRunDiffsSummary,
+  getTestRunDiffsSummaryStatus,
+  getScreenshotDomDiff,
+  getScreenshotUrls,
+  getTimelineDiff,
+} from "./api/agent.api";
 export * from "./api/github-cloud-replay.api";
 export { WhoamiResponse, getWhoami } from "./api/oauth.api";
 export { getProject, getRepoUrl } from "./api/project.api";
