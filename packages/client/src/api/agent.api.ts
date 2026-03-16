@@ -136,10 +136,14 @@ export const getScreenshotDomDiff = async (
   replayDiffId: string,
   screenshotName: string,
   index?: number,
+  context?: string,
 ): Promise<ScreenshotDomDiffResponse> => {
   const params: Record<string, string> = {};
   if (index != null) {
     params.index = String(index);
+  }
+  if (context != null) {
+    params.context = context;
   }
   const { data } = await client
     .get(
