@@ -306,6 +306,18 @@ export interface ReplayExecutionOptions {
   uploadedContainerPort?: number;
 
   uploadedContainerEnv?: ContainerEnvVariable[];
+
+  /**
+   * When true, skips loading and processing of source maps during replay.
+   * This disables coverage features that depend on source maps.
+   */
+  disableSourceMapLoading?: boolean;
+
+  /**
+   * Regex patterns matching external hostnames that should be treated as
+   * app-related for asset snapshotting during replay.
+   */
+  externalHostsToConsiderAppRelated?: string[];
 }
 
 export interface ContainerEnvVariable {

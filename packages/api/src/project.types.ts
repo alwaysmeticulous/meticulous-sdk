@@ -14,6 +14,15 @@ export interface Project {
   settings: {
     networkStubbingMode?: NetworkStubbingMode;
     defaultScreenshottingOptions?: ProjectSettingsScreenshottingOptions;
+    pathsToIncludeInCoverage?: string[];
+    pathsToExcludeFromCoverage?: string[];
+    perScreenshotCoveragePostProcessing?:
+      | "all-screenshots"
+      | "diffs-only"
+      | null;
+    externalHostsToConsiderAppRelated?: string[];
+    disableSourceMapLoading?: boolean;
+    assumeSourceMapEnabledForAllFiles?: boolean;
   };
 
   experimentValues: Record<string, string>;
