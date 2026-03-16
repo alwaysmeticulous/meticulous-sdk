@@ -48,6 +48,7 @@ export interface DiffsSummaryResponse {
 
 export interface DiffsSummaryJob {
   jobId: string;
+  testRunId: string;
   status: "pending" | "processing" | "complete" | "error";
   progress?: string;
   error?: string;

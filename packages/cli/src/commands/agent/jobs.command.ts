@@ -18,12 +18,13 @@ const handler = async ({ apiToken }: Options): Promise<void> => {
     return;
   }
 
-  console.log(["jobId", "status", "progress", "error", "createdAt"].join("\t"));
+  console.log(["jobId", "testRunId", "status", "progress", "error", "createdAt"].join("\t"));
 
   for (const job of jobs) {
     console.log(
       [
         job.jobId,
+        job.testRunId,
         job.status,
         job.progress ?? "",
         job.error ?? "",
