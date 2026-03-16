@@ -6,10 +6,6 @@ import { MeticulousClient } from "../types/client.types";
 // ---------------------------------------------------------------------------
 
 export interface DiffsSummaryOptions {
-  includeDomDiffGroups?: boolean;
-  includeImageDiffHashes?: boolean;
-  includeJsCoverageGroups?: boolean;
-  includeCssCoverageGroups?: boolean;
   includeReplayIds?: boolean;
   showAll?: boolean;
 }
@@ -22,9 +18,6 @@ export interface DiffsSummaryScreenshot {
   userVisibleOutcome: string;
   mismatchFraction: number | null;
   domDiffIds: string;
-  imageDiffId?: string;
-  jsCoverageGroupId?: string;
-  cssCoverageGroupId?: string;
 }
 
 export interface DiffsSummaryReplayDiff {
