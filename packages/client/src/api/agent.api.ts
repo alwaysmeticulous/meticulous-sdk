@@ -10,6 +10,7 @@ export interface DiffsSummaryOptions {
   includeImageDiffHashes?: boolean;
   includeJsCoverageGroups?: boolean;
   includeCssCoverageGroups?: boolean;
+  includeReplayIds?: boolean;
   showAll?: boolean;
 }
 
@@ -28,6 +29,8 @@ export interface DiffsSummaryScreenshot {
 
 export interface DiffsSummaryReplayDiff {
   replayDiffId: string;
+  baseReplayId?: string;
+  headReplayId?: string;
   screenshots: DiffsSummaryScreenshot[];
 }
 
@@ -37,6 +40,22 @@ export interface DiffsSummaryResponse {
   progress?: string;
   error?: string;
   data?: DiffsSummaryReplayDiff[];
+}
+
+// ---------------------------------------------------------------------------
+// Diffs Summary Jobs types
+// ---------------------------------------------------------------------------
+
+export interface DiffsSummaryJob {
+  jobId: string;
+  status: "pending" | "processing" | "complete" | "error";
+  progress?: string;
+  error?: string;
+  createdAt: number;
+}
+
+export interface DiffsSummaryJobsResponse {
+  jobs: DiffsSummaryJob[];
 }
 
 // ---------------------------------------------------------------------------
@@ -82,13 +101,24 @@ export interface TimelineDiffResponse {
 // API methods
 // ---------------------------------------------------------------------------
 
+export const getDiffsSummaryJobs = async (
+  client: MeticulousClient,
+): Promise<DiffsSummaryJobsResponse> => {
+  const { data } = await client
+    .get("agent/test-runs/diffs-summary-jobs")
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
 export const triggerTestRunDiffsSummary = async (
   client: MeticulousClient,
   testRunId: string,
   options: DiffsSummaryOptions,
 ): Promise<DiffsSummaryResponse> => {
   const { data } = await client
-    .post(`agent/test-runs/${testRunId}/diffs-summary`, options)
+    .post("agent/test-runs/diffs-summary-jobs", { testRunId, ...options })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
@@ -97,11 +127,10 @@ export const triggerTestRunDiffsSummary = async (
 
 export const getTestRunDiffsSummaryStatus = async (
   client: MeticulousClient,
-  testRunId: string,
   jobId: string,
 ): Promise<DiffsSummaryResponse> => {
   const { data } = await client
-    .get(`agent/test-runs/${testRunId}/diffs-summary/${jobId}`)
+    .get(`agent/test-runs/diffs-summary-jobs/${jobId}`)
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
@@ -114,12 +143,15 @@ export const getScreenshotDomDiff = async (
   screenshotName: string,
   index?: number,
 ): Promise<ScreenshotDomDiffResponse> => {
-  const params: Record<string, string> = { screenshotName };
+  const params: Record<string, string> = {};
   if (index != null) {
     params.index = String(index);
   }
   const { data } = await client
-    .get(`agent/replay-diffs/${replayDiffId}/screenshot-dom-diff`, { params })
+    .get(
+      `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/dom-diff`,
+      { params },
+    )
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
@@ -132,9 +164,9 @@ export const getScreenshotUrls = async (
   screenshotName: string,
 ): Promise<ScreenshotUrlsResponse> => {
   const { data } = await client
-    .get(`agent/replay-diffs/${replayDiffId}/screenshot-urls`, {
-      params: { screenshotName },
-    })
+    .get(
+      `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/image-urls`,
+    )
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });

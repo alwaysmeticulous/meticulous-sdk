@@ -48,8 +48,8 @@ const handler = async ({
   }
 };
 
-export const screenshotDomDiffCommand: CommandModule<unknown, Options> = {
-  command: "screenshot-dom-diff",
+export const domDiffCommand: CommandModule<unknown, Options> = {
+  command: "dom-diff",
   describe: "Get screenshot DOM diff for a replay diff screenshot",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },

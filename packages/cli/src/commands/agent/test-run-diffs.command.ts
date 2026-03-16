@@ -14,6 +14,7 @@ interface Options {
   imageDiffs: boolean;
   jsCoverageGroups: boolean;
   cssCoverageGroups: boolean;
+  includeReplayIds: boolean;
   verbose: boolean;
 }
 
@@ -32,11 +33,14 @@ const handler = async ({
   imageDiffs: computeImageDiffs,
   jsCoverageGroups: computeJsCoverage,
   cssCoverageGroups: computeCssCoverage,
+  includeReplayIds,
   verbose,
 }: Options): Promise<void> => {
   initLogger();
   const client = createClient({ apiToken });
   const t0 = performance.now();
+
+  log(`Fetching diffs summary for test run ${testRunId}...`);
 
   // Trigger the job
   let response = await triggerTestRunDiffsSummary(client, testRunId, {
@@ -44,20 +48,24 @@ const handler = async ({
     includeImageDiffHashes: computeImageDiffs,
     includeJsCoverageGroups: computeJsCoverage,
     includeCssCoverageGroups: computeCssCoverage,
+    includeReplayIds,
     showAll,
   });
 
+  log(`Job enqueued: ${response.jobId}`);
+
   // Poll until complete
+  let lastStatus = response.status;
   while (response.status === "pending" || response.status === "processing") {
+    if (verbose && response.status !== lastStatus) {
+      log(`Job ${response.jobId}: ${lastStatus} -> ${response.status}`);
+      lastStatus = response.status;
+    }
     if (verbose && response.progress) {
       log(`Processing: ${response.progress}`);
     }
-    await sleep(2000);
-    response = await getTestRunDiffsSummaryStatus(
-      client,
-      testRunId,
-      response.jobId,
-    );
+    await sleep(5000);
+    response = await getTestRunDiffsSummaryStatus(client, response.jobId);
   }
 
   if (response.status === "error") {
@@ -82,6 +90,7 @@ const handler = async ({
     "mismatch",
     "domDiffIds",
   ];
+  if (includeReplayIds) headerFields.push("baseReplayId", "headReplayId");
   if (computeImageDiffs) headerFields.push("imageDiffId");
   if (computeJsCoverage) headerFields.push("jsCoverageGroupId");
   if (computeCssCoverage) headerFields.push("cssCoverageGroupId");
@@ -103,6 +112,8 @@ const handler = async ({
         fmtMismatch(s.mismatchFraction),
         s.domDiffIds,
       ];
+      if (includeReplayIds)
+        fields.push(rd.baseReplayId ?? "", rd.headReplayId ?? "");
       if (computeImageDiffs) fields.push(s.imageDiffId ?? "");
       if (computeJsCoverage) fields.push(s.jsCoverageGroupId ?? "");
       if (computeCssCoverage) fields.push(s.cssCoverageGroupId ?? "");
@@ -112,7 +123,7 @@ const handler = async ({
 
   const tEnd = performance.now();
   log(
-    `${totalDiffScreenshots} screenshot diff(s), total ${((tEnd - t0) / 1000).toFixed(1)}s`,
+    `${data.length} replay diff(s), ${totalDiffScreenshots} screenshot diff(s), total ${((tEnd - t0) / 1000).toFixed(1)}s`,
   );
 };
 
@@ -144,6 +155,11 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     cssCoverageGroups: {
       boolean: true,
       description: "Compute CSS coverage-based group IDs (slower)",
+      default: false,
+    },
+    includeReplayIds: {
+      boolean: true,
+      description: "Include base and head replay IDs per replay diff",
       default: false,
     },
     verbose: {
