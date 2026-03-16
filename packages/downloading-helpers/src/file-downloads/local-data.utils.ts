@@ -4,6 +4,52 @@ import { initLogger } from "@alwaysmeticulous/common";
 import { Duration } from "luxon";
 import { lock, LockOptions } from "proper-lockfile";
 
+/**
+ * proper-lockfile v4 uses a timer that periodically stat()s the lock file to
+ * keep it fresh. There's a race where the timer dispatches an async stat() just
+ * before releaseLock() calls clearTimeout + removes the lock file. The
+ * in-flight stat() then returns ENOENT, and proper-lockfile's default
+ * onCompromised handler throws — from a timer callback, so it becomes an
+ * uncaught exception that crashes the process.
+ *
+ * The lock IS released correctly; the error is purely internal to the library's
+ * timer cleanup. We use onCompromised + a releasing flag to swallow this
+ * specific case while still propagating genuine lock compromises.
+ */
+const acquireLockSafely = async (
+  target: string,
+  options: LockOptions,
+): Promise<() => Promise<void>> => {
+  let releasing = false;
+
+  const releaseLock = await lock(target, {
+    ...options,
+    onCompromised: (err: Error) => {
+      if (releasing && isLockReleaseRaceConditionError(err)) {
+        const logger = initLogger();
+        logger.warn(
+          "Ignoring benign ENOENT error during lock release (proper-lockfile timer race condition)",
+        );
+        return;
+      }
+      throw err;
+    },
+  });
+
+  return async () => {
+    releasing = true;
+    await releaseLock();
+  };
+};
+
+const isLockReleaseRaceConditionError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) return false;
+  const nodeError = error as NodeJS.ErrnoException;
+  // proper-lockfile mutates the original ENOENT error via Object.assign,
+  // overwriting .code to ECOMPROMISED before calling onCompromised.
+  return nodeError.code === "ECOMPROMISED" && error.message.includes("ENOENT");
+};
+
 export const sanitizeFilename: (filename: string) => string = (filename) => {
   return filename.replace(/[^a-zA-Z0-9]/g, "_");
 };
@@ -62,7 +108,7 @@ export const getOrDownloadJsonFile = async <T>({
 };
 
 export const waitToAcquireLockOnFile = async (
-  filePath: string
+  filePath: string,
 ): Promise<ReleaseLock> => {
   // In many cases the file doesn't exist yet, and can't exist yet (need to download the data, and creating an
   // empty file beforehand is risky if the process crashes, and a second process tries reading the empty file).
@@ -76,13 +122,10 @@ export const waitToAcquireLockOnFile = async (
   const lockDirectory = `${filePath}.lock-target`;
   await mkdir(lockDirectory, { recursive: true });
 
-  const releaseLock = await lock(lockDirectory, {
+  return acquireLockSafely(lockDirectory, {
     retries: LOCK_RETRY_OPTIONS,
     lockfilePath: `${filePath}.lock`,
   });
-  return async () => {
-    await releaseLock();
-  };
 };
 
 export const fileExists = (filePath: string) =>
@@ -91,9 +134,9 @@ export const fileExists = (filePath: string) =>
     .catch(() => false);
 
 export const waitToAcquireLockOnDirectory = (
-  directoryPath: string
+  directoryPath: string,
 ): Promise<ReleaseLock> => {
-  return lock(directoryPath, {
+  return acquireLockSafely(directoryPath, {
     retries: LOCK_RETRY_OPTIONS,
     lockfilePath: join(directoryPath, "dir.lock"),
   });
