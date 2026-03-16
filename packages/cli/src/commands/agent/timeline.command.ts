@@ -41,8 +41,8 @@ const handler = async ({ apiToken, replayDiffId }: Options): Promise<void> => {
   }
 };
 
-export const timelineCommand: CommandModule<unknown, Options> = {
-  command: "timeline",
+export const timelineDiffCommand: CommandModule<unknown, Options> = {
+  command: "timeline-diff",
   describe: "Get timeline diff for a replay diff",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },

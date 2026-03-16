@@ -34,8 +34,8 @@ const handler = async ({
   }
 };
 
-export const screenshotImageCommand: CommandModule<unknown, Options> = {
-  command: "screenshot-image",
+export const imageUrlsCommand: CommandModule<unknown, Options> = {
+  command: "image-urls",
   describe: "Get screenshot image URLs for a replay diff screenshot",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },

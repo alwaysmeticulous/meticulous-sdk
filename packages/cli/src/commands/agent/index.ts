@@ -1,8 +1,9 @@
 import { CommandModule } from "yargs";
-import { screenshotDomDiffCommand } from "./screenshot-dom-diff.command";
-import { screenshotImageCommand } from "./screenshot-image.command";
+import { testRunDiffsJobsCommand } from "./jobs.command";
+import { domDiffCommand } from "./screenshot-dom-diff.command";
+import { imageUrlsCommand } from "./screenshot-image.command";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
-import { timelineCommand } from "./timeline.command";
+import { timelineDiffCommand } from "./timeline.command";
 
 export const agentCommand: CommandModule = {
   command: "agent",
@@ -10,9 +11,10 @@ export const agentCommand: CommandModule = {
   builder: (yargs) =>
     yargs
       .command(testRunDiffsCommand)
-      .command(screenshotDomDiffCommand)
-      .command(screenshotImageCommand)
-      .command(timelineCommand)
+      .command(testRunDiffsJobsCommand)
+      .command(domDiffCommand)
+      .command(imageUrlsCommand)
+      .command(timelineDiffCommand)
       .demandCommand()
       .help(),
   handler: () => {
