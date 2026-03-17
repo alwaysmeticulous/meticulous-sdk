@@ -178,20 +178,30 @@ export const executeRemoteTestRun = async ({
       return;
     }
 
-    if (completedTestRun.status === "Failure") {
-      logger.info(
-        `Test run completed with differences. See the test run page to view the differences.`,
-      );
-    }
-
-    if (completedTestRun.status === "Success") {
-      logger.info(`Test run completed with 0 differences.`);
-    }
-
-    if (completedTestRun.status === "Aborted") {
-      logger.info(
-        `Test run aborted because a newer commit was pushed. A new test run will start shortly.`,
-      );
+    switch (completedTestRun.status) {
+      case "Failure":
+        logger.info(
+          `Test run completed with differences. See the test run page to view the differences.`,
+        );
+        break;
+      case "Success":
+        logger.info(`Test run completed with 0 differences.`);
+        break;
+      case "Aborted":
+        logger.info(
+          `Test run aborted because a newer commit was pushed. A new test run will start shortly.`,
+        );
+        break;
+      case "ExecutionError":
+        logger.info(`Test run failed with execution error.`);
+        break;
+      case "Scheduled":
+      case "Running":
+      case "PostProcessing":
+        logger.warn(`Test run is still executing. This should never happen.`);
+        break;
+      default:
+        assertNever(completedTestRun.status);
     }
 
     if (progressUpdateInterval) {
@@ -251,4 +261,8 @@ export const executeRemoteTestRun = async ({
   return {
     testRun: completedTestRun,
   };
+};
+
+const assertNever = (value: never): never => {
+  throw new Error("Unexpected value: " + JSON.stringify(value));
 };
