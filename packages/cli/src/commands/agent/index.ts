@@ -1,5 +1,4 @@
 import { CommandModule } from "yargs";
-import { testRunDiffsJobsCommand } from "./jobs.command";
 import { domDiffCommand } from "./screenshot-dom-diff.command";
 import { imageUrlsCommand } from "./screenshot-image.command";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
@@ -11,7 +10,6 @@ export const agentCommand: CommandModule = {
   builder: (yargs) =>
     yargs
       .command(testRunDiffsCommand)
-      .command(testRunDiffsJobsCommand)
       .command(domDiffCommand)
       .command(imageUrlsCommand)
       .command(timelineDiffCommand)

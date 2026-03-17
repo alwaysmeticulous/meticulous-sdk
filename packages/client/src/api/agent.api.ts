@@ -5,11 +5,6 @@ import { MeticulousClient } from "../types/client.types";
 // Diffs Summary types
 // ---------------------------------------------------------------------------
 
-export interface DiffsSummaryOptions {
-  includeReplayIds?: boolean;
-  showAll?: boolean;
-}
-
 export interface DiffsSummaryScreenshot {
   screenshotName: string;
   index: number;
@@ -27,29 +22,16 @@ export interface DiffsSummaryReplayDiff {
   screenshots: DiffsSummaryScreenshot[];
 }
 
+export interface DiffsSummaryOptions {
+  includeReplayIds?: boolean;
+  includeMatches?: boolean;
+}
+
 export interface DiffsSummaryResponse {
-  jobId: string;
   status: "pending" | "processing" | "complete" | "error";
   progress?: string;
   error?: string;
   data?: DiffsSummaryReplayDiff[];
-}
-
-// ---------------------------------------------------------------------------
-// Diffs Summary Jobs types
-// ---------------------------------------------------------------------------
-
-export interface DiffsSummaryJob {
-  jobId: string;
-  testRunId: string;
-  status: "pending" | "processing" | "complete" | "error";
-  progress?: string;
-  error?: string;
-  createdAt: number;
-}
-
-export interface DiffsSummaryJobsResponse {
-  jobs: DiffsSummaryJob[];
 }
 
 // ---------------------------------------------------------------------------
@@ -95,36 +77,20 @@ export interface TimelineDiffResponse {
 // API methods
 // ---------------------------------------------------------------------------
 
-export const getDiffsSummaryJobs = async (
-  client: MeticulousClient,
-): Promise<DiffsSummaryJobsResponse> => {
-  const { data } = await client
-    .get("agent/test-runs/diffs-summary-jobs")
-    .catch((error) => {
-      throw maybeEnrichFetchError(error);
-    });
-  return data;
-};
-
-export const triggerTestRunDiffsSummary = async (
+export const getTestRunDiffsSummary = async (
   client: MeticulousClient,
   testRunId: string,
-  options: DiffsSummaryOptions,
+  options?: DiffsSummaryOptions,
 ): Promise<DiffsSummaryResponse> => {
+  const params: Record<string, string> = {};
+  if (options?.includeReplayIds) {
+    params.includeReplayIds = "true";
+  }
+  if (options?.includeMatches) {
+    params.includeMatches = "true";
+  }
   const { data } = await client
-    .post("agent/test-runs/diffs-summary-jobs", { testRunId, ...options })
-    .catch((error) => {
-      throw maybeEnrichFetchError(error);
-    });
-  return data;
-};
-
-export const getTestRunDiffsSummaryStatus = async (
-  client: MeticulousClient,
-  jobId: string,
-): Promise<DiffsSummaryResponse> => {
-  const { data } = await client
-    .get(`agent/test-runs/diffs-summary-jobs/${jobId}`)
+    .get(`agent/test-runs/${testRunId}/diffs-summary`, { params })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
