@@ -11,9 +11,6 @@ interface Options {
   apiToken?: string | null | undefined;
   testRunId: string;
   all: boolean;
-  imageDiffs: boolean;
-  jsCoverageGroups: boolean;
-  cssCoverageGroups: boolean;
   includeReplayIds: boolean;
   verbose: boolean;
 }
@@ -30,9 +27,6 @@ const handler = async ({
   apiToken,
   testRunId,
   all: showAll,
-  imageDiffs: computeImageDiffs,
-  jsCoverageGroups: computeJsCoverage,
-  cssCoverageGroups: computeCssCoverage,
   includeReplayIds,
   verbose,
 }: Options): Promise<void> => {
@@ -44,10 +38,6 @@ const handler = async ({
 
   // Trigger the job
   let response = await triggerTestRunDiffsSummary(client, testRunId, {
-    includeDomDiffGroups: true,
-    includeImageDiffHashes: computeImageDiffs,
-    includeJsCoverageGroups: computeJsCoverage,
-    includeCssCoverageGroups: computeCssCoverage,
     includeReplayIds,
     showAll,
   });
@@ -91,9 +81,6 @@ const handler = async ({
     "domDiffIds",
   ];
   if (includeReplayIds) headerFields.push("baseReplayId", "headReplayId");
-  if (computeImageDiffs) headerFields.push("imageDiffId");
-  if (computeJsCoverage) headerFields.push("jsCoverageGroupId");
-  if (computeCssCoverage) headerFields.push("cssCoverageGroupId");
   console.log(headerFields.join("\t"));
 
   let totalDiffScreenshots = 0;
@@ -114,9 +101,6 @@ const handler = async ({
       ];
       if (includeReplayIds)
         fields.push(rd.baseReplayId ?? "", rd.headReplayId ?? "");
-      if (computeImageDiffs) fields.push(s.imageDiffId ?? "");
-      if (computeJsCoverage) fields.push(s.jsCoverageGroupId ?? "");
-      if (computeCssCoverage) fields.push(s.cssCoverageGroupId ?? "");
       console.log(fields.join("\t"));
     }
   }
@@ -140,21 +124,6 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     all: {
       boolean: true,
       description: "Show all screenshots, not just those with differences",
-      default: false,
-    },
-    imageDiffs: {
-      boolean: true,
-      description: "Compute image diff hashes for deduplication (slower)",
-      default: false,
-    },
-    jsCoverageGroups: {
-      boolean: true,
-      description: "Compute JS coverage-based group IDs (slower)",
-      default: false,
-    },
-    cssCoverageGroups: {
-      boolean: true,
-      description: "Compute CSS coverage-based group IDs (slower)",
       default: false,
     },
     includeReplayIds: {

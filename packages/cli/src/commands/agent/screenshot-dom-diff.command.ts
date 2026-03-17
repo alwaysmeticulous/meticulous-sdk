@@ -8,6 +8,7 @@ interface Options {
   replayDiffId: string;
   screenshotName: string;
   index: number | undefined;
+  context: string | undefined;
 }
 
 const handler = async ({
@@ -15,6 +16,7 @@ const handler = async ({
   replayDiffId,
   screenshotName,
   index,
+  context,
 }: Options): Promise<void> => {
   initLogger();
   const client = createClient({ apiToken });
@@ -24,6 +26,7 @@ const handler = async ({
     replayDiffId,
     screenshotName,
     index,
+    context,
   );
 
   if (result.diffs.length === 0) {
@@ -67,6 +70,11 @@ export const domDiffCommand: CommandModule<unknown, Options> = {
       number: true,
       description:
         "Show only the diff hunk at this 0-based index (omit to show all hunks with indices)",
+    },
+    context: {
+      string: true,
+      description:
+        'Context lines around each hunk: a number (default 3), 0 for none, or "full" for single unified diff with full file context (requires --index to be omitted)',
     },
   },
   handler: wrapHandler(handler),

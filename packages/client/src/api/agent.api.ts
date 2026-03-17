@@ -6,10 +6,6 @@ import { MeticulousClient } from "../types/client.types";
 // ---------------------------------------------------------------------------
 
 export interface DiffsSummaryOptions {
-  includeDomDiffGroups?: boolean;
-  includeImageDiffHashes?: boolean;
-  includeJsCoverageGroups?: boolean;
-  includeCssCoverageGroups?: boolean;
   includeReplayIds?: boolean;
   showAll?: boolean;
 }
@@ -22,9 +18,6 @@ export interface DiffsSummaryScreenshot {
   userVisibleOutcome: string;
   mismatchFraction: number | null;
   domDiffIds: string;
-  imageDiffId?: string;
-  jsCoverageGroupId?: string;
-  cssCoverageGroupId?: string;
 }
 
 export interface DiffsSummaryReplayDiff {
@@ -143,10 +136,14 @@ export const getScreenshotDomDiff = async (
   replayDiffId: string,
   screenshotName: string,
   index?: number,
+  context?: string,
 ): Promise<ScreenshotDomDiffResponse> => {
   const params: Record<string, string> = {};
   if (index != null) {
     params.index = String(index);
+  }
+  if (context != null) {
+    params.context = context;
   }
   const { data } = await client
     .get(
