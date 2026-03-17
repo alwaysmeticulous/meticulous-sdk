@@ -28,9 +28,7 @@ export interface DiffsSummaryOptions {
 }
 
 export interface DiffsSummaryResponse {
-  status: "pending" | "processing" | "complete" | "error";
-  progress?: string;
-  error?: string;
+  status: "pending" | "processing" | "complete";
   data?: DiffsSummaryReplayDiff[];
 }
 

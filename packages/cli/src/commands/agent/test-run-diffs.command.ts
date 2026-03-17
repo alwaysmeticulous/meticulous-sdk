@@ -39,10 +39,7 @@ const handler = async ({
 
   // Poll until complete
   while (response.status === "pending" || response.status === "processing") {
-    if (verbose) {
-      const progress = response.progress ? ` — ${response.progress}` : "";
-      log(`Status: ${response.status}${progress}`);
-    }
+    if (verbose) log(`Status: ${response.status}`);
     await sleep(2000);
     response = await getTestRunDiffsSummary(client, testRunId, {
       includeReplayIds,
@@ -50,8 +47,8 @@ const handler = async ({
     });
   }
 
-  if (response.status === "error") {
-    log(`Error: ${response.error}`);
+  if (response.status !== "complete") {
+    log(`Error: unexpected status "${response.status}"`);
     process.exit(1);
   }
 
