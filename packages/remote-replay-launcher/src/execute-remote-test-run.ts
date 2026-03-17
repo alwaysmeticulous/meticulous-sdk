@@ -178,6 +178,22 @@ export const executeRemoteTestRun = async ({
       return;
     }
 
+    if (completedTestRun.status === "Failure") {
+      logger.info(
+        `Test run completed with differences. See the test run page to view the differences.`,
+      );
+    }
+
+    if (completedTestRun.status === "Success") {
+      logger.info(`Test run completed with 0 differences.`);
+    }
+
+    if (completedTestRun.status === "Aborted") {
+      logger.info(
+        `Test run aborted because a newer commit was pushed. A new test run will start shortly.`,
+      );
+    }
+
     if (progressUpdateInterval) {
       clearInterval(progressUpdateInterval);
     }
