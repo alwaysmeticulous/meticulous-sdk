@@ -50,6 +50,20 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Upload sourcemaps to Sentry
+        if: github.repository == 'alwaysmeticulous/meticulous-sdk'
+        continue-on-error: true
+        run: |
+          VERSION="sdk-v$(node -p "require('./lerna.json').version")"
+          npx @sentry/cli sourcemaps inject ./packages/*/dist
+          npx @sentry/cli sourcemaps upload \
+            --org meticulous \
+            --project sdk \
+            --release "$VERSION" \
+            ./packages/*/dist
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
       - name: Publish packages
         if: github.repository == 'alwaysmeticulous/meticulous-sdk'
         run: pnpm exec lerna publish from-package --yes --no-verify-access --loglevel verbose
