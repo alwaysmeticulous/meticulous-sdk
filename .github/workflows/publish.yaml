@@ -52,8 +52,9 @@ jobs:
 
       - name: Upload sourcemaps to Sentry
         if: github.repository == 'alwaysmeticulous/meticulous-sdk'
+        continue-on-error: true
         run: |
-          VERSION=$(node -p "require('./lerna.json').version")
+          VERSION="sdk-v$(node -p "require('./lerna.json').version")"
           npx @sentry/cli sourcemaps inject ./packages/*/dist
           npx @sentry/cli sourcemaps upload \
             --org meticulous \
