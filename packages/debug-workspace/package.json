@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/debug-workspace",
-  "version": "2.264.4",
+  "version": "2.264.5",
   "description": "Shared debug workspace pipeline for investigating Meticulous diffs and replays",
   "license": "ISC",
   "main": "dist/index.js",
