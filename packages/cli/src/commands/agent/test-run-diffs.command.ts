@@ -1,8 +1,4 @@
-import {
-  createClient,
-  triggerTestRunDiffsSummary,
-  getTestRunDiffsSummaryStatus,
-} from "@alwaysmeticulous/client";
+import { createClient, getTestRunDiffsSummary } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
@@ -10,7 +6,7 @@ import { wrapHandler } from "../../command-utils/sentry.utils";
 interface Options {
   apiToken?: string | null | undefined;
   testRunId: string;
-  all: boolean;
+  includeMatches: boolean;
   includeReplayIds: boolean;
   verbose: boolean;
 }
@@ -26,7 +22,7 @@ const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
 const handler = async ({
   apiToken,
   testRunId,
-  all: showAll,
+  includeMatches,
   includeReplayIds,
   verbose,
 }: Options): Promise<void> => {
@@ -36,26 +32,22 @@ const handler = async ({
 
   log(`Fetching diffs summary for test run ${testRunId}...`);
 
-  // Trigger the job
-  let response = await triggerTestRunDiffsSummary(client, testRunId, {
+  let response = await getTestRunDiffsSummary(client, testRunId, {
     includeReplayIds,
-    showAll,
+    includeMatches,
   });
 
-  log(`Job enqueued: ${response.jobId}`);
-
   // Poll until complete
-  let lastStatus = response.status;
   while (response.status === "pending" || response.status === "processing") {
-    if (verbose && response.status !== lastStatus) {
-      log(`Job ${response.jobId}: ${lastStatus} -> ${response.status}`);
-      lastStatus = response.status;
+    if (verbose) {
+      const progress = response.progress ? ` — ${response.progress}` : "";
+      log(`Status: ${response.status}${progress}`);
     }
-    if (verbose && response.progress) {
-      log(`Processing: ${response.progress}`);
-    }
-    await sleep(5000);
-    response = await getTestRunDiffsSummaryStatus(client, response.jobId);
+    await sleep(2000);
+    response = await getTestRunDiffsSummary(client, testRunId, {
+      includeReplayIds,
+      includeMatches,
+    });
   }
 
   if (response.status === "error") {
@@ -121,9 +113,9 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
       description: "The test run ID",
       demandOption: true,
     },
-    all: {
+    includeMatches: {
       boolean: true,
-      description: "Show all screenshots, not just those with differences",
+      description: "Include all screenshots (matches, known flakes), not just differences",
       default: false,
     },
     includeReplayIds: {
@@ -133,7 +125,7 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     },
     verbose: {
       boolean: true,
-      description: "Show processing progress logs",
+      description: "Show polling status updates",
       default: false,
     },
   },
