@@ -1,6 +1,6 @@
 import { mkdir } from "fs/promises";
-import { join } from "path";
 import { tmpdir } from "os";
+import { join } from "path";
 import { createClient, getScreenshotUrls } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { downloadFile } from "@alwaysmeticulous/downloading-helpers";
