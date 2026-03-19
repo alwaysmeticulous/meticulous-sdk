@@ -1,11 +1,9 @@
-import { createWriteStream } from "fs";
 import { mkdir } from "fs/promises";
-import https from "https";
 import { join } from "path";
 import { tmpdir } from "os";
-import { pipeline } from "stream/promises";
 import { createClient, getScreenshotUrls } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
+import { downloadFile } from "@alwaysmeticulous/downloading-helpers";
 import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
@@ -14,22 +12,6 @@ interface Options {
   replayDiffId: string;
   screenshotName: string;
 }
-
-const downloadFile = (url: string, filePath: string): Promise<void> =>
-  new Promise((resolve, reject) => {
-    https
-      .get(url, (response) => {
-        if (response.statusCode !== 200) {
-          reject(
-            new Error(`Failed to download ${url}: HTTP ${response.statusCode}`),
-          );
-          return;
-        }
-        const fileStream = createWriteStream(filePath);
-        pipeline(response, fileStream).then(resolve, reject);
-      })
-      .on("error", reject);
-  });
 
 const downloadImageToTmpDir = async (
   tmpDir: string,
