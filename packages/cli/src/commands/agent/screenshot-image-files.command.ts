@@ -1,6 +1,5 @@
 import { createWriteStream } from "fs";
 import { mkdir } from "fs/promises";
-import http from "http";
 import https from "https";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -16,49 +15,30 @@ interface Options {
   screenshotName: string;
 }
 
-const downloadFile = (url: string, filePath: string): Promise<void> => {
-  const get = url.startsWith("https") ? https.get : http.get;
-  return new Promise((resolve, reject) => {
-    get(url, (response) => {
-      if (response.statusCode === 301 || response.statusCode === 302) {
-        const redirectUrl = response.headers.location;
-        if (redirectUrl) {
-          downloadFile(redirectUrl, filePath).then(resolve, reject);
+const downloadFile = (url: string, filePath: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    https
+      .get(url, (response) => {
+        if (response.statusCode !== 200) {
+          reject(
+            new Error(`Failed to download ${url}: HTTP ${response.statusCode}`),
+          );
           return;
         }
-      }
-      if (response.statusCode !== 200) {
-        reject(new Error(`Failed to download ${url}: HTTP ${response.statusCode}`));
-        return;
-      }
-      const fileStream = createWriteStream(filePath);
-      pipeline(response, fileStream).then(resolve, reject);
-    }).on("error", reject);
+        const fileStream = createWriteStream(filePath);
+        pipeline(response, fileStream).then(resolve, reject);
+      })
+      .on("error", reject);
   });
-};
 
 const downloadImageToTmpDir = async (
   tmpDir: string,
   label: string,
   url: string,
 ): Promise<string> => {
-  const extension = getExtensionFromUrl(url);
-  const filePath = join(tmpDir, `${label}${extension}`);
+  const filePath = join(tmpDir, `${label}.png`);
   await downloadFile(url, filePath);
   return filePath;
-};
-
-const getExtensionFromUrl = (url: string): string => {
-  try {
-    const pathname = new URL(url).pathname;
-    const match = pathname.match(/\.(\w+)$/);
-    if (match) {
-      return `.${match[1]}`;
-    }
-  } catch {
-    // Fall through to default
-  }
-  return ".png";
 };
 
 const handler = async ({
