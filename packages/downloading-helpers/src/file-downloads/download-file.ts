@@ -1,13 +1,13 @@
-import { createWriteStream, existsSync } from "fs";
-import { mkdir, readFile, rm } from "fs/promises";
-import { Readable, Stream, finished, Transform } from "stream";
+import { createReadStream, createWriteStream, existsSync } from "fs";
+import { mkdir, rm } from "fs/promises";
+import { Stream, finished, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { promisify } from "util";
+import { createInflateRaw } from "zlib";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import cliProgress from "cli-progress";
 import extract from "extract-zip";
-import { InflateRaw } from "fast-zlib";
 import { extract as tarExtract } from "tar";
 
 const promisifiedFinished = promisify(finished);
@@ -200,7 +200,7 @@ export const downloadAndExtractFile: (
 };
 
 /**
- * Download a raw deflated tar blob from a URL, inflate it using fast-zlib's InflateRaw,
+ * Download a raw deflated tar blob from a URL, inflate it,
  * and extract the tar contents to a directory.
  * The downloaded file will be deleted after extraction, keeping only the extracted files.
  * __Warning__: this function is not thread safe.
@@ -239,21 +239,23 @@ export const downloadAndExtractTar: (
         extractTimeoutInMs,
       );
     });
+    const abortController = new AbortController();
     try {
       await mkdir(extractPath, { recursive: true });
-      const compressed = await readFile(tmpTarFilePath);
-      const inflateRaw = new InflateRaw();
-      const decompressed = inflateRaw.process(compressed);
-      inflateRaw.close();
 
       const extractPromise = pipeline(
-        Readable.from(decompressed),
+        createReadStream(tmpTarFilePath),
+        createInflateRaw(),
         tarExtract({
           cwd: extractPath,
           onReadEntry: (entry) => entries.push(entry.path),
         }),
+        { signal: abortController.signal },
       );
       await Promise.race([extractPromise, timeoutPromise]);
+    } catch (error) {
+      abortController.abort();
+      throw error;
     } finally {
       clearTimeout(timeoutId!);
     }
