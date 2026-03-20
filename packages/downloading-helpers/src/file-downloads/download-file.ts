@@ -46,9 +46,9 @@ export const downloadFile = async (
   opts: DownloadFileOptions = {},
 ): Promise<void> => {
   // Using the same timeout as the standard client in meticulous-sdk/packages/client/src/client.ts
-  const firstDataTimeoutInMs = opts.firstDataTimeoutInMs ?? 180_000;
+  const firstDataTimeoutInMs = opts.firstDataTimeoutInMs ?? 60_000;
   const downloadCompleteTimeoutInMs =
-    opts.downloadCompleteTimeoutInMs ?? 300_000;
+    opts.downloadCompleteTimeoutInMs ?? 120_000;
   const maxDownloadContentRetries = opts.maxDownloadContentRetries ?? 3;
   const downloadContentRetryDelay = opts.downloadContentRetryDelay ?? 1000;
 
@@ -131,10 +131,6 @@ export const downloadFile = async (
     if (maxDownloadContentRetries === 0) {
       throw err;
     }
-
-    console.error(
-      `Download failed (${err instanceof Error ? err.message : String(err)}), retrying (${maxDownloadContentRetries} ${maxDownloadContentRetries === 1 ? "retry" : "retries"} remaining)...`,
-    );
 
     // Let's try again after a short delay
     await new Promise((resolve) =>
