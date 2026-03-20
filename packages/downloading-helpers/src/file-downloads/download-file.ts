@@ -3,11 +3,11 @@ import { mkdir, rm } from "fs/promises";
 import { Stream, finished, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { promisify } from "util";
-import { createInflateRaw } from "zlib";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import cliProgress from "cli-progress";
 import extract from "extract-zip";
+import { InflateRaw } from "fast-zlib";
 import { extract as tarExtract } from "tar";
 
 const promisifiedFinished = promisify(finished);
@@ -242,9 +242,29 @@ export const downloadAndExtractTar: (
     try {
       await mkdir(extractPath, { recursive: true });
 
+      const inflateRaw = new InflateRaw();
+      const inflateTransform = new Transform({
+        transform(chunk, _encoding, callback) {
+          try {
+            const decompressed = inflateRaw.process(chunk);
+            if (decompressed.length > 0) {
+              callback(null, decompressed);
+            } else {
+              callback();
+            }
+          } catch (err) {
+            callback(err as Error);
+          }
+        },
+        flush(callback) {
+          inflateRaw.close();
+          callback();
+        },
+      });
+
       const extractPromise = pipeline(
         createReadStream(tmpTarFilePath),
-        createInflateRaw(),
+        inflateTransform,
         tarExtract({
           cwd: extractPath,
           onReadEntry: (entry) => entries.push(entry.path),
