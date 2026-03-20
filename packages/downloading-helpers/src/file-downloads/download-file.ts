@@ -239,6 +239,7 @@ export const downloadAndExtractTar: (
         extractTimeoutInMs,
       );
     });
+    const abortController = new AbortController();
     try {
       await mkdir(extractPath, { recursive: true });
 
@@ -249,8 +250,12 @@ export const downloadAndExtractTar: (
           cwd: extractPath,
           onReadEntry: (entry) => entries.push(entry.path),
         }),
+        { signal: abortController.signal },
       );
       await Promise.race([extractPromise, timeoutPromise]);
+    } catch (error) {
+      abortController.abort();
+      throw error;
     } finally {
       clearTimeout(timeoutId!);
     }
