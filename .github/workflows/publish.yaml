@@ -14,6 +14,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: npm-publish
     concurrency: ${{ github.ref }}
 
     steps:
