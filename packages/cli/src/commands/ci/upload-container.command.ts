@@ -30,6 +30,7 @@ interface Options {
   waitForTestRunToComplete: boolean;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
+  containerHealthCheckEndpoint?: string | undefined;
   dryRun?: boolean;
 }
 
@@ -44,6 +45,7 @@ const handler = async ({
   waitForTestRunToComplete,
   containerPort,
   containerEnv,
+  containerHealthCheckEndpoint,
   dryRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
@@ -87,6 +89,7 @@ const handler = async ({
       waitForBase: waitForBase || waitForTestRunToComplete,
       containerPort,
       containerEnv,
+      containerHealthCheckEndpoint,
     });
     testRunId = result.testRun?.id ?? null;
 
@@ -186,6 +189,11 @@ export const ciUploadContainerCommand: CommandModule<unknown, Options> = {
           return { name, value: envValue };
         }),
       description: "The environment variables to set in the container.",
+    },
+    containerHealthCheckEndpoint: {
+      string: true,
+      description:
+        "The endpoint path to use for health checks on the container (e.g., '/health').",
     },
   },
   handler: wrapHandler(handler),
