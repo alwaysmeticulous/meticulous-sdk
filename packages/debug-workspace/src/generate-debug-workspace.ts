@@ -1,6 +1,7 @@
 import { execFileSync } from "child_process";
 import { createHash } from "crypto";
 import {
+  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -115,7 +116,9 @@ export const generateDebugWorkspace = (
   );
 
   copyClaudeSubdir(workspaceDir, "rules", options.additionalTemplatesDir);
-  copyClaudeSubdir(workspaceDir, "hooks", options.additionalTemplatesDir);
+  copyClaudeSubdir(workspaceDir, "hooks", options.additionalTemplatesDir, {
+    makeExecutable: true,
+  });
   copyClaudeSubdir(workspaceDir, "agents", options.additionalTemplatesDir);
   copySkills(workspaceDir, options.additionalTemplatesDir);
 
@@ -163,6 +166,7 @@ const copyClaudeSubdir = (
   workspaceDir: string,
   subdir: string,
   additionalTemplatesDir: string | undefined,
+  options: { makeExecutable?: boolean } = {},
 ): void => {
   const destDir = join(workspaceDir, ".claude", subdir);
   let copied = false;
@@ -175,7 +179,11 @@ const copyClaudeSubdir = (
     if (entries.length > 0) {
       mkdirSync(destDir, { recursive: true });
       for (const filename of entries) {
-        copyFileSync(join(baseSrcDir, filename), join(destDir, filename));
+        const destPath = join(destDir, filename);
+        copyFileSync(join(baseSrcDir, filename), destPath);
+        if (options.makeExecutable) {
+          chmodSync(destPath, 0o755);
+        }
       }
       copied = true;
     }
@@ -192,7 +200,11 @@ const copyClaudeSubdir = (
           mkdirSync(destDir, { recursive: true });
         }
         for (const filename of entries) {
-          copyFileSync(join(overlaySrcDir, filename), join(destDir, filename));
+          const destPath = join(destDir, filename);
+          copyFileSync(join(overlaySrcDir, filename), destPath);
+          if (options.makeExecutable) {
+            chmodSync(destPath, 0o755);
+          }
         }
       }
     }

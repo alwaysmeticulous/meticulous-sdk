@@ -11,7 +11,7 @@
   "scripts": {
     "clean": "rimraf dist tsconfig.tsbuildinfo",
     "build": "tsc --build tsconfig.json",
-    "postbuild": "cp -r src/templates dist/templates",
+    "postbuild": "cp -rp src/templates dist/templates",
     "dev": "tsc --build tsconfig.json --watch",
     "format": "prettier --write src",
     "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
