@@ -307,6 +307,8 @@ export interface ReplayExecutionOptions {
 
   uploadedContainerEnv?: ContainerEnvVariable[];
 
+  uploadedContainerHealthCheckEndpoint?: string;
+
   /**
    * When true, skips loading and processing of source maps during replay.
    * This disables coverage features that depend on source maps.

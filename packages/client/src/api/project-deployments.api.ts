@@ -77,6 +77,7 @@ export interface CompleteContainerUploadParams {
   skipPreprocessing?: boolean;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
+  containerHealthCheckEndpoint?: string | undefined;
 }
 
 export interface CompleteContainerUploadResponse {
@@ -91,6 +92,7 @@ export interface GetContainerDeploymentResponse {
   pushedAt: string;
   containerPort?: number;
   containerEnv?: ContainerEnvVariable[];
+  containerHealthCheckEndpoint?: string;
 }
 
 export interface ContainerEnvVariable {
