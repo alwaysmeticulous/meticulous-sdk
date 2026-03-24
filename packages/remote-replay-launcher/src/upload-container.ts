@@ -22,6 +22,7 @@ export interface UploadContainerOptions {
   waitForBase?: boolean;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
+  containerHealthCheckEndpoint?: string | undefined;
 }
 
 export interface UploadContainerResult {
@@ -40,6 +41,7 @@ export const uploadContainer = async ({
   waitForBase = false,
   containerPort,
   containerEnv,
+  containerHealthCheckEndpoint,
 }: UploadContainerOptions): Promise<UploadContainerResult> => {
   const logger = initLogger();
 
@@ -113,6 +115,7 @@ export const uploadContainer = async ({
     mustHaveBase: waitForBase,
     containerPort,
     containerEnv,
+    containerHealthCheckEndpoint,
   };
 
   const completeResult = await completeContainerUpload(completeContainerArgs);

@@ -94,4 +94,5 @@ export interface UploadContainerAndTriggerTestRunOptions {
 
   containerPort?: number;
   containerEnv?: ContainerEnvVariable[];
+  containerHealthCheckEndpoint?: string;
 }
