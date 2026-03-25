@@ -19,12 +19,16 @@ interface Options {
   apiToken?: string | null | undefined;
   showMaybeRelevant?: boolean;
   startingPointSha?: string | null | undefined;
+  minimumTimesToCoverEachLine?: number;
+  includeSuperfluousSessions?: boolean;
 }
 
 const handler = async ({
   apiToken,
   showMaybeRelevant,
   startingPointSha,
+  minimumTimesToCoverEachLine,
+  includeSuperfluousSessions,
 }: Options) => {
   const logger = initLogger();
   // TODO: support OAuth
@@ -53,6 +57,8 @@ const handler = async ({
     projectId: project.id,
     baseCommitSha,
     editedFilesWithLines,
+    minimumTimesToCoverEachLine,
+    loadSuperfluousTestCases: includeSuperfluousSessions,
   });
 
   if (response.error) {
@@ -149,6 +155,19 @@ export const relevantSessionsCommand: CommandModule<unknown, Options> = {
       type: "string",
       description:
         "Only consider changes since this commit SHA. The merge-base is still used to find the base test run, but the diff is computed from this SHA instead. Useful in agentic workflows to avoid re-running tests for already-verified changes.",
+    },
+    "minimum-times-to-cover-each-line": {
+      alias: "minimumTimesToCoverEachLine",
+      type: "number",
+      description:
+        "Select at least this many sessions to cover each edited line, choosing the most diverse set when more sessions are available.",
+    },
+    "include-superfluous-sessions": {
+      alias: "includeSuperfluousSessions",
+      type: "boolean",
+      description:
+        "Includes additional sessions that do test some of your local changes but were superfluous -- other sessions already cover your code sufficiently, considering the value passed for `minimum-times-to-cover-each-line`",
+      default: false,
     },
   },
   handler: wrapHandler(handler),
