@@ -57,8 +57,12 @@ const handler = async ({
     projectId: project.id,
     baseCommitSha,
     editedFilesWithLines,
-    minimumTimesToCoverEachLine,
-    loadSuperfluousTestCases: includeSuperfluousSessions,
+    ...(minimumTimesToCoverEachLine !== undefined
+      ? { minimumTimesToCoverEachLine }
+      : {}),
+    ...(includeSuperfluousSessions !== undefined
+      ? { loadSuperfluousTestCases: includeSuperfluousSessions }
+      : {}),
   });
 
   if (response.error) {
