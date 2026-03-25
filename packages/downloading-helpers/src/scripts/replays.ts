@@ -122,7 +122,9 @@ export const getOrFetchReplayArchive = async (
     // want to overwrite it while it's being read.
     let previouslyDownloadedScope: DownloadScope | undefined = undefined;
     if (await fileExists(previouslyDownloadedFile)) {
-      const fileContents = await readFile(previouslyDownloadedFile, "utf-8");
+      const fileContents = (
+        await readFile(previouslyDownloadedFile, "utf-8")
+      ).trim();
       if (DOWNLOAD_SCOPES.includes(fileContents as DownloadScope)) {
         previouslyDownloadedScope = fileContents as DownloadScope;
         if (
