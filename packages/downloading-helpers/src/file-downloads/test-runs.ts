@@ -84,7 +84,9 @@ export const getOrFetchTestRunData = async (
     // want to overwrite it while it's being read.
     let previouslyDownloadedScope: TestRunDownloadScope | undefined = undefined;
     if (await fileExists(previouslyDownloadedFile)) {
-      const fileContents = await readFile(previouslyDownloadedFile, "utf-8");
+      const fileContents = (
+        await readFile(previouslyDownloadedFile, "utf-8")
+      ).trim();
       if (DOWNLOAD_SCOPES.includes(fileContents as TestRunDownloadScope)) {
         previouslyDownloadedScope = fileContents as TestRunDownloadScope;
         if (
