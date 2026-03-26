@@ -20,7 +20,7 @@ interface Options {
   showMaybeRelevant?: boolean;
   startingPointSha?: string | null | undefined;
   minimumTimesToCoverEachLine?: number;
-  includeSuperfluousSessions?: boolean;
+  includeSuperfluousSessions: boolean;
 }
 
 const handler = async ({
@@ -60,9 +60,7 @@ const handler = async ({
     ...(minimumTimesToCoverEachLine !== undefined
       ? { minimumTimesToCoverEachLine }
       : {}),
-    ...(includeSuperfluousSessions !== undefined
-      ? { loadSuperfluousTestCases: includeSuperfluousSessions }
-      : {}),
+    loadSuperfluousTestCases: includeSuperfluousSessions,
   });
 
   if (response.error) {
