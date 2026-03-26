@@ -49,6 +49,9 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
  *
  * `Running` = a worker is actively running the test run.
  *
+ * `Partial` = some sessions have completed but more can be added on demand. Used for lazy session execution
+ * where push test runs act as session pools — sessions are only executed when a PR needs them.
+ *
  * `PostProcessing` = the replays have completed and the test run is being post-processed. This is only used for session selection runs.
  *
  * `Failure` = completed, and at least one replay had notable differences - a diff, missing-head or different-size (see has-notable-differences.ts in the main repo)
@@ -63,6 +66,7 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
 export type TestRunStatus =
   | "Scheduled"
   | "Running"
+  | "Partial"
   | "PostProcessing"
   | "Success"
   | "Failure"
