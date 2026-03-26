@@ -195,6 +195,11 @@ export const executeRemoteTestRun = async ({
       case "ExecutionError":
         logger.info(`Test run failed with execution error.`);
         break;
+      case "Partial":
+        logger.info(
+          `Test run partially completed. Some test cases may not have been executed.`,
+        );
+        break;
       case "Scheduled":
       case "Running":
       case "PostProcessing":
