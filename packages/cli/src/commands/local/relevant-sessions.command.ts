@@ -164,7 +164,7 @@ export const relevantSessionsCommand: CommandModule<unknown, Options> = {
       alias: "minimumTimesToCoverEachLine",
       type: "number",
       description:
-        "Select at least this many sessions to cover each edited line, choosing the most diverse set when more sessions are available.",
+        "Select at least this many sessions to cover each edited line, choosing the most diverse subset of candidate sessions when more sessions than required are available.",
     },
     "include-superfluous-sessions": {
       alias: "includeSuperfluousSessions",
