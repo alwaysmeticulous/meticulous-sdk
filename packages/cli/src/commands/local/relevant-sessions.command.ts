@@ -171,7 +171,6 @@ export const relevantSessionsCommand: CommandModule<unknown, Options> = {
       type: "boolean",
       description:
         "Includes additional sessions that do test some of your local changes but were superfluous -- other sessions already cover your code sufficiently, considering the value passed for `minimum-times-to-cover-each-line`",
-      default: false,
     },
   },
   handler: wrapHandler(handler),
