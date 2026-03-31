@@ -1,14 +1,23 @@
 import { SessionRelevance } from "@alwaysmeticulous/api";
 import {
   createClient,
+  getStructuredSessionData,
   getProject,
   getRelevantSessions,
+  MeticulousClient,
   RelevantSession,
 } from "@alwaysmeticulous/client";
 import { getLocalBaseSha, initLogger } from "@alwaysmeticulous/common";
+import {
+  writeStructuredSessionData,
+  writeManifestAndReadme,
+} from "@alwaysmeticulous/downloading-helpers";
 import chalk from "chalk";
 import { CommandModule } from "yargs";
-import { OPTIONS } from "../../command-utils/common-options";
+import {
+  DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR,
+  OPTIONS,
+} from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import {
   getGitDiff,
@@ -19,15 +28,18 @@ interface Options {
   apiToken?: string | null | undefined;
   showMaybeRelevant?: boolean;
   startingPointSha?: string | null | undefined;
+  downloadSessionData?: boolean;
+  outputDir?: string;
 }
 
 const handler = async ({
   apiToken,
   showMaybeRelevant,
   startingPointSha,
+  downloadSessionData,
+  outputDir,
 }: Options) => {
   const logger = initLogger();
-  // TODO: support OAuth
   const client = createClient({ apiToken });
   const project = await getProject(client);
   if (!project) {
@@ -103,6 +115,72 @@ const handler = async ({
       );
     }
   }
+
+  if (downloadSessionData) {
+    const sessionsToDownload = mainSessions;
+    if (sessionsToDownload.length === 0) {
+      logger.info(chalk.dim("No sessions to download."));
+      return;
+    }
+
+    const resolvedOutputDir = outputDir ?? DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR;
+    logger.info(
+      `Downloading session data for ${sessionsToDownload.length} sessions to ${resolvedOutputDir}...`,
+    );
+
+    const summaries = await downloadAllSessionData({
+      client,
+      sessions: sessionsToDownload,
+      outputDir: resolvedOutputDir,
+      logger,
+    });
+
+    await writeManifestAndReadme(resolvedOutputDir, summaries);
+
+    logger.info(
+      chalk.green(
+        `Session data written to ${resolvedOutputDir}/ (${summaries.length} sessions)`,
+      ),
+    );
+  }
+};
+
+const downloadAllSessionData = async ({
+  client,
+  sessions,
+  outputDir,
+  logger,
+}: {
+  client: MeticulousClient;
+  sessions: RelevantSession[];
+  outputDir: string;
+  logger: ReturnType<typeof initLogger>;
+}) => {
+  const results = await Promise.all(
+    sessions.map(async (session) => {
+      try {
+        const sessionData = await getStructuredSessionData(
+          client,
+          session.sessionId,
+        );
+        await writeStructuredSessionData({
+          outputDir,
+          sessionData,
+        });
+        logger.info(`  Downloaded session ${session.sessionId}`);
+        return sessionData.summary;
+      } catch (error) {
+        logger.error(
+          `  Failed to download session ${session.sessionId}: ${error}`,
+        );
+        return null;
+      }
+    }),
+  );
+
+  return results.filter(
+    (s): s is NonNullable<typeof s> => s != null,
+  );
 };
 
 const isMainRelevant = (session: RelevantSession): boolean => {
@@ -149,6 +227,18 @@ export const relevantSessionsCommand: CommandModule<unknown, Options> = {
       type: "string",
       description:
         "Only consider changes since this commit SHA. The merge-base is still used to find the base test run, but the diff is computed from this SHA instead. Useful in agentic workflows to avoid re-running tests for already-verified changes.",
+    },
+    downloadSessionData: {
+      type: "boolean",
+      description:
+        "Download each relevant session's data in a structured, agent-friendly directory format",
+      default: false,
+    },
+    outputDir: {
+      type: "string",
+      description:
+        "Output directory for downloaded session data (used with --downloadSessionData)",
+      default: DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR,
     },
   },
   handler: wrapHandler(handler),

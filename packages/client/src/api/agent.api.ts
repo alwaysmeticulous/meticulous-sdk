@@ -1,3 +1,4 @@
+import { SessionContext } from "@alwaysmeticulous/api";
 import { maybeEnrichFetchError } from "../errors";
 import { MeticulousClient } from "../types/client.types";
 
@@ -72,6 +73,105 @@ export interface TimelineDiffResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Structured session data types
+// ---------------------------------------------------------------------------
+
+export interface StructuredSessionSummary {
+  sessionId: string;
+  startUrl: string;
+  viewport: { width: number; height: number };
+  eventCount: number;
+  totalDurationMs: number;
+  networkRequestCount: number;
+  pageNavigations: string[];
+}
+
+export interface StructuredUserEvent {
+  index: number;
+  type: string;
+  selector: string;
+  timestampMs: number;
+  coordinates?: { x: number; y: number };
+}
+
+export interface NetworkRequestSummaryEntry {
+  order: number;
+  method: string;
+  url: string;
+  status: number;
+  contentType: string | null;
+  timeMs: number;
+}
+
+export interface NetworkRequestEntry {
+  order: number;
+  startedDateTime: string;
+  request: {
+    method: string;
+    url: string;
+    headers: Array<{ name: string; value: string }>;
+    queryString: Array<{ name: string; value: string }>;
+    postData?: { mimeType: string; text?: string };
+  };
+  response: {
+    status: number;
+    headers: Array<{ name: string; value: string }>;
+    content: { mimeType: string; text?: string; encoding?: string };
+  };
+  timeMs: number;
+}
+
+export interface SessionStorageSnapshot {
+  cookies: Array<{
+    name: string;
+    domain: string | null;
+    path?: string;
+    sameSite?: string;
+    secure?: boolean;
+    httpOnly?: boolean;
+  }>;
+  localStorage: Array<{ key: string; value: string }>;
+  sessionStorage?: Array<{ key: string; value: string }>;
+  indexedDb?: Array<{
+    databaseName: string;
+    objectStoreName: string;
+    entryCount: number;
+  }>;
+}
+
+export interface UrlHistoryEntry {
+  timestampMs: number;
+  url: string;
+  urlPattern?: string;
+}
+
+export interface WebSocketSummaryEntry {
+  connectionId: number;
+  url: string;
+  eventCount: number;
+}
+
+export interface StructuredSessionDataResponse {
+  summary: StructuredSessionSummary;
+  userEvents: StructuredUserEvent[];
+  networkRequests: {
+    summary: NetworkRequestSummaryEntry[];
+    entries: NetworkRequestEntry[];
+  };
+  storage: SessionStorageSnapshot;
+  urlHistory: UrlHistoryEntry[];
+  context: SessionContext | null;
+  webSockets?: {
+    summary: WebSocketSummaryEntry[];
+    connections: Array<{
+      connectionId: number;
+      url: string;
+      events: unknown[];
+    }>;
+  };
+}
+
+// ---------------------------------------------------------------------------
 // API methods
 // ---------------------------------------------------------------------------
 
@@ -141,6 +241,18 @@ export const getTimelineDiff = async (
 ): Promise<TimelineDiffResponse> => {
   const { data } = await client
     .get(`agent/replay-diffs/${replayDiffId}/timeline-diff`)
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+export const getStructuredSessionData = async (
+  client: MeticulousClient,
+  sessionId: string,
+): Promise<StructuredSessionDataResponse> => {
+  const { data } = await client
+    .get(`agent/sessions/${sessionId}/structured-data`)
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
