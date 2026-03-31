@@ -19,7 +19,7 @@ type DownloadFormat = "raw" | "agent-friendly";
 interface Options {
   apiToken?: string | null | undefined;
   sessionId: string;
-  format?: DownloadFormat;
+  format: DownloadFormat;
   outputDir?: string;
 }
 

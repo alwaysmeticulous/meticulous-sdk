@@ -1,16 +1,12 @@
 import {
   StructuredSessionSummary,
   createClientWithOAuth,
-  getStructuredSessionData,
-  MeticulousClient,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
-import {
-  writeStructuredSessionData,
-  writeManifest,
-} from "@alwaysmeticulous/downloading-helpers";
+import { writeManifest } from "@alwaysmeticulous/downloading-helpers";
 import { CommandModule } from "yargs";
 import { DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR } from "../../command-utils/common-options";
+import { downloadSingleSession } from "../../command-utils/download-session.utils";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {
@@ -18,23 +14,6 @@ interface Options {
   sessionIds: string;
   outputDir: string;
 }
-
-const downloadSingleSession = async (
-  client: MeticulousClient,
-  sessionId: string,
-  outputDir: string,
-  logger: ReturnType<typeof initLogger>,
-): Promise<StructuredSessionSummary | null> => {
-  try {
-    const sessionData = await getStructuredSessionData(client, sessionId);
-    await writeStructuredSessionData({ outputDir, sessionData });
-    logger.info(`  Downloaded session ${sessionId}`);
-    return sessionData.summary;
-  } catch (error) {
-    logger.error(`  Failed to download session ${sessionId}: ${error}`);
-    return null;
-  }
-};
 
 export const downloadSessionsCommand: CommandModule<unknown, Options> = {
   command: "sessions",

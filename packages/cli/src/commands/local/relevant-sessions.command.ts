@@ -1,23 +1,19 @@
 import { SessionRelevance } from "@alwaysmeticulous/api";
 import {
   createClient,
-  getStructuredSessionData,
   getProject,
   getRelevantSessions,
-  MeticulousClient,
   RelevantSession,
 } from "@alwaysmeticulous/client";
 import { getLocalBaseSha, initLogger } from "@alwaysmeticulous/common";
-import {
-  writeStructuredSessionData,
-  writeManifest,
-} from "@alwaysmeticulous/downloading-helpers";
+import { writeManifest } from "@alwaysmeticulous/downloading-helpers";
 import chalk from "chalk";
 import { CommandModule } from "yargs";
 import {
   DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR,
   OPTIONS,
 } from "../../command-utils/common-options";
+import { downloadSingleSession } from "../../command-utils/download-session.utils";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import {
   getGitDiff,
@@ -30,8 +26,8 @@ interface Options {
   startingPointSha?: string | null | undefined;
   minimumTimesToCoverEachLine?: number;
   includeSuperfluousSessions: boolean;
-  downloadSessionData?: boolean;
-  outputDir?: string;
+  downloadSessionData: boolean;
+  outputDir: string;
 }
 
 const handler = async ({
@@ -131,23 +127,22 @@ const handler = async ({
       return;
     }
 
-    const resolvedOutputDir = outputDir ?? DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR;
     logger.info(
-      `Downloading session data for ${sessionsToDownload.length} sessions to ${resolvedOutputDir}...`,
+      `Downloading session data for ${sessionsToDownload.length} sessions to ${outputDir}...`,
     );
 
     const summaries = await downloadAllSessionData({
       client,
       sessions: sessionsToDownload,
-      outputDir: resolvedOutputDir,
+      outputDir,
       logger,
     });
 
-    await writeManifest(resolvedOutputDir, summaries);
+    await writeManifest(outputDir, summaries);
 
     logger.info(
       chalk.green(
-        `Session data written to ${resolvedOutputDir}/ (${summaries.length} sessions)`,
+        `Session data written to ${outputDir}/ (${summaries.length} sessions)`,
       ),
     );
   }
@@ -159,31 +154,15 @@ const downloadAllSessionData = async ({
   outputDir,
   logger,
 }: {
-  client: MeticulousClient;
+  client: ReturnType<typeof createClient>;
   sessions: RelevantSession[];
   outputDir: string;
   logger: ReturnType<typeof initLogger>;
 }) => {
   const results = await Promise.all(
-    sessions.map(async (session) => {
-      try {
-        const sessionData = await getStructuredSessionData(
-          client,
-          session.sessionId,
-        );
-        await writeStructuredSessionData({
-          outputDir,
-          sessionData,
-        });
-        logger.info(`  Downloaded session ${session.sessionId}`);
-        return sessionData.summary;
-      } catch (error) {
-        logger.error(
-          `  Failed to download session ${session.sessionId}: ${error}`,
-        );
-        return null;
-      }
-    }),
+    sessions.map((session) =>
+      downloadSingleSession(client, session.sessionId, outputDir, logger),
+    ),
   );
 
   return results.filter(
