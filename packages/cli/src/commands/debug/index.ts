@@ -41,7 +41,8 @@ const runPipeline = async (opts: {
     enableOAuthLogin: true,
   });
 
-  await trackAgentFeatureUsage(client, opts.feature);
+  // Fire-and-forget: don't block the pipeline on telemetry
+  void trackAgentFeatureUsage(client, opts.feature);
 
   await runDebugPipeline({
     client,
