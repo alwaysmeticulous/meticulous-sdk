@@ -41,7 +41,7 @@ const runPipeline = async (opts: {
     enableOAuthLogin: true,
   });
 
-  trackAgentFeatureUsage(client, opts.feature);
+  await trackAgentFeatureUsage(client, opts.feature);
 
   await runDebugPipeline({
     client,
