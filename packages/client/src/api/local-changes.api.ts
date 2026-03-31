@@ -6,6 +6,8 @@ export interface GetRelevantSessionsParams {
   projectId: string;
   baseCommitSha: string;
   editedFilesWithLines: EditedFileWithLines[];
+  minimumTimesToCoverEachLine?: number;
+  loadSuperfluousTestCases?: boolean;
 }
 
 export interface EditedFileWithLines {

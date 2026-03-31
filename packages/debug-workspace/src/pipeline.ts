@@ -17,11 +17,9 @@ export interface DebugPipelineOptions {
   client: MeticulousClient;
   workspaceName?: string | undefined;
   screenshot?: string | undefined;
-  maxDiffs?: number | undefined;
   maxReplayDownloads?: number | undefined;
 
   replayDiffId?: string | undefined;
-  testRunId?: string | undefined;
   replayIds?: string[] | undefined;
   sessionId?: string | undefined;
 
@@ -54,10 +52,8 @@ export const runDebugPipeline = async (
   const debugContext = await resolveDebugContext({
     client: opts.client,
     replayDiffId: opts.replayDiffId,
-    testRunId: opts.testRunId,
     replayIds: opts.replayIds ?? [],
     sessionId: opts.sessionId,
-    maxDiffs: opts.maxDiffs ?? 5,
     screenshot: opts.screenshot,
   });
 

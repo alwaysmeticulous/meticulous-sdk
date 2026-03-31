@@ -1,4 +1,5 @@
 export {
+  AgentFeature,
   NetworkRequestEntry,
   NetworkRequestSummaryEntry,
   StructuredSessionDataResponse,
@@ -20,6 +21,7 @@ export {
   getScreenshotDomDiff,
   getScreenshotUrls,
   getTimelineDiff,
+  trackAgentFeatureUsage,
 } from "./api/agent.api";
 export * from "./api/github-cloud-replay.api";
 export { WhoamiResponse, getWhoami } from "./api/oauth.api";
