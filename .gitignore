@@ -252,3 +252,4 @@ $RECYCLE.BIN/
 .turbo
 
 # End of https://www.toptal.com/developers/gitignore/api/git,linux,osx,windows,node,visualstudiocode
+.meticulous/

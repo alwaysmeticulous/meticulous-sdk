@@ -144,21 +144,11 @@ export const writeStructuredSessionData = async ({
   ]);
 };
 
-export interface ManifestSession {
-  sessionId: string;
-  startUrl: string;
-  eventCount: number;
-  totalDurationMs: number;
-  networkRequestCount: number;
-  viewport?: { width: number; height: number };
-  pageNavigations: string[];
-}
-
 export interface SessionsManifest {
   version: 1;
   generatedAt: string;
   sessionCount: number;
-  sessions: ManifestSession[];
+  sessions: StructuredSessionSummary[];
 }
 
 export const writeManifest = async (
@@ -171,15 +161,7 @@ export const writeManifest = async (
     version: 1,
     generatedAt: new Date().toISOString(),
     sessionCount: summaries.length,
-    sessions: summaries.map((s) => ({
-      sessionId: s.sessionId,
-      startUrl: s.startUrl,
-      eventCount: s.eventCount,
-      totalDurationMs: s.totalDurationMs,
-      networkRequestCount: s.networkRequestCount,
-      ...(s.viewport != null ? { viewport: s.viewport } : {}),
-      pageNavigations: s.pageNavigations,
-    })),
+    sessions: summaries,
   };
 
   await writeJson(join(outputDir, "manifest.json"), manifest);

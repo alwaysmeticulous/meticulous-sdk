@@ -70,7 +70,7 @@ export const downloadSessionCommand: CommandModule<unknown, Options> = {
       await writeManifest(resolvedOutputDir, [sessionData.summary]);
 
       logger.info(
-        `Session data written to ${resolvedOutputDir}/sessions/${sanitizeFilename(sessionId)}/`,
+        `Session data written to ${resolvedOutputDir}/sessions/${sanitizeFilename(sessionData.summary.sessionId)}/`,
       );
       return;
     }

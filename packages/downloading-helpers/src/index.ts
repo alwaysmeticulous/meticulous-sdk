@@ -10,7 +10,6 @@ export {
   getOrFetchRecordedSessionData,
   writeManifest,
   writeStructuredSessionData,
-  type ManifestSession,
   type SessionsManifest,
   type WriteStructuredSessionOptions,
 } from "./file-downloads/sessions";
