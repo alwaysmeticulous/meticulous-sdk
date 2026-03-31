@@ -21,6 +21,7 @@
     "depcheck": "turbo run depcheck"
   },
   "devDependencies": {
+    "@sentry/cli": "^3.3.0",
     "@eslint/compat": "^1.2.4",
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
