@@ -1,4 +1,5 @@
 export {
+  AgentFeature,
   DiffsSummaryOptions,
   DiffsSummaryScreenshot,
   DiffsSummaryReplayDiff,
@@ -11,6 +12,7 @@ export {
   getScreenshotDomDiff,
   getScreenshotUrls,
   getTimelineDiff,
+  trackAgentFeatureUsage,
 } from "./api/agent.api";
 export * from "./api/github-cloud-replay.api";
 export { WhoamiResponse, getWhoami } from "./api/oauth.api";

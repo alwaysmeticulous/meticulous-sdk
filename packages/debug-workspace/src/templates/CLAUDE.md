@@ -81,8 +81,8 @@ Per-replay generated summaries:
 
 ### Diff Files (only when comparing replays)
 
-These files are only generated when comparing replays -- i.e. when using `meticulous debug replay-diff`,
-`meticulous debug test-run`, or `meticulous debug replays` with exactly 2 replay IDs.
+These files are only generated when comparing replays -- i.e. when using `meticulous debug replay-diff`
+or `meticulous debug replay` with `--baseReplayId`.
 
 - `debug-data/diffs/<id>.json` -- Full diff data including replay metadata, test run config,
   and screenshot results. Can be very large (20K+ tokens). Only read this if you need the full context.
