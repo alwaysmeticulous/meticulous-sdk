@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
 
       - name: Use Node.js LTS
         uses: actions/setup-node@v6
@@ -56,8 +56,8 @@ jobs:
         continue-on-error: true
         run: |
           VERSION="sdk-v$(node -p "require('./lerna.json').version")"
-          npx @sentry/cli sourcemaps inject ./packages/*/dist
-          npx @sentry/cli sourcemaps upload \
+          pnpm exec sentry-cli sourcemaps inject ./packages/*/dist
+          pnpm exec sentry-cli sourcemaps upload \
             --org meticulous \
             --project sdk \
             --release "$VERSION" \
