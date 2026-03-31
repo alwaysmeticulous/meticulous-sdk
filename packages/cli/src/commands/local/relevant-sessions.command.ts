@@ -10,7 +10,7 @@ import {
 import { getLocalBaseSha, initLogger } from "@alwaysmeticulous/common";
 import {
   writeStructuredSessionData,
-  writeManifestAndReadme,
+  writeManifest,
 } from "@alwaysmeticulous/downloading-helpers";
 import chalk from "chalk";
 import { CommandModule } from "yargs";
@@ -135,7 +135,7 @@ const handler = async ({
       logger,
     });
 
-    await writeManifestAndReadme(resolvedOutputDir, summaries);
+    await writeManifest(resolvedOutputDir, summaries);
 
     logger.info(
       chalk.green(

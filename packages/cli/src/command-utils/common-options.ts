@@ -9,14 +9,14 @@
 //
 // This then makes the difference in behaviour explicit
 
-export const DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR =
-  ".meticulous/agent-sessions";
-
 import {
   DEFAULT_EXECUTION_OPTIONS,
   DEFAULT_SCREENSHOTTING_OPTIONS,
   IS_METICULOUS_SUPER_USER,
 } from "@alwaysmeticulous/common";
+
+export const DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR =
+  ".meticulous/agent-sessions";
 
 // Used in tips in console output
 export const HEADLESS_FLAG = "--headless";

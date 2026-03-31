@@ -8,7 +8,7 @@ export {
 export {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
-  writeManifestAndReadme,
+  writeManifest,
   writeStructuredSessionData,
   type ManifestSession,
   type SessionsManifest,

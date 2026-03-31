@@ -7,7 +7,7 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import {
   writeStructuredSessionData,
-  writeManifestAndReadme,
+  writeManifest,
 } from "@alwaysmeticulous/downloading-helpers";
 import { CommandModule } from "yargs";
 import { DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR } from "../../command-utils/common-options";
@@ -86,7 +86,7 @@ export const downloadSessionsCommand: CommandModule<unknown, Options> = {
       (s): s is StructuredSessionSummary => s != null,
     );
 
-    await writeManifestAndReadme(outputDir, validSummaries);
+    await writeManifest(outputDir, validSummaries);
 
     logger.info(
       `Session data written to ${outputDir}/ (${validSummaries.length}/${ids.length} sessions)`,

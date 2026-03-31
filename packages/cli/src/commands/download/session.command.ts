@@ -6,8 +6,9 @@ import { initLogger } from "@alwaysmeticulous/common";
 import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
+  sanitizeFilename,
   writeStructuredSessionData,
-  writeManifestAndReadme,
+  writeManifest,
 } from "@alwaysmeticulous/downloading-helpers";
 import { CommandModule } from "yargs";
 import { DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR } from "../../command-utils/common-options";
@@ -66,10 +67,10 @@ export const downloadSessionCommand: CommandModule<unknown, Options> = {
         outputDir: resolvedOutputDir,
         sessionData,
       });
-      await writeManifestAndReadme(resolvedOutputDir, [sessionData.summary]);
+      await writeManifest(resolvedOutputDir, [sessionData.summary]);
 
       logger.info(
-        `Session data written to ${resolvedOutputDir}/sessions/${sessionId}/`,
+        `Session data written to ${resolvedOutputDir}/sessions/${sanitizeFilename(sessionId)}/`,
       );
       return;
     }

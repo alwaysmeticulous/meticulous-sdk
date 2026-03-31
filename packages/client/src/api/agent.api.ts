@@ -79,7 +79,7 @@ export interface TimelineDiffResponse {
 export interface StructuredSessionSummary {
   sessionId: string;
   startUrl: string;
-  viewport: { width: number; height: number };
+  viewport?: { width: number; height: number };
   eventCount: number;
   totalDurationMs: number;
   networkRequestCount: number;
