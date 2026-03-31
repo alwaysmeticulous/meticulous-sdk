@@ -1,11 +1,10 @@
 import {
   getReplayDiff,
   getTestRun,
-  getTestRunReplayDiffs,
   MeticulousClient,
 } from "@alwaysmeticulous/client";
 import chalk from "chalk";
-import { DebugContext, ReplayDiffInfo } from "./debug.types";
+import { DebugContext } from "./debug.types";
 
 interface ReplayApiResponse {
   id: string;
@@ -19,10 +18,8 @@ interface ReplayApiResponse {
 export interface ResolveDebugContextOptions {
   client: MeticulousClient;
   replayDiffId: string | undefined;
-  testRunId: string | undefined;
   replayIds: string[];
   sessionId: string | undefined;
-  maxDiffs: number;
   screenshot: string | undefined;
 }
 
@@ -43,16 +40,6 @@ export const resolveDebugContext = async (
       client,
       options.replayDiffId,
       options.sessionId,
-    );
-    return { ...context, ...overrides };
-  }
-
-  if (options.testRunId) {
-    console.log(`Resolving from test run: ${chalk.cyan(options.testRunId)}`);
-    const context = await resolveFromTestRun(
-      client,
-      options.testRunId,
-      options.maxDiffs,
     );
     return { ...context, ...overrides };
   }
@@ -135,69 +122,6 @@ const resolveFromReplayDiff = async (
   };
 };
 
-const resolveFromTestRun = async (
-  client: MeticulousClient,
-  testRunId: string,
-  maxDiffs: number,
-): Promise<DebugContext> => {
-  console.log(chalk.cyan(`  Fetching test run ${testRunId}...`));
-  const testRun = await getTestRun({ client, testRunId });
-  if (!testRun) {
-    console.error(`Test run ${testRunId} not found.`);
-    process.exit(1);
-  }
-  console.log(chalk.green(`  Test run fetched.`));
-
-  console.log(chalk.cyan(`  Fetching replay diffs for test run...`));
-  const allDiffs = await getTestRunReplayDiffs({ client, testRunId });
-
-  const diffsWithChanges = allDiffs.filter(
-    (d) => (d.data?.screenshotDiffResults?.length ?? 0) > 0,
-  );
-
-  const selectedDiffs =
-    diffsWithChanges.length > 0
-      ? diffsWithChanges.slice(0, maxDiffs)
-      : allDiffs.slice(0, maxDiffs);
-
-  console.log(
-    `Found ${chalk.green(allDiffs.length)} diffs (${chalk.green(diffsWithChanges.length)} with changes), downloading ${chalk.green(selectedDiffs.length)}`,
-  );
-
-  const replayDiffs: ReplayDiffInfo[] = selectedDiffs.map((d) => ({
-    id: d.id,
-    headReplayId: d.headReplay.id,
-    baseReplayId: d.baseReplay.id,
-    sessionId: d.headReplay.sessionId ?? undefined,
-    numScreenshotDiffs: d.data?.screenshotDiffResults?.length ?? 0,
-  }));
-
-  const replayIds = collectUniqueIds(
-    replayDiffs.flatMap((d) => [d.headReplayId, d.baseReplayId]),
-  );
-  const sessionIds = collectUniqueIds(
-    replayDiffs.map((d) => d.sessionId).filter((s): s is string => s != null),
-  );
-
-  const firstHeadReplay = selectedDiffs[0]?.headReplay;
-
-  return {
-    testRunId,
-    replayDiffs,
-    replayIds,
-    sessionIds,
-    projectId: testRun.project?.id,
-    orgAndProject: formatOrgAndProject(testRun.project),
-    meticulousSha: firstHeadReplay?.meticulousSha,
-    executionSha: (testRun as any).executionSha ?? undefined,
-    commitSha: (testRun as any).commitSha,
-    baseCommitSha:
-      (testRun?.configData as any)?.arguments?.baseCommitSha ?? undefined,
-    testRunStatus: testRun.status,
-    screenshot: undefined,
-  };
-};
-
 const fetchReplayDetails = async (
   client: MeticulousClient,
   replayId: string,
@@ -241,6 +165,16 @@ const resolveFromReplayIds = async (
   if (validReplays.length === 0) {
     console.error("Error: No valid replays found.");
     process.exit(1);
+  }
+
+  if (validReplays.length === 2) {
+    const [head, base] = validReplays;
+    if (head.sessionId && base.sessionId && head.sessionId !== base.sessionId) {
+      console.error(
+        `Error: Head replay ${head.id} (session ${head.sessionId}) and base replay ${base.id} (session ${base.sessionId}) use different sessions.`,
+      );
+      process.exit(1);
+    }
   }
 
   const uniqueReplayIds = collectUniqueIds(validReplays.map((r) => r.id));

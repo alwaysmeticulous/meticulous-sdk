@@ -72,8 +72,25 @@ export interface TimelineDiffResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Telemetry types
+// ---------------------------------------------------------------------------
+
+export type AgentFeature =
+  | "debug-replay-diff"
+  | "debug-replay";
+
+// ---------------------------------------------------------------------------
 // API methods
 // ---------------------------------------------------------------------------
+
+export const trackAgentFeatureUsage = async (
+  client: MeticulousClient,
+  feature: AgentFeature,
+): Promise<void> => {
+  await client.post("agent/telemetry", { feature }).catch(() => {
+    // Telemetry is best-effort — never fail the command
+  });
+};
 
 export const getTestRunDiffsSummary = async (
   client: MeticulousClient,

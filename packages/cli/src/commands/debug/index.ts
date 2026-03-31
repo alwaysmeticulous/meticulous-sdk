@@ -1,4 +1,8 @@
-import { createClientWithOAuth } from "@alwaysmeticulous/client";
+import {
+  createClientWithOAuth,
+  AgentFeature,
+  trackAgentFeatureUsage,
+} from "@alwaysmeticulous/client";
 import { runDebugPipeline } from "@alwaysmeticulous/debug-workspace";
 import { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
@@ -27,26 +31,25 @@ const runPipeline = async (opts: {
   apiToken: string | undefined;
   workspaceName: string | undefined;
   screenshot: string | undefined;
+  feature: AgentFeature;
   replayDiffId?: string | undefined;
-  testRunId?: string | undefined;
   replayIds?: string[] | undefined;
   sessionId?: string | undefined;
-  maxDiffs?: number | undefined;
 }): Promise<void> => {
   const client = await createClientWithOAuth({
     apiToken: opts.apiToken,
     enableOAuthLogin: true,
   });
 
+  trackAgentFeatureUsage(client, opts.feature);
+
   await runDebugPipeline({
     client,
     workspaceName: opts.workspaceName,
     screenshot: opts.screenshot,
     replayDiffId: opts.replayDiffId,
-    testRunId: opts.testRunId,
     replayIds: opts.replayIds,
     sessionId: opts.sessionId,
-    maxDiffs: opts.maxDiffs,
     createWorktree: (ctx, workspaceDir) =>
       createProjectWorktree({ debugContext: ctx, workspaceDir }),
     onWorkspaceReady: (workspaceDir, projectRepoDir) =>
@@ -74,49 +77,26 @@ const replayDiffCommand: CommandModule<any, any> = {
       apiToken: args.apiToken,
       workspaceName: args.workspaceName,
       screenshot: args.screenshot,
+      feature: "debug-replay-diff",
       replayDiffId: args.replayDiffId,
       sessionId: args.sessionId,
     });
   }),
 };
 
-const testRunCommand: CommandModule<any, any> = {
-  command: "test-run <testRunId>",
-  describe: "Debug all diffs in a test run",
+const replayCommand: CommandModule<any, any> = {
+  command: "replay <replayId>",
+  describe: "Debug a replay, optionally comparing against a base replay",
   builder: (yargs) =>
     yargs
-      .positional("testRunId", {
+      .positional("replayId", {
         type: "string",
         demandOption: true,
-        description: "The test run ID to debug",
+        description: "The replay ID to debug (head replay)",
       })
-      .option("maxDiffs", {
-        number: true,
-        description: "Maximum number of replay diffs to download",
-        default: 5,
-      })
-      .option(SHARED_OPTIONS),
-  handler: wrapHandler(async (args) => {
-    await runPipeline({
-      apiToken: args.apiToken,
-      workspaceName: args.workspaceName,
-      screenshot: args.screenshot,
-      testRunId: args.testRunId,
-      maxDiffs: args.maxDiffs,
-    });
-  }),
-};
-
-const replaysCommand: CommandModule<any, any> = {
-  command: "replays <replayIds..>",
-  describe: "Debug one or more replays by ID",
-  builder: (yargs) =>
-    yargs
-      .positional("replayIds", {
-        type: "string",
-        array: true,
-        demandOption: true,
-        description: "One or more replay IDs to debug",
+      .option("baseReplayId", {
+        string: true,
+        description: "Base replay ID to compare against",
       })
       .option("sessionId", {
         string: true,
@@ -124,11 +104,16 @@ const replaysCommand: CommandModule<any, any> = {
       })
       .option(SHARED_OPTIONS),
   handler: wrapHandler(async (args) => {
+    const replayIds = [args.replayId];
+    if (args.baseReplayId) {
+      replayIds.push(args.baseReplayId);
+    }
     await runPipeline({
       apiToken: args.apiToken,
       workspaceName: args.workspaceName,
       screenshot: args.screenshot,
-      replayIds: args.replayIds,
+      feature: "debug-replay",
+      replayIds,
       sessionId: args.sessionId,
     });
   }),
@@ -155,12 +140,11 @@ const cleanCommand: CommandModule<any, any> = {
 export const debugCommand: CommandModule = {
   command: "debug <command>",
   describe:
-    "Set up a debug workspace for investigating Meticulous diffs and replays",
+    "Set up a debug workspace for investigating Meticulous replay diffs and replays",
   builder: (yargs) =>
     yargs
       .command(replayDiffCommand)
-      .command(testRunCommand)
-      .command(replaysCommand)
+      .command(replayCommand)
       .command(cleanCommand)
       .demandCommand(1, "Please specify a debug subcommand"),
   handler: () => {
