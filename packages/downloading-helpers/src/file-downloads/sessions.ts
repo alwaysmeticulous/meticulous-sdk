@@ -69,7 +69,7 @@ export const getOrFetchRecordedSessionData = async (
 };
 
 // ---------------------------------------------------------------------------
-// Structured (agent-friendly) session data writing
+// Multi-file session data writing
 // ---------------------------------------------------------------------------
 
 export interface WriteStructuredSessionOptions {
@@ -145,7 +145,6 @@ export const writeStructuredSessionData = async ({
 };
 
 export interface SessionsManifest {
-  version: 1;
   generatedAt: string;
   sessionCount: number;
   sessions: StructuredSessionSummary[];
@@ -158,7 +157,6 @@ export const writeManifest = async (
   await mkdir(join(outputDir, "sessions"), { recursive: true });
 
   const manifest: SessionsManifest = {
-    version: 1,
     generatedAt: new Date().toISOString(),
     sessionCount: summaries.length,
     sessions: summaries,

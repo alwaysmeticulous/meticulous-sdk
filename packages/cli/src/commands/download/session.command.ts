@@ -1,26 +1,22 @@
-import {
-  createClientWithOAuth,
-  getStructuredSessionData,
-} from "@alwaysmeticulous/client";
+import { createClientWithOAuth } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
-  sanitizeFilename,
-  writeStructuredSessionData,
   writeManifest,
 } from "@alwaysmeticulous/downloading-helpers";
 import { CommandModule } from "yargs";
-import { DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR } from "../../command-utils/common-options";
+import { DEFAULT_SESSION_OUTPUT_DIR } from "../../command-utils/common-options";
+import { downloadSingleSession } from "../../command-utils/download-session.utils";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
-type DownloadFormat = "raw" | "agent-friendly";
+type DownloadFormat = "json" | "multi-file";
 
 interface Options {
   apiToken?: string | null | undefined;
   sessionId: string;
   format: DownloadFormat;
-  outputDir?: string;
+  outputDir: string;
 }
 
 export const downloadSessionCommand: CommandModule<unknown, Options> = {
@@ -33,17 +29,18 @@ export const downloadSessionCommand: CommandModule<unknown, Options> = {
     sessionId: {
       string: true,
       demandOption: true,
+      description: "ID of the session to download",
     },
     format: {
-      choices: ["raw", "agent-friendly"] as const,
-      default: "raw" as DownloadFormat,
+      choices: ["json", "multi-file"] as const,
+      default: "json" as DownloadFormat,
       description:
-        'Output format: "raw" downloads the original JSON, "agent-friendly" writes a structured directory tree',
+        '"json" downloads the original single JSON file, "multi-file" writes a structured directory tree',
     },
     outputDir: {
       string: true,
-      description:
-        'Output directory for agent-friendly format (default: ".meticulous/agent-sessions")',
+      description: "Output directory for multi-file format",
+      default: DEFAULT_SESSION_OUTPUT_DIR,
     },
   },
   handler: wrapHandler(async ({ apiToken, sessionId, format, outputDir }) => {
@@ -53,25 +50,22 @@ export const downloadSessionCommand: CommandModule<unknown, Options> = {
       enableOAuthLogin: true,
     });
 
-    if (format === "agent-friendly") {
-      const resolvedOutputDir = outputDir ?? DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR;
-      logger.info(
-        `Downloading session ${sessionId} in agent-friendly format...`,
-      );
+    if (format === "multi-file") {
+      logger.info(`Downloading session ${sessionId} in multi-file format...`);
 
-      const sessionData = await getStructuredSessionData(
+      const summary = await downloadSingleSession(
         client,
         sessionId,
+        outputDir,
+        logger,
       );
-      await writeStructuredSessionData({
-        outputDir: resolvedOutputDir,
-        sessionData,
-      });
-      await writeManifest(resolvedOutputDir, [sessionData.summary]);
+      if (!summary) {
+        logger.error(`Failed to download session ${sessionId}.`);
+        process.exit(1);
+      }
 
-      logger.info(
-        `Session data written to ${resolvedOutputDir}/sessions/${sanitizeFilename(sessionData.summary.sessionId)}/`,
-      );
+      await writeManifest(outputDir, [summary]);
+      logger.info(`Session data written to ${outputDir}/`);
       return;
     }
 

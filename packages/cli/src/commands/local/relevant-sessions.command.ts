@@ -10,7 +10,7 @@ import { writeManifest } from "@alwaysmeticulous/downloading-helpers";
 import chalk from "chalk";
 import { CommandModule } from "yargs";
 import {
-  DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR,
+  DEFAULT_SESSION_OUTPUT_DIR,
   OPTIONS,
 } from "../../command-utils/common-options";
 import { downloadSingleSession } from "../../command-utils/download-session.utils";
@@ -26,7 +26,7 @@ interface Options {
   startingPointSha?: string | null | undefined;
   minimumTimesToCoverEachLine?: number;
   includeSuperfluousSessions: boolean;
-  downloadSessionData: boolean;
+  format?: "multi-file";
   outputDir: string;
 }
 
@@ -36,7 +36,7 @@ const handler = async ({
   startingPointSha,
   minimumTimesToCoverEachLine,
   includeSuperfluousSessions,
-  downloadSessionData,
+  format,
   outputDir,
 }: Options) => {
   const logger = initLogger();
@@ -120,7 +120,7 @@ const handler = async ({
     }
   }
 
-  if (downloadSessionData) {
+  if (format === "multi-file") {
     const sessionsToDownload = mainSessions;
     if (sessionsToDownload.length === 0) {
       logger.info(chalk.dim("No sessions to download."));
@@ -228,17 +228,15 @@ export const relevantSessionsCommand: CommandModule<unknown, Options> = {
         "Includes additional sessions that do test some of your local changes but were superfluous -- other sessions already cover your code sufficiently, considering the value passed for `minimum-times-to-cover-each-line`",
       default: false,
     },
-    downloadSessionData: {
-      type: "boolean",
+    format: {
+      choices: ["multi-file"] as const,
       description:
-        "Download each relevant session's data in a structured, agent-friendly directory format",
-      default: false,
+        'Set to "multi-file" to download each relevant session\'s data as a structured directory tree',
     },
     outputDir: {
       type: "string",
-      description:
-        "Output directory for downloaded session data (used with --downloadSessionData)",
-      default: DEFAULT_STRUCTURED_SESSION_OUTPUT_DIR,
+      description: "Output directory for multi-file format",
+      default: DEFAULT_SESSION_OUTPUT_DIR,
     },
   },
   handler: wrapHandler(handler),
