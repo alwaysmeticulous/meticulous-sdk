@@ -11,14 +11,9 @@ export const downloadSingleSession = async (
   sessionId: string,
   outputDir: string,
   logger: ReturnType<typeof initLogger>,
-): Promise<StructuredSessionSummary | null> => {
-  try {
-    const sessionData = await getStructuredSessionData(client, sessionId);
-    await writeStructuredSessionData({ outputDir, sessionData });
-    logger.info(`  Downloaded session ${sessionId}`);
-    return sessionData.summary;
-  } catch (error) {
-    logger.error(`  Failed to download session ${sessionId}: ${error}`);
-    return null;
-  }
+): Promise<StructuredSessionSummary> => {
+  const sessionData = await getStructuredSessionData(client, sessionId);
+  await writeStructuredSessionData({ outputDir, sessionData });
+  logger.info(`  Downloaded session ${sessionId}`);
+  return sessionData.summary;
 };

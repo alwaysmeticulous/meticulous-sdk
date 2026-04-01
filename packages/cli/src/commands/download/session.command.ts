@@ -59,10 +59,6 @@ export const downloadSessionCommand: CommandModule<unknown, Options> = {
         outputDir,
         logger,
       );
-      if (!summary) {
-        logger.error(`Failed to download session ${sessionId}.`);
-        process.exit(1);
-      }
 
       await writeManifest(outputDir, [summary]);
       logger.info(`Session data written to ${outputDir}/`);

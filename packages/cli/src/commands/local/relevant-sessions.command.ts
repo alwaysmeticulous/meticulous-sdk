@@ -175,9 +175,21 @@ const downloadAllSessionData = async ({
   logger: ReturnType<typeof initLogger>;
 }) => {
   const results = await Promise.all(
-    sessions.map((session) =>
-      downloadSingleSession(client, session.sessionId, outputDir, logger),
-    ),
+    sessions.map(async (session) => {
+      try {
+        return await downloadSingleSession(
+          client,
+          session.sessionId,
+          outputDir,
+          logger,
+        );
+      } catch (error) {
+        logger.error(
+          `  Failed to download session ${session.sessionId}: ${error}`,
+        );
+        return null;
+      }
+    }),
   );
 
   return results.filter(
