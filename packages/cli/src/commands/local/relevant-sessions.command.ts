@@ -138,13 +138,28 @@ const handler = async ({
       logger,
     });
 
+    if (summaries.length === 0) {
+      logger.error(
+        `Failed to download all ${sessionsToDownload.length} sessions.`,
+      );
+      process.exit(1);
+    }
+
     await writeManifest(outputDir, summaries);
 
-    logger.info(
-      chalk.green(
-        `Session data written to ${outputDir}/ (${summaries.length} sessions)`,
-      ),
-    );
+    if (summaries.length < sessionsToDownload.length) {
+      logger.warn(
+        chalk.yellow(
+          `Session data written to ${outputDir}/ but only ${summaries.length} of ${sessionsToDownload.length} sessions downloaded successfully`,
+        ),
+      );
+    } else {
+      logger.info(
+        chalk.green(
+          `Session data written to ${outputDir}/ (${summaries.length} sessions)`,
+        ),
+      );
+    }
   }
 };
 

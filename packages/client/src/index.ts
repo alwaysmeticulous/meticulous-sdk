@@ -1,13 +1,7 @@
 export {
   AgentFeature,
-  NetworkRequestEntry,
-  NetworkRequestSummaryEntry,
   StructuredSessionDataResponse,
   StructuredSessionSummary,
-  SessionStorageSnapshot,
-  UrlHistoryEntry,
-  StructuredUserEvent,
-  WebSocketSummaryEntry,
   DiffsSummaryOptions,
   DiffsSummaryScreenshot,
   DiffsSummaryReplayDiff,
