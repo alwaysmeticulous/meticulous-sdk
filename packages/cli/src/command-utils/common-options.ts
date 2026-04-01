@@ -15,6 +15,8 @@ import {
   IS_METICULOUS_SUPER_USER,
 } from "@alwaysmeticulous/common";
 
+export const DEFAULT_SESSION_OUTPUT_DIR = ".meticulous/sessions";
+
 // Used in tips in console output
 export const HEADLESS_FLAG = "--headless";
 

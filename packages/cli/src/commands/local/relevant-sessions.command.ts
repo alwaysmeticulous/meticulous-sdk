@@ -6,9 +6,14 @@ import {
   RelevantSession,
 } from "@alwaysmeticulous/client";
 import { getLocalBaseSha, initLogger } from "@alwaysmeticulous/common";
+import { writeManifest } from "@alwaysmeticulous/downloading-helpers";
 import chalk from "chalk";
 import { CommandModule } from "yargs";
-import { OPTIONS } from "../../command-utils/common-options";
+import {
+  DEFAULT_SESSION_OUTPUT_DIR,
+  OPTIONS,
+} from "../../command-utils/common-options";
+import { downloadSingleSession } from "../../command-utils/download-session.utils";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import {
   getGitDiff,
@@ -21,6 +26,8 @@ interface Options {
   startingPointSha?: string | null | undefined;
   minimumTimesToCoverEachLine?: number;
   includeSuperfluousSessions: boolean;
+  format?: "multi-file";
+  outputDir: string;
 }
 
 const handler = async ({
@@ -29,9 +36,10 @@ const handler = async ({
   startingPointSha,
   minimumTimesToCoverEachLine,
   includeSuperfluousSessions,
+  format,
+  outputDir,
 }: Options) => {
   const logger = initLogger();
-  // TODO: support OAuth
   const client = createClient({ apiToken });
   const project = await getProject(client);
   if (!project) {
@@ -111,6 +119,82 @@ const handler = async ({
       );
     }
   }
+
+  if (format === "multi-file") {
+    const sessionsToDownload = mainSessions;
+    if (sessionsToDownload.length === 0) {
+      logger.info(chalk.dim("No sessions to download."));
+      return;
+    }
+
+    logger.info(
+      `Downloading session data for ${sessionsToDownload.length} sessions to ${outputDir}...`,
+    );
+
+    const summaries = await downloadAllSessionData({
+      client,
+      sessions: sessionsToDownload,
+      outputDir,
+      logger,
+    });
+
+    if (summaries.length === 0) {
+      logger.error(
+        `Failed to download all ${sessionsToDownload.length} sessions.`,
+      );
+      process.exit(1);
+    }
+
+    await writeManifest(outputDir, summaries);
+
+    if (summaries.length < sessionsToDownload.length) {
+      logger.warn(
+        chalk.yellow(
+          `Session data written to ${outputDir}/ but only ${summaries.length} of ${sessionsToDownload.length} sessions downloaded successfully`,
+        ),
+      );
+    } else {
+      logger.info(
+        chalk.green(
+          `Session data written to ${outputDir}/ (${summaries.length} sessions)`,
+        ),
+      );
+    }
+  }
+};
+
+const downloadAllSessionData = async ({
+  client,
+  sessions,
+  outputDir,
+  logger,
+}: {
+  client: ReturnType<typeof createClient>;
+  sessions: RelevantSession[];
+  outputDir: string;
+  logger: ReturnType<typeof initLogger>;
+}) => {
+  const results = await Promise.all(
+    sessions.map(async (session) => {
+      try {
+        return await downloadSingleSession(
+          client,
+          session.sessionId,
+          outputDir,
+          logger,
+        );
+      } catch (error) {
+        logger.error(
+          `  Failed to download session ${session.sessionId}: ${error}`,
+        );
+        return null;
+      }
+    }),
+  );
+
+  return results.filter(
+    (s): s is NonNullable<typeof s> => s != null,
+  );
 };
 
 const isMainRelevant = (session: RelevantSession): boolean => {
@@ -170,6 +254,16 @@ export const relevantSessionsCommand: CommandModule<unknown, Options> = {
       description:
         "Includes additional sessions that do test some of your local changes but were superfluous -- other sessions already cover your code sufficiently, considering the value passed for `minimum-times-to-cover-each-line`",
       default: false,
+    },
+    format: {
+      choices: ["multi-file"] as const,
+      description:
+        'Set to "multi-file" to download each relevant session\'s data as a structured directory tree',
+    },
+    outputDir: {
+      type: "string",
+      description: "Output directory for multi-file format",
+      default: DEFAULT_SESSION_OUTPUT_DIR,
     },
   },
   handler: wrapHandler(handler),

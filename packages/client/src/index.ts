@@ -1,5 +1,7 @@
 export {
   AgentFeature,
+  StructuredSessionDataResponse,
+  StructuredSessionSummary,
   DiffsSummaryOptions,
   DiffsSummaryScreenshot,
   DiffsSummaryReplayDiff,
@@ -8,6 +10,7 @@ export {
   ScreenshotUrlsResponse,
   TimelineDiffEntry,
   TimelineDiffResponse,
+  getStructuredSessionData,
   getTestRunDiffsSummary,
   getScreenshotDomDiff,
   getScreenshotUrls,

@@ -8,6 +8,10 @@ export {
 export {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
+  writeManifest,
+  writeStructuredSessionData,
+  type SessionsManifest,
+  type WriteStructuredSessionOptions,
 } from "./file-downloads/sessions";
 export {
   getOrFetchTestRunData,
