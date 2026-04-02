@@ -123,10 +123,13 @@ export const getLocalBaseSha = async (options?: {
 
   const defaultBranch = await detectDefaultBranch(cwd);
   const defaultBranchName = defaultBranch?.replace(/^origin\//, "");
+  const defaultBranchCandidates = defaultBranchName
+    ? [defaultBranchName]
+    : ["main", "master"];
 
   if (
     branchName === "HEAD" ||
-    (defaultBranchName && branchName === defaultBranchName)
+    defaultBranchCandidates.includes(branchName)
   ) {
     try {
       const headSha = await execPromise("git rev-parse HEAD", cwd);
