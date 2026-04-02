@@ -55,7 +55,11 @@ Each replay directory (`debug-data/replays/{head,base,other}/<replayId>/`) conta
   over the raw version unless you need unmodified output.
 - `logs.concise.txt` -- Full logs with both virtual and real timestamps, and trace IDs.
 - `timeline.json` -- Detailed timeline of all replay events (user interactions, network requests,
-  DOM mutations, etc.). Can be 1-2MB; prefer `debug-data/timeline-summaries/` for a compact overview.
+  DOM mutations, etc.). Can be 1-2MB; prefer `debug-data/events-index/` or
+  `debug-data/timeline-summaries/` for compact overviews.
+- `timeline.ndjson` -- Same data as `timeline.json` but one JSON object per line (NDJSON format).
+  Greppable with standard tools: `grep '"screenshot"' timeline.ndjson` to find screenshots,
+  `grep '"pollyReplay"' timeline.ndjson` for network stubs. Only present on newer replays.
 - `timeline-stats.json` -- Aggregated statistics about timeline events.
 - `metadata.json` -- Replay configuration, parameters, and environment info.
 - `launchBrowserAndReplayParams.json` -- The exact parameters used to launch the replay.
@@ -71,6 +75,25 @@ replay cache at `~/.meticulous/replays/<replayId>/screenshots/`.
 
 Per-replay generated summaries:
 
+- `debug-data/events-index/<role>-<replayId>.txt` -- **Use this instead of raw timeline.json.**
+  One line per timeline event with index, virtual time, kind, and key data fields. Fully greppable:
+  `grep 'kind=screenshot' events-index/head-abc.txt` to find screenshots,
+  `grep 'kind=pollyReplay' events-index/head-abc.txt` for network stubs,
+  `grep 'api/v9/users' events-index/head-abc.txt` for specific API calls.
+- `debug-data/network-log/<role>-<replayId>.txt` -- Compact network request log with one line
+  per request: method, URL, status, and match result. Grep for specific endpoints.
+- `debug-data/vt-progression/<role>-<replayId>.txt` -- One virtual time value per line, extracted
+  from `logs.ndjson`. Compare head vs base with `diff`. Use this instead of parsing `logs.ndjson`
+  for virtual time progression.
+- `debug-data/logs-index/<role>-<replayId>.txt` -- **Use this instead of raw logs.ndjson.**
+  One line per log entry with index, current virtual time, source, type, and truncated message.
+  Virtual-time-change entries appear as `[virtual-time-change -> <value>]`. Fully greppable:
+  `grep 'source=application' logs-index/head-abc.txt` to filter by source,
+  `grep -i 'error' logs-index/head-abc.txt` for keyword search,
+  `grep 'vt=7648' logs-index/head-abc.txt` for events at a specific virtual time.
+- `debug-data/screenshot-timeline-context/<role>-<replayId>-<screenshotId>.txt` -- Events
+  surrounding each screenshot (30 before, 10 after) from the timeline. The screenshot line is
+  marked with `>>>`. Use these to understand what happened right before a screenshot.
 - `debug-data/timeline-summaries/<role>-<replayId>.txt` -- Compact summary of each replay's
   timeline: total entries, virtual time range, screenshot timestamps, event kind breakdown.
 - `debug-data/formatted-assets/<role>/<replayId>/` -- Pretty-printed JS/CSS from
@@ -147,49 +170,88 @@ for files over ~5000 lines instead of reading them in full.
    virtual timestamp and event number, then focus your analysis on events leading up to it.
 2. **Check replay comparison** -- Compare head vs base entries in `replayComparison` for
    immediate drift signals (different event counts, animation frames, virtual time).
-3. **Read filtered logs** -- For diffs: start with `debug-data/log-diffs/*.summary.txt` then
-   `debug-data/log-diffs/*.filtered.diff`. For single replays: read `logs.deterministic.filtered.txt`
+3. **Analyze log diffs** -- For diffs: **delegate to the log-diff-analyzer subagent** which
+   reads the filtered diffs and summaries and returns a structured divergence report. Only
+   read `debug-data/log-diffs/*.filtered.diff` directly if you need to verify specific details
+   from the analyzer's report. For single replays (no diff): read `logs.deterministic.filtered.txt`
    inside the replay directory. Fall back to the raw `logs.deterministic.txt` only if you
    need unmodified output.
-4. **Read timeline summaries** -- Check `debug-data/timeline-summaries/` for a compact overview of each
-   replay's events, screenshot timestamps, and counts. Only read raw `timeline.json` if you
-   need granular event-level detail.
-5. **Inspect screenshot diffs** -- Start with `debug-data/diffs/<id>.summary.json` for a compact view of
+4. **Read events index** -- Check `debug-data/events-index/` for a greppable, one-line-per-event
+   listing of the full timeline. Use grep to filter by kind, virtual time, or URL.
+   For a higher-level overview, check `debug-data/timeline-summaries/`.
+5. **Search log messages** -- Use `debug-data/logs-index/` for a greppable, one-line-per-entry
+   summary of `logs.ndjson`. Grep by source (`source=application`), type (`type=warn`),
+   keyword, or virtual time (`vt=1234`).
+6. **Check screenshot timeline context** -- Read `debug-data/screenshot-timeline-context/` for
+   the timeline events surrounding each screenshot (30 before, 10 after). The screenshot line
+   is marked with `>>>`.
+7. **Inspect screenshot diffs** -- Start with `debug-data/diffs/<id>.summary.json` for a compact view of
    which screenshots differ and by how much. If a `debug-data/screenshot-context/` file exists, read it
    for the log lines surrounding the screenshot in both head and base.
    Only read the full `debug-data/diffs/<id>.json` if you need complete replay metadata.
-6. **Check replay parameters** -- Read `debug-data/params-diffs/` for pre-computed diffs. For single
-   replays, read `launchBrowserAndReplayParams.json` directly.
-7. **Check assets diffs** -- Read `debug-data/assets-diffs/` to see if the snapshotted JS/CSS chunks
-   differ between head and base.
-8. **Analyze session data** -- Start with `debug-data/session-summaries/` for a quick overview of the
-   session (URL history, user events, network stats). Only read the raw `debug-data/sessions/` data
-   if you need specific details like request/response bodies or exact event selectors.
-9. **Review the PR diff** -- Read `debug-data/pr-diff.txt` to see what code changed in this PR and
-   correlate with screenshot diffs.
-10. **Trace through formatted assets** -- Use `debug-data/formatted-assets/` (pretty-printed JS/CSS)
+8. **Check network activity** -- Read `debug-data/network-log/` for a compact network request
+   log. Grep for specific endpoints, status codes, or domains.
+9. **Compare virtual time progression** -- Use `diff` on `debug-data/vt-progression/` files to
+   find where head and base replays diverge in virtual time.
+10. **Check replay parameters** -- Read `debug-data/params-diffs/` for pre-computed diffs. For single
+    replays, read `launchBrowserAndReplayParams.json` directly.
+11. **Check assets diffs** -- Read `debug-data/assets-diffs/` to see if the snapshotted JS/CSS chunks
+    differ between head and base.
+12. **Analyze session data** -- Start with `debug-data/session-summaries/` for a quick overview of the
+    session (URL history, user events, network stats). Only read the raw `debug-data/sessions/` data
+    if you need specific details like request/response bodies or exact event selectors.
+13. **Analyze the PR diff** -- **Delegate to the pr-analyzer subagent** which reads
+    `debug-data/pr-diff.txt` and the diff summaries, returning a structured correlation of
+    code changes to screenshot diffs. Only read the PR diff directly if you need to verify
+    specific details from the analyzer's report.
+14. **Trace through formatted assets** -- Use `debug-data/formatted-assets/` (pretty-printed JS/CSS)
     instead of raw minified bundles when tracing code execution.
-11. **Review your code** -- If `project-repo/` is present, check it for the relevant changes.
+15. **Review your code** -- If `project-repo/` is present, check it for the relevant changes.
     For library source code, use `debug-data/formatted-assets/` which contains the bundled and
     pretty-printed versions of third-party code.
 
+**Important**: Do NOT use Python one-liners to parse `timeline.json` or `logs.ndjson`. The derived
+files above (`events-index/`, `network-log/`, `vt-progression/`, `logs-index/`,
+`screenshot-timeline-context/`) are pre-computed and greppable. Use `timeline.ndjson` (NDJSON format,
+one JSON object per line) if you need to grep the raw timeline data.
+
 ## Subagents
 
-This workspace includes two specialized subagents in `.claude/agents/`:
+This workspace includes specialized subagents in `.claude/agents/`. Delegate to them
+to preserve your context window for deep investigation.
 
 ### Planner
 
-After the user describes their issue, **always delegate to the planner subagent first**
+When the user describes a complex or ambiguous issue, delegate to the planner subagent
 before starting your own investigation. The planner reads workspace summaries and metadata
-to produce a structured debugging plan with prioritized investigation steps. Follow its plan
-as your starting point.
+to produce a structured debugging plan with prioritized investigation steps.
+
+Skip the planner for straightforward cases where the issue is obvious (e.g. the user
+points at a specific screenshot diff and asks why it changed, or there is only one diff
+to investigate).
 
 ### Summarizer
 
 When you need to understand a large file (over 5000 lines), delegate to the summarizer
 subagent instead of reading the file in full. The summarizer scans the file using grep and
-targeted reads, returning a concise overview with line numbers for follow-up. This preserves
-your context window for the actual investigation.
+targeted reads, returning a concise overview with line numbers for follow-up.
+
+### Log Diff Analyzer
+
+When comparing replays and log diffs are available, **delegate to the log-diff-analyzer
+subagent** instead of reading `debug-data/log-diffs/*.filtered.diff` directly. The analyzer
+reads the filtered diffs and summaries, then returns a structured report with the first
+divergence point, categorized changes, hypotheses ranked by likelihood, and specific line
+numbers for follow-up. Use its output to guide your investigation rather than consuming
+the raw diff in your context.
+
+### PR Analyzer
+
+When `debug-data/pr-diff.txt` is present and you need to understand which code changes
+caused visual differences, **delegate to the pr-analyzer subagent** instead of reading the
+PR diff directly. The analyzer reads the PR diff and diff summaries, then returns a
+structured correlation mapping code changes to specific screenshot diffs with judgments
+on expected vs unexpected changes.
 
 ## Rules
 

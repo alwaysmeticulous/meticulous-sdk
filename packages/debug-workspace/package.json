@@ -24,7 +24,8 @@
     "@alwaysmeticulous/client": "workspace:*",
     "@alwaysmeticulous/common": "workspace:*",
     "@alwaysmeticulous/downloading-helpers": "workspace:*",
-    "chalk": "^4.1.2"
+    "chalk": "^4.1.2",
+    "p-limit": "^3.1.0"
   },
   "devDependencies": {
     "vitest": "catalog:"

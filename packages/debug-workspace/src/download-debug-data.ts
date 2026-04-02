@@ -11,6 +11,7 @@ import {
   getOrFetchRecordedSessionData,
 } from "@alwaysmeticulous/downloading-helpers";
 import chalk from "chalk";
+import pLimit from "p-limit";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import { DebugContext } from "./debug.types";
 
@@ -21,7 +22,7 @@ export interface DownloadDebugDataOptions {
   client: MeticulousClient;
   debugContext: DebugContext;
   workspaceDir: string;
-  maxReplayDownloads?: number | undefined;
+  maxConcurrentDownloads?: number | undefined;
   additionalDownloads?:
     | ((
         debugContext: DebugContext,
@@ -35,20 +36,19 @@ export const downloadDebugData = async (
 ): Promise<void> => {
   const { client, debugContext, workspaceDir } = options;
   const maxConcurrency =
-    options.maxReplayDownloads ?? DEFAULT_MAX_REPLAY_DOWNLOADS;
+    options.maxConcurrentDownloads ?? DEFAULT_MAX_REPLAY_DOWNLOADS;
 
   const debugDataDir = join(workspaceDir, DEBUG_DATA_DIRECTORY);
   mkdirSync(debugDataDir, { recursive: true });
 
-  await downloadReplays(client, debugContext, debugDataDir, maxConcurrency);
-  await downloadSessionData(client, debugContext, debugDataDir);
-  await downloadReplayDiffs(client, debugContext, debugDataDir);
-  await downloadTestRunMetadata(client, debugContext, debugDataDir);
-  await downloadPrDiffFromApi(client, debugContext, debugDataDir);
-
-  if (options.additionalDownloads) {
-    await options.additionalDownloads(debugContext, debugDataDir);
-  }
+  await Promise.all([
+    downloadReplays(client, debugContext, debugDataDir, maxConcurrency),
+    downloadSessionData(client, debugContext, debugDataDir, maxConcurrency),
+    downloadReplayDiffs(client, debugContext, debugDataDir, maxConcurrency),
+    downloadTestRunMetadata(client, debugContext, debugDataDir),
+    downloadPrDiffFromApi(client, debugContext, debugDataDir),
+    options.additionalDownloads?.(debugContext, debugDataDir),
+  ]);
 };
 
 const downloadReplays = async (
@@ -68,18 +68,20 @@ const downloadReplays = async (
     chalk.cyan(`  Downloading ${debugContext.replayIds.length} replays...`),
   );
 
-  const results = await inParallel(
-    debugContext.replayIds.map((replayId) => async () => {
-      const { fileName: cachedPath } = await getOrFetchReplayArchive(
-        client,
-        replayId,
-        "everything",
-        true,
-      );
-      console.log(chalk.cyan(`  Downloaded replay ${replayId}`));
-      return { replayId, cachedPath };
-    }),
-    maxConcurrency,
+  const limit = pLimit(maxConcurrency);
+  const results = await Promise.all(
+    debugContext.replayIds.map((replayId) =>
+      limit(async () => {
+        const { fileName: cachedPath } = await getOrFetchReplayArchive(
+          client,
+          replayId,
+          "everything",
+          true,
+        );
+        console.log(chalk.cyan(`  Downloaded replay ${replayId}`));
+        return { replayId, cachedPath };
+      }),
+    ),
   );
 
   for (const { replayId, cachedPath } of results) {
@@ -113,30 +115,37 @@ const downloadSessionData = async (
   client: MeticulousClient,
   debugContext: DebugContext,
   debugDataDir: string,
+  maxConcurrency: number,
 ): Promise<void> => {
   if (debugContext.sessionIds.length === 0) {
     return;
   }
 
-  for (const sessionId of debugContext.sessionIds) {
-    console.log(chalk.cyan(`  Downloading session ${sessionId}...`));
-    const { data: sessionData } = await getOrFetchRecordedSessionData(
-      client,
-      sessionId,
-    );
-    const sessionDir = join(debugDataDir, "sessions", sessionId);
-    mkdirSync(sessionDir, { recursive: true });
-    writeFileSync(
-      join(sessionDir, "data.json"),
-      JSON.stringify(sessionData, null, 2),
-    );
-  }
+  const limit = pLimit(maxConcurrency);
+  await Promise.all(
+    debugContext.sessionIds.map((sessionId) =>
+      limit(async () => {
+        console.log(chalk.cyan(`  Downloading session ${sessionId}...`));
+        const { data: sessionData } = await getOrFetchRecordedSessionData(
+          client,
+          sessionId,
+        );
+        const sessionDir = join(debugDataDir, "sessions", sessionId);
+        mkdirSync(sessionDir, { recursive: true });
+        writeFileSync(
+          join(sessionDir, "data.json"),
+          JSON.stringify(sessionData, null, 2),
+        );
+      }),
+    ),
+  );
 };
 
 const downloadReplayDiffs = async (
   client: MeticulousClient,
   debugContext: DebugContext,
   debugDataDir: string,
+  maxConcurrency: number,
 ): Promise<void> => {
   if (debugContext.replayDiffs.length === 0) {
     return;
@@ -145,14 +154,19 @@ const downloadReplayDiffs = async (
   const diffsDir = join(debugDataDir, "diffs");
   mkdirSync(diffsDir, { recursive: true });
 
-  for (const diff of debugContext.replayDiffs) {
-    console.log(chalk.cyan(`  Downloading replay diff ${diff.id}...`));
-    const diffData = await getReplayDiff(client, diff.id);
-    writeFileSync(
-      join(diffsDir, `${diff.id}.json`),
-      JSON.stringify(diffData, null, 2),
-    );
-  }
+  const limit = pLimit(maxConcurrency);
+  await Promise.all(
+    debugContext.replayDiffs.map((diff) =>
+      limit(async () => {
+        console.log(chalk.cyan(`  Downloading replay diff ${diff.id}...`));
+        const diffData = await getReplayDiff(client, diff.id);
+        writeFileSync(
+          join(diffsDir, `${diff.id}.json`),
+          JSON.stringify(diffData, null, 2),
+        );
+      }),
+    ),
+  );
 };
 
 const downloadTestRunMetadata = async (
@@ -210,26 +224,4 @@ const downloadPrDiffFromApi = async (
       chalk.yellow(`  Warning: Could not download PR diff (${detail}).`),
     );
   }
-};
-
-const inParallel = async <T>(
-  tasks: Array<() => Promise<T>>,
-  concurrency: number,
-): Promise<T[]> => {
-  const results: T[] = [];
-  let index = 0;
-
-  const runNext = async (): Promise<void> => {
-    while (index < tasks.length) {
-      const currentIndex = index++;
-      results[currentIndex] = await tasks[currentIndex]();
-    }
-  };
-
-  const workers = Array.from(
-    { length: Math.min(concurrency, tasks.length) },
-    () => runNext(),
-  );
-  await Promise.all(workers);
-  return results;
 };

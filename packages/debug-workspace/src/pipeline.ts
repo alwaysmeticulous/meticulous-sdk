@@ -17,7 +17,7 @@ export interface DebugPipelineOptions {
   client: MeticulousClient;
   workspaceName?: string | undefined;
   screenshot?: string | undefined;
-  maxReplayDownloads?: number | undefined;
+  maxConcurrentDownloads?: number | undefined;
 
   replayDiffId?: string | undefined;
   replayIds?: string[] | undefined;
@@ -73,7 +73,7 @@ export const runDebugPipeline = async (
     client: opts.client,
     debugContext,
     workspaceDir,
-    maxReplayDownloads: opts.maxReplayDownloads,
+    maxConcurrentDownloads: opts.maxConcurrentDownloads,
     additionalDownloads: opts.additionalDownloads,
   });
 
