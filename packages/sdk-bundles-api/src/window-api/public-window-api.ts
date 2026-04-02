@@ -166,6 +166,13 @@ export interface MeticulousPublicReplayApi {
         sha: string;
 
         /**
+         * The base commit SHA that this test run is compared against (typically the
+         * commit on the main branch that the PR branch forked from). Null if no base
+         * commit was specified or could be determined.
+         */
+        baseCommitSha: string | null;
+
+        /**
          * The git branch name (e.g., "main", "feature/foo"). Null if not available.
          */
         branchName: string | null;
@@ -175,13 +182,6 @@ export interface MeticulousPublicReplayApi {
          * If the commit date is unknown, this is null.
          */
         date: string | null;
-
-        /**
-         * The base commit SHA that this test run is compared against (typically the
-         * commit on the main branch that the PR branch forked from). Null if no base
-         * commit was specified or could be determined.
-         */
-        baseCommitSha: string | null;
       }
     | undefined;
 
@@ -208,7 +208,10 @@ export interface MeticulousPublicRecordApi {
    * If the array does not exist, it will be created.
    * If the array already exists, the value will be appended to it.
    */
-  pushToCustomDataArray(arrayId: string, valueToAppend: string): { success: boolean };
+  pushToCustomDataArray(
+    arrayId: string,
+    valueToAppend: string,
+  ): { success: boolean };
 
   /**
    * Call this method to record a custom event to replay when replaying this session
@@ -245,7 +248,10 @@ export interface MeticulousPublicContextApi {
    * Call this method to record the value of a feature flag. If this method is called multiple times
    * with the same label, the value will be overwritten.
    */
-  recordFeatureFlag(label: string, value: string | boolean): { success: boolean };
+  recordFeatureFlag(
+    label: string,
+    value: string | boolean,
+  ): { success: boolean };
 
   /**
    * Call this method to record some custom context about the session. For instance, you could use
@@ -253,7 +259,10 @@ export interface MeticulousPublicContextApi {
    * selected in your app. If this method is called multiple times with the same label, the value
    * will be overwritten.
    */
-  recordCustomContext(label: string, value: string | boolean): { success: boolean };
+  recordCustomContext(
+    label: string,
+    value: string | boolean,
+  ): { success: boolean };
 
   /**
    * Record the id of the logged in user (e.g. a user id from a database for the application Meticulous

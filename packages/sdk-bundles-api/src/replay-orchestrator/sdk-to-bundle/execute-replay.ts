@@ -74,7 +74,9 @@ export interface ReplayAndStoreResultsOptions {
    * The replay runner will block on the promise returned before replaying the
    * next event. This allows the caller to pause the replay, or control the playback.
    */
-  onBeforeUserEvent?: (opts: BeforeUserEventOptions) => Promise<BeforeUserEventResult>;
+  onBeforeUserEvent?: (
+    opts: BeforeUserEventOptions,
+  ) => Promise<BeforeUserEventResult>;
 
   /**
    * The maximum version of the replayAndStoreResults schema (the types in this inferface
@@ -356,7 +358,10 @@ export type ReplayOrchestratorScreenshottingOptions =
 export type NotebookRunId = StringId<"notebookRunId">;
 export type TestRunId = StringId<"testRunId">;
 
-export type GeneratedBy = GeneratedByNotebookRun | GeneratedByTestRun | GeneratedByReplayCommand;
+export type GeneratedBy =
+  | GeneratedByNotebookRun
+  | GeneratedByTestRun
+  | GeneratedByReplayCommand;
 
 export interface GeneratedByNotebookRun {
   type: "notebook";
