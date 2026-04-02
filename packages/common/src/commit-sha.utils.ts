@@ -121,7 +121,16 @@ export const getLocalBaseSha = async (options?: {
     );
   }
 
-  if (branchName === "main" || branchName === "master" || branchName === "HEAD") {
+  const defaultBranch = await detectDefaultBranch(cwd);
+  const defaultBranchName = defaultBranch?.replace(/^origin\//, "");
+  const defaultBranchCandidates = defaultBranchName
+    ? [defaultBranchName]
+    : ["main", "master"];
+
+  if (
+    branchName === "HEAD" ||
+    defaultBranchCandidates.includes(branchName)
+  ) {
     try {
       const headSha = await execPromise("git rev-parse HEAD", cwd);
       logger.debug(
@@ -136,10 +145,15 @@ export const getLocalBaseSha = async (options?: {
     }
   }
 
-  // On a branch: compute merge-base with origin/main (or origin/master).
-  const baseCandidates = ["origin/main", "origin/master"];
+  // On a branch: compute merge-base with the default branch.
+  const baseCandidates = [
+    ...(defaultBranch ? [defaultBranch] : []),
+    "origin/main",
+    "origin/master",
+  ];
+  const uniqueCandidates = [...new Set(baseCandidates)];
 
-  for (const candidate of baseCandidates) {
+  for (const candidate of uniqueCandidates) {
     try {
       const mergeBase = await execPromise(
         `git merge-base ${candidate} HEAD`,
@@ -153,7 +167,7 @@ export const getLocalBaseSha = async (options?: {
   }
 
   logger.warn(
-    "Could not compute base SHA: no 'origin/main' or 'origin/master' branch found.",
+    "Could not compute base SHA: no default branch found on origin.",
   );
   return null;
 };
@@ -186,6 +200,46 @@ export const getGitDiff = async (
     ? ["diff", baseSha, headSha]
     : ["diff", baseSha];
   return execFilePromise("git", args, options?.cwd);
+};
+
+/**
+ * Detects the default branch on origin. Tries local symbolic-ref first,
+ * then falls back to `git remote show origin` (requires network).
+ * Returns e.g. "origin/main" or null if detection fails.
+ */
+const detectDefaultBranch = async (
+  cwd: string | undefined,
+): Promise<string | null> => {
+  const logger = initLogger();
+
+  // 1. Try local symbolic-ref (instant, no network)
+  try {
+    const ref = await execPromise(
+      "git symbolic-ref refs/remotes/origin/HEAD",
+      cwd,
+    );
+    // ref is e.g. "refs/remotes/origin/main"
+    const branch = ref.replace(/^refs\/remotes\//, "");
+    logger.debug(`Default branch from symbolic-ref: ${branch}`);
+    return branch;
+  } catch {
+    // Not set locally — fall through
+  }
+
+  // 2. Try `git remote show origin` (network call, authoritative)
+  try {
+    const output = await execPromise("git remote show origin", cwd);
+    const match = output.match(/HEAD branch:\s*(\S+)/);
+    if (match) {
+      const branch = `origin/${match[1]}`;
+      logger.debug(`Default branch from remote show: ${branch}`);
+      return branch;
+    }
+  } catch {
+    // Network or permission issue — fall through
+  }
+
+  return null;
 };
 
 export const getCommitDate: (

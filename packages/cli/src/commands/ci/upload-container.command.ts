@@ -57,8 +57,11 @@ const handler = async ({
     repoDirectory,
   });
 
-  if (baseSha && baseSha === commitSha) {
-    logger.info("Base SHA equals head SHA — nothing to test.");
+  if (baseSha && baseSha === commitSha && !gitDiffOutput) {
+    logger.info(
+      "Base SHA equals head SHA and no git diff output provided — nothing to test. " +
+        "If you have uncommitted changes, provide --gitDiffOutput or use --repoDirectory.",
+    );
     return;
   }
 
