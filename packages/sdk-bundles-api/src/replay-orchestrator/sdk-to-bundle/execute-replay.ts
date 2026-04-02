@@ -28,6 +28,13 @@ export interface ReplayAndStoreResultsOptions {
   commitSha: string | null | undefined;
 
   /**
+   * The base commit SHA that this replay's test run is compared against (typically the
+   * commit on the main branch that the PR branch forked from). Null if no base commit
+   * was specified or could be determined.
+   */
+  baseCommitSha?: string | null | undefined;
+
+  /**
    * The git ref used if there was one e.g. refs/head/master
    */
   gitRef: string | null | undefined;
@@ -67,9 +74,7 @@ export interface ReplayAndStoreResultsOptions {
    * The replay runner will block on the promise returned before replaying the
    * next event. This allows the caller to pause the replay, or control the playback.
    */
-  onBeforeUserEvent?: (
-    opts: BeforeUserEventOptions,
-  ) => Promise<BeforeUserEventResult>;
+  onBeforeUserEvent?: (opts: BeforeUserEventOptions) => Promise<BeforeUserEventResult>;
 
   /**
    * The maximum version of the replayAndStoreResults schema (the types in this inferface
@@ -351,10 +356,7 @@ export type ReplayOrchestratorScreenshottingOptions =
 export type NotebookRunId = StringId<"notebookRunId">;
 export type TestRunId = StringId<"testRunId">;
 
-export type GeneratedBy =
-  | GeneratedByNotebookRun
-  | GeneratedByTestRun
-  | GeneratedByReplayCommand;
+export type GeneratedBy = GeneratedByNotebookRun | GeneratedByTestRun | GeneratedByReplayCommand;
 
 export interface GeneratedByNotebookRun {
   type: "notebook";
