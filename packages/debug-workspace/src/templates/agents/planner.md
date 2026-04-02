@@ -2,7 +2,7 @@
 name: planner
 description: Creates a structured debugging plan based on workspace data and user context. Use proactively at the start of every debugging session after the user describes their issue.
 tools: Read, Grep, Glob
-model: opus
+model: sonnet
 ---
 
 You are a debugging planning assistant for the Meticulous automated UI testing platform.

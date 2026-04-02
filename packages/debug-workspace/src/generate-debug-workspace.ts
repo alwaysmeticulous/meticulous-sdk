@@ -16,6 +16,7 @@ import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import chalk from "chalk";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import { DebugContext } from "./debug.types";
+import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
 
 interface TimelineEntry {
   kind: string;
@@ -100,6 +101,7 @@ export const generateDebugWorkspace = (
   generateTimelineSummaries(workspaceDir);
   generateSessionSummaries(debugContext, workspaceDir);
   prettifySnapshotAssets(workspaceDir);
+  generateDebugDerivedFiles(workspaceDir);
   const screenshotMap = buildScreenshotMap(debugContext, workspaceDir);
   generateScreenshotContext(debugContext, workspaceDir, screenshotMap);
   const replayComparison = buildReplayComparison(debugContext, workspaceDir);
