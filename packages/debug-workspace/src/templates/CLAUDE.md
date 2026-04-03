@@ -59,7 +59,7 @@ Each replay directory (`debug-data/replays/{head,base,other}/<replayId>/`) conta
   `debug-data/timeline-summaries/` for compact overviews.
 - `timeline.ndjson` -- Same data as `timeline.json` but one JSON object per line (NDJSON format).
   Greppable with standard tools: `grep '"screenshot"' timeline.ndjson` to find screenshots,
-  `grep '"pollyReplay"' timeline.ndjson` for network stubs. Only present on newer replays.
+  `grep '"pollyReplay"' timeline.ndjson` for network stubs.
 - `timeline-stats.json` -- Aggregated statistics about timeline events.
 - `metadata.json` -- Replay configuration, parameters, and environment info.
 - `launchBrowserAndReplayParams.json` -- The exact parameters used to launch the replay.
