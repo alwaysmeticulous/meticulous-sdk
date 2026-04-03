@@ -58,6 +58,7 @@ export const generateDebugDerivedFiles = (workspaceDir: string): void => {
     );
 
     if (timelineEntries) {
+      generateTimelineNdjson(replayDir, timelineEntries);
       generateEventsIndex(debugDataDir, replayDir, timelineEntries);
       generateNetworkLog(debugDataDir, replayDir, timelineEntries);
       generateScreenshotTimelineContext(
@@ -90,6 +91,19 @@ const discoverReplayDirs = (replaysDir: string): ReplayDir[] => {
   }
 
   return dirs;
+};
+
+const generateTimelineNdjson = (
+  replayDir: ReplayDir,
+  entries: TimelineEntry[],
+): void => {
+  const ndjsonPath = join(replayDir.path, "timeline.ndjson");
+  if (existsSync(ndjsonPath)) {
+    return;
+  }
+  const lines =
+    entries.map((entry) => JSON.stringify(entry)).join("\n") + "\n";
+  writeFileSync(ndjsonPath, lines, "utf-8");
 };
 
 const generateEventsIndex = (
