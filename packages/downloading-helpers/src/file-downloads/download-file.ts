@@ -1,16 +1,23 @@
-import { createReadStream, createWriteStream, existsSync } from "fs";
+import { createWriteStream, existsSync } from "fs";
 import { mkdir, rm } from "fs/promises";
-import { Stream, finished, Transform } from "stream";
+import { Readable, Stream, finished, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { promisify } from "util";
-import { createInflateRaw } from "zlib";
+import { constants as zlibConstants } from "zlib";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import cliProgress from "cli-progress";
 import extract from "extract-zip";
+import { InflateRaw } from "fast-zlib";
 import { extract as tarExtract } from "tar";
 
 const promisifiedFinished = promisify(finished);
+
+/**
+ * Larger buffer sizes reduce the number of syscalls and context switches
+ * in the streaming pipeline, improving throughput for large (>1GB) files.
+ */
+const STREAMING_HIGH_WATER_MARK = 256 * 1024;
 
 const shouldShowProgressBar = (): boolean => {
   return process.env.METICULOUS_IS_CLOUD_REPLAY !== "true";
@@ -199,69 +206,128 @@ export const downloadAndExtractFile: (
   return entries;
 };
 
+export interface StreamDownloadAndExtractTarOptions {
+  firstDataTimeoutInMs?: number;
+  totalTimeoutInMs?: number;
+  maxRetries?: number;
+  retryDelay?: number;
+}
+
 /**
- * Download a raw deflated tar blob from a URL, inflate it,
- * and extract the tar contents to a directory.
- * The downloaded file will be deleted after extraction, keeping only the extracted files.
- * __Warning__: this function is not thread safe.
+ * Streams a raw-deflated tar blob from a URL directly through inflate and
+ * tar extraction without writing the archive to disk first.
+ *
+ * This eliminates the temp file that the legacy `downloadAndExtractTar` used,
+ * halving disk I/O and allowing download and extraction to overlap. Uses
+ * fast-zlib for decompression and tuned buffer sizes for better throughput
+ * on large (>1GB) files.
+ *
+ * __Warning__: this function is not thread safe. Do not extract to a
+ * directory that may already be in use by another process.
  *
  * @param fileUrl The URL of the deflated tar blob to download.
- * @param tmpTarFilePath The path to save the downloaded file. Do not try downloading a file to a
- * `tmpTarFilePath` that may already be in use by another process b/c this can corrupt the data.
- * @param extractPath The path to a directory which we will extract tar entries into.
- * Do not try extracting to a dir that may already be in use by another process b/c overlapping
- * file names can cause data corruption.
- * @param extractTimeoutInMs The timeout for the tar extraction, in milliseconds.
- * @returns The list of the extracted files.
+ * @param extractPath The directory to extract tar entries into.
+ * @param opts Timeout, retry, and buffer configuration.
+ * @returns The list of extracted file paths.
  */
-export const downloadAndExtractTar: (
+export const streamDownloadAndExtractTar = async (
   fileUrl: string,
-  tmpTarFilePath: string,
   extractPath: string,
-  extractTimeoutInMs?: number,
-) => Promise<string[]> = async (
-  fileUrl,
-  tmpTarFilePath,
-  extractPath,
-  extractTimeoutInMs = 300_000,
-) => {
-  await downloadFile(fileUrl, tmpTarFilePath);
-  const entries: string[] = [];
+  opts: StreamDownloadAndExtractTarOptions = {},
+): Promise<string[]> => {
+  const firstDataTimeoutInMs = opts.firstDataTimeoutInMs ?? 60_000;
+  const totalTimeoutInMs = opts.totalTimeoutInMs ?? 600_000;
+  const maxRetries = opts.maxRetries ?? 3;
+  const retryDelay = opts.retryDelay ?? 1000;
 
-  try {
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(
-        () =>
-          reject(
-            new Error(`Tar extraction timed out after ${extractTimeoutInMs}ms`),
-          ),
-        extractTimeoutInMs,
-      );
-    });
+  for (let attempt = 0; ; attempt++) {
     const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortController.abort(
+        new Error(
+          `Streaming download and extraction timed out after ${totalTimeoutInMs}ms`,
+        ),
+      );
+    }, totalTimeoutInMs);
+
     try {
+      const client = axios.create({ timeout: firstDataTimeoutInMs });
+      axiosRetry(client, { retries: 3, shouldResetTimeout: true });
+
+      const entries: string[] = [];
       await mkdir(extractPath, { recursive: true });
 
-      const extractPromise = pipeline(
-        createReadStream(tmpTarFilePath),
-        createInflateRaw(),
+      const response = await client.request({
+        method: "GET",
+        url: fileUrl,
+        responseType: "stream",
+        signal: abortController.signal,
+      });
+
+      await pipeline(
+        response.data as Readable,
+        createFastInflateRawStream(),
         tarExtract({
           cwd: extractPath,
           onReadEntry: (entry) => entries.push(entry.path),
         }),
         { signal: abortController.signal },
       );
-      await Promise.race([extractPromise, timeoutPromise]);
+
+      return entries;
     } catch (error) {
       abortController.abort();
-      throw error;
-    } finally {
-      clearTimeout(timeoutId!);
-    }
-  } finally {
-    await rm(tmpTarFilePath);
-  }
+      await rm(extractPath, { recursive: true, force: true }).catch(() => {});
 
-  return entries;
+      if (attempt >= maxRetries) {
+        const reason = abortController.signal.reason;
+        throw reason instanceof Error ? reason : error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+};
+
+/**
+ * Wraps fast-zlib's synchronous InflateRaw in a Transform stream with
+ * a tuned highWaterMark for better large-file throughput.
+ *
+ * fast-zlib processes chunks synchronously via zlib's _processChunk,
+ * avoiding the thread-pool overhead of Node's built-in async zlib streams.
+ */
+const createFastInflateRawStream = (): Transform => {
+  const inflate = new InflateRaw();
+  return new Transform({
+    highWaterMark: STREAMING_HIGH_WATER_MARK,
+    transform(chunk: Buffer, _encoding: BufferEncoding, callback) {
+      try {
+        const result = inflate.process(chunk);
+        if (result.length > 0) {
+          this.push(result);
+        }
+        callback();
+      } catch (err) {
+        callback(err as Error);
+      }
+    },
+    flush(callback) {
+      try {
+        const result = inflate.process(Buffer.alloc(0), zlibConstants.Z_FINISH);
+        if (result.length > 0) {
+          this.push(result);
+        }
+        inflate.close();
+        callback();
+      } catch (err) {
+        callback(err as Error);
+      }
+    },
+    destroy(_err, callback) {
+      inflate.close();
+      callback(_err);
+    },
+  });
 };
