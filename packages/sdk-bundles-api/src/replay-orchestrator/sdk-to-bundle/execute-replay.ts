@@ -28,6 +28,13 @@ export interface ReplayAndStoreResultsOptions {
   commitSha: string | null | undefined;
 
   /**
+   * The base commit SHA that this replay's test run is compared against (typically the
+   * commit on the main branch that the PR branch forked from). Null if no base commit
+   * was specified or could be determined.
+   */
+  baseCommitSha?: string | null | undefined;
+
+  /**
    * The git ref used if there was one e.g. refs/head/master
    */
   gitRef: string | null | undefined;

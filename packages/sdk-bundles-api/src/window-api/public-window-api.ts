@@ -161,12 +161,19 @@ export interface MeticulousPublicReplayApi {
   commitUnderTest:
     | {
         /**
-         * The full commit SHA being test
+         * The full commit SHA being tested.
          */
         sha: string;
 
         /**
-         * The git branch name (e.g., "main", "feature/foo"). Null if not available
+         * The base commit SHA that this test run is compared against (typically the
+         * commit on the main branch that the PR branch forked from). Null if no base
+         * commit was specified or could be determined.
+         */
+        baseCommitSha: string | null;
+
+        /**
+         * The git branch name (e.g., "main", "feature/foo"). Null if not available.
          */
         branchName: string | null;
 
