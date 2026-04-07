@@ -1,10 +1,6 @@
 export { sanitizeFilename } from "./file-downloads/local-data.utils";
 export { downloadAppContainerLogs } from "./file-downloads/app-container-logs";
-export {
-  getOrFetchReplay,
-  getOrFetchReplayArchive,
-  DownloadScope,
-} from "./scripts/replays";
+export { getOrFetchReplay, getOrFetchReplayArchive, DownloadScope } from "./scripts/replays";
 export {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
@@ -22,6 +18,7 @@ export { fetchAsset, checkIfAssetsOutdated } from "./scripts/replay-assets";
 export {
   downloadFile,
   downloadAndExtractFile,
-  downloadAndExtractTar,
+  streamDownloadAndExtractTar,
+  type StreamDownloadAndExtractTarOptions,
 } from "./file-downloads/download-file";
 export { getReplayDir } from "./scripts/replays";

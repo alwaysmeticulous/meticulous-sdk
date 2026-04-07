@@ -7,7 +7,7 @@ import { constants as zlibConstants } from "zlib";
 import { DeflateRaw } from "fast-zlib";
 import { create as tarCreate } from "tar";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { downloadAndExtractTar, downloadFile } from "../download-file";
+import { downloadFile, streamDownloadAndExtractTar } from "../download-file";
 
 describe("downloadFile", () => {
   it("downloads a file from a URL", async () => {
@@ -106,9 +106,7 @@ describe("downloadFile", () => {
  * Compresses a directory into a raw-deflated tar blob, matching the format
  * produced by MultipartCompressingUploader in production.
  */
-const createRawDeflatedTar = async (
-  folderPath: string,
-): Promise<Buffer> => {
+const createRawDeflatedTar = async (folderPath: string): Promise<Buffer> => {
   const deflate = new DeflateRaw({ level: 3 });
   const chunks: Buffer[] = [];
 
@@ -124,10 +122,7 @@ const createRawDeflatedTar = async (
     tarStream.on("error", reject);
   });
 
-  const finalChunk = deflate.process(
-    Buffer.alloc(0),
-    zlibConstants.Z_FINISH,
-  );
+  const finalChunk = deflate.process(Buffer.alloc(0), zlibConstants.Z_FINISH);
   if (finalChunk.length > 0) {
     chunks.push(finalChunk);
   }
@@ -135,16 +130,14 @@ const createRawDeflatedTar = async (
   return Buffer.concat(chunks);
 };
 
-describe("downloadAndExtractTar", () => {
+describe("streamDownloadAndExtractTar", () => {
   let sourceDir: string;
   let extractDir: string;
-  let tmpTarPath: string;
 
   beforeEach(async () => {
-    const base = join(tmpdir(), `test-tar-extract-${Date.now()}`);
+    const base = join(tmpdir(), `test-stream-tar-${Date.now()}`);
     sourceDir = join(base, "source");
     extractDir = join(base, "extract");
-    tmpTarPath = join(base, "tmp.tar.d");
     await mkdir(sourceDir, { recursive: true });
   });
 
@@ -157,7 +150,7 @@ describe("downloadAndExtractTar", () => {
     }
   });
 
-  it("round-trips files compressed with fast-zlib DeflateRaw", async () => {
+  it("streams and extracts files without a temp file", async () => {
     await writeFile(join(sourceDir, "hello.txt"), "Hello World");
     await writeFile(join(sourceDir, "data.json"), '{"key": "value"}');
     await mkdir(join(sourceDir, "subdir"), { recursive: true });
@@ -171,13 +164,9 @@ describe("downloadAndExtractTar", () => {
     });
 
     try {
-      await new Promise<void>((resolve) => server.listen(1235, resolve));
+      await new Promise<void>((resolve) => server.listen(1237, resolve));
 
-      const entries = await downloadAndExtractTar(
-        "http://localhost:1235",
-        tmpTarPath,
-        extractDir,
-      );
+      const entries = await streamDownloadAndExtractTar("http://localhost:1237", extractDir);
 
       expect(entries.length).toBeGreaterThan(0);
 
@@ -187,19 +176,14 @@ describe("downloadAndExtractTar", () => {
       const data = await readFile(join(extractDir, "data.json"), "utf8");
       expect(data).toBe('{"key": "value"}');
 
-      const nested = await readFile(
-        join(extractDir, "subdir", "nested.txt"),
-        "utf8",
-      );
+      const nested = await readFile(join(extractDir, "subdir", "nested.txt"), "utf8");
       expect(nested).toBe("Nested!");
-
-      expect(existsSync(tmpTarPath)).toBe(false);
     } finally {
       server.close();
     }
   });
 
-  it("round-trips a large file that would stress chunked decompression", async () => {
+  it("streams and extracts a large file", async () => {
     const largeContent = "A".repeat(5 * 1024 * 1024);
     await writeFile(join(sourceDir, "large.txt"), largeContent);
 
@@ -211,18 +195,62 @@ describe("downloadAndExtractTar", () => {
     });
 
     try {
-      await new Promise<void>((resolve) => server.listen(1236, resolve));
+      await new Promise<void>((resolve) => server.listen(1238, resolve));
 
-      await downloadAndExtractTar(
-        "http://localhost:1236",
-        tmpTarPath,
-        extractDir,
-      );
+      await streamDownloadAndExtractTar("http://localhost:1238", extractDir);
 
       const result = await readFile(join(extractDir, "large.txt"), "utf8");
       expect(result).toBe(largeContent);
     } finally {
       server.close();
     }
+  });
+
+  it("times out on a stalled download", async () => {
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/octet-stream" });
+    });
+
+    await new Promise<void>((resolve) => server.listen(1239, resolve));
+
+    let caughtError: Error | null = null;
+    try {
+      await streamDownloadAndExtractTar("http://localhost:1239", extractDir, {
+        totalTimeoutInMs: 100,
+        maxRetries: 0,
+      });
+    } catch (err) {
+      caughtError = err as Error;
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
+
+    expect(caughtError).not.toBeNull();
+    expect(caughtError!.message).toContain("timed out");
+  }, 15_000);
+
+  it("preserves the underlying error when retries are exhausted (not generic AbortError)", async () => {
+    const server = http.createServer((_req, res) => {
+      res.writeHead(500, { "Content-Type": "text/plain" });
+      res.end("internal server error");
+    });
+
+    await new Promise<void>((resolve) => server.listen(1240, resolve));
+
+    let caughtError: Error | null = null;
+    try {
+      await streamDownloadAndExtractTar("http://localhost:1240", extractDir, {
+        maxRetries: 0,
+      });
+    } catch (err) {
+      caughtError = err as Error;
+    } finally {
+      server.close();
+    }
+
+    expect(caughtError).not.toBeNull();
+    expect(caughtError!.name).not.toBe("AbortError");
+    expect(caughtError!.message).toMatch(/500/);
   });
 });
