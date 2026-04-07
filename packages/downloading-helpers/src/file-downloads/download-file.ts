@@ -276,12 +276,19 @@ export const streamDownloadAndExtractTar = async (
 
       return entries;
     } catch (error) {
+      const wasAbortedBeforeCleanup = abortController.signal.aborted;
+      const reasonBeforeCleanup = abortController.signal.reason;
       abortController.abort();
       await rm(extractPath, { recursive: true, force: true }).catch(() => {});
 
       if (attempt >= maxRetries) {
-        const reason = abortController.signal.reason;
-        throw reason instanceof Error ? reason : error;
+        const errToThrow =
+          wasAbortedBeforeCleanup && reasonBeforeCleanup instanceof Error
+            ? reasonBeforeCleanup
+            : error instanceof Error
+              ? error
+              : new Error(String(error));
+        throw errToThrow;
       }
 
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
@@ -300,6 +307,14 @@ export const streamDownloadAndExtractTar = async (
  */
 const createFastInflateRawStream = (): Transform => {
   const inflate = new InflateRaw();
+  let inflateClosed = false;
+  const closeInflateOnce = (): void => {
+    if (inflateClosed) {
+      return;
+    }
+    inflateClosed = true;
+    inflate.close();
+  };
   return new Transform({
     highWaterMark: STREAMING_HIGH_WATER_MARK,
     transform(chunk: Buffer, _encoding: BufferEncoding, callback) {
@@ -319,14 +334,14 @@ const createFastInflateRawStream = (): Transform => {
         if (result.length > 0) {
           this.push(result);
         }
-        inflate.close();
+        closeInflateOnce();
         callback();
       } catch (err) {
         callback(err as Error);
       }
     },
     destroy(_err, callback) {
-      inflate.close();
+      closeInflateOnce();
       callback(_err);
     },
   });

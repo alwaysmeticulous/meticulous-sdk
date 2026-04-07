@@ -229,4 +229,28 @@ describe("streamDownloadAndExtractTar", () => {
     expect(caughtError).not.toBeNull();
     expect(caughtError!.message).toContain("timed out");
   }, 15_000);
+
+  it("preserves the underlying error when retries are exhausted (not generic AbortError)", async () => {
+    const server = http.createServer((_req, res) => {
+      res.writeHead(500, { "Content-Type": "text/plain" });
+      res.end("internal server error");
+    });
+
+    await new Promise<void>((resolve) => server.listen(1240, resolve));
+
+    let caughtError: Error | null = null;
+    try {
+      await streamDownloadAndExtractTar("http://localhost:1240", extractDir, {
+        maxRetries: 0,
+      });
+    } catch (err) {
+      caughtError = err as Error;
+    } finally {
+      server.close();
+    }
+
+    expect(caughtError).not.toBeNull();
+    expect(caughtError!.name).not.toBe("AbortError");
+    expect(caughtError!.message).toMatch(/500/);
+  });
 });
