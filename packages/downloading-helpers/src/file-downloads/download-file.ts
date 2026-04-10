@@ -61,13 +61,13 @@ export const downloadFile = async (
 
   const client = axios.create({ timeout: firstDataTimeoutInMs });
   axiosRetry(client, { retries: 3, shouldResetTimeout: true });
-  const source = axios.CancelToken.source();
+  const abortController = new AbortController();
 
   const response = await client.request({
     method: "GET",
     url: fileUrl,
     responseType: "stream",
-    cancelToken: source.token,
+    signal: abortController.signal,
   });
 
   const contentLength = parseInt(response.headers["content-length"] ?? "0", 10);
@@ -111,7 +111,7 @@ export const downloadFile = async (
   (response.data as Stream).pipe(progressTransform).pipe(writer);
   const timeoutId = setTimeout(async () => {
     const error = `Download timed out after ${downloadCompleteTimeoutInMs}ms`;
-    source.cancel(error);
+    abortController.abort(new Error(error));
     writer.destroy(new Error(error));
   }, downloadCompleteTimeoutInMs);
 
