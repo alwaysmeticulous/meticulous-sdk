@@ -1,5 +1,5 @@
 import os from "os";
-import { TestRun } from "@alwaysmeticulous/client";
+import { TestRun } from "@alwaysmeticulous/api";
 import * as Sentry from "@sentry/node";
 import { Logger } from "loglevel";
 import { mem } from "systeminformation";

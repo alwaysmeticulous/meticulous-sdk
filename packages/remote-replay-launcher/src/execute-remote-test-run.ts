@@ -1,11 +1,10 @@
-import { CompanionAssetsInfo } from "@alwaysmeticulous/api";
+import { CompanionAssetsInfo, TestRun } from "@alwaysmeticulous/api";
 import {
   createClient,
   executeSecureTunnelTestRun,
   getApiToken,
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
-  TestRun,
   getIsLocked,
 } from "@alwaysmeticulous/client";
 import { defer, initLogger } from "@alwaysmeticulous/common";

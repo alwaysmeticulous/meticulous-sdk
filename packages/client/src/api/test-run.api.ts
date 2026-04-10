@@ -1,51 +1,18 @@
-import {
-  Project,
-  TestCase,
-  TestCaseResult,
-  CompanionAssetsInfo,
-  TestRunStatus,
+import type {
+  ExecuteSecureTunnelTestRunOptions as ExecuteSecureTunnelTestRunPayload,
+  ExecuteSecureTunnelTestRunResponse,
+  TestRun,
   TestRunDataLocations,
 } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
 import { MeticulousClient } from "../types/client.types";
 import { ReplayDiffResponse } from "./replay-diff.api";
-import {
-  BaseResolutionDetails,
-  TestRunTriggerDebugContext,
-} from "./test-run-debug-context.api";
 
-export interface TestRun {
-  id: string;
-  status: TestRunStatus;
-  project: Project;
-  configData: {
-    testCases?: TestCase[];
-  };
-  resultData?: {
-    results?: TestCaseResult[];
-  };
-  url: string;
-}
-
-export interface ExecuteSecureTunnelTestRunOptions {
+export type ExecuteSecureTunnelTestRunOptions = ExecuteSecureTunnelTestRunPayload & {
   client: MeticulousClient;
-  headSha: string;
-  tunnelUrl: string;
-  basicAuthUser: string;
-  basicAuthPassword: string;
-  environment: string;
-  isLockable: boolean;
-  companionAssetsInfo?: CompanionAssetsInfo;
-  pullRequestHostingProviderId?: string;
-  postComment?: boolean;
-  debugContext?: TestRunTriggerDebugContext;
-}
+};
 
-export interface ExecuteSecureTunnelTestRunResponse {
-  testRun?: TestRun;
-  deploymentId: string;
-  message?: string;
-}
+export type { ExecuteSecureTunnelTestRunResponse, TestRun };
 
 export const executeSecureTunnelTestRun = async ({
   client,

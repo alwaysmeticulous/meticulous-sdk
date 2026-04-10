@@ -1,6 +1,9 @@
-import { AssetUploadMetadata, DeploymentArchiveType } from "@alwaysmeticulous/api";
+import {
+  AssetUploadMetadata,
+  DeploymentArchiveType,
+  type TestRun,
+} from "@alwaysmeticulous/api";
 import { MeticulousClient } from "../types/client.types";
-import { TestRun } from "./test-run.api";
 
 export interface RequestAssetUploadParams {
   size: number;

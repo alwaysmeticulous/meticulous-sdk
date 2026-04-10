@@ -1,5 +1,8 @@
+import { Project } from "../project.types";
 import { S3Location } from "../s3.types";
+import { CompanionAssetsInfo } from "../sdk-bundle-api/sdk-to-bundle/companion-assets";
 import { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screenshotting-options";
+import type { TestRunTriggerDebugContext } from "./test-run-debug-context.types";
 
 /**
  * Relevance of a session
@@ -112,4 +115,36 @@ export interface TestRunDataLocations {
   diversityByReplay?: S3Location;
   relevantReplayContexts: S3Location;
   appContainerLogs?: AppContainerLogsLocations;
+}
+
+export interface TestRun {
+  id: string;
+  status: TestRunStatus;
+  project: Project;
+  configData: {
+    testCases?: TestCase[];
+  };
+  resultData?: {
+    results?: TestCaseResult[];
+  };
+  url: string;
+}
+
+export interface ExecuteSecureTunnelTestRunOptions {
+  headSha: string;
+  tunnelUrl: string;
+  basicAuthUser: string;
+  basicAuthPassword: string;
+  environment: string;
+  isLockable: boolean;
+  companionAssetsInfo?: CompanionAssetsInfo;
+  pullRequestHostingProviderId?: string;
+  postComment?: boolean;
+  debugContext?: TestRunTriggerDebugContext;
+}
+
+export interface ExecuteSecureTunnelTestRunResponse {
+  testRun?: TestRun;
+  deploymentId: string;
+  message?: string;
 }

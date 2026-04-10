@@ -1,9 +1,9 @@
+import { TestRun } from "@alwaysmeticulous/api";
 import {
   getApiToken,
   createClient,
   getRegistryAuth,
   completeContainerUpload,
-  TestRun,
   ContainerEnvVariable,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
