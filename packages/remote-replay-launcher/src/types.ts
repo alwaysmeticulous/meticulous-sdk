@@ -1,5 +1,5 @@
 import { AssetUploadMetadata } from "@alwaysmeticulous/api";
-import { BaseResolutionDetails, ContainerEnvVariable, TestRun } from "@alwaysmeticulous/client";
+import { TestRunTriggerDebugContext, ContainerEnvVariable, TestRun } from "@alwaysmeticulous/client";
 
 export interface TunnelData {
   url: string;
@@ -58,9 +58,7 @@ export interface ExecuteRemoteTestRunOptions {
   postComment?: boolean;
 
 
-  debugContext?: {
-    baseResolutionDetails?: BaseResolutionDetails;
-  };
+  debugContext?: TestRunTriggerDebugContext;
 }
 
 export interface ExecuteRemoteTestRunResult {

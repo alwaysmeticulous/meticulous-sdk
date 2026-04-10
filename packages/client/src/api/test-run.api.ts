@@ -9,7 +9,10 @@ import {
 import { isFetchError, maybeEnrichFetchError } from "../errors";
 import { MeticulousClient } from "../types/client.types";
 import { ReplayDiffResponse } from "./replay-diff.api";
-import { BaseResolutionDetails } from "./test-run-debug-details.api";
+import {
+  BaseResolutionDetails,
+  TestRunTriggerDebugContext,
+} from "./test-run-debug-context.api";
 
 export interface TestRun {
   id: string;
@@ -35,9 +38,7 @@ export interface ExecuteSecureTunnelTestRunOptions {
   companionAssetsInfo?: CompanionAssetsInfo;
   pullRequestHostingProviderId?: string;
   postComment?: boolean;
-  debugContext?: {
-    baseResolutionDetails?: BaseResolutionDetails;
-  };
+  debugContext?: TestRunTriggerDebugContext;
 }
 
 export interface ExecuteSecureTunnelTestRunResponse {

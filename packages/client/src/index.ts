@@ -98,4 +98,12 @@ export {
   RelevantSession,
   getRelevantSessions,
 } from "./api/local-changes.api";
-export { BaseResolutionDetails } from "./api/test-run-debug-details.api";
+export {
+  BaseResolutionDetails,
+  TestRunTriggerDebugContext,
+  SuitableTestRunAlreadyExisted,
+  WaitedForExistingWorkflowRun,
+  RequiredNewWorkflowRunButFailedDueToNewCommitToBaseBranch,
+  TriggeredNewWorkflowRunSuccessfully,
+  FailedForOtherReason,
+} from "./api/test-run-debug-context.api";

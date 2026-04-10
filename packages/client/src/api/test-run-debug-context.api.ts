@@ -1,3 +1,7 @@
+export interface TestRunTriggerDebugContext {
+  baseResolutionDetails?: BaseResolutionDetails;
+}
+
 /**
  * We sometimes need to re-run the CI job for the base commit to (re-)compute Meticulous results for the base commit.
  *
