@@ -1,4 +1,4 @@
-import { TestRun } from "@alwaysmeticulous/client";
+import { TestRun } from "@alwaysmeticulous/api";
 import { initLogger } from "@alwaysmeticulous/common";
 
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;

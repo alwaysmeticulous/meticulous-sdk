@@ -3,14 +3,13 @@ import { stat, unlink } from "fs/promises";
 import { IncomingMessage } from "http";
 import { request as httpsRequest } from "https";
 import { join, resolve } from "path";
-import { AssetUploadMetadata } from "@alwaysmeticulous/api";
+import { AssetUploadMetadata, TestRun } from "@alwaysmeticulous/api";
 import {
   getApiToken,
   requestAssetUpload,
   requestGitDiffUpload,
   createClient,
   completeAssetUpload,
-  TestRun,
   getProxyAgent,
   requestMultipartAssetUpload,
   MultiPartUploadInfo,

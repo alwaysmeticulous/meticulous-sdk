@@ -1,5 +1,9 @@
-import { AssetUploadMetadata } from "@alwaysmeticulous/api";
-import { ContainerEnvVariable, TestRun } from "@alwaysmeticulous/client";
+import {
+  AssetUploadMetadata,
+  TestRun,
+  TestRunTriggerDebugContext,
+} from "@alwaysmeticulous/api";
+import { ContainerEnvVariable } from "@alwaysmeticulous/client";
 
 export interface TunnelData {
   url: string;
@@ -56,6 +60,9 @@ export interface ExecuteRemoteTestRunOptions {
    * Post a comment for this test run, even if comments are still disabled for the project.
    */
   postComment?: boolean;
+
+
+  debugContext?: TestRunTriggerDebugContext;
 }
 
 export interface ExecuteRemoteTestRunResult {

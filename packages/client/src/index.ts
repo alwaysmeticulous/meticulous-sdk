@@ -20,10 +20,6 @@ export {
 export * from "./api/github-cloud-replay.api";
 export { WhoamiResponse, getWhoami } from "./api/oauth.api";
 export { getProject, getRepoUrl } from "./api/project.api";
-/**
- * @deprecated Use TestRunDataLocations from `@alwaysmeticulous/api` instead.
- */
-export { TestRunDataLocations } from "@alwaysmeticulous/api";
 export {
   ReplayV3UploadLocations,
   getReplay,
@@ -98,3 +94,7 @@ export {
   RelevantSession,
   getRelevantSessions,
 } from "./api/local-changes.api";
+/**
+ * @deprecated Prefer importing `TestRunDataLocations` from `@alwaysmeticulous/api` instead of `@alwaysmeticulous/client`.
+ */
+export { TestRunDataLocations } from "@alwaysmeticulous/api";

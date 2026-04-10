@@ -1,11 +1,10 @@
-import { CompanionAssetsInfo } from "@alwaysmeticulous/api";
+import { CompanionAssetsInfo, TestRun } from "@alwaysmeticulous/api";
 import {
   createClient,
   executeSecureTunnelTestRun,
   getApiToken,
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
-  TestRun,
   getIsLocked,
 } from "@alwaysmeticulous/client";
 import { defer, initLogger } from "@alwaysmeticulous/common";
@@ -39,6 +38,7 @@ export const executeRemoteTestRun = async ({
   isLockable,
   pullRequestHostingProviderId,
   companionAssets,
+  debugContext,
   allowInvalidCert = false,
   proxyAllUrls = false,
   rewriteHostnameToAppUrl = false,
@@ -145,6 +145,7 @@ export const executeRemoteTestRun = async ({
     postComment,
     ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
     ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
+    ...(debugContext ? { debugContext } : {}),
   });
   if (!response.testRun) {
     throw new Error(`${response.message ?? "Test run was not created"}`);

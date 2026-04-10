@@ -30,7 +30,19 @@ export {
   TestCaseResultStatus,
   AppContainerLogsLocations,
   TestRunDataLocations,
+  TestRun,
+  ExecuteSecureTunnelTestRunOptions,
+  ExecuteSecureTunnelTestRunResponse,
 } from "./replay/test-run.types";
+export {
+  BaseResolutionDetails,
+  FailedForOtherReason,
+  RequiredNewWorkflowRunButFailedDueToNewCommitToBaseBranch,
+  SuitableTestRunAlreadyExisted,
+  TestRunTriggerDebugContext,
+  TriggeredNewWorkflowRunSuccessfully,
+  WaitedForExistingWorkflowRun,
+} from "./replay/test-run-debug-context.types";
 export { TestRunChunkStatus } from "./replay/test-run-chunk.types";
 export * from "./sdk-bundle-api/sdk-to-bundle/test-run-environment";
 export { ReplayableEvent } from "./sdk-bundle-api/bidirectional/replayable-event";

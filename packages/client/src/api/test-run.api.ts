@@ -1,46 +1,18 @@
-import {
-  Project,
-  TestCase,
-  TestCaseResult,
-  CompanionAssetsInfo,
-  TestRunStatus,
+import type {
+  ExecuteSecureTunnelTestRunOptions as ExecuteSecureTunnelTestRunPayload,
+  ExecuteSecureTunnelTestRunResponse,
+  TestRun,
   TestRunDataLocations,
 } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
 import { MeticulousClient } from "../types/client.types";
 import { ReplayDiffResponse } from "./replay-diff.api";
 
-export interface TestRun {
-  id: string;
-  status: TestRunStatus;
-  project: Project;
-  configData: {
-    testCases?: TestCase[];
-  };
-  resultData?: {
-    results?: TestCaseResult[];
-  };
-  url: string;
-}
-
-export interface ExecuteSecureTunnelTestRunOptions {
+export type ExecuteSecureTunnelTestRunOptions = ExecuteSecureTunnelTestRunPayload & {
   client: MeticulousClient;
-  headSha: string;
-  tunnelUrl: string;
-  basicAuthUser: string;
-  basicAuthPassword: string;
-  environment: string;
-  isLockable: boolean;
-  companionAssetsInfo?: CompanionAssetsInfo;
-  pullRequestHostingProviderId?: string;
-  postComment?: boolean;
-}
+};
 
-export interface ExecuteSecureTunnelTestRunResponse {
-  testRun?: TestRun;
-  deploymentId: string;
-  message?: string;
-}
+export type { ExecuteSecureTunnelTestRunResponse, TestRun };
 
 export const executeSecureTunnelTestRun = async ({
   client,
@@ -53,6 +25,7 @@ export const executeSecureTunnelTestRun = async ({
   companionAssetsInfo,
   pullRequestHostingProviderId,
   postComment,
+  debugContext,
 }: ExecuteSecureTunnelTestRunOptions): Promise<ExecuteSecureTunnelTestRunResponse> => {
   const { data } = await client
     .post("test-runs/trigger-secure-tunnel-test-run-v2", {
@@ -65,6 +38,7 @@ export const executeSecureTunnelTestRun = async ({
       ...(postComment ? { postComment } : {}),
       ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
       ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
+      ...(debugContext ? { debugContext } : {}),
     })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
