@@ -39,6 +39,7 @@ export const executeRemoteTestRun = async ({
   isLockable,
   pullRequestHostingProviderId,
   companionAssets,
+  debugContext,
   allowInvalidCert = false,
   proxyAllUrls = false,
   rewriteHostnameToAppUrl = false,
@@ -145,6 +146,7 @@ export const executeRemoteTestRun = async ({
     postComment,
     ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
     ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
+    ...(debugContext ? { debugContext } : {}),
   });
   if (!response.testRun) {
     throw new Error(`${response.message ?? "Test run was not created"}`);
