@@ -97,13 +97,4 @@ export {
 /**
  * @deprecated Prefer importing `TestRunDataLocations` from `@alwaysmeticulous/api` instead of `@alwaysmeticulous/client`.
  */
-export {
-  BaseResolutionDetails,
-  FailedForOtherReason,
-  RequiredNewWorkflowRunButFailedDueToNewCommitToBaseBranch,
-  SuitableTestRunAlreadyExisted,
-  TestRunDataLocations,
-  TestRunTriggerDebugContext,
-  TriggeredNewWorkflowRunSuccessfully,
-  WaitedForExistingWorkflowRun,
-} from "@alwaysmeticulous/api";
+export { TestRunDataLocations } from "@alwaysmeticulous/api";
