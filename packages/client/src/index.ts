@@ -98,3 +98,4 @@ export {
   RelevantSession,
   getRelevantSessions,
 } from "./api/local-changes.api";
+export { BaseResolutionDetails } from "./api/test-run-debug-details.api";

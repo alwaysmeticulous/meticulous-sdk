@@ -9,6 +9,7 @@ import {
 import { isFetchError, maybeEnrichFetchError } from "../errors";
 import { MeticulousClient } from "../types/client.types";
 import { ReplayDiffResponse } from "./replay-diff.api";
+import { BaseResolutionDetails } from "./test-run-debug-details.api";
 
 export interface TestRun {
   id: string;
@@ -34,6 +35,9 @@ export interface ExecuteSecureTunnelTestRunOptions {
   companionAssetsInfo?: CompanionAssetsInfo;
   pullRequestHostingProviderId?: string;
   postComment?: boolean;
+  debugContext?: {
+    baseResolutionDetails?: BaseResolutionDetails;
+  };
 }
 
 export interface ExecuteSecureTunnelTestRunResponse {
@@ -53,6 +57,7 @@ export const executeSecureTunnelTestRun = async ({
   companionAssetsInfo,
   pullRequestHostingProviderId,
   postComment,
+  debugContext,
 }: ExecuteSecureTunnelTestRunOptions): Promise<ExecuteSecureTunnelTestRunResponse> => {
   const { data } = await client
     .post("test-runs/trigger-secure-tunnel-test-run-v2", {
@@ -65,6 +70,7 @@ export const executeSecureTunnelTestRun = async ({
       ...(postComment ? { postComment } : {}),
       ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
       ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
+      ...(debugContext ? { debugContext } : {}),
     })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
