@@ -11,7 +11,8 @@ export const defaultShouldRetry = (error: any): boolean => {
   if (error.name === "AbortError") {
     return false;
   }
-  if (error.code === "ECONNRESET" || error.code === "ETIMEDOUT") {
+  const errorCode = getErrorCode(error);
+  if (errorCode === "ECONNRESET" || errorCode === "ETIMEDOUT") {
     return true;
   }
   if (error.response && error.response.status >= 500) {
@@ -52,4 +53,22 @@ export const executeWithRetry = async <T>(
   }
 
   throw lastError;
+};
+
+const getErrorCode = (error: unknown): string | undefined => {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  const nodeError = error as { cause?: unknown; code?: unknown };
+  if (typeof nodeError.code === "string") {
+    return nodeError.code;
+  }
+
+  if (!nodeError.cause || typeof nodeError.cause !== "object") {
+    return undefined;
+  }
+
+  const cause = nodeError.cause as { code?: unknown };
+  return typeof cause.code === "string" ? cause.code : undefined;
 };

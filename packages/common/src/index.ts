@@ -30,4 +30,5 @@ export {
   defaultShouldRetry,
   type RetryOptions,
 } from "./http-retry.utils";
+export { createMeticulousFetch } from "./fetch.utils";
 export { ensureBrowser } from "./browser-installer";
