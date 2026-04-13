@@ -4,7 +4,7 @@ import {
   defaultShouldRetry,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import fetch, { RequestInit } from "node-fetch";
+import type { RequestInit } from "node-fetch";
 import type { AbortSignal } from "node-fetch/externals";
 import { getApiToken, getAuthToken } from "./api-token.utils";
 import { performOAuthLogin } from "./oauth/oauth-login";
@@ -13,7 +13,7 @@ import {
   RequestConfig,
   Response,
 } from "./types/client.types";
-import { getProxyAgent } from "./utils/get-proxy-agent";
+import { meticulousFetch } from "./utils/fetch";
 
 const DEFAULT_TIMEOUT = 60_000;
 const BASE_API_URL = "https://app.meticulous.ai/api/";
@@ -39,7 +39,7 @@ const makeSingleRequest = async <T>(
   const timeoutId = setTimeout(() => {
     controller.abort();
   }, timeout ?? DEFAULT_TIMEOUT);
-  const response = await fetch(url, {
+  const response = await meticulousFetch(url, {
     ...options,
     signal: controller.signal as AbortSignal,
   });
@@ -110,7 +110,6 @@ export const makeRequest = async <T>(
   const requestInit: RequestInit = {
     ...options,
     headers: finalHeaders,
-    agent: getProxyAgent(),
   };
 
   return await executeWithRetry(
