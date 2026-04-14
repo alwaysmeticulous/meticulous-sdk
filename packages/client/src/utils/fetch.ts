@@ -4,12 +4,18 @@ import { getProxyAgent } from "./get-proxy-agent";
 
 type FetchImplementation = typeof nodeFetch;
 
-export const meticulousFetch = createMeticulousFetch({
+export const meticulousFetch = createMeticulousFetch<
+  Parameters<FetchImplementation>[0],
+  Parameters<FetchImplementation>[1],
+  Awaited<ReturnType<FetchImplementation>>
+>({
   createFallbackInit,
   getFallbackFetch,
 });
 
-function createFallbackInit(init?: Parameters<FetchImplementation>[1]) {
+function createFallbackInit(
+  init?: Parameters<FetchImplementation>[1],
+): Parameters<FetchImplementation>[1] {
   return {
     ...init,
     agent: getProxyAgent(),
