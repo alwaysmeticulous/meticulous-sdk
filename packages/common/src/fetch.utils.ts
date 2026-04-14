@@ -1,3 +1,5 @@
+import { getErrorCode } from "./error-code.utils";
+
 type FetchImplementation = (
   ...args: any[]
 ) => Promise<unknown>;
@@ -65,16 +67,6 @@ function normalizeFetchError<T>(error: T): T {
 
   return error;
 }
-
-function getErrorCode(error: unknown): string | undefined {
-  if (!error || typeof error !== "object") {
-    return undefined;
-  }
-
-  const nodeError = error as { code?: unknown };
-  return typeof nodeError.code === "string" ? nodeError.code : undefined;
-}
-
 const PROXY_ENVIRONMENT_VARIABLES = [
   "HTTP_PROXY",
   "HTTPS_PROXY",
