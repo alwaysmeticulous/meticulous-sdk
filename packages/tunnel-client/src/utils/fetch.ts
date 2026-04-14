@@ -16,8 +16,8 @@ function createFallbackInit(init?: Parameters<FetchImplementation>[1]) {
   };
 }
 
-function getFallbackFetch(): FetchImplementation {
-  const nodeFetchModule = require("node-fetch") as typeof import("node-fetch");
+async function getFallbackFetch() {
+  const nodeFetchModule = await import("node-fetch");
 
   return (nodeFetchModule.default ?? nodeFetchModule) as FetchImplementation;
 }

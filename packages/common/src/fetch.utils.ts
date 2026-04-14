@@ -1,39 +1,35 @@
 import { getErrorCode } from "./error-code.utils";
 
-type FetchImplementation = (
-  ...args: any[]
-) => Promise<unknown>;
-
-interface CreateMeticulousFetchOptions<TFetch extends FetchImplementation> {
-  createFallbackInit?: (
-    init?: Parameters<TFetch>[1],
-  ) => Parameters<TFetch>[1];
-  getFallbackFetch: () => TFetch;
+interface CreateMeticulousFetchOptions<TInput, TInit, TResponse> {
+  createFallbackInit?: (init?: TInit) => TInit;
+  getFallbackFetch: () => Promise<(
+    input: TInput,
+    init?: TInit,
+  ) => Promise<TResponse>>;
 }
 
-export const createMeticulousFetch = <TFetch extends FetchImplementation>({
+export const createMeticulousFetch = <TInput, TInit, TResponse>({
   createFallbackInit,
   getFallbackFetch,
-}: CreateMeticulousFetchOptions<TFetch>) => {
+}: CreateMeticulousFetchOptions<TInput, TInit, TResponse>) => {
   return async (
-    input: Parameters<TFetch>[0],
-    init?: Parameters<TFetch>[1],
-  ): Promise<Awaited<ReturnType<TFetch>>> => {
+    input: TInput,
+    init?: TInit,
+  ): Promise<TResponse> => {
     if (shouldUseNativeFetch()) {
       try {
         return await globalThis.fetch(
           input as Parameters<typeof globalThis.fetch>[0],
           init as Parameters<typeof globalThis.fetch>[1],
-        ) as Awaited<ReturnType<TFetch>>;
+        ) as TResponse;
       } catch (error) {
         throw normalizeFetchError(error);
       }
     }
 
     const fallbackInit = createFallbackInit ? createFallbackInit(init) : init;
-    return await getFallbackFetch()(input, fallbackInit) as Awaited<
-      ReturnType<TFetch>
-    >;
+    const fallbackFetch = await getFallbackFetch();
+    return await fallbackFetch(input, fallbackInit);
   };
 };
 
