@@ -139,6 +139,7 @@ export interface ApplicationSpecificData {
     isFallback?: boolean;
     gsp?: boolean;
     gip?: boolean;
+    appGip?: boolean;
     scriptLoader?: Record<string, unknown>;
     locale?: string;
     assetPrefix?: string;
