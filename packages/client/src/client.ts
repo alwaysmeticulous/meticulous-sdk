@@ -4,8 +4,7 @@ import {
   defaultShouldRetry,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
-import type { RequestInit } from "node-fetch";
-import type { AbortSignal } from "node-fetch/externals";
+import type { RequestInit } from "undici";
 import { getApiToken, getAuthToken } from "./api-token.utils";
 import { performOAuthLogin } from "./oauth/oauth-login";
 import {
@@ -41,7 +40,7 @@ const makeSingleRequest = async <T>(
   }, timeout ?? DEFAULT_TIMEOUT);
   const response = await meticulousFetch(url, {
     ...options,
-    signal: controller.signal as AbortSignal,
+    signal: controller.signal,
   });
   clearTimeout(timeoutId);
 

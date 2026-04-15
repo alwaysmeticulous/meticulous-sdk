@@ -1,17 +1,25 @@
 export function getErrorCode(error: unknown): string | undefined {
+  return getNestedErrorCode(error, new Set());
+}
+
+function getNestedErrorCode(
+  error: unknown,
+  visited: Set<object>,
+): string | undefined {
   if (!error || typeof error !== "object") {
     return undefined;
   }
 
-  const nodeError = error as { cause?: unknown; code?: unknown };
-  if (typeof nodeError.code === "string") {
-    return nodeError.code;
-  }
-
-  if (!nodeError.cause || typeof nodeError.cause !== "object") {
+  if (visited.has(error)) {
     return undefined;
   }
+  visited.add(error);
 
-  const cause = nodeError.cause as { code?: unknown };
-  return typeof cause.code === "string" ? cause.code : undefined;
+  const nodeError = error as { cause?: unknown; code?: unknown };
+  const nestedCode = getNestedErrorCode(nodeError.cause, visited);
+  if (nestedCode) {
+    return nestedCode;
+  }
+
+  return typeof nodeError.code === "string" ? nodeError.code : undefined;
 }

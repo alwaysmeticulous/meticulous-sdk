@@ -16,14 +16,15 @@
     "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
-    "depcheck": "depcheck --ignore-patterns=dist"
+    "depcheck": "depcheck --ignore-patterns=dist",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@alwaysmeticulous/api": "workspace:*",
     "@alwaysmeticulous/common": "workspace:*",
     "loglevel": "^1.8.0",
-    "node-fetch": "^2.6.9",
-    "proxy-agent": "^6.4.0"
+    "proxy-agent": "^6.4.0",
+    "undici": "^6.24.1"
   },
   "author": {
     "name": "The Meticulous Team",
@@ -31,7 +32,7 @@
     "url": "https://meticulous.ai"
   },
   "engines": {
-    "node": ">= 12"
+    "node": ">= 18"
   },
   "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
   "repository": {
@@ -43,6 +44,6 @@
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
   },
   "devDependencies": {
-    "@types/node-fetch": "^2.6.13"
+    "vitest": "catalog:"
   }
 }
