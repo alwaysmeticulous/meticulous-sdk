@@ -10,8 +10,8 @@ const DEFAULT_PORTS: Partial<Record<string, number>> = {
   "https:": 443,
 };
 
-const directDispatcher = new Agent();
-const proxyDispatchers = new Map<string, Dispatcher>();
+let directDispatcher: Dispatcher | undefined;
+let proxyDispatchers: Map<string, Dispatcher> | undefined;
 
 export const meticulousFetch = (
   input: Parameters<typeof undiciFetch>[0],
@@ -28,19 +28,19 @@ function getDispatcherForInput(
 ): Dispatcher {
   const url = getUrlFromInput(input);
   if (!url) {
-    return directDispatcher;
+    return getDirectDispatcher();
   }
 
   const { httpProxy, httpsProxy, noProxy } = getProxyConfiguration();
   if (!shouldProxy(url, noProxy)) {
-    return directDispatcher;
+    return getDirectDispatcher();
   }
 
   if (url.protocol === "https:") {
-    return httpsProxy ? getProxyDispatcher(httpsProxy) : directDispatcher;
+    return httpsProxy ? getProxyDispatcher(httpsProxy) : getDirectDispatcher();
   }
 
-  return httpProxy ? getProxyDispatcher(httpProxy) : directDispatcher;
+  return httpProxy ? getProxyDispatcher(httpProxy) : getDirectDispatcher();
 }
 
 function getUrlFromInput(
@@ -139,6 +139,8 @@ function parseNoProxyEntries(
 }
 
 function getProxyDispatcher(uri: string): Dispatcher {
+  proxyDispatchers ??= new Map<string, Dispatcher>();
+
   const existingDispatcher = proxyDispatchers.get(uri);
   if (existingDispatcher) {
     return existingDispatcher;
@@ -147,4 +149,9 @@ function getProxyDispatcher(uri: string): Dispatcher {
   const dispatcher = new ProxyAgent({ uri });
   proxyDispatchers.set(uri, dispatcher);
   return dispatcher;
+}
+
+function getDirectDispatcher(): Dispatcher {
+  directDispatcher ??= new Agent();
+  return directDispatcher;
 }
