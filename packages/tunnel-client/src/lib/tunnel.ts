@@ -2,11 +2,10 @@ import { EventEmitter } from "events";
 import cluster, { Worker } from "node:cluster";
 import { cpus } from "node:os";
 import path from "path";
+import { meticulousFetch } from "@alwaysmeticulous/common";
 import { Logger } from "loglevel";
-import fetch from "node-fetch";
 import TypedEmitter from "typed-emitter";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
-import { getProxyAgent } from "../utils/get-proxy-agent";
 import { WorkerInitOptions } from "./tunnel-worker.entrypoint";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
@@ -141,13 +140,12 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     const uri = `${baseUriWithDomain}?${urlSearchParams.toString()}`;
 
     const getUrl = () => {
-      fetch(uri, {
+      meticulousFetch(uri, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
           Authorization: opt.apiToken,
         },
-        agent: getProxyAgent(),
       })
         .then(async (res) => {
           const body = await res.json();

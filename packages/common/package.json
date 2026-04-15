@@ -33,19 +33,22 @@
     "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
-    "depcheck": "depcheck --ignore-patterns=dist"
+    "depcheck": "depcheck --ignore-patterns=dist",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@puppeteer/browsers": "2.10.6",
     "chalk": "^4.1.2",
     "loglevel": "^1.8.0",
     "luxon": "^3.2.1",
-    "puppeteer-core": "24.14.0"
+    "puppeteer-core": "24.14.0",
+    "undici": "^6.24.1"
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "workspace:*",
     "@alwaysmeticulous/sdk-bundles-api": "workspace:*",
-    "@types/luxon": "^3.2.0"
+    "@types/luxon": "^3.2.0",
+    "vitest": "catalog:"
   },
   "author": {
     "name": "The Meticulous Team",

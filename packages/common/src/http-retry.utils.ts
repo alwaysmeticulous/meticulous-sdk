@@ -1,4 +1,5 @@
 import log from "loglevel";
+import { getErrorCode } from "./error-code.utils";
 
 export interface RetryOptions {
   maxRetries?: number;
@@ -11,7 +12,8 @@ export const defaultShouldRetry = (error: any): boolean => {
   if (error.name === "AbortError") {
     return false;
   }
-  if (error.code === "ECONNRESET" || error.code === "ETIMEDOUT") {
+  const errorCode = getErrorCode(error);
+  if (errorCode === "ECONNRESET" || errorCode === "ETIMEDOUT") {
     return true;
   }
   if (error.response && error.response.status >= 500) {
