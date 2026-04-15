@@ -83,7 +83,7 @@ describe("meticulousFetch", () => {
     await expect(
       meticulousFetch("https://example.com/test"),
     ).resolves.toBe(response as never);
-    expect(agentMock).toHaveBeenCalledTimes(1);
+    expect(agentMock).not.toHaveBeenCalled();
     expect(proxyAgentMock).toHaveBeenCalledTimes(1);
     expect(undiciFetchMock).toHaveBeenCalledWith(
       "https://example.com/test",
