@@ -31,4 +31,5 @@ export {
   type RetryOptions,
 } from "./http-retry.utils";
 export { getErrorCode } from "./error-code.utils";
+export { meticulousFetch } from "./fetch.utils";
 export { ensureBrowser } from "./browser-installer";

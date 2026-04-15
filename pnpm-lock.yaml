@@ -216,6 +216,9 @@ importers:
       puppeteer-core:
         specifier: 24.14.0
         version: 24.14.0
+      undici:
+        specifier: ^6.24.1
+        version: 6.24.1
     devDependencies:
       '@alwaysmeticulous/api':
         specifier: workspace:*
@@ -491,9 +494,6 @@ importers:
       proxy-agent:
         specifier: ^6.4.0
         version: 6.5.0
-      undici:
-        specifier: ^6.24.1
-        version: 6.24.1
     devDependencies:
       typed-emitter:
         specifier: ^2.1.0

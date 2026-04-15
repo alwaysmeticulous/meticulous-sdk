@@ -2,6 +2,7 @@ import {
   initLogger,
   executeWithRetry,
   defaultShouldRetry,
+  meticulousFetch,
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import type { RequestInit } from "undici";
@@ -12,7 +13,6 @@ import {
   RequestConfig,
   Response,
 } from "./types/client.types";
-import { meticulousFetch } from "./utils/fetch";
 
 const DEFAULT_TIMEOUT = 60_000;
 const BASE_API_URL = "https://app.meticulous.ai/api/";

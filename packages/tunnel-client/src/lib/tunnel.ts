@@ -2,10 +2,10 @@ import { EventEmitter } from "events";
 import cluster, { Worker } from "node:cluster";
 import { cpus } from "node:os";
 import path from "path";
+import { meticulousFetch } from "@alwaysmeticulous/common";
 import { Logger } from "loglevel";
 import TypedEmitter from "typed-emitter";
 import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
-import { meticulousFetch } from "../utils/fetch";
 import { WorkerInitOptions } from "./tunnel-worker.entrypoint";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";

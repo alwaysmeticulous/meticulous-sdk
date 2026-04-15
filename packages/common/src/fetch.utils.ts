@@ -10,6 +10,9 @@ const DEFAULT_PORTS: Partial<Record<string, number>> = {
   "https:": 443,
 };
 
+const directDispatcher = new Agent();
+const proxyDispatchers = new Map<string, Dispatcher>();
+
 export const meticulousFetch = (
   input: Parameters<typeof undiciFetch>[0],
   init?: Parameters<typeof undiciFetch>[1],
@@ -19,9 +22,6 @@ export const meticulousFetch = (
     dispatcher: getDispatcherForInput(input),
   });
 };
-
-const directDispatcher = new Agent();
-const proxyDispatchers = new Map<string, Dispatcher>();
 
 function getDispatcherForInput(
   input: Parameters<typeof undiciFetch>[0],
