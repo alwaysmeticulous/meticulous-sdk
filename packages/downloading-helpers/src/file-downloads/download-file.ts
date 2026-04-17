@@ -412,6 +412,21 @@ const extractTarWithParallelWrites = async ({
         entry.resume();
         return;
       }
+
+      // Only record entries we're going to materialize on disk. The serial
+      // `tar.extract` path's entries list reflects what's written, and callers
+      // iterate it expecting every path to exist — symlinks, device nodes and
+      // pax headers are silently skipped below, so they must not appear here.
+      if (
+        entry.type !== "Directory" &&
+        entry.type !== "File" &&
+        entry.type !== "OldFile" &&
+        entry.type !== "ContiguousFile"
+      ) {
+        entry.resume();
+        return;
+      }
+
       entries.push(entry.path);
 
       if (entry.type === "Directory") {
@@ -425,15 +440,6 @@ const extractTarWithParallelWrites = async ({
             recordError(err);
           }),
         );
-        entry.resume();
-        return;
-      }
-
-      if (
-        entry.type !== "File" &&
-        entry.type !== "OldFile" &&
-        entry.type !== "ContiguousFile"
-      ) {
         entry.resume();
         return;
       }

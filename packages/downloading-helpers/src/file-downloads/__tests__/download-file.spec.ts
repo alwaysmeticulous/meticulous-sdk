@@ -6,8 +6,47 @@ import { join } from "path";
 import { constants as zlibConstants } from "zlib";
 import { DeflateRaw } from "fast-zlib";
 import { create as tarCreate } from "tar";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { downloadFile, streamDownloadAndExtractTar } from "../download-file";
+
+// Module-level toggle for the stall-on-write test below. Vitest can't spy on
+// fs/promises named exports in ESM mode, so we vi.mock the module once and
+// flip this flag when a test needs writeFile to hang until aborted.
+const writeFileStallMode = { enabled: false };
+
+vi.mock("fs/promises", async () => {
+  const actual = await vi.importActual<typeof import("fs/promises")>(
+    "fs/promises",
+  );
+  return {
+    ...actual,
+    writeFile: (
+      path: Parameters<typeof actual.writeFile>[0],
+      data: Parameters<typeof actual.writeFile>[1],
+      options?: Parameters<typeof actual.writeFile>[2],
+    ) => {
+      if (!writeFileStallMode.enabled) {
+        return actual.writeFile(path, data, options);
+      }
+      const signal = (options as { signal?: AbortSignal } | undefined)?.signal;
+      return new Promise<void>((_resolve, reject) => {
+        const abort = (): void => {
+          const reason = signal?.reason;
+          reject(
+            reason instanceof Error
+              ? reason
+              : new Error(String(reason ?? "aborted")),
+          );
+        };
+        if (signal?.aborted) {
+          abort();
+          return;
+        }
+        signal?.addEventListener("abort", abort, { once: true });
+      });
+    },
+  };
+});
 
 describe("downloadFile", () => {
   it("downloads a file from a URL", async () => {
@@ -337,6 +376,58 @@ describe("streamDownloadAndExtractTar", () => {
         server.close();
       }
     });
+
+    it("honors totalTimeoutInMs when writes stall after the pipeline completes", async () => {
+      // Regression test: previously the AbortSignal from the total timeout was
+      // only wired to the streaming `pipeline`, so `Promise.allSettled(pendingWrites)`
+      // would block until every queued `writeFile` finished. On stalled EFS
+      // this made the function ignore `totalTimeoutInMs`.
+      const fileCount = 20;
+      for (let i = 0; i < fileCount; i++) {
+        await writeFile(join(sourceDir, `file-${i}.txt`), `contents ${i}`);
+      }
+
+      const compressed = await createRawDeflatedTar(sourceDir);
+
+      const server = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Length": compressed.length.toString() });
+        res.end(compressed);
+      });
+
+      writeFileStallMode.enabled = true;
+      try {
+        await new Promise<void>((resolve) => server.listen(1244, resolve));
+
+        const totalTimeoutInMs = 300;
+        const startedAt = Date.now();
+        let caughtError: Error | null = null;
+
+        try {
+          await streamDownloadAndExtractTar(
+            "http://localhost:1244",
+            extractDir,
+            {
+              totalTimeoutInMs,
+              extractConcurrency: 4,
+              maxRetries: 0,
+            },
+          );
+        } catch (err) {
+          caughtError = err as Error;
+        }
+
+        const elapsed = Date.now() - startedAt;
+
+        expect(caughtError).not.toBeNull();
+        expect(caughtError!.message).toContain("timed out");
+        // Should bail out promptly once the timeout fires, not wait for
+        // hung writes to complete. Allow generous slack for CI jitter.
+        expect(elapsed).toBeLessThan(totalTimeoutInMs + 2_000);
+      } finally {
+        writeFileStallMode.enabled = false;
+        server.close();
+      }
+    }, 10_000);
 
     it("extracts a large file correctly under parallel mode", async () => {
       const largeContent = "B".repeat(5 * 1024 * 1024);
