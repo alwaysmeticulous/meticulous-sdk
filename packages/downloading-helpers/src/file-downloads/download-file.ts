@@ -374,10 +374,23 @@ const extractTarWithParallelWrites = async ({
     }
   };
 
+  const throwIfAborted = (): void => {
+    if (!abortSignal.aborted) {
+      return;
+    }
+    const reason = abortSignal.reason;
+    throw reason instanceof Error
+      ? reason
+      : new Error(String(reason ?? "aborted"));
+  };
+
   const ensureDir = async (dir: string): Promise<void> => {
     if (mkdirCache.has(dir)) {
       return;
     }
+    // fs.promises.mkdir doesn't accept an AbortSignal, so we settle for
+    // refusing to issue new mkdirs once the outer timeout has fired.
+    throwIfAborted();
     await mkdir(dir, { recursive: true });
     mkdirCache.add(dir);
   };
@@ -393,9 +406,6 @@ const extractTarWithParallelWrites = async ({
   };
 
   const parser = new TarParser({
-    // Skip setting mtime on extracted entries. Saves one RPC per file and the
-    // asset server doesn't care about it.
-    noMtime: true,
     onReadEntry: (entry) => {
       const target = resolveSafeTarget(entry.path);
       if (target == null) {
@@ -442,7 +452,11 @@ const extractTarWithParallelWrites = async ({
           // an unhandled rejection before allSettled attaches a handler.
           limit(async () => {
             await ensureDir(dirname(target));
-            await writeFile(target, content, { mode });
+            // Passing the abort signal to writeFile means that if the outer
+            // totalTimeoutInMs fires while writes are draining (common on
+            // stalled EFS), the in-flight fs call rejects promptly instead
+            // of blocking past the timeout window.
+            await writeFile(target, content, { mode, signal: abortSignal });
           }).catch((err) => {
             recordError(err);
           }),
@@ -458,18 +472,66 @@ const extractTarWithParallelWrites = async ({
   // The pipeline resolves as soon as Parser has consumed all input bytes; the
   // file writes scheduled above may still be outstanding. Drain them before
   // returning so the caller sees a fully-materialized directory.
-  const settled = await Promise.allSettled(pendingWrites);
-  for (const result of settled) {
-    if (result.status === "rejected") {
-      recordError(result.reason);
-    }
-  }
+  //
+  // We race the drain against the abort signal so that a totalTimeoutInMs
+  // firing during the drain phase (e.g. stuck writes on EFS) bubbles out
+  // promptly. Without this, `abortSignal` is only wired to the `pipeline`
+  // call and has no effect on pending `writeFile`s that are queued in
+  // `p-limit`, letting the function run past its timeout.
+  await raceAgainstAbort(Promise.allSettled(pendingWrites), abortSignal).then(
+    (settled) => {
+      for (const result of settled) {
+        if (result.status === "rejected") {
+          recordError(result.reason);
+        }
+      }
+    },
+  );
 
   if (firstError != null) {
     throw firstError;
   }
 
   return entries;
+};
+
+/**
+ * Races `promise` against the abort signal, rejecting with the signal's
+ * reason if it fires before the promise settles. Used to enforce an upper
+ * bound on phases that can't otherwise be cancelled (e.g. a pool of
+ * in-flight fs writes on a stalled network filesystem).
+ */
+const raceAgainstAbort = <T>(
+  promise: Promise<T>,
+  abortSignal: AbortSignal,
+): Promise<T> => {
+  if (abortSignal.aborted) {
+    const reason = abortSignal.reason;
+    return Promise.reject(
+      reason instanceof Error ? reason : new Error(String(reason ?? "aborted")),
+    );
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = (): void => {
+      const reason = abortSignal.reason;
+      reject(
+        reason instanceof Error
+          ? reason
+          : new Error(String(reason ?? "aborted")),
+      );
+    };
+    abortSignal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        abortSignal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (err) => {
+        abortSignal.removeEventListener("abort", onAbort);
+        reject(err);
+      },
+    );
+  });
 };
 
 /**
