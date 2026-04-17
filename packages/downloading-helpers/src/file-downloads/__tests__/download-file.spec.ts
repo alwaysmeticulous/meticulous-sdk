@@ -1,5 +1,5 @@
 import { existsSync } from "fs";
-import { mkdir, readFile, rm, writeFile } from "fs/promises";
+import { mkdir, readFile, rm, symlink, writeFile } from "fs/promises";
 import http from "http";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -145,12 +145,15 @@ describe("downloadFile", () => {
  * Compresses a directory into a raw-deflated tar blob, matching the format
  * produced by MultipartCompressingUploader in production.
  */
-const createRawDeflatedTar = async (folderPath: string): Promise<Buffer> => {
+const createRawDeflatedTar = async (
+  folderPath: string,
+  { follow = true }: { follow?: boolean } = {},
+): Promise<Buffer> => {
   const deflate = new DeflateRaw({ level: 3 });
   const chunks: Buffer[] = [];
 
   await new Promise<void>((resolve, reject) => {
-    const tarStream = tarCreate({ cwd: folderPath, follow: true }, ["."]);
+    const tarStream = tarCreate({ cwd: folderPath, follow }, ["."]);
     tarStream.on("data", (chunk: Buffer) => {
       const compressed = deflate.process(chunk);
       if (compressed.length > 0) {
@@ -428,6 +431,42 @@ describe("streamDownloadAndExtractTar", () => {
         server.close();
       }
     }, 10_000);
+
+    it("does not report skipped non-file entries (e.g. symlinks) in the returned entries list", async () => {
+      // Regression: previously `entries.push(entry.path)` happened before the
+      // type filter, so symlinks / device nodes / pax headers were reported to
+      // the caller despite never being written. The serial path's contract is
+      // "entries list == what's on disk", and the parallel path must match.
+      await writeFile(join(sourceDir, "real.txt"), "hello");
+      await symlink("real.txt", join(sourceDir, "link.txt"));
+
+      const compressed = await createRawDeflatedTar(sourceDir, {
+        follow: false,
+      });
+
+      const server = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Length": compressed.length.toString() });
+        res.end(compressed);
+      });
+
+      try {
+        await new Promise<void>((resolve) => server.listen(1245, resolve));
+
+        const entries = await streamDownloadAndExtractTar(
+          "http://localhost:1245",
+          extractDir,
+          { extractConcurrency: 4 },
+        );
+
+        expect(entries).toEqual(expect.arrayContaining(["./real.txt"]));
+        expect(entries).not.toEqual(expect.arrayContaining(["./link.txt"]));
+        for (const entry of entries) {
+          expect(existsSync(join(extractDir, entry))).toBe(true);
+        }
+      } finally {
+        server.close();
+      }
+    });
 
     it("extracts a large file correctly under parallel mode", async () => {
       const largeContent = "B".repeat(5 * 1024 * 1024);
