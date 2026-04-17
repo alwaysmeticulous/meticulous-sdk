@@ -406,9 +406,13 @@ const extractTarWithParallelWrites = async ({
 
       if (entry.type === "Directory") {
         pendingWrites.push(
+          // Swallow here (after recording) so the promise settles as
+          // fulfilled. Re-throwing would leave an unhandled rejection sitting
+          // in `pendingWrites` until `Promise.allSettled` runs after the
+          // pipeline drains, which in Node 15+ terminates the process.
+          // `firstError` is re-thrown below once all writes settle.
           limit(() => ensureDir(target)).catch((err) => {
             recordError(err);
-            throw err;
           }),
         );
         entry.resume();
@@ -433,12 +437,14 @@ const extractTarWithParallelWrites = async ({
         const mode =
           entry.mode != null && entry.mode > 0 ? entry.mode : DEFAULT_FILE_MODE;
         pendingWrites.push(
+          // See the equivalent comment on the Directory branch above:
+          // we must not let this reject or Node will kill the process with
+          // an unhandled rejection before allSettled attaches a handler.
           limit(async () => {
             await ensureDir(dirname(target));
             await writeFile(target, content, { mode });
           }).catch((err) => {
             recordError(err);
-            throw err;
           }),
         );
       });
