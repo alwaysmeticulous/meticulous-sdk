@@ -1,13 +1,52 @@
 import { existsSync } from "fs";
-import { mkdir, readFile, rm, writeFile } from "fs/promises";
+import { mkdir, readFile, rm, symlink, writeFile } from "fs/promises";
 import http from "http";
 import { tmpdir } from "os";
 import { join } from "path";
 import { constants as zlibConstants } from "zlib";
 import { DeflateRaw } from "fast-zlib";
 import { create as tarCreate } from "tar";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { downloadFile, streamDownloadAndExtractTar } from "../download-file";
+
+// Module-level toggle for the stall-on-write test below. Vitest can't spy on
+// fs/promises named exports in ESM mode, so we vi.mock the module once and
+// flip this flag when a test needs writeFile to hang until aborted.
+const writeFileStallMode = { enabled: false };
+
+vi.mock("fs/promises", async () => {
+  const actual = await vi.importActual<typeof import("fs/promises")>(
+    "fs/promises",
+  );
+  return {
+    ...actual,
+    writeFile: (
+      path: Parameters<typeof actual.writeFile>[0],
+      data: Parameters<typeof actual.writeFile>[1],
+      options?: Parameters<typeof actual.writeFile>[2],
+    ) => {
+      if (!writeFileStallMode.enabled) {
+        return actual.writeFile(path, data, options);
+      }
+      const signal = (options as { signal?: AbortSignal } | undefined)?.signal;
+      return new Promise<void>((_resolve, reject) => {
+        const abort = (): void => {
+          const reason = signal?.reason;
+          reject(
+            reason instanceof Error
+              ? reason
+              : new Error(String(reason ?? "aborted")),
+          );
+        };
+        if (signal?.aborted) {
+          abort();
+          return;
+        }
+        signal?.addEventListener("abort", abort, { once: true });
+      });
+    },
+  };
+});
 
 describe("downloadFile", () => {
   it("downloads a file from a URL", async () => {
@@ -106,12 +145,15 @@ describe("downloadFile", () => {
  * Compresses a directory into a raw-deflated tar blob, matching the format
  * produced by MultipartCompressingUploader in production.
  */
-const createRawDeflatedTar = async (folderPath: string): Promise<Buffer> => {
+const createRawDeflatedTar = async (
+  folderPath: string,
+  { follow = true }: { follow?: boolean } = {},
+): Promise<Buffer> => {
   const deflate = new DeflateRaw({ level: 3 });
   const chunks: Buffer[] = [];
 
   await new Promise<void>((resolve, reject) => {
-    const tarStream = tarCreate({ cwd: folderPath, follow: true }, ["."]);
+    const tarStream = tarCreate({ cwd: folderPath, follow }, ["."]);
     tarStream.on("data", (chunk: Buffer) => {
       const compressed = deflate.process(chunk);
       if (compressed.length > 0) {
@@ -252,5 +294,208 @@ describe("streamDownloadAndExtractTar", () => {
     expect(caughtError).not.toBeNull();
     expect(caughtError!.name).not.toBe("AbortError");
     expect(caughtError!.message).toMatch(/500/);
+  });
+
+  describe("with extractConcurrency > 1 (parallel writes)", () => {
+    it("extracts a nested tree identically to the serial path", async () => {
+      await writeFile(join(sourceDir, "hello.txt"), "Hello World");
+      await writeFile(join(sourceDir, "data.json"), '{"key": "value"}');
+      await mkdir(join(sourceDir, "subdir"), { recursive: true });
+      await writeFile(join(sourceDir, "subdir", "nested.txt"), "Nested!");
+      await mkdir(join(sourceDir, "deep", "nested", "tree"), {
+        recursive: true,
+      });
+      await writeFile(
+        join(sourceDir, "deep", "nested", "tree", "leaf.txt"),
+        "leaf",
+      );
+
+      const compressed = await createRawDeflatedTar(sourceDir);
+
+      const server = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Length": compressed.length.toString() });
+        res.end(compressed);
+      });
+
+      try {
+        await new Promise<void>((resolve) => server.listen(1241, resolve));
+
+        const entries = await streamDownloadAndExtractTar(
+          "http://localhost:1241",
+          extractDir,
+          { extractConcurrency: 8 },
+        );
+
+        expect(entries.length).toBeGreaterThan(0);
+
+        expect(await readFile(join(extractDir, "hello.txt"), "utf8")).toBe(
+          "Hello World",
+        );
+        expect(await readFile(join(extractDir, "data.json"), "utf8")).toBe(
+          '{"key": "value"}',
+        );
+        expect(
+          await readFile(join(extractDir, "subdir", "nested.txt"), "utf8"),
+        ).toBe("Nested!");
+        expect(
+          await readFile(
+            join(extractDir, "deep", "nested", "tree", "leaf.txt"),
+            "utf8",
+          ),
+        ).toBe("leaf");
+      } finally {
+        server.close();
+      }
+    });
+
+    it("handles many small files (shake out the concurrency path)", async () => {
+      const fileCount = 200;
+      for (let i = 0; i < fileCount; i++) {
+        await writeFile(join(sourceDir, `file-${i}.txt`), `contents ${i}`);
+      }
+
+      const compressed = await createRawDeflatedTar(sourceDir);
+
+      const server = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Length": compressed.length.toString() });
+        res.end(compressed);
+      });
+
+      try {
+        await new Promise<void>((resolve) => server.listen(1242, resolve));
+
+        await streamDownloadAndExtractTar("http://localhost:1242", extractDir, {
+          extractConcurrency: 32,
+        });
+
+        // Spot-check a handful of files; the real assertion is that all
+        // writes completed without throwing and nothing got lost.
+        for (const i of [0, 1, 42, 99, fileCount - 1]) {
+          expect(
+            await readFile(join(extractDir, `file-${i}.txt`), "utf8"),
+          ).toBe(`contents ${i}`);
+        }
+      } finally {
+        server.close();
+      }
+    });
+
+    it("honors totalTimeoutInMs when writes stall after the pipeline completes", async () => {
+      // Regression test: previously the AbortSignal from the total timeout was
+      // only wired to the streaming `pipeline`, so `Promise.allSettled(pendingWrites)`
+      // would block until every queued `writeFile` finished. On stalled EFS
+      // this made the function ignore `totalTimeoutInMs`.
+      const fileCount = 20;
+      for (let i = 0; i < fileCount; i++) {
+        await writeFile(join(sourceDir, `file-${i}.txt`), `contents ${i}`);
+      }
+
+      const compressed = await createRawDeflatedTar(sourceDir);
+
+      const server = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Length": compressed.length.toString() });
+        res.end(compressed);
+      });
+
+      writeFileStallMode.enabled = true;
+      try {
+        await new Promise<void>((resolve) => server.listen(1244, resolve));
+
+        const totalTimeoutInMs = 300;
+        const startedAt = Date.now();
+        let caughtError: Error | null = null;
+
+        try {
+          await streamDownloadAndExtractTar(
+            "http://localhost:1244",
+            extractDir,
+            {
+              totalTimeoutInMs,
+              extractConcurrency: 4,
+              maxRetries: 0,
+            },
+          );
+        } catch (err) {
+          caughtError = err as Error;
+        }
+
+        const elapsed = Date.now() - startedAt;
+
+        expect(caughtError).not.toBeNull();
+        expect(caughtError!.message).toContain("timed out");
+        // Should bail out promptly once the timeout fires, not wait for
+        // hung writes to complete. Allow generous slack for CI jitter.
+        expect(elapsed).toBeLessThan(totalTimeoutInMs + 2_000);
+      } finally {
+        writeFileStallMode.enabled = false;
+        server.close();
+      }
+    }, 10_000);
+
+    it("does not report skipped non-file entries (e.g. symlinks) in the returned entries list", async () => {
+      // Regression: previously `entries.push(entry.path)` happened before the
+      // type filter, so symlinks / device nodes / pax headers were reported to
+      // the caller despite never being written. The serial path's contract is
+      // "entries list == what's on disk", and the parallel path must match.
+      await writeFile(join(sourceDir, "real.txt"), "hello");
+      await symlink("real.txt", join(sourceDir, "link.txt"));
+
+      const compressed = await createRawDeflatedTar(sourceDir, {
+        follow: false,
+      });
+
+      const server = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Length": compressed.length.toString() });
+        res.end(compressed);
+      });
+
+      try {
+        await new Promise<void>((resolve) => server.listen(1245, resolve));
+
+        const entries = await streamDownloadAndExtractTar(
+          "http://localhost:1245",
+          extractDir,
+          { extractConcurrency: 4 },
+        );
+
+        expect(entries).toEqual(expect.arrayContaining(["./real.txt"]));
+        expect(entries).not.toEqual(expect.arrayContaining(["./link.txt"]));
+        for (const entry of entries) {
+          expect(existsSync(join(extractDir, entry))).toBe(true);
+        }
+      } finally {
+        server.close();
+      }
+    });
+
+    it("extracts a large file correctly under parallel mode", async () => {
+      const largeContent = "B".repeat(5 * 1024 * 1024);
+      await writeFile(join(sourceDir, "large.bin"), largeContent);
+      await writeFile(join(sourceDir, "tiny.txt"), "tiny");
+
+      const compressed = await createRawDeflatedTar(sourceDir);
+
+      const server = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Length": compressed.length.toString() });
+        res.end(compressed);
+      });
+
+      try {
+        await new Promise<void>((resolve) => server.listen(1243, resolve));
+
+        await streamDownloadAndExtractTar("http://localhost:1243", extractDir, {
+          extractConcurrency: 4,
+        });
+
+        expect(await readFile(join(extractDir, "large.bin"), "utf8")).toBe(
+          largeContent,
+        );
+        expect(await readFile(join(extractDir, "tiny.txt"), "utf8")).toBe(
+          "tiny",
+        );
+      } finally {
+        server.close();
+      }
+    });
   });
 });

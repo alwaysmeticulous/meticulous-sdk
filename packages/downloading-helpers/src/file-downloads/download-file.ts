@@ -1,5 +1,6 @@
 import { createWriteStream, existsSync } from "fs";
-import { mkdir, rm } from "fs/promises";
+import { mkdir, rm, writeFile } from "fs/promises";
+import { dirname, isAbsolute, relative, resolve } from "path";
 import { Readable, Stream, finished, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { promisify } from "util";
@@ -9,7 +10,8 @@ import axiosRetry from "axios-retry";
 import cliProgress from "cli-progress";
 import extract from "extract-zip";
 import { InflateRaw } from "fast-zlib";
-import { extract as tarExtract } from "tar";
+import pLimit from "p-limit";
+import { Parser as TarParser, extract as tarExtract } from "tar";
 
 const promisifiedFinished = promisify(finished);
 
@@ -211,6 +213,21 @@ export interface StreamDownloadAndExtractTarOptions {
   totalTimeoutInMs?: number;
   maxRetries?: number;
   retryDelay?: number;
+  /**
+   * Number of concurrent file writes to issue during extraction. Defaults to
+   * `1` (strictly sequential, same behaviour as `tar.extract`).
+   *
+   * Raising this lets many `open`/`write`/`close` syscalls be in flight at
+   * once, which is only meaningful when the destination filesystem has
+   * non-trivial per-op latency (e.g. NFS / EFS over TLS). On local SSDs the
+   * default of 1 is already fine.
+   *
+   * When > 1, the implementation switches from `tar.extract` to a `Parser`-
+   * based path that buffers each entry body in memory and dispatches writes
+   * via a concurrency-limited pool. Worst-case memory usage is bounded by
+   * `extractConcurrency * max_entry_size` plus whatever is currently queued.
+   */
+  extractConcurrency?: number;
 }
 
 /**
@@ -239,6 +256,7 @@ export const streamDownloadAndExtractTar = async (
   const totalTimeoutInMs = opts.totalTimeoutInMs ?? 600_000;
   const maxRetries = opts.maxRetries ?? 3;
   const retryDelay = opts.retryDelay ?? 1000;
+  const extractConcurrency = Math.max(1, opts.extractConcurrency ?? 1);
 
   for (let attempt = 0; ; attempt++) {
     const abortController = new AbortController();
@@ -254,7 +272,6 @@ export const streamDownloadAndExtractTar = async (
       const client = axios.create({ timeout: firstDataTimeoutInMs });
       axiosRetry(client, { retries: 3, shouldResetTimeout: true });
 
-      const entries: string[] = [];
       await mkdir(extractPath, { recursive: true });
 
       const response = await client.request({
@@ -264,11 +281,25 @@ export const streamDownloadAndExtractTar = async (
         signal: abortController.signal,
       });
 
+      if (extractConcurrency > 1) {
+        return await extractTarWithParallelWrites({
+          sourceStream: response.data as Readable,
+          extractPath,
+          concurrency: extractConcurrency,
+          abortSignal: abortController.signal,
+        });
+      }
+
+      const entries: string[] = [];
       await pipeline(
         response.data as Readable,
         createFastInflateRawStream(),
         tarExtract({
           cwd: extractPath,
+          // Skip the per-entry `utimes` call. The asset server doesn't care
+          // about mtime, and on high-latency filesystems this is one full RPC
+          // saved per file.
+          noMtime: true,
           onReadEntry: (entry) => entries.push(entry.path),
         }),
         { signal: abortController.signal },
@@ -296,6 +327,217 @@ export const streamDownloadAndExtractTar = async (
       clearTimeout(timeoutId);
     }
   }
+};
+
+const DEFAULT_FILE_MODE = 0o644;
+
+/**
+ * Parallel-write tar extraction.
+ *
+ * We use `tar.Parser` (read-only) instead of `tar.extract` (unpack+write) so
+ * we can own the file-write step. Each entry body is buffered in memory and
+ * dispatched through a `p-limit` pool so that many `open`/`write`/`close`
+ * syscalls can be in flight at once.
+ *
+ * Rationale: on local disks tar.extract is already fast because writes hit
+ * the page cache at microsecond latency. On shared network filesystems
+ * (EFS / NFS over TLS) each per-file syscall is a separate RPC with
+ * millisecond RTT, and the serial pipeline in tar.extract caps throughput at
+ * ~1/RTT files/sec. Fan-out here hides that latency.
+ *
+ * Memory: buffers at most `concurrency * max_entry_size` + pending-queue.
+ * Per-parent-dir `mkdir` calls are memoized to avoid redundant RPCs.
+ *
+ * Non-File / non-Directory entries (symlinks, device files, pax headers)
+ * are skipped — deployment asset archives don't contain them in practice.
+ */
+const extractTarWithParallelWrites = async ({
+  sourceStream,
+  extractPath,
+  concurrency,
+  abortSignal,
+}: {
+  sourceStream: Readable;
+  extractPath: string;
+  concurrency: number;
+  abortSignal: AbortSignal;
+}): Promise<string[]> => {
+  const limit = pLimit(concurrency);
+  const mkdirCache = new Set<string>();
+  const pendingWrites: Promise<void>[] = [];
+  const entries: string[] = [];
+  let firstError: Error | null = null;
+
+  const recordError = (err: unknown): void => {
+    if (firstError == null) {
+      firstError = err instanceof Error ? err : new Error(String(err));
+    }
+  };
+
+  const throwIfAborted = (): void => {
+    if (!abortSignal.aborted) {
+      return;
+    }
+    const reason = abortSignal.reason;
+    throw reason instanceof Error
+      ? reason
+      : new Error(String(reason ?? "aborted"));
+  };
+
+  const ensureDir = async (dir: string): Promise<void> => {
+    if (mkdirCache.has(dir)) {
+      return;
+    }
+    // fs.promises.mkdir doesn't accept an AbortSignal, so we settle for
+    // refusing to issue new mkdirs once the outer timeout has fired.
+    throwIfAborted();
+    await mkdir(dir, { recursive: true });
+    mkdirCache.add(dir);
+  };
+  mkdirCache.add(extractPath);
+
+  const resolveSafeTarget = (entryPath: string): string | null => {
+    const target = resolve(extractPath, entryPath);
+    const rel = relative(extractPath, target);
+    if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) {
+      return null;
+    }
+    return target;
+  };
+
+  const parser = new TarParser({
+    onReadEntry: (entry) => {
+      const target = resolveSafeTarget(entry.path);
+      if (target == null) {
+        entry.resume();
+        return;
+      }
+
+      // Only record entries we're going to materialize on disk. The serial
+      // `tar.extract` path's entries list reflects what's written, and callers
+      // iterate it expecting every path to exist — symlinks, device nodes and
+      // pax headers are silently skipped below, so they must not appear here.
+      if (
+        entry.type !== "Directory" &&
+        entry.type !== "File" &&
+        entry.type !== "OldFile" &&
+        entry.type !== "ContiguousFile"
+      ) {
+        entry.resume();
+        return;
+      }
+
+      entries.push(entry.path);
+
+      if (entry.type === "Directory") {
+        pendingWrites.push(
+          // Swallow here (after recording) so the promise settles as
+          // fulfilled. Re-throwing would leave an unhandled rejection sitting
+          // in `pendingWrites` until `Promise.allSettled` runs after the
+          // pipeline drains, which in Node 15+ terminates the process.
+          // `firstError` is re-thrown below once all writes settle.
+          limit(() => ensureDir(target)).catch((err) => {
+            recordError(err);
+          }),
+        );
+        entry.resume();
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      entry.on("data", (chunk: Buffer) => chunks.push(chunk));
+      entry.on("error", (err) => recordError(err));
+      entry.on("end", () => {
+        const content =
+          chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
+        const mode =
+          entry.mode != null && entry.mode > 0 ? entry.mode : DEFAULT_FILE_MODE;
+        pendingWrites.push(
+          // See the equivalent comment on the Directory branch above:
+          // we must not let this reject or Node will kill the process with
+          // an unhandled rejection before allSettled attaches a handler.
+          limit(async () => {
+            await ensureDir(dirname(target));
+            // Passing the abort signal to writeFile means that if the outer
+            // totalTimeoutInMs fires while writes are draining (common on
+            // stalled EFS), the in-flight fs call rejects promptly instead
+            // of blocking past the timeout window.
+            await writeFile(target, content, { mode, signal: abortSignal });
+          }).catch((err) => {
+            recordError(err);
+          }),
+        );
+      });
+    },
+  });
+
+  await pipeline(sourceStream, createFastInflateRawStream(), parser, {
+    signal: abortSignal,
+  });
+
+  // The pipeline resolves as soon as Parser has consumed all input bytes; the
+  // file writes scheduled above may still be outstanding. Drain them before
+  // returning so the caller sees a fully-materialized directory.
+  //
+  // We race the drain against the abort signal so that a totalTimeoutInMs
+  // firing during the drain phase (e.g. stuck writes on EFS) bubbles out
+  // promptly. Without this, `abortSignal` is only wired to the `pipeline`
+  // call and has no effect on pending `writeFile`s that are queued in
+  // `p-limit`, letting the function run past its timeout.
+  await raceAgainstAbort(Promise.allSettled(pendingWrites), abortSignal).then(
+    (settled) => {
+      for (const result of settled) {
+        if (result.status === "rejected") {
+          recordError(result.reason);
+        }
+      }
+    },
+  );
+
+  if (firstError != null) {
+    throw firstError;
+  }
+
+  return entries;
+};
+
+/**
+ * Races `promise` against the abort signal, rejecting with the signal's
+ * reason if it fires before the promise settles. Used to enforce an upper
+ * bound on phases that can't otherwise be cancelled (e.g. a pool of
+ * in-flight fs writes on a stalled network filesystem).
+ */
+const raceAgainstAbort = <T>(
+  promise: Promise<T>,
+  abortSignal: AbortSignal,
+): Promise<T> => {
+  if (abortSignal.aborted) {
+    const reason = abortSignal.reason;
+    return Promise.reject(
+      reason instanceof Error ? reason : new Error(String(reason ?? "aborted")),
+    );
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = (): void => {
+      const reason = abortSignal.reason;
+      reject(
+        reason instanceof Error
+          ? reason
+          : new Error(String(reason ?? "aborted")),
+      );
+    };
+    abortSignal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        abortSignal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (err) => {
+        abortSignal.removeEventListener("abort", onAbort);
+        reject(err);
+      },
+    );
+  });
 };
 
 /**
