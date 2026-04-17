@@ -36,6 +36,12 @@ export interface TestCase {
   relevanceToPR?: SessionRelevance;
   title?: string;
   options?: TestCaseReplayOptions;
+
+  /**
+   * 1-indexed session-selection rank (1 = highest value) snapshotted at test-run
+   * creation time. Used to prioritize MaybeRelevant sessions when sampling.
+   */
+  rankPosition?: number;
 }
 
 export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
