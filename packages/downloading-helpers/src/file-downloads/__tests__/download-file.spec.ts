@@ -253,4 +253,119 @@ describe("streamDownloadAndExtractTar", () => {
     expect(caughtError!.name).not.toBe("AbortError");
     expect(caughtError!.message).toMatch(/500/);
   });
+
+  describe("with extractConcurrency > 1 (parallel writes)", () => {
+    it("extracts a nested tree identically to the serial path", async () => {
+      await writeFile(join(sourceDir, "hello.txt"), "Hello World");
+      await writeFile(join(sourceDir, "data.json"), '{"key": "value"}');
+      await mkdir(join(sourceDir, "subdir"), { recursive: true });
+      await writeFile(join(sourceDir, "subdir", "nested.txt"), "Nested!");
+      await mkdir(join(sourceDir, "deep", "nested", "tree"), {
+        recursive: true,
+      });
+      await writeFile(
+        join(sourceDir, "deep", "nested", "tree", "leaf.txt"),
+        "leaf",
+      );
+
+      const compressed = await createRawDeflatedTar(sourceDir);
+
+      const server = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Length": compressed.length.toString() });
+        res.end(compressed);
+      });
+
+      try {
+        await new Promise<void>((resolve) => server.listen(1241, resolve));
+
+        const entries = await streamDownloadAndExtractTar(
+          "http://localhost:1241",
+          extractDir,
+          { extractConcurrency: 8 },
+        );
+
+        expect(entries.length).toBeGreaterThan(0);
+
+        expect(await readFile(join(extractDir, "hello.txt"), "utf8")).toBe(
+          "Hello World",
+        );
+        expect(await readFile(join(extractDir, "data.json"), "utf8")).toBe(
+          '{"key": "value"}',
+        );
+        expect(
+          await readFile(join(extractDir, "subdir", "nested.txt"), "utf8"),
+        ).toBe("Nested!");
+        expect(
+          await readFile(
+            join(extractDir, "deep", "nested", "tree", "leaf.txt"),
+            "utf8",
+          ),
+        ).toBe("leaf");
+      } finally {
+        server.close();
+      }
+    });
+
+    it("handles many small files (shake out the concurrency path)", async () => {
+      const fileCount = 200;
+      for (let i = 0; i < fileCount; i++) {
+        await writeFile(join(sourceDir, `file-${i}.txt`), `contents ${i}`);
+      }
+
+      const compressed = await createRawDeflatedTar(sourceDir);
+
+      const server = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Length": compressed.length.toString() });
+        res.end(compressed);
+      });
+
+      try {
+        await new Promise<void>((resolve) => server.listen(1242, resolve));
+
+        await streamDownloadAndExtractTar("http://localhost:1242", extractDir, {
+          extractConcurrency: 32,
+        });
+
+        // Spot-check a handful of files; the real assertion is that all
+        // writes completed without throwing and nothing got lost.
+        for (const i of [0, 1, 42, 99, fileCount - 1]) {
+          expect(
+            await readFile(join(extractDir, `file-${i}.txt`), "utf8"),
+          ).toBe(`contents ${i}`);
+        }
+      } finally {
+        server.close();
+      }
+    });
+
+    it("extracts a large file correctly under parallel mode", async () => {
+      const largeContent = "B".repeat(5 * 1024 * 1024);
+      await writeFile(join(sourceDir, "large.bin"), largeContent);
+      await writeFile(join(sourceDir, "tiny.txt"), "tiny");
+
+      const compressed = await createRawDeflatedTar(sourceDir);
+
+      const server = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Length": compressed.length.toString() });
+        res.end(compressed);
+      });
+
+      try {
+        await new Promise<void>((resolve) => server.listen(1243, resolve));
+
+        await streamDownloadAndExtractTar("http://localhost:1243", extractDir, {
+          extractConcurrency: 4,
+        });
+
+        expect(await readFile(join(extractDir, "large.bin"), "utf8")).toBe(
+          largeContent,
+        );
+        expect(await readFile(join(extractDir, "tiny.txt"), "utf8")).toBe(
+          "tiny",
+        );
+      } finally {
+        server.close();
+      }
+    });
+  });
 });
