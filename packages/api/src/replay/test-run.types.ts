@@ -63,9 +63,9 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
  *
  * `PostProcessing` = the replays have completed and the test run is being post-processed. This is only used for session selection runs.
  *
- * `Failure` = completed, and at least one replay had notable differences - a diff, missing-head or different-size (see has-notable-differences.ts in the main repo)
+ * `Failure` = completed, and at least one replay had notable differences - a diff (see has-notable-differences.ts in the main repo)
  *
- * `Success` = completed, and no replays had notable differences
+ * `Success` = completed, and no replays had notable differences (i.e. just no differences, flakes, missing heads, missing bases or different sizes)
  *
  * `Aborted` = the test run was stopped before it could complete
  *
@@ -96,9 +96,11 @@ export interface TestCaseResult extends TestCase {
   headReplayId: string;
 
   /**
-   * A test case is marked as a flake if there were screenshot comparison failures,
-   * but for every one of those failures regenerating the screenshot on head sometimes gave
-   * a different screenshot to the original screenshot taken on head.
+   * A test case is marked as a failure if at least one screenshot had a reproducible (no flakey) difference.
+   *
+   * A test case is marked as a flake if there were differences but all differences were flakey/non-reproducible.
+   *
+   * Otherwise a test case is marked as a pass: all screenshots had no differences and no flakes.
    */
   result: TestCaseResultStatus;
 }
