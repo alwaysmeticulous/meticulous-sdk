@@ -20,5 +20,7 @@ export {
   downloadAndExtractFile,
   streamDownloadAndExtractTar,
   type StreamDownloadAndExtractTarOptions,
+  streamDownloadAndInflateTar,
+  type StreamDownloadAndInflateTarOptions,
 } from "./file-downloads/download-file";
 export { getReplayDir } from "./scripts/replays";
