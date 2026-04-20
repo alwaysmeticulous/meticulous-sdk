@@ -329,6 +329,95 @@ export const streamDownloadAndExtractTar = async (
   }
 };
 
+export interface StreamDownloadAndInflateTarOptions {
+  firstDataTimeoutInMs?: number;
+  totalTimeoutInMs?: number;
+  maxRetries?: number;
+  retryDelay?: number;
+}
+
+/**
+ * Streams a raw-deflated tar blob from a URL, inflates it, and writes the
+ * result as a plain `.tar` file at `outputTarFilePath` — without extracting
+ * any entries.
+ *
+ * This is useful when callers need to inspect or re-process the archive
+ * themselves. The download and inflate steps are fully pipelined so the
+ * inflated bytes are written as they arrive, with no intermediate temp file.
+ *
+ * __Warning__: this function is not thread safe. Do not write to a path that
+ * may already be in use by another process.
+ *
+ * @param fileUrl The URL of the deflated tar blob to download.
+ * @param outputTarFilePath Destination path for the inflated `.tar` file.
+ * @param opts Timeout and retry configuration.
+ */
+export const streamDownloadAndInflateTar = async (
+  fileUrl: string,
+  outputTarFilePath: string,
+  opts: StreamDownloadAndInflateTarOptions = {},
+): Promise<void> => {
+  const firstDataTimeoutInMs = opts.firstDataTimeoutInMs ?? 60_000;
+  const totalTimeoutInMs = opts.totalTimeoutInMs ?? 600_000;
+  const maxRetries = opts.maxRetries ?? 3;
+  const retryDelay = opts.retryDelay ?? 1000;
+
+  for (let attempt = 0; ; attempt++) {
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortController.abort(
+        new Error(
+          `Streaming download and inflate timed out after ${totalTimeoutInMs}ms`,
+        ),
+      );
+    }, totalTimeoutInMs);
+
+    try {
+      const client = axios.create({ timeout: firstDataTimeoutInMs });
+      axiosRetry(client, { retries: 3, shouldResetTimeout: true });
+
+      await mkdir(dirname(outputTarFilePath), { recursive: true });
+
+      const response = await client.request({
+        method: "GET",
+        url: fileUrl,
+        responseType: "stream",
+        signal: abortController.signal,
+      });
+
+      await pipeline(
+        response.data as Readable,
+        createFastInflateRawStream(),
+        createWriteStream(outputTarFilePath, {
+          highWaterMark: STREAMING_HIGH_WATER_MARK,
+        }),
+        { signal: abortController.signal },
+      );
+
+      return;
+    } catch (error) {
+      const wasAbortedBeforeCleanup = abortController.signal.aborted;
+      const reasonBeforeCleanup = abortController.signal.reason;
+      abortController.abort();
+      await rm(outputTarFilePath, { force: true }).catch(() => {});
+
+      if (attempt >= maxRetries) {
+        const errToThrow =
+          wasAbortedBeforeCleanup && reasonBeforeCleanup instanceof Error
+            ? reasonBeforeCleanup
+            : error instanceof Error
+              ? error
+              : new Error(String(error));
+        throw errToThrow;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+};
+
 const DEFAULT_FILE_MODE = 0o644;
 
 /**
