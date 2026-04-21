@@ -18,15 +18,25 @@ import {
 } from "./dom-diff/format";
 
 export interface DomDiffMapEntry {
+  /** Path to the canonical (context: 3) diff, or `null` when DOMs are identical. */
   diffPath: string | null;
-  fullDiffPath: string;
+  /**
+   * Path to the full-context diff, or `null` when DOMs are identical.
+   * When identical, read `<screenshotBaseName>.html` from either replay
+   * instead — the full-context diff for an identical pair is just that
+   * file, space-prefixed.
+   */
+  fullDiffPath: string | null;
   totalHunks: number;
   bytes: number;
   fullDiffBytes: number;
   url: string | null;
 }
 
-export type DomDiffMap = Record<string, DomDiffMapEntry>;
+// Deliberately typed so callers can't assume every key is present:
+// not every `<label>/<screenshotBaseName>` combination produces a
+// diff (oversize, malformed metadata, etc.).
+export type DomDiffMap = { [key: string]: DomDiffMapEntry | undefined };
 
 interface ReplayPair {
   headReplayId: string;
@@ -88,8 +98,21 @@ export const computeDomDiffs = (
   let totalDiffs = 0;
   let totalFullDiffs = 0;
   let skippedOversize = 0;
+  let skippedMalformedCount = 0;
 
   for (const pair of pairs) {
+    // Defensive: pair labels are built from replay IDs we receive from
+    // the server. Refuse to emit filenames that would escape the
+    // `dom-diffs/` directory.
+    if (!isSafePathSegment(pair.label)) {
+      console.warn(
+        chalk.yellow(
+          `  Warning: Skipping replay pair with unsafe label: ${pair.label}`,
+        ),
+      );
+      continue;
+    }
+
     const headScreenshotsDir = join(
       replaysDir,
       pair.headRole,
@@ -124,6 +147,10 @@ export const computeDomDiffs = (
     const summaryRows: SummaryRow[] = [];
 
     for (const screenshotBaseName of [...allNames].sort()) {
+      if (!isSafePathSegment(screenshotBaseName)) {
+        continue;
+      }
+
       const headMetadataPath = headScreenshots.get(screenshotBaseName);
       const baseMetadataPath = baseScreenshots.get(screenshotBaseName);
 
@@ -131,13 +158,14 @@ export const computeDomDiffs = (
         // Added/removed screenshots are already surfaced in
         // `screenshotDiffResults`; we don't synthesize a diff against
         // an empty side.
+        const availablePath = headMetadataPath ?? baseMetadataPath;
         summaryRows.push({
           screenshotBaseName,
           status: !headMetadataPath ? "only-in-base" : "only-in-head",
           totalHunks: 0,
           bytes: 0,
           fullDiffBytes: 0,
-          url: null,
+          url: availablePath ? readUrlFromMetadata(availablePath) : null,
         });
         continue;
       }
@@ -159,6 +187,7 @@ export const computeDomDiffs = (
             `  Warning: Could not parse metadata for ${screenshotBaseName} in ${pair.label}: ${message}`,
           ),
         );
+        skippedMalformedCount++;
         continue;
       }
 
@@ -192,16 +221,25 @@ export const computeDomDiffs = (
         formattedHead,
       );
 
-      const fullDiff = computeFullContextDiff(formattedBase, formattedHead);
-      const fullDiffFilename = `${pair.label}-${screenshotBaseName}.full.diff`;
-      const fullDiffAbsPath = join(domDiffsDir, fullDiffFilename);
-      writeFileSync(fullDiffAbsPath, fullDiff);
-      totalFullDiffs++;
-
       let diffRelPath: string | null = null;
       let diffBytes = 0;
+      let fullDiffRelPath: string | null = null;
+      let fullDiffBytes = 0;
 
+      // When the pretty-printed DOMs are identical there is nothing to
+      // diff; the cloud's `context = "full"` would return the whole
+      // file as space-prefixed context, but writing that out would
+      // duplicate every DOM on disk. The agent can read
+      // `<screenshotBaseName>.html` directly from either replay
+      // instead; `fullDiffPath`/`diffPath` null out to advertise this.
       if (canonicalHunks.length > 0) {
+        const fullDiff = computeFullContextDiff(formattedBase, formattedHead);
+        const fullDiffFilename = `${pair.label}-${screenshotBaseName}.full.diff`;
+        writeFileSync(join(domDiffsDir, fullDiffFilename), fullDiff);
+        fullDiffRelPath = `dom-diffs/${fullDiffFilename}`;
+        fullDiffBytes = Buffer.byteLength(fullDiff, "utf-8");
+        totalFullDiffs++;
+
         const paddedHunks = addContextToHunks(
           canonicalHunks,
           formattedBase,
@@ -215,19 +253,17 @@ export const computeDomDiffs = (
           })
           .join("\n\n");
         const diffFilename = `${pair.label}-${screenshotBaseName}.diff`;
-        const diffAbsPath = join(domDiffsDir, diffFilename);
-        writeFileSync(diffAbsPath, diffBody);
+        writeFileSync(join(domDiffsDir, diffFilename), diffBody);
         diffRelPath = `dom-diffs/${diffFilename}`;
         diffBytes = Buffer.byteLength(diffBody, "utf-8");
         totalDiffs++;
       }
 
-      const fullDiffBytes = Buffer.byteLength(fullDiff, "utf-8");
       const url = headMetadata.before?.routeData?.url ?? null;
 
       domDiffMap[`${pair.label}/${screenshotBaseName}`] = {
         diffPath: diffRelPath,
-        fullDiffPath: `dom-diffs/${fullDiffFilename}`,
+        fullDiffPath: fullDiffRelPath,
         totalHunks: canonicalHunks.length,
         bytes: diffBytes,
         fullDiffBytes,
@@ -264,6 +300,13 @@ export const computeDomDiffs = (
     console.log(
       chalk.yellow(
         `  Skipped ${skippedOversize} screenshot DOM pair(s) over ${MAX_DOM_BYTES_FOR_DIFF / (1024 * 1024)} MB`,
+      ),
+    );
+  }
+  if (skippedMalformedCount > 0) {
+    console.log(
+      chalk.yellow(
+        `  Skipped ${skippedMalformedCount} screenshot DOM pair(s) with malformed metadata`,
       ),
     );
   }
@@ -332,8 +375,33 @@ const renderPairSummary = (
     "url",
   ].join("\t");
 
-  return `${header}${[tableHeader, ...tableRows].join("\n")}\n`;
+  return `${header}\n${[tableHeader, ...tableRows].join("\n")}\n`;
 };
+
+const readUrlFromMetadata = (metadataPath: string): string | null => {
+  try {
+    const parsed = JSON.parse(
+      readFileSync(metadataPath, "utf-8"),
+    ) as ScreenshotMetadataShape;
+    return parsed.before?.routeData?.url ?? null;
+  } catch {
+    return null;
+  }
+};
+
+// Reject any segment that could escape the `dom-diffs/` directory
+// when interpolated into a filename. Replay IDs and screenshot base
+// names are expected to be simple identifiers; in practice these
+// never trigger, but filenames are trusted less than the data that
+// populates them.
+const isSafePathSegment = (segment: string): boolean =>
+  segment.length > 0 &&
+  !segment.includes("/") &&
+  !segment.includes("\\") &&
+  !segment.includes("\0") &&
+  segment !== "." &&
+  segment !== ".." &&
+  !segment.split(/[/\\]/).includes("..");
 
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) {

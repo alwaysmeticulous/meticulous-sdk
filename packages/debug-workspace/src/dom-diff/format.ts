@@ -1,3 +1,13 @@
+/**
+ * Vendored port of `packages/replay-analysis/src/dom-diff/dom-diff.utils.ts`
+ * in the Meticulous backend monorepo. That package is published with
+ * `"access": "restricted"`, so we cannot depend on it from the public
+ * sdk. Any change here MUST also land in the backend's copy, otherwise
+ * `met debug`'s local DOM diffs will drift from what
+ * `meticulous agent dom-diff` and the Meticulous product UI display
+ * for the same pair.
+ */
+
 import {
   structuredPatch,
   createTwoFilesPatch,

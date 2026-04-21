@@ -137,18 +137,18 @@ describe("computeDomDiffs", () => {
 
     const entry = map["headA-vs-baseA/screenshot-after-event-00001"];
     expect(entry).toBeDefined();
-    expect(entry.diffPath).toBe(
+    expect(entry?.diffPath).toBe(
       "dom-diffs/headA-vs-baseA-screenshot-after-event-00001.diff",
     );
-    expect(entry.fullDiffPath).toBe(
+    expect(entry?.fullDiffPath).toBe(
       "dom-diffs/headA-vs-baseA-screenshot-after-event-00001.full.diff",
     );
-    expect(entry.totalHunks).toBeGreaterThanOrEqual(1);
-    expect(entry.bytes).toBeGreaterThan(0);
-    expect(entry.url).toBe("https://example.com/a");
+    expect(entry?.totalHunks).toBeGreaterThanOrEqual(1);
+    expect(entry?.bytes).toBeGreaterThan(0);
+    expect(entry?.url).toBe("https://example.com/a");
   });
 
-  it("does not write a .diff when pretty-printed DOMs are identical, but still writes .full.diff", () => {
+  it("writes no diff files when pretty-printed DOMs are identical; both paths null out", () => {
     setupReplayPair(workspace, {
       headReplayId: "headB",
       baseReplayId: "baseB",
@@ -165,11 +165,14 @@ describe("computeDomDiffs", () => {
     );
     expect(
       existsSync(join(domDiffsDir, "headB-vs-baseB-final-state.full.diff")),
-    ).toBe(true);
+    ).toBe(false);
 
     const entry = map["headB-vs-baseB/final-state"];
-    expect(entry.diffPath).toBeNull();
-    expect(entry.totalHunks).toBe(0);
+    expect(entry?.diffPath).toBeNull();
+    expect(entry?.fullDiffPath).toBeNull();
+    expect(entry?.totalHunks).toBe(0);
+    expect(entry?.bytes).toBe(0);
+    expect(entry?.fullDiffBytes).toBe(0);
   });
 
   it("uses input-order fallback label when replayDiffs is empty and two replays are downloaded", () => {
@@ -249,5 +252,122 @@ describe("computeDomDiffs", () => {
     expect(summary).toContain(
       "screenshot\tstatus\thunks\tdiff_bytes\tfull_diff_bytes\turl",
     );
+  });
+
+  it("reads url for only-in-head / only-in-base rows from the available side", () => {
+    const headScreenshots = join(
+      workspace,
+      DEBUG_DATA_DIRECTORY,
+      "replays",
+      "head",
+      "hOnly",
+      "screenshots",
+    );
+    const baseScreenshots = join(
+      workspace,
+      DEBUG_DATA_DIRECTORY,
+      "replays",
+      "base",
+      "bOnly",
+      "screenshots",
+    );
+    mkdirSync(headScreenshots, { recursive: true });
+    mkdirSync(baseScreenshots, { recursive: true });
+    writeFileSync(
+      join(headScreenshots, "screenshot-after-event-00001.metadata.json"),
+      JSON.stringify({
+        before: {
+          dom: "<p>only head</p>",
+          routeData: { url: "https://example.com/head-only" },
+        },
+      }),
+    );
+
+    computeDomDiffs(makeDebugContext("hOnly", "bOnly"), workspace);
+
+    const summary = readFileSync(
+      join(
+        workspace,
+        DEBUG_DATA_DIRECTORY,
+        "dom-diffs",
+        "hOnly-vs-bOnly.summary.txt",
+      ),
+      "utf-8",
+    );
+    expect(summary).toMatch(
+      /screenshot-after-event-00001\tonly-in-head\t.*https:\/\/example\.com\/head-only/,
+    );
+  });
+
+  it("skips screenshots whose metadata fails to parse and reports an aggregate count", () => {
+    const warnings: string[] = [];
+    const logs: string[] = [];
+    const originalWarn = console.warn;
+    const originalLog = console.log;
+    console.warn = (msg: string) => warnings.push(String(msg));
+    console.log = (msg: string) => logs.push(String(msg));
+
+    try {
+      const headScreenshots = join(
+        workspace,
+        DEBUG_DATA_DIRECTORY,
+        "replays",
+        "head",
+        "hMal",
+        "screenshots",
+      );
+      const baseScreenshots = join(
+        workspace,
+        DEBUG_DATA_DIRECTORY,
+        "replays",
+        "base",
+        "bMal",
+        "screenshots",
+      );
+      mkdirSync(headScreenshots, { recursive: true });
+      mkdirSync(baseScreenshots, { recursive: true });
+      writeFileSync(
+        join(headScreenshots, "final-state.metadata.json"),
+        "not-json",
+      );
+      writeFileSync(
+        join(baseScreenshots, "final-state.metadata.json"),
+        JSON.stringify({ before: { dom: "<p>ok</p>" } }),
+      );
+
+      const map = computeDomDiffs(makeDebugContext("hMal", "bMal"), workspace);
+      expect(Object.keys(map)).toEqual([]);
+      expect(logs.some((l) => /malformed metadata/.test(l))).toBe(true);
+      expect(warnings.some((w) => /Could not parse metadata/.test(w))).toBe(
+        true,
+      );
+    } finally {
+      console.warn = originalWarn;
+      console.log = originalLog;
+    }
+  });
+
+  it("refuses unsafe replay IDs that would escape dom-diffs/", () => {
+    const debugContext: DebugContext = {
+      ...makeDebugContext("../escape", "baseC"),
+    };
+    debugContext.replayDiffs = [
+      {
+        id: "diff-unsafe",
+        headReplayId: "../escape",
+        baseReplayId: "baseC",
+        sessionId: undefined,
+        numScreenshotDiffs: 0,
+      },
+    ];
+    debugContext.replayIds = ["../escape", "baseC"];
+
+    // Even if files were created on disk for an unsafe replay ID,
+    // we should never write a .diff/.summary.txt file that escapes
+    // `dom-diffs/` via the interpolated filename.
+    const map = computeDomDiffs(debugContext, workspace);
+    expect(map).toEqual({});
+    const domDiffsDir = join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs");
+    expect(existsSync(domDiffsDir)).toBe(false);
   });
 });
