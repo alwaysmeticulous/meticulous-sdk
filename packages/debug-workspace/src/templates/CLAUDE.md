@@ -68,10 +68,18 @@ Each replay directory (`debug-data/replays/{head,base,other}/<replayId>/`) conta
 - `snapshotted-assets/` -- Static assets (JS/CSS) that were captured and used during replay.
   **Only present if `snapshotAssets` was enabled** -- check `launchBrowserAndReplayParams.json`
   for the `snapshotAssets` field before assuming this directory exists.
+- `screenshots/<name>.metadata.json` -- Per-screenshot metadata, including the captured `before.dom`
+  (full HTML at screenshot time) and, when an interaction followed, `after.dom`.
+- `screenshots/<name>.html` -- The `before.dom` extracted to a standalone HTML file. Prefer reading
+  this over grepping the metadata JSON. The one-line `<!-- screenshot=... url=... vt=... -->`
+  header at the top is for humans only and is not used when computing DOM diffs.
+- `screenshots/<name>.after.html` -- Same for `after.dom`, only present when the metadata
+  carried a non-null `after` side.
 
-Note: `screenshots/` are not copied into the workspace (they are large binary PNGs). Reference
-screenshot paths via `screenshotMap` in `context.json` instead; the actual files are in the
-replay cache at `~/.meticulous/replays/<replayId>/screenshots/`.
+Note: screenshot PNGs (the binary images themselves) are **not** copied into the workspace --
+only the `*.metadata.json` files that carry their DOM and the `.html` files extracted from
+them. Reference PNG paths via `screenshotMap` in `context.json`; the actual PNG files are in
+the replay cache at `~/.meticulous/replays/<replayId>/screenshots/`.
 
 Per-replay generated summaries:
 
@@ -126,6 +134,20 @@ or `meticulous debug replay` with `--baseReplayId`.
 - `debug-data/screenshot-context/<id>.txt` -- Only generated with `--screenshot`. Shows ±30 lines
   of `logs.deterministic.txt` surrounding the screenshot for both head and base, with the
   screenshot line marked `>>>`.
+- `debug-data/dom-diffs/<headReplayId>-vs-<baseReplayId>-<screenshotBaseName>.diff` -- **Start
+  here for DOM changes.** Canonical unified diff (3 lines of context per hunk) of the HEAD vs BASE
+  DOM at a specific screenshot. Computed locally and byte-compatible with the Meticulous product's
+  DOM diff view. Only written when the two pretty-printed DOMs actually differ.
+- `debug-data/dom-diffs/<headReplayId>-vs-<baseReplayId>-<screenshotBaseName>.full.diff` -- Full-
+  file-context version of the same diff (every line either as `+`, `-`, or space-prefixed
+  context). Useful when the 3-line version doesn't give enough surrounding markup to
+  understand a change. Always written alongside any `.diff`, and also written when the DOMs
+  are identical (in which case every line is a context line).
+- `debug-data/dom-diffs/<headReplayId>-vs-<baseReplayId>.summary.txt` -- Per-pair index of DOM
+  diffs: total screenshots compared, count of pairs with/without DOM changes, and a TSV table
+  (`screenshot`, `status`, `hunks`, `diff_bytes`, `full_diff_bytes`, `url`). `context.json`
+  also includes a `domDiffMap` keyed by `"<label>/<screenshotBaseName>"` pointing at these
+  same `.diff` / `.full.diff` files.
 
 ### Other Data
 
@@ -137,8 +159,6 @@ or `meticulous debug replay` with `--baseReplayId`.
   requests (HAR format), and application storage. Can be very large; prefer the session summary
   or use search to find relevant portions.
 - `debug-data/test-run/<testRunId>.json` -- Test run configuration, results, commit SHA, and status.
-- `debug-data/pr-metadata.json` -- Pull request metadata (title, URL, hosting provider, author, status) from
-  the database. May not be present if no PR is associated with the test run.
 - `debug-data/pr-diff.txt` -- Source code changes between the base and head commits. May not be present if
   commit SHAs are unavailable.
 - `debug-data/project-repo/` -- Your codebase checked out at the relevant commit. Only present if
@@ -189,24 +209,32 @@ for files over ~5000 lines instead of reading them in full.
    which screenshots differ and by how much. If a `debug-data/screenshot-context/` file exists, read it
    for the log lines surrounding the screenshot in both head and base.
    Only read the full `debug-data/diffs/<id>.json` if you need complete replay metadata.
-8. **Check network activity** -- Read `debug-data/network-log/` for a compact network request
+8. **Inspect DOM diffs** -- For any screenshot with a visual diff, read the matching
+   `debug-data/dom-diffs/<headReplayId>-vs-<baseReplayId>-<screenshotBaseName>.diff` to see
+   exactly which DOM nodes changed. Use the `domDiffMap` in `context.json` to navigate from
+   a screenshot entry straight to its diff paths. The `.diff` file has 3 lines of context per
+   hunk; fall back to `.full.diff` (same diff, full-file context) if you need to see more of
+   the surrounding markup. If you need the raw pre-diff HTML for either side, read
+   `debug-data/replays/<role>/<replayId>/screenshots/<screenshotBaseName>.html` rather than
+   parsing `screenshots/<name>.metadata.json`.
+9. **Check network activity** -- Read `debug-data/network-log/` for a compact network request
    log. Grep for specific endpoints, status codes, or domains.
-9. **Compare virtual time progression** -- Use `diff` on `debug-data/vt-progression/` files to
-   find where head and base replays diverge in virtual time.
-10. **Check replay parameters** -- Read `debug-data/params-diffs/` for pre-computed diffs. For single
+10. **Compare virtual time progression** -- Use `diff` on `debug-data/vt-progression/` files to
+    find where head and base replays diverge in virtual time.
+11. **Check replay parameters** -- Read `debug-data/params-diffs/` for pre-computed diffs. For single
     replays, read `launchBrowserAndReplayParams.json` directly.
-11. **Check assets diffs** -- Read `debug-data/assets-diffs/` to see if the snapshotted JS/CSS chunks
+12. **Check assets diffs** -- Read `debug-data/assets-diffs/` to see if the snapshotted JS/CSS chunks
     differ between head and base.
-12. **Analyze session data** -- Start with `debug-data/session-summaries/` for a quick overview of the
+13. **Analyze session data** -- Start with `debug-data/session-summaries/` for a quick overview of the
     session (URL history, user events, network stats). Only read the raw `debug-data/sessions/` data
     if you need specific details like request/response bodies or exact event selectors.
-13. **Analyze the PR diff** -- **Delegate to the pr-analyzer subagent** which reads
+14. **Analyze the PR diff** -- **Delegate to the pr-analyzer subagent** which reads
     `debug-data/pr-diff.txt` and the diff summaries, returning a structured correlation of
     code changes to screenshot diffs. Only read the PR diff directly if you need to verify
     specific details from the analyzer's report.
-14. **Trace through formatted assets** -- Use `debug-data/formatted-assets/` (pretty-printed JS/CSS)
+15. **Trace through formatted assets** -- Use `debug-data/formatted-assets/` (pretty-printed JS/CSS)
     instead of raw minified bundles when tracing code execution.
-15. **Review your code** -- If `project-repo/` is present, check it for the relevant changes.
+16. **Review your code** -- If `project-repo/` is present, check it for the relevant changes.
     For library source code, use `debug-data/formatted-assets/` which contains the bundled and
     pretty-printed versions of third-party code.
 
@@ -263,6 +291,11 @@ on expected vs unexpected changes.
   since real-time timestamps are stripped.
 - Session data files can be very large. Use grep/search to find relevant portions rather than
   reading entire files.
-- Screenshot images are binary PNG files stored in the replay cache (not in this workspace).
-  Reference them by path but analyze the diff metadata in JSON files instead.
+- Screenshot PNGs (the binary images) are stored in the replay cache (not in this workspace).
+  Reference them by path; for DOM content prefer reading
+  `debug-data/replays/<role>/<replayId>/screenshots/<name>.html` (or `.after.html`) rather than
+  parsing the raw `<name>.metadata.json`.
+- For DOM changes between replays, prefer `debug-data/dom-diffs/` over diffing the two
+  `<name>.html` files yourself -- the pre-computed `.diff` is byte-compatible with the
+  Meticulous product's DOM diff view and already has context lines added.
 - Check `fileMetadata` in `context.json` for file sizes before reading large files.

@@ -2,6 +2,7 @@ import { mkdirSync } from "fs";
 import { join } from "path";
 import { MeticulousClient } from "@alwaysmeticulous/client";
 import chalk from "chalk";
+import type { DomDiffMap } from "./compute-dom-diffs";
 import { getDebugSessionsDir } from "./debug-constants";
 import { DebugContext } from "./debug.types";
 import { downloadDebugData } from "./download-debug-data";
@@ -39,6 +40,7 @@ export interface DebugPipelineOptions {
         projectRepoDir: string | undefined,
         screenshotMap: Record<string, ScreenshotMapEntry>,
         replayComparison: ReplayComparisonEntry[],
+        domDiffMap: DomDiffMap,
       ) => void)
     | undefined;
   onWorkspaceReady?:

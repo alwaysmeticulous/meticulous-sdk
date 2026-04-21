@@ -14,8 +14,10 @@ import {
 import { basename, dirname, join } from "path";
 import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import chalk from "chalk";
+import { computeDomDiffs, type DomDiffMap } from "./compute-dom-diffs";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import { DebugContext } from "./debug.types";
+import { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
 import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
 
 interface TimelineEntry {
@@ -52,6 +54,10 @@ export interface ScreenshotMapEntry {
   virtualTimeStart: number | null;
   virtualTimeEnd: number | null;
   eventNumber: number | null;
+  /** Name of the `before.dom` HTML file in the replay's `screenshots/`, or `null` if missing. */
+  htmlFilename: string | null;
+  /** Name of the `after.dom` HTML file, or `null` when the screenshot captured no after DOM. */
+  afterHtmlFilename: string | null;
 }
 
 export interface ReplayComparisonEntry {
@@ -79,6 +85,7 @@ export interface GenerateDebugWorkspaceOptions {
         projectRepoDir: string | undefined,
         screenshotMap: Record<string, ScreenshotMapEntry>,
         replayComparison: ReplayComparisonEntry[],
+        domDiffMap: DomDiffMap,
       ) => void)
     | undefined;
 }
@@ -101,6 +108,8 @@ export const generateDebugWorkspace = (
   generateTimelineSummaries(workspaceDir);
   generateSessionSummaries(debugContext, workspaceDir);
   prettifySnapshotAssets(workspaceDir);
+  extractScreenshotDomFiles(workspaceDir);
+  const domDiffMap = computeDomDiffs(debugContext, workspaceDir);
   generateDebugDerivedFiles(workspaceDir);
   const screenshotMap = buildScreenshotMap(debugContext, workspaceDir);
   generateScreenshotContext(debugContext, workspaceDir, screenshotMap);
@@ -115,6 +124,7 @@ export const generateDebugWorkspace = (
     options.projectRepoDir,
     screenshotMap,
     replayComparison,
+    domDiffMap,
   );
 
   copyClaudeSubdir(workspaceDir, "rules", options.additionalTemplatesDir);
@@ -1373,6 +1383,8 @@ const buildScreenshotMap = (
         continue;
       }
 
+      const screenshotsDir = join(subDirPath, replayId, "screenshots");
+
       for (const entry of timeline) {
         const e = entry as TimelineEntry;
         if (e.kind !== "screenshot" || !e.data?.identifier) {
@@ -1384,6 +1396,16 @@ const buildScreenshotMap = (
           continue;
         }
 
+        const baseName = filename.endsWith(".png")
+          ? filename.slice(0, -".png".length)
+          : filename;
+        const htmlFilename = `${baseName}.html`;
+        const afterHtmlFilename = `${baseName}.after.html`;
+        const htmlExists = existsSync(join(screenshotsDir, htmlFilename));
+        const afterHtmlExists = existsSync(
+          join(screenshotsDir, afterHtmlFilename),
+        );
+
         map[`${subDir}/${replayId}/${filename}`] = {
           replayId,
           replayRole: subDir,
@@ -1391,6 +1413,8 @@ const buildScreenshotMap = (
           virtualTimeStart: e.virtualTimeStart ?? null,
           virtualTimeEnd: e.virtualTimeEnd ?? null,
           eventNumber: e.data.identifier.eventNumber ?? null,
+          htmlFilename: htmlExists ? htmlFilename : null,
+          afterHtmlFilename: afterHtmlExists ? afterHtmlFilename : null,
         };
       }
     }
@@ -1978,6 +2002,7 @@ const defaultWriteContextJson = (
   projectRepoDir: string | undefined,
   screenshotMap: Record<string, ScreenshotMapEntry>,
   replayComparison: ReplayComparisonEntry[],
+  domDiffMap: DomDiffMap,
 ): void => {
   const headIds = new Set(debugContext.replayDiffs.map((d) => d.headReplayId));
   const baseIds = new Set(debugContext.replayDiffs.map((d) => d.baseReplayId));
@@ -2015,6 +2040,7 @@ const defaultWriteContextJson = (
     sessions: debugContext.sessionIds,
     screenshotMap,
     replayComparison,
+    domDiffMap,
     paths: {
       replays: "replays/",
       sessions: "sessions/",
@@ -2026,6 +2052,9 @@ const defaultWriteContextJson = (
       assetsDiffs: "assets-diffs/",
       timelineSummaries: "timeline-summaries/",
       screenshotContext: "screenshot-context/",
+      domDiffs: "dom-diffs/",
+      domDiffsFull: "dom-diffs/*.full.diff",
+      domDiffsSummary: "dom-diffs/*.summary.txt",
       prDiff: "pr-diff.txt",
       formattedAssets: "formatted-assets/",
       testRun: "test-run/",
