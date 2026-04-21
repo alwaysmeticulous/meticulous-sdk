@@ -62,9 +62,8 @@ export const executeRemoteTestRun = async ({
   let url: URL;
   try {
     url = new URL(appUrl);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_error) {
-    throw new Error(`Invalid app URL: ${appUrl}`);
+  } catch (error) {
+    throw new Error(`Invalid app URL: ${appUrl}`, { cause: error });
   }
 
   const port = getPort(url);
