@@ -7,6 +7,7 @@ import {
 import { join } from "path";
 import chalk from "chalk";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
+import { screenshotIdentifierToBaseName } from "./screenshot-identifier";
 
 type Role = "head" | "base" | "other";
 
@@ -188,30 +189,3 @@ const readTimelineVirtualTimes = (
   return map;
 };
 
-// Mirror of `screenshotIdentifierToFilename` in
-// `generate-debug-workspace.ts` without the trailing `.png`. Any
-// change here must match that function, since both produce the same
-// `<screenshotBaseName>` used for dom-diffs/ and metadata lookups.
-const screenshotIdentifierToBaseName = (identifier: {
-  type?: string;
-  eventNumber?: number;
-  logicVersion?: number | null;
-  variant?: string | null;
-}): string | null => {
-  const variantPortion = identifier.variant === "redacted" ? ".redacted" : "";
-
-  if (identifier.type === "end-state") {
-    return identifier.logicVersion == null
-      ? `final-state${variantPortion}`
-      : `final-state-v${identifier.logicVersion}${variantPortion}`;
-  }
-
-  if (identifier.type === "after-event" && identifier.eventNumber != null) {
-    const eventIndexStr = identifier.eventNumber.toString().padStart(5, "0");
-    return identifier.logicVersion == null
-      ? `screenshot-after-event-${eventIndexStr}${variantPortion}`
-      : `screenshot-after-event-${eventIndexStr}-v${identifier.logicVersion}${variantPortion}`;
-  }
-
-  return null;
-};

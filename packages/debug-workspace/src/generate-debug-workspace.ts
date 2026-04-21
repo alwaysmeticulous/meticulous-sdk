@@ -20,6 +20,7 @@ import { DebugContext } from "./debug.types";
 import { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
 import { fetchDomDiffs, type DomDiffMap } from "./fetch-dom-diffs";
 import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
+import { screenshotIdentifierToFilename } from "./screenshot-identifier";
 
 interface TimelineEntry {
   kind: string;
@@ -1438,29 +1439,6 @@ const buildScreenshotMap = (
   return map;
 };
 
-const screenshotIdentifierToFilename = (identifier: {
-  type?: string;
-  eventNumber?: number;
-  logicVersion?: number | null;
-  variant?: string | null;
-}): string | undefined => {
-  const variantPortion = identifier.variant === "redacted" ? ".redacted" : "";
-
-  if (identifier.type === "end-state") {
-    return identifier.logicVersion == null
-      ? `final-state${variantPortion}.png`
-      : `final-state-v${identifier.logicVersion}${variantPortion}.png`;
-  }
-
-  if (identifier.type === "after-event" && identifier.eventNumber != null) {
-    const eventIndexStr = identifier.eventNumber.toString().padStart(5, "0");
-    return identifier.logicVersion == null
-      ? `screenshot-after-event-${eventIndexStr}${variantPortion}.png`
-      : `screenshot-after-event-${eventIndexStr}-v${identifier.logicVersion}${variantPortion}.png`;
-  }
-
-  return undefined;
-};
 
 const generateScreenshotContext = (
   debugContext: DebugContext,
