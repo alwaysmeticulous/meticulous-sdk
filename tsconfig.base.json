@@ -3,7 +3,7 @@
     /* Projects */
     "incremental": true,
     /* Language and Environment */
-    "target": "ES2019",
+    "target": "ES2022",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     /* Modules */
