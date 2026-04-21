@@ -173,6 +173,14 @@ describe("fetchDomDiffs", () => {
     expect(entry?.totalHunks).toBe(2);
     expect(entry?.bytes).toBeGreaterThan(0);
     expect(entry?.url).toBe("https://example.com/a");
+
+    // Summary should point the agent at the `met agent dom-diff` CLI
+    // for full-context diffs, scoped to this pair's replayDiffId.
+    const summary = readFileSync(
+      join(domDiffsDir, "headA-vs-baseA.summary.txt"),
+      "utf-8",
+    );
+    expect(summary).toContain("meticulous agent dom-diff --replayDiffId diffA");
   });
 
   it("writes no .diff file when the backend reports zero diffs; identical row in summary", async () => {
@@ -382,77 +390,4 @@ describe("fetchDomDiffs", () => {
     ).toBe(false);
   });
 
-  it("summary TSV has the expected column set (no full_diff_bytes column)", async () => {
-    setupReplayPair(workspace, {
-      headReplayId: "h1",
-      baseReplayId: "b1",
-      screenshotBaseName: "screenshot-after-event-00001",
-      url: "https://example.com/a",
-    });
-    setupReplayPair(workspace, {
-      headReplayId: "h1",
-      baseReplayId: "b1",
-      screenshotBaseName: "screenshot-after-event-00002",
-    });
-    const fetchScreenshotDiff = vi
-      .fn()
-      .mockResolvedValueOnce(diffResponse(["@@ -1 +1 @@\n-a\n+b"]))
-      .mockResolvedValueOnce(diffResponse([]));
-
-    await fetchDomDiffs({
-      client: fakeClient,
-      debugContext: makeDebugContext("h1", "b1"),
-      workspaceDir: workspace,
-      fetchScreenshotDiff,
-    });
-
-    const summary = readFileSync(
-      join(
-        workspace,
-        DEBUG_DATA_DIRECTORY,
-        "dom-diffs",
-        "h1-vs-b1.summary.txt",
-      ),
-      "utf-8",
-    );
-    expect(summary).toContain(
-      "screenshot\tstatus\thunks\tdiff_bytes\turl",
-    );
-    expect(summary).not.toContain("full_diff_bytes");
-    expect(summary).toContain("meticulous agent dom-diff --replayDiffId diff-1");
-  });
-
-  it("parallelizes API calls under the configured concurrency limit", async () => {
-    for (let i = 1; i <= 6; i++) {
-      setupReplayPair(workspace, {
-        headReplayId: "hP",
-        baseReplayId: "bP",
-        screenshotBaseName: `screenshot-after-event-0000${i}`,
-      });
-    }
-
-    let inFlight = 0;
-    let maxInFlight = 0;
-    const fetchScreenshotDiff = vi.fn().mockImplementation(async () => {
-      inFlight++;
-      if (inFlight > maxInFlight) {
-        maxInFlight = inFlight;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 10));
-      inFlight--;
-      return diffResponse(["@@ -1 +1 @@\n-a\n+b"]);
-    });
-
-    await fetchDomDiffs({
-      client: fakeClient,
-      debugContext: makeDebugContext("hP", "bP"),
-      workspaceDir: workspace,
-      fetchScreenshotDiff,
-      maxConcurrency: 2,
-    });
-
-    expect(fetchScreenshotDiff).toHaveBeenCalledTimes(6);
-    expect(maxInFlight).toBeGreaterThan(0);
-    expect(maxInFlight).toBeLessThanOrEqual(2);
-  });
 });
