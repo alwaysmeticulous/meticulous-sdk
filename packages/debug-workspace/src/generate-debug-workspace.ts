@@ -12,12 +12,13 @@ import {
   writeFileSync,
 } from "fs";
 import { basename, dirname, join } from "path";
+import { MeticulousClient } from "@alwaysmeticulous/client";
 import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import chalk from "chalk";
-import { computeDomDiffs, type DomDiffMap } from "./compute-dom-diffs";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import { DebugContext } from "./debug.types";
 import { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
+import { fetchDomDiffs, type DomDiffMap } from "./fetch-dom-diffs";
 import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
 
 interface TimelineEntry {
@@ -73,9 +74,11 @@ export interface ReplayComparisonEntry {
 const TEMPLATES_DIR = join(__dirname, "templates");
 
 export interface GenerateDebugWorkspaceOptions {
+  client: MeticulousClient;
   debugContext: DebugContext;
   workspaceDir: string;
   projectRepoDir: string | undefined;
+  maxConcurrency?: number | undefined;
   additionalTemplatesDir?: string | undefined;
   writeContextJson?:
     | ((
@@ -90,10 +93,10 @@ export interface GenerateDebugWorkspaceOptions {
     | undefined;
 }
 
-export const generateDebugWorkspace = (
+export const generateDebugWorkspace = async (
   options: GenerateDebugWorkspaceOptions,
-): void => {
-  const { debugContext, workspaceDir } = options;
+): Promise<void> => {
+  const { client, debugContext, workspaceDir } = options;
 
   const claudeDir = join(workspaceDir, ".claude");
   mkdirSync(claudeDir, { recursive: true });
@@ -109,7 +112,12 @@ export const generateDebugWorkspace = (
   generateSessionSummaries(debugContext, workspaceDir);
   prettifySnapshotAssets(workspaceDir);
   extractScreenshotDomFiles(workspaceDir);
-  const domDiffMap = computeDomDiffs(debugContext, workspaceDir);
+  const domDiffMap = await fetchDomDiffs({
+    client,
+    debugContext,
+    workspaceDir,
+    maxConcurrency: options.maxConcurrency,
+  });
   generateDebugDerivedFiles(workspaceDir);
   const screenshotMap = buildScreenshotMap(debugContext, workspaceDir);
   generateScreenshotContext(debugContext, workspaceDir, screenshotMap);
@@ -2053,7 +2061,6 @@ const defaultWriteContextJson = (
       timelineSummaries: "timeline-summaries/",
       screenshotContext: "screenshot-context/",
       domDiffs: "dom-diffs/",
-      domDiffsFull: "dom-diffs/*.full.diff",
       domDiffsSummary: "dom-diffs/*.summary.txt",
       prDiff: "pr-diff.txt",
       formattedAssets: "formatted-assets/",

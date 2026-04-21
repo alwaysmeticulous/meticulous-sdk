@@ -106,9 +106,6 @@ Per-replay generated summaries:
   timeline: total entries, virtual time range, screenshot timestamps, event kind breakdown.
 - `debug-data/formatted-assets/<role>/<replayId>/` -- Pretty-printed JS/CSS from
   `snapshotted-assets/`. Only present if snapshotted assets exist. Use these instead of the originals.
-- `context.json` fields: `screenshotMap` (screenshot-to-timestamp mapping), `replayComparison`
-  (side-by-side event counts, virtual time, screenshot count), `fileMetadata` (byte sizes and
-  line counts for key files).
 
 ### Diff Files (only when comparing replays)
 
@@ -135,19 +132,21 @@ or `meticulous debug replay` with `--baseReplayId`.
   of `logs.deterministic.txt` surrounding the screenshot for both head and base, with the
   screenshot line marked `>>>`.
 - `debug-data/dom-diffs/<headReplayId>-vs-<baseReplayId>-<screenshotBaseName>.diff` -- **Start
-  here for DOM changes.** Canonical unified diff (3 lines of context per hunk) of the HEAD vs BASE
-  DOM at a specific screenshot. Computed locally and byte-compatible with the Meticulous product's
-  DOM diff view. Only written when the two pretty-printed DOMs actually differ.
-- `debug-data/dom-diffs/<headReplayId>-vs-<baseReplayId>-<screenshotBaseName>.full.diff` -- Full-
-  file-context version of the same diff (every line either as `+`, `-`, or space-prefixed
-  context). Useful when the 3-line version doesn't give enough surrounding markup to
-  understand a change. Always written alongside any `.diff`, and also written when the DOMs
-  are identical (in which case every line is a context line).
+  here for DOM changes.** Canonical unified diff (3 lines of context per hunk) of the HEAD vs
+  BASE DOM at a specific screenshot, fetched from the Meticulous backend and byte-compatible
+  with the product's DOM diff view. Only written when the DOMs actually differ.
+  If 3 lines of context aren't enough, run:
+  `meticulous agent dom-diff --replayDiffId <id> --screenshotName <baseName> --context full`
+  (no `.full.diff` is pre-cached on disk).
 - `debug-data/dom-diffs/<headReplayId>-vs-<baseReplayId>.summary.txt` -- Per-pair index of DOM
   diffs: total screenshots compared, count of pairs with/without DOM changes, and a TSV table
-  (`screenshot`, `status`, `hunks`, `diff_bytes`, `full_diff_bytes`, `url`). `context.json`
-  also includes a `domDiffMap` keyed by `"<label>/<screenshotBaseName>"` pointing at these
-  same `.diff` / `.full.diff` files.
+  (`screenshot`, `status`, `hunks`, `diff_bytes`, `url`). `context.json` also includes a
+  `domDiffMap` keyed by `"<label>/<screenshotBaseName>"` pointing at each `.diff` file.
+
+Note: DOM diffs are only generated when a `replayDiffId` is available (the normal
+`meticulous debug replay-diff <id>` path). On the rare `meticulous debug replay --baseReplayId`
+path there is no `replayDiffId`, so `dom-diffs/` is not generated — diff the per-replay
+`screenshots/<baseName>.html` files directly with the system `diff` command instead.
 
 ### Other Data
 
@@ -164,84 +163,79 @@ or `meticulous debug replay` with `--baseReplayId`.
 - `debug-data/project-repo/` -- Your codebase checked out at the relevant commit. Only present if
   the command was run from within a git repository.
 
-## Screenshot Mapping
+## Key `context.json` fields
 
-`context.json` includes a `screenshotMap` that maps each screenshot to its virtual timestamp
-and event number. Use this to correlate screenshot filenames (e.g. `screenshot-after-event-00673.png`)
-with specific points in the replay timeline and logs.
-
-## Replay Comparison
-
-`context.json` includes a `replayComparison` array with side-by-side stats for each replay:
-total events, network requests, animation frames, virtual time, and screenshot count. Compare
-head vs base entries to quickly spot drift (e.g. extra animation frames or different virtual time).
-
-## File Sizes
-
-`context.json` includes a `fileMetadata` array with the byte size and line count of key files.
-Check this before attempting to read large files -- use grep/search or read specific line ranges
-for files over ~5000 lines instead of reading them in full.
+- `screenshotMap` -- maps each screenshot filename to its virtual timestamp and event number.
+  Use this to correlate e.g. `screenshot-after-event-00673.png` with a timeline position.
+- `replayComparison` -- side-by-side per-replay stats (events, network requests, animation
+  frames, virtual time, screenshots). Scan for head-vs-base drift.
+- `domDiffMap` -- keyed by `"<label>/<screenshotBaseName>"`, points at each per-screenshot
+  DOM `.diff` file. Empty on the `--baseReplayId` single-replay path.
+- `fileMetadata` -- byte sizes and line counts for key files. Check this before reading
+  anything large; for files over ~5000 lines prefer grep/search or ranged reads.
 
 ## Debugging Workflow
 
-1. **Start with `debug-data/context.json`** -- Read this file for all IDs, statuses, file paths,
-   `screenshotMap`, and `replayComparison`. If a `screenshot` field is present, this is the
-   specific screenshot the user wants to investigate. Use `screenshotMap` to find its
-   virtual timestamp and event number, then focus your analysis on events leading up to it.
-2. **Check replay comparison** -- Compare head vs base entries in `replayComparison` for
-   immediate drift signals (different event counts, animation frames, virtual time).
-3. **Analyze log diffs** -- For diffs: **delegate to the log-diff-analyzer subagent** which
-   reads the filtered diffs and summaries and returns a structured divergence report. Only
-   read `debug-data/log-diffs/*.filtered.diff` directly if you need to verify specific details
-   from the analyzer's report. For single replays (no diff): read `logs.deterministic.filtered.txt`
-   inside the replay directory. Fall back to the raw `logs.deterministic.txt` only if you
-   need unmodified output.
-4. **Read events index** -- Check `debug-data/events-index/` for a greppable, one-line-per-event
-   listing of the full timeline. Use grep to filter by kind, virtual time, or URL.
-   For a higher-level overview, check `debug-data/timeline-summaries/`.
-5. **Search log messages** -- Use `debug-data/logs-index/` for a greppable, one-line-per-entry
-   summary of `logs.ndjson`. Grep by source (`source=application`), type (`type=warn`),
-   keyword, or virtual time (`vt=1234`).
-6. **Check screenshot timeline context** -- Read `debug-data/screenshot-timeline-context/` for
-   the timeline events surrounding each screenshot (30 before, 10 after). The screenshot line
-   is marked with `>>>`.
-7. **Inspect screenshot diffs** -- Start with `debug-data/diffs/<id>.summary.json` for a compact view of
-   which screenshots differ and by how much. If a `debug-data/screenshot-context/` file exists, read it
-   for the log lines surrounding the screenshot in both head and base.
-   Only read the full `debug-data/diffs/<id>.json` if you need complete replay metadata.
-8. **Inspect DOM diffs** -- For any screenshot with a visual diff, read the matching
-   `debug-data/dom-diffs/<headReplayId>-vs-<baseReplayId>-<screenshotBaseName>.diff` to see
-   exactly which DOM nodes changed. Use the `domDiffMap` in `context.json` to navigate from
-   a screenshot entry straight to its diff paths. The `.diff` file has 3 lines of context per
-   hunk; fall back to `.full.diff` (same diff, full-file context) if you need to see more of
-   the surrounding markup. If you need the raw pre-diff HTML for either side, read
-   `debug-data/replays/<role>/<replayId>/screenshots/<screenshotBaseName>.html` rather than
-   parsing `screenshots/<name>.metadata.json`.
-9. **Check network activity** -- Read `debug-data/network-log/` for a compact network request
-   log. Grep for specific endpoints, status codes, or domains.
-10. **Compare virtual time progression** -- Use `diff` on `debug-data/vt-progression/` files to
-    find where head and base replays diverge in virtual time.
-11. **Check replay parameters** -- Read `debug-data/params-diffs/` for pre-computed diffs. For single
-    replays, read `launchBrowserAndReplayParams.json` directly.
-12. **Check assets diffs** -- Read `debug-data/assets-diffs/` to see if the snapshotted JS/CSS chunks
-    differ between head and base.
-13. **Analyze session data** -- Start with `debug-data/session-summaries/` for a quick overview of the
-    session (URL history, user events, network stats). Only read the raw `debug-data/sessions/` data
-    if you need specific details like request/response bodies or exact event selectors.
-14. **Analyze the PR diff** -- **Delegate to the pr-analyzer subagent** which reads
-    `debug-data/pr-diff.txt` and the diff summaries, returning a structured correlation of
-    code changes to screenshot diffs. Only read the PR diff directly if you need to verify
-    specific details from the analyzer's report.
-15. **Trace through formatted assets** -- Use `debug-data/formatted-assets/` (pretty-printed JS/CSS)
-    instead of raw minified bundles when tracing code execution.
-16. **Review your code** -- If `project-repo/` is present, check it for the relevant changes.
-    For library source code, use `debug-data/formatted-assets/` which contains the bundled and
-    pretty-printed versions of third-party code.
+Don't work through this top-to-bottom -- pick the phases relevant to the question. Phase 1
+applies to every investigation; then pick phase 2 (comparing replays) or phase 3 (single
+replay), and drop into phase 4 only as needed.
 
-**Important**: Do NOT use Python one-liners to parse `timeline.json` or `logs.ndjson`. The derived
-files above (`events-index/`, `network-log/`, `vt-progression/`, `logs-index/`,
-`screenshot-timeline-context/`) are pre-computed and greppable. Use `timeline.ndjson` (NDJSON format,
-one JSON object per line) if you need to grep the raw timeline data.
+### 1. Orient
+
+1. **Read `debug-data/context.json`** for IDs, statuses, file paths, `screenshotMap`,
+   `replayComparison`, and `fileMetadata`. If a `screenshot` field is present, that's the
+   specific screenshot the user wants to investigate -- use `screenshotMap` to find its
+   virtual timestamp and focus analysis on events leading up to it.
+2. **Scan `replayComparison`** for head-vs-base drift signals (event counts, animation
+   frames, virtual time, screenshot count).
+
+### 2. Investigate a diff (head vs base)
+
+3. **Screenshot diffs** -- read `debug-data/diffs/<id>.summary.json` for which screenshots
+   changed and by how much. If `debug-data/screenshot-context/` is present, read it for the
+   log lines around each screenshot. Only open the full `diffs/<id>.json` for complete
+   replay metadata.
+4. **DOM diffs** -- for each changed screenshot, open the matching `.diff` under
+   `debug-data/dom-diffs/` (use `domDiffMap` to navigate). If 3 lines of context aren't
+   enough, run `meticulous agent dom-diff --replayDiffId <id> --screenshotName <baseName>
+   --context full`, or read the raw `screenshots/<baseName>.html` on either side.
+5. **Log diffs** -- **delegate to the log-diff-analyzer subagent** instead of reading
+   `debug-data/log-diffs/*.filtered.diff` directly; only open the raw diff to verify
+   specific findings.
+6. **PR diff** -- **delegate to the pr-analyzer subagent** to correlate code changes with
+   visual diffs. Only open `debug-data/pr-diff.txt` directly to verify findings.
+
+### 3. Investigate a single replay
+
+7. **Filtered logs** -- read `logs.deterministic.filtered.txt` inside the replay directory.
+   Fall back to the raw `logs.deterministic.txt` only if you need unmodified output.
+8. **Events index** -- grep `debug-data/events-index/<role>-<replayId>.txt` by kind,
+   virtual time, or URL (e.g. `grep 'kind=screenshot'`, `grep 'api/v9/users'`). Prefer this
+   over parsing `timeline.json`.
+9. **Logs index** -- grep `debug-data/logs-index/<role>-<replayId>.txt` by source
+   (`source=application`), type (`type=warn`), keyword, or virtual time (`vt=1234`).
+
+### 4. Deeper dives (as needed)
+
+10. **Screenshot timeline context** -- `debug-data/screenshot-timeline-context/` for the 30
+    events before and 10 after each screenshot.
+11. **Network activity** -- grep `debug-data/network-log/` for endpoints, status codes,
+    domains.
+12. **Virtual time progression** -- `diff` on `debug-data/vt-progression/` files to find
+    where head and base diverge.
+13. **Replay parameters** -- `debug-data/params-diffs/` for computed diffs, or
+    `launchBrowserAndReplayParams.json` for a single replay.
+14. **Assets** -- `debug-data/assets-diffs/` for snapshotted JS/CSS diffs,
+    `debug-data/formatted-assets/` for pretty-printed bundles.
+15. **Session data** -- `debug-data/session-summaries/<sessionId>.txt` first; only read raw
+    `sessions/<id>/data.json` for specific request bodies or event selectors.
+16. **Project source** -- `project-repo/` when present; `formatted-assets/` for third-party
+    library code.
+
+**Important**: Do NOT use Python one-liners to parse `timeline.json` or `logs.ndjson`. The
+derived files above (`events-index/`, `logs-index/`, `network-log/`, `vt-progression/`,
+`screenshot-timeline-context/`) are pre-computed and greppable. Use `timeline.ndjson`
+(NDJSON format, one JSON object per line) if you need to grep the raw timeline data.
 
 ## Subagents
 

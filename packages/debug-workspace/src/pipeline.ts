@@ -2,10 +2,10 @@ import { mkdirSync } from "fs";
 import { join } from "path";
 import { MeticulousClient } from "@alwaysmeticulous/client";
 import chalk from "chalk";
-import type { DomDiffMap } from "./compute-dom-diffs";
 import { getDebugSessionsDir } from "./debug-constants";
 import { DebugContext } from "./debug.types";
 import { downloadDebugData } from "./download-debug-data";
+import type { DomDiffMap } from "./fetch-dom-diffs";
 import {
   generateDebugWorkspace,
   FileMetadataEntry,
@@ -85,10 +85,12 @@ export const runDebugPipeline = async (
     projectRepoDir = opts.createWorktree(debugContext, workspaceDir);
   }
 
-  generateDebugWorkspace({
+  await generateDebugWorkspace({
+    client: opts.client,
     debugContext,
     workspaceDir,
     projectRepoDir,
+    maxConcurrency: opts.maxConcurrentDownloads,
     additionalTemplatesDir: opts.additionalTemplatesDir,
     writeContextJson: opts.writeContextJson,
   });

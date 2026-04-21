@@ -30,9 +30,11 @@ Given a replay diff ID or replay ID(s), this package:
     - Formatted assets (pretty-printed JS/CSS)
     - Screenshot DOM snapshots (per-screenshot `<name>.html` files extracted from
     `<name>.metadata.json`, written alongside each replay's `screenshots/` directory)
-    - DOM diffs (per-screenshot unified diffs of HEAD vs BASE pretty-printed HTML, written
-    to `dom-diffs/` as `.diff`, `.full.diff`, and per-pair `.summary.txt` files --
-    byte-compatible with the Meticulous product's DOM diff view)
+    - DOM diffs (per-screenshot unified diffs of HEAD vs BASE pretty-printed HTML, fetched
+    from the Meticulous backend and written to `dom-diffs/` as `.diff` files plus per-pair
+    `.summary.txt` files -- byte-compatible with the Meticulous product's DOM diff view.
+    Only generated on the `replay-diff` path; full-file-context diffs are available on
+    demand via `meticulous agent dom-diff --context full`.)
     - PR diff (source code changes between base and head commits)
   - **Context JSON** -- Machine-readable metadata with all IDs, paths, file sizes, screenshot
   map, and replay comparison stats.
@@ -74,7 +76,7 @@ import {
 
 const debugContext = await resolveDebugContext({ client, replayDiffId });
 await downloadDebugData({ client, debugContext, workspaceDir });
-generateDebugWorkspace({ debugContext, workspaceDir, projectRepoDir });
+await generateDebugWorkspace({ client, debugContext, workspaceDir, projectRepoDir });
 ```
 
 ## Key exports

@@ -25,12 +25,9 @@
     "@alwaysmeticulous/common": "workspace:*",
     "@alwaysmeticulous/downloading-helpers": "workspace:*",
     "chalk": "^4.1.2",
-    "diff": "^8.0.4",
-    "js-beautify": "^1.15.1",
     "p-limit": "^3.1.0"
   },
   "devDependencies": {
-    "@types/js-beautify": "^1.14.3",
     "vitest": "catalog:"
   },
   "author": {
