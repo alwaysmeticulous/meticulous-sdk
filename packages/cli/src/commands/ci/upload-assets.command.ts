@@ -84,7 +84,7 @@ const handler = async ({
     extra: { commitSha },
   });
 
-  let testRunId: string | null = null;
+  let testRunId: string | null;
 
   try {
     const result = await uploadAssetsAndTriggerTestRun({

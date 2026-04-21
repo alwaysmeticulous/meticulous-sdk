@@ -190,6 +190,7 @@ const verifyDockerConnection = async (docker: Docker): Promise<void> => {
     }
     throw new Error(
       "Docker daemon is not running or unreachable. Please start Docker and try again.",
+      { cause: error },
     );
   }
 };
@@ -228,7 +229,7 @@ const tagImage = async (
     if (error instanceof Error) {
       logger.error(`Error: ${error.message}`);
     }
-    throw new Error(`Failed to tag Docker image: ${error}`);
+    throw new Error(`Failed to tag Docker image: ${error}`, { cause: error });
   }
 };
 

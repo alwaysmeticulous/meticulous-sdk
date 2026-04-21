@@ -24,7 +24,7 @@
     "url": "https://meticulous.ai"
   },
   "engines": {
-    "node": ">= 12"
+    "node": ">= 18"
   },
   "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
   "repository": {

@@ -1,14 +1,18 @@
 export interface FetchError extends Error {
-  response?: {
-    status: number;
-    statusText: string;
-    data: any;
-    headers: Record<string, string>;
-  } | undefined;
-  config?: {
-    url: string;
-    method?: string;
-  } | undefined;
+  response?:
+    | {
+        status: number;
+        statusText: string;
+        data: any;
+        headers: Record<string, string>;
+      }
+    | undefined;
+  config?:
+    | {
+        url: string;
+        method?: string;
+      }
+    | undefined;
 }
 
 export const isFetchError = (error: any): error is FetchError => {
@@ -29,7 +33,7 @@ const enrichFetchError = (error: FetchError) => {
     error.config ?? null,
     error.response ?? null,
   );
-  let message = "";
+  let message: string;
   if (errorMessage && typeof errorMessage === "string") {
     message = errorMessage;
     if (requestAndResponse) {
@@ -62,15 +66,17 @@ const requestAndResponseToString = (
   return `${requestToString(request)} returned ${responseToString(response)})`;
 };
 
-const requestToString = (
-  request: { method?: string; url: string },
-) => {
+const requestToString = (request: { method?: string; url: string }) => {
   return `${request.method?.toUpperCase()}${request.method ? " " : ""}${
     request.url
   }`;
 };
 
-const responseToString = (response: { status: number; statusText: string; data: any }) => {
+const responseToString = (response: {
+  status: number;
+  statusText: string;
+  data: any;
+}) => {
   const dataAsString = dataToString(response.data);
   return `${response.status} ${response.statusText}${
     dataAsString ? ` (${dataAsString})` : ""

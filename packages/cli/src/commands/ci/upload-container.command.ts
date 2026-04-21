@@ -79,7 +79,7 @@ const handler = async ({
     extra: { commitSha, localImageTag },
   });
 
-  let testRunId: string | null = null;
+  let testRunId: string | null;
 
   try {
     const result = await uploadContainer({
