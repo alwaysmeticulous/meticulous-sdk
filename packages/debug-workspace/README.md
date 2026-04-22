@@ -33,10 +33,10 @@ Given a replay diff ID or replay ID(s), this package:
      - Screenshot DOM snapshots (per-screenshot `<name>.html` files extracted from
        `<name>.metadata.json`, written alongside each replay's `screenshots/` directory)
      - DOM diffs (per-screenshot unified diffs of HEAD vs BASE pretty-printed HTML, fetched
-       from the Meticulous backend and written to `dom-diffs/` as `.diff` files plus per-pair
-       `.summary.txt` files -- byte-compatible with the Meticulous product's DOM diff view.
-       Only generated on the `replay-diff` path; full-file-context diffs are available on
-       demand via `meticulous agent dom-diff --context full`.)
+       from the Meticulous backend and written to `dom-diffs/` as `.diff` files, sibling
+       `.full.diff` files with full-file context, and a per-pair `.summary.txt`. The diffs
+       are identical to those shown in the Meticulous product. Only generated on the
+       `replay-diff` path.)
      - PR diff (source code changes between base and head commits)
    - **Context JSON** -- Machine-readable metadata with all IDs, paths, file sizes, screenshot
      map, and replay comparison stats.

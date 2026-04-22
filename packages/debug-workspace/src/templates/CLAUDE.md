@@ -132,16 +132,15 @@ or `meticulous debug replay` with `--baseReplayId`.
   of `logs.deterministic.txt` surrounding the screenshot for both head and base, with the
   screenshot line marked `>>>`.
 - `debug-data/dom-diffs/<headReplayId>-vs-<baseReplayId>-<screenshotBaseName>.diff` -- **Start
-  here for DOM changes.** Canonical unified diff (3 lines of context per hunk) of the HEAD vs
-  BASE DOM at a specific screenshot, fetched from the Meticulous backend and byte-compatible
-  with the product's DOM diff view. Only written when the DOMs actually differ.
-  If 3 lines of context aren't enough, run:
-  `meticulous agent dom-diff --replayDiffId <id> --screenshotName <baseName> --context full`
-  (no `.full.diff` is pre-cached on disk).
+  here for DOM changes.** Unified diff with 3 lines of context per hunk of the HEAD vs BASE
+  DOM at a specific screenshot, identical to the diff shown in the Meticulous product. Only
+  written when the DOMs actually differ.
+- `debug-data/dom-diffs/<headReplayId>-vs-<baseReplayId>-<screenshotBaseName>.full.diff` --
+  The same hunks as the sibling `.diff`, but with full-file context. Read this when 3 lines
+  of context around a hunk isn't enough to understand the surrounding DOM structure.
 - `debug-data/dom-diffs/<headReplayId>-vs-<baseReplayId>.summary.txt` -- Per-pair index of DOM
-  diffs: total screenshots compared, count of pairs with/without DOM changes, and a TSV table
-  (`screenshot`, `status`, `hunks`, `diff_bytes`, `url`). `context.json` also includes a
-  `domDiffMap` keyed by `"<label>/<screenshotBaseName>"` pointing at each `.diff` file.
+  diffs: total screenshots compared, count breakdown by status, and a TSV table (`screenshot`,
+  `status`, `hunks`, `diff_bytes`, `url`).
 
 Note: DOM diffs are only generated when a `replayDiffId` is available (the normal
 `meticulous debug replay-diff <id>` path). On the rare `meticulous debug replay --baseReplayId`
@@ -174,8 +173,14 @@ to diffing the two `screenshots/<baseName>.html` files directly.
   Use this to correlate e.g. `screenshot-after-event-00673.png` with a timeline position.
 - `replayComparison` -- side-by-side per-replay stats (events, network requests, animation
   frames, virtual time, screenshots). Scan for head-vs-base drift.
-- `domDiffMap` -- keyed by `"<label>/<screenshotBaseName>"`, points at each per-screenshot
-  DOM `.diff` file. Empty on the `--baseReplayId` single-replay path.
+- `domDiffMap` -- keyed by `"<headReplayId>-vs-<baseReplayId>/<screenshotBaseName>"`. Each
+  entry carries `diffPath` (3-line-context), `fullDiffPath` (full-file-context),
+  `totalHunks`, `bytes`, and `url`. Both paths are `null` when HEAD and BASE DOMs were
+  identical. `fullDiffPath` alone can also be `null` when the full-context fetch failed
+  while the canonical succeeded — in that case `diffPath` is non-null and still usable.
+  Screenshots that are only-in-one-side, `skipped-error`, or `skipped-unsupported` have
+  **no entry** in the map; consult the per-pair `.summary.txt` for the full list. Empty
+  on the `--baseReplayId` single-replay path.
 - `fileMetadata` -- byte sizes and line counts for key files. Check this before reading
   anything large; for files over ~5000 lines prefer grep/search or ranged reads.
 
@@ -201,9 +206,9 @@ replay), and drop into phase 4 only as needed.
    log lines around each screenshot. Only open the full `diffs/<id>.json` for complete
    replay metadata.
 4. **DOM diffs** -- for each changed screenshot, open the matching `.diff` under
-   `debug-data/dom-diffs/` (use `domDiffMap` to navigate). If 3 lines of context aren't
-   enough, run `meticulous agent dom-diff --replayDiffId <id> --screenshotName <baseName>
-   --context full`, or read the raw `screenshots/<baseName>.html` on either side.
+   `debug-data/dom-diffs/` (use `domDiffMap` to navigate). If 3 lines of context around a
+   hunk isn't enough, open the sibling `.full.diff` file (same hunks with full-file context,
+   path on `domDiffMap[...].fullDiffPath`).
 5. **Log diffs** -- **delegate to the log-diff-analyzer subagent** instead of reading
    `debug-data/log-diffs/*.filtered.diff` directly; only open the raw diff to verify
    specific findings.
@@ -295,6 +300,6 @@ on expected vs unexpected changes.
   `debug-data/replays/<role>/<replayId>/screenshots/<name>.html` (or `.after.html`) rather than
   parsing the raw `<name>.metadata.json`.
 - For DOM changes between replays, prefer `debug-data/dom-diffs/` over diffing the two
-  `<name>.html` files yourself -- the pre-computed `.diff` is byte-compatible with the
-  Meticulous product's DOM diff view and already has context lines added.
+  `<name>.html` files yourself -- the pre-computed `.diff` is identical to the diff shown
+  in the Meticulous product and already has context lines added.
 - Check `fileMetadata` in `context.json` for file sizes before reading large files.

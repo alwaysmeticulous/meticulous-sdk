@@ -131,7 +131,7 @@ describe("fetchDomDiffs", () => {
     rmSync(workspace, { recursive: true, force: true });
   });
 
-  it("writes .diff + .summary.txt and populates domDiffMap for a diffing pair", async () => {
+  it("writes .diff + .full.diff + .summary.txt and populates domDiffMap for a diffing pair", async () => {
     setupReplayPair(workspace, {
       headReplayId: "headA",
       baseReplayId: "baseA",
@@ -139,12 +139,19 @@ describe("fetchDomDiffs", () => {
       identifier: { type: "after-event", eventNumber: 1 },
       url: "https://example.com/a",
     });
-    const fetchScreenshotDiff = vi.fn().mockResolvedValue(
-      diffResponse([
-        "@@ -1,1 +1,1 @@\n-<p>old</p>\n+<p>new</p>",
-        "@@ -5,1 +5,1 @@\n-<span>b</span>\n+<span>B</span>",
-      ]),
-    );
+    const fetchScreenshotDiff = vi
+      .fn()
+      .mockResolvedValueOnce(
+        diffResponse([
+          "@@ -1,1 +1,1 @@\n-<p>old</p>\n+<p>new</p>",
+          "@@ -5,1 +5,1 @@\n-<span>b</span>\n+<span>B</span>",
+        ]),
+      )
+      .mockResolvedValueOnce(
+        diffResponse([
+          "@@ -1,10 +1,10 @@\n <html>\n <body>\n-<p>old</p>\n+<p>new</p>\n </body>",
+        ]),
+      );
 
     const map = await fetchDomDiffs({
       client: fakeClient,
@@ -153,12 +160,20 @@ describe("fetchDomDiffs", () => {
       fetchScreenshotDiff,
     });
 
-    expect(fetchScreenshotDiff).toHaveBeenCalledTimes(1);
-    // Backend requires unpadded `after-event-<N>`, not on-disk basename.
-    expect(fetchScreenshotDiff).toHaveBeenCalledWith(
+    expect(fetchScreenshotDiff).toHaveBeenCalledTimes(2);
+    expect(fetchScreenshotDiff).toHaveBeenNthCalledWith(
+      1,
       fakeClient,
       "diffA",
       "after-event-1",
+    );
+    expect(fetchScreenshotDiff).toHaveBeenNthCalledWith(
+      2,
+      fakeClient,
+      "diffA",
+      "after-event-1",
+      undefined,
+      "full",
     );
 
     const domDiffsDir = join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs");
@@ -166,16 +181,21 @@ describe("fetchDomDiffs", () => {
       domDiffsDir,
       "headA-vs-baseA-screenshot-after-event-00001.diff",
     );
+    const fullDiffFile = join(
+      domDiffsDir,
+      "headA-vs-baseA-screenshot-after-event-00001.full.diff",
+    );
     expect(existsSync(diffFile)).toBe(true);
-    const body = readFileSync(diffFile, "utf-8");
-    expect(body).toContain("-<p>old</p>");
-    expect(body).toContain("+<p>new</p>");
-    expect(body).toContain("-<span>b</span>");
-    expect(body).toContain("+<span>B</span>");
+    expect(existsSync(fullDiffFile)).toBe(true);
+    expect(readFileSync(diffFile, "utf-8")).toContain("-<p>old</p>");
+    expect(readFileSync(fullDiffFile, "utf-8")).toContain("<html>");
 
     const entry = map["headA-vs-baseA/screenshot-after-event-00001"];
     expect(entry?.diffPath).toBe(
       "dom-diffs/headA-vs-baseA-screenshot-after-event-00001.diff",
+    );
+    expect(entry?.fullDiffPath).toBe(
+      "dom-diffs/headA-vs-baseA-screenshot-after-event-00001.full.diff",
     );
     expect(entry?.totalHunks).toBe(2);
     expect(entry?.bytes).toBeGreaterThan(0);
@@ -185,7 +205,46 @@ describe("fetchDomDiffs", () => {
       join(domDiffsDir, "headA-vs-baseA.summary.txt"),
       "utf-8",
     );
-    expect(summary).toContain("meticulous agent dom-diff --replayDiffId diffA");
+    expect(summary).not.toContain("meticulous agent dom-diff");
+    expect(summary).toContain(".full.diff");
+  });
+
+  it("still records the canonical diff when the full-context fetch fails", async () => {
+    setupReplayPair(workspace, {
+      headReplayId: "headF",
+      baseReplayId: "baseF",
+      screenshotBaseName: "screenshot-after-event-00001",
+      identifier: { type: "after-event", eventNumber: 1 },
+    });
+    const fetchScreenshotDiff = vi
+      .fn()
+      .mockResolvedValueOnce(
+        diffResponse(["@@ -1,1 +1,1 @@\n-<p>old</p>\n+<p>new</p>"]),
+      )
+      .mockRejectedValueOnce(new Error("full-context boom"));
+
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (msg: string) => warnings.push(String(msg));
+    try {
+      const map = await fetchDomDiffs({
+        client: fakeClient,
+        debugContext: makeDebugContext("headF", "baseF", "diffF"),
+        workspaceDir: workspace,
+        fetchScreenshotDiff,
+      });
+
+      const entry = map["headF-vs-baseF/screenshot-after-event-00001"];
+      expect(entry?.diffPath).toBe(
+        "dom-diffs/headF-vs-baseF-screenshot-after-event-00001.diff",
+      );
+      expect(entry?.fullDiffPath).toBeNull();
+      expect(
+        warnings.some((w) => /full-context DOM diff/.test(w)),
+      ).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
   });
 
   it("writes no .diff file when the backend reports zero diffs; identical row in summary", async () => {
@@ -218,6 +277,8 @@ describe("fetchDomDiffs", () => {
 
     const entry = map["headB-vs-baseB/final-state"];
     expect(entry?.diffPath).toBeNull();
+    expect(entry?.fullDiffPath).toBeNull();
+    expect(fetchScreenshotDiff).toHaveBeenCalledTimes(1);
     expect(entry?.totalHunks).toBe(0);
     expect(entry?.bytes).toBe(0);
     expect(entry?.url).toBe("https://example.com/b");

@@ -23,8 +23,15 @@ import {
 } from "./screenshot-identifier";
 
 export interface DomDiffMapEntry {
-  /** `null` when DOMs are identical or the fetch errored. */
+  /** 3-lines-of-context diff. `null` when DOMs are identical. */
   diffPath: string | null;
+  /**
+   * Full-file-context diff (same hunks as `diffPath`, more surrounding lines).
+   * `null` when DOMs are identical, OR when the full-context fetch failed
+   * while the canonical fetch succeeded (check `diffPath`: if non-null, the
+   * canonical diff is still usable and a warning was logged).
+   */
+  fullDiffPath: string | null;
   totalHunks: number;
   bytes: number;
   url: string | null;
@@ -66,9 +73,11 @@ const DEFAULT_MAX_CONCURRENCY = 8;
 
 /**
  * Fetch per-screenshot DOM diffs for every replay diff in `debugContext`
- * and write `<label>-<baseName>.diff` plus `<label>.summary.txt` under
- * `debug-data/dom-diffs/`. Per-screenshot errors are logged and recorded
- * as `skipped-error`; the pipeline never fails on a fetch error.
+ * and write `<label>-<baseName>.diff` (3 lines of context), a sibling
+ * `<label>-<baseName>.full.diff` (full-file context), and
+ * `<label>.summary.txt` under `debug-data/dom-diffs/`. Per-screenshot
+ * errors are logged and recorded as `skipped-error`; the pipeline never
+ * fails on a fetch error.
  */
 export const fetchDomDiffs = async (
   options: FetchDomDiffsOptions,
@@ -321,6 +330,7 @@ const resolveScreenshot = async (args: {
         },
         mapEntry: {
           diffPath: null,
+          fullDiffPath: null,
           totalHunks: 0,
           bytes: 0,
           url,
@@ -333,6 +343,31 @@ const resolveScreenshot = async (args: {
     writeFileSync(join(domDiffsDir, diffFilename), diffBody);
     const bytes = Buffer.byteLength(diffBody, "utf-8");
 
+    // Fetch the same hunks with full-file context so the agent never has to
+    // shell out. A fetch failure here is non-fatal: we still have the
+    // canonical diff, just no `.full.diff` sibling.
+    let fullDiffPath: string | null = null;
+    try {
+      const fullResponse = await fetchScreenshotDiff(
+        client,
+        pair.replayDiffId,
+        backendName,
+        undefined,
+        "full",
+      );
+      const fullBody = fullResponse.diffs.map((d) => d.content).join("\n\n");
+      const fullFilename = `${pair.label}-${screenshotBaseName}.full.diff`;
+      writeFileSync(join(domDiffsDir, fullFilename), fullBody);
+      fullDiffPath = `dom-diffs/${fullFilename}`;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(
+        chalk.yellow(
+          `  Warning: Could not fetch full-context DOM diff for ${pair.label}/${screenshotBaseName}: ${message}`,
+        ),
+      );
+    }
+
     return {
       summaryRow: {
         screenshotBaseName,
@@ -343,6 +378,7 @@ const resolveScreenshot = async (args: {
       },
       mapEntry: {
         diffPath: `dom-diffs/${diffFilename}`,
+        fullDiffPath,
         totalHunks: response.totalDiffs,
         bytes,
         url,
@@ -381,13 +417,10 @@ const renderPairSummary = (
       ? [`  skipped (unsupported identifier): ${skippedUnsupported}`]
       : []),
     "",
-    "For each screenshot below, `<name>.diff` contains the canonical",
-    "unified diff (context: 3 lines per hunk) fetched from the",
-    "Meticulous backend. To see the same diff with full-file context,",
-    "run:",
-    "",
-    `  meticulous agent dom-diff --replayDiffId ${pair.replayDiffId} \\`,
-    "    --screenshotName <screenshot> --context full",
+    "For each screenshot below, `<label>-<screenshot>.diff` holds the",
+    "unified diff with 3 lines of context per hunk, and the sibling",
+    "`<label>-<screenshot>.full.diff` holds the same hunks with",
+    "full-file context for when 3 lines aren't enough.",
     "",
   ].join("\n");
 
