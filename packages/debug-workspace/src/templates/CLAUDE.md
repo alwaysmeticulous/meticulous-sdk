@@ -148,6 +148,11 @@ Note: DOM diffs are only generated when a `replayDiffId` is available (the norma
 path there is no `replayDiffId`, so `dom-diffs/` is not generated — diff the per-replay
 `screenshots/<baseName>.html` files directly with the system `diff` command instead.
 
+Individual screenshots may also be marked `skipped-error` (backend fetch failed) or
+`skipped-unsupported` (e.g. redacted variants, or screenshots whose identifier couldn't
+be resolved from `timeline.json`) in the per-pair `.summary.txt`. For those, fall back
+to diffing the two `screenshots/<baseName>.html` files directly.
+
 ### Other Data
 
 - `debug-data/session-summaries/<sessionId>.txt` -- **Start here for session investigation.** Compact

@@ -14,6 +14,11 @@ import chalk from "chalk";
 import pLimit from "p-limit";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import type { DebugContext } from "./debug.types";
+import {
+  screenshotIdentifierToBaseName,
+  screenshotIdentifierToBackendName,
+  type ScreenshotIdentifier,
+} from "./screenshot-identifier";
 
 export interface DomDiffMapEntry {
   /** Path (relative to debug-data/) to the canonical `context=3` diff,
@@ -58,10 +63,18 @@ interface SummaryRow {
     | "identical"
     | "only-in-head"
     | "only-in-base"
-    | "skipped-error";
+    | "skipped-error"
+    | "skipped-unsupported";
   totalHunks: number;
   bytes: number;
   url: string | null;
+}
+
+interface TimelineEntryShape {
+  kind?: string;
+  data?: {
+    identifier?: ScreenshotIdentifier;
+  };
 }
 
 const DEFAULT_MAX_CONCURRENCY = 8;
@@ -110,6 +123,7 @@ export const fetchDomDiffs = async (
 
   let totalDiffs = 0;
   let skippedErrorCount = 0;
+  let skippedUnsupportedCount = 0;
 
   for (const pair of pairs) {
     if (!isSafePathSegment(pair.label)) {
@@ -150,6 +164,15 @@ export const fetchDomDiffs = async (
       continue;
     }
 
+    // Map on-disk basename → backend-format screenshot name (e.g.
+    // `screenshot-after-event-00164` → `after-event-164`). The
+    // identifier is only persisted in timeline.json, not in each
+    // screenshot's metadata.json, so we read it from there.
+    const backendNames = readBackendNameMap([
+      join(replaysDir, "head", pair.headReplayId, "timeline.json"),
+      join(replaysDir, "base", pair.baseReplayId, "timeline.json"),
+    ]);
+
     mkdirSync(domDiffsDir, { recursive: true });
 
     // One task per screenshot. Tasks that make an API call run under
@@ -159,6 +182,7 @@ export const fetchDomDiffs = async (
       resolveScreenshot({
         pair,
         screenshotBaseName,
+        backendName: backendNames.get(screenshotBaseName) ?? null,
         headMetadataPath: headScreenshots.get(screenshotBaseName),
         baseMetadataPath: baseScreenshots.get(screenshotBaseName),
         domDiffsDir,
@@ -185,6 +209,9 @@ export const fetchDomDiffs = async (
       if (result.summaryRow.status === "skipped-error") {
         skippedErrorCount++;
       }
+      if (result.summaryRow.status === "skipped-unsupported") {
+        skippedUnsupportedCount++;
+      }
     }
 
     if (summaryRows.length > 0) {
@@ -207,6 +234,13 @@ export const fetchDomDiffs = async (
       ),
     );
   }
+  if (skippedUnsupportedCount > 0) {
+    console.log(
+      chalk.yellow(
+        `  Skipped ${skippedUnsupportedCount} screenshot DOM diff(s) with unsupported identifier (e.g. redacted variant, missing timeline entry) — fall back to diffing <name>.html files on disk`,
+      ),
+    );
+  }
 
   return domDiffMap;
 };
@@ -219,6 +253,7 @@ interface ScreenshotResolution {
 const resolveScreenshot = async (args: {
   pair: ReplayDiffPair;
   screenshotBaseName: string;
+  backendName: string | null;
   headMetadataPath: string | undefined;
   baseMetadataPath: string | undefined;
   domDiffsDir: string;
@@ -229,6 +264,7 @@ const resolveScreenshot = async (args: {
   const {
     pair,
     screenshotBaseName,
+    backendName,
     headMetadataPath,
     baseMetadataPath,
     domDiffsDir,
@@ -259,13 +295,35 @@ const resolveScreenshot = async (args: {
 
   const url = readUrlFromMetadata(headMetadataPath);
 
+  // No backend name means we couldn't derive the screenshot's
+  // canonical identifier (redacted variant, unknown type, or missing
+  // timeline entry). Skip the API call — it would 404 — and record
+  // the skip so the agent falls back to <name>.html diffing.
+  if (backendName == null) {
+    console.warn(
+      chalk.yellow(
+        `  Warning: Skipping DOM diff for ${pair.label}/${screenshotBaseName}: no backend name available (unsupported variant or missing timeline entry)`,
+      ),
+    );
+    return {
+      summaryRow: {
+        screenshotBaseName,
+        status: "skipped-unsupported",
+        totalHunks: 0,
+        bytes: 0,
+        url,
+      },
+      mapEntry: null,
+    };
+  }
+
   return limit(async () => {
     let response;
     try {
       response = await fetchScreenshotDiff(
         client,
         pair.replayDiffId,
-        screenshotBaseName,
+        backendName,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -336,6 +394,9 @@ const renderPairSummary = (
   const onlyHead = rows.filter((r) => r.status === "only-in-head").length;
   const onlyBase = rows.filter((r) => r.status === "only-in-base").length;
   const skipped = rows.filter((r) => r.status === "skipped-error").length;
+  const skippedUnsupported = rows.filter(
+    (r) => r.status === "skipped-unsupported",
+  ).length;
 
   const header = [
     `DOM Diff Summary: ${pair.label}`,
@@ -350,6 +411,9 @@ const renderPairSummary = (
     `  only in HEAD:  ${onlyHead}`,
     `  only in BASE:  ${onlyBase}`,
     ...(skipped > 0 ? [`  skipped (API error): ${skipped}`] : []),
+    ...(skippedUnsupported > 0
+      ? [`  skipped (unsupported identifier): ${skippedUnsupported}`]
+      : []),
     "",
     "For each screenshot below, `<name>.diff` contains the canonical",
     "unified diff (context: 3 lines per hunk) fetched from the",
@@ -424,6 +488,53 @@ const indexScreenshotsByBaseName = (
     index.set(baseName, join(screenshotsDir, filename));
   }
   return index;
+};
+
+/**
+ * Read one or more `timeline.json` files and return a map from the
+ * canonical on-disk basename (e.g. `screenshot-after-event-00164`)
+ * to the backend-format screenshot name (e.g. `after-event-164`).
+ *
+ * Screenshots whose identifier doesn't translate to a backend name
+ * (redacted variants, unknown types) are omitted so that callers
+ * treat them as unsupported and skip the API call.
+ *
+ * If multiple timelines disagree the first one wins; in practice
+ * they shouldn't disagree because `screenshotIdentifierToBaseName`
+ * is injective in identifier shape.
+ */
+const readBackendNameMap = (timelinePaths: string[]): Map<string, string> => {
+  const map = new Map<string, string>();
+  for (const timelinePath of timelinePaths) {
+    if (!existsSync(timelinePath)) {
+      continue;
+    }
+    let timeline: TimelineEntryShape[];
+    try {
+      timeline = JSON.parse(
+        readFileSync(timelinePath, "utf-8"),
+      ) as TimelineEntryShape[];
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(timeline)) {
+      continue;
+    }
+    for (const entry of timeline) {
+      if (entry.kind !== "screenshot" || !entry.data?.identifier) {
+        continue;
+      }
+      const baseName = screenshotIdentifierToBaseName(entry.data.identifier);
+      const backendName = screenshotIdentifierToBackendName(
+        entry.data.identifier,
+      );
+      if (baseName == null || backendName == null || map.has(baseName)) {
+        continue;
+      }
+      map.set(baseName, backendName);
+    }
+  }
+  return map;
 };
 
 const collectReplayDiffPairs = (

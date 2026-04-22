@@ -17,12 +17,25 @@ import { DEBUG_DATA_DIRECTORY } from "../debug-constants";
 import type { DebugContext } from "../debug.types";
 import { fetchDomDiffs } from "../fetch-dom-diffs";
 
+interface ScreenshotIdentifierFixture {
+  type?: "after-event" | "end-state" | string;
+  eventNumber?: number;
+  logicVersion?: number;
+  variant?: "normal" | "redacted";
+}
+
 interface SetupReplayPairOpts {
   headReplayId: string;
   baseReplayId: string;
   screenshotBaseName: string;
   side?: "both" | "head-only" | "base-only";
   url?: string;
+  /**
+   * Optional identifier to write into `<role>/<replayId>/timeline.json`.
+   * Required for API-hitting tests because `fetchDomDiffs` now derives
+   * the backend screenshot name from the timeline, not the on-disk name.
+   */
+  identifier?: ScreenshotIdentifierFixture;
 }
 
 const setupReplayPair = (
@@ -30,17 +43,12 @@ const setupReplayPair = (
   opts: SetupReplayPairOpts,
 ): void => {
   const side = opts.side ?? "both";
-  const mkScreenshotDir = (role: "head" | "base", replayId: string) =>
-    join(
-      workspace,
-      DEBUG_DATA_DIRECTORY,
-      "replays",
-      role,
-      replayId,
-      "screenshots",
-    );
-  const headScreenshotsDir = mkScreenshotDir("head", opts.headReplayId);
-  const baseScreenshotsDir = mkScreenshotDir("base", opts.baseReplayId);
+  const mkReplayDir = (role: "head" | "base", replayId: string) =>
+    join(workspace, DEBUG_DATA_DIRECTORY, "replays", role, replayId);
+  const headReplayDir = mkReplayDir("head", opts.headReplayId);
+  const baseReplayDir = mkReplayDir("base", opts.baseReplayId);
+  const headScreenshotsDir = join(headReplayDir, "screenshots");
+  const baseScreenshotsDir = join(baseReplayDir, "screenshots");
   mkdirSync(headScreenshotsDir, { recursive: true });
   mkdirSync(baseScreenshotsDir, { recursive: true });
 
@@ -61,6 +69,22 @@ const setupReplayPair = (
       join(baseScreenshotsDir, `${opts.screenshotBaseName}.metadata.json`),
       metadataBody,
     );
+  }
+
+  if (opts.identifier) {
+    const timeline = [
+      {
+        kind: "screenshot",
+        data: { identifier: opts.identifier },
+      },
+    ];
+    const body = JSON.stringify(timeline);
+    if (side === "both" || side === "head-only") {
+      writeFileSync(join(headReplayDir, "timeline.json"), body);
+    }
+    if (side === "both" || side === "base-only") {
+      writeFileSync(join(baseReplayDir, "timeline.json"), body);
+    }
   }
 };
 
@@ -131,6 +155,7 @@ describe("fetchDomDiffs", () => {
       headReplayId: "headA",
       baseReplayId: "baseA",
       screenshotBaseName: "screenshot-after-event-00001",
+      identifier: { type: "after-event", eventNumber: 1 },
       url: "https://example.com/a",
     });
     const fetchScreenshotDiff = vi.fn().mockResolvedValue(
@@ -148,10 +173,12 @@ describe("fetchDomDiffs", () => {
     });
 
     expect(fetchScreenshotDiff).toHaveBeenCalledTimes(1);
+    // The backend requires the unpadded `after-event-<N>` form, not
+    // the on-disk `screenshot-after-event-00001` basename.
     expect(fetchScreenshotDiff).toHaveBeenCalledWith(
       fakeClient,
       "diffA",
-      "screenshot-after-event-00001",
+      "after-event-1",
     );
 
     const domDiffsDir = join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs");
@@ -188,6 +215,7 @@ describe("fetchDomDiffs", () => {
       headReplayId: "headB",
       baseReplayId: "baseB",
       screenshotBaseName: "final-state",
+      identifier: { type: "end-state" },
       url: "https://example.com/b",
     });
     const fetchScreenshotDiff = vi.fn().mockResolvedValue(diffResponse([]));
@@ -265,6 +293,7 @@ describe("fetchDomDiffs", () => {
       headReplayId: "hErr",
       baseReplayId: "bErr",
       screenshotBaseName: "final-state",
+      identifier: { type: "end-state" },
       url: "https://example.com/err",
     });
     const fetchScreenshotDiff = vi
@@ -355,6 +384,80 @@ describe("fetchDomDiffs", () => {
     expect(
       existsSync(join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs")),
     ).toBe(false);
+  });
+
+  it("strips logicVersion when converting end-state to backend name", async () => {
+    // On-disk basename for { type: end-state, logicVersion: 2 } is
+    // `final-state-v2`, but the backend only accepts `end-state`.
+    setupReplayPair(workspace, {
+      headReplayId: "headL",
+      baseReplayId: "baseL",
+      screenshotBaseName: "final-state-v2",
+      identifier: { type: "end-state", logicVersion: 2 },
+    });
+    const fetchScreenshotDiff = vi.fn().mockResolvedValue(diffResponse([]));
+
+    await fetchDomDiffs({
+      client: fakeClient,
+      debugContext: makeDebugContext("headL", "baseL", "diffL"),
+      workspaceDir: workspace,
+      fetchScreenshotDiff,
+    });
+
+    expect(fetchScreenshotDiff).toHaveBeenCalledWith(
+      fakeClient,
+      "diffL",
+      "end-state",
+    );
+  });
+
+  it("skips screenshots with no backend name (redacted variant / missing timeline)", async () => {
+    // Redacted variant: identifier is known, but backend naming for
+    // redacted variants is unverified, so we skip rather than risk 404.
+    setupReplayPair(workspace, {
+      headReplayId: "headR",
+      baseReplayId: "baseR",
+      screenshotBaseName: "screenshot-after-event-00001.redacted",
+      identifier: {
+        type: "after-event",
+        eventNumber: 1,
+        variant: "redacted",
+      },
+    });
+    // Missing timeline: no identifier at all → also skipped.
+    setupReplayPair(workspace, {
+      headReplayId: "headR",
+      baseReplayId: "baseR",
+      screenshotBaseName: "screenshot-after-event-00002",
+    });
+    const fetchScreenshotDiff = vi.fn();
+
+    const map = await fetchDomDiffs({
+      client: fakeClient,
+      debugContext: makeDebugContext("headR", "baseR", "diffR"),
+      workspaceDir: workspace,
+      fetchScreenshotDiff,
+    });
+
+    expect(fetchScreenshotDiff).not.toHaveBeenCalled();
+    expect(map).toEqual({});
+
+    const summary = readFileSync(
+      join(
+        workspace,
+        DEBUG_DATA_DIRECTORY,
+        "dom-diffs",
+        "headR-vs-baseR.summary.txt",
+      ),
+      "utf-8",
+    );
+    expect(summary).toMatch(
+      /screenshot-after-event-00001\.redacted\tskipped-unsupported/,
+    );
+    expect(summary).toMatch(
+      /screenshot-after-event-00002\tskipped-unsupported/,
+    );
+    expect(summary).toContain("skipped (unsupported identifier): 2");
   });
 
   it("refuses unsafe replay IDs that would escape dom-diffs/", async () => {
