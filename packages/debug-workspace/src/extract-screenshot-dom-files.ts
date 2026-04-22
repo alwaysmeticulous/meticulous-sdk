@@ -2,13 +2,13 @@ import { existsSync, readdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
-import { screenshotIdentifierToBaseName } from "./screenshot-identifier";
 import {
   discoverReplayDirs,
   readScreenshotMetadata,
   readTimelineJson,
   type ReplayDir,
 } from "./replay-walk";
+import { screenshotIdentifierToBaseName } from "./screenshot-identifier";
 
 /**
  * Extract each `*.metadata.json`'s `before.dom` / `after.dom` into
