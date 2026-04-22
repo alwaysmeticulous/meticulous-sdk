@@ -299,6 +299,11 @@ export interface ReplayExecutionOptions {
    */
   enableCssCoverage?: boolean;
 
+  /**
+   * If true collects per-screenshot JS coverage.
+   */
+  enablePerScreenshotCoverage?: boolean;
+
   networkDebuggingOptions?: NetworkDebuggingOptions;
 
   companionAssetsInfo?: CompanionAssetsInfo;

@@ -39,6 +39,7 @@ interface Options
   baseTestRunId?: string | undefined;
   sessionIdForApplicationStorage?: string | undefined;
   enableCssCoverage?: boolean;
+  enablePerScreenshotCoverage?: boolean;
   dryRun?: boolean;
 }
 
@@ -74,6 +75,7 @@ const handler = async ({
   baseTestRunId,
   sessionIdForApplicationStorage,
   enableCssCoverage,
+  enablePerScreenshotCoverage,
   dryRun,
 }: Options): Promise<void> => {
   const executionOptions: ReplayExecutionOptions = {
@@ -91,6 +93,7 @@ const handler = async ({
     logPossibleNonDeterminism,
     essentialFeaturesOnly,
     enableCssCoverage: enableCssCoverage ?? false,
+    enablePerScreenshotCoverage: enablePerScreenshotCoverage ?? false,
   };
   const storyboardOptions: StoryboardOptions = storyboard
     ? { enabled: true }

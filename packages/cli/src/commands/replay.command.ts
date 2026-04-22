@@ -88,6 +88,7 @@ const handler = async ({
   networkDebuggingRequestTypes,
   networkDebuggingWebsocketUrlRegexes,
   enableCssCoverage,
+  enablePerScreenshotCoverage,
   dryRun,
 }: Options): Promise<void> => {
   if (!takeSnapshots && storyboard) {
@@ -155,6 +156,7 @@ const handler = async ({
     essentialFeaturesOnly,
     logPossibleNonDeterminism,
     enableCssCoverage: enableCssCoverage ?? false,
+    enablePerScreenshotCoverage: enablePerScreenshotCoverage ?? false,
     ...(networkDebuggingOptions ? { networkDebuggingOptions } : {}),
   };
   const generatedByOption: GeneratedBy = { type: "replayCommand" };
