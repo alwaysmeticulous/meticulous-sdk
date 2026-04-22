@@ -145,6 +145,12 @@ export const OPTIONS = {
     default: false,
     description: "Enable CSS coverage for the replay",
   },
+  enablePerScreenshotCoverage: {
+    boolean: true,
+    default: false,
+    description:
+      "Enable per-screenshot coverage collection (JS always, plus CSS if --enableCssCoverage is set) for the replay",
+  },
 } as const;
 
 export const SCREENSHOT_DIFF_OPTIONS = {
@@ -171,6 +177,7 @@ export const COMMON_REPLAY_OPTIONS = {
   logPossibleNonDeterminism: OPTIONS.logPossibleNonDeterminism,
   sessionIdForApplicationStorage: OPTIONS.sessionIdForApplicationStorage,
   enableCssCoverage: OPTIONS.enableCssCoverage,
+  enablePerScreenshotCoverage: OPTIONS.enablePerScreenshotCoverage,
 };
 
 /**
