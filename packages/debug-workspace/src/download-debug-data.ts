@@ -15,7 +15,6 @@ import pLimit from "p-limit";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import { DebugContext } from "./debug.types";
 
-const REPLAY_SKIP_DIRS = new Set(["screenshots"]);
 const DEFAULT_MAX_REPLAY_DOWNLOADS = 8;
 
 export interface DownloadDebugDataOptions {
@@ -102,12 +101,29 @@ const copyReplayDir = (src: string, dest: string): void => {
     const srcPath = join(src, entry.name);
     const destPath = join(dest, entry.name);
     if (entry.isDirectory()) {
-      if (!REPLAY_SKIP_DIRS.has(entry.name)) {
+      if (entry.name === "screenshots") {
+        // Keep `*.metadata.json` (carries the captured DOM) but skip
+        // PNGs to avoid dragging ~100 MB of binary images per replay.
+        copyScreenshotMetadataOnly(srcPath, destPath);
+      } else {
         cpSync(srcPath, destPath, { recursive: true });
       }
     } else {
       cpSync(srcPath, destPath);
     }
+  }
+};
+
+const copyScreenshotMetadataOnly = (src: string, dest: string): void => {
+  mkdirSync(dest, { recursive: true });
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
+    if (!entry.isFile()) {
+      continue;
+    }
+    if (!entry.name.endsWith(".metadata.json")) {
+      continue;
+    }
+    cpSync(join(src, entry.name), join(dest, entry.name));
   }
 };
 

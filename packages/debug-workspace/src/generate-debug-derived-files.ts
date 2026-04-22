@@ -2,29 +2,17 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
-  readdirSync,
   writeFileSync,
 } from "fs";
 import { join } from "path";
 import chalk from "chalk";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
-
-type Role = "head" | "base" | "other";
-
-interface ReplayDir {
-  role: Role;
-  replayId: string;
-  path: string;
-}
-
-interface TimelineEntry {
-  kind: string;
-  start: number;
-  end: number;
-  virtualTimeStart?: number;
-  virtualTimeEnd?: number;
-  data: Record<string, unknown>;
-}
+import {
+  discoverReplayDirs,
+  readTimelineJson,
+  type ReplayDir,
+  type TimelineEntry,
+} from "./replay-walk";
 
 const NETWORK_KINDS = new Set([
   "pollyReplay",
@@ -45,7 +33,9 @@ export const generateDebugDerivedFiles = (workspaceDir: string): void => {
     return;
   }
 
-  const replayDirs = discoverReplayDirs(replaysDir);
+  const replayDirs = discoverReplayDirs(replaysDir, {
+    requireTimeline: true,
+  });
   if (replayDirs.length === 0) {
     return;
   }
@@ -53,7 +43,7 @@ export const generateDebugDerivedFiles = (workspaceDir: string): void => {
   console.log(chalk.cyan("  Generating debug derived files..."));
 
   for (const replayDir of replayDirs) {
-    const timelineEntries = parseTimelineJson(
+    const timelineEntries = readTimelineJson(
       join(replayDir.path, "timeline.json"),
     );
 
@@ -71,26 +61,6 @@ export const generateDebugDerivedFiles = (workspaceDir: string): void => {
     generateVtProgression(debugDataDir, replayDir);
     generateLogsIndex(debugDataDir, replayDir);
   }
-};
-
-const discoverReplayDirs = (replaysDir: string): ReplayDir[] => {
-  const dirs: ReplayDir[] = [];
-  const roles: Role[] = ["head", "base", "other"];
-
-  for (const role of roles) {
-    const roleDir = join(replaysDir, role);
-    if (!existsSync(roleDir)) {
-      continue;
-    }
-    for (const replayId of readdirSync(roleDir)) {
-      const replayPath = join(roleDir, replayId);
-      if (existsSync(join(replayPath, "timeline.json"))) {
-        dirs.push({ role, replayId, path: replayPath });
-      }
-    }
-  }
-
-  return dirs;
 };
 
 const generateTimelineNdjson = (
@@ -295,22 +265,6 @@ const generateScreenshotTimelineContext = (
       : `${replayDir.role}-${replayDir.replayId}-idx${screenshotIdx}.txt`;
 
     writeFileSync(join(outDir, filename), lines.join("\n") + "\n", "utf-8");
-  }
-};
-
-const parseTimelineJson = (path: string): TimelineEntry[] | null => {
-  if (!existsSync(path)) {
-    return null;
-  }
-  try {
-    const raw = readFileSync(path, "utf-8");
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return parsed;
-    }
-    return null;
-  } catch {
-    return null;
   }
 };
 

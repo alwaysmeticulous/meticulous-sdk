@@ -19,4 +19,11 @@ export {
   type ScreenshotMapEntry,
   type ReplayComparisonEntry,
 } from "./generate-debug-workspace";
+export {
+  fetchDomDiffs,
+  type DomDiffMap,
+  type DomDiffMapEntry,
+  type FetchDomDiffsOptions,
+} from "./fetch-dom-diffs";
+export { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
 export { runDebugPipeline, type DebugPipelineOptions } from "./pipeline";
