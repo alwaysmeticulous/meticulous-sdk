@@ -1,7 +1,9 @@
 {
-  "version": "2.276.1",
+  "version": "2.276.2",
   "npmClient": "pnpm",
-  "packages": ["packages/*"],
+  "packages": [
+    "packages/*"
+  ],
   "command": {
     "version": {
       "allowBranch": "main"
