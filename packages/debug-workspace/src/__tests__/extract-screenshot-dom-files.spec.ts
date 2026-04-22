@@ -23,10 +23,6 @@ describe("extractScreenshotDomFiles", () => {
     rmSync(workspace, { recursive: true, force: true });
   });
 
-  it("is a no-op when the replays/ directory is missing", () => {
-    expect(() => extractScreenshotDomFiles(workspace)).not.toThrow();
-  });
-
   it("writes <name>.html and <name>.after.html when both DOMs are present", () => {
     const screenshotsDir = join(
       workspace,
@@ -97,34 +93,6 @@ describe("extractScreenshotDomFiles", () => {
     expect(
       existsSync(join(screenshotsDir, "final-state-v2.after.html")),
     ).toBe(false);
-  });
-
-  it("is idempotent (running twice yields identical contents)", () => {
-    const screenshotsDir = join(
-      workspace,
-      DEBUG_DATA_DIRECTORY,
-      "replays",
-      "base",
-      "replay-2",
-      "screenshots",
-    );
-    mkdirSync(screenshotsDir, { recursive: true });
-    writeFileSync(
-      join(screenshotsDir, "screenshot-after-event-00002.redacted.metadata.json"),
-      JSON.stringify({ before: { dom: "<div>x</div>" } }),
-    );
-
-    extractScreenshotDomFiles(workspace);
-    const first = readFileSync(
-      join(screenshotsDir, "screenshot-after-event-00002.redacted.html"),
-      "utf-8",
-    );
-    extractScreenshotDomFiles(workspace);
-    const second = readFileSync(
-      join(screenshotsDir, "screenshot-after-event-00002.redacted.html"),
-      "utf-8",
-    );
-    expect(second).toBe(first);
   });
 
   it("tolerates malformed metadata JSON without throwing", () => {

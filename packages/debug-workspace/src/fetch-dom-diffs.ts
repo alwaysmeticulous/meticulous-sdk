@@ -1,7 +1,6 @@
 import {
   existsSync,
   mkdirSync,
-  readFileSync,
   readdirSync,
   writeFileSync,
 } from "fs";
@@ -15,23 +14,22 @@ import pLimit from "p-limit";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import type { DebugContext } from "./debug.types";
 import {
+  readScreenshotMetadata,
+  readTimelineJson,
+} from "./replay-walk";
+import {
   screenshotIdentifierToBaseName,
   screenshotIdentifierToBackendName,
-  type ScreenshotIdentifier,
 } from "./screenshot-identifier";
 
 export interface DomDiffMapEntry {
-  /** Path (relative to debug-data/) to the canonical `context=3` diff,
-   *  or `null` when DOMs are identical or the fetch errored. */
+  /** `null` when DOMs are identical or the fetch errored. */
   diffPath: string | null;
   totalHunks: number;
   bytes: number;
   url: string | null;
 }
 
-// Typed so callers can't assume every key is present: not every
-// `<label>/<screenshotBaseName>` combination produces a diff
-// (identical, API error, only-in-one-side, etc.).
 export type DomDiffMap = { [key: string]: DomDiffMapEntry | undefined };
 
 export interface FetchDomDiffsOptions {
@@ -39,7 +37,7 @@ export interface FetchDomDiffsOptions {
   debugContext: DebugContext;
   workspaceDir: string;
   maxConcurrency?: number | undefined;
-  /** Injectable for tests. Defaults to the real `getScreenshotDomDiff`. */
+  /** Injectable for tests. */
   fetchScreenshotDiff?: typeof getScreenshotDomDiff | undefined;
 }
 
@@ -48,12 +46,6 @@ interface ReplayDiffPair {
   headReplayId: string;
   baseReplayId: string;
   label: string;
-}
-
-interface ScreenshotMetadataShape {
-  before?: {
-    routeData?: { url?: string };
-  };
 }
 
 interface SummaryRow {
@@ -70,30 +62,13 @@ interface SummaryRow {
   url: string | null;
 }
 
-interface TimelineEntryShape {
-  kind?: string;
-  data?: {
-    identifier?: ScreenshotIdentifier;
-  };
-}
-
 const DEFAULT_MAX_CONCURRENCY = 8;
 
 /**
  * Fetch per-screenshot DOM diffs for every replay diff in `debugContext`
- * from the Meticulous backend and write them to `debug-data/dom-diffs/`
- * as `<label>-<baseName>.diff` plus per-pair `<label>.summary.txt`,
- * where `<label>` is `<headReplayId>-vs-<baseReplayId>` and
- * `<baseName>` is the screenshot metadata filename minus `.metadata.json`.
- *
- * On the `met debug replay --baseReplayId` path (no `replayDiffId` in
- * `DebugContext`), nothing is generated — `CLAUDE.md` tells the agent to
- * fall back to diffing `<name>.html` files with the system `diff`
- * command instead.
- *
- * Network errors are per-screenshot: we log a warning, record a
- * `skipped-error` summary row, and continue. The pipeline never fails
- * because a DOM diff couldn't be fetched.
+ * and write `<label>-<baseName>.diff` plus `<label>.summary.txt` under
+ * `debug-data/dom-diffs/`. Per-screenshot errors are logged and recorded
+ * as `skipped-error`; the pipeline never fails on a fetch error.
  */
 export const fetchDomDiffs = async (
   options: FetchDomDiffsOptions,
@@ -164,10 +139,8 @@ export const fetchDomDiffs = async (
       continue;
     }
 
-    // Map on-disk basename → backend-format screenshot name (e.g.
-    // `screenshot-after-event-00164` → `after-event-164`). The
-    // identifier is only persisted in timeline.json, not in each
-    // screenshot's metadata.json, so we read it from there.
+    // Map on-disk basename → backend-format name via timeline.json
+    // (the identifier isn't persisted in screenshot metadata).
     const backendNames = readBackendNameMap([
       join(replaysDir, "head", pair.headReplayId, "timeline.json"),
       join(replaysDir, "base", pair.baseReplayId, "timeline.json"),
@@ -175,9 +148,6 @@ export const fetchDomDiffs = async (
 
     mkdirSync(domDiffsDir, { recursive: true });
 
-    // One task per screenshot. Tasks that make an API call run under
-    // `limit`; only-in-one-side tasks do pure local work and skip the
-    // limiter (so they don't starve API-bound ones).
     const tasks = [...allNames].sort().map((screenshotBaseName) =>
       resolveScreenshot({
         pair,
@@ -277,8 +247,6 @@ const resolveScreenshot = async (args: {
     return null;
   }
 
-  // Screenshot present on only one side: populate URL from the side we
-  // have, don't make an API call (backend can't diff nothing).
   if (!headMetadataPath || !baseMetadataPath) {
     const availablePath = headMetadataPath ?? baseMetadataPath;
     return {
@@ -295,10 +263,8 @@ const resolveScreenshot = async (args: {
 
   const url = readUrlFromMetadata(headMetadataPath);
 
-  // No backend name means we couldn't derive the screenshot's
-  // canonical identifier (redacted variant, unknown type, or missing
-  // timeline entry). Skip the API call — it would 404 — and record
-  // the skip so the agent falls back to <name>.html diffing.
+  // Can't derive a backend-compatible name (redacted variant, unknown
+  // type, or missing timeline entry) — skip the API call (it would 404).
   if (backendName == null) {
     console.warn(
       chalk.yellow(
@@ -441,19 +407,10 @@ const renderPairSummary = (
   return `${header}\n${[tableHeader, ...tableRows].join("\n")}\n`;
 };
 
-const readUrlFromMetadata = (metadataPath: string): string | null => {
-  try {
-    const parsed = JSON.parse(
-      readFileSync(metadataPath, "utf-8"),
-    ) as ScreenshotMetadataShape;
-    return parsed.before?.routeData?.url ?? null;
-  } catch {
-    return null;
-  }
-};
+const readUrlFromMetadata = (metadataPath: string): string | null =>
+  readScreenshotMetadata(metadataPath)?.before?.routeData?.url ?? null;
 
-// Reject any segment that could escape the `dom-diffs/` directory
-// when interpolated into a filename.
+/** Reject segments that could escape `dom-diffs/` when interpolated. */
 const isSafePathSegment = (segment: string): boolean =>
   segment.length > 0 &&
   !segment.includes("/") &&
@@ -491,33 +448,15 @@ const indexScreenshotsByBaseName = (
 };
 
 /**
- * Read one or more `timeline.json` files and return a map from the
- * canonical on-disk basename (e.g. `screenshot-after-event-00164`)
- * to the backend-format screenshot name (e.g. `after-event-164`).
- *
- * Screenshots whose identifier doesn't translate to a backend name
- * (redacted variants, unknown types) are omitted so that callers
- * treat them as unsupported and skip the API call.
- *
- * If multiple timelines disagree the first one wins; in practice
- * they shouldn't disagree because `screenshotIdentifierToBaseName`
- * is injective in identifier shape.
+ * Map on-disk basename (e.g. `screenshot-after-event-00164`) to the
+ * backend-format name (e.g. `after-event-164`). First timeline wins on
+ * disagreement.
  */
 const readBackendNameMap = (timelinePaths: string[]): Map<string, string> => {
   const map = new Map<string, string>();
   for (const timelinePath of timelinePaths) {
-    if (!existsSync(timelinePath)) {
-      continue;
-    }
-    let timeline: TimelineEntryShape[];
-    try {
-      timeline = JSON.parse(
-        readFileSync(timelinePath, "utf-8"),
-      ) as TimelineEntryShape[];
-    } catch {
-      continue;
-    }
-    if (!Array.isArray(timeline)) {
+    const timeline = readTimelineJson(timelinePath);
+    if (timeline == null) {
       continue;
     }
     for (const entry of timeline) {
@@ -549,9 +488,7 @@ const collectReplayDiffPairs = (
       label: `${diff.headReplayId}-vs-${diff.baseReplayId}`,
     });
   }
-  // Note: `met debug replay --baseReplayId` (no replayDiffId) is not
-  // handled here — the backend endpoint requires a replayDiffId. The
-  // agent is told in CLAUDE.md to diff `<name>.html` files directly on
-  // that path.
+  // `met debug replay --baseReplayId` has no replayDiffId, so no pairs.
+  // CLAUDE.md instructs the agent to diff `<name>.html` files directly.
   return pairs;
 };

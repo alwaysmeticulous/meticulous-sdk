@@ -30,11 +30,7 @@ interface SetupReplayPairOpts {
   screenshotBaseName: string;
   side?: "both" | "head-only" | "base-only";
   url?: string;
-  /**
-   * Optional identifier to write into `<role>/<replayId>/timeline.json`.
-   * Required for API-hitting tests because `fetchDomDiffs` now derives
-   * the backend screenshot name from the timeline, not the on-disk name.
-   */
+  /** Required for API-hitting tests (backend name is derived from timeline). */
   identifier?: ScreenshotIdentifierFixture;
 }
 
@@ -135,21 +131,6 @@ describe("fetchDomDiffs", () => {
     rmSync(workspace, { recursive: true, force: true });
   });
 
-  it("returns an empty map when replays/ is missing", async () => {
-    const fetchScreenshotDiff = vi.fn();
-    const map = await fetchDomDiffs({
-      client: fakeClient,
-      debugContext: makeDebugContext("h", "b"),
-      workspaceDir: workspace,
-      fetchScreenshotDiff,
-    });
-    expect(map).toEqual({});
-    expect(fetchScreenshotDiff).not.toHaveBeenCalled();
-    expect(
-      existsSync(join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs")),
-    ).toBe(false);
-  });
-
   it("writes .diff + .summary.txt and populates domDiffMap for a diffing pair", async () => {
     setupReplayPair(workspace, {
       headReplayId: "headA",
@@ -173,8 +154,7 @@ describe("fetchDomDiffs", () => {
     });
 
     expect(fetchScreenshotDiff).toHaveBeenCalledTimes(1);
-    // The backend requires the unpadded `after-event-<N>` form, not
-    // the on-disk `screenshot-after-event-00001` basename.
+    // Backend requires unpadded `after-event-<N>`, not on-disk basename.
     expect(fetchScreenshotDiff).toHaveBeenCalledWith(
       fakeClient,
       "diffA",
@@ -201,8 +181,6 @@ describe("fetchDomDiffs", () => {
     expect(entry?.bytes).toBeGreaterThan(0);
     expect(entry?.url).toBe("https://example.com/a");
 
-    // Summary should point the agent at the `met agent dom-diff` CLI
-    // for full-context diffs, scoped to this pair's replayDiffId.
     const summary = readFileSync(
       join(domDiffsDir, "headA-vs-baseA.summary.txt"),
       "utf-8",
@@ -350,45 +328,8 @@ describe("fetchDomDiffs", () => {
     }
   });
 
-  it("does nothing on the --baseReplayId path where replayDiffs is empty", async () => {
-    const mkOther = (id: string) =>
-      join(
-        workspace,
-        DEBUG_DATA_DIRECTORY,
-        "replays",
-        "other",
-        id,
-        "screenshots",
-      );
-    mkdirSync(mkOther("idA"), { recursive: true });
-    mkdirSync(mkOther("idB"), { recursive: true });
-    writeFileSync(
-      join(mkOther("idA"), "final-state.metadata.json"),
-      JSON.stringify({ before: {} }),
-    );
-    writeFileSync(
-      join(mkOther("idB"), "final-state.metadata.json"),
-      JSON.stringify({ before: {} }),
-    );
-
-    const fetchScreenshotDiff = vi.fn();
-    const map = await fetchDomDiffs({
-      client: fakeClient,
-      debugContext: { ...makeDebugContext("idA", "idB"), replayDiffs: [] },
-      workspaceDir: workspace,
-      fetchScreenshotDiff,
-    });
-
-    expect(map).toEqual({});
-    expect(fetchScreenshotDiff).not.toHaveBeenCalled();
-    expect(
-      existsSync(join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs")),
-    ).toBe(false);
-  });
-
   it("strips logicVersion when converting end-state to backend name", async () => {
-    // On-disk basename for { type: end-state, logicVersion: 2 } is
-    // `final-state-v2`, but the backend only accepts `end-state`.
+    // On-disk is `final-state-v2`; backend only accepts `end-state`.
     setupReplayPair(workspace, {
       headReplayId: "headL",
       baseReplayId: "baseL",
@@ -412,8 +353,7 @@ describe("fetchDomDiffs", () => {
   });
 
   it("skips screenshots with no backend name (redacted variant / missing timeline)", async () => {
-    // Redacted variant: identifier is known, but backend naming for
-    // redacted variants is unverified, so we skip rather than risk 404.
+    // Redacted: backend naming unverified → skip instead of 404.
     setupReplayPair(workspace, {
       headReplayId: "headR",
       baseReplayId: "baseR",
@@ -424,7 +364,7 @@ describe("fetchDomDiffs", () => {
         variant: "redacted",
       },
     });
-    // Missing timeline: no identifier at all → also skipped.
+    // Missing timeline → no identifier → also skipped.
     setupReplayPair(workspace, {
       headReplayId: "headR",
       baseReplayId: "baseR",

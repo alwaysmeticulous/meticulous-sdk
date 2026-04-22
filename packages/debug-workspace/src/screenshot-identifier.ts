@@ -6,12 +6,8 @@ export interface ScreenshotIdentifier {
 }
 
 /**
- * Canonical mapping from a timeline/screenshot `identifier` object to
- * the basename used on disk (without extension).
- *
- * This is the single source of truth for screenshot naming. To get the
- * `.png` filename, use `screenshotIdentifierToFilename`, which just
- * appends `".png"` to this result.
+ * Single source of truth for the on-disk screenshot basename (no extension)
+ * derived from a timeline/screenshot `identifier` object.
  */
 export const screenshotIdentifierToBaseName = (
   identifier: ScreenshotIdentifier,
@@ -42,24 +38,10 @@ export const screenshotIdentifierToFilename = (
 };
 
 /**
- * Serialize a screenshot identifier to the form accepted by the
- * Meticulous backend's replay-diff screenshot endpoints (e.g.
- * `GET /agent/replay-diffs/:id/screenshots/:name/dom-diff`).
- *
- * This differs from the on-disk basename:
- *   - `{ type: "after-event", eventNumber: 164 }`
- *     → on-disk `screenshot-after-event-00164`, backend `after-event-164`
- *   - `{ type: "end-state", logicVersion: 2 }`
- *     → on-disk `final-state-v2`, backend `end-state`
- *
- * `logicVersion` is intentionally dropped: the backend addresses
- * screenshots by their logical identity (type + eventNumber) and
- * resolves logic versions internally. Passing `end-state-v2` or
- * `after-event-164-v2` returns 404.
- *
- * Returns `null` for the `variant: "redacted"` case: the naming
- * convention for redacted screenshots via these endpoints is not
- * verified, so callers should skip those rather than risk 404s.
+ * Name accepted by the backend's replay-diff screenshot endpoints — differs
+ * from the on-disk basename: no zero-padding, no `logicVersion` suffix, and
+ * `end-state` instead of `final-state`. Returns `null` for redacted variants
+ * (backend naming unverified) and unknown types.
  */
 export const screenshotIdentifierToBackendName = (
   identifier: ScreenshotIdentifier,
