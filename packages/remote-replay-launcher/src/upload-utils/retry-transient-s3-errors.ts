@@ -16,12 +16,13 @@ const TRANSIENT_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 
 // Node networking errors that are safe to retry. S3 occasionally resets
 // connections under load; these show up here rather than as HTTP errors.
+// Excludes ECONNREFUSED and ENOTFOUND because those typically indicate
+// misconfiguration rather than transient failures (EAI_AGAIN covers the
+// transient-DNS case).
 const TRANSIENT_NETWORK_ERROR_CODES = new Set([
   "ECONNRESET",
   "ETIMEDOUT",
   "ECONNABORTED",
-  "ECONNREFUSED",
-  "ENOTFOUND",
   "EAI_AGAIN",
   "EPIPE",
 ]);
@@ -48,6 +49,7 @@ export interface RetryTransientS3ErrorsOptions {
 
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_BASE_DELAY_MS = 200;
+const MAX_DELAY_MS = 30_000;
 
 const defaultSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,10 +71,12 @@ export const retryTransientS3Errors = async <T>(
       if (!isTransientS3Error(error) || attempt === maxAttempts) {
         throw error;
       }
-      // Exponential backoff with a jitter multiplier in [0.5, 1.5).
+      // Exponential backoff with a jitter multiplier in [0.5, 1.5), capped
+      // to bound worst-case sleep when callers pass a large baseDelayMs.
       const jitter = 0.5 + Math.random();
-      const delayMs = Math.floor(
-        baseDelayMs * Math.pow(2, attempt - 1) * jitter,
+      const delayMs = Math.min(
+        Math.floor(baseDelayMs * Math.pow(2, attempt - 1) * jitter),
+        MAX_DELAY_MS,
       );
       options.onRetry?.(attempt, error);
       await sleep(delayMs);

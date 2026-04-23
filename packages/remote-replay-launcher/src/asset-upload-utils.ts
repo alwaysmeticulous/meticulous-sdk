@@ -236,7 +236,7 @@ const uploadBufferToSignedUrl = async (
               ? error.message
               : String(error);
         logger.warn(
-          `Transient S3 upload error (${reason}); retrying (attempt ${attempt + 1})...`,
+          `Transient S3 upload error on attempt ${attempt} (${reason}); will retry...`,
         );
       },
     },
@@ -413,7 +413,7 @@ const uploadFileToSignedUrl = async (
               ? error.message
               : String(error);
         logger.warn(
-          `Transient S3 upload error (${reason}); retrying (attempt ${attempt + 1})...`,
+          `Transient S3 upload error on attempt ${attempt} (${reason}); will retry...`,
         );
       },
     },
