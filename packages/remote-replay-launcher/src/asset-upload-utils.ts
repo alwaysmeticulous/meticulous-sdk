@@ -224,22 +224,22 @@ const uploadBufferToSignedUrl = async (
   buffer: Buffer,
   options?: { contentType?: string },
 ): Promise<string> => {
-  const logger = initLogger();
   return retryTransientS3Errors(
     () => putBufferToSignedUrl(signedUrl, buffer, options),
-    {
-      onRetry: (attempt, error) => {
-        const reason =
-          error instanceof S3UploadError
-            ? `HTTP ${error.statusCode}`
-            : error instanceof Error
-              ? error.message
-              : String(error);
-        logger.warn(
-          `Transient S3 upload error on attempt ${attempt} (${reason}); will retry...`,
-        );
-      },
-    },
+    { onRetry: logTransientUploadRetry },
+  );
+};
+
+const logTransientUploadRetry = (attempt: number, error: unknown): void => {
+  const logger = initLogger();
+  const reason =
+    error instanceof S3UploadError
+      ? `HTTP ${error.statusCode}`
+      : error instanceof Error
+        ? error.message
+        : String(error);
+  logger.warn(
+    `Transient upload error on attempt ${attempt} (${reason}); will retry...`,
   );
 };
 
@@ -404,19 +404,7 @@ const uploadFileToSignedUrl = async (
 
   await retryTransientS3Errors(
     () => putFileToSignedUrl(filePath, signedUrl, fileSize),
-    {
-      onRetry: (attempt, error) => {
-        const reason =
-          error instanceof S3UploadError
-            ? `HTTP ${error.statusCode}`
-            : error instanceof Error
-              ? error.message
-              : String(error);
-        logger.warn(
-          `Transient S3 upload error on attempt ${attempt} (${reason}); will retry...`,
-        );
-      },
-    },
+    { onRetry: logTransientUploadRetry },
   );
   logger.info("Successfully uploaded deployment assets");
 };
