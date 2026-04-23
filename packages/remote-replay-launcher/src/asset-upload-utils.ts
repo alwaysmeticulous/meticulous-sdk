@@ -19,6 +19,10 @@ import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 import { MultipartCompressingUploader, UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
+import {
+  S3UploadError,
+  retryTransientS3Errors,
+} from "./upload-utils/retry-transient-s3-errors";
 
 export interface UploadAssetsOptions {
   apiToken: string | null | undefined;
@@ -220,6 +224,30 @@ const uploadBufferToSignedUrl = async (
   buffer: Buffer,
   options?: { contentType?: string },
 ): Promise<string> => {
+  return retryTransientS3Errors(
+    () => putBufferToSignedUrl(signedUrl, buffer, options),
+    { onRetry: logTransientUploadRetry },
+  );
+};
+
+const logTransientUploadRetry = (attempt: number, error: unknown): void => {
+  const logger = initLogger();
+  const reason =
+    error instanceof S3UploadError
+      ? `HTTP ${error.statusCode}`
+      : error instanceof Error
+        ? error.message
+        : String(error);
+  logger.warn(
+    `Transient upload error on attempt ${attempt} (${reason}); will retry...`,
+  );
+};
+
+const putBufferToSignedUrl = async (
+  signedUrl: string,
+  buffer: Buffer,
+  options?: { contentType?: string },
+): Promise<string> => {
   return new Promise((resolve, reject) => {
     const headers: Record<string, string | number> = {
       "Content-Length": buffer.length,
@@ -246,8 +274,9 @@ const uploadBufferToSignedUrl = async (
           if (response.statusCode === 200) {
             resolve(response.headers["etag"] ?? "");
           } else {
-            const errorMessage = `Failed to upload!\nStatus ${response.statusCode}.\nResponse:\n${responseData}`;
-            reject(new Error(errorMessage));
+            reject(
+              new S3UploadError(response.statusCode ?? 0, responseData),
+            );
           }
         });
       },
@@ -363,7 +392,6 @@ const uploadFileToSignedUrl = async (
   signedUrl: string,
   expectedFileSize: number,
 ): Promise<void> => {
-  const fileStream = createReadStream(filePath);
   const logger = initLogger();
   const fileStats = await stat(filePath);
   const fileSize = fileStats.size;
@@ -374,7 +402,21 @@ const uploadFileToSignedUrl = async (
   }
   logger.info(`Uploading deployment assets (${fileSize} bytes)...`);
 
+  await retryTransientS3Errors(
+    () => putFileToSignedUrl(filePath, signedUrl, fileSize),
+    { onRetry: logTransientUploadRetry },
+  );
+  logger.info("Successfully uploaded deployment assets");
+};
+
+const putFileToSignedUrl = async (
+  filePath: string,
+  signedUrl: string,
+  fileSize: number,
+): Promise<void> => {
   return new Promise((resolve, reject) => {
+    // A new read stream is required on every attempt — streams cannot be replayed.
+    const fileStream = createReadStream(filePath);
     const req = httpsRequest(
       signedUrl,
       {
@@ -394,24 +436,21 @@ const uploadFileToSignedUrl = async (
 
         response.on("end", () => {
           if (response.statusCode === 200) {
-            logger.info("Successfully uploaded deployment assets");
             resolve();
           } else {
-            const errorMessage = `Failed to upload assets!\nSigned URL: ${signedUrl}\nStatus ${response.statusCode}.\nResponse:\n${responseData}`;
-            logger.error(errorMessage);
-            reject(new Error(errorMessage));
+            reject(
+              new S3UploadError(response.statusCode ?? 0, responseData),
+            );
           }
         });
       },
     );
 
     req.on("error", (error) => {
-      logger.error(`Upload request error: ${error.message}`);
       reject(error);
     });
 
     fileStream.on("error", (error) => {
-      logger.error(`File stream error: ${error.message}`);
       req.destroy(error);
       reject(error);
     });
