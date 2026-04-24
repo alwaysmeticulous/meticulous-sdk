@@ -361,7 +361,6 @@ export interface MeticulousPressureObserverConstructor {
       records: MeticulousPressureRecord[],
       observer: MeticulousPressureObserver,
     ) => void,
-    options?: { sampleInterval?: number },
   ): MeticulousPressureObserver;
   readonly knownSources: readonly MeticulousPressureSource[];
 }
