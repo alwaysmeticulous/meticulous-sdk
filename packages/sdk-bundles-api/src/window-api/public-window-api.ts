@@ -152,6 +152,26 @@ export interface MeticulousPublicReplayApi {
      * @see https://developer.mozilla.org/en-US/docs/Web/API/PerformanceObserver
      */
     PerformanceObserver: typeof window.PerformanceObserver;
+
+    /**
+     * The native PressureObserver constructor from the Compute Pressure API,
+     * captured before any stubbing. Use this to observe CPU (and, where
+     * supported by the browser, thermal) pressure during a replay.
+     *
+     * Only defined in browsers that implement the Compute Pressure API
+     * (Chromium-based browsers at the time of writing). Undefined in other
+     * browsers; always check before use.
+     *
+     * Note: the browser does not expose a direct CPU usage percentage. The
+     * observer callback receives categorical pressure records with a `state`
+     * of `"nominal" | "fair" | "serious" | "critical"`. The pressure signal
+     * reflects system-wide pressure, affected by other apps and other tabs,
+     * so treat it as a noisy signal and aggregate over many replays.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/PressureObserver
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/Compute_Pressure_API
+     */
+    PressureObserver?: MeticulousPressureObserverConstructor;
   };
 
   /**
@@ -277,4 +297,71 @@ export interface MeticulousPublicContextApi {
    * multiple times, the value will be overwritten.
    */
   recordUserEmail(emailAddress: string): { success: boolean };
+}
+
+/**
+ * Source that a {@link MeticulousPressureObserver} can observe. The set of
+ * sources a browser supports is exposed on
+ * {@link MeticulousPressureObserverConstructor.knownSources}.
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Compute_Pressure_API
+ */
+export type MeticulousPressureSource = "cpu" | "thermals";
+
+/**
+ * Categorical pressure state reported by a {@link MeticulousPressureObserver}.
+ * The browser deliberately does not expose a numeric CPU usage percentage; this
+ * coarse state is the only pressure signal available to page JavaScript.
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/PressureRecord/state
+ */
+export type MeticulousPressureState =
+  | "nominal"
+  | "fair"
+  | "serious"
+  | "critical";
+
+/**
+ * A single pressure sample delivered to a {@link MeticulousPressureObserver}
+ * callback.
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/PressureRecord
+ */
+export interface MeticulousPressureRecord {
+  source: MeticulousPressureSource;
+  state: MeticulousPressureState;
+  time: DOMHighResTimeStamp;
+}
+
+/**
+ * Minimal shape of a PressureObserver instance. Defined locally because the
+ * Compute Pressure API is not yet present in TypeScript's `lib.dom.d.ts`.
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/PressureObserver
+ */
+export interface MeticulousPressureObserver {
+  observe(
+    source: MeticulousPressureSource,
+    options?: { sampleInterval?: number },
+  ): Promise<void>;
+  unobserve(source: MeticulousPressureSource): void;
+  disconnect(): void;
+  takeRecords(): MeticulousPressureRecord[];
+}
+
+/**
+ * Minimal shape of the PressureObserver constructor. Defined locally because
+ * the Compute Pressure API is not yet present in TypeScript's `lib.dom.d.ts`.
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/PressureObserver/PressureObserver
+ */
+export interface MeticulousPressureObserverConstructor {
+  new (
+    callback: (
+      records: MeticulousPressureRecord[],
+      observer: MeticulousPressureObserver,
+    ) => void,
+    options?: { sampleInterval?: number },
+  ): MeticulousPressureObserver;
+  readonly knownSources: readonly MeticulousPressureSource[];
 }
