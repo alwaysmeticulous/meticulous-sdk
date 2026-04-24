@@ -54,5 +54,12 @@ export {
   IndexedReplayableEvent,
 } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
 export { ScreenshotDiffData } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
-export { MeticulousPublicApi } from "./window-api/public-window-api";
+export {
+  MeticulousPublicApi,
+  MeticulousPressureObserver,
+  MeticulousPressureObserverConstructor,
+  MeticulousPressureRecord,
+  MeticulousPressureSource,
+  MeticulousPressureState,
+} from "./window-api/public-window-api";
 export { MeticulousPrivateApi } from "./window-api/private-window-api";
