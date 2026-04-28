@@ -32,7 +32,8 @@
     "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
-    "depcheck": "depcheck --ignore-patterns=dist"
+    "depcheck": "depcheck --ignore-patterns=dist",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "unplugin": "^3.0.0"
@@ -54,6 +55,7 @@
     "@rspack/core": "^1.0.0",
     "tsdown": "^0.21.7",
     "vite": "^7.3.1",
+    "vitest": "catalog:",
     "webpack": "^5.106.1"
   },
   "author": {
