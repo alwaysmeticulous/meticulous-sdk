@@ -19,7 +19,18 @@ export {
 } from "./api/agent.api";
 export * from "./api/github-cloud-replay.api";
 export { WhoamiResponse, getWhoami } from "./api/oauth.api";
-export { getProject, getRepoUrl } from "./api/project.api";
+export {
+  GetRepoUrlOptions,
+  RepoUrlResponse,
+  getProject,
+  getRepoUrl,
+  GetSourceArchiveUrlOptions,
+  SourceArchiveUrlResponse,
+  getSourceArchiveUrl,
+  RequestSourceCodeUploadUrlParams,
+  RequestSourceCodeUploadUrlResponse,
+  requestSourceCodeUploadUrl,
+} from "./api/project.api";
 export {
   ReplayV3UploadLocations,
   getReplay,
