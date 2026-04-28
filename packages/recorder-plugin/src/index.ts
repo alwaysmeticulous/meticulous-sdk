@@ -4,7 +4,7 @@ import {
   type UnpluginFactory,
   type UnpluginInstance,
 } from "unplugin";
-import type { ConfigEnv as ViteConfigEnv } from "vite";
+import type { ConfigEnv } from "vite";
 import { injectIntoHtml } from "./core/inject-html";
 import { resolveOptions } from "./core/options";
 import { shouldInject } from "./core/should-inject";
@@ -56,7 +56,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
 ) => {
   const options = resolveOptions(rawOptions);
 
-  let viteEnv: ViteConfigEnv | undefined;
+  let viteEnv: ConfigEnv | undefined;
 
   return {
     name: PLUGIN_NAME,

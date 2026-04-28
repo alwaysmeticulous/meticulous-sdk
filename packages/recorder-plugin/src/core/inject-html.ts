@@ -24,7 +24,7 @@ const replacePlaceholder = (
   if (!regex.test(html)) {
     return { matched: false, html };
   }
-  return { matched: true, html: html.replace(regex, scriptTag) };
+  return { matched: true, html: html.replace(regex, () => scriptTag) };
 };
 
 const insertAfterHead = (

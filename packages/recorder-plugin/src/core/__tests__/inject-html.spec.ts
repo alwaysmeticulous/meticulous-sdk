@@ -103,4 +103,19 @@ describe("injectIntoHtml — replace mode", () => {
     expect(result.warning).toMatch(/Could not find a placeholder/);
     expect(result.warning).toMatch(/<head>/);
   });
+
+  it("treats $ sequences in the script tag as literal characters, not replacement patterns", () => {
+    const scriptWithDollar =
+      '<script data-recording-token="tok$&amp;" src="https://snippet.meticulous.ai/v1/meticulous.js$\'"></script>';
+    const html =
+      "<html><head><script data-meticulous></script></head><body></body></html>";
+    const result = injectIntoHtml(
+      html,
+      scriptWithDollar,
+      "replace",
+      "data-meticulous",
+    );
+    expect(result.injected).toBe(true);
+    expect(result.html).toContain(scriptWithDollar);
+  });
 });
