@@ -9,7 +9,7 @@ const escapeForRegex = (value: string): string =>
 
 const buildPlaceholderRegex = (placeholderAttribute: string): RegExp =>
   new RegExp(
-    `<script\\b[^>]*\\b${escapeForRegex(placeholderAttribute)}\\b[^>]*>\\s*<\\/script>`,
+    `<script\\b[^>]*\\b${escapeForRegex(placeholderAttribute)}(?![-\\w])[^>]*>\\s*<\\/script>`,
     "i",
   );
 

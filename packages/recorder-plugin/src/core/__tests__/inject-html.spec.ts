@@ -63,6 +63,18 @@ describe("injectIntoHtml — replace mode", () => {
     expect(result.html).not.toContain("data-meticulous></SCRIPT>");
   });
 
+  it("does not match a script tag whose attribute name merely starts with the placeholder name", () => {
+    // `data-meticulous-recording` starts with `data-meticulous` but is a
+    // different attribute; the trailing `-recording` should prevent a match.
+    const html =
+      "<html><head><script data-meticulous-recording></script></head><body></body></html>";
+    const result = injectIntoHtml(html, SCRIPT, "replace", "data-meticulous");
+    // Falls back to auto-injection because the placeholder is not found.
+    expect(result.warning).toMatch(/Could not find a placeholder.*data-meticulous/);
+    expect(result.html).toContain("<script data-meticulous-recording></script>");
+    expect(result.html).toContain(SCRIPT);
+  });
+
   it("escapes regex metacharacters in the placeholder attribute name", () => {
     const html =
       "<html><head><script data-foo.bar></script></head><body></body></html>";
