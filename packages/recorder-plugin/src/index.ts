@@ -55,7 +55,6 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
   rawOptions,
 ) => {
   const options = resolveOptions(rawOptions);
-  const scriptTag = buildScriptTag(options);
 
   let viteEnv: ViteConfigEnv | undefined;
 
@@ -81,6 +80,9 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
           if (!shouldInject(options.enabled, ctx)) {
             return html;
           }
+          const scriptTag = buildScriptTag(options, {
+            isProduction: ctx.isProduction,
+          });
           return applyInjection(html, scriptTag, options, {
             warn: (message) => console.warn(`[${PLUGIN_NAME}] ${message}`),
           });
@@ -98,6 +100,10 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
       if (!shouldInject(options.enabled, ctx)) {
         return;
       }
+
+      const scriptTag = buildScriptTag(options, {
+        isProduction: ctx.isProduction,
+      });
 
       const HtmlWebpackPlugin = tryRequireFromCwd<{
         getHooks?: (compilation: unknown) => {
@@ -167,6 +173,10 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
       if (!shouldInject(options.enabled, ctx)) {
         return;
       }
+
+      const scriptTag = buildScriptTag(options, {
+        isProduction: ctx.isProduction,
+      });
 
       const rspackCore = tryRequireFromCwd<{
         HtmlRspackPlugin?: {

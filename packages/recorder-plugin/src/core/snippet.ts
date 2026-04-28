@@ -26,18 +26,33 @@ const formatAttribute = (
   return `${name}="${escapeAttributeValue(value)}"`;
 };
 
+export interface BuildScriptTagContext {
+  /** Whether the current build is a production build. */
+  isProduction: boolean;
+}
+
 /**
  * Build the `<script>` tag that loads the Meticulous recorder.
  *
- * The token is emitted as `data-recording-token` and the snippet URL becomes
- * `src`. Custom attributes from {@link ResolvedOptions.attributes} are
- * appended; if a custom attribute collides with `src` or
- * `data-recording-token` the user-supplied value wins so callers can override
- * defaults if they need to.
+ * Defaults emitted on the tag:
+ * - `data-recording-token` — from {@link ResolvedOptions.recordingToken}.
+ * - `src` — from {@link ResolvedOptions.snippetUrl}.
+ * - `data-is-production-environment` — `"true"` / `"false"` based on
+ *   {@link BuildScriptTagContext.isProduction}. This matches the Meticulous
+ *   docs recommendation; non-production environments (localhost, staging,
+ *   preview) will be tagged as such automatically.
+ *
+ * Any user-supplied {@link ResolvedOptions.attributes} are merged on top, so
+ * callers can override the defaults (including
+ * `data-is-production-environment`) if they need bespoke behaviour.
  */
-export const buildScriptTag = (options: ResolvedOptions): string => {
+export const buildScriptTag = (
+  options: ResolvedOptions,
+  ctx: BuildScriptTagContext,
+): string => {
   const baseAttributes: Record<string, ScriptAttributeValue> = {
     "data-recording-token": options.recordingToken,
+    "data-is-production-environment": ctx.isProduction ? "true" : "false",
     src: options.snippetUrl,
   };
 

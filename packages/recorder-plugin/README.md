@@ -129,7 +129,22 @@ import type { Options } from "@alwaysmeticulous/recorder-plugin";
 | `inject`               | `"auto" \| "replace"`                                      | `"auto"`                                           | `"auto"` prepends a new `<script>` as the first child of `<head>`. `"replace"` swaps a placeholder script tag (see below). |
 | `placeholderAttribute` | `string`                                                   | `"data-meticulous"`                                | Attribute name used to find the placeholder when `inject: "replace"`. |
 | `snippetUrl`           | `string`                                                   | `"https://snippet.meticulous.ai/v1/meticulous.js"` | Override the snippet URL. |
-| `attributes`           | `Record<string, string \| boolean \| null \| undefined>`   | `{}`                                               | Extra attributes on the `<script>` tag (e.g. `nonce`, `data-is-production-environment`). `true` emits a boolean attribute; `false`/`null`/`undefined` skip it. |
+| `attributes`           | `Record<string, string \| boolean \| null \| undefined>`   | `{}`                                               | Extra attributes on the `<script>` tag (e.g. `nonce`). `true` emits a boolean attribute; `false`/`null`/`undefined` skip it. Overrides any default attribute, including `data-is-production-environment`. |
+
+The plugin always emits `data-is-production-environment="true"` or
+`data-is-production-environment="false"` on the injected `<script>` based on
+the bundler's detected mode (Vite `command === "build" && mode === "production"`,
+webpack/rspack `mode === "production"`). Override it via `attributes` if you
+need different behaviour:
+
+```ts
+RecorderPlugin({
+  recordingToken: "<your-recording-token>",
+  attributes: {
+    "data-is-production-environment": process.env.MY_ENV === "prod" ? "true" : "false",
+  },
+});
+```
 
 ### Controlling when the recorder loads
 
