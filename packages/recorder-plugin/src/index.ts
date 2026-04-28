@@ -67,7 +67,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
         viteEnv = env;
       },
       transformIndexHtml: {
-        order: "pre",
+        order: "post",
         handler(html) {
           const mode = viteEnv?.mode ?? process.env["NODE_ENV"];
           const command = viteEnv?.command;
@@ -145,6 +145,8 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
             for (const [filename, source] of Object.entries(assets)) {
               if (!filename.endsWith(".html")) continue;
               const original = source.source().toString();
+              // Skip partial/fragment HTML that isn't a full document.
+              if (!/<html\b/i.test(original)) continue;
               const updated = applyInjection(
                 original,
                 scriptTag,
@@ -224,6 +226,8 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
             for (const [filename, source] of Object.entries(assets)) {
               if (!filename.endsWith(".html")) continue;
               const original = source.source().toString();
+              // Skip partial/fragment HTML that isn't a full document.
+              if (!/<html\b/i.test(original)) continue;
               const updated = applyInjection(
                 original,
                 scriptTag,

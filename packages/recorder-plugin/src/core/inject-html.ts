@@ -9,7 +9,9 @@ const escapeForRegex = (value: string): string =>
 
 const buildPlaceholderRegex = (placeholderAttribute: string): RegExp =>
   new RegExp(
-    `<script\\b[^>]*\\b${escapeForRegex(placeholderAttribute)}(?![-\\w])[^>]*>\\s*<\\/script>`,
+    // Also matches the JSX self-closing form `<script data-meticulous />`:
+    // the `/` is captured by `[^>]*` and the closing `</script>` is optional.
+    `<script\\b[^>]*\\b${escapeForRegex(placeholderAttribute)}(?![-\\w])[^>]*>(?:\\s*<\\/script>)?`,
     "i",
   );
 

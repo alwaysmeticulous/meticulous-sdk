@@ -27,6 +27,13 @@ describe("resolveOptions", () => {
     );
   });
 
+  it("does not throw when recordingToken is missing and enabled is 'never'", () => {
+    expect(() =>
+      // @ts-expect-error intentionally omitting required recordingToken
+      resolveOptions({ enabled: "never" }),
+    ).not.toThrow();
+  });
+
   it("applies all defaults when only recordingToken is provided", () => {
     const resolved = resolveOptions({ recordingToken: "tok" });
     expect(resolved).toEqual({

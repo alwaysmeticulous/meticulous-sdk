@@ -4,7 +4,7 @@ A bundler plugin that injects the [Meticulous recorder](https://app.meticulous.a
 script into the `<head>` of your app's HTML, with one entry point per
 supported bundler/framework.
 
-By default, the recorder is only injected during development/preview builds —
+By default, the recorder is only injected during development builds —
 matching Meticulous's recommendation to record real sessions in staging or
 production via an explicit opt-in.
 
@@ -110,9 +110,9 @@ export default defineNuxtConfig({
 });
 ```
 
-The Nuxt module installs the Vite plugin (the default Nuxt 3 bundler) and the
-webpack plugin (legacy Nuxt builds), so the recorder script is injected into
-the rendered HTML regardless of which bundler Nuxt is using.
+The Nuxt module injects the recorder script via `nuxt.options.app.head.script`,
+which feeds into Nitro's render pipeline and works correctly regardless of
+which bundler Nuxt is using.
 
 </details>
 
@@ -125,7 +125,7 @@ import type { Options } from "@alwaysmeticulous/recorder-plugin";
 | Option                 | Type                                                       | Default                                            | Description |
 | ---------------------- | ---------------------------------------------------------- | -------------------------------------------------- | ----------- |
 | `recordingToken`       | `string` (required)                                        | —                                                  | Your Meticulous recording token. Emitted as `data-recording-token` on the injected `<script>`. |
-| `enabled`              | `"development" \| "always" \| "never" \| (ctx) => boolean` | `"development"`                                    | When to inject. `"development"` only injects during dev/preview builds (Vite `command === "serve"` or webpack/rspack `mode !== "production"`). Pass a function for full control. |
+| `enabled`              | `"development" \| "always" \| "never" \| (ctx) => boolean` | `"development"`                                    | When to inject. `"development"` only injects during development builds (Vite `command === "serve"` or webpack/rspack `mode !== "production"`). Pass a function for full control. |
 | `inject`               | `"auto" \| "replace"`                                      | `"auto"`                                           | `"auto"` prepends a new `<script>` as the first child of `<head>`. `"replace"` swaps a placeholder script tag (see below). |
 | `placeholderAttribute` | `string`                                                   | `"data-meticulous"`                                | Attribute name used to find the placeholder when `inject: "replace"`. |
 | `snippetUrl`           | `string`                                                   | `"https://snippet.meticulous.ai/v1/meticulous.js"` | Override the snippet URL. |
