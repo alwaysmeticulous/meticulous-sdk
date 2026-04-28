@@ -21,7 +21,7 @@
 import { defineNuxtModule } from "@nuxt/kit";
 import { resolveOptions } from "./core/options";
 import { shouldInject } from "./core/should-inject";
-import type { EnabledContext, Options, ScriptAttributeValue } from "./types";
+import type { EnabledContext, Options } from "./types";
 
 export default defineNuxtModule<Options>({
   meta: {
@@ -57,7 +57,6 @@ export default defineNuxtModule<Options>({
     nuxt.options.app.head ??= {};
     nuxt.options.app.head.script ??= [];
     // unshift so the recorder is the first script in <head>.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (nuxt.options.app.head.script as any[]).unshift(scriptEntry);
+    (nuxt.options.app.head.script as unknown[]).unshift(scriptEntry);
   },
 });
