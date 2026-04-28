@@ -16,15 +16,13 @@ describes the issue they want to investigate.
 Gather context from these sources (in order):
 
 1. `context.json` -- already in your context. Anchor on `investigationFocus`:
-   - `investigationFocus.kind` tells you what kind of investigation this is
-     (`replay-diff`, `screenshot`, `single-replay`, `free-form-replays`).
-   - `investigationFocus.primaryScreenshots` is the prioritized set of screenshots to
-     anchor analysis on. Entries with `isNeighbor: false` are actually-diffing
-     screenshots; `isNeighbor: true` are ±2 event-number context entries.
-   - `investigationFocus.totalDiffingScreenshots` says how many diffing screenshots
-     existed before the cap. If it exceeds the non-neighbour count in
-     `primaryScreenshots`, the focus is truncated -- consult
-     `screenshot-index.json` (sidecar) for the full list.
+   - `investigationFocus.kind` -- `replay-diff`, `screenshot`, or `other`.
+   - `investigationFocus.primaryScreenshots` -- the prioritized screenshots to anchor
+     analysis on (capped at 50, sorted by mismatch desc for `replay-diff`).
+   - `investigationFocus.totalDiffingScreenshots` -- diffing-screenshot count before
+     the cap. If it exceeds `primaryScreenshots.length`, the focus is truncated --
+     consult `screenshot-index.json` (sidecar) or `diffs/*.summary.json` for the full
+     list.
    - `screenshotMap` (focus-scoped) holds head/base entries for the focus screenshots;
      `screenshotMapSidecar.$ref` points at `screenshot-index.json` if you need anything
      outside the focus.

@@ -27,12 +27,12 @@ diffs are computed and surfaced to the developer.
 The workspace root contains the debug workspace files. All downloaded debug data lives under
 the `debug-data/` subdirectory.
 
-- `**.claude/`\*\* -- Configuration for this debugging workspace (hooks, skills, agents).
-- `**debug-data/context.json**` -- Loaded automatically into context by the SessionStart hook;
+- **`.claude/`** -- Configuration for this debugging workspace (hooks, skills, agents).
+- **`debug-data/context.json`** -- Loaded automatically into context by the SessionStart hook;
   you do not need to read it again.
-- `**debug-data/**` -- All downloaded replay data, session recordings, diffs, and
+- **`debug-data/`** -- All downloaded replay data, session recordings, diffs, and
   pre-computed analysis artifacts.
-- `**project-repo/**` -- (Optional) Your codebase checked out at the relevant commit.
+- **`project-repo/`** -- (Optional) Your codebase checked out at the relevant commit.
   Only present if the command was run from within a git repository.
 
 ## debug-data/ Contents
@@ -171,17 +171,16 @@ to diffing the two `screenshots/<baseName>.html` files directly.
 
 - `investigationFocus` -- **your starting point.** Tells you what the user is investigating
   and which screenshots to anchor on. Has fields:
-  - `kind` -- one of `replay-diff`, `screenshot`, `single-replay`, `free-form-replays`.
+  - `kind` -- one of `replay-diff`, `screenshot`, `other` (single replay or free-form replays).
   - `primaryScreenshots` -- the screenshots you should look at first. Each entry has
-    `filename`, `eventNumber`, `headReplayId`, `baseReplayId`, head/base virtual times,
-    `mismatchFraction`/`mismatchPercent`, `changedSectionsClassNames`, and
-    `isNeighbor` (`true` for ±2 event-number context, `false` for actually-diffing
-    screenshots). Bounded at 50 entries.
+    `filename`, `eventNumber`, `headReplayId`, `baseReplayId`, and `mismatchFraction`.
+    Bounded at 50 entries; sorted by mismatch desc for `replay-diff` mode.
   - `primaryEventNumbers` / `primaryVtRange` -- event numbers and virtual-time range
     covered by `primaryScreenshots`. Useful for narrowing log-search ranges.
   - `totalDiffingScreenshots` -- total diffing count before the cap. If this is larger
-    than `primaryScreenshots.filter(s => !s.isNeighbor).length`, the focus is truncated
-    and you should consult the sidecars to enumerate the rest.
+    than `primaryScreenshots.length`, the focus is truncated and you should consult the
+    `screenshot-index.json` sidecar (or per-diff `diffs/*.summary.json`) to enumerate
+    the rest.
 - `screenshotMap` -- focus-scoped: contains only the entries corresponding to
   `investigationFocus.primaryScreenshots`. Sufficient for most investigations. Maps each
   screenshot to its virtual timestamp and event number.
@@ -218,10 +217,10 @@ replay), and drop into phase 4 only as needed.
 
 - `screenshot` -- the user named one screenshot. `primaryScreenshots[0]` is your
   anchor; focus log analysis on events around that screenshot's virtual time.
-- `replay-diff` -- focus on the entries in `primaryScreenshots` where
-  `isNeighbor === false`; these are the actually-diffing screenshots. The `isNeighbor`
-  entries are ±2 event-number context, useful for situating the diff.
-- `single-replay` / `free-form-replays` -- no automatic focus; fall back to
+- `replay-diff` -- `primaryScreenshots` lists the actually-diffing screenshots
+  (sorted by `mismatchFraction` desc). Read `diffs/<id>.summary.json` for the full
+  per-screenshot mismatch details.
+- `other` -- single replay or free-form replays. No automatic focus; fall back to
   `screenshot-index.json` (sidecar) and `replayComparison`.
 
 2. **Scan `replayComparison`** for head-vs-base drift signals (event counts, animation

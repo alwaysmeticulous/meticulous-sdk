@@ -42,7 +42,9 @@ export const extractScreenshotDomFiles = (workspaceDir: string): void => {
       }
       const baseName = filename.slice(0, -".metadata.json".length);
 
-      const metadata = readScreenshotMetadata(join(screenshotsDir, filename));
+      const metadata = readScreenshotMetadata(
+        join(screenshotsDir, filename),
+      );
       if (metadata == null) {
         logMalformed(replayDir, filename);
         skippedMalformedCount++;
@@ -95,7 +97,10 @@ const renderWithHeader = (
   virtualTime: number | null,
   side: "before" | "after",
 ): string => {
-  const headerParts: string[] = [`screenshot=${baseName}`, `side=${side}`];
+  const headerParts: string[] = [
+    `screenshot=${baseName}`,
+    `side=${side}`,
+  ];
   if (url != null) {
     headerParts.push(`url=${url}`);
   }

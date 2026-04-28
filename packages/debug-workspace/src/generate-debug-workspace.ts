@@ -23,11 +23,9 @@ import { fetchDomDiffs, type DomDiffMap } from "./fetch-dom-diffs";
 import type { InvestigationFocus, SidecarRef } from "./focus.types";
 import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
 import { screenshotIdentifierToFilename } from "./screenshot-identifier";
-import {
-  DOM_DIFF_INDEX_SIDECAR_FILENAME,
-  SCREENSHOT_INDEX_SIDECAR_FILENAME,
-  splitMapsForFocus,
-} from "./split-maps-for-focus";
+
+const SCREENSHOT_INDEX_SIDECAR_FILENAME = "screenshot-index.json";
+const DOM_DIFF_INDEX_SIDECAR_FILENAME = "dom-diff-index.json";
 
 interface TimelineEntry {
   kind: string;
@@ -82,42 +80,23 @@ export interface ReplayComparisonEntry {
 const TEMPLATES_DIR = join(__dirname, "templates");
 
 /**
- * Arguments passed to a {@link WriteContextJson} implementation. Bundled into
- * a single object so the SDK can add new fields without breaking existing
- * overrides.
+ * Callback signature for overriding `context.json` generation. The
+ * `screenshotMap` and `domDiffMap` passed in are already focus-scoped; the
+ * full unfiltered maps live on disk at the paths in `screenshotMapSidecar`
+ * and `domDiffMapSidecar`.
  */
-export interface WriteContextJsonArgs {
-  debugContext: DebugContext;
-  workspaceDir: string;
-  fileMetadata: FileMetadataEntry[];
-  projectRepoDir: string | undefined;
-  /**
-   * Focus-scoped screenshot map (small, suitable for inlining). See
-   * {@link screenshotMapSidecar} for the unfiltered map.
-   */
-  screenshotMap: Record<string, ScreenshotMapEntry>;
-  /**
-   * Reference to the sidecar containing the full unfiltered screenshot map.
-   * Always written next to `context.json` regardless of whether `screenshotMap`
-   * is filtered.
-   */
-  screenshotMapSidecar: SidecarRef;
-  replayComparison: ReplayComparisonEntry[];
-  /**
-   * Focus-scoped DOM-diff map (only entries with `diffPath != null`). See
-   * {@link domDiffMapSidecar} for the unfiltered map.
-   */
-  domDiffMap: DomDiffMap;
-  /**
-   * Reference to the sidecar containing the full unfiltered DOM-diff map
-   * (including entries where DOMs were identical or skipped). Always written.
-   */
-  domDiffMapSidecar: SidecarRef;
-  /** Investigation focus computed for this workspace. */
-  investigationFocus: InvestigationFocus;
-}
-
-export type WriteContextJson = (args: WriteContextJsonArgs) => void;
+export type WriteContextJson = (
+  debugContext: DebugContext,
+  workspaceDir: string,
+  fileMetadata: FileMetadataEntry[],
+  projectRepoDir: string | undefined,
+  screenshotMap: Record<string, ScreenshotMapEntry>,
+  screenshotMapSidecar: SidecarRef,
+  replayComparison: ReplayComparisonEntry[],
+  domDiffMap: DomDiffMap,
+  domDiffMapSidecar: SidecarRef,
+  investigationFocus: InvestigationFocus,
+) => void;
 
 export interface GenerateDebugWorkspaceOptions {
   client: MeticulousClient;
@@ -165,32 +144,27 @@ export const generateDebugWorkspace = async (
     screenshotMap,
     workspaceDir,
   });
-  const split = splitMapsForFocus({
-    workspaceDir,
-    screenshotMap,
-    domDiffMap,
-    investigationFocus,
-  });
+  writeMapSidecars(workspaceDir, screenshotMap, domDiffMap);
 
   const writeCtx = options.writeContextJson ?? defaultWriteContextJson;
-  writeCtx({
+  writeCtx(
     debugContext,
     workspaceDir,
     fileMetadata,
-    projectRepoDir: options.projectRepoDir,
-    screenshotMap: split.focusScreenshotMap,
-    screenshotMapSidecar: {
+    options.projectRepoDir,
+    filterScreenshotMapToFocus(screenshotMap, investigationFocus),
+    {
       $ref: SCREENSHOT_INDEX_SIDECAR_FILENAME,
-      count: split.screenshotIndexCount,
+      count: Object.keys(screenshotMap).length,
     },
     replayComparison,
-    domDiffMap: split.focusDomDiffMap,
-    domDiffMapSidecar: {
+    filterDomDiffMapToDiffing(domDiffMap),
+    {
       $ref: DOM_DIFF_INDEX_SIDECAR_FILENAME,
-      count: split.domDiffIndexCount,
+      count: Object.keys(domDiffMap).length,
     },
     investigationFocus,
-  });
+  );
 
   copyClaudeSubdir(workspaceDir, "rules", options.additionalTemplatesDir);
   copyClaudeSubdir(workspaceDir, "hooks", options.additionalTemplatesDir, {
@@ -2035,20 +2009,18 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
 // Context JSON generation (default implementation)
 // ---------------------------------------------------------------------------
 
-export const defaultWriteContextJson: WriteContextJson = (args) => {
-  const {
-    debugContext,
-    workspaceDir,
-    fileMetadata,
-    projectRepoDir,
-    screenshotMap,
-    screenshotMapSidecar,
-    replayComparison,
-    domDiffMap,
-    domDiffMapSidecar,
-    investigationFocus,
-  } = args;
-
+export const defaultWriteContextJson: WriteContextJson = (
+  debugContext,
+  workspaceDir,
+  fileMetadata,
+  projectRepoDir,
+  screenshotMap,
+  screenshotMapSidecar,
+  replayComparison,
+  domDiffMap,
+  domDiffMapSidecar,
+  investigationFocus,
+) => {
   const headIds = new Set(debugContext.replayDiffs.map((d) => d.headReplayId));
   const baseIds = new Set(debugContext.replayDiffs.map((d) => d.baseReplayId));
 
@@ -2116,4 +2088,66 @@ export const defaultWriteContextJson: WriteContextJson = (args) => {
     join(workspaceDir, DEBUG_DATA_DIRECTORY, "context.json"),
     JSON.stringify(context, null, 2),
   );
+};
+
+// ---------------------------------------------------------------------------
+// Map sidecar emission + focus-scoped filtering
+// ---------------------------------------------------------------------------
+
+const writeMapSidecars = (
+  workspaceDir: string,
+  screenshotMap: Record<string, ScreenshotMapEntry>,
+  domDiffMap: DomDiffMap,
+): void => {
+  const debugDataDir = join(workspaceDir, DEBUG_DATA_DIRECTORY);
+  writeFileSync(
+    join(debugDataDir, SCREENSHOT_INDEX_SIDECAR_FILENAME),
+    JSON.stringify(screenshotMap, null, 2),
+  );
+  writeFileSync(
+    join(debugDataDir, DOM_DIFF_INDEX_SIDECAR_FILENAME),
+    JSON.stringify(domDiffMap, null, 2),
+  );
+};
+
+/**
+ * Returns just the screenshot-map entries that correspond to a focus
+ * screenshot's head/base counterpart. Each focus entry pulls in up to two
+ * rows.
+ */
+const filterScreenshotMapToFocus = (
+  screenshotMap: Record<string, ScreenshotMapEntry>,
+  focus: InvestigationFocus,
+): Record<string, ScreenshotMapEntry> => {
+  if (focus.primaryScreenshots.length === 0) {
+    return {};
+  }
+  const keys = new Set<string>();
+  for (const s of focus.primaryScreenshots) {
+    if (s.headReplayId != null) {
+      keys.add(`head/${s.headReplayId}/${s.filename}`);
+    }
+    if (s.baseReplayId != null) {
+      keys.add(`base/${s.baseReplayId}/${s.filename}`);
+    }
+  }
+  const filtered: Record<string, ScreenshotMapEntry> = {};
+  for (const key of keys) {
+    const entry = screenshotMap[key];
+    if (entry) {
+      filtered[key] = entry;
+    }
+  }
+  return filtered;
+};
+
+/** Keeps only DOM-diff entries that actually represent a difference. */
+const filterDomDiffMapToDiffing = (domDiffMap: DomDiffMap): DomDiffMap => {
+  const filtered: DomDiffMap = {};
+  for (const [key, value] of Object.entries(domDiffMap)) {
+    if (value && value.diffPath != null) {
+      filtered[key] = value;
+    }
+  }
+  return filtered;
 };

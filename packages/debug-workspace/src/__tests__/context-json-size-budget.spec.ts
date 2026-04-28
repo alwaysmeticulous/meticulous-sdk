@@ -1,96 +1,83 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   computeInvestigationFocus,
   MAX_FOCUS_SCREENSHOTS,
 } from "../compute-investigation-focus";
 import { DEBUG_DATA_DIRECTORY } from "../debug-constants";
 import type { DebugContext } from "../debug.types";
-import type { ScreenshotMapEntry } from "../generate-debug-workspace";
-import { splitMapsForFocus } from "../split-maps-for-focus";
+import {
+  defaultWriteContextJson,
+  type ScreenshotMapEntry,
+} from "../generate-debug-workspace";
 
 /**
- * Size-budget regression test. The goal of this PR is to keep the inline
- * portion of `context.json` (i.e. the bits that are stuffed into the agent's
- * SessionStart context, excluding sidecar file bodies) under a bounded size
- * regardless of how many screenshots/replays are in the workspace.
- *
- * The numbers below are conservative and aimed at catching regressions, not
- * micro-optimisation. If we ever need to grow them, the test should still
- * assert "bounded" rather than "tight".
+ * Regression test: the inline portion of `context.json` (the bit fed into the
+ * agent's SessionStart context, excluding sidecar bodies on disk) must stay
+ * bounded as the workspace scales -- that's the whole point of this work.
  */
 describe("context.json size budget", () => {
   let workspace: string;
 
   beforeEach(() => {
     workspace = mkdtempSync(join(tmpdir(), "met-budget-"));
+    mkdirSync(join(workspace, DEBUG_DATA_DIRECTORY), { recursive: true });
   });
 
   afterEach(() => {
     rmSync(workspace, { recursive: true, force: true });
+    vi.restoreAllMocks();
   });
 
-  it("keeps focus-scoped screenshotMap small even with many replays", () => {
-    const debugContext = makeDebugContext({
-      replayDiffIds: 5,
-    });
-
-    const screenshotsPerReplay = 200;
+  it("keeps inline context.json bounded with many replays + screenshots", () => {
+    const debugContext = makeDebugContext({ replayDiffIds: 5 });
     const screenshotMap = makeLargeScreenshotMap({
       replayDiffs: debugContext.replayDiffs,
-      screenshotsPerReplay,
+      screenshotsPerReplay: 200,
     });
-    expect(Object.keys(screenshotMap).length).toBe(
-      5 * 2 * screenshotsPerReplay,
-    );
+    expect(Object.keys(screenshotMap).length).toBe(2000);
 
-    const diffsPerPair = 10;
     for (const diff of debugContext.replayDiffs) {
-      writeDiffJson(workspace, diff.id, diffsPerPair);
+      writeDiffJson(workspace, diff.id, 60);
     }
 
-    const investigationFocus = computeInvestigationFocus({
-      debugContext,
-      screenshotMap,
-      workspaceDir: workspace,
-    });
+    runWorkspaceGeneration(workspace, debugContext, screenshotMap);
 
-    const split = splitMapsForFocus({
-      workspaceDir: workspace,
-      screenshotMap,
-      domDiffMap: {},
-      investigationFocus,
-    });
-
-    // Focus is bounded -- diffing entries (50) + a small number of neighbours.
-    const nonNeighbours = investigationFocus.primaryScreenshots.filter(
-      (s) => !s.isNeighbor,
+    const ctx = readContextJson(workspace);
+    expect(ctx.investigationFocus.kind).toBe("replay-diff");
+    expect(ctx.investigationFocus.totalDiffingScreenshots).toBe(300);
+    expect(ctx.investigationFocus.primaryScreenshots).toHaveLength(
+      MAX_FOCUS_SCREENSHOTS,
     );
-    expect(nonNeighbours.length).toBeLessThanOrEqual(MAX_FOCUS_SCREENSHOTS);
-    expect(investigationFocus.primaryScreenshots.length).toBeLessThanOrEqual(
+    // Inline screenshotMap is filtered to focus -- 2 entries per primary at most.
+    expect(Object.keys(ctx.screenshotMap).length).toBeLessThanOrEqual(
       MAX_FOCUS_SCREENSHOTS * 2,
     );
 
-    // Focus-scoped map has at most 2 entries per primary screenshot.
-    expect(Object.keys(split.focusScreenshotMap).length).toBeLessThanOrEqual(
-      investigationFocus.primaryScreenshots.length * 2,
-    );
-
-    // Inline JSON budget. Sidecar is on disk (~200KB) but inline must stay small.
     const inlineBytes = Buffer.byteLength(
-      JSON.stringify({
-        investigationFocus,
-        screenshotMap: split.focusScreenshotMap,
-        screenshotMapSidecar: { $ref: "screenshot-index.json", count: 2000 },
-      }),
-      "utf-8",
+      readFileSync(join(workspace, DEBUG_DATA_DIRECTORY, "context.json")),
     );
     expect(inlineBytes).toBeLessThan(50_000);
+
+    // Sidecar holds the full unfiltered map.
+    const sidecar = JSON.parse(
+      readFileSync(
+        join(workspace, DEBUG_DATA_DIRECTORY, "screenshot-index.json"),
+        "utf-8",
+      ),
+    );
+    expect(Object.keys(sidecar).length).toBe(2000);
   });
 
-  it("inlines just the targeted entry when --screenshot pins one screenshot", () => {
+  it("inlines just the targeted entry in --screenshot mode", () => {
     const debugContext = makeDebugContext({
       replayDiffIds: 1,
       screenshot: "screenshot-after-event-00050.png",
@@ -99,29 +86,82 @@ describe("context.json size budget", () => {
       replayDiffs: debugContext.replayDiffs,
       screenshotsPerReplay: 200,
     });
-    writeDiffJson(workspace, debugContext.replayDiffs[0].id, 10);
+    writeDiffJson(workspace, debugContext.replayDiffs[0].id, 0);
 
-    const investigationFocus = computeInvestigationFocus({
-      debugContext,
-      screenshotMap,
-      workspaceDir: workspace,
-    });
-    const split = splitMapsForFocus({
-      workspaceDir: workspace,
-      screenshotMap,
-      domDiffMap: {},
-      investigationFocus,
-    });
+    runWorkspaceGeneration(workspace, debugContext, screenshotMap);
 
-    expect(investigationFocus.kind).toBe("screenshot");
-    expect(investigationFocus.primaryScreenshots).toHaveLength(1);
-    expect(Object.keys(split.focusScreenshotMap).length).toBe(2); // head + base
+    const ctx = readContextJson(workspace);
+    expect(ctx.investigationFocus.kind).toBe("screenshot");
+    expect(ctx.investigationFocus.primaryScreenshots).toHaveLength(1);
+    expect(Object.keys(ctx.screenshotMap)).toEqual(
+      expect.arrayContaining([
+        `head/head-0/screenshot-after-event-00050.png`,
+        `base/base-0/screenshot-after-event-00050.png`,
+      ]),
+    );
   });
 });
 
 // ---------------------------------------------------------------------------
-// helpers
+// Helpers
 // ---------------------------------------------------------------------------
+
+const runWorkspaceGeneration = (
+  workspace: string,
+  debugContext: DebugContext,
+  screenshotMap: Record<string, ScreenshotMapEntry>,
+): void => {
+  const focus = computeInvestigationFocus({
+    debugContext,
+    screenshotMap,
+    workspaceDir: workspace,
+  });
+  // Replicate what generateDebugWorkspace does at the call site, isolated to
+  // the bits this size test cares about.
+  writeFileSync(
+    join(workspace, DEBUG_DATA_DIRECTORY, "screenshot-index.json"),
+    JSON.stringify(screenshotMap),
+  );
+  writeFileSync(
+    join(workspace, DEBUG_DATA_DIRECTORY, "dom-diff-index.json"),
+    "{}",
+  );
+  const focusKeys = new Set<string>();
+  for (const s of focus.primaryScreenshots) {
+    if (s.headReplayId) {
+      focusKeys.add(`head/${s.headReplayId}/${s.filename}`);
+    }
+    if (s.baseReplayId) {
+      focusKeys.add(`base/${s.baseReplayId}/${s.filename}`);
+    }
+  }
+  const focusScreenshotMap: Record<string, ScreenshotMapEntry> = {};
+  for (const k of focusKeys) {
+    if (screenshotMap[k]) {
+      focusScreenshotMap[k] = screenshotMap[k];
+    }
+  }
+  defaultWriteContextJson(
+    debugContext,
+    workspace,
+    [],
+    undefined,
+    focusScreenshotMap,
+    { $ref: "screenshot-index.json", count: Object.keys(screenshotMap).length },
+    [],
+    {},
+    { $ref: "dom-diff-index.json", count: 0 },
+    focus,
+  );
+};
+
+const readContextJson = (workspace: string): any =>
+  JSON.parse(
+    readFileSync(
+      join(workspace, DEBUG_DATA_DIRECTORY, "context.json"),
+      "utf-8",
+    ),
+  );
 
 const makeDebugContext = (args: {
   replayDiffIds: number;
@@ -131,27 +171,20 @@ const makeDebugContext = (args: {
     id: `diff-${i}`,
     headReplayId: `head-${i}`,
     baseReplayId: `base-${i}`,
-    sessionId: undefined,
+    sessionId: "s",
     numScreenshotDiffs: 0,
   }));
-  const replayIds = replayDiffs.flatMap((d) => [
-    d.headReplayId,
-    d.baseReplayId,
-  ]);
   return {
-    testRunId: undefined,
-    replayDiffs,
-    replayIds,
-    sessionIds: [],
-    projectId: undefined,
     orgAndProject: "org/proj",
-    commitSha: undefined,
-    baseCommitSha: undefined,
-    testRunStatus: undefined,
+    testRunId: null,
+    testRunStatus: null,
+    commitSha: null,
+    baseCommitSha: null,
+    sessionIds: [],
+    replayIds: replayDiffs.flatMap((d) => [d.headReplayId, d.baseReplayId]),
+    replayDiffs,
     screenshot: args.screenshot,
-    meticulousSha: undefined,
-    executionSha: undefined,
-  };
+  } as unknown as DebugContext;
 };
 
 const makeLargeScreenshotMap = (args: {
@@ -162,30 +195,38 @@ const makeLargeScreenshotMap = (args: {
   for (const pair of args.replayDiffs) {
     for (let n = 0; n < args.screenshotsPerReplay; n++) {
       const filename = `screenshot-after-event-${n.toString().padStart(5, "0")}.png`;
-      map[`head/${pair.headReplayId}/${filename}`] = {
-        replayId: pair.headReplayId,
-        replayRole: "head",
+      map[`head/${pair.headReplayId}/${filename}`] = entry(
+        pair.headReplayId,
+        "head",
+        n,
         filename,
-        virtualTimeStart: n * 100,
-        virtualTimeEnd: n * 100 + 50,
-        eventNumber: n,
-        htmlFilename: null,
-        afterHtmlFilename: null,
-      };
-      map[`base/${pair.baseReplayId}/${filename}`] = {
-        replayId: pair.baseReplayId,
-        replayRole: "base",
+      );
+      map[`base/${pair.baseReplayId}/${filename}`] = entry(
+        pair.baseReplayId,
+        "base",
+        n,
         filename,
-        virtualTimeStart: n * 100,
-        virtualTimeEnd: n * 100 + 50,
-        eventNumber: n,
-        htmlFilename: null,
-        afterHtmlFilename: null,
-      };
+      );
     }
   }
   return map;
 };
+
+const entry = (
+  replayId: string,
+  role: string,
+  n: number,
+  filename: string,
+): ScreenshotMapEntry => ({
+  replayId,
+  replayRole: role,
+  filename,
+  virtualTimeStart: n * 100,
+  virtualTimeEnd: n * 100 + 50,
+  eventNumber: n,
+  htmlFilename: null,
+  afterHtmlFilename: null,
+});
 
 const writeDiffJson = (
   workspaceDir: string,
@@ -197,12 +238,11 @@ const writeDiffJson = (
   const screenshotDiffResults = Array.from(
     { length: diffingCount },
     (_, i) => ({
-      identifier: { type: "after-event", eventNumber: 50 + i * 10 },
+      identifier: { type: "after-event", eventNumber: i },
       outcome: "pixel-diff",
       diffToBaseScreenshot: {
         mismatchPixels: 100 + i,
-        mismatchFraction: (100 + i) / 100000,
-        changedSectionsClassNames: [],
+        mismatchFraction: (100 + i) / 100_000,
       },
     }),
   );

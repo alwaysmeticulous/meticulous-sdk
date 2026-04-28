@@ -33,7 +33,10 @@ export const discoverReplayDirs = (
     }
     for (const replayId of readdirSync(roleDir)) {
       const path = join(roleDir, replayId);
-      if (options.requireTimeline && !existsSync(join(path, "timeline.json"))) {
+      if (
+        options.requireTimeline &&
+        !existsSync(join(path, "timeline.json"))
+      ) {
         continue;
       }
       dirs.push({ role, replayId, path });
@@ -85,9 +88,7 @@ export const readScreenshotMetadata = (
   metadataPath: string,
 ): ScreenshotMetadata | null => {
   try {
-    return JSON.parse(
-      readFileSync(metadataPath, "utf-8"),
-    ) as ScreenshotMetadata;
+    return JSON.parse(readFileSync(metadataPath, "utf-8")) as ScreenshotMetadata;
   } catch {
     return null;
   }

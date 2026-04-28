@@ -12,11 +12,10 @@ Use this guide when investigating unexpected visual differences between head and
 ### 1. Anchor on `investigationFocus`
 
 - Start with `investigationFocus.primaryScreenshots` from `context.json` (already in
-  context). Entries with `isNeighbor: false` are the actually-diffing screenshots and
-  carry `mismatchPercent` + `changedSectionsClassNames` inline.
-- If `investigationFocus.totalDiffingScreenshots` exceeds the non-neighbour count in
-  `primaryScreenshots`, the focus list is truncated to the highest-mismatch 50; consult
-  `debug-data/diffs/<id>.summary.json` for the full list.
+  context) -- these are the actually-diffing screenshots, sorted by mismatch desc.
+- If `investigationFocus.totalDiffingScreenshots` exceeds `primaryScreenshots.length`,
+  the focus is truncated to the highest-mismatch 50; consult
+  `debug-data/diffs/<id>.summary.json` for the full mismatch table.
 - Use the focus-scoped `screenshotMap` and `domDiffMap` for paths and metadata. Only
   fall back to `screenshot-index.json` / `dom-diff-index.json` (the unfiltered sidecars)
   if you need a screenshot outside the focus set.

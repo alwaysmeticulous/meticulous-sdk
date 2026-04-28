@@ -1,82 +1,53 @@
 /**
- * The kind of investigation that produced this debug workspace. Drives how the
- * focus is computed and which fields in {@link InvestigationFocus} are populated.
+ * Investigation focus and sidecar references inlined into `context.json`.
  *
- * - `replay-diff`: a replay-diff with no specific screenshot in mind. Focus =
- *   the screenshots that actually diverged (plus immediate event-number
- *   neighbours for context).
- * - `screenshot`: the user named a specific screenshot via `--screenshot`.
- *   Focus = just that screenshot across head + base.
- * - `single-replay`: a single replay with no diff context. No automatic focus.
- * - `free-form-replays`: multiple replays passed via `replays <ids..>` without
- *   a diff between them. No automatic focus.
+ * The goal is to keep the SessionStart payload bounded: instead of the agent
+ * receiving the full screenshot map for every replay, it gets a focused list
+ * of "primary" screenshots to anchor on, plus references to sidecar files
+ * (`screenshot-index.json`, `dom-diff-index.json`) holding the full data on
+ * disk.
  */
-export type InvestigationKind =
-  | "replay-diff"
-  | "screenshot"
-  | "single-replay"
-  | "free-form-replays";
+export type InvestigationKind = "replay-diff" | "screenshot" | "other";
 
-/**
- * A single focus screenshot. Carries enough information for the agent to
- * locate and reason about the screenshot without consulting the full
- * `screenshot-index.json` sidecar.
- */
 export interface FocusScreenshot {
   /** Filename, e.g. `screenshot-after-event-00673.png`. */
   filename: string;
   /** Event number from the screenshot identifier (when applicable). */
   eventNumber: number | null;
-  /** Head replay ID this screenshot belongs to, or `null` when only base exists. */
+  /** Head replay this screenshot belongs to, or `null` when only base exists. */
   headReplayId: string | null;
-  /** Base replay ID this screenshot belongs to, or `null` when only head exists. */
+  /** Base replay this screenshot belongs to, or `null` when only head exists. */
   baseReplayId: string | null;
-  /** Virtual time of the screenshot in the head replay (ms). */
-  headVirtualTimeStart: number | null;
-  /** Virtual time of the screenshot in the base replay (ms). */
-  baseVirtualTimeStart: number | null;
-  /** Mismatch fraction from the pixel diff (0..1). `null` if not a diff or unknown. */
+  /** Mismatch fraction from the pixel diff (0..1). `null` when not from a diff. */
   mismatchFraction: number | null;
-  /** Mismatch as a human-readable percent string, e.g. `"0.4275%"`. `null` otherwise. */
-  mismatchPercent: string | null;
-  /** CSS class names of changed sections detected by the diff. Empty array if none / unknown. */
-  changedSectionsClassNames: string[];
-  /** `true` when this entry was added as a temporal neighbour, not because it itself diverged. */
-  isNeighbor: boolean;
 }
 
-/**
- * Investigation focus block inlined into `context.json`. Tells the agent where
- * to anchor its analysis so it doesn't have to scan raw diff JSON files.
- *
- * If `primaryScreenshots` is empty (e.g. for free-form replay invocations or
- * when zero screenshots actually diverged) the agent should fall back to the
- * `screenshot-index.json` and `dom-diff-index.json` sidecars in `debug-data/`.
- */
 export interface InvestigationFocus {
+  /**
+   * - `replay-diff` -- focus is the screenshots that actually diverged.
+   * - `screenshot` -- focus is the single screenshot named via `--screenshot`.
+   * - `other` -- single replay, free-form replays, or no diffs to anchor on;
+   *   agent should fall back to the sidecars.
+   */
   kind: InvestigationKind;
-  /** Screenshots the agent should investigate first. Bounded; see `MAX_FOCUS_SCREENSHOTS`. */
+  /** Screenshots the agent should investigate first. Capped at 50 entries. */
   primaryScreenshots: FocusScreenshot[];
   /** Sorted, deduplicated event numbers covering `primaryScreenshots`. */
   primaryEventNumbers: number[];
   /**
-   * Virtual-time range (ms, inclusive) covering `primaryScreenshots` across
+   * Inclusive virtual-time range (ms) covering `primaryScreenshots` across
    * head and base. `null` when no entry has a virtual time.
    */
   primaryVtRange: { start: number; end: number } | null;
   /**
-   * Total count of diffing screenshots discovered in the workspace, before
-   * the {@link MAX_FOCUS_SCREENSHOTS} cap is applied. Lets the agent know
-   * whether `primaryScreenshots` is truncated.
+   * Total diffing screenshots discovered before the cap. If this is larger
+   * than `primaryScreenshots.length`, the focus is truncated and the agent
+   * should consult `screenshot-index.json` for the full list.
    */
   totalDiffingScreenshots: number;
 }
 
-/**
- * Reference written into `context.json` pointing the agent at a sidecar file
- * containing the full unfiltered map (e.g. `screenshot-index.json`,
- * `dom-diff-index.json`).
- */
+/** Reference to a sidecar file written next to `context.json`. */
 export interface SidecarRef {
   /** Path relative to `debug-data/`. */
   $ref: string;

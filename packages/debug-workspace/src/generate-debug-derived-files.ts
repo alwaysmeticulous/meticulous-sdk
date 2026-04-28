@@ -1,4 +1,9 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "fs";
 import { join } from "path";
 import chalk from "chalk";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
@@ -66,7 +71,8 @@ const generateTimelineNdjson = (
   if (existsSync(ndjsonPath)) {
     return;
   }
-  const lines = entries.map((entry) => JSON.stringify(entry)).join("\n") + "\n";
+  const lines =
+    entries.map((entry) => JSON.stringify(entry)).join("\n") + "\n";
   writeFileSync(ndjsonPath, lines, "utf-8");
 };
 
@@ -447,7 +453,9 @@ const formatScreenshotIdentifier = (identifier: unknown): string => {
   return String(identifier);
 };
 
-const getScreenshotIdentifierString = (entry: TimelineEntry): string | null => {
+const getScreenshotIdentifierString = (
+  entry: TimelineEntry,
+): string | null => {
   const id = entry.data?.identifier;
   if (id == null) {
     return null;
