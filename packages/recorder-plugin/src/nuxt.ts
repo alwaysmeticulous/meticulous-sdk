@@ -18,7 +18,7 @@
  * });
  * ```
  */
-import { defineNuxtModule } from "@nuxt/kit";
+import { defineNuxtModule, type useNuxt } from "@nuxt/kit";
 import { resolveOptions } from "./core/options";
 import { shouldInject } from "./core/should-inject";
 import type { EnabledContext, Options } from "./types";
@@ -28,7 +28,7 @@ export default defineNuxtModule<Options>({
     name: "@alwaysmeticulous/recorder-plugin",
     configKey: "meticulousRecorder",
   },
-  setup(options: Options, nuxt) {
+  setup(options: Options, nuxt: ReturnType<typeof useNuxt>) {
     const resolved = resolveOptions(options);
 
     const isProduction = !nuxt.options.dev;
