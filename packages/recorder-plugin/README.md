@@ -28,11 +28,11 @@ pnpm add -D @alwaysmeticulous/recorder-plugin
 
 ```ts
 // vite.config.ts
-import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/vite";
+import meticulous from "@alwaysmeticulous/recorder-plugin/vite";
 
 export default defineConfig({
   plugins: [
-    RecorderPlugin({
+    meticulous({
       recordingToken: "<your-recording-token>",
     }),
   ],
@@ -46,11 +46,11 @@ export default defineConfig({
 
 ```js
 // webpack.config.mjs
-import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/webpack";
+import meticulous from "@alwaysmeticulous/recorder-plugin/webpack";
 
 export default {
   plugins: [
-    RecorderPlugin({ recordingToken: "<your-recording-token>" }),
+    meticulous({ recordingToken: "<your-recording-token>" }),
   ],
 };
 ```
@@ -66,11 +66,11 @@ present, and otherwise falls back to rewriting any emitted `.html` assets.
 
 ```js
 // rspack.config.mjs
-import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/rspack";
+import meticulous from "@alwaysmeticulous/recorder-plugin/rspack";
 
 export default {
   plugins: [
-    RecorderPlugin({ recordingToken: "<your-recording-token>" }),
+    meticulous({ recordingToken: "<your-recording-token>" }),
   ],
 };
 ```
@@ -80,13 +80,13 @@ For [rsbuild](https://rsbuild.dev/), pass the plugin through `tools.rspack`:
 ```ts
 // rsbuild.config.ts
 import { defineConfig } from "@rsbuild/core";
-import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/rspack";
+import meticulous from "@alwaysmeticulous/recorder-plugin/rspack";
 
 export default defineConfig({
   tools: {
     rspack: {
       plugins: [
-        RecorderPlugin({ recordingToken: "<your-recording-token>" }),
+        meticulous({ recordingToken: "<your-recording-token>" }),
       ],
     },
   },
@@ -138,7 +138,7 @@ webpack/rspack `mode === "production"`). Override it via `attributes` if you
 need different behaviour:
 
 ```ts
-RecorderPlugin({
+meticulous({
   recordingToken: "<your-recording-token>",
   attributes: {
     "data-is-production-environment": process.env.MY_ENV === "prod" ? "true" : "false",
@@ -149,13 +149,13 @@ RecorderPlugin({
 ### Controlling when the recorder loads
 
 ```ts
-RecorderPlugin({
+meticulous({
   recordingToken: "<your-recording-token>",
   // Always inject — useful in staging.
   enabled: "always",
 });
 
-RecorderPlugin({
+meticulous({
   recordingToken: "<your-recording-token>",
   // Custom predicate.
   enabled: (ctx) => ctx.framework === "vite" && ctx.mode !== "test",
@@ -187,7 +187,7 @@ placeholder and switch `inject` to `"replace"`:
 ```
 
 ```ts
-RecorderPlugin({
+meticulous({
   recordingToken: "<your-recording-token>",
   inject: "replace",
   // placeholderAttribute defaults to "data-meticulous"
