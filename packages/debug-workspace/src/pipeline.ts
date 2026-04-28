@@ -5,12 +5,9 @@ import chalk from "chalk";
 import { getDebugSessionsDir } from "./debug-constants";
 import { DebugContext } from "./debug.types";
 import { downloadDebugData } from "./download-debug-data";
-import type { DomDiffMap } from "./fetch-dom-diffs";
 import {
   generateDebugWorkspace,
-  FileMetadataEntry,
-  ScreenshotMapEntry,
-  ReplayComparisonEntry,
+  type WriteContextJson,
 } from "./generate-debug-workspace";
 import { resolveDebugContext } from "./resolve-debug-context";
 
@@ -32,17 +29,7 @@ export interface DebugPipelineOptions {
     | ((ctx: DebugContext, debugDataDir: string) => void | Promise<void>)
     | undefined;
   additionalTemplatesDir?: string | undefined;
-  writeContextJson?:
-    | ((
-        debugContext: DebugContext,
-        workspaceDir: string,
-        fileMetadata: FileMetadataEntry[],
-        projectRepoDir: string | undefined,
-        screenshotMap: Record<string, ScreenshotMapEntry>,
-        replayComparison: ReplayComparisonEntry[],
-        domDiffMap: DomDiffMap,
-      ) => void)
-    | undefined;
+  writeContextJson?: WriteContextJson | undefined;
   onWorkspaceReady?:
     | ((workspaceDir: string, projectRepoDir: string | undefined) => void)
     | undefined;

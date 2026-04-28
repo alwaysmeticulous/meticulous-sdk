@@ -15,10 +15,12 @@ import { basename, dirname, join } from "path";
 import { MeticulousClient } from "@alwaysmeticulous/client";
 import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import chalk from "chalk";
+import { computeInvestigationFocus } from "./compute-investigation-focus";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import { DebugContext } from "./debug.types";
 import { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
 import { fetchDomDiffs, type DomDiffMap } from "./fetch-dom-diffs";
+import type { InvestigationFocus, SidecarRef } from "./focus.types";
 import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
 import { screenshotIdentifierToFilename } from "./screenshot-identifier";
 
@@ -74,6 +76,48 @@ export interface ReplayComparisonEntry {
 
 const TEMPLATES_DIR = join(__dirname, "templates");
 
+/** Filenames of sidecars written next to `context.json` under `debug-data/`. */
+const SCREENSHOT_INDEX_FILENAME = "screenshot-index.json";
+const DOM_DIFF_INDEX_FILENAME = "dom-diff-index.json";
+
+/**
+ * Arguments passed to a {@link WriteContextJson} implementation. Bundled into
+ * a single object so the SDK can add new fields without breaking existing
+ * overrides.
+ */
+export interface WriteContextJsonArgs {
+  debugContext: DebugContext;
+  workspaceDir: string;
+  fileMetadata: FileMetadataEntry[];
+  projectRepoDir: string | undefined;
+  /**
+   * Focus-scoped screenshot map (small, suitable for inlining). See
+   * {@link screenshotMapSidecar} for the unfiltered map.
+   */
+  screenshotMap: Record<string, ScreenshotMapEntry>;
+  /**
+   * Reference to the sidecar containing the full unfiltered screenshot map.
+   * Always written next to `context.json` regardless of whether `screenshotMap`
+   * is filtered.
+   */
+  screenshotMapSidecar: SidecarRef;
+  replayComparison: ReplayComparisonEntry[];
+  /**
+   * Focus-scoped DOM-diff map (only entries with `diffPath != null`). See
+   * {@link domDiffMapSidecar} for the unfiltered map.
+   */
+  domDiffMap: DomDiffMap;
+  /**
+   * Reference to the sidecar containing the full unfiltered DOM-diff map
+   * (including entries where DOMs were identical or skipped). Always written.
+   */
+  domDiffMapSidecar: SidecarRef;
+  /** Investigation focus computed for this workspace. */
+  investigationFocus: InvestigationFocus;
+}
+
+export type WriteContextJson = (args: WriteContextJsonArgs) => void;
+
 export interface GenerateDebugWorkspaceOptions {
   client: MeticulousClient;
   debugContext: DebugContext;
@@ -81,17 +125,7 @@ export interface GenerateDebugWorkspaceOptions {
   projectRepoDir: string | undefined;
   maxConcurrency?: number | undefined;
   additionalTemplatesDir?: string | undefined;
-  writeContextJson?:
-    | ((
-        debugContext: DebugContext,
-        workspaceDir: string,
-        fileMetadata: FileMetadataEntry[],
-        projectRepoDir: string | undefined,
-        screenshotMap: Record<string, ScreenshotMapEntry>,
-        replayComparison: ReplayComparisonEntry[],
-        domDiffMap: DomDiffMap,
-      ) => void)
-    | undefined;
+  writeContextJson?: WriteContextJson | undefined;
 }
 
 export const generateDebugWorkspace = async (
@@ -126,15 +160,28 @@ export const generateDebugWorkspace = async (
   const fileMetadata = collectFileMetadata(debugContext, workspaceDir);
 
   const writeCtx = options.writeContextJson ?? defaultWriteContextJson;
-  writeCtx(
+  writeCtx({
     debugContext,
     workspaceDir,
     fileMetadata,
-    options.projectRepoDir,
+    projectRepoDir: options.projectRepoDir,
     screenshotMap,
+    screenshotMapSidecar: {
+      $ref: SCREENSHOT_INDEX_FILENAME,
+      count: Object.keys(screenshotMap).length,
+    },
     replayComparison,
     domDiffMap,
-  );
+    domDiffMapSidecar: {
+      $ref: DOM_DIFF_INDEX_FILENAME,
+      count: Object.keys(domDiffMap).length,
+    },
+    investigationFocus: computeInvestigationFocus({
+      debugContext,
+      screenshotMap,
+      workspaceDir,
+    }),
+  });
 
   copyClaudeSubdir(workspaceDir, "rules", options.additionalTemplatesDir);
   copyClaudeSubdir(workspaceDir, "hooks", options.additionalTemplatesDir, {
@@ -1981,15 +2028,20 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
 // Context JSON generation (default implementation)
 // ---------------------------------------------------------------------------
 
-const defaultWriteContextJson = (
-  debugContext: DebugContext,
-  workspaceDir: string,
-  fileMetadata: FileMetadataEntry[],
-  projectRepoDir: string | undefined,
-  screenshotMap: Record<string, ScreenshotMapEntry>,
-  replayComparison: ReplayComparisonEntry[],
-  domDiffMap: DomDiffMap,
-): void => {
+const defaultWriteContextJson: WriteContextJson = (args) => {
+  const {
+    debugContext,
+    workspaceDir,
+    fileMetadata,
+    projectRepoDir,
+    screenshotMap,
+    screenshotMapSidecar,
+    replayComparison,
+    domDiffMap,
+    domDiffMapSidecar,
+    investigationFocus,
+  } = args;
+
   const headIds = new Set(debugContext.replayDiffs.map((d) => d.headReplayId));
   const baseIds = new Set(debugContext.replayDiffs.map((d) => d.baseReplayId));
 
@@ -2015,6 +2067,7 @@ const defaultWriteContextJson = (
     commitSha: debugContext.commitSha,
     baseCommitSha: debugContext.baseCommitSha,
     screenshot: debugContext.screenshot,
+    investigationFocus,
     replayDiffs: debugContext.replayDiffs.map((d) => ({
       id: d.id,
       headReplayId: d.headReplayId,
@@ -2025,8 +2078,10 @@ const defaultWriteContextJson = (
     replays: { head: headReplays, base: baseReplays, other: otherReplays },
     sessions: debugContext.sessionIds,
     screenshotMap,
+    screenshotMapSidecar,
     replayComparison,
     domDiffMap,
+    domDiffMapSidecar,
     paths: {
       replays: "replays/",
       sessions: "sessions/",
@@ -2038,8 +2093,10 @@ const defaultWriteContextJson = (
       assetsDiffs: "assets-diffs/",
       timelineSummaries: "timeline-summaries/",
       screenshotContext: "screenshot-context/",
+      screenshotIndex: SCREENSHOT_INDEX_FILENAME,
       domDiffs: "dom-diffs/",
       domDiffsSummary: "dom-diffs/*.summary.txt",
+      domDiffIndex: DOM_DIFF_INDEX_FILENAME,
       prDiff: "pr-diff.txt",
       formattedAssets: "formatted-assets/",
       testRun: "test-run/",

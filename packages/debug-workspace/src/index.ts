@@ -18,6 +18,8 @@ export {
   type FileMetadataEntry,
   type ScreenshotMapEntry,
   type ReplayComparisonEntry,
+  type WriteContextJson,
+  type WriteContextJsonArgs,
 } from "./generate-debug-workspace";
 export {
   fetchDomDiffs,
@@ -25,5 +27,16 @@ export {
   type DomDiffMapEntry,
   type FetchDomDiffsOptions,
 } from "./fetch-dom-diffs";
+export type {
+  InvestigationFocus,
+  InvestigationKind,
+  FocusScreenshot,
+  SidecarRef,
+} from "./focus.types";
+export {
+  computeInvestigationFocus,
+  MAX_FOCUS_SCREENSHOTS,
+  NEIGHBOR_EVENT_RADIUS,
+} from "./compute-investigation-focus";
 export { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
 export { runDebugPipeline, type DebugPipelineOptions } from "./pipeline";
