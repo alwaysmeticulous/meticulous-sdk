@@ -317,14 +317,20 @@ describe("computeInvestigationFocus", () => {
 // helpers
 // ---------------------------------------------------------------------------
 
+interface DebugContextOverrides {
+  testRunId?: string | undefined;
+  replayDiffs?: Array<{
+    id: string;
+    headReplayId: string;
+    baseReplayId: string;
+  }>;
+  replayIds?: string[];
+  sessionIds?: string[];
+  screenshot?: string | undefined;
+}
+
 const makeDebugContext = (
-  overrides: Partial<DebugContext> & {
-    replayDiffs?: Array<{
-      id: string;
-      headReplayId: string;
-      baseReplayId: string;
-    }>;
-  } = {},
+  overrides: DebugContextOverrides = {},
 ): DebugContext => {
   const replayDiffs = (overrides.replayDiffs ?? []).map((d) => ({
     id: d.id,

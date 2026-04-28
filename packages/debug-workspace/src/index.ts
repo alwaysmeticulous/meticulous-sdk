@@ -38,5 +38,12 @@ export {
   MAX_FOCUS_SCREENSHOTS,
   NEIGHBOR_EVENT_RADIUS,
 } from "./compute-investigation-focus";
+export {
+  splitMapsForFocus,
+  type SplitMapsArgs,
+  type SplitMapsResult,
+  SCREENSHOT_INDEX_SIDECAR_FILENAME,
+  DOM_DIFF_INDEX_SIDECAR_FILENAME,
+} from "./split-maps-for-focus";
 export { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
 export { runDebugPipeline, type DebugPipelineOptions } from "./pipeline";

@@ -169,18 +169,39 @@ to diffing the two `screenshots/<baseName>.html` files directly.
 
 ## Key `context.json` fields
 
-- `screenshotMap` -- maps each screenshot filename to its virtual timestamp and event number.
-  Use this to correlate e.g. `screenshot-after-event-00673.png` with a timeline position.
+- `investigationFocus` -- **your starting point.** Tells you what the user is investigating
+  and which screenshots to anchor on. Has fields:
+  - `kind` -- one of `replay-diff`, `screenshot`, `single-replay`, `free-form-replays`.
+  - `primaryScreenshots` -- the screenshots you should look at first. Each entry has
+    `filename`, `eventNumber`, `headReplayId`, `baseReplayId`, head/base virtual times,
+    `mismatchFraction`/`mismatchPercent`, `changedSectionsClassNames`, and
+    `isNeighbor` (`true` for ±2 event-number context, `false` for actually-diffing
+    screenshots). Bounded at 50 entries.
+  - `primaryEventNumbers` / `primaryVtRange` -- event numbers and virtual-time range
+    covered by `primaryScreenshots`. Useful for narrowing log-search ranges.
+  - `totalDiffingScreenshots` -- total diffing count before the cap. If this is larger
+    than `primaryScreenshots.filter(s => !s.isNeighbor).length`, the focus is truncated
+    and you should consult the sidecars to enumerate the rest.
+- `screenshotMap` -- focus-scoped: contains only the entries corresponding to
+  `investigationFocus.primaryScreenshots`. Sufficient for most investigations. Maps each
+  screenshot to its virtual timestamp and event number.
+- `screenshotMapSidecar` -- `{ $ref, count }` pointing at `debug-data/screenshot-index.json`,
+  the **full unfiltered map** with every screenshot from every replay. Read this if
+  `investigationFocus` is empty or you need a screenshot outside the focus set. Often
+  large -- prefer `Grep` over `Read`.
 - `replayComparison` -- side-by-side per-replay stats (events, network requests, animation
   frames, virtual time, screenshots). Scan for head-vs-base drift.
-- `domDiffMap` -- keyed by `"<headReplayId>-vs-<baseReplayId>/<screenshotBaseName>"`. Each
-  entry carries `diffPath` (3-line-context), `fullDiffPath` (full-file-context),
-  `totalHunks`, `bytes`, and `url`. Both paths are `null` when HEAD and BASE DOMs were
-  identical. `fullDiffPath` alone can also be `null` when the full-context fetch failed
-  while the canonical succeeded — in that case `diffPath` is non-null and still usable.
-  Screenshots that are only-in-one-side, `skipped-error`, or `skipped-unsupported` have
-  **no entry** in the map; consult the per-pair `.summary.txt` for the full list. Empty
-  on the `--baseReplayId` single-replay path.
+- `domDiffMap` -- focus-scoped: contains only entries with a non-null `diffPath` (i.e.
+  pairs that actually differ). Keyed by
+  `"<headReplayId>-vs-<baseReplayId>/<screenshotBaseName>"`. Each entry carries `diffPath`
+  (3-line-context), `fullDiffPath` (full-file-context), `totalHunks`, `bytes`, and `url`.
+  `fullDiffPath` can be `null` when the full-context fetch failed while the canonical
+  succeeded — `diffPath` is non-null and still usable in that case. Screenshots that are
+  only-in-one-side, `skipped-error`, or `skipped-unsupported` have **no entry**; consult
+  the per-pair `dom-diffs/*.summary.txt` for the full list.
+- `domDiffMapSidecar` -- `{ $ref, count }` pointing at `debug-data/dom-diff-index.json`,
+  the **full unfiltered map** including identical pairs (`diffPath: null`). Read this only
+  if you need to confirm a screenshot's DOM was identical or to walk every entry.
 - `fileMetadata` -- byte sizes and line counts for key files. Check this before reading
   anything large; for files over ~5000 lines prefer grep/search or ranged reads.
 
@@ -192,12 +213,20 @@ replay), and drop into phase 4 only as needed.
 
 ### 1. Orient
 
-1. **Read `debug-data/context.json`** for IDs, statuses, file paths, `screenshotMap`,
-   `replayComparison`, and `fileMetadata`. If a `screenshot` field is present, that's the
-   specific screenshot the user wants to investigate -- use `screenshotMap` to find its
-   virtual timestamp and focus analysis on events leading up to it.
+1. **Inspect `investigationFocus`** in `context.json` (already loaded into context).
+   `investigationFocus.kind` tells you the shape of the investigation:
+   - `screenshot` -- the user named one screenshot. `primaryScreenshots[0]` is your
+     anchor; focus log analysis on events around that screenshot's virtual time.
+   - `replay-diff` -- focus on the entries in `primaryScreenshots` where
+     `isNeighbor === false`; these are the actually-diffing screenshots. The `isNeighbor`
+     entries are ±2 event-number context, useful for situating the diff.
+   - `single-replay` / `free-form-replays` -- no automatic focus; fall back to
+     `screenshot-index.json` (sidecar) and `replayComparison`.
 2. **Scan `replayComparison`** for head-vs-base drift signals (event counts, animation
    frames, virtual time, screenshot count).
+3. **Only consult the sidecars** (`screenshot-index.json`, `dom-diff-index.json`) when
+   you need a screenshot outside `primaryScreenshots`, or when `investigationFocus` is
+   empty. Sidecars can be large -- `Grep` rather than `Read` them.
 
 ### 2. Investigate a diff (head vs base)
 

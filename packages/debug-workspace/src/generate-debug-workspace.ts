@@ -23,6 +23,11 @@ import { fetchDomDiffs, type DomDiffMap } from "./fetch-dom-diffs";
 import type { InvestigationFocus, SidecarRef } from "./focus.types";
 import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
 import { screenshotIdentifierToFilename } from "./screenshot-identifier";
+import {
+  DOM_DIFF_INDEX_SIDECAR_FILENAME,
+  SCREENSHOT_INDEX_SIDECAR_FILENAME,
+  splitMapsForFocus,
+} from "./split-maps-for-focus";
 
 interface TimelineEntry {
   kind: string;
@@ -75,10 +80,6 @@ export interface ReplayComparisonEntry {
 }
 
 const TEMPLATES_DIR = join(__dirname, "templates");
-
-/** Filenames of sidecars written next to `context.json` under `debug-data/`. */
-const SCREENSHOT_INDEX_FILENAME = "screenshot-index.json";
-const DOM_DIFF_INDEX_FILENAME = "dom-diff-index.json";
 
 /**
  * Arguments passed to a {@link WriteContextJson} implementation. Bundled into
@@ -159,28 +160,36 @@ export const generateDebugWorkspace = async (
   const replayComparison = buildReplayComparison(debugContext, workspaceDir);
   const fileMetadata = collectFileMetadata(debugContext, workspaceDir);
 
+  const investigationFocus = computeInvestigationFocus({
+    debugContext,
+    screenshotMap,
+    workspaceDir,
+  });
+  const split = splitMapsForFocus({
+    workspaceDir,
+    screenshotMap,
+    domDiffMap,
+    investigationFocus,
+  });
+
   const writeCtx = options.writeContextJson ?? defaultWriteContextJson;
   writeCtx({
     debugContext,
     workspaceDir,
     fileMetadata,
     projectRepoDir: options.projectRepoDir,
-    screenshotMap,
+    screenshotMap: split.focusScreenshotMap,
     screenshotMapSidecar: {
-      $ref: SCREENSHOT_INDEX_FILENAME,
-      count: Object.keys(screenshotMap).length,
+      $ref: SCREENSHOT_INDEX_SIDECAR_FILENAME,
+      count: split.screenshotIndexCount,
     },
     replayComparison,
-    domDiffMap,
+    domDiffMap: split.focusDomDiffMap,
     domDiffMapSidecar: {
-      $ref: DOM_DIFF_INDEX_FILENAME,
-      count: Object.keys(domDiffMap).length,
+      $ref: DOM_DIFF_INDEX_SIDECAR_FILENAME,
+      count: split.domDiffIndexCount,
     },
-    investigationFocus: computeInvestigationFocus({
-      debugContext,
-      screenshotMap,
-      workspaceDir,
-    }),
+    investigationFocus,
   });
 
   copyClaudeSubdir(workspaceDir, "rules", options.additionalTemplatesDir);
@@ -2093,10 +2102,10 @@ const defaultWriteContextJson: WriteContextJson = (args) => {
       assetsDiffs: "assets-diffs/",
       timelineSummaries: "timeline-summaries/",
       screenshotContext: "screenshot-context/",
-      screenshotIndex: SCREENSHOT_INDEX_FILENAME,
+      screenshotIndex: SCREENSHOT_INDEX_SIDECAR_FILENAME,
       domDiffs: "dom-diffs/",
       domDiffsSummary: "dom-diffs/*.summary.txt",
-      domDiffIndex: DOM_DIFF_INDEX_FILENAME,
+      domDiffIndex: DOM_DIFF_INDEX_SIDECAR_FILENAME,
       prDiff: "pr-diff.txt",
       formattedAssets: "formatted-assets/",
       testRun: "test-run/",
