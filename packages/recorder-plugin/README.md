@@ -1,14 +1,15 @@
 # @alwaysmeticulous/recorder-plugin
 
-Template package for a Meticulous [unplugin](https://github.com/unjs/unplugin) — a single plugin that ships entry
-points for Vite, Webpack, Rspack, Rollup, Rolldown, esbuild, and Farm.
+A bundler plugin that injects the [Meticulous recorder](https://app.meticulous.ai/docs/how-to/recorder-script)
+script into the `<head>` of your app's HTML, with one entry point per
+supported bundler/framework.
 
-This package is scaffolded as a starting point. The transform currently injects a marker comment at the top of every
-matched module so the wiring can be verified end-to-end; replace the body of `transform.handler` in `src/index.ts`
-with your real logic.
+By default, the recorder is only injected during development/preview builds —
+matching Meticulous's recommendation to record real sessions in staging or
+production via an explicit opt-in.
 
-> This package is ESM-only (`"type": "module"`, built with [`tsdown`](https://tsdown.dev/)) and follows
-> [`unplugin@3`](https://github.com/unjs/unplugin). Requires Node.js 20.19+.
+> Built on top of [`unplugin@3`](https://github.com/unjs/unplugin) and
+> [`tsdown`](https://tsdown.dev/). ESM-only. Requires Node.js 20.19+.
 
 ## Installing
 
@@ -22,7 +23,7 @@ pnpm add -D @alwaysmeticulous/recorder-plugin
 
 ## Usage
 
-<details>
+<details open>
 <summary>Vite</summary>
 
 ```ts
@@ -30,49 +31,11 @@ pnpm add -D @alwaysmeticulous/recorder-plugin
 import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/vite";
 
 export default defineConfig({
-  plugins: [RecorderPlugin()],
-});
-```
-
-</details>
-
-<details>
-<summary>Rollup</summary>
-
-```ts
-// rollup.config.js
-import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/rollup";
-
-export default {
-  plugins: [RecorderPlugin()],
-};
-```
-
-</details>
-
-<details>
-<summary>Rolldown / tsdown</summary>
-
-```ts
-// rolldown.config.ts / tsdown.config.ts
-import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/rolldown";
-
-export default {
-  plugins: [RecorderPlugin()],
-};
-```
-
-</details>
-
-<details>
-<summary>esbuild</summary>
-
-```ts
-import { build } from "esbuild";
-import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/esbuild";
-
-build({
-  plugins: [RecorderPlugin()],
+  plugins: [
+    RecorderPlugin({
+      recordingToken: "<your-recording-token>",
+    }),
+  ],
 });
 ```
 
@@ -86,69 +49,70 @@ build({
 import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/webpack";
 
 export default {
-  /* ... */
-  plugins: [RecorderPlugin()],
+  plugins: [
+    RecorderPlugin({ recordingToken: "<your-recording-token>" }),
+  ],
 };
 ```
 
-If your `webpack.config.js` is still CommonJS, rename it to `.mjs` or load the plugin via dynamic `import()`.
+The plugin integrates with
+[`html-webpack-plugin`](https://github.com/jantimon/html-webpack-plugin) when
+present, and otherwise falls back to rewriting any emitted `.html` assets.
 
 </details>
 
 <details>
-<summary>Rspack</summary>
+<summary>Rspack (and rsbuild)</summary>
 
 ```js
 // rspack.config.mjs
 import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/rspack";
 
 export default {
-  /* ... */
-  plugins: [RecorderPlugin()],
+  plugins: [
+    RecorderPlugin({ recordingToken: "<your-recording-token>" }),
+  ],
 };
 ```
 
-</details>
-
-<details>
-<summary>Farm</summary>
+For [rsbuild](https://rsbuild.dev/), pass the plugin through `tools.rspack`:
 
 ```ts
-// farm.config.ts
-import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/farm";
+// rsbuild.config.ts
+import { defineConfig } from "@rsbuild/core";
+import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/rspack";
 
-export default {
-  plugins: [RecorderPlugin()],
-};
-```
-
-</details>
-
-<details>
-<summary>Bun</summary>
-
-```ts
-import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/bun";
-
-Bun.build({
-  entrypoints: ["./src/index.ts"],
-  plugins: [RecorderPlugin()],
+export default defineConfig({
+  tools: {
+    rspack: {
+      plugins: [
+        RecorderPlugin({ recordingToken: "<your-recording-token>" }),
+      ],
+    },
+  },
 });
 ```
 
 </details>
 
 <details>
-<summary>Unloader</summary>
+<summary>Nuxt</summary>
 
 ```ts
-// unloader.config.ts
-import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/unloader";
-
-export default {
-  plugins: [RecorderPlugin()],
-};
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: [
+    [
+      "@alwaysmeticulous/recorder-plugin/nuxt",
+      { recordingToken: "<your-recording-token>" },
+    ],
+  ],
+});
 ```
+
+The Nuxt module installs the Vite plugin (the default Nuxt 3 bundler) and the
+webpack plugin (legacy Nuxt builds), so the recorder script is injected into
+the rendered HTML regardless of which bundler Nuxt is using.
 
 </details>
 
@@ -156,13 +120,64 @@ export default {
 
 ```ts
 import type { Options } from "@alwaysmeticulous/recorder-plugin";
-
-const options: Options = {
-  // Files to apply the transform to. Defaults to JS/TS source files.
-  include: [/\.[cm]?[jt]sx?$/],
-  // Files to skip. Defaults to anything inside `node_modules`.
-  exclude: [/node_modules/],
-  // When the plugin runs relative to other plugins.
-  enforce: "pre",
-};
 ```
+
+| Option                 | Type                                                       | Default                                            | Description |
+| ---------------------- | ---------------------------------------------------------- | -------------------------------------------------- | ----------- |
+| `recordingToken`       | `string` (required)                                        | —                                                  | Your Meticulous recording token. Emitted as `data-recording-token` on the injected `<script>`. |
+| `enabled`              | `"development" \| "always" \| "never" \| (ctx) => boolean` | `"development"`                                    | When to inject. `"development"` only injects during dev/preview builds (Vite `command === "serve"` or webpack/rspack `mode !== "production"`). Pass a function for full control. |
+| `inject`               | `"auto" \| "replace"`                                      | `"auto"`                                           | `"auto"` prepends a new `<script>` as the first child of `<head>`. `"replace"` swaps a placeholder script tag (see below). |
+| `placeholderAttribute` | `string`                                                   | `"data-meticulous"`                                | Attribute name used to find the placeholder when `inject: "replace"`. |
+| `snippetUrl`           | `string`                                                   | `"https://snippet.meticulous.ai/v1/meticulous.js"` | Override the snippet URL. |
+| `attributes`           | `Record<string, string \| boolean \| null \| undefined>`   | `{}`                                               | Extra attributes on the `<script>` tag (e.g. `nonce`, `data-is-production-environment`). `true` emits a boolean attribute; `false`/`null`/`undefined` skip it. |
+
+### Controlling when the recorder loads
+
+```ts
+RecorderPlugin({
+  recordingToken: "<your-recording-token>",
+  // Always inject — useful in staging.
+  enabled: "always",
+});
+
+RecorderPlugin({
+  recordingToken: "<your-recording-token>",
+  // Custom predicate.
+  enabled: (ctx) => ctx.framework === "vite" && ctx.mode !== "test",
+});
+```
+
+The predicate receives an `EnabledContext`:
+
+```ts
+interface EnabledContext {
+  framework: "vite" | "webpack" | "rspack";
+  mode?: string;        // Vite mode / webpack mode / NODE_ENV fallback
+  command?: "serve" | "build"; // Vite-only
+  isProduction: boolean;
+}
+```
+
+### Replacing a manually-added placeholder
+
+If you'd rather control where the script lives in your `index.html`, add a
+placeholder and switch `inject` to `"replace"`:
+
+```html
+<!-- index.html -->
+<head>
+  <script data-meticulous></script>
+  <!-- ... -->
+</head>
+```
+
+```ts
+RecorderPlugin({
+  recordingToken: "<your-recording-token>",
+  inject: "replace",
+  // placeholderAttribute defaults to "data-meticulous"
+});
+```
+
+If the placeholder is not found, the plugin falls back to `"auto"` injection
+and emits a build warning.

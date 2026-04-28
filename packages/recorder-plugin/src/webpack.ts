@@ -7,7 +7,7 @@
  * import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/webpack";
  *
  * export default {
- *   plugins: [RecorderPlugin()],
+ *   plugins: [RecorderPlugin({ recordingToken: "<your-token>" })],
  * };
  * ```
  */

@@ -7,7 +7,7 @@
  * import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/vite";
  *
  * export default defineConfig({
- *   plugins: [RecorderPlugin()],
+ *   plugins: [RecorderPlugin({ recordingToken: "<your-token>" })],
  * });
  * ```
  */

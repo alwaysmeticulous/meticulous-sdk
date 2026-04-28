@@ -2,19 +2,14 @@
   "name": "@alwaysmeticulous/recorder-plugin",
   "version": "2.277.0",
   "type": "module",
-  "description": "Meticulous recorder plugin (template) for Vite, Webpack, Rspack, Rollup, Rolldown, esbuild, and Farm via unplugin.",
+  "description": "Meticulous recorder plugin for Vite, Webpack, Rspack, and Nuxt that injects the recorder script into the HTML head.",
   "license": "ISC",
   "exports": {
     ".": "./dist/index.js",
     "./vite": "./dist/vite.js",
     "./webpack": "./dist/webpack.js",
     "./rspack": "./dist/rspack.js",
-    "./rollup": "./dist/rollup.js",
-    "./rolldown": "./dist/rolldown.js",
-    "./esbuild": "./dist/esbuild.js",
-    "./farm": "./dist/farm.js",
-    "./bun": "./dist/bun.js",
-    "./unloader": "./dist/unloader.js",
+    "./nuxt": "./dist/nuxt.js",
     "./types": "./dist/types.js",
     "./package.json": "./package.json"
   },
@@ -27,12 +22,7 @@
     "vite",
     "webpack",
     "rspack",
-    "rollup",
-    "rolldown",
-    "esbuild",
-    "farm",
-    "bun",
-    "unloader"
+    "nuxt"
   ],
   "scripts": {
     "clean": "rimraf dist tsconfig.tsbuildinfo",
@@ -48,19 +38,23 @@
     "unplugin": "^3.0.0"
   },
   "peerDependencies": {
-    "esbuild": "*",
-    "rollup": "^4",
+    "@nuxt/kit": "^3",
+    "@rspack/core": "^1",
     "vite": ">=5",
-    "webpack": "^4 || ^5"
+    "webpack": "^5"
   },
   "peerDependenciesMeta": {
-    "esbuild": { "optional": true },
-    "rollup": { "optional": true },
+    "@nuxt/kit": { "optional": true },
+    "@rspack/core": { "optional": true },
     "vite": { "optional": true },
     "webpack": { "optional": true }
   },
   "devDependencies": {
-    "tsdown": "^0.21.7"
+    "@nuxt/kit": "^3.13.0",
+    "@rspack/core": "^1.0.0",
+    "tsdown": "^0.21.7",
+    "vite": "^7.3.1",
+    "webpack": "^5.106.1"
   },
   "author": {
     "name": "The Meticulous Team",

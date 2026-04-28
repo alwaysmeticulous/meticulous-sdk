@@ -7,7 +7,7 @@
  * import RecorderPlugin from "@alwaysmeticulous/recorder-plugin/rspack";
  *
  * export default {
- *   plugins: [RecorderPlugin()],
+ *   plugins: [RecorderPlugin({ recordingToken: "<your-token>" })],
  * };
  * ```
  */
