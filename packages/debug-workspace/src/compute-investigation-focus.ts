@@ -249,8 +249,7 @@ const collectDiffingScreenshots = (
         },
         filename,
         eventNumber: result.identifier?.eventNumber ?? null,
-        mismatchFraction:
-          result.diffToBaseScreenshot?.mismatchFraction ?? null,
+        mismatchFraction: result.diffToBaseScreenshot?.mismatchFraction ?? null,
         changedSectionsClassNames:
           result.diffToBaseScreenshot?.changedSectionsClassNames ?? [],
       });
@@ -310,10 +309,7 @@ const hydrateDiffFocus = (args: {
   return {
     filename,
     eventNumber:
-      eventNumber ??
-      headEntry?.eventNumber ??
-      baseEntry?.eventNumber ??
-      null,
+      eventNumber ?? headEntry?.eventNumber ?? baseEntry?.eventNumber ?? null,
     headReplayId: diffPair.headReplayId,
     baseReplayId: diffPair.baseReplayId,
     headVirtualTimeStart: headEntry?.virtualTimeStart ?? null,
@@ -461,9 +457,7 @@ const finalize = (
     ),
   );
   const primaryVtRange =
-    vts.length > 0
-      ? { start: Math.min(...vts), end: Math.max(...vts) }
-      : null;
+    vts.length > 0 ? { start: Math.min(...vts), end: Math.max(...vts) } : null;
 
   return {
     kind,

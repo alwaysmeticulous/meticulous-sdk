@@ -14,6 +14,7 @@ export {
 } from "./download-debug-data";
 export {
   generateDebugWorkspace,
+  defaultWriteContextJson,
   type GenerateDebugWorkspaceOptions,
   type FileMetadataEntry,
   type ScreenshotMapEntry,

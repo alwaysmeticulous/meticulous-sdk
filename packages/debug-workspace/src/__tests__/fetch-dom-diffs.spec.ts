@@ -113,9 +113,7 @@ const makeDebugContext = (
 
 const fakeClient = {} as MeticulousClient;
 
-const diffResponse = (
-  contents: string[],
-): ScreenshotDomDiffResponse => ({
+const diffResponse = (contents: string[]): ScreenshotDomDiffResponse => ({
   diffs: contents.map((content, index) => ({ index, content })),
   totalDiffs: contents.length,
 });
@@ -239,9 +237,7 @@ describe("fetchDomDiffs", () => {
         "dom-diffs/headF-vs-baseF-screenshot-after-event-00001.diff",
       );
       expect(entry?.fullDiffPath).toBeNull();
-      expect(
-        warnings.some((w) => /full-context DOM diff/.test(w)),
-      ).toBe(true);
+      expect(warnings.some((w) => /full-context DOM diff/.test(w))).toBe(true);
     } finally {
       console.warn = originalWarn;
     }
@@ -335,9 +331,7 @@ describe("fetchDomDiffs", () => {
       identifier: { type: "end-state" },
       url: "https://example.com/err",
     });
-    const fetchScreenshotDiff = vi
-      .fn()
-      .mockRejectedValue(new Error("boom"));
+    const fetchScreenshotDiff = vi.fn().mockRejectedValue(new Error("boom"));
 
     const warnings: string[] = [];
     const logs: string[] = [];
@@ -365,9 +359,9 @@ describe("fetchDomDiffs", () => {
           ),
         ),
       ).toBe(false);
-      expect(
-        warnings.some((w) => /Could not fetch DOM diff/.test(w)),
-      ).toBe(true);
+      expect(warnings.some((w) => /Could not fetch DOM diff/.test(w))).toBe(
+        true,
+      );
       expect(logs.some((l) => /Skipped .* due to API errors/.test(l))).toBe(
         true,
       );
@@ -489,9 +483,8 @@ describe("fetchDomDiffs", () => {
 
     expect(map).toEqual({});
     expect(fetchScreenshotDiff).not.toHaveBeenCalled();
-    expect(
-      existsSync(join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs")),
-    ).toBe(false);
+    expect(existsSync(join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs"))).toBe(
+      false,
+    );
   });
-
 });

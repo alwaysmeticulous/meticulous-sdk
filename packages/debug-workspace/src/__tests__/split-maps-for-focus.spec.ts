@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-} from "fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -182,9 +176,7 @@ const entry = (
   afterHtmlFilename: overrides.afterHtmlFilename ?? null,
 });
 
-const emptyFocus = (
-  kind: InvestigationFocus["kind"],
-): InvestigationFocus => ({
+const emptyFocus = (kind: InvestigationFocus["kind"]): InvestigationFocus => ({
   kind,
   primaryScreenshots: [],
   primaryEventNumbers: [],

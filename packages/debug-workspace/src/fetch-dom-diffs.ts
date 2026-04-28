@@ -1,9 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  writeFileSync,
-} from "fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import {
   getScreenshotDomDiff,
@@ -13,10 +8,7 @@ import chalk from "chalk";
 import pLimit from "p-limit";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import type { DebugContext } from "./debug.types";
-import {
-  readScreenshotMetadata,
-  readTimelineJson,
-} from "./replay-walk";
+import { readScreenshotMetadata, readTimelineJson } from "./replay-walk";
 import {
   screenshotIdentifierToBaseName,
   screenshotIdentifierToBackendName,
@@ -131,10 +123,7 @@ export const fetchDomDiffs = async (
       pair.baseReplayId,
       "screenshots",
     );
-    if (
-      !existsSync(headScreenshotsDir) ||
-      !existsSync(baseScreenshotsDir)
-    ) {
+    if (!existsSync(headScreenshotsDir) || !existsSync(baseScreenshotsDir)) {
       continue;
     }
 
@@ -433,9 +422,13 @@ const renderPairSummary = (
       row.url ?? "",
     ].join("\t"),
   );
-  const tableHeader = ["screenshot", "status", "hunks", "diff_bytes", "url"].join(
-    "\t",
-  );
+  const tableHeader = [
+    "screenshot",
+    "status",
+    "hunks",
+    "diff_bytes",
+    "url",
+  ].join("\t");
 
   return `${header}\n${[tableHeader, ...tableRows].join("\n")}\n`;
 };

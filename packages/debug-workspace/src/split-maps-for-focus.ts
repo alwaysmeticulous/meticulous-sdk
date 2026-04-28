@@ -63,11 +63,7 @@ const writeScreenshotIndexSidecar = (
   screenshotMap: Record<string, ScreenshotMapEntry>,
 ): void => {
   writeFileSync(
-    join(
-      workspaceDir,
-      DEBUG_DATA_DIRECTORY,
-      SCREENSHOT_INDEX_SIDECAR_FILENAME,
-    ),
+    join(workspaceDir, DEBUG_DATA_DIRECTORY, SCREENSHOT_INDEX_SIDECAR_FILENAME),
     JSON.stringify(screenshotMap, null, 2),
   );
 };
@@ -98,14 +94,10 @@ const filterScreenshotMapToFocus = (
   const focusKeys = new Set<string>();
   for (const screenshot of primaryScreenshots) {
     if (screenshot.headReplayId != null) {
-      focusKeys.add(
-        `head/${screenshot.headReplayId}/${screenshot.filename}`,
-      );
+      focusKeys.add(`head/${screenshot.headReplayId}/${screenshot.filename}`);
     }
     if (screenshot.baseReplayId != null) {
-      focusKeys.add(
-        `base/${screenshot.baseReplayId}/${screenshot.filename}`,
-      );
+      focusKeys.add(`base/${screenshot.baseReplayId}/${screenshot.filename}`);
     }
   }
 

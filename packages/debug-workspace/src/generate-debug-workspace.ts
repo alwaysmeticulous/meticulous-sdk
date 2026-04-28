@@ -801,11 +801,10 @@ const resolveBaseShaFromGit = (
 ): string | undefined => {
   for (const branch of ["origin/main", "origin/master"]) {
     try {
-      const mergeBase = execFileSync(
-        "git",
-        ["merge-base", branch, headSha],
-        { cwd: repoDir, encoding: "utf8" },
-      ).trim();
+      const mergeBase = execFileSync("git", ["merge-base", branch, headSha], {
+        cwd: repoDir,
+        encoding: "utf8",
+      }).trim();
       if (mergeBase) {
         return mergeBase;
       }
@@ -1495,7 +1494,6 @@ const buildScreenshotMap = (
   return map;
 };
 
-
 const generateScreenshotContext = (
   debugContext: DebugContext,
   workspaceDir: string,
@@ -2037,7 +2035,7 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
 // Context JSON generation (default implementation)
 // ---------------------------------------------------------------------------
 
-const defaultWriteContextJson: WriteContextJson = (args) => {
+export const defaultWriteContextJson: WriteContextJson = (args) => {
   const {
     debugContext,
     workspaceDir,

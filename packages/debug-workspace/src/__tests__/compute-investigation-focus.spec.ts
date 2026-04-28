@@ -1,9 +1,4 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -188,9 +183,7 @@ describe("computeInvestigationFocus", () => {
       "screenshot-after-event-00007.png",
       "screenshot-after-event-00008.png",
     ]);
-    const diffEntry = focus.primaryScreenshots.find(
-      (s) => s.eventNumber === 6,
-    );
+    const diffEntry = focus.primaryScreenshots.find((s) => s.eventNumber === 6);
     expect(diffEntry?.isNeighbor).toBe(false);
     expect(diffEntry?.mismatchFraction).toBeCloseTo(0.0042);
     expect(diffEntry?.mismatchPercent).toBe("0.4200%");
@@ -210,8 +203,16 @@ describe("computeInvestigationFocus", () => {
       eventNumbers: [10, 11, 12, 13, 14],
     });
     writeDiffJson(workspace, "diff1", [
-      diffResult({ eventNumber: 11, mismatchPixels: 5, mismatchFraction: 0.001 }),
-      diffResult({ eventNumber: 13, mismatchPixels: 3, mismatchFraction: 0.0005 }),
+      diffResult({
+        eventNumber: 11,
+        mismatchPixels: 5,
+        mismatchFraction: 0.001,
+      }),
+      diffResult({
+        eventNumber: 13,
+        mismatchPixels: 3,
+        mismatchFraction: 0.0005,
+      }),
     ]);
 
     const focus = computeInvestigationFocus({
@@ -224,7 +225,9 @@ describe("computeInvestigationFocus", () => {
       .map((s) => s.eventNumber)
       .sort((a, b) => (a ?? 0) - (b ?? 0));
     expect(eventNumbers).toEqual([10, 11, 12, 13, 14]);
-    expect(focus.primaryScreenshots.filter((s) => !s.isNeighbor)).toHaveLength(2);
+    expect(focus.primaryScreenshots.filter((s) => !s.isNeighbor)).toHaveLength(
+      2,
+    );
   });
 
   it("skips screenshots whose outcome is no-diff and zero mismatchPixels", () => {
