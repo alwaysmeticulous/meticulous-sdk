@@ -49,6 +49,10 @@ export const getRepoUrl = async ({
 /**
  * Response of `GET /api/projects/source-archive-url`. Only returned for
  * projects on the source-code-upload workflow.
+ *
+ * Callers that also need a diff between the resolved head commit and a base
+ * commit should make a separate call to `compare-commits` (already handles
+ * GitHub and GitLab).
  */
 export interface SourceArchiveUrlResponse {
   /** Short-lived presigned GET URL for the `source.tar.gz` in S3. */
@@ -59,12 +63,6 @@ export interface SourceArchiveUrlResponse {
    * backend walks the default branch to find the latest archive).
    */
   resolvedCommitSha: string;
-  /**
-   * Server-computed unified diff between the requested `baseCommitSha` and
-   * `resolvedCommitSha`. `null` when no `baseCommitSha` was passed or the
-   * diff could not be computed.
-   */
-  diff: string | null;
 }
 
 export interface GetSourceArchiveUrlOptions {
@@ -76,20 +74,11 @@ export interface GetSourceArchiveUrlOptions {
    * latest default-branch commit that has an uploaded archive.
    */
   commitSha: string;
-
-  /**
-   * When set, the backend computes a unified diff from `baseCommitSha` to
-   * the resolved head commit via the GitHub API and returns it inlined on
-   * the response, so the consumer can compute edited ranges without a
-   * `.git` directory.
-   */
-  baseCommitSha?: string;
 }
 
 /**
- * Returns the presigned download URL (and server-computed diff) for the
- * uploaded source-code archive at `commitSha`. Backed by
- * `GET /api/projects/source-archive-url`.
+ * Returns the presigned download URL for the uploaded source-code archive
+ * at `commitSha`. Backed by `GET /api/projects/source-archive-url`.
  *
  * Only callable for projects with `usesSourceCodeUploads === true` (the
  * backend returns 403 otherwise). Returns 404 (surfaced as a thrown error)
@@ -100,13 +89,9 @@ export interface GetSourceArchiveUrlOptions {
 export const getSourceArchiveUrl = async ({
   client,
   commitSha,
-  baseCommitSha,
 }: GetSourceArchiveUrlOptions): Promise<SourceArchiveUrlResponse> => {
   const params = new URLSearchParams();
   params.set("commitSha", commitSha);
-  if (baseCommitSha != null) {
-    params.set("baseCommitSha", baseCommitSha);
-  }
   const path = `projects/source-archive-url?${params.toString()}`;
 
   const { data } = await client
