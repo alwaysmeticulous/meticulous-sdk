@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/recorder-plugin",
-  "version": "2.277.0",
+  "version": "2.277.1",
   "type": "module",
   "description": "Meticulous recorder plugin for Vite, Webpack, Rspack, and Nuxt that injects the recorder script into the HTML head.",
   "license": "ISC",
@@ -45,10 +45,18 @@
     "webpack": "^5"
   },
   "peerDependenciesMeta": {
-    "@nuxt/kit": { "optional": true },
-    "@rspack/core": { "optional": true },
-    "vite": { "optional": true },
-    "webpack": { "optional": true }
+    "@nuxt/kit": {
+      "optional": true
+    },
+    "@rspack/core": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    },
+    "webpack": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@nuxt/kit": "^3.13.0",
