@@ -7,13 +7,20 @@ description: Investigate unexpected visual differences between head and base rep
 
 Use this guide when investigating unexpected visual differences between head and base replays.
 
+`investigationFocus` (in `context.json`, already in your context) is your starting
+point -- see `CLAUDE.md` for what its fields mean. The steps below are diff-specific
+guidance that builds on it.
+
 ## Investigation Steps
 
-### 1. Understand the Diffs
+### 1. Understand the Diffs in Detail
 
-- Read the replay diff JSON in `debug-data/diffs/<id>.json`.
-- Check `screenshotDiffResults` for which screenshots differ.
-- Note the diff percentage and pixel count for each screenshot.
+- Read `debug-data/diffs/<id>.summary.json` for the compact per-screenshot summary
+  (mismatch pixel counts, percentages, changed section class names). If
+  `investigationFocus.totalDiffingScreenshots` exceeds `primaryScreenshots.length`,
+  this file is also where to find the full mismatch table.
+- Only open the full `debug-data/diffs/<id>.json` if you need replay metadata or
+  screenshot-assertion config (`screenshotAssertionsOptions`).
 
 ### 2. Correlate with Code Changes
 
@@ -23,8 +30,8 @@ Use this guide when investigating unexpected visual differences between head and
 
 ### 3. Compare Logs at Screenshot Time
 
-- Find the screenshot timestamps in `timeline.json`.
-- Compare what events occurred before each screenshot in head vs base.
+- Use `investigationFocus.primaryEventNumbers` and `primaryVtRange` to scope the search.
+- Look at events around each focus screenshot's virtual time in head vs base.
 - Look for missing or extra events that could cause visual differences.
 
 ### 4. Check for Expected vs Unexpected Diffs
