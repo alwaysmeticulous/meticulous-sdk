@@ -55,7 +55,7 @@ export const getRepoUrl = async ({
  * GitHub and GitLab).
  */
 export interface SourceArchiveUrlResponse {
-  /** Short-lived presigned GET URL for the `source.tar.gz` in S3. */
+  /** Short-lived signed URL the caller can `GET` to download the archive. */
   downloadUrl: string;
   /**
    * The actual commit SHA the archive corresponds to. May differ from the
@@ -77,8 +77,8 @@ export interface GetSourceArchiveUrlOptions {
 }
 
 /**
- * Returns the presigned download URL for the uploaded source-code archive
- * at `commitSha`. Backed by `GET /api/projects/source-archive-url`.
+ * Returns a signed download URL for the uploaded source-code archive at
+ * `commitSha`. Backed by `GET /api/projects/source-archive-url`.
  *
  * Only callable for projects with `usesSourceCodeUploads === true` (the
  * backend returns 403 otherwise). Returns 404 (surfaced as a thrown error)
@@ -121,8 +121,8 @@ export interface RequestSourceCodeUploadUrlResponse {
 }
 
 /**
- * Requests a presigned PUT URL for uploading a `source.tar.gz` archive of
- * the customer's repo at the given commit. Backed by
+ * Requests a short-lived signed URL the caller can `PUT` a `source.tar.gz`
+ * archive of the customer's repo to, for the given commit. Backed by
  * `POST /api/projects/source-code-upload-url`.
  *
  * The backend rejects the call with a 403 when the project is not enabled

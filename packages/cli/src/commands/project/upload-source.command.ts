@@ -20,8 +20,8 @@ interface Options {
 
 /**
  * Packages `--sourceDir` as a `source.tar.gz` archive and uploads it to
- * Meticulous's source-code bucket so Meticulous can use it in place of
- * `git clone` for projects that have source-code uploads enabled.
+ * Meticulous so it can be used in place of `git clone` for projects that
+ * have source-code uploads enabled.
  *
  * Usage (typically from the customer's CI on every commit):
  *
@@ -35,8 +35,7 @@ interface Options {
  */
 export const uploadSourceCommand: CommandModule<unknown, Options> = {
   command: "upload-source",
-  describe:
-    "Upload a source-code archive for a given commit to Meticulous's source-code bucket",
+  describe: "Upload a source-code archive for a given commit to Meticulous",
   builder: {
     apiToken: {
       string: true,
@@ -82,7 +81,7 @@ export const uploadSourceCommand: CommandModule<unknown, Options> = {
 
       const { size } = statSync(archivePath);
       logger.info(
-        `Archive ready: ${(size / (1024 * 1024)).toFixed(2)} MiB. Requesting presigned upload URL...`,
+        `Archive ready: ${(size / (1024 * 1024)).toFixed(2)} MiB. Requesting upload URL...`,
       );
 
       const { uploadUrl } = await requestSourceCodeUploadUrl({
