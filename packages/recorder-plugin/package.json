@@ -1,0 +1,78 @@
+{
+  "name": "@alwaysmeticulous/recorder-plugin",
+  "version": "2.277.0",
+  "type": "module",
+  "description": "Meticulous recorder plugin for Vite, Webpack, Rspack, and Nuxt that injects the recorder script into the HTML head.",
+  "license": "ISC",
+  "exports": {
+    ".": "./dist/index.js",
+    "./vite": "./dist/vite.js",
+    "./webpack": "./dist/webpack.js",
+    "./rspack": "./dist/rspack.js",
+    "./nuxt": "./dist/nuxt.js",
+    "./types": "./dist/types.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "meticulous",
+    "unplugin",
+    "vite",
+    "webpack",
+    "rspack",
+    "nuxt"
+  ],
+  "scripts": {
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "format": "prettier --write src",
+    "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
+    "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
+    "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
+    "depcheck": "depcheck --ignore-patterns=dist",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "unplugin": "^3.0.0"
+  },
+  "peerDependencies": {
+    "@nuxt/kit": "^3",
+    "@rspack/core": "^1",
+    "vite": ">=5",
+    "webpack": "^5"
+  },
+  "peerDependenciesMeta": {
+    "@nuxt/kit": { "optional": true },
+    "@rspack/core": { "optional": true },
+    "vite": { "optional": true },
+    "webpack": { "optional": true }
+  },
+  "devDependencies": {
+    "@nuxt/kit": "^3.13.0",
+    "@rspack/core": "^1.0.0",
+    "tsdown": "^0.21.7",
+    "vite": "^7.3.1",
+    "vitest": "catalog:",
+    "webpack": "^5.106.1"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/recorder-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}
