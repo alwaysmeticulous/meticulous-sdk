@@ -11,10 +11,11 @@ import {
   unlinkSync,
   writeFileSync,
 } from "fs";
-import { basename, dirname, join } from "path";
+import { basename, dirname, extname, join } from "path";
 import { MeticulousClient } from "@alwaysmeticulous/client";
 import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 import chalk from "chalk";
+import { format, type BuiltInParserName } from "prettier";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import { DebugContext } from "./debug.types";
 import { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
@@ -114,7 +115,7 @@ export const generateDebugWorkspace = async (
   generateAssetsDiff(debugContext, workspaceDir);
   generateTimelineSummaries(workspaceDir);
   generateSessionSummaries(debugContext, workspaceDir);
-  prettifySnapshotAssets(workspaceDir);
+  await prettifySnapshotAssets(workspaceDir);
   extractScreenshotDomFiles(workspaceDir);
   const domDiffMap = await fetchDomDiffs({
     client,
@@ -1256,17 +1257,15 @@ const summarizeTimeline = (
 
 const MAX_ASSET_SIZE_BYTES = 1024 * 1024;
 
-const prettifySnapshotAssets = (workspaceDir: string): void => {
-  const prettierPath = findPrettier();
-  if (!prettierPath) {
-    console.log(
-      chalk.gray("  Skipping asset formatting (prettier not found on PATH)."),
-    );
-    return;
-  }
+const PARSER_BY_EXT: Record<string, BuiltInParserName> = {
+  ".js": "babel",
+  ".css": "css",
+};
 
+const prettifySnapshotAssets = async (workspaceDir: string): Promise<void> => {
   const replaySubDirs = ["head", "base", "other"];
-  let copiedCount = 0;
+  let formattedCount = 0;
+  let copiedRawCount = 0;
   let skippedLargeCount = 0;
 
   for (const subDir of replaySubDirs) {
@@ -1314,39 +1313,42 @@ const prettifySnapshotAssets = (workspaceDir: string): void => {
         }
         const destPath = join(formattedDir, relativePath);
         mkdirSync(dirname(destPath), { recursive: true });
-        copyFileSync(srcPath, destPath);
-        copiedCount++;
+        const content = readFileSync(srcPath, "utf8");
+        const parser = PARSER_BY_EXT[extname(relativePath).toLowerCase()];
+        if (parser) {
+          try {
+            const formatted = await format(content, {
+              filepath: relativePath,
+              parser,
+            });
+            writeFileSync(destPath, formatted);
+            formattedCount++;
+            continue;
+          } catch {
+            // Fall through to copying the raw content unchanged.
+          }
+        }
+        writeFileSync(destPath, content);
+        copiedRawCount++;
       }
     }
   }
 
-  if (copiedCount === 0) {
+  const totalCount = formattedCount + copiedRawCount;
+  if (totalCount === 0) {
     return;
   }
 
-  const formattedAssetsDir = join(
-    workspaceDir,
-    DEBUG_DATA_DIRECTORY,
-    "formatted-assets",
-  );
-  try {
-    execFileSync(
-      prettierPath,
-      ["--write", `${formattedAssetsDir}/**/*.{js,css}`],
-      {
-        timeout: 120000,
-        stdio: "ignore",
-      },
-    );
+  if (copiedRawCount === 0) {
     console.log(
       chalk.green(
-        `  Formatted ${copiedCount} snapshotted asset(s) in formatted-assets/`,
+        `  Formatted ${formattedCount} snapshotted asset(s) in formatted-assets/`,
       ),
     );
-  } catch {
+  } else {
     console.log(
       chalk.yellow(
-        `  Copied ${copiedCount} snapshotted asset(s) to formatted-assets/ (prettier formatting partially failed)`,
+        `  Wrote ${totalCount} snapshotted asset(s) to formatted-assets/ (formatted ${formattedCount}, copied ${copiedRawCount} unchanged)`,
       ),
     );
   }
@@ -1358,20 +1360,6 @@ const prettifySnapshotAssets = (workspaceDir: string): void => {
       ),
     );
   }
-};
-
-const findPrettier = (): string | undefined => {
-  try {
-    const whichResult = execFileSync("which", ["prettier"], {
-      encoding: "utf8",
-    }).trim();
-    if (whichResult) {
-      return whichResult;
-    }
-  } catch {
-    // Not on PATH
-  }
-  return undefined;
 };
 
 const findAssetFilesRecursive = (
