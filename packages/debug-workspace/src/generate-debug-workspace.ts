@@ -1220,11 +1220,6 @@ const MAX_ASSET_SIZE_BYTES = 1024 * 1024;
 
 const PARSER_BY_EXT: Record<string, BuiltInParserName> = {
   ".js": "babel",
-  ".cjs": "babel",
-  ".mjs": "babel",
-  ".jsx": "babel",
-  ".ts": "typescript",
-  ".tsx": "typescript",
   ".css": "css",
 };
 
