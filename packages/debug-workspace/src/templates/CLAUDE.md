@@ -162,8 +162,9 @@ to diffing the two `screenshots/<baseName>.html` files directly.
   requests (HAR format), and application storage. Can be very large; prefer the session summary
   or use search to find relevant portions.
 - `debug-data/test-run/<testRunId>.json` -- Test run configuration, results, commit SHA, and status.
-- `debug-data/pr-diff.txt` -- Source code changes between the base and head commits. May not be present if
-  commit SHAs are unavailable.
+<!-- if-pr-diff -->
+- `debug-data/pr-diff.txt` -- Source code changes between the base and head commits.
+<!-- end-if-pr-diff -->
 - `debug-data/project-repo/` -- Your codebase checked out at the relevant commit. Only present if
   the command was run from within a git repository.
 
@@ -212,8 +213,10 @@ replay), and drop into phase 4 only as needed.
 5. **Log diffs** -- **delegate to the log-diff-analyzer subagent** instead of reading
    `debug-data/log-diffs/*.filtered.diff` directly; only open the raw diff to verify
    specific findings.
+<!-- if-pr-diff -->
 6. **PR diff** -- **delegate to the pr-analyzer subagent** to correlate code changes with
    visual diffs. Only open `debug-data/pr-diff.txt` directly to verify findings.
+<!-- end-if-pr-diff -->
 
 ### 3. Investigate a single replay
 
@@ -277,13 +280,14 @@ divergence point, categorized changes, hypotheses ranked by likelihood, and spec
 numbers for follow-up. Use its output to guide your investigation rather than consuming
 the raw diff in your context.
 
+<!-- if-pr-diff -->
 ### PR Analyzer
 
-When `debug-data/pr-diff.txt` is present and you need to understand which code changes
-caused visual differences, **delegate to the pr-analyzer subagent** instead of reading the
-PR diff directly. The analyzer reads the PR diff and diff summaries, then returns a
-structured correlation mapping code changes to specific screenshot diffs with judgments
-on expected vs unexpected changes.
+To understand which code changes caused visual differences, **delegate to the pr-analyzer
+subagent** instead of reading `debug-data/pr-diff.txt` directly. The analyzer reads the PR
+diff and diff summaries, then returns a structured correlation mapping code changes to
+specific screenshot diffs with judgments on expected vs unexpected changes.
+<!-- end-if-pr-diff -->
 
 ## Rules
 
