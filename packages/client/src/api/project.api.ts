@@ -97,13 +97,7 @@ export const getSourceArchiveUrl = async ({
   const { data } = await client
     .get<unknown, { data: SourceArchiveUrlResponse }>(path)
     .catch((error) => {
-      if (isFetchError(error)) {
-        const errorMessage = error.response?.data?.message;
-        if (errorMessage) {
-          throw new Error(errorMessage);
-        }
-      }
-      throw error;
+      throw maybeEnrichFetchError(error);
     });
 
   return data;
@@ -139,13 +133,7 @@ export const requestSourceCodeUploadUrl = async ({
       { commitSha, ...(size != null ? { size } : {}) },
     )
     .catch((error) => {
-      if (isFetchError(error)) {
-        const errorMessage = error.response?.data?.message;
-        if (errorMessage) {
-          throw new Error(errorMessage);
-        }
-      }
-      throw error;
+      throw maybeEnrichFetchError(error);
     });
 
   return data;
