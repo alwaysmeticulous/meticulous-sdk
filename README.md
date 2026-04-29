@@ -33,6 +33,8 @@ npx @alwaysmeticulous/cli record --apiToken="<API_TOKEN>"
 
 For complete setup instructions, see the [Meticulous documentation](https://app.meticulous.ai/docs).
 
+> **Using Meticulous with AI coding agents?** For agent skills and agent CLI docs, see [alwaysmeticulous/skills](https://github.com/alwaysmeticulous/skills).
+
 ## Packages
 
 This monorepo contains the following packages. Each package has its own detailed README with additional documentation:
