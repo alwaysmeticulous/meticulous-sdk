@@ -102,11 +102,14 @@ export const generateDebugWorkspace = async (
   const claudeDir = join(workspaceDir, ".claude");
   mkdirSync(claudeDir, { recursive: true });
 
-  copyClaudeMd(workspaceDir, options.additionalTemplatesDir);
   generateFilteredLogs(workspaceDir);
   generateLogDiffs(debugContext, workspaceDir);
   generateDiffSummaries(workspaceDir);
   generatePrDiff(debugContext, workspaceDir);
+  const hasPrDiff = existsSync(
+    join(workspaceDir, DEBUG_DATA_DIRECTORY, "pr-diff.txt"),
+  );
+  copyClaudeMd(workspaceDir, options.additionalTemplatesDir, { hasPrDiff });
   generateParamsDiffs(debugContext, workspaceDir);
   generateAssetsDiff(debugContext, workspaceDir);
   generateTimelineSummaries(workspaceDir);
@@ -140,8 +143,10 @@ export const generateDebugWorkspace = async (
   copyClaudeSubdir(workspaceDir, "hooks", options.additionalTemplatesDir, {
     makeExecutable: true,
   });
-  copyClaudeSubdir(workspaceDir, "agents", options.additionalTemplatesDir);
-  copySkills(workspaceDir, options.additionalTemplatesDir);
+  copyClaudeSubdir(workspaceDir, "agents", options.additionalTemplatesDir, {
+    hasPrDiff,
+  });
+  copySkills(workspaceDir, options.additionalTemplatesDir, { hasPrDiff });
 
   const settingsSrc = resolveTemplateFile(
     "settings.json",
@@ -173,61 +178,72 @@ const resolveTemplateFile = (
   return undefined;
 };
 
+// File names (within their template subdir) that are only relevant when a PR
+// diff is present in the workspace; skipped otherwise so the agent doesn't see
+// dangling references.
+const PR_DIFF_ONLY_AGENT_FILES = new Set<string>(["pr-analyzer.md"]);
+const PR_DIFF_ONLY_SKILL_DIRS = new Set<string>(["pr-analysis"]);
+
 const copyClaudeMd = (
   workspaceDir: string,
   additionalTemplatesDir: string | undefined,
+  options: { hasPrDiff: boolean },
 ): void => {
   const src = resolveTemplateFile("CLAUDE.md", additionalTemplatesDir);
-  if (src) {
-    copyFileSync(src, join(workspaceDir, ".claude", "CLAUDE.md"));
+  if (!src) {
+    return;
   }
+  const dest = join(workspaceDir, ".claude", "CLAUDE.md");
+  writeMarkdownWithConditionals(src, dest, options.hasPrDiff);
 };
 
 const copyClaudeSubdir = (
   workspaceDir: string,
   subdir: string,
   additionalTemplatesDir: string | undefined,
-  options: { makeExecutable?: boolean } = {},
+  options: { makeExecutable?: boolean; hasPrDiff?: boolean } = {},
 ): void => {
   const destDir = join(workspaceDir, ".claude", subdir);
+  const skipNames =
+    options.hasPrDiff === false && subdir === "agents"
+      ? PR_DIFF_ONLY_AGENT_FILES
+      : new Set<string>();
   let copied = false;
+
+  const writeFromDir = (srcDir: string): void => {
+    const entries = readdirSync(srcDir).filter(
+      (f) => !statSync(join(srcDir, f)).isDirectory() && !skipNames.has(f),
+    );
+    if (entries.length === 0) {
+      return;
+    }
+    if (!copied) {
+      mkdirSync(destDir, { recursive: true });
+      copied = true;
+    }
+    for (const filename of entries) {
+      const destPath = join(destDir, filename);
+      const srcPath = join(srcDir, filename);
+      if (filename.endsWith(".md") && options.hasPrDiff !== undefined) {
+        writeMarkdownWithConditionals(srcPath, destPath, options.hasPrDiff);
+      } else {
+        copyFileSync(srcPath, destPath);
+      }
+      if (options.makeExecutable) {
+        chmodSync(destPath, 0o755);
+      }
+    }
+  };
 
   const baseSrcDir = join(TEMPLATES_DIR, subdir);
   if (existsSync(baseSrcDir)) {
-    const entries = readdirSync(baseSrcDir).filter(
-      (f) => !statSync(join(baseSrcDir, f)).isDirectory(),
-    );
-    if (entries.length > 0) {
-      mkdirSync(destDir, { recursive: true });
-      for (const filename of entries) {
-        const destPath = join(destDir, filename);
-        copyFileSync(join(baseSrcDir, filename), destPath);
-        if (options.makeExecutable) {
-          chmodSync(destPath, 0o755);
-        }
-      }
-      copied = true;
-    }
+    writeFromDir(baseSrcDir);
   }
 
   if (additionalTemplatesDir) {
     const overlaySrcDir = join(additionalTemplatesDir, subdir);
     if (existsSync(overlaySrcDir)) {
-      const entries = readdirSync(overlaySrcDir).filter(
-        (f) => !statSync(join(overlaySrcDir, f)).isDirectory(),
-      );
-      if (entries.length > 0) {
-        if (!copied) {
-          mkdirSync(destDir, { recursive: true });
-        }
-        for (const filename of entries) {
-          const destPath = join(destDir, filename);
-          copyFileSync(join(overlaySrcDir, filename), destPath);
-          if (options.makeExecutable) {
-            chmodSync(destPath, 0o755);
-          }
-        }
-      }
+      writeFromDir(overlaySrcDir);
     }
   }
 };
@@ -235,6 +251,7 @@ const copyClaudeSubdir = (
 const copySkills = (
   workspaceDir: string,
   additionalTemplatesDir: string | undefined,
+  options: { hasPrDiff: boolean },
 ): void => {
   const skillDirNames = new Set<string>();
 
@@ -259,12 +276,34 @@ const copySkills = (
   }
 
   for (const skillName of skillDirNames) {
-    copyClaudeSubdir(
-      workspaceDir,
-      join("skills", skillName),
-      additionalTemplatesDir,
-    );
+    if (!options.hasPrDiff && PR_DIFF_ONLY_SKILL_DIRS.has(skillName)) {
+      continue;
+    }
+    copyClaudeSubdir(workspaceDir, join("skills", skillName), additionalTemplatesDir, {
+      hasPrDiff: options.hasPrDiff,
+    });
   }
+};
+
+// Strips <!-- if-pr-diff --> ... <!-- end-if-pr-diff --> blocks (including the
+// markers and the trailing newline) when hasPrDiff is false. When true, leaves
+// the block content but removes the marker comments so they don't leak into the
+// rendered prompt.
+const writeMarkdownWithConditionals = (
+  srcPath: string,
+  destPath: string,
+  hasPrDiff: boolean,
+): void => {
+  const original = readFileSync(srcPath, "utf8");
+  const stripped = hasPrDiff
+    ? original
+        .replace(/^[ \t]*<!--\s*if-pr-diff\s*-->[ \t]*\r?\n/gm, "")
+        .replace(/^[ \t]*<!--\s*end-if-pr-diff\s*-->[ \t]*\r?\n/gm, "")
+    : original.replace(
+        /^[ \t]*<!--\s*if-pr-diff\s*-->[ \t]*\r?\n[\s\S]*?^[ \t]*<!--\s*end-if-pr-diff\s*-->[ \t]*\r?\n/gm,
+        "",
+      );
+  writeFileSync(destPath, stripped);
 };
 
 // ---------------------------------------------------------------------------
