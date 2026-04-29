@@ -23,11 +23,19 @@ interface Options {
  * Meticulous so it can be used in place of `git clone` for projects that
  * have source-code uploads enabled.
  *
+ * The contents of the archive are exactly the contents of `--sourceDir` —
+ * we do not parse `.gitignore` or apply any filtering, so it is the
+ * caller's responsibility to point at a directory that contains only what
+ * Meticulous needs (i.e. exclude `.git/`, `node_modules/`, `dist/`, build
+ * artefacts, secrets, etc.). The recommended pattern is to invoke this
+ * after a fresh `git checkout` into a clean directory, or after a
+ * `git archive`/`rsync --exclude` step in CI.
+ *
  * Usage (typically from the customer's CI on every commit):
  *
  *   meticulous project upload-source \
  *     --commitSha "$(git rev-parse HEAD)" \
- *     --sourceDir .
+ *     --sourceDir ./checkout
  *
  * Requires a project API token (env `METICULOUS_API_TOKEN` or
  * `--apiToken`). Calls from projects that don't have source-code uploads
@@ -49,8 +57,12 @@ export const uploadSourceCommand: CommandModule<unknown, Options> = {
     },
     sourceDir: {
       string: true,
-      default: ".",
-      description: "Directory to package into source.tar.gz (default: cwd)",
+      demandOption: true,
+      description:
+        "Directory to package into source.tar.gz. The directory's contents " +
+        "are uploaded verbatim — exclude `.git`, `node_modules`, build " +
+        "artefacts and any other paths you don't want sent to Meticulous " +
+        "before invoking this command.",
     },
   },
   handler: wrapHandler(async ({ apiToken, commitSha, sourceDir }) => {
@@ -61,17 +73,17 @@ export const uploadSourceCommand: CommandModule<unknown, Options> = {
     const archivePath = join(tmpDir, "source.tar.gz");
     try {
       logger.info(`Packaging ${sourceDir} into ${archivePath}...`);
-      // `tar` honours `.gitignore` style ignore via filter; we use `portable`
-      // for reproducible archives across platforms and `gzip: true` for the
-      // .gz extension. We follow symlinks (`follow: true`) so a symlinked
-      // monorepo workspace gets included as expected. Customers that want to
-      // exclude paths can pre-prune `sourceDir` (e.g. `--sourceDir packages/foo`).
+      // We package `sourceDir` verbatim: no `.gitignore` parsing, no
+      // filtering. The caller is responsible for pointing at a directory
+      // that contains only what Meticulous needs — see the JSDoc above.
+      // `portable` produces reproducible archives across platforms; `gzip`
+      // gives us the `.gz` wire format the cloud worker decompresses with
+      // `streamDownloadAndExtractTarGz`.
       await pipeline(
         tarCreate(
           {
             cwd: sourceDir,
             gzip: true,
-            follow: true,
             portable: true,
           },
           ["."],
