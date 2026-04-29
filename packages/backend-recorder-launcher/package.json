@@ -1,0 +1,53 @@
+{
+  "name": "@alwaysmeticulous/backend-recorder-launcher",
+  "version": "2.277.0",
+  "description": "Downloads the backend-recorder bundle script and executes it",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./auto-init": {
+      "types": "./dist/auto-init.d.ts",
+      "default": "./dist/auto-init.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "build": "tsc --build tsconfig.json",
+    "dev": "tsc --build tsconfig.json --watch",
+    "format": "prettier --write src",
+    "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
+    "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
+    "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
+    "depcheck": "depcheck --ignore-patterns=dist"
+  },
+  "dependencies": {
+    "@alwaysmeticulous/common": "workspace:*",
+    "@alwaysmeticulous/downloading-helpers": "workspace:*",
+    "@alwaysmeticulous/sdk-bundles-api": "workspace:*"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/backend-recorder-launcher"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}
