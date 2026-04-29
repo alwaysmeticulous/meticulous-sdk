@@ -4,7 +4,7 @@ import { dirname, isAbsolute, relative, resolve } from "path";
 import { Readable, Stream, finished, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { promisify } from "util";
-import { constants as zlibConstants } from "zlib";
+import { constants as zlibConstants, createGunzip } from "zlib";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import cliProgress from "cli-progress";
@@ -239,6 +239,10 @@ export interface StreamDownloadAndExtractTarOptions {
  * fast-zlib for decompression and tuned buffer sizes for better throughput
  * on large (>1GB) files.
  *
+ * Use this for blobs produced by `MultipartCompressingUploader` (raw deflate,
+ * no gzip header). For gzip-wrapped tarballs (`tar.create({ gzip: true })`,
+ * `tar -czf`, `Content-Encoding: gzip`) use {@link streamDownloadAndExtractTarGz}.
+ *
  * __Warning__: this function is not thread safe. Do not extract to a
  * directory that may already be in use by another process.
  *
@@ -247,10 +251,51 @@ export interface StreamDownloadAndExtractTarOptions {
  * @param opts Timeout, retry, and buffer configuration.
  * @returns The list of extracted file paths.
  */
-export const streamDownloadAndExtractTar = async (
+export const streamDownloadAndExtractTar = (
   fileUrl: string,
   extractPath: string,
   opts: StreamDownloadAndExtractTarOptions = {},
+): Promise<string[]> =>
+  streamDownloadAndExtractTarImpl(
+    fileUrl,
+    extractPath,
+    createFastInflateRawStream,
+    opts,
+  );
+
+/**
+ * Same as {@link streamDownloadAndExtractTar} but expects a gzip-wrapped
+ * tarball (the format produced by `tar.create({ gzip: true })`,
+ * `tar -czf foo.tar.gz`, or any HTTP body served with
+ * `Content-Encoding: gzip`).
+ *
+ * Uses Node's built-in `zlib.createGunzip()`; throughput is lower than the
+ * raw-deflate path because gunzip runs on the libuv thread pool, but for the
+ * sizes we use this on (customer-uploaded source archives, typically tens of
+ * MB) it's fine.
+ *
+ * @param fileUrl The URL of the gzipped tar blob to download.
+ * @param extractPath The directory to extract tar entries into.
+ * @param opts Timeout, retry, and buffer configuration.
+ * @returns The list of extracted file paths.
+ */
+export const streamDownloadAndExtractTarGz = (
+  fileUrl: string,
+  extractPath: string,
+  opts: StreamDownloadAndExtractTarOptions = {},
+): Promise<string[]> =>
+  streamDownloadAndExtractTarImpl(
+    fileUrl,
+    extractPath,
+    () => createGunzip({ chunkSize: STREAMING_HIGH_WATER_MARK }),
+    opts,
+  );
+
+const streamDownloadAndExtractTarImpl = async (
+  fileUrl: string,
+  extractPath: string,
+  decompressFactory: () => Transform,
+  opts: StreamDownloadAndExtractTarOptions,
 ): Promise<string[]> => {
   const firstDataTimeoutInMs = opts.firstDataTimeoutInMs ?? 60_000;
   const totalTimeoutInMs = opts.totalTimeoutInMs ?? 600_000;
@@ -287,13 +332,14 @@ export const streamDownloadAndExtractTar = async (
           extractPath,
           concurrency: extractConcurrency,
           abortSignal: abortController.signal,
+          decompressFactory,
         });
       }
 
       const entries: string[] = [];
       await pipeline(
         response.data as Readable,
-        createFastInflateRawStream(),
+        decompressFactory(),
         tarExtract({
           cwd: extractPath,
           // Skip the per-entry `utimes` call. The asset server doesn't care
@@ -445,11 +491,13 @@ const extractTarWithParallelWrites = async ({
   extractPath,
   concurrency,
   abortSignal,
+  decompressFactory,
 }: {
   sourceStream: Readable;
   extractPath: string;
   concurrency: number;
   abortSignal: AbortSignal;
+  decompressFactory: () => Transform;
 }): Promise<string[]> => {
   const limit = pLimit(concurrency);
   const mkdirCache = new Set<string>();
@@ -560,7 +608,7 @@ const extractTarWithParallelWrites = async ({
     },
   });
 
-  await pipeline(sourceStream, createFastInflateRawStream(), parser, {
+  await pipeline(sourceStream, decompressFactory(), parser, {
     signal: abortSignal,
   });
 

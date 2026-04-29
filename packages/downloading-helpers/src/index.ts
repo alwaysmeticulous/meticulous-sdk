@@ -19,6 +19,7 @@ export {
   downloadFile,
   downloadAndExtractFile,
   streamDownloadAndExtractTar,
+  streamDownloadAndExtractTarGz,
   type StreamDownloadAndExtractTarOptions,
   streamDownloadAndInflateTar,
   type StreamDownloadAndInflateTarOptions,
