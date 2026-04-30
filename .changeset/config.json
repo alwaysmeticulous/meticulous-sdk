@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.5/schema.json",
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "alwaysmeticulous/meticulous-sdk" }
+  ],
+  "commit": false,
+  "fixed": [],
+  "linked": [
+    [
+      "@alwaysmeticulous/api",
+      "@alwaysmeticulous/cli",
+      "@alwaysmeticulous/client",
+      "@alwaysmeticulous/common",
+      "@alwaysmeticulous/debug-workspace",
+      "@alwaysmeticulous/downloading-helpers",
+      "@alwaysmeticulous/record",
+      "@alwaysmeticulous/recorder-loader",
+      "@alwaysmeticulous/recorder-plugin",
+      "@alwaysmeticulous/redaction",
+      "@alwaysmeticulous/remote-replay-launcher",
+      "@alwaysmeticulous/replay-debugger-ui",
+      "@alwaysmeticulous/replay-orchestrator-launcher",
+      "@alwaysmeticulous/sdk-bundles-api",
+      "@alwaysmeticulous/sentry",
+      "@alwaysmeticulous/tunnels-client"
+    ]
+  ],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}
