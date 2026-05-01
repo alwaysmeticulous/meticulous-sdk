@@ -10,11 +10,16 @@
       "{workspaceRoot}/eslint.config.mjs",
       "{workspaceRoot}/vitest.config.ts"
     ],
-    "default": ["{projectRoot}/**/*", "sharedGlobals"]
+    "default": [
+      "{projectRoot}/**/*",
+      "sharedGlobals"
+    ]
   },
   "targetDefaults": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": [
         "{projectRoot}/dist/**",
         "{projectRoot}/out/**",
@@ -23,7 +28,9 @@
       "cache": true
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "cache": true
     },
     "lint": {
@@ -44,5 +51,6 @@
     "clean": {
       "cache": false
     }
-  }
+  },
+  "nxCloudId": "69f4aeab60abd3c9bfa18dfd"
 }
