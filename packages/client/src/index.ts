@@ -72,6 +72,12 @@ export { clearOAuthTokens } from "./oauth/oauth-token-store";
 export type { MeticulousClient } from "./types/client.types";
 export { getProxyAgent } from "./utils/get-proxy-agent";
 export {
+  S3UploadError,
+  isTransientS3Error,
+  retryTransientS3Errors,
+  RetryTransientS3ErrorsOptions,
+} from "./utils/retry-transient-s3-errors";
+export {
   RequestAssetUploadParams,
   RequestAssetUploadResponse,
   requestAssetUpload,

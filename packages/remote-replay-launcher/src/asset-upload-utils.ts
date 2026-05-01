@@ -13,16 +13,14 @@ import {
   getProxyAgent,
   requestMultipartAssetUpload,
   MultiPartUploadInfo,
+  S3UploadError,
+  retryTransientS3Errors,
 } from "@alwaysmeticulous/client";
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 import { MultipartCompressingUploader, UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
-import {
-  S3UploadError,
-  retryTransientS3Errors,
-} from "./upload-utils/retry-transient-s3-errors";
 
 export interface UploadAssetsOptions {
   apiToken: string | null | undefined;

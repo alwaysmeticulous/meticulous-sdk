@@ -1,11 +1,16 @@
 import { createReadStream, createWriteStream, statSync } from "fs";
 import { mkdtemp, rm } from "fs/promises";
+import { IncomingMessage } from "http";
+import { request as httpsRequest } from "https";
 import { tmpdir } from "os";
 import { join } from "path";
 import { pipeline } from "stream/promises";
 import {
   createClient,
+  getProxyAgent,
   requestSourceCodeUploadUrl,
+  retryTransientS3Errors,
+  S3UploadError,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { create as tarCreate } from "tar";
@@ -103,25 +108,28 @@ export const uploadSourceCommand: CommandModule<unknown, Options> = {
       });
 
       logger.info(`Uploading source archive for commit ${commitSha}...`);
-      const response = await fetch(uploadUrl, {
-        method: "PUT",
-        // `fetch` accepts a Node ReadableStream as a body in Node 18.17+.
-        // We must set duplex: "half" to satisfy the spec for streaming bodies.
-        body: createReadStream(archivePath) as unknown as BodyInit,
-        headers: {
-          "Content-Type": "application/gzip",
-          "Content-Length": String(size),
+      await retryTransientS3Errors(
+        () =>
+          putFileToSignedUrl({
+            filePath: archivePath,
+            signedUrl: uploadUrl,
+            size,
+            contentType: "application/gzip",
+          }),
+        {
+          onRetry: (attempt, error) => {
+            const reason =
+              error instanceof S3UploadError
+                ? `HTTP ${error.statusCode}`
+                : error instanceof Error
+                  ? error.message
+                  : String(error);
+            logger.warn(
+              `Transient upload error on attempt ${attempt} (${reason}); will retry...`,
+            );
+          },
         },
-        // @ts-expect-error -- `duplex` is part of the WHATWG fetch spec but
-        // not yet in lib.dom.d.ts. Required when streaming a request body.
-        duplex: "half",
-      });
-      if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        throw new Error(
-          `Source archive upload failed: ${response.status} ${response.statusText} ${text}`,
-        );
-      }
+      );
 
       logger.info(
         `Successfully uploaded source archive for commit ${commitSha}.`,
@@ -130,4 +138,68 @@ export const uploadSourceCommand: CommandModule<unknown, Options> = {
       await rm(tmpDir, { recursive: true, force: true });
     }
   }),
+};
+
+/**
+ * Streams `filePath` to `signedUrl` via an HTTPS PUT, mirroring how
+ * `remote-replay-launcher` uploads deployment assets. We use Node's
+ * built-in `https.request` rather than `fetch` so that we (a) honour
+ * `HTTPS_PROXY` via `getProxyAgent()` for customers behind corporate
+ * proxies and (b) avoid relying on `fetch`'s `duplex: "half"` streaming
+ * support, which is fragile across Node 18.x patch versions.
+ */
+const putFileToSignedUrl = async ({
+  filePath,
+  signedUrl,
+  size,
+  contentType,
+}: {
+  filePath: string;
+  signedUrl: string;
+  size: number;
+  contentType: string;
+}): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    // A new read stream is required on every attempt — streams cannot be replayed.
+    const fileStream = createReadStream(filePath);
+    const req = httpsRequest(
+      signedUrl,
+      {
+        agent: getProxyAgent(),
+        method: "PUT",
+        headers: {
+          "Content-Length": size,
+          "Content-Type": contentType,
+        },
+      },
+      (response: IncomingMessage) => {
+        let responseData = "";
+
+        response.on("data", (chunk) => {
+          responseData += chunk;
+        });
+
+        response.on("end", () => {
+          if (response.statusCode === 200) {
+            resolve();
+          } else {
+            reject(
+              new S3UploadError(response.statusCode ?? 0, responseData),
+            );
+          }
+        });
+      },
+    );
+
+    req.on("error", (error) => {
+      reject(error);
+    });
+
+    fileStream.on("error", (error) => {
+      req.destroy(error);
+      reject(error);
+    });
+
+    fileStream.pipe(req);
+  });
 };
