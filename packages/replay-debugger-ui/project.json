@@ -1,0 +1,12 @@
+{
+  "targets": {
+    "build": {
+      "outputs": [
+        "{projectRoot}/.next/**",
+        "{projectRoot}/scripts/**",
+        "{projectRoot}/out/**",
+        "{projectRoot}/tsconfig.tsbuildinfo"
+      ]
+    }
+  }
+}

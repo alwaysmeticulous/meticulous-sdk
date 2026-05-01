@@ -5,20 +5,20 @@
     "packages/*"
   ],
   "scripts": {
-    "clean": "turbo run clean",
-    "build": "turbo run build",
-    "format": "turbo run format",
-    "lint": "turbo run lint",
-    "lint:commit": "turbo run lint:commit",
-    "lint:fix": "turbo run lint:fix --no-bail",
-    "test": "turbo run test",
+    "clean": "nx run-many -t clean",
+    "build": "nx run-many -t build",
+    "format": "nx run-many -t format",
+    "lint": "nx run-many -t lint",
+    "lint:commit": "nx run-many -t lint:commit",
+    "lint:fix": "nx run-many -t lint:fix",
+    "test": "nx run-many -t test",
     "cli": "pnpm --filter @alwaysmeticulous/cli cli",
     "cli:debug": "pnpm --filter @alwaysmeticulous/cli cli:debug",
     "cli:dev": "pnpm --filter @alwaysmeticulous/cli cli:dev",
     "cli:dev-staging": "pnpm --filter @alwaysmeticulous/cli cli:dev-staging",
     "cli:dev-localhost": "pnpm --filter @alwaysmeticulous/cli cli:dev-localhost",
     "publish": "lerna version",
-    "depcheck": "turbo run depcheck"
+    "depcheck": "nx run-many -t depcheck"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.5",
@@ -39,11 +39,11 @@
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
     "lerna": "^9.0.7",
+    "nx": "^22.3.3",
     "parcel": "^2.15.2",
     "prettier": "^3.5.3",
     "rimraf": "^4.0.7",
     "ts-node": "^10.8.1",
-    "turbo": "^2.2.2",
     "typescript": "^5.9.3",
     "vitest": "catalog:"
   },

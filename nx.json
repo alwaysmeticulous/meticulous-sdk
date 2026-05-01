@@ -1,0 +1,48 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "tui": {
+    "enabled": false
+  },
+  "analytics": false,
+  "namedInputs": {
+    "sharedGlobals": [
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/eslint.config.mjs",
+      "{workspaceRoot}/vitest.config.ts"
+    ],
+    "default": ["{projectRoot}/**/*", "sharedGlobals"]
+  },
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [
+        "{projectRoot}/dist/**",
+        "{projectRoot}/out/**",
+        "{projectRoot}/tsconfig.tsbuildinfo"
+      ],
+      "cache": true
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": true
+    },
+    "lint": {
+      "cache": true
+    },
+    "lint:fix": {
+      "cache": false
+    },
+    "lint:commit": {
+      "cache": false
+    },
+    "format": {
+      "cache": false
+    },
+    "depcheck": {
+      "cache": false
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}
