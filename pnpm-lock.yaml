@@ -95,6 +95,18 @@ importers:
 
   packages/api: {}
 
+  packages/backend-recorder-launcher:
+    dependencies:
+      '@alwaysmeticulous/common':
+        specifier: workspace:*
+        version: link:../common
+      '@alwaysmeticulous/downloading-helpers':
+        specifier: workspace:*
+        version: link:../downloading-helpers
+      '@alwaysmeticulous/sdk-bundles-api':
+        specifier: workspace:*
+        version: link:../sdk-bundles-api
+
   packages/cli:
     dependencies:
       '@alwaysmeticulous/api':
