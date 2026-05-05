@@ -13,8 +13,8 @@ import {
   getProxyAgent,
   requestMultipartAssetUpload,
   MultiPartUploadInfo,
-  S3UploadError,
-  retryTransientS3Errors,
+  UploadError,
+  retryTransientUploadErrors,
 } from "@alwaysmeticulous/client";
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
 import { initLogger } from "@alwaysmeticulous/common";
@@ -222,7 +222,7 @@ const uploadBufferToSignedUrl = async (
   buffer: Buffer,
   options?: { contentType?: string },
 ): Promise<string> => {
-  return retryTransientS3Errors(
+  return retryTransientUploadErrors(
     () => putBufferToSignedUrl(signedUrl, buffer, options),
     { onRetry: logTransientUploadRetry },
   );
@@ -231,7 +231,7 @@ const uploadBufferToSignedUrl = async (
 const logTransientUploadRetry = (attempt: number, error: unknown): void => {
   const logger = initLogger();
   const reason =
-    error instanceof S3UploadError
+    error instanceof UploadError
       ? `HTTP ${error.statusCode}`
       : error instanceof Error
         ? error.message
@@ -273,7 +273,7 @@ const putBufferToSignedUrl = async (
             resolve(response.headers["etag"] ?? "");
           } else {
             reject(
-              new S3UploadError(response.statusCode ?? 0, responseData),
+              new UploadError(response.statusCode ?? 0, responseData),
             );
           }
         });
@@ -400,7 +400,7 @@ const uploadFileToSignedUrl = async (
   }
   logger.info(`Uploading deployment assets (${fileSize} bytes)...`);
 
-  await retryTransientS3Errors(
+  await retryTransientUploadErrors(
     () => putFileToSignedUrl(filePath, signedUrl, fileSize),
     { onRetry: logTransientUploadRetry },
   );
@@ -437,7 +437,7 @@ const putFileToSignedUrl = async (
             resolve();
           } else {
             reject(
-              new S3UploadError(response.statusCode ?? 0, responseData),
+              new UploadError(response.statusCode ?? 0, responseData),
             );
           }
         });

@@ -9,8 +9,8 @@ import {
   createClient,
   getProxyAgent,
   requestSourceCodeUploadUrl,
-  retryTransientS3Errors,
-  S3UploadError,
+  retryTransientUploadErrors,
+  UploadError,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { create as tarCreate } from "tar";
@@ -108,7 +108,7 @@ export const uploadSourceCommand: CommandModule<unknown, Options> = {
       });
 
       logger.info(`Uploading source archive for commit ${commitSha}...`);
-      await retryTransientS3Errors(
+      await retryTransientUploadErrors(
         () =>
           putFileToSignedUrl({
             filePath: archivePath,
@@ -119,7 +119,7 @@ export const uploadSourceCommand: CommandModule<unknown, Options> = {
         {
           onRetry: (attempt, error) => {
             const reason =
-              error instanceof S3UploadError
+              error instanceof UploadError
                 ? `HTTP ${error.statusCode}`
                 : error instanceof Error
                   ? error.message
@@ -184,7 +184,7 @@ const putFileToSignedUrl = async ({
             resolve();
           } else {
             reject(
-              new S3UploadError(response.statusCode ?? 0, responseData),
+              new UploadError(response.statusCode ?? 0, responseData),
             );
           }
         });
