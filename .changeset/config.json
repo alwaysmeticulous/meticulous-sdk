@@ -9,6 +9,7 @@
   "linked": [
     [
       "@alwaysmeticulous/api",
+      "@alwaysmeticulous/backend-recorder-launcher",
       "@alwaysmeticulous/cli",
       "@alwaysmeticulous/client",
       "@alwaysmeticulous/common",

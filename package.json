@@ -17,7 +17,7 @@
     "cli:dev": "pnpm --filter @alwaysmeticulous/cli cli:dev",
     "cli:dev-staging": "pnpm --filter @alwaysmeticulous/cli cli:dev-staging",
     "cli:dev-localhost": "pnpm --filter @alwaysmeticulous/cli cli:dev-localhost",
-    "release": "pnpm build && pnpm exec changeset publish",
+    "release": "pnpm exec changeset publish",
     "depcheck": "turbo run depcheck"
   },
   "devDependencies": {
