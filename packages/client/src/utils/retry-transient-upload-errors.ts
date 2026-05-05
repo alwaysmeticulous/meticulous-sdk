@@ -1,4 +1,4 @@
-export class S3UploadError extends Error {
+export class UploadError extends Error {
   public readonly statusCode: number;
   public readonly responseBody: string;
 
@@ -6,7 +6,7 @@ export class S3UploadError extends Error {
     super(
       `Failed to upload!\nStatus ${statusCode}.\nResponse:\n${responseBody}`,
     );
-    this.name = "S3UploadError";
+    this.name = "UploadError";
     this.statusCode = statusCode;
     this.responseBody = responseBody;
   }
@@ -14,11 +14,11 @@ export class S3UploadError extends Error {
 
 const TRANSIENT_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 
-// Node networking errors that are safe to retry. S3 occasionally resets
-// connections under load; these show up here rather than as HTTP errors.
-// Excludes ECONNREFUSED and ENOTFOUND because those typically indicate
-// misconfiguration rather than transient failures (EAI_AGAIN covers the
-// transient-DNS case).
+// Node networking errors that are safe to retry. Upload endpoints (e.g. S3)
+// occasionally reset connections under load; these show up here rather than
+// as HTTP errors. Excludes ECONNREFUSED and ENOTFOUND because those typically
+// indicate misconfiguration rather than transient failures (EAI_AGAIN covers
+// the transient-DNS case).
 const TRANSIENT_NETWORK_ERROR_CODES = new Set([
   "ECONNRESET",
   "ETIMEDOUT",
@@ -27,8 +27,8 @@ const TRANSIENT_NETWORK_ERROR_CODES = new Set([
   "EPIPE",
 ]);
 
-export const isTransientS3Error = (error: unknown): boolean => {
-  if (error instanceof S3UploadError) {
+export const isTransientUploadError = (error: unknown): boolean => {
+  if (error instanceof UploadError) {
     return TRANSIENT_STATUS_CODES.has(error.statusCode);
   }
   if (error && typeof error === "object" && "code" in error) {
@@ -40,7 +40,7 @@ export const isTransientS3Error = (error: unknown): boolean => {
   return false;
 };
 
-export interface RetryTransientS3ErrorsOptions {
+export interface RetryTransientUploadErrorsOptions {
   maxAttempts?: number;
   baseDelayMs?: number;
   onRetry?: (attempt: number, error: unknown) => void;
@@ -54,9 +54,9 @@ const MAX_DELAY_MS = 30_000;
 const defaultSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-export const retryTransientS3Errors = async <T>(
+export const retryTransientUploadErrors = async <T>(
   operation: () => Promise<T>,
-  options: RetryTransientS3ErrorsOptions = {},
+  options: RetryTransientUploadErrorsOptions = {},
 ): Promise<T> => {
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
   const baseDelayMs = options.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
@@ -68,7 +68,7 @@ export const retryTransientS3Errors = async <T>(
       return await operation();
     } catch (error) {
       lastError = error;
-      if (!isTransientS3Error(error) || attempt === maxAttempts) {
+      if (!isTransientUploadError(error) || attempt === maxAttempts) {
         throw error;
       }
       // Exponential backoff with a jitter multiplier in [0.5, 1.5), capped

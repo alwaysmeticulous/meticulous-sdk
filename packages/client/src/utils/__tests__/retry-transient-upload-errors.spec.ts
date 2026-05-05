@@ -1,48 +1,54 @@
 import { describe, it, expect, vi } from "vitest";
 import {
-  S3UploadError,
-  retryTransientS3Errors,
-} from "../retry-transient-s3-errors";
+  UploadError,
+  retryTransientUploadErrors,
+} from "../retry-transient-upload-errors";
 
-describe("retryTransientS3Errors", () => {
+describe("retryTransientUploadErrors", () => {
   const noSleep = async () => {};
 
   it("returns the value when the operation succeeds on the first attempt", async () => {
     const operation = vi.fn(async () => "ok");
 
-    const result = await retryTransientS3Errors(operation, { sleep: noSleep });
+    const result = await retryTransientUploadErrors(operation, {
+      sleep: noSleep,
+    });
 
     expect(result).toBe("ok");
     expect(operation).toHaveBeenCalledTimes(1);
   });
 
-  it("retries on S3 503 SlowDown and eventually succeeds", async () => {
+  it("retries on 503 SlowDown and eventually succeeds", async () => {
     let attempts = 0;
     const operation = async () => {
       attempts++;
       if (attempts < 3) {
-        throw new S3UploadError(503, "<Code>SlowDown</Code>");
+        throw new UploadError(503, "<Code>SlowDown</Code>");
       }
       return "ok";
     };
 
-    const result = await retryTransientS3Errors(operation, { sleep: noSleep });
+    const result = await retryTransientUploadErrors(operation, {
+      sleep: noSleep,
+    });
 
     expect(result).toBe("ok");
     expect(attempts).toBe(3);
   });
 
-  it("retries on S3 500 InternalError", async () => {
+  it("retries on 500 InternalError", async () => {
     let attempts = 0;
     const operation = async () => {
       attempts++;
       if (attempts < 2) {
-        throw new S3UploadError(500, "<Code>InternalError</Code>");
+        throw new UploadError(500, "<Code>InternalError</Code>");
       }
       return "ok";
     };
 
-    const result = await retryTransientS3Errors(operation, { sleep: noSleep });
+    const result = await retryTransientUploadErrors(operation, {
+      sleep: noSleep,
+    });
 
     expect(result).toBe("ok");
     expect(attempts).toBe(2);
@@ -53,12 +59,14 @@ describe("retryTransientS3Errors", () => {
     const operation = async () => {
       attempts++;
       if (attempts < 2) {
-        throw new S3UploadError(429, "");
+        throw new UploadError(429, "");
       }
       return "ok";
     };
 
-    const result = await retryTransientS3Errors(operation, { sleep: noSleep });
+    const result = await retryTransientUploadErrors(operation, {
+      sleep: noSleep,
+    });
 
     expect(attempts).toBe(2);
     expect(result).toBe("ok");
@@ -76,7 +84,9 @@ describe("retryTransientS3Errors", () => {
       return "ok";
     };
 
-    const result = await retryTransientS3Errors(operation, { sleep: noSleep });
+    const result = await retryTransientUploadErrors(operation, {
+      sleep: noSleep,
+    });
 
     expect(attempts).toBe(2);
     expect(result).toBe("ok");
@@ -84,12 +94,12 @@ describe("retryTransientS3Errors", () => {
 
   it("does not retry on 4xx client errors (e.g. 403 Forbidden)", async () => {
     const operation = vi.fn(async () => {
-      throw new S3UploadError(403, "<Code>AccessDenied</Code>");
+      throw new UploadError(403, "<Code>AccessDenied</Code>");
     });
 
     await expect(
-      retryTransientS3Errors(operation, { sleep: noSleep }),
-    ).rejects.toBeInstanceOf(S3UploadError);
+      retryTransientUploadErrors(operation, { sleep: noSleep }),
+    ).rejects.toBeInstanceOf(UploadError);
     expect(operation).toHaveBeenCalledTimes(1);
   });
 
@@ -99,22 +109,22 @@ describe("retryTransientS3Errors", () => {
     });
 
     await expect(
-      retryTransientS3Errors(operation, { sleep: noSleep }),
+      retryTransientUploadErrors(operation, { sleep: noSleep }),
     ).rejects.toThrow("something unrelated");
     expect(operation).toHaveBeenCalledTimes(1);
   });
 
   it("throws the last error after exhausting retries", async () => {
     const operation = vi.fn(async () => {
-      throw new S3UploadError(503, "<Code>SlowDown</Code>");
+      throw new UploadError(503, "<Code>SlowDown</Code>");
     });
 
     await expect(
-      retryTransientS3Errors(operation, {
+      retryTransientUploadErrors(operation, {
         sleep: noSleep,
         maxAttempts: 3,
       }),
-    ).rejects.toBeInstanceOf(S3UploadError);
+    ).rejects.toBeInstanceOf(UploadError);
     expect(operation).toHaveBeenCalledTimes(3);
   });
 
@@ -128,7 +138,7 @@ describe("retryTransientS3Errors", () => {
     const operation = async () => {
       attempts++;
       if (attempts < 4) {
-        throw new S3UploadError(503, "");
+        throw new UploadError(503, "");
       }
       return "ok";
     };
@@ -136,7 +146,7 @@ describe("retryTransientS3Errors", () => {
     // Make jitter deterministic
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.5);
     try {
-      await retryTransientS3Errors(operation, {
+      await retryTransientUploadErrors(operation, {
         sleep,
         baseDelayMs: 100,
       });
@@ -155,38 +165,38 @@ describe("retryTransientS3Errors", () => {
     const operation = async () => {
       attempts++;
       if (attempts < 3) {
-        throw new S3UploadError(503, "");
+        throw new UploadError(503, "");
       }
       return "ok";
     };
 
-    await retryTransientS3Errors(operation, {
+    await retryTransientUploadErrors(operation, {
       sleep: noSleep,
       onRetry,
     });
 
     expect(onRetry).toHaveBeenCalledTimes(2);
-    expect(onRetry).toHaveBeenNthCalledWith(1, 1, expect.any(S3UploadError));
-    expect(onRetry).toHaveBeenNthCalledWith(2, 2, expect.any(S3UploadError));
+    expect(onRetry).toHaveBeenNthCalledWith(1, 1, expect.any(UploadError));
+    expect(onRetry).toHaveBeenNthCalledWith(2, 2, expect.any(UploadError));
   });
 });
 
-describe("S3UploadError", () => {
+describe("UploadError", () => {
   it("exposes the status code and response body", () => {
-    const error = new S3UploadError(503, "<Code>SlowDown</Code>");
+    const error = new UploadError(503, "<Code>SlowDown</Code>");
     expect(error.statusCode).toBe(503);
     expect(error.responseBody).toBe("<Code>SlowDown</Code>");
   });
 
   it("formats the message so existing logs remain readable", () => {
-    const error = new S3UploadError(503, "<Code>SlowDown</Code>");
+    const error = new UploadError(503, "<Code>SlowDown</Code>");
     expect(error.message).toContain("Failed to upload!");
     expect(error.message).toContain("Status 503");
     expect(error.message).toContain("<Code>SlowDown</Code>");
   });
 
   it("is an instance of Error", () => {
-    const error = new S3UploadError(500, "");
+    const error = new UploadError(500, "");
     expect(error).toBeInstanceOf(Error);
   });
 });

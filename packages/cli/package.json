@@ -49,6 +49,7 @@
     "ora": "^5.4.1",
     "parse-diff": "^0.11.1",
     "puppeteer-core": "24.14.0",
+    "tar": "^7.5.8",
     "yargs": "^17.5.1"
   },
   "devDependencies": {
