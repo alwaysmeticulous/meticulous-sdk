@@ -6,27 +6,7 @@
   ],
   "commit": false,
   "fixed": [],
-  "linked": [
-    [
-      "@alwaysmeticulous/api",
-      "@alwaysmeticulous/backend-recorder-launcher",
-      "@alwaysmeticulous/cli",
-      "@alwaysmeticulous/client",
-      "@alwaysmeticulous/common",
-      "@alwaysmeticulous/debug-workspace",
-      "@alwaysmeticulous/downloading-helpers",
-      "@alwaysmeticulous/record",
-      "@alwaysmeticulous/recorder-loader",
-      "@alwaysmeticulous/recorder-plugin",
-      "@alwaysmeticulous/redaction",
-      "@alwaysmeticulous/remote-replay-launcher",
-      "@alwaysmeticulous/replay-debugger-ui",
-      "@alwaysmeticulous/replay-orchestrator-launcher",
-      "@alwaysmeticulous/sdk-bundles-api",
-      "@alwaysmeticulous/sentry",
-      "@alwaysmeticulous/tunnels-client"
-    ]
-  ],
+  "linked": [["@alwaysmeticulous/*"]],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
