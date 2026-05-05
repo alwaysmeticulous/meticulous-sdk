@@ -7,7 +7,11 @@ import { constants as zlibConstants } from "zlib";
 import { DeflateRaw } from "fast-zlib";
 import { create as tarCreate } from "tar";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { downloadFile, streamDownloadAndExtractTar } from "../download-file";
+import {
+  downloadFile,
+  streamDownloadAndExtractTar,
+  streamDownloadAndExtractTarGz,
+} from "../download-file";
 
 // Module-level toggle for the stall-on-write test below. Vitest can't spy on
 // fs/promises named exports in ESM mode, so we vi.mock the module once and
@@ -497,5 +501,100 @@ describe("streamDownloadAndExtractTar", () => {
         server.close();
       }
     });
+  });
+});
+
+describe("streamDownloadAndExtractTarGz", () => {
+  let sourceDir: string;
+  let extractDir: string;
+
+  beforeEach(async () => {
+    const base = join(tmpdir(), `test-stream-tar-gz-${Date.now()}`);
+    sourceDir = join(base, "source");
+    extractDir = join(base, "extract");
+    await mkdir(sourceDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    const base = join(sourceDir, "..");
+    try {
+      await rm(base, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  /**
+   * Round-trips through the same `tar.create({ gzip: true })` call the CLI
+   * `meticulous project upload-source` uses to produce `source.tar.gz`. This
+   * is the regression guard for the original raw-deflate path silently
+   * failing on customer-uploaded archives (which carry a real gzip header).
+   */
+  const createGzippedTar = async (folderPath: string): Promise<Buffer> => {
+    const chunks: Buffer[] = [];
+    const tarStream = tarCreate({ cwd: folderPath, gzip: true }, ["."]);
+    for await (const chunk of tarStream) {
+      chunks.push(chunk as Buffer);
+    }
+    return Buffer.concat(chunks);
+  };
+
+  it("extracts a gzipped tar produced by tar.create({ gzip: true })", async () => {
+    await writeFile(join(sourceDir, "hello.txt"), "Hello World");
+    await mkdir(join(sourceDir, "subdir"), { recursive: true });
+    await writeFile(join(sourceDir, "subdir", "nested.txt"), "Nested!");
+
+    const compressed = await createGzippedTar(sourceDir);
+
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, {
+        "Content-Type": "application/gzip",
+        "Content-Length": compressed.length.toString(),
+      });
+      res.end(compressed);
+    });
+
+    try {
+      await new Promise<void>((resolve) => server.listen(1246, resolve));
+
+      const entries = await streamDownloadAndExtractTarGz(
+        "http://localhost:1246",
+        extractDir,
+      );
+
+      expect(entries.length).toBeGreaterThan(0);
+      expect(await readFile(join(extractDir, "hello.txt"), "utf8")).toBe(
+        "Hello World",
+      );
+      expect(
+        await readFile(join(extractDir, "subdir", "nested.txt"), "utf8"),
+      ).toBe("Nested!");
+    } finally {
+      server.close();
+    }
+  });
+
+  it("rejects a raw-deflated tar (gzip header required)", async () => {
+    await writeFile(join(sourceDir, "hello.txt"), "Hello World");
+    const compressed = await createRawDeflatedTar(sourceDir);
+
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { "Content-Length": compressed.length.toString() });
+      res.end(compressed);
+    });
+
+    try {
+      await new Promise<void>((resolve) => server.listen(1247, resolve));
+
+      await expect(
+        streamDownloadAndExtractTarGz(
+          "http://localhost:1247",
+          extractDir,
+          { maxRetries: 0 },
+        ),
+      ).rejects.toThrow();
+    } finally {
+      server.close();
+    }
   });
 });

@@ -1,4 +1,4 @@
-import { createReadStream, existsSync } from "fs";
+import { existsSync } from "fs";
 import { stat, unlink } from "fs/promises";
 import { IncomingMessage } from "http";
 import { request as httpsRequest } from "https";
@@ -11,18 +11,20 @@ import {
   createClient,
   completeAssetUpload,
   getProxyAgent,
+  putFileToSignedUrl,
   requestMultipartAssetUpload,
   MultiPartUploadInfo,
+  UploadError,
+  retryTransientUploadErrors,
 } from "@alwaysmeticulous/client";
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
-import { MultipartCompressingUploader, UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
 import {
-  S3UploadError,
-  retryTransientS3Errors,
-} from "./upload-utils/retry-transient-s3-errors";
+  MultipartCompressingUploader,
+  UPLOAD_ARCHIVE_FILE_FORMAT,
+} from "./upload-utils/multipart-compressing-uploader";
 
 export interface UploadAssetsOptions {
   apiToken: string | null | undefined;
@@ -63,9 +65,9 @@ export const uploadAssets = async (
     if (!existsSync(indexHtmlPath)) {
       logger.warn(
         `Warning: No index.html found in the app directory (${resolvedAppDirectory}). ` +
-        `This may indicate that your build output is not properly configured for static hosting, unless you expect that the root url is invalid. ` +
-        `If you're using Next.js or another framework that requires server-side rendering, ` +
-        `you should use the \`cloud-compute\` GitHub Action or the \`run-all-tests-in-cloud\` command instead.`,
+          `This may indicate that your build output is not properly configured for static hosting, unless you expect that the root url is invalid. ` +
+          `If you're using Next.js or another framework that requires server-side rendering, ` +
+          `you should use the \`cloud-compute\` GitHub Action or the \`run-all-tests-in-cloud\` command instead.`,
       );
     }
   }
@@ -178,7 +180,10 @@ const uploadAssetsStreaming = async ({
   const logger = initLogger();
 
   const { uploadId, awsUploadId, uploadPartUrls, uploadChunkSize } =
-    await requestMultipartAssetUpload({ client, archiveType: UPLOAD_ARCHIVE_FILE_FORMAT });
+    await requestMultipartAssetUpload({
+      client,
+      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+    });
 
   logger.info(`Starting streaming upload for deployment ${uploadId}`);
 
@@ -224,7 +229,7 @@ const uploadBufferToSignedUrl = async (
   buffer: Buffer,
   options?: { contentType?: string },
 ): Promise<string> => {
-  return retryTransientS3Errors(
+  return retryTransientUploadErrors(
     () => putBufferToSignedUrl(signedUrl, buffer, options),
     { onRetry: logTransientUploadRetry },
   );
@@ -233,7 +238,7 @@ const uploadBufferToSignedUrl = async (
 const logTransientUploadRetry = (attempt: number, error: unknown): void => {
   const logger = initLogger();
   const reason =
-    error instanceof S3UploadError
+    error instanceof UploadError
       ? `HTTP ${error.statusCode}`
       : error instanceof Error
         ? error.message
@@ -274,9 +279,7 @@ const putBufferToSignedUrl = async (
           if (response.statusCode === 200) {
             resolve(response.headers["etag"] ?? "");
           } else {
-            reject(
-              new S3UploadError(response.statusCode ?? 0, responseData),
-            );
+            reject(new UploadError(response.statusCode ?? 0, responseData));
           }
         });
       },
@@ -402,59 +405,15 @@ const uploadFileToSignedUrl = async (
   }
   logger.info(`Uploading deployment assets (${fileSize} bytes)...`);
 
-  await retryTransientS3Errors(
-    () => putFileToSignedUrl(filePath, signedUrl, fileSize),
+  await retryTransientUploadErrors(
+    () =>
+      putFileToSignedUrl({
+        filePath,
+        signedUrl,
+        size: fileSize,
+        contentType: "application/zip",
+      }),
     { onRetry: logTransientUploadRetry },
   );
   logger.info("Successfully uploaded deployment assets");
-};
-
-const putFileToSignedUrl = async (
-  filePath: string,
-  signedUrl: string,
-  fileSize: number,
-): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    // A new read stream is required on every attempt — streams cannot be replayed.
-    const fileStream = createReadStream(filePath);
-    const req = httpsRequest(
-      signedUrl,
-      {
-        agent: getProxyAgent(),
-        method: "PUT",
-        headers: {
-          "Content-Length": fileSize,
-          "Content-Type": "application/zip",
-        },
-      },
-      (response: IncomingMessage) => {
-        let responseData = "";
-
-        response.on("data", (chunk) => {
-          responseData += chunk;
-        });
-
-        response.on("end", () => {
-          if (response.statusCode === 200) {
-            resolve();
-          } else {
-            reject(
-              new S3UploadError(response.statusCode ?? 0, responseData),
-            );
-          }
-        });
-      },
-    );
-
-    req.on("error", (error) => {
-      reject(error);
-    });
-
-    fileStream.on("error", (error) => {
-      req.destroy(error);
-      reject(error);
-    });
-
-    fileStream.pipe(req);
-  });
 };

@@ -98,6 +98,18 @@ importers:
 
   packages/api: {}
 
+  packages/backend-recorder-launcher:
+    dependencies:
+      '@alwaysmeticulous/common':
+        specifier: workspace:*
+        version: link:../common
+      '@alwaysmeticulous/downloading-helpers':
+        specifier: workspace:*
+        version: link:../downloading-helpers
+      '@alwaysmeticulous/sdk-bundles-api':
+        specifier: workspace:*
+        version: link:../sdk-bundles-api
+
   packages/cli:
     dependencies:
       '@alwaysmeticulous/api':
@@ -160,6 +172,9 @@ importers:
       puppeteer-core:
         specifier: 24.14.0
         version: 24.14.0
+      tar:
+        specifier: ^7.5.8
+        version: 7.5.11
       yargs:
         specifier: ^17.5.1
         version: 17.7.2

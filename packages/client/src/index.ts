@@ -19,7 +19,18 @@ export {
 } from "./api/agent.api";
 export * from "./api/github-cloud-replay.api";
 export { WhoamiResponse, getWhoami } from "./api/oauth.api";
-export { getProject, getRepoUrl } from "./api/project.api";
+export {
+  GetRepoUrlOptions,
+  RepoUrlResponse,
+  getProject,
+  getRepoUrl,
+  GetSourceArchiveUrlOptions,
+  SourceArchiveUrlResponse,
+  getSourceArchiveUrl,
+  RequestSourceCodeUploadUrlParams,
+  RequestSourceCodeUploadUrlResponse,
+  requestSourceCodeUploadUrl,
+} from "./api/project.api";
 export {
   ReplayV3UploadLocations,
   getReplay,
@@ -60,6 +71,16 @@ export { getValidAccessToken } from "./oauth/oauth-refresh";
 export { clearOAuthTokens } from "./oauth/oauth-token-store";
 export type { MeticulousClient } from "./types/client.types";
 export { getProxyAgent } from "./utils/get-proxy-agent";
+export {
+  PutFileToSignedUrlOptions,
+  putFileToSignedUrl,
+} from "./utils/put-file-to-signed-url";
+export {
+  UploadError,
+  isTransientUploadError,
+  retryTransientUploadErrors,
+  RetryTransientUploadErrorsOptions,
+} from "./utils/retry-transient-upload-errors";
 export {
   RequestAssetUploadParams,
   RequestAssetUploadResponse,
