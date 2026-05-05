@@ -72,6 +72,10 @@ export { clearOAuthTokens } from "./oauth/oauth-token-store";
 export type { MeticulousClient } from "./types/client.types";
 export { getProxyAgent } from "./utils/get-proxy-agent";
 export {
+  PutFileToSignedUrlOptions,
+  putFileToSignedUrl,
+} from "./utils/put-file-to-signed-url";
+export {
   UploadError,
   isTransientUploadError,
   retryTransientUploadErrors,
