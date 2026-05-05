@@ -8,14 +8,15 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
   id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     environment: npm-publish
-    concurrency: ${{ github.ref }}
+    concurrency: ${{ github.workflow }}-${{ github.ref }}
 
     steps:
       - name: Checkout repository
@@ -55,7 +56,7 @@ jobs:
         if: github.repository == 'alwaysmeticulous/meticulous-sdk'
         continue-on-error: true
         run: |
-          VERSION="sdk-v$(node -p "require('./lerna.json').version")"
+          VERSION="sdk-v$(node -p "require('./packages/cli/package.json').version")"
           pnpm exec sentry-cli sourcemaps inject ./packages/*/dist
           pnpm exec sentry-cli sourcemaps upload \
             --org meticulous \
@@ -65,8 +66,13 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
-      - name: Publish packages
+      - name: Create Release PR or Publish to npm
         if: github.repository == 'alwaysmeticulous/meticulous-sdk'
-        run: pnpm exec lerna publish from-package --yes --no-verify-access --loglevel verbose
+        uses: changesets/action@6a0a831ff30acef54f2c6aa1cbbc1096b066edaf # v1.7.0
+        with:
+          publish: pnpm release
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+          # No NPM_TOKEN needed: setup-node already created .npmrc using NODE_AUTH_TOKEN
+          # from the npm-publish environment, which changesets/action leaves untouched.
