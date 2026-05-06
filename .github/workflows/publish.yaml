@@ -28,10 +28,12 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
 
-      - name: Use Node.js LTS
+      # Trusted publishing (OIDC) requires Node >= 22.14 and npm >= 11.5.1
+      # https://docs.npmjs.com/trusted-publishers
+      - name: Use Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
