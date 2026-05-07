@@ -204,7 +204,10 @@ export const getOrFetchReplayArchive = async (
         downloadScope,
         formatJsonFiles,
         previouslyDownloadedScope,
-        excludeFileTypes,
+        // Widen to `ReadonlySet<string>` at the boundary: `ReplayFileType` is
+        // for caller-side typo safety, but internally we check against
+        // arbitrary keys returned by the server.
+        excludeFileTypes as ReadonlySet<string> | undefined,
       );
     } else {
       throw new Error(
@@ -231,7 +234,7 @@ const downloadReplayV3Files = async (
   downloadScope: DownloadScope,
   formatJsonFiles: boolean,
   previouslyDownloadedScope: DownloadScope | undefined,
-  excludeFileTypes: ReadonlySet<ReplayFileType> | undefined,
+  excludeFileTypes: ReadonlySet<string> | undefined,
 ) => {
   const downloadUrls = await getReplayV3DownloadUrls(client, replayId);
   if (!downloadUrls) {
@@ -240,15 +243,9 @@ const downloadReplayV3Files = async (
     );
   }
 
-  // `excludeFileTypes` is typed against `ReplayFileType` for caller safety,
-  // but here we look it up against arbitrary keys returned by the server, so
-  // widen to `ReadonlySet<string>` for the `.has` check.
-  const widenedExcludes = excludeFileTypes as
-    | ReadonlySet<string>
-    | undefined;
   const includes = (fileType: string): boolean =>
     shouldDownloadFile(fileType, downloadScope) &&
-    !(widenedExcludes?.has(fileType) ?? false);
+    !(excludeFileTypes?.has(fileType) ?? false);
 
   const {
     screenshots,

@@ -13,7 +13,10 @@ import {
 } from "fs";
 import { basename, dirname, extname, join } from "path";
 import { MeticulousClient } from "@alwaysmeticulous/client";
-import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
+import {
+  getMeticulousLocalDataDir,
+  initLogger,
+} from "@alwaysmeticulous/common";
 import chalk from "chalk";
 import { format, type BuiltInParserName } from "prettier";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
@@ -237,7 +240,9 @@ const renderClaudeMd = (
 ): string => {
   const src = resolveTemplateFile("CLAUDE.md", additionalTemplatesDir);
   if (!src) {
-    return "";
+    throw new Error(
+      "CLAUDE.md template not found in the debug-workspace package. This indicates a packaging bug.",
+    );
   }
   return renderMarkdownWithConditionals(readFileSync(src, "utf8"), conditions);
 };
@@ -388,7 +393,8 @@ const writeMarkdownWithConditionals = (
 // True when at least one replay's `snapshotted-assets/` directory exists and
 // contains files. Drives the `if-snapshot-assets` markdown conditional so that
 // snapshot/asset guidance is only surfaced when the data is actually available.
-const detectSnapshotAssets = (workspaceDir: string): boolean => {
+// Exported for testing.
+export const detectSnapshotAssets = (workspaceDir: string): boolean => {
   const replaysDir = join(workspaceDir, DEBUG_DATA_DIRECTORY, "replays");
   if (!existsSync(replaysDir)) {
     return false;
@@ -411,7 +417,7 @@ const detectSnapshotAssets = (workspaceDir: string): boolean => {
         // Permission/IO error reading this directory — keep scanning the
         // others. Surface at warn so the snapshot-assets conditional being
         // disabled isn't a silent surprise downstream.
-        console.warn(
+        initLogger().warn(
           `Could not read snapshotted-assets dir ${assetsDir}: ${
             err instanceof Error ? err.message : String(err)
           }`,
