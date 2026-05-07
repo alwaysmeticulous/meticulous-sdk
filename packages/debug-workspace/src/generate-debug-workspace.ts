@@ -59,8 +59,6 @@ export interface ScreenshotMapEntry {
   eventNumber: number | null;
   /** Name of the `before.dom` HTML file in the replay's `screenshots/`, or `null` if missing. */
   htmlFilename: string | null;
-  /** Name of the `after.dom` HTML file, or `null` when the screenshot captured no after DOM. */
-  afterHtmlFilename: string | null;
 }
 
 export interface ReplayComparisonEntry {
@@ -82,6 +80,21 @@ export interface GenerateDebugWorkspaceOptions {
   projectRepoDir: string | undefined;
   maxConcurrency?: number | undefined;
   additionalTemplatesDir?: string | undefined;
+  /**
+   * When true, do not write `.claude/settings.json` or `.claude/hooks/` into
+   * the workspace. Used by the agent-cloud-worker, which configures
+   * permissions, hooks, and sandboxing inline via the Claude Agent SDK rather
+   * than from filesystem settings.
+   */
+  skipSettingsAndHooks?: boolean | undefined;
+  /**
+   * Whether the workspace is being prepared for the local `meticulous debug`
+   * CLI (default) or for a non-CLI runner like the agent-cloud-worker. When
+   * false, CLI-specific guidance (project-repo paths, `--baseReplayId` notes,
+   * direct CLI invocations) is stripped from CLAUDE.md and templated agent
+   * markdown via `<!-- if-local-cli -->` markers.
+   */
+  isLocalCli?: boolean | undefined;
   writeContextJson?:
     | ((
         debugContext: DebugContext,
@@ -110,7 +123,9 @@ export const generateDebugWorkspace = async (
   const hasPrDiff = existsSync(
     join(workspaceDir, DEBUG_DATA_DIRECTORY, "pr-diff.txt"),
   );
-  copyClaudeMd(workspaceDir, options.additionalTemplatesDir, { hasPrDiff });
+  const isLocalCli = options.isLocalCli ?? true;
+  const conditions: MarkdownConditions = { hasPrDiff, isLocalCli };
+  copyClaudeMd(workspaceDir, options.additionalTemplatesDir, conditions);
   generateParamsDiffs(debugContext, workspaceDir);
   generateAssetsDiff(debugContext, workspaceDir);
   generateTimelineSummaries(workspaceDir);
@@ -141,20 +156,22 @@ export const generateDebugWorkspace = async (
   );
 
   copyClaudeSubdir(workspaceDir, "rules", options.additionalTemplatesDir);
-  copyClaudeSubdir(workspaceDir, "hooks", options.additionalTemplatesDir, {
-    makeExecutable: true,
-  });
   copyClaudeSubdir(workspaceDir, "agents", options.additionalTemplatesDir, {
-    hasPrDiff,
+    conditions,
   });
-  copySkills(workspaceDir, options.additionalTemplatesDir, { hasPrDiff });
+  copySkills(workspaceDir, options.additionalTemplatesDir, conditions);
 
-  const settingsSrc = resolveTemplateFile(
-    "settings.json",
-    options.additionalTemplatesDir,
-  );
-  if (settingsSrc) {
-    copyFileSync(settingsSrc, join(claudeDir, "settings.json"));
+  if (!options.skipSettingsAndHooks) {
+    copyClaudeSubdir(workspaceDir, "hooks", options.additionalTemplatesDir, {
+      makeExecutable: true,
+    });
+    const settingsSrc = resolveTemplateFile(
+      "settings.json",
+      options.additionalTemplatesDir,
+    );
+    if (settingsSrc) {
+      copyFileSync(settingsSrc, join(claudeDir, "settings.json"));
+    }
   }
 };
 
@@ -185,28 +202,36 @@ const resolveTemplateFile = (
 const PR_DIFF_ONLY_AGENT_FILES = new Set<string>(["pr-analyzer.md"]);
 const PR_DIFF_ONLY_SKILL_DIRS = new Set<string>(["pr-analysis"]);
 
+interface MarkdownConditions {
+  hasPrDiff: boolean;
+  isLocalCli: boolean;
+}
+
 const copyClaudeMd = (
   workspaceDir: string,
   additionalTemplatesDir: string | undefined,
-  options: { hasPrDiff: boolean },
+  conditions: MarkdownConditions,
 ): void => {
   const src = resolveTemplateFile("CLAUDE.md", additionalTemplatesDir);
   if (!src) {
     return;
   }
   const dest = join(workspaceDir, ".claude", "CLAUDE.md");
-  writeMarkdownWithConditionals(src, dest, options.hasPrDiff);
+  writeMarkdownWithConditionals(src, dest, conditions);
 };
 
 const copyClaudeSubdir = (
   workspaceDir: string,
   subdir: string,
   additionalTemplatesDir: string | undefined,
-  options: { makeExecutable?: boolean; hasPrDiff?: boolean } = {},
+  options: {
+    makeExecutable?: boolean;
+    conditions?: MarkdownConditions;
+  } = {},
 ): void => {
   const destDir = join(workspaceDir, ".claude", subdir);
   const skipNames =
-    options.hasPrDiff === false && subdir === "agents"
+    options.conditions?.hasPrDiff === false && subdir === "agents"
       ? PR_DIFF_ONLY_AGENT_FILES
       : new Set<string>();
   let copied = false;
@@ -225,8 +250,8 @@ const copyClaudeSubdir = (
     for (const filename of entries) {
       const destPath = join(destDir, filename);
       const srcPath = join(srcDir, filename);
-      if (filename.endsWith(".md") && options.hasPrDiff !== undefined) {
-        writeMarkdownWithConditionals(srcPath, destPath, options.hasPrDiff);
+      if (filename.endsWith(".md") && options.conditions) {
+        writeMarkdownWithConditionals(srcPath, destPath, options.conditions);
       } else {
         copyFileSync(srcPath, destPath);
       }
@@ -252,7 +277,7 @@ const copyClaudeSubdir = (
 const copySkills = (
   workspaceDir: string,
   additionalTemplatesDir: string | undefined,
-  options: { hasPrDiff: boolean },
+  conditions: MarkdownConditions,
 ): void => {
   const skillDirNames = new Set<string>();
 
@@ -277,34 +302,56 @@ const copySkills = (
   }
 
   for (const skillName of skillDirNames) {
-    if (!options.hasPrDiff && PR_DIFF_ONLY_SKILL_DIRS.has(skillName)) {
+    if (!conditions.hasPrDiff && PR_DIFF_ONLY_SKILL_DIRS.has(skillName)) {
       continue;
     }
-    copyClaudeSubdir(workspaceDir, join("skills", skillName), additionalTemplatesDir, {
-      hasPrDiff: options.hasPrDiff,
-    });
+    copyClaudeSubdir(
+      workspaceDir,
+      join("skills", skillName),
+      additionalTemplatesDir,
+      { conditions },
+    );
   }
 };
 
-// Strips <!-- if-pr-diff --> ... <!-- end-if-pr-diff --> blocks (including the
-// markers and the trailing newline) when hasPrDiff is false. When true, leaves
-// the block content but removes the marker comments so they don't leak into the
-// rendered prompt.
+// Strips <!-- if-<marker> --> ... <!-- end-if-<marker> --> blocks (including the
+// markers and the trailing newline) when the corresponding condition is false.
+// When the condition is true, leaves the block content but removes the marker
+// comments so they don't leak into the rendered prompt.
+const CONDITION_MARKERS: Record<keyof MarkdownConditions, string> = {
+  hasPrDiff: "pr-diff",
+  isLocalCli: "local-cli",
+};
+
 const writeMarkdownWithConditionals = (
   srcPath: string,
   destPath: string,
-  hasPrDiff: boolean,
+  conditions: MarkdownConditions,
 ): void => {
-  const original = readFileSync(srcPath, "utf8");
-  const stripped = hasPrDiff
-    ? original
-        .replace(/^[ \t]*<!--\s*if-pr-diff\s*-->[ \t]*\r?\n/gm, "")
-        .replace(/^[ \t]*<!--\s*end-if-pr-diff\s*-->[ \t]*\r?\n/gm, "")
-    : original.replace(
-        /^[ \t]*<!--\s*if-pr-diff\s*-->[ \t]*\r?\n[\s\S]*?^[ \t]*<!--\s*end-if-pr-diff\s*-->[ \t]*\r?\n/gm,
-        "",
+  let content = readFileSync(srcPath, "utf8");
+  for (const [conditionKey, marker] of Object.entries(CONDITION_MARKERS) as [
+    keyof MarkdownConditions,
+    string,
+  ][]) {
+    const startRe = new RegExp(
+      `^[ \\t]*<!--\\s*if-${marker}\\s*-->[ \\t]*\\r?\\n`,
+      "gm",
+    );
+    const endRe = new RegExp(
+      `^[ \\t]*<!--\\s*end-if-${marker}\\s*-->[ \\t]*\\r?\\n`,
+      "gm",
+    );
+    if (conditions[conditionKey]) {
+      content = content.replace(startRe, "").replace(endRe, "");
+    } else {
+      const blockRe = new RegExp(
+        `^[ \\t]*<!--\\s*if-${marker}\\s*-->[ \\t]*\\r?\\n[\\s\\S]*?^[ \\t]*<!--\\s*end-if-${marker}\\s*-->[ \\t]*\\r?\\n`,
+        "gm",
       );
-  writeFileSync(destPath, stripped);
+      content = content.replace(blockRe, "");
+    }
+  }
+  writeFileSync(destPath, content);
 };
 
 // ---------------------------------------------------------------------------
@@ -785,11 +832,10 @@ const resolveBaseShaFromGit = (
 ): string | undefined => {
   for (const branch of ["origin/main", "origin/master"]) {
     try {
-      const mergeBase = execFileSync(
-        "git",
-        ["merge-base", branch, headSha],
-        { cwd: repoDir, encoding: "utf8" },
-      ).trim();
+      const mergeBase = execFileSync("git", ["merge-base", branch, headSha], {
+        cwd: repoDir,
+        encoding: "utf8",
+      }).trim();
       if (mergeBase) {
         return mergeBase;
       }
@@ -1436,11 +1482,7 @@ const buildScreenshotMap = (
           ? filename.slice(0, -".png".length)
           : filename;
         const htmlFilename = `${baseName}.html`;
-        const afterHtmlFilename = `${baseName}.after.html`;
         const htmlExists = existsSync(join(screenshotsDir, htmlFilename));
-        const afterHtmlExists = existsSync(
-          join(screenshotsDir, afterHtmlFilename),
-        );
 
         map[`${subDir}/${replayId}/${filename}`] = {
           replayId,
@@ -1450,7 +1492,6 @@ const buildScreenshotMap = (
           virtualTimeEnd: e.virtualTimeEnd ?? null,
           eventNumber: e.data.identifier.eventNumber ?? null,
           htmlFilename: htmlExists ? htmlFilename : null,
-          afterHtmlFilename: afterHtmlExists ? afterHtmlFilename : null,
         };
       }
     }
@@ -1465,7 +1506,6 @@ const buildScreenshotMap = (
   }
   return map;
 };
-
 
 const generateScreenshotContext = (
   debugContext: DebugContext,

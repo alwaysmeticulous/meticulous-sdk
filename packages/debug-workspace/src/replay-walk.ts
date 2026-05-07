@@ -78,9 +78,6 @@ export interface ScreenshotMetadata {
     dom?: string;
     hashOfClassNames?: string;
   };
-  after?: {
-    dom?: string;
-  } | null;
 }
 
 /** Returns `null` if the file can't be read or parsed. */

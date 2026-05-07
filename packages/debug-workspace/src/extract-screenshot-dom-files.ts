@@ -11,9 +11,8 @@ import {
 import { screenshotIdentifierToBaseName } from "./screenshot-identifier";
 
 /**
- * Extract each `*.metadata.json`'s `before.dom` / `after.dom` into
- * `<name>.html` / `<name>.after.html`, prefixed with a one-line
- * `<!-- screenshot=... url=... vt=... -->` header.
+ * Extract each `*.metadata.json`'s `before.dom` into `<name>.html`,
+ * prefixed with a one-line `<!-- screenshot=... url=... vt=... -->` header.
  */
 export const extractScreenshotDomFiles = (workspaceDir: string): void => {
   const debugDataDir = join(workspaceDir, DEBUG_DATA_DIRECTORY);
@@ -58,16 +57,7 @@ export const extractScreenshotDomFiles = (workspaceDir: string): void => {
       if (typeof beforeDom === "string") {
         writeFileSync(
           join(screenshotsDir, `${baseName}.html`),
-          renderWithHeader(beforeDom, baseName, url, virtualTime, "before"),
-        );
-        extractedCount++;
-      }
-
-      const afterDom = metadata.after?.dom;
-      if (typeof afterDom === "string") {
-        writeFileSync(
-          join(screenshotsDir, `${baseName}.after.html`),
-          renderWithHeader(afterDom, baseName, url, virtualTime, "after"),
+          renderWithHeader(beforeDom, baseName, url, virtualTime),
         );
         extractedCount++;
       }
@@ -95,12 +85,8 @@ const renderWithHeader = (
   baseName: string,
   url: string | null,
   virtualTime: number | null,
-  side: "before" | "after",
 ): string => {
-  const headerParts: string[] = [
-    `screenshot=${baseName}`,
-    `side=${side}`,
-  ];
+  const headerParts: string[] = [`screenshot=${baseName}`];
   if (url != null) {
     headerParts.push(`url=${url}`);
   }
