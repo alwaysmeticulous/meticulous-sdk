@@ -98,6 +98,32 @@ const shouldDownloadFile = (
 
 const REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME = "previously-downloaded.txt";
 
+/**
+ * Known file-type keys returned by the v3 download-urls endpoint. The server
+ * is the source of truth and may include additional keys; this union covers
+ * the ones the SDK references explicitly plus the common excludable
+ * artifacts. Used to give callers compile-time safety on `excludeFileTypes`
+ * so a typo (e.g. `playbackdata`) is caught at the type level rather than
+ * silently failing at runtime.
+ */
+export type ReplayFileType =
+  | "screenshots"
+  | "diffs"
+  | "snapshottedAssets"
+  | "rawCoverage"
+  | "rawPerScreenshotCssCoverage"
+  | "rawPerScreenshotJsCoverage"
+  | "mappedCoverage"
+  | "mappedPerScreenshotJsCoverage"
+  | "playbackData"
+  | "timeline"
+  | "metadata"
+  | "accuracy"
+  | "stackTraces"
+  | "cookies"
+  | "launchBrowserAndReplayParams"
+  | "logs";
+
 export interface ReplayArchiveOptions {
   /**
    * File-type keys to skip during download (e.g. `playbackData`, `rawCoverage`,
@@ -108,7 +134,7 @@ export interface ReplayArchiveOptions {
    * is skipped and the `previously-downloaded.txt` marker is not written, so
    * subsequent unfiltered callers will re-download into the cache.
    */
-  excludeFileTypes?: ReadonlySet<string>;
+  excludeFileTypes?: ReadonlySet<ReplayFileType>;
 }
 
 export const getOrFetchReplayArchive = async (
@@ -205,7 +231,7 @@ const downloadReplayV3Files = async (
   downloadScope: DownloadScope,
   formatJsonFiles: boolean,
   previouslyDownloadedScope: DownloadScope | undefined,
-  excludeFileTypes: ReadonlySet<string> | undefined,
+  excludeFileTypes: ReadonlySet<ReplayFileType> | undefined,
 ) => {
   const downloadUrls = await getReplayV3DownloadUrls(client, replayId);
   if (!downloadUrls) {
@@ -214,9 +240,15 @@ const downloadReplayV3Files = async (
     );
   }
 
+  // `excludeFileTypes` is typed against `ReplayFileType` for caller safety,
+  // but here we look it up against arbitrary keys returned by the server, so
+  // widen to `ReadonlySet<string>` for the `.has` check.
+  const widenedExcludes = excludeFileTypes as
+    | ReadonlySet<string>
+    | undefined;
   const includes = (fileType: string): boolean =>
     shouldDownloadFile(fileType, downloadScope) &&
-    !(excludeFileTypes?.has(fileType) ?? false);
+    !(widenedExcludes?.has(fileType) ?? false);
 
   const {
     screenshots,
@@ -246,6 +278,11 @@ const downloadReplayV3Files = async (
     await mkdir(join(replayDir, "screenshots"), { recursive: true });
   }
 
+  // If `previouslyDownloadedScope === "screenshots-only"` we trust that the
+  // screenshots are already on disk from a prior unfiltered download (the
+  // marker is only ever written after an unfiltered run) and skip re-download.
+  // Safe even when `excludeFileTypes` is set: we're leaving existing files in
+  // place, not re-using stale data.
   const screenshotPromises: (() => Promise<string[] | void>)[] =
     !includes("screenshots") ||
     previouslyDownloadedScope === "screenshots-only"

@@ -10,6 +10,7 @@ import {
   ensureReplayLogTextFiles,
   getOrFetchReplayArchive,
   getOrFetchRecordedSessionData,
+  ReplayFileType,
 } from "@alwaysmeticulous/downloading-helpers";
 import chalk from "chalk";
 import pLimit from "p-limit";
@@ -104,13 +105,14 @@ const downloadReplays = async (
 // of data we already have; `diffs/` only stores pixel-diff PNG overlays the
 // agent can't act on (the actionable info is in `debug-data/diffs/*.summary.json`
 // and the DOM diffs).
-const DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES: ReadonlySet<string> = new Set([
-  "playbackData",
-  "rawCoverage",
-  "rawPerScreenshotCssCoverage",
-  "rawPerScreenshotJsCoverage",
-  "diffs",
-]);
+const DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES: ReadonlySet<ReplayFileType> =
+  new Set<ReplayFileType>([
+    "playbackData",
+    "rawCoverage",
+    "rawPerScreenshotCssCoverage",
+    "rawPerScreenshotJsCoverage",
+    "diffs",
+  ]);
 
 const copyReplayDir = (src: string, dest: string): void => {
   mkdirSync(dest, { recursive: true });

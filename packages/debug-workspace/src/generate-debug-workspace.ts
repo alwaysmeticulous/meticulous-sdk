@@ -407,8 +407,15 @@ const detectSnapshotAssets = (workspaceDir: string): boolean => {
         if (readdirSync(assetsDir).length > 0) {
           return true;
         }
-      } catch {
-        // Ignore permission/IO errors and keep scanning.
+      } catch (err) {
+        // Permission/IO error reading this directory — keep scanning the
+        // others. Surface at warn so the snapshot-assets conditional being
+        // disabled isn't a silent surprise downstream.
+        console.warn(
+          `Could not read snapshotted-assets dir ${assetsDir}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
       }
     }
   }

@@ -1,6 +1,12 @@
 export { sanitizeFilename } from "./file-downloads/local-data.utils";
 export { downloadAppContainerLogs } from "./file-downloads/app-container-logs";
-export { getOrFetchReplay, getOrFetchReplayArchive, DownloadScope } from "./scripts/replays";
+export {
+  getOrFetchReplay,
+  getOrFetchReplayArchive,
+  DownloadScope,
+  ReplayFileType,
+  ReplayArchiveOptions,
+} from "./scripts/replays";
 export {
   getOrFetchRecordedSession,
   getOrFetchRecordedSessionData,
