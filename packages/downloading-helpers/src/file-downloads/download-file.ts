@@ -72,7 +72,10 @@ export const downloadFile = async (
     cancelToken: source.token,
   });
 
-  const contentLength = parseInt(response.headers["content-length"] ?? "0", 10);
+  const contentLength = parseInt(
+    String(response.headers["content-length"] ?? "0"),
+    10
+  );
 
   let progressBar: cliProgress.SingleBar | null = null;
   let downloadedBytes = 0;

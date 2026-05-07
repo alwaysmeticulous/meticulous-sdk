@@ -23,7 +23,7 @@
     "@alwaysmeticulous/api": "workspace:*",
     "@alwaysmeticulous/client": "workspace:*",
     "@alwaysmeticulous/common": "workspace:*",
-    "axios": "^1.7.9",
+    "axios": "^1.15.1",
     "axios-retry": "^4.5.0",
     "cli-progress": "^3.12.0",
     "extract-zip": "^2.0.1",
