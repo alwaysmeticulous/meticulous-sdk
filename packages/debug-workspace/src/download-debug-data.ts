@@ -1,6 +1,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import {
+  getPrDiffForTestRun,
   getReplayDiff,
   getTestRun,
   MeticulousClient,
@@ -44,6 +45,7 @@ export const downloadDebugData = async (
     downloadSessionData(client, debugContext, debugDataDir, maxConcurrency),
     downloadReplayDiffs(client, debugContext, debugDataDir, maxConcurrency),
     downloadTestRunMetadata(client, debugContext, debugDataDir),
+    downloadPrDiffFromApi(client, debugContext, debugDataDir),
     options.additionalDownloads?.(debugContext, debugDataDir),
   ]);
 };
@@ -208,3 +210,34 @@ const downloadTestRunMetadata = async (
   );
 };
 
+const downloadPrDiffFromApi = async (
+  client: MeticulousClient,
+  debugContext: DebugContext,
+  debugDataDir: string,
+): Promise<void> => {
+  if (!debugContext.testRunId) {
+    return;
+  }
+
+  console.log(chalk.cyan(`  Downloading PR diff...`));
+  try {
+    const response = await getPrDiffForTestRun({
+      client,
+      testRunId: debugContext.testRunId,
+    });
+    if (response.content && response.content.trim()) {
+      writeFileSync(join(debugDataDir, "pr-diff.txt"), response.content);
+    }
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const serverMessage = error?.response?.data?.message;
+    const detail = serverMessage
+      ? `${status ?? "unknown"}: ${serverMessage}`
+      : error instanceof Error
+        ? error.message
+        : String(error);
+    console.warn(
+      chalk.yellow(`  Warning: Could not download PR diff (${detail}).`),
+    );
+  }
+};

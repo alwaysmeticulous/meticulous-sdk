@@ -44,7 +44,7 @@ export {
   postSessionIdNotification,
 } from "./api/session.api";
 export { ReplayDiffResponse, getReplayDiff } from "./api/replay-diff.api";
-export { getPrDiff } from "./api/source-code.api";
+export { getPrDiff, getPrDiffForTestRun } from "./api/source-code.api";
 export {
   ExecuteSecureTunnelTestRunOptions,
   executeSecureTunnelTestRun,

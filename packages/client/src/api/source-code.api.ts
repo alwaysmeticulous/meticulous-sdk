@@ -13,3 +13,16 @@ export const getPrDiff = async ({
   );
   return data;
 };
+
+export const getPrDiffForTestRun = async ({
+  client,
+  testRunId,
+}: {
+  client: MeticulousClient;
+  testRunId: string;
+}): Promise<{ content: string }> => {
+  const { data } = await client.get<unknown, { data: { content: string } }>(
+    `/test-runs/${testRunId}/pr-diff`,
+  );
+  return data;
+};

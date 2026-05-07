@@ -5,8 +5,8 @@
 You are in a debugging workspace for the Meticulous automated UI testing platform.
 You are investigating a replay issue (flaky behavior, unexpected diffs, or replay failures).
 
-`debug-data/context.json` has been automatically loaded into your context. It contains all IDs, paths,
-metadata, and what data is available in this workspace. You do not need to read it again.
+`debug-data/context.json` is the index for this workspace. Read it first; it lists all IDs, paths,
+metadata, and what data is available.
 
 ## How Meticulous Works
 
@@ -28,12 +28,14 @@ The workspace root contains the debug workspace files. All downloaded debug data
 the `debug-data/` subdirectory.
 
 - **`.claude/`** -- Configuration for this debugging workspace (hooks, skills, agents).
-- **`debug-data/context.json`** -- Loaded automatically into context by the SessionStart hook;
-  you do not need to read it again.
+- **`debug-data/context.json`** -- Index of IDs, paths, metadata, and what data is available
+  in this workspace. Read this first.
 - **`debug-data/`** -- All downloaded replay data, session recordings, diffs, and
   pre-computed analysis artifacts.
+<!-- if-local-cli -->
 - **`project-repo/`** -- (Optional) Your codebase checked out at the relevant commit.
   Only present if the command was run from within a git repository.
+<!-- end-if-local-cli -->
 
 ## debug-data/ Contents
 
@@ -42,10 +44,10 @@ comparing replays), and other data.
 
 ### Per-Replay Files (always available)
 
-Replay data is organized into `head/`, `base/`, and `other/` subdirectories under
+Replay data is organized into `head/` and `base/` subdirectories under
 `debug-data/replays/`. All files are searchable and can be found via glob/search.
 
-Each replay directory (`debug-data/replays/{head,base,other}/<replayId>/`) contains:
+Each replay directory (`debug-data/replays/<role>/<replayId>/`) contains:
 
 - `logs.deterministic.txt` -- Deterministic logs with non-deterministic data stripped. Best for
   diffing between replays. Can be very large (check `fileMetadata` in `context.json` for sizes).
@@ -69,12 +71,10 @@ Each replay directory (`debug-data/replays/{head,base,other}/<replayId>/`) conta
   **Only present if `snapshotAssets` was enabled** -- check `launchBrowserAndReplayParams.json`
   for the `snapshotAssets` field before assuming this directory exists.
 - `screenshots/<name>.metadata.json` -- Per-screenshot metadata, including the captured `before.dom`
-  (full HTML at screenshot time) and, when an interaction followed, `after.dom`.
+  (full HTML at screenshot time).
 - `screenshots/<name>.html` -- The `before.dom` extracted to a standalone HTML file. Prefer reading
   this over grepping the metadata JSON. The one-line `<!-- screenshot=... url=... vt=... -->`
   header at the top is for humans only and is not used when computing DOM diffs.
-- `screenshots/<name>.after.html` -- Same for `after.dom`, only present when the metadata
-  carried a non-null `after` side.
 
 Note: screenshot PNGs (the binary images themselves) are **not** copied into the workspace --
 only the `*.metadata.json` files that carry their DOM and the `.html` files extracted from
@@ -109,8 +109,7 @@ Per-replay generated summaries:
 
 ### Diff Files (only when comparing replays)
 
-These files are only generated when comparing replays -- i.e. when using `meticulous debug replay-diff`
-or `meticulous debug replay` with `--baseReplayId`.
+These files are only generated when comparing replays.
 
 - `debug-data/diffs/<id>.json` -- Full diff data including replay metadata, test run config,
   and screenshot results. Can be very large (20K+ tokens). Only read this if you need the full context.
@@ -142,10 +141,12 @@ or `meticulous debug replay` with `--baseReplayId`.
   diffs: total screenshots compared, count breakdown by status, and a TSV table (`screenshot`,
   `status`, `hunks`, `diff_bytes`, `url`).
 
+<!-- if-local-cli -->
 Note: DOM diffs are only generated when a `replayDiffId` is available (the normal
 `meticulous debug replay-diff <id>` path). On the rare `meticulous debug replay --baseReplayId`
 path there is no `replayDiffId`, so `dom-diffs/` is not generated — diff the per-replay
 `screenshots/<baseName>.html` files directly with the system `diff` command instead.
+<!-- end-if-local-cli -->
 
 Individual screenshots may also be marked `skipped-error` (backend fetch failed) or
 `skipped-unsupported` (e.g. redacted variants, or screenshots whose identifier couldn't
@@ -165,8 +166,6 @@ to diffing the two `screenshots/<baseName>.html` files directly.
 <!-- if-pr-diff -->
 - `debug-data/pr-diff.txt` -- Source code changes between the base and head commits.
 <!-- end-if-pr-diff -->
-- `debug-data/project-repo/` -- Your codebase checked out at the relevant commit. Only present if
-  the command was run from within a git repository.
 
 ## Key `context.json` fields
 
@@ -180,8 +179,7 @@ to diffing the two `screenshots/<baseName>.html` files directly.
   identical. `fullDiffPath` alone can also be `null` when the full-context fetch failed
   while the canonical succeeded — in that case `diffPath` is non-null and still usable.
   Screenshots that are only-in-one-side, `skipped-error`, or `skipped-unsupported` have
-  **no entry** in the map; consult the per-pair `.summary.txt` for the full list. Empty
-  on the `--baseReplayId` single-replay path.
+  **no entry** in the map; consult the per-pair `.summary.txt` for the full list.
 - `fileMetadata` -- byte sizes and line counts for key files. Check this before reading
   anything large; for files over ~5000 lines prefer grep/search or ranged reads.
 
@@ -242,8 +240,10 @@ replay), and drop into phase 4 only as needed.
     `debug-data/formatted-assets/` for pretty-printed bundles.
 15. **Session data** -- `debug-data/session-summaries/<sessionId>.txt` first; only read raw
     `sessions/<id>/data.json` for specific request bodies or event selectors.
+<!-- if-local-cli -->
 16. **Project source** -- `project-repo/` when present; `formatted-assets/` for third-party
     library code.
+<!-- end-if-local-cli -->
 
 **Important**: Do NOT use Python one-liners to parse `timeline.json` or `logs.ndjson`. The
 derived files above (`events-index/`, `logs-index/`, `network-log/`, `vt-progression/`,
@@ -301,7 +301,7 @@ specific screenshot diffs with judgments on expected vs unexpected changes.
   reading entire files.
 - Screenshot PNGs (the binary images) are stored in the replay cache (not in this workspace).
   Reference them by path; for DOM content prefer reading
-  `debug-data/replays/<role>/<replayId>/screenshots/<name>.html` (or `.after.html`) rather than
+  `debug-data/replays/<role>/<replayId>/screenshots/<name>.html` rather than
   parsing the raw `<name>.metadata.json`.
 - For DOM changes between replays, prefer `debug-data/dom-diffs/` over diffing the two
   `<name>.html` files yourself -- the pre-computed `.diff` is identical to the diff shown
