@@ -98,13 +98,29 @@ const shouldDownloadFile = (
 
 const REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME = "previously-downloaded.txt";
 
+export interface ReplayArchiveOptions {
+  /**
+   * File-type keys to skip during download (e.g. `playbackData`, `rawCoverage`,
+   * `diffs`). Useful when the caller knows it will not need certain artifacts
+   * and wants to avoid the bandwidth/time cost of fetching them.
+   *
+   * When set, the cross-tool replay cache is bypassed: the cache short-circuit
+   * is skipped and the `previously-downloaded.txt` marker is not written, so
+   * subsequent unfiltered callers will re-download into the cache.
+   */
+  excludeFileTypes?: ReadonlySet<string>;
+}
+
 export const getOrFetchReplayArchive = async (
   client: MeticulousClient,
   replayId: string,
   downloadScope: DownloadScope = "everything",
   formatJsonFiles: boolean = false,
+  options: ReplayArchiveOptions = {},
 ): Promise<{ fileName: string }> => {
   const logger = initLogger();
+  const { excludeFileTypes } = options;
+  const hasExcludes = excludeFileTypes != null && excludeFileTypes.size > 0;
 
   const replayDir = getReplayDir(replayId);
   await mkdir(replayDir, { recursive: true });
@@ -120,6 +136,9 @@ export const getOrFetchReplayArchive = async (
     // to avoid downloading the same thing twice. This is particularly important because
     // a concurrent process might be using the previously downloaded data, so we don't
     // want to overwrite it while it's being read.
+    //
+    // When `excludeFileTypes` is set we skip the cache short-circuit so that callers
+    // always get a fresh fetch with the requested exclusions applied.
     let previouslyDownloadedScope: DownloadScope | undefined = undefined;
     if (await fileExists(previouslyDownloadedFile)) {
       const fileContents = (
@@ -128,12 +147,13 @@ export const getOrFetchReplayArchive = async (
       if (DOWNLOAD_SCOPES.includes(fileContents as DownloadScope)) {
         previouslyDownloadedScope = fileContents as DownloadScope;
         if (
-          previouslyDownloadedScope === downloadScope ||
-          previouslyDownloadedScope === "everything"
+          !hasExcludes &&
+          (previouslyDownloadedScope === downloadScope ||
+            previouslyDownloadedScope === "everything")
         ) {
           logger.debug(`Replay archive already downloaded at ${replayDir}`);
           return { fileName: replayDir };
-        } else {
+        } else if (!hasExcludes) {
           // Instead of trying to reason about how to combine the two scopes, let's bump
           // to downloading everything which is guaranteed to be a superset.
           logger.debug(
@@ -158,6 +178,7 @@ export const getOrFetchReplayArchive = async (
         downloadScope,
         formatJsonFiles,
         previouslyDownloadedScope,
+        excludeFileTypes,
       );
     } else {
       throw new Error(
@@ -165,7 +186,11 @@ export const getOrFetchReplayArchive = async (
       );
     }
 
-    await writeFile(previouslyDownloadedFile, downloadScope, "utf-8");
+    // Don't write the cache marker when excludes are set; the cache directory
+    // would otherwise look complete to future unfiltered callers.
+    if (!hasExcludes) {
+      await writeFile(previouslyDownloadedFile, downloadScope, "utf-8");
+    }
     logger.debug(`Extracted replay archive in ${replayDir}`);
     return { fileName: replayDir };
   } finally {
@@ -180,6 +205,7 @@ const downloadReplayV3Files = async (
   downloadScope: DownloadScope,
   formatJsonFiles: boolean,
   previouslyDownloadedScope: DownloadScope | undefined,
+  excludeFileTypes: ReadonlySet<string> | undefined,
 ) => {
   const downloadUrls = await getReplayV3DownloadUrls(client, replayId);
   if (!downloadUrls) {
@@ -187,6 +213,10 @@ const downloadReplayV3Files = async (
       "Error: Could not retrieve replay download URLs. This may be an invalid replay",
     );
   }
+
+  const includes = (fileType: string): boolean =>
+    shouldDownloadFile(fileType, downloadScope) &&
+    !(excludeFileTypes?.has(fileType) ?? false);
 
   const {
     screenshots,
@@ -199,7 +229,7 @@ const downloadReplayV3Files = async (
   } = downloadUrls;
 
   const filePromises = Object.entries(rest)
-    .filter(([fileType]) => shouldDownloadFile(fileType, downloadScope))
+    .filter(([fileType]) => includes(fileType))
     .map(([fileType, data]) => {
       const filePath = join(replayDir, fileType);
       return async () => {
@@ -212,12 +242,12 @@ const downloadReplayV3Files = async (
       };
     });
 
-  if (shouldDownloadFile("screenshots", downloadScope)) {
+  if (includes("screenshots")) {
     await mkdir(join(replayDir, "screenshots"), { recursive: true });
   }
 
   const screenshotPromises: (() => Promise<string[] | void>)[] =
-    !shouldDownloadFile("screenshots", downloadScope) ||
+    !includes("screenshots") ||
     previouslyDownloadedScope === "screenshots-only"
       ? []
       : Object.values(screenshots).flatMap((data) => {
@@ -241,13 +271,15 @@ const downloadReplayV3Files = async (
         });
 
   const diffsFolder = join(replayDir, "diffs");
-  await Promise.all(
-    Object.keys(diffs ?? {}).map((baseReplayId) =>
-      mkdir(join(diffsFolder, baseReplayId), { recursive: true }),
-    ),
-  );
+  if (includes("diffs")) {
+    await Promise.all(
+      Object.keys(diffs ?? {}).map((baseReplayId) =>
+        mkdir(join(diffsFolder, baseReplayId), { recursive: true }),
+      ),
+    );
+  }
 
-  const diffsPromises = shouldDownloadFile("diffs", downloadScope)
+  const diffsPromises = includes("diffs")
     ? Object.values(diffs ?? {}).flatMap((diffsForBase) => {
         return Object.values(diffsForBase).flatMap((urls) => {
           return [
@@ -269,7 +301,7 @@ const downloadReplayV3Files = async (
     : [];
 
   const archivePromises = [
-    ...(shouldDownloadFile("snapshottedAssets", downloadScope)
+    ...(includes("snapshottedAssets")
       ? [
           () =>
             downloadAndUnzipIntoDirectory(
@@ -279,8 +311,7 @@ const downloadReplayV3Files = async (
             ),
         ]
       : []),
-    ...(shouldDownloadFile("rawPerScreenshotCssCoverage", downloadScope) &&
-    rawPerScreenshotCssCoverage
+    ...(includes("rawPerScreenshotCssCoverage") && rawPerScreenshotCssCoverage
       ? [
           () =>
             downloadAndUnzipIntoDirectory(
@@ -290,8 +321,7 @@ const downloadReplayV3Files = async (
             ),
         ]
       : []),
-    ...(shouldDownloadFile("rawPerScreenshotJsCoverage", downloadScope) &&
-    rawPerScreenshotJsCoverage
+    ...(includes("rawPerScreenshotJsCoverage") && rawPerScreenshotJsCoverage
       ? [
           () =>
             downloadAndUnzipIntoDirectory(
@@ -301,7 +331,7 @@ const downloadReplayV3Files = async (
             ),
         ]
       : []),
-    ...(shouldDownloadFile("mappedPerScreenshotJsCoverage", downloadScope) &&
+    ...(includes("mappedPerScreenshotJsCoverage") &&
     mappedPerScreenshotJsCoverage
       ? [
           () =>

@@ -15,6 +15,7 @@ export {
   DOWNLOAD_SCOPES as TEST_RUN_DOWNLOAD_SCOPES,
 } from "./file-downloads/test-runs";
 export { fetchAsset, checkIfAssetsOutdated } from "./scripts/replay-assets";
+export { ensureReplayLogTextFiles } from "./file-downloads/replay-log-text-files";
 export {
   downloadFile,
   downloadAndExtractFile,

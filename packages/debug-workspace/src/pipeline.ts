@@ -93,6 +93,7 @@ export const runDebugPipeline = async (
     maxConcurrency: opts.maxConcurrentDownloads,
     additionalTemplatesDir: opts.additionalTemplatesDir,
     writeContextJson: opts.writeContextJson,
+    isLocalCli: true,
   });
 
   if (opts.onWorkspaceReady) {

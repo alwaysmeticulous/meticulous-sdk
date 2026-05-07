@@ -7,6 +7,7 @@ import {
   MeticulousClient,
 } from "@alwaysmeticulous/client";
 import {
+  ensureReplayLogTextFiles,
   getOrFetchReplayArchive,
   getOrFetchRecordedSessionData,
 } from "@alwaysmeticulous/downloading-helpers";
@@ -76,7 +77,9 @@ const downloadReplays = async (
           replayId,
           "everything",
           true,
+          { excludeFileTypes: DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES },
         );
+        await ensureReplayLogTextFiles(cachedPath);
         console.log(chalk.cyan(`  Downloaded replay ${replayId}`));
         return { replayId, cachedPath };
       }),
@@ -95,6 +98,20 @@ const downloadReplays = async (
   }
 };
 
+// File-type keys (matching `REPLAY_V3_UPLOAD_FILE_KEYS` on the backend) that
+// the debug agent never reads, so we tell the downloader not to fetch them at
+// all. `playbackData` and the raw coverage variants are duplicates/derivatives
+// of data we already have; `diffs/` only stores pixel-diff PNG overlays the
+// agent can't act on (the actionable info is in `debug-data/diffs/*.summary.json`
+// and the DOM diffs).
+const DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES: ReadonlySet<string> = new Set([
+  "playbackData",
+  "rawCoverage",
+  "rawPerScreenshotCssCoverage",
+  "rawPerScreenshotJsCoverage",
+  "diffs",
+]);
+
 const copyReplayDir = (src: string, dest: string): void => {
   mkdirSync(dest, { recursive: true });
   for (const entry of readdirSync(src, { withFileTypes: true })) {
@@ -109,6 +126,12 @@ const copyReplayDir = (src: string, dest: string): void => {
         cpSync(srcPath, destPath, { recursive: true });
       }
     } else {
+      // `previously-downloaded.txt` is an internal cache marker. We don't write
+      // it ourselves (excludeFileTypes is set), but a prior unfiltered caller
+      // running locally may have left one — don't surface it in the workspace.
+      if (entry.name === "previously-downloaded.txt") {
+        continue;
+      }
       cpSync(srcPath, destPath);
     }
   }
