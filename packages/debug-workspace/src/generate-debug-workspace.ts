@@ -13,7 +13,10 @@ import {
 } from "fs";
 import { basename, dirname, extname, join } from "path";
 import { MeticulousClient } from "@alwaysmeticulous/client";
-import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
+import {
+  getMeticulousLocalDataDir,
+  initLogger,
+} from "@alwaysmeticulous/common";
 import chalk from "chalk";
 import { format, type BuiltInParserName } from "prettier";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
@@ -81,18 +84,22 @@ export interface GenerateDebugWorkspaceOptions {
   maxConcurrency?: number | undefined;
   additionalTemplatesDir?: string | undefined;
   /**
-   * When true, do not write `.claude/settings.json` or `.claude/hooks/` into
-   * the workspace. Used by the agent-cloud-worker, which configures
-   * permissions, hooks, and sandboxing inline via the Claude Agent SDK rather
-   * than from filesystem settings.
+   * When true, do not write `.claude/CLAUDE.md`, `.claude/settings.json`, or
+   * `.claude/hooks/` into the workspace. Used by the agent-cloud-worker, which
+   * inlines the rendered CLAUDE.md (returned by this function) into its system
+   * prompt and configures permissions, hooks, and sandboxing inline via the
+   * Claude Agent SDK rather than from filesystem settings. Skills, agents, and
+   * rules are still written -- they're referenced by the Task and Skill tools
+   * at runtime and need to live on disk.
    */
-  skipSettingsAndHooks?: boolean | undefined;
+  skipDefaultClaudeFiles?: boolean | undefined;
   /**
    * Whether the workspace is being prepared for the local `meticulous debug`
-   * CLI (default) or for a non-CLI runner like the agent-cloud-worker. When
-   * false, CLI-specific guidance (project-repo paths, `--baseReplayId` notes,
-   * direct CLI invocations) is stripped from CLAUDE.md and templated agent
-   * markdown via `<!-- if-local-cli -->` markers.
+   * CLI or for a non-CLI runner like the agent-cloud-worker. Defaults to
+   * `false`; the local CLI passes `true` explicitly. When `false`, CLI-specific
+   * guidance (project-repo paths, `--baseReplayId` notes, direct CLI
+   * invocations) is stripped from CLAUDE.md and templated agent markdown via
+   * `<!-- if-local-cli -->` markers.
    */
   isLocalCli?: boolean | undefined;
   writeContextJson?:
@@ -108,9 +115,18 @@ export interface GenerateDebugWorkspaceOptions {
     | undefined;
 }
 
+export interface GenerateDebugWorkspaceResult {
+  /**
+   * The fully-rendered CLAUDE.md content (with all `<!-- if-* -->` conditionals
+   * resolved). Returned regardless of whether the file was written to disk so
+   * SDK consumers can inline it into a custom system prompt directly.
+   */
+  claudeMd: string;
+}
+
 export const generateDebugWorkspace = async (
   options: GenerateDebugWorkspaceOptions,
-): Promise<void> => {
+): Promise<GenerateDebugWorkspaceResult> => {
   const { client, debugContext, workspaceDir } = options;
 
   const claudeDir = join(workspaceDir, ".claude");
@@ -123,9 +139,17 @@ export const generateDebugWorkspace = async (
   const hasPrDiff = existsSync(
     join(workspaceDir, DEBUG_DATA_DIRECTORY, "pr-diff.txt"),
   );
-  const isLocalCli = options.isLocalCli ?? true;
-  const conditions: MarkdownConditions = { hasPrDiff, isLocalCli };
-  copyClaudeMd(workspaceDir, options.additionalTemplatesDir, conditions);
+  const isLocalCli = options.isLocalCli ?? false;
+  const hasSnapshotAssets = detectSnapshotAssets(workspaceDir);
+  const conditions: MarkdownConditions = {
+    hasPrDiff,
+    isLocalCli,
+    hasSnapshotAssets,
+  };
+  const claudeMd = renderClaudeMd(options.additionalTemplatesDir, conditions);
+  if (!options.skipDefaultClaudeFiles) {
+    writeFileSync(join(claudeDir, "CLAUDE.md"), claudeMd);
+  }
   generateParamsDiffs(debugContext, workspaceDir);
   generateAssetsDiff(debugContext, workspaceDir);
   generateTimelineSummaries(workspaceDir);
@@ -161,7 +185,7 @@ export const generateDebugWorkspace = async (
   });
   copySkills(workspaceDir, options.additionalTemplatesDir, conditions);
 
-  if (!options.skipSettingsAndHooks) {
+  if (!options.skipDefaultClaudeFiles) {
     copyClaudeSubdir(workspaceDir, "hooks", options.additionalTemplatesDir, {
       makeExecutable: true,
     });
@@ -173,6 +197,8 @@ export const generateDebugWorkspace = async (
       copyFileSync(settingsSrc, join(claudeDir, "settings.json"));
     }
   }
+
+  return { claudeMd };
 };
 
 // ---------------------------------------------------------------------------
@@ -205,19 +231,20 @@ const PR_DIFF_ONLY_SKILL_DIRS = new Set<string>(["pr-analysis"]);
 interface MarkdownConditions {
   hasPrDiff: boolean;
   isLocalCli: boolean;
+  hasSnapshotAssets: boolean;
 }
 
-const copyClaudeMd = (
-  workspaceDir: string,
+const renderClaudeMd = (
   additionalTemplatesDir: string | undefined,
   conditions: MarkdownConditions,
-): void => {
+): string => {
   const src = resolveTemplateFile("CLAUDE.md", additionalTemplatesDir);
   if (!src) {
-    return;
+    throw new Error(
+      "CLAUDE.md template not found in the debug-workspace package. This indicates a packaging bug.",
+    );
   }
-  const dest = join(workspaceDir, ".claude", "CLAUDE.md");
-  writeMarkdownWithConditionals(src, dest, conditions);
+  return renderMarkdownWithConditionals(readFileSync(src, "utf8"), conditions);
 };
 
 const copyClaudeSubdir = (
@@ -321,14 +348,14 @@ const copySkills = (
 const CONDITION_MARKERS: Record<keyof MarkdownConditions, string> = {
   hasPrDiff: "pr-diff",
   isLocalCli: "local-cli",
+  hasSnapshotAssets: "snapshot-assets",
 };
 
-const writeMarkdownWithConditionals = (
-  srcPath: string,
-  destPath: string,
+const renderMarkdownWithConditionals = (
+  content: string,
   conditions: MarkdownConditions,
-): void => {
-  let content = readFileSync(srcPath, "utf8");
+): string => {
+  let result = content;
   for (const [conditionKey, marker] of Object.entries(CONDITION_MARKERS) as [
     keyof MarkdownConditions,
     string,
@@ -342,16 +369,63 @@ const writeMarkdownWithConditionals = (
       "gm",
     );
     if (conditions[conditionKey]) {
-      content = content.replace(startRe, "").replace(endRe, "");
+      result = result.replace(startRe, "").replace(endRe, "");
     } else {
       const blockRe = new RegExp(
         `^[ \\t]*<!--\\s*if-${marker}\\s*-->[ \\t]*\\r?\\n[\\s\\S]*?^[ \\t]*<!--\\s*end-if-${marker}\\s*-->[ \\t]*\\r?\\n`,
         "gm",
       );
-      content = content.replace(blockRe, "");
+      result = result.replace(blockRe, "");
     }
   }
-  writeFileSync(destPath, content);
+  return result;
+};
+
+const writeMarkdownWithConditionals = (
+  srcPath: string,
+  destPath: string,
+  conditions: MarkdownConditions,
+): void => {
+  const content = readFileSync(srcPath, "utf8");
+  writeFileSync(destPath, renderMarkdownWithConditionals(content, conditions));
+};
+
+// True when at least one replay's `snapshotted-assets/` directory exists and
+// contains files. Drives the `if-snapshot-assets` markdown conditional so that
+// snapshot/asset guidance is only surfaced when the data is actually available.
+// Exported for testing.
+export const detectSnapshotAssets = (workspaceDir: string): boolean => {
+  const replaysDir = join(workspaceDir, DEBUG_DATA_DIRECTORY, "replays");
+  if (!existsSync(replaysDir)) {
+    return false;
+  }
+  for (const subDir of ["head", "base", "other"]) {
+    const subDirPath = join(replaysDir, subDir);
+    if (!existsSync(subDirPath)) {
+      continue;
+    }
+    for (const replayId of readdirSync(subDirPath)) {
+      const assetsDir = join(subDirPath, replayId, "snapshotted-assets");
+      if (!existsSync(assetsDir)) {
+        continue;
+      }
+      try {
+        if (readdirSync(assetsDir).length > 0) {
+          return true;
+        }
+      } catch (err) {
+        // Permission/IO error reading this directory — keep scanning the
+        // others. Surface at warn so the snapshot-assets conditional being
+        // disabled isn't a silent surprise downstream.
+        initLogger().warn(
+          `Could not read snapshotted-assets dir ${assetsDir}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+  }
+  return false;
 };
 
 // ---------------------------------------------------------------------------

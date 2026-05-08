@@ -15,6 +15,7 @@ export {
 export {
   generateDebugWorkspace,
   type GenerateDebugWorkspaceOptions,
+  type GenerateDebugWorkspaceResult,
   type FileMetadataEntry,
   type ScreenshotMapEntry,
   type ReplayComparisonEntry,

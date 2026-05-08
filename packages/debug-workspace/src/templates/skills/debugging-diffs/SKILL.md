@@ -33,12 +33,14 @@ Use this guide when investigating unexpected visual differences between head and
 - **Unexpected**: Same code producing different visual output, or unrelated areas changing.
 - Check if the diff is in a dynamic content area (timestamps, counters, user-specific data).
 
+<!-- if-snapshot-assets -->
 ### 5. Examine Snapshotted Assets
 
-- If `debug-data/replays/{head,base}/<replayId>/snapshotted-assets/` exists, compare JS/CSS between head and base.
+- Compare JS/CSS between head and base under `debug-data/replays/{head,base}/<replayId>/snapshotted-assets/`.
 - Look for changes in CSS that could cause layout shifts.
 - Check for new or modified JavaScript that affects rendering.
 
+<!-- end-if-snapshot-assets -->
 ### 6. Review Screenshot Assertions Config
 
 - Check `screenshotAssertionsOptions` in the diff JSON for threshold settings.
