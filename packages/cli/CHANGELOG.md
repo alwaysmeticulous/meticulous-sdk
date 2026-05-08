@@ -1,5 +1,18 @@
 # @alwaysmeticulous/cli
 
+## 2.282.0
+
+### Minor Changes
+
+- [#1141](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1141) [`670d0de`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/670d0de43e29329e403880c74b22eefb7c2cc879) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - debug-workspace: lean down agent workspaces and conditional CLAUDE.md
+
+### Patch Changes
+
+- Updated dependencies [[`670d0de`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/670d0de43e29329e403880c74b22eefb7c2cc879)]:
+  - @alwaysmeticulous/downloading-helpers@2.282.0
+  - @alwaysmeticulous/debug-workspace@2.282.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.282.0
+
 ## 2.281.0
 
 ### Patch Changes
