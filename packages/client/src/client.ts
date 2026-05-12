@@ -197,9 +197,18 @@ export const createClient: (options: ClientOptions) => MeticulousClient = ({
 export const isInteractiveContext = (): boolean =>
   process.stdin.isTTY === true && !process.env["CI"];
 
-export const createClientWithOAuth = async (
+/**
+ * Resolves an API token using the full auth chain (explicit token → env var →
+ * stored OAuth → legacy config file), and falls back to an interactive browser
+ * OAuth login when nothing is stored and the process is attached to a TTY.
+ *
+ * Exits the process with code 1 if no token can be obtained. Use this anywhere
+ * a CLI command needs an API token — either to build a client (see
+ * `createClientWithOAuth`) or to pass directly to a launcher.
+ */
+export const resolveApiTokenWithOAuth = async (
   options: ClientOptions & { enableOAuthLogin?: boolean },
-): Promise<MeticulousClient> => {
+): Promise<string> => {
   const logger = initLogger();
 
   let apiToken = await getAuthToken(options.apiToken);
@@ -220,7 +229,14 @@ export const createClientWithOAuth = async (
     return process.exit(1);
   }
 
-  return buildClient(apiToken, logger);
+  return apiToken;
+};
+
+export const createClientWithOAuth = async (
+  options: ClientOptions & { enableOAuthLogin?: boolean },
+): Promise<MeticulousClient> => {
+  const apiToken = await resolveApiTokenWithOAuth(options);
+  return buildClient(apiToken, initLogger());
 };
 
 const getApiUrl = () => {

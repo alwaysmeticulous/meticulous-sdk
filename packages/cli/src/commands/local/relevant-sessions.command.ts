@@ -1,8 +1,9 @@
 import { SessionRelevance } from "@alwaysmeticulous/api";
 import {
-  createClient,
+  createClientWithOAuth,
   getProject,
   getRelevantSessions,
+  MeticulousClient,
   RelevantSession,
 } from "@alwaysmeticulous/client";
 import { getLocalBaseSha, initLogger } from "@alwaysmeticulous/common";
@@ -40,7 +41,10 @@ const handler = async ({
   outputDir,
 }: Options) => {
   const logger = initLogger();
-  const client = createClient({ apiToken });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
   const project = await getProject(client);
   if (!project) {
     logger.error("Could not retrieve project data. Is the API token correct?");
@@ -169,7 +173,7 @@ const downloadAllSessionData = async ({
   outputDir,
   logger,
 }: {
-  client: ReturnType<typeof createClient>;
+  client: MeticulousClient;
   sessions: RelevantSession[];
   outputDir: string;
   logger: ReturnType<typeof initLogger>;

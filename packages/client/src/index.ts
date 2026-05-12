@@ -69,6 +69,7 @@ export {
   createClientWithOAuth,
   isInteractiveContext,
   makeRequest,
+  resolveApiTokenWithOAuth,
 } from "./client";
 export { performOAuthLogin } from "./oauth/oauth-login";
 export { getValidAccessToken } from "./oauth/oauth-refresh";

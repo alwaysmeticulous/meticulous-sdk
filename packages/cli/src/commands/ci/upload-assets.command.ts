@@ -1,9 +1,9 @@
 import { AssetUploadMetadata } from "@alwaysmeticulous/api";
 import {
-  createClient,
-  getApiToken,
+  createClientWithOAuth,
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
+  resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { uploadAssetsAndTriggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
@@ -99,11 +99,16 @@ const handler = async ({
     extra: { commitSha },
   });
 
+  const resolvedApiToken = await resolveApiTokenWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
+
   let testRunId: string | null;
 
   try {
     const result = await uploadAssetsAndTriggerTestRun({
-      apiToken,
+      apiToken: resolvedApiToken,
       commitSha,
       ...(baseSha ? { baseSha } : {}),
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
@@ -126,12 +131,10 @@ const handler = async ({
     return;
   }
 
-  const apiTokenToUse = getApiToken(apiToken);
-  if (!apiTokenToUse) {
-    logger.error("No API token found. Cannot wait for test run to complete.");
-    process.exit(1);
-  }
-  const client = createClient({ apiToken: apiTokenToUse });
+  const client = await createClientWithOAuth({
+    apiToken: resolvedApiToken,
+    enableOAuthLogin: true,
+  });
 
   logger.info(`Waiting for test run ${testRunId} to complete...`);
 

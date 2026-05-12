@@ -1,4 +1,4 @@
-import { createClient } from "@alwaysmeticulous/client";
+import { createClientWithOAuth } from "@alwaysmeticulous/client";
 import { initLogger, IS_METICULOUS_SUPER_USER } from "@alwaysmeticulous/common";
 import {
   getOrFetchTestRunData,
@@ -25,7 +25,10 @@ const handler = async ({
   scope: _scope,
 }: Options): Promise<void> => {
   const logger = initLogger();
-  const client = createClient({ apiToken });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
 
   const scope = (_scope as TestRunDownloadScope) ?? "coverage-only";
 

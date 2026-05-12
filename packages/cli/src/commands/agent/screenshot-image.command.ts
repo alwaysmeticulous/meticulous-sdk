@@ -1,4 +1,7 @@
-import { createClient, getScreenshotUrls } from "@alwaysmeticulous/client";
+import {
+  createClientWithOAuth,
+  getScreenshotUrls,
+} from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
@@ -15,7 +18,10 @@ const handler = async ({
   screenshotName,
 }: Options): Promise<void> => {
   initLogger();
-  const client = createClient({ apiToken });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
 
   const urls = await getScreenshotUrls(client, replayDiffId, screenshotName);
 

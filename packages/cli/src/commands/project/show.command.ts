@@ -1,4 +1,7 @@
-import { createClient, getProject } from "@alwaysmeticulous/client";
+import {
+  createClientWithOAuth,
+  getProject,
+} from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
@@ -17,7 +20,10 @@ export const showCommand: CommandModule<unknown, Options> = {
   },
   handler: wrapHandler(async ({ apiToken }) => {
     const logger = initLogger();
-    const client = createClient({ apiToken });
+    const client = await createClientWithOAuth({
+      apiToken,
+      enableOAuthLogin: true,
+    });
     const project = await getProject(client);
     if (!project) {
       logger.error("Could not retrieve project data. Is the API token correct?");

@@ -1,4 +1,7 @@
-import { createClient, getProject } from "@alwaysmeticulous/client";
+import {
+  createClientWithOAuth,
+  getProject,
+} from "@alwaysmeticulous/client";
 import { DebugLogger, initLogger } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import { recordLoginFlowSession } from "@alwaysmeticulous/record";
@@ -33,7 +36,10 @@ const handler = async ({
   const logger = initLogger();
   const debugLogger = trace ? await DebugLogger.create() : null;
 
-  const client = createClient({ apiToken });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
   const project = await getProject(client);
   if (!project) {
     logger.error("Could not retrieve project data. Is the API token correct?");

@@ -1,4 +1,4 @@
-import { getApiToken } from "@alwaysmeticulous/client";
+import { resolveApiTokenWithOAuth } from "@alwaysmeticulous/client";
 import {
   defer,
   IS_METICULOUS_SUPER_USER,
@@ -34,13 +34,10 @@ interface Options {
 const handler = async (argv: Options): Promise<void> => {
   const logger = initLogger();
 
-  const apiToken = getApiToken(argv.apiToken);
-  if (!apiToken) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
-  }
+  const apiToken = await resolveApiTokenWithOAuth({
+    apiToken: argv.apiToken,
+    enableOAuthLogin: true,
+  });
 
   if (argv.dryRun) {
     logger.info(

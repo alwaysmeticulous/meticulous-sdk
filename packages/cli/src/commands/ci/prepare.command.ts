@@ -1,8 +1,8 @@
 import { execSync } from "child_process";
 import {
-  createClient,
-  getApiToken,
+  createClientWithOAuth,
   getGitHubCloudReplayBaseTestRun,
+  resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
@@ -34,7 +34,10 @@ export const prepareForMeticulousTests = async ({
   logger: log.Logger;
 }): Promise<void> => {
   try {
-    const client = createClient({ apiToken });
+    const client = await createClientWithOAuth({
+      apiToken,
+      enableOAuthLogin: true,
+    });
 
     // Non-Github-hosted projects are currently not supported
     const { baseTestRun, baseCommitSha, commitIsInPullRequest } =
@@ -108,13 +111,10 @@ const handler = async ({
 }: Options): Promise<void> => {
   const logger = initLogger();
 
-  const apiToken_ = getApiToken(apiToken);
-  if (!apiToken_) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
-  }
+  const apiToken_ = await resolveApiTokenWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
 
   const headCommit_ = await getCommitSha(headCommit);
   if (!headCommit_) {

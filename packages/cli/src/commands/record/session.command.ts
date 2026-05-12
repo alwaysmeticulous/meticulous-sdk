@@ -1,6 +1,6 @@
 import { join } from "path";
 import {
-  createClient,
+  createClientWithOAuth,
   getProject,
   getRecordingCommandId,
   postSessionIdNotification,
@@ -52,7 +52,10 @@ const handler = async ({
 
   logger.info("Preparing recording...");
 
-  const client = createClient({ apiToken });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
   const project = await getProject(client);
   if (!project) {
     logger.error("Could not retrieve project data. Is the API token correct?");
