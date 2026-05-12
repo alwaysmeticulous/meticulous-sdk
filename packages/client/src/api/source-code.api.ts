@@ -26,3 +26,16 @@ export const getPrDiffForTestRun = async ({
   );
   return data;
 };
+
+export const getPrDescriptionForTestRun = async ({
+  client,
+  testRunId,
+}: {
+  client: MeticulousClient;
+  testRunId: string;
+}): Promise<{ content: string }> => {
+  const { data } = await client.get<unknown, { data: { content: string } }>(
+    `/test-runs/${testRunId}/pr-description`,
+  );
+  return data;
+};
