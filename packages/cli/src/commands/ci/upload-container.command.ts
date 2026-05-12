@@ -94,7 +94,7 @@ const handler = async ({
     extra: { commitSha, localImageTag },
   });
 
-  const resolvedApiToken = await resolveApiTokenWithOAuth({
+  const apiToken_ = await resolveApiTokenWithOAuth({
     apiToken,
     enableOAuthLogin: true,
   });
@@ -103,7 +103,7 @@ const handler = async ({
 
   try {
     const result = await uploadContainer({
-      apiToken: resolvedApiToken,
+      apiToken: apiToken_,
       localImageTag,
       commitSha,
       ...(baseSha ? { baseSha } : {}),
@@ -134,7 +134,7 @@ const handler = async ({
   }
 
   const client = await createClientWithOAuth({
-    apiToken: resolvedApiToken,
+    apiToken: apiToken_,
     enableOAuthLogin: true,
   });
 

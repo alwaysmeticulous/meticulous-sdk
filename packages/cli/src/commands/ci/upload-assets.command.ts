@@ -99,7 +99,7 @@ const handler = async ({
     extra: { commitSha },
   });
 
-  const resolvedApiToken = await resolveApiTokenWithOAuth({
+  const apiToken_ = await resolveApiTokenWithOAuth({
     apiToken,
     enableOAuthLogin: true,
   });
@@ -108,7 +108,7 @@ const handler = async ({
 
   try {
     const result = await uploadAssetsAndTriggerTestRun({
-      apiToken: resolvedApiToken,
+      apiToken: apiToken_,
       commitSha,
       ...(baseSha ? { baseSha } : {}),
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
@@ -132,7 +132,7 @@ const handler = async ({
   }
 
   const client = await createClientWithOAuth({
-    apiToken: resolvedApiToken,
+    apiToken: apiToken_,
     enableOAuthLogin: true,
   });
 

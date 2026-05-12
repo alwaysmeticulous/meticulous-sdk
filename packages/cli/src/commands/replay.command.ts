@@ -176,7 +176,7 @@ const handler = async ({
       }
     : { enabled: false };
 
-  const finalToken = await resolveApiTokenWithOAuth({
+  const apiToken_ = await resolveApiTokenWithOAuth({
     apiToken,
     enableOAuthLogin: true,
   });
@@ -200,7 +200,7 @@ const handler = async ({
       }),
       executionOptions,
       screenshottingOptions,
-      apiToken: finalToken,
+      apiToken: apiToken_,
       commitSha,
       commitDate: null,
       gitRef: null,
