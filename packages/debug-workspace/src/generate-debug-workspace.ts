@@ -139,10 +139,14 @@ export const generateDebugWorkspace = async (
   const hasPrDiff = existsSync(
     join(workspaceDir, DEBUG_DATA_DIRECTORY, "pr-diff.txt"),
   );
+  const hasPrDescription = existsSync(
+    join(workspaceDir, DEBUG_DATA_DIRECTORY, "pr-description.txt"),
+  );
   const isLocalCli = options.isLocalCli ?? false;
   const hasSnapshotAssets = detectSnapshotAssets(workspaceDir);
   const conditions: MarkdownConditions = {
     hasPrDiff,
+    hasPrDescription,
     isLocalCli,
     hasSnapshotAssets,
   };
@@ -230,6 +234,7 @@ const PR_DIFF_ONLY_SKILL_DIRS = new Set<string>(["pr-analysis"]);
 
 interface MarkdownConditions {
   hasPrDiff: boolean;
+  hasPrDescription: boolean;
   isLocalCli: boolean;
   hasSnapshotAssets: boolean;
 }
@@ -347,6 +352,7 @@ const copySkills = (
 // comments so they don't leak into the rendered prompt.
 const CONDITION_MARKERS: Record<keyof MarkdownConditions, string> = {
   hasPrDiff: "pr-diff",
+  hasPrDescription: "pr-description",
   isLocalCli: "local-cli",
   hasSnapshotAssets: "snapshot-assets",
 };
@@ -2182,6 +2188,7 @@ const defaultWriteContextJson = (
       domDiffs: "dom-diffs/",
       domDiffsSummary: "dom-diffs/*.summary.txt",
       prDiff: "pr-diff.txt",
+      prDescription: "pr-description.txt",
       formattedAssets: "formatted-assets/",
       testRun: "test-run/",
       projectRepo: projectRepoDir ? "project-repo/" : undefined,
