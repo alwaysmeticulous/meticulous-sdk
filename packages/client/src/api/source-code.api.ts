@@ -27,20 +27,6 @@ export const getPrDiffForTestRun = async ({
   return data;
 };
 
-export const getPrDescription = async ({
-  client,
-  testRunId,
-}: {
-  client: MeticulousClient;
-  testRunId: string;
-}): Promise<{ content: string }> => {
-  const { data } = await client.post<unknown, { data: { content: string } }>(
-    "/source-code/pr-description",
-    { testRunId },
-  );
-  return data;
-};
-
 export const getPrDescriptionForTestRun = async ({
   client,
   testRunId,

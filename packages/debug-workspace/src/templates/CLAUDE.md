@@ -219,11 +219,19 @@ replay), and drop into phase 4 only as needed.
 5. **Log diffs** -- **delegate to the log-diff-analyzer subagent** instead of reading
    `debug-data/log-diffs/*.filtered.diff` directly; only open the raw diff to verify
    specific findings.
-<!-- if-pr-diff -->
-6. **PR diff** -- read `debug-data/pr-description.txt` first if present to understand the
-   intended change, then **delegate to the pr-analyzer subagent** to correlate code changes with
+<!-- if-pr-description-and-diff -->
+6. **PR description and diff** -- read `debug-data/pr-description.txt` first to understand
+   the intended change, then **delegate to the pr-analyzer subagent** to correlate code
+   changes with visual diffs. Only open `debug-data/pr-diff.txt` directly to verify findings.
+<!-- end-if-pr-description-and-diff -->
+<!-- if-pr-description-only -->
+6. **PR description** -- read `debug-data/pr-description.txt` to understand the intended
+   change that triggered this test run.
+<!-- end-if-pr-description-only -->
+<!-- if-pr-diff-only -->
+6. **PR diff** -- **delegate to the pr-analyzer subagent** to correlate code changes with
    visual diffs. Only open `debug-data/pr-diff.txt` directly to verify findings.
-<!-- end-if-pr-diff -->
+<!-- end-if-pr-diff-only -->
 
 ### 3. Investigate a single replay
 

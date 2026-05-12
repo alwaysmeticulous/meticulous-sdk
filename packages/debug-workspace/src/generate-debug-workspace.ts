@@ -147,6 +147,9 @@ export const generateDebugWorkspace = async (
   const conditions: MarkdownConditions = {
     hasPrDiff,
     hasPrDescription,
+    hasPrDescriptionAndDiff: hasPrDescription && hasPrDiff,
+    hasPrDescriptionOnly: hasPrDescription && !hasPrDiff,
+    hasPrDiffOnly: !hasPrDescription && hasPrDiff,
     isLocalCli,
     hasSnapshotAssets,
   };
@@ -235,6 +238,12 @@ const PR_DIFF_ONLY_SKILL_DIRS = new Set<string>(["pr-analysis"]);
 interface MarkdownConditions {
   hasPrDiff: boolean;
   hasPrDescription: boolean;
+  /** Derived: PR diff AND description both available. */
+  hasPrDescriptionAndDiff: boolean;
+  /** Derived: PR description available but no PR diff. */
+  hasPrDescriptionOnly: boolean;
+  /** Derived: PR diff available but no PR description. */
+  hasPrDiffOnly: boolean;
   isLocalCli: boolean;
   hasSnapshotAssets: boolean;
 }
@@ -353,6 +362,9 @@ const copySkills = (
 const CONDITION_MARKERS: Record<keyof MarkdownConditions, string> = {
   hasPrDiff: "pr-diff",
   hasPrDescription: "pr-description",
+  hasPrDescriptionAndDiff: "pr-description-and-diff",
+  hasPrDescriptionOnly: "pr-description-only",
+  hasPrDiffOnly: "pr-diff-only",
   isLocalCli: "local-cli",
   hasSnapshotAssets: "snapshot-assets",
 };

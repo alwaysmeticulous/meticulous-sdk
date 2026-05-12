@@ -45,7 +45,6 @@ export {
 } from "./api/session.api";
 export { ReplayDiffResponse, getReplayDiff } from "./api/replay-diff.api";
 export {
-  getPrDescription,
   getPrDescriptionForTestRun,
   getPrDiff,
   getPrDiffForTestRun,
