@@ -53,28 +53,5 @@
       "Patching network sessions",
       "Determining nondeterminism"
     ]
-  },
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/load-context.sh"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/check-file-size.sh"
-          }
-        ]
-      }
-    ]
   }
 }

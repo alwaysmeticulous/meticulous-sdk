@@ -256,6 +256,9 @@ const downloadPrDiffFromApi = async (
       writeFileSync(join(debugDataDir, "pr-diff.txt"), response.content);
     }
   } catch (error: any) {
+    if (error?.response?.status === 404) {
+      return;
+    }
     const status = error?.response?.status;
     const serverMessage = error?.response?.data?.message;
     const detail = serverMessage
@@ -288,6 +291,9 @@ const downloadPrDescriptionFromApi = async (
       writeFileSync(join(debugDataDir, "pr-description.txt"), response.content);
     }
   } catch (error: any) {
+    if (error?.response?.status === 404) {
+      return;
+    }
     const status = error?.response?.status;
     const serverMessage = error?.response?.data?.message;
     const detail = serverMessage
