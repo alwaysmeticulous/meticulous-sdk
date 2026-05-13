@@ -13,6 +13,13 @@ export interface ResolvedGitOptions {
   withUncommittedChanges: boolean;
 }
 
+/** Enough context for --waitForTestRunToComplete: repo inference or explicit base + diff (custom triggers). */
+export const hasGitContextForTestRunWait = (
+  repoDirectory: string | undefined,
+  baseSha: string | undefined,
+  gitDiffOutput: string | undefined,
+): boolean => Boolean(repoDirectory || (baseSha && gitDiffOutput));
+
 /**
  * Resolves git options (commitSha, baseSha, gitDiffOutput) from either
  * explicit CLI arguments or by auto-inferring from a --repoDirectory.

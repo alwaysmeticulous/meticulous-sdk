@@ -15,7 +15,10 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
-import { resolveGitOptions } from "./resolve-git-options";
+import {
+  hasGitContextForTestRunWait,
+  resolveGitOptions,
+} from "./resolve-git-options";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -55,10 +58,13 @@ const handler = async ({
     process.exit(1);
   }
 
-  if (waitForTestRunToComplete && !repoDirectory) {
+  if (
+    waitForTestRunToComplete &&
+    !hasGitContextForTestRunWait(repoDirectory, baseSha_, gitDiffOutput_)
+  ) {
     logger.error(
-      "--waitForTestRunToComplete requires --repoDirectory. " +
-        "Without a repo path the CLI cannot infer base SHA and diff, so waiting often stops at an unexpected status (e.g. Partial on main).",
+      "--waitForTestRunToComplete requires --repoDirectory, or both --baseSha and --gitDiffOutput. " +
+        "With only --commitSha (typical on main) the run often ends at Partial by design, so waiting is misleading.",
     );
     process.exit(1);
   }
@@ -236,7 +242,8 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
       boolean: true,
       default: false,
       description:
-        "If true, block and wait until the triggered test run is complete, then report results. Implies --waitForBase. Requires --repoDirectory.",
+        "If true, block and wait until the triggered test run is complete, then report results. Implies --waitForBase. " +
+        "Requires --repoDirectory or both --baseSha and --gitDiffOutput.",
     },
   },
   handler: wrapHandler(handler),
