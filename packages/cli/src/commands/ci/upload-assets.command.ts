@@ -65,7 +65,7 @@ const handler = async ({
     logger.error(
       "--waitForTestRunToComplete is only for runs from a local branch checkout: pass --repoDirectory " +
         "(path to your clone on the branch under test) or both --baseSha and --gitDiffOutput from that branch. " +
-        "If you only pass --commitSha you are not on a branch checkout — omit this flag; the run may end at Partial by design.",
+        "If you only pass --commitSha you are not on a branch checkout — omit this flag.",
     );
     process.exit(1);
   }
