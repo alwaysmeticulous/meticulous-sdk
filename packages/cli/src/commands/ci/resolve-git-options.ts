@@ -14,6 +14,17 @@ export interface ResolvedGitOptions {
 }
 
 /**
+ * Whether `--waitForTestRunToComplete` is allowed: only when Meticulous is run in the
+ * context of a local branch — either `--repoDirectory` (clone on that branch) or explicit
+ * `--baseSha` and `--gitDiffOutput` from the same checkout.
+ */
+export const hasGitContextForTestRunWait = (
+  repoDirectory: string | undefined,
+  baseSha: string | undefined,
+  gitDiffOutput: string | undefined,
+): boolean => Boolean(repoDirectory || (baseSha && gitDiffOutput));
+
+/**
  * Resolves git options (commitSha, baseSha, gitDiffOutput) from either
  * explicit CLI arguments or by auto-inferring from a --repoDirectory.
  *
