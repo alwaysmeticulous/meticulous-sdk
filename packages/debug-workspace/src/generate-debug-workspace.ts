@@ -88,9 +88,9 @@ export interface GenerateDebugWorkspaceOptions {
    * `.claude/hooks/` into the workspace. Used by the agent-cloud-worker, which
    * inlines the rendered CLAUDE.md (returned by this function) into its system
    * prompt and configures permissions, hooks, and sandboxing inline via the
-   * Claude Agent SDK rather than from filesystem settings. Skills, agents, and
-   * rules are still written -- they're referenced by the Task and Skill tools
-   * at runtime and need to live on disk.
+   * Claude Agent SDK rather than from filesystem settings. Skills and agents
+   * are still written -- they're referenced by the Task and Skill tools at
+   * runtime and need to live on disk.
    */
   skipDefaultClaudeFiles?: boolean | undefined;
   /**
@@ -186,7 +186,6 @@ export const generateDebugWorkspace = async (
     domDiffMap,
   );
 
-  copyClaudeSubdir(workspaceDir, "rules", options.additionalTemplatesDir);
   copyClaudeSubdir(workspaceDir, "agents", options.additionalTemplatesDir, {
     conditions,
   });
