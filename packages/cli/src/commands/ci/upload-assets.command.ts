@@ -63,8 +63,9 @@ const handler = async ({
     !hasGitContextForTestRunWait(repoDirectory, baseSha_, gitDiffOutput_)
   ) {
     logger.error(
-      "--waitForTestRunToComplete requires --repoDirectory, or both --baseSha and --gitDiffOutput. " +
-        "With only --commitSha (typical on main) the run often ends at Partial by design, so waiting is misleading.",
+      "--waitForTestRunToComplete is only for runs from a local branch checkout: pass --repoDirectory " +
+        "(path to your clone on the branch under test) or both --baseSha and --gitDiffOutput from that branch. " +
+        "If you only pass --commitSha you are not on a branch checkout — omit this flag; the run may end at Partial by design.",
     );
     process.exit(1);
   }
@@ -242,8 +243,8 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
       boolean: true,
       default: false,
       description:
-        "If true, block and wait until the triggered test run is complete, then report results. Implies --waitForBase. " +
-        "Requires --repoDirectory or both --baseSha and --gitDiffOutput.",
+        "If true, block until the triggered test run finishes. Only for Meticulous runs tied to a local branch: " +
+        "requires --repoDirectory (your clone on that branch) or both --baseSha and --gitDiffOutput from it. Implies --waitForBase.",
     },
   },
   handler: wrapHandler(handler),

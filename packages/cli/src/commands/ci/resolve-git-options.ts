@@ -13,7 +13,11 @@ export interface ResolvedGitOptions {
   withUncommittedChanges: boolean;
 }
 
-/** Enough context for --waitForTestRunToComplete: repo inference or explicit base + diff (custom triggers). */
+/**
+ * Whether `--waitForTestRunToComplete` is allowed: only when Meticulous is run in the
+ * context of a local branch — either `--repoDirectory` (clone on that branch) or explicit
+ * `--baseSha` and `--gitDiffOutput` from the same checkout.
+ */
 export const hasGitContextForTestRunWait = (
   repoDirectory: string | undefined,
   baseSha: string | undefined,
