@@ -50,6 +50,14 @@ const handler = async ({
 }: Options): Promise<void> => {
   const logger = initLogger();
 
+  if (waitForTestRunToComplete && !repoDirectory) {
+    logger.error(
+      "--waitForTestRunToComplete requires --repoDirectory. " +
+        "Without a repo path the CLI cannot infer base SHA and diff, so waiting often stops at an unexpected status (e.g. Partial on main).",
+    );
+    process.exit(1);
+  }
+
   const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } = await resolveGitOptions({
     commitSha: commitSha_,
     baseSha: baseSha_,
@@ -174,7 +182,7 @@ export const ciUploadContainerCommand: CommandModule<unknown, Options> = {
       boolean: true,
       default: false,
       description:
-        "If true, block and wait until the triggered test run is complete, then report results. Implies --waitForBase.",
+        "If true, block and wait until the triggered test run is complete, then report results. Implies --waitForBase. Requires --repoDirectory.",
     },
     containerPort: {
       number: true,
