@@ -31,6 +31,10 @@ export const performOAuthLogin = async (): Promise<StoredOAuthTokens> => {
     redirectUri,
   });
 
+  logger.debug(`OAuth issuer: ${KEYCLOAK_ISSUER_URL}`);
+  logger.debug(`Webapp base URL: ${getWebappBaseUrl()}`);
+  logger.debug(`Callback redirect URI: ${redirectUri}`);
+
   logger.info("Opening browser for authentication...");
   logger.info(`If the browser does not open, visit: ${authUrl}`);
   openBrowser(authUrl);

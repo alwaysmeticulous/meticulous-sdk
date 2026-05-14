@@ -14,6 +14,13 @@ export const whoamiCommand: CommandModule = {
   handler: wrapHandler(async () => {
     const logger = initLogger();
 
+    logger.debug(
+      `API URL: ${process.env["METICULOUS_API_URL"] || "https://app.meticulous.ai/api/ (default)"}`,
+    );
+    logger.debug(
+      `OAuth issuer: ${process.env["METICULOUS_OAUTH_ISSUER_URL"] || "https://app.meticulous.ai/auth/realms/meticulous (default)"}`,
+    );
+
     const client = await createClientWithOAuth({
       apiToken: null,
       enableOAuthLogin: true,

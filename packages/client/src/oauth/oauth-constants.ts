@@ -34,6 +34,10 @@ export const getTokenEndpoint = async (): Promise<string> => {
 const DEFAULT_WEBAPP_BASE_URL = "https://app.meticulous.ai";
 
 export const getWebappBaseUrl = (): string => {
+  if (process.env["METICULOUS_WEBAPP_URL"]) {
+    return process.env["METICULOUS_WEBAPP_URL"].replace(/\/+$/, "");
+  }
+
   const apiUrlFromEnv = process.env["METICULOUS_API_URL"];
 
   if (apiUrlFromEnv && apiUrlFromEnv.includes("localhost")) {
