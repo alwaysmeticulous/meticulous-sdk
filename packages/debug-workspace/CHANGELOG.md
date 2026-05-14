@@ -1,5 +1,32 @@
 # @alwaysmeticulous/debug-workspace
 
+## 2.283.1
+
+### Patch Changes
+
+- [#1149](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1149) [`15ec7cc`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/15ec7cc7012bd641a80a140773c76f69c030daf0) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Patched a potential security vulnerability
+
+- Updated dependencies [[`15ec7cc`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/15ec7cc7012bd641a80a140773c76f69c030daf0)]:
+  - @alwaysmeticulous/downloading-helpers@2.283.1
+  - @alwaysmeticulous/client@2.283.1
+  - @alwaysmeticulous/common@2.283.1
+
+## 2.283.0
+
+### Minor Changes
+
+- [#1143](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1143) [`0806546`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/0806546254d3e63167b7406dc1cf8483a06c4003) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - debug-workspace: retrieve PR description from backend
+
+- [#1146](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1146) [`d0641e5`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/d0641e50d615ad917d1e1963fd6f5466e741ebc0) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Remove rules from debug workspace
+
+- [#1148](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1148) [`ae0f8ce`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/ae0f8cef9af0025abdd41a46427a5956b84d7964) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - debug-workspace: remove hooks, silence 404 on PR diff/description
+
+### Patch Changes
+
+- Updated dependencies [[`0806546`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/0806546254d3e63167b7406dc1cf8483a06c4003)]:
+  - @alwaysmeticulous/client@2.283.0
+  - @alwaysmeticulous/downloading-helpers@2.283.0
+
 ## 2.282.0
 
 ### Minor Changes

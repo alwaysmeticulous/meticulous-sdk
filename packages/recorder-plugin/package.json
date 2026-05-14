@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/recorder-plugin",
-  "version": "2.277.1",
+  "version": "2.283.1",
   "type": "module",
   "description": "Meticulous recorder plugin for Vite, Webpack, Rspack, and Nuxt that injects the recorder script into the HTML head.",
   "license": "ISC",

@@ -155,8 +155,9 @@ export const getLocalBaseSha = async (options?: {
 
   for (const candidate of uniqueCandidates) {
     try {
-      const mergeBase = await execPromise(
-        `git merge-base ${candidate} HEAD`,
+      const mergeBase = await execFilePromise(
+        "git",
+        ["merge-base", candidate, "HEAD"],
         cwd,
       );
       logger.debug(`Computed merge-base with '${candidate}': ${mergeBase}`);

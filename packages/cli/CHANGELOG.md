@@ -1,5 +1,40 @@
 # @alwaysmeticulous/cli
 
+## 2.283.1
+
+### Patch Changes
+
+- [#1149](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1149) [`15ec7cc`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/15ec7cc7012bd641a80a140773c76f69c030daf0) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Patched a potential security vulnerability
+
+- Updated dependencies [[`15ec7cc`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/15ec7cc7012bd641a80a140773c76f69c030daf0)]:
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.283.1
+  - @alwaysmeticulous/remote-replay-launcher@2.283.1
+  - @alwaysmeticulous/downloading-helpers@2.283.1
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/debug-workspace@2.283.1
+  - @alwaysmeticulous/sdk-bundles-api@2.283.1
+  - @alwaysmeticulous/tunnels-client@2.283.1
+  - @alwaysmeticulous/client@2.283.1
+  - @alwaysmeticulous/common@2.283.1
+  - @alwaysmeticulous/record@2.283.1
+  - @alwaysmeticulous/sentry@2.283.1
+  - @alwaysmeticulous/api@2.283.1
+
+## 2.283.0
+
+### Minor Changes
+
+- [#1147](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1147) [`12511ae`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/12511aed67975eb8771e2d4e79bdcf435aad4399) Thanks [@linpengzhang](https://github.com/linpengzhang)! - `ci upload-assets` and `ci upload-container`: `--waitForTestRunToComplete` is only allowed when Meticulous is run from a local branch checkout—pass `--repoDirectory`, or both `--baseSha` and `--gitDiffOutput`. Invocations that only pass `--commitSha` must omit the wait flag (previously they could pass validation and then block until the test run left an in-progress state).
+
+### Patch Changes
+
+- Updated dependencies [[`0806546`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/0806546254d3e63167b7406dc1cf8483a06c4003), [`d0641e5`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/d0641e50d615ad917d1e1963fd6f5466e741ebc0), [`ae0f8ce`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/ae0f8cef9af0025abdd41a46427a5956b84d7964)]:
+  - @alwaysmeticulous/debug-workspace@2.283.0
+  - @alwaysmeticulous/client@2.283.0
+  - @alwaysmeticulous/downloading-helpers@2.283.0
+  - @alwaysmeticulous/remote-replay-launcher@2.283.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.283.0
+
 ## 2.282.0
 
 ### Minor Changes
