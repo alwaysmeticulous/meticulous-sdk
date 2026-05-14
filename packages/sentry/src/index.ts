@@ -21,6 +21,7 @@ export const initSentry: (
   tracesSampleRateOverride?: number
 ) => Promise<void> = async (meticulousVersion, tracesSampleRateOverride) => {
   Sentry.init({
+    enabled: process.env.METICULOUS_DISABLE_SENTRY?.toLowerCase() !== "true",
     dsn: SENTRY_DSN,
     release: meticulousVersion,
 
