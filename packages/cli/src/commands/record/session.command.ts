@@ -89,16 +89,15 @@ const handler = async ({
       recordingCommandId,
       projectId,
     ).catch((error) => {
-        logger.error(
-          `Warning: error while notifying session recording ${sessionId}`,
-        );
-        logger.error(error);
-        debugLogger?.log(
-          `Warning: error while notifying session recording ${sessionId}`,
-        );
-        debugLogger?.log(`${error}`);
-      },
-    );
+      logger.error(
+        `Warning: error while notifying session recording ${sessionId}`,
+      );
+      logger.error(error);
+      debugLogger?.log(
+        `Warning: error while notifying session recording ${sessionId}`,
+      );
+      debugLogger?.log(`${error}`);
+    });
   };
 
   await recordSession({

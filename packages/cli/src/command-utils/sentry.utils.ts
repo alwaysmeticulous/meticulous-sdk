@@ -2,6 +2,7 @@ import { isFetchError } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { SENTRY_FLUSH_TIMEOUT } from "@alwaysmeticulous/sentry";
 import * as Sentry from "@sentry/node";
+import { CliUserError } from "../utils/cli-user-error";
 
 export const setOptions: (options: unknown) => void = (options) => {
   Sentry.setContext("invoke-options", options as Record<string, unknown>);
@@ -25,7 +26,7 @@ export const wrapHandler = function wrapHandler_<T>(
         process.exit(0);
       })
       .catch(async (error) => {
-        await reportHandlerError(error);
+        const exitCode = await reportHandlerError(error);
         const currentSpan = Sentry.getActiveSpan();
         if (currentSpan) {
           currentSpan.setStatus({ code: 2 });
@@ -34,14 +35,22 @@ export const wrapHandler = function wrapHandler_<T>(
         await Sentry.flush(SENTRY_FLUSH_TIMEOUT.toMillis());
 
         // Don't display the help text which can obscure the error
-        process.exit(1);
+        process.exit(exitCode);
       });
   };
 };
 
-const reportHandlerError: (error: unknown) => Promise<void> = async (error) => {
+const reportHandlerError = async (error: unknown): Promise<number> => {
   const logger = initLogger();
   logger.info("");
+
+  // User-facing errors: message already explains what to do, and the
+  // failure is expected (no Sentry, no --help tip, no stack).
+  if (error instanceof CliUserError) {
+    logger.error(error.message);
+    return error.exitCode;
+  }
+
   if (isFetchError(error)) {
     logger.error(error.message);
     if (
@@ -63,4 +72,5 @@ const reportHandlerError: (error: unknown) => Promise<void> = async (error) => {
     "Tip: run `meticulous <command> --help` for help on a particular command, or `meticulous --help` for a list of the available commands.",
   );
   Sentry.captureException(error);
+  return 1;
 };

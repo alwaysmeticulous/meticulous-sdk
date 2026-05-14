@@ -4,7 +4,7 @@ import {
   isFetchError,
   isJwtExpired,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { CliUserError } from "./cli-user-error";
 
 /**
  * Handles a 401/403 response from an OAuth-authenticated request.
@@ -15,10 +15,14 @@ import { initLogger } from "@alwaysmeticulous/common";
  *   backend), keeps the tokens and surfaces the backend's actual
  *   rejection message plus a pointer to `meticulous auth logout`.
  *
- * Returns `true` if the error was handled (caller should not rethrow);
- * `false` if the error was not an auth failure.
+ * Throws `CliUserError` when the error is an auth failure, so the
+ * command exits non-zero via `wrapHandler`. Returns `false` (no throw)
+ * when the error is not an auth failure — the caller should rethrow.
+ *
+ * Typical use at a call site:
+ *   try { ... } catch (error) { handleAuthFailure(error); throw error; }
  */
-export const handleAuthFailure = (error: unknown): boolean => {
+export const handleAuthFailure = (error: unknown): false => {
   if (!isFetchError(error)) {
     return false;
   }
@@ -27,27 +31,23 @@ export const handleAuthFailure = (error: unknown): boolean => {
     return false;
   }
 
-  const logger = initLogger();
   const stored = getStoredOAuthTokens();
   const expired = stored ? isJwtExpired(stored.accessToken) : false;
 
-  const serverMessage = extractServerMessage(error.response?.data);
-
   if (expired) {
     clearOAuthTokens();
-    logger.error(
+    throw new CliUserError(
       "Your stored OAuth token has expired and could not be refreshed. " +
         "Re-run the command to start a fresh login.",
     );
-    return true;
   }
 
+  const serverMessage = extractServerMessage(error.response?.data);
   const detail = serverMessage ? `: ${serverMessage}` : ".";
-  logger.error(
+  throw new CliUserError(
     `Authentication failed (HTTP ${status})${detail}\n` +
       "If the token is stale, run `meticulous auth logout` and re-run the command.",
   );
-  return true;
 };
 
 const extractServerMessage = (data: unknown): string | null => {

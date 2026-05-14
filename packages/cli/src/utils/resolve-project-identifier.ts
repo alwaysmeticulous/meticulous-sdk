@@ -1,5 +1,5 @@
 import { getStoredProjectId, isOAuthJwt } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { CliUserError } from "./cli-user-error";
 
 /**
  * Resolves the project identifier for project-scoped CLI commands given the
@@ -9,6 +9,9 @@ import { initLogger } from "@alwaysmeticulous/common";
  *   stored project id (set via `meticulous auth set-project`).
  * - Project-scoped API tokens already pin the project, so no extra
  *   identifier is needed.
+ *
+ * Throws `CliUserError` when an OAuth caller has no project selected. The
+ * top-level `wrapHandler` catches it and exits non-zero with the message.
  */
 export const resolveProjectIdentifier = (
   apiToken: string,
@@ -19,12 +22,10 @@ export const resolveProjectIdentifier = (
 
   const projectId = getStoredProjectId();
   if (!projectId) {
-    const logger = initLogger();
-    logger.error(
+    throw new CliUserError(
       "No project selected. Run `meticulous auth set-project` to choose " +
         "one before running OAuth-authenticated commands.",
     );
-    process.exit(1);
   }
   return { projectId };
 };

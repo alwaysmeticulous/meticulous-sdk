@@ -1,13 +1,16 @@
 import {
-  createClientWithOAuth,
+  createClient,
   getOAuthProjects,
+  isOAuthJwt,
   OAuthProject,
+  resolveApiTokenWithOAuth,
   setStoredProject,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import inquirer from "inquirer";
 import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { CliUserError } from "../../utils/cli-user-error";
 import { handleAuthFailure } from "../../utils/handle-auth-failure";
 
 export const setProjectCommand: CommandModule = {
@@ -18,32 +21,44 @@ export const setProjectCommand: CommandModule = {
   handler: wrapHandler(async () => {
     const logger = initLogger();
 
-    const client = await createClientWithOAuth({
+    const apiToken = await resolveApiTokenWithOAuth({
       apiToken: null,
       enableOAuthLogin: true,
     });
+
+    // Project-scoped API tokens (env var or legacy config) already pin a
+    // project, so `set-project` has nothing to do — and `setStoredProject`
+    // would fail since there are no OAuth tokens to attach the selection to.
+    if (!isOAuthJwt(apiToken)) {
+      throw new CliUserError(
+        "An API token (env var or legacy config) is already in use; it " +
+          "is bound to a single project, so `auth set-project` does not " +
+          "apply.\n" +
+          "To select a project interactively, first run `meticulous auth " +
+          "logout` and unset `METICULOUS_API_TOKEN`, then re-run this " +
+          "command to log in with OAuth.",
+      );
+    }
+
+    const client = createClient({ apiToken });
 
     let projects: OAuthProject[];
     try {
       projects = await getOAuthProjects(client);
     } catch (error) {
-      if (handleAuthFailure(error)) {
-        return;
-      }
+      handleAuthFailure(error);
       throw error;
     }
 
     if (projects.length === 0) {
-      logger.error(
-        "No projects are accessible to your account. Ask an organization admin to add you to a project.",
+      throw new CliUserError(
+        "No projects are accessible to your account. Ask an organization " +
+          "admin to add you to a project.",
       );
-      process.exit(1);
     }
 
     const selected =
-      projects.length === 1
-        ? projects[0]
-        : await promptForProject(projects);
+      projects.length === 1 ? projects[0] : await promptForProject(projects);
 
     const projectSlug = `${selected.organization.name}/${selected.name}`;
     setStoredProject({ project: projectSlug, projectId: selected.id });

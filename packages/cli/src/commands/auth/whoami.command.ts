@@ -45,9 +45,8 @@ export const whoamiCommand: CommandModule = {
         );
       }
     } catch (error) {
-      if (!handleAuthFailure(error)) {
-        throw error;
-      }
+      handleAuthFailure(error);
+      throw error;
     }
   }),
 };
