@@ -1,7 +1,6 @@
 import { execFileSync } from "child_process";
 import { createHash } from "crypto";
 import {
-  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -84,13 +83,13 @@ export interface GenerateDebugWorkspaceOptions {
   maxConcurrency?: number | undefined;
   additionalTemplatesDir?: string | undefined;
   /**
-   * When true, do not write `.claude/CLAUDE.md`, `.claude/settings.json`, or
-   * `.claude/hooks/` into the workspace. Used by the agent-cloud-worker, which
-   * inlines the rendered CLAUDE.md (returned by this function) into its system
-   * prompt and configures permissions, hooks, and sandboxing inline via the
-   * Claude Agent SDK rather than from filesystem settings. Skills and agents
-   * are still written -- they're referenced by the Task and Skill tools at
-   * runtime and need to live on disk.
+   * When true, do not write `.claude/CLAUDE.md` or `.claude/settings.json`
+   * into the workspace. Used by the agent-cloud-worker, which inlines the
+   * rendered CLAUDE.md (returned by this function) into its system prompt
+   * and configures permissions and sandboxing inline via the Claude Agent
+   * SDK rather than from filesystem settings. Skills and agents are still
+   * written -- they're referenced by the Task and Skill tools at runtime
+   * and need to live on disk.
    */
   skipDefaultClaudeFiles?: boolean | undefined;
   /**
@@ -192,9 +191,6 @@ export const generateDebugWorkspace = async (
   copySkills(workspaceDir, options.additionalTemplatesDir, conditions);
 
   if (!options.skipDefaultClaudeFiles) {
-    copyClaudeSubdir(workspaceDir, "hooks", options.additionalTemplatesDir, {
-      makeExecutable: true,
-    });
     const settingsSrc = resolveTemplateFile(
       "settings.json",
       options.additionalTemplatesDir,
@@ -265,7 +261,6 @@ const copyClaudeSubdir = (
   subdir: string,
   additionalTemplatesDir: string | undefined,
   options: {
-    makeExecutable?: boolean;
     conditions?: MarkdownConditions;
   } = {},
 ): void => {
@@ -294,9 +289,6 @@ const copyClaudeSubdir = (
         writeMarkdownWithConditionals(srcPath, destPath, options.conditions);
       } else {
         copyFileSync(srcPath, destPath);
-      }
-      if (options.makeExecutable) {
-        chmodSync(destPath, 0o755);
       }
     }
   };

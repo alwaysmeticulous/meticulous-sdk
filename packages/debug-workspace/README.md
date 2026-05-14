@@ -16,7 +16,7 @@ Given a replay diff ID or replay ID(s), this package:
    run in parallel with configurable concurrency.
 
 3. **Generates a workspace** -- Scaffolds a structured directory with:
-   - **Templates** -- `CLAUDE.md`, agents, skills, hooks, and settings copied into
+   - **Templates** -- `CLAUDE.md`, agents, skills, and settings copied into
      `.claude/` for use with Claude Code.
    - **Derived analysis files** -- Pre-computed artifacts that make large replay data greppable
      and manageable:
@@ -45,7 +45,7 @@ Given a replay diff ID or replay ID(s), this package:
 
 `generateDebugWorkspace` accepts an optional `additionalTemplatesDir` parameter. Files in this
 overlay directory take precedence over the base templates bundled with this package. For
-subdirectories (agents, hooks, skills), base files are copied first, then overlay files
+subdirectories (agents, skills), base files are copied first, then overlay files
 are copied on top -- so overlays can add new files or replace specific ones by name.
 
 This is used by `met_debug` (in the internal Meticulous repo) to provide admin-specific
