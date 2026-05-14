@@ -27,8 +27,7 @@ export const setProjectCommand: CommandModule = {
     });
 
     // Project-scoped API tokens (env var or legacy config) already pin a
-    // project, so `set-project` has nothing to do — and `setStoredProject`
-    // would fail since there are no OAuth tokens to attach the selection to.
+    // project, so `set-project` has nothing to do.
     if (!isOAuthJwt(apiToken)) {
       throw new CliUserError(
         "An API token (env var or legacy config) is already in use; it " +

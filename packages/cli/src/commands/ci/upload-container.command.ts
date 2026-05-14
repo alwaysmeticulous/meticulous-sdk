@@ -1,6 +1,6 @@
 import {
   ContainerEnvVariable,
-  createClientWithOAuth,
+  createClient,
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
   resolveApiTokenWithOAuth,
@@ -137,10 +137,7 @@ const handler = async ({
     return;
   }
 
-  const client = await createClientWithOAuth({
-    apiToken: apiToken_,
-    enableOAuthLogin: true,
-  });
+  const client = createClient({ apiToken: apiToken_ });
 
   logger.info(`Waiting for test run ${testRunId} to complete...`);
 
