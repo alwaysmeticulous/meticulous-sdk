@@ -243,12 +243,36 @@ replay), and drop into phase 4 only as needed.
 9. **Logs index** -- grep `debug-data/logs-index/<role>-<replayId>.txt` by source
    (`source=application`), type (`type=warn`), keyword, or virtual time (`vt=1234`).
 
+### 3b. Check network match quality (when diffs involve partial matches)
+
+When the replay shows "Low accuracy: Network issues" or the network log contains `Partial match`
+entries in the root cause time span (events preceding the first visual difference), this is a
+high-priority check:
+
+1. Grep `debug-data/network-log/` for `Partial match` entries near the first divergence point.
+2. For each partial match, find the corresponding `pollyReplay` event in `timeline.ndjson`
+   (grep by URL or event index). Examine:
+   - `data.pollyRequest.request.url` -- the **actual request** made during replay.
+   - `data.matchedRequest.request.url` -- the **original recorded request** whose saved
+     response was served.
+3. If these URLs differ significantly (different endpoint, different query parameters, different
+   resource), the response served almost certainly doesn't match what the application expected.
+   This is a common root cause for diffs and should be flagged.
+
+For example, if the actual request was `GET /ux-api/kagent/agents` but Meticulous served a saved
+response originally recorded for `GET /ux-api/kagent/conversations?page=1&search=...`, the
+response schema is likely wrong for the requesting code, causing downstream UI differences.
+
+When you identify such a mismatch, report it as the likely root cause and note that the diff
+can be disregarded -- it stems from a network matching issue, not a real code regression.
+
 ### 4. Deeper dives (as needed)
 
 10. **Screenshot timeline context** -- `debug-data/screenshot-timeline-context/` for the 30
     events before and 10 after each screenshot.
 11. **Network activity** -- grep `debug-data/network-log/` for endpoints, status codes,
-    domains.
+    domains. For any `Partial match` entries, cross-reference with `timeline.ndjson` to compare
+    the actual request URL against the matched recorded request URL (see phase 3b above).
 12. **Virtual time progression** -- `diff` on `debug-data/vt-progression/` files to find
     where head and base diverge.
 13. **Replay parameters** -- `debug-data/params-diffs/` for computed diffs, or
