@@ -3,7 +3,10 @@ import {
   TestRun,
   TestRunTriggerDebugContext,
 } from "@alwaysmeticulous/api";
-import { ContainerEnvVariable } from "@alwaysmeticulous/client";
+import {
+  ContainerEnvVariable,
+  ProjectIdentifier,
+} from "@alwaysmeticulous/client";
 
 export interface TunnelData {
   url: string;
@@ -69,7 +72,7 @@ export interface ExecuteRemoteTestRunResult {
   testRun: TestRun | null;
 }
 
-export interface UploadAssetsAndTriggerTestRunOptions {
+export interface UploadAssetsAndTriggerTestRunOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
   appDirectory?: string | undefined;
   appZip?: string | undefined;
@@ -86,7 +89,8 @@ export interface UploadAssetsAndTriggerTestRunOptions {
   createDeployment?: boolean;
 }
 
-export interface UploadContainerAndTriggerTestRunOptions {
+export interface UploadContainerAndTriggerTestRunOptions
+  extends ProjectIdentifier {
   apiToken: string | null | undefined;
   localImageTag: string;
   commitSha: string;

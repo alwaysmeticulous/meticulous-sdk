@@ -5,6 +5,7 @@ import {
   getRegistryAuth,
   completeContainerUpload,
   ContainerEnvVariable,
+  ProjectIdentifier,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
@@ -12,7 +13,7 @@ import Docker from "dockerode";
 import { uploadGitDiffToS3 } from "./asset-upload-utils";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 
-export interface UploadContainerOptions {
+export interface UploadContainerOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
   localImageTag: string;
   commitSha: string;
@@ -42,6 +43,7 @@ export const uploadContainer = async ({
   containerPort,
   containerEnv,
   containerHealthCheckEndpoint,
+  projectId,
 }: UploadContainerOptions): Promise<UploadContainerResult> => {
   const logger = initLogger();
 
@@ -54,6 +56,8 @@ export const uploadContainer = async ({
   }
 
   const client = createClient({ apiToken });
+
+  const projectIdentifier = projectId ? { projectId } : {};
 
   const docker = getDockerClient();
 
@@ -71,7 +75,10 @@ export const uploadContainer = async ({
   logger.info(`Found Docker image: ${localImageTag}`);
 
   logger.info("Getting registry credentials...");
-  const registryAuth = await getRegistryAuth({ client });
+  const registryAuth = await getRegistryAuth({
+    client,
+    ...projectIdentifier,
+  });
 
   const {
     uploadId,
@@ -102,7 +109,12 @@ export const uploadContainer = async ({
   logger.info("Completing container upload and triggering test run...");
 
   if (gitDiffOutput) {
-    await uploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+    await uploadGitDiffToS3({
+      client,
+      uploadId,
+      gitDiffOutput,
+      ...projectIdentifier,
+    });
   }
 
   const completeContainerArgs = {
@@ -116,6 +128,7 @@ export const uploadContainer = async ({
     containerPort,
     containerEnv,
     containerHealthCheckEndpoint,
+    ...projectIdentifier,
   };
 
   const completeResult = await completeContainerUpload(completeContainerArgs);

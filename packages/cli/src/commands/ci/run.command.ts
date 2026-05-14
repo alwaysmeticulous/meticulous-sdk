@@ -1,9 +1,9 @@
 import { SessionRelevance } from "@alwaysmeticulous/api";
 import {
-  createClientWithOAuth,
+  createClient,
+  getApiToken,
   getGitHubCloudReplayBaseTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
-  resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { defer, getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import {
@@ -101,10 +101,13 @@ const handler = async ({
     process.exit(1);
   }
 
-  const apiToken_ = await resolveApiTokenWithOAuth({
-    apiToken,
-    enableOAuthLogin: true,
-  });
+  const apiToken_ = getApiToken(apiToken);
+  if (!apiToken_) {
+    logger.error(
+      "You must provide an API token by using the --apiToken parameter",
+    );
+    process.exit(1);
+  }
 
   // If we have a script to trigger a run, this signals that the user is not sure whether the base test run is available.
   // In this case, we trigger the preparation for meticulous tests.
@@ -298,10 +301,7 @@ const waitForBase = async ({
   commitSha: string;
   logger: log.Logger;
 }): Promise<void> => {
-  const client = await createClientWithOAuth({
-    apiToken,
-    enableOAuthLogin: true,
-  });
+  const client = createClient({ apiToken });
   const startTime = Date.now();
 
   // Non-Github-hosted projects are currently not supported

@@ -6,8 +6,13 @@ import {
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import type { RequestInit } from "undici";
+import { getOAuthProjects } from "./api/oauth.api";
 import { getApiToken, getAuthToken } from "./api-token.utils";
 import { performOAuthLogin } from "./oauth/oauth-login";
+import {
+  getStoredProjectId,
+  setStoredProject,
+} from "./oauth/oauth-token-store";
 import {
   MeticulousClient,
   RequestConfig,
@@ -219,6 +224,7 @@ export const resolveApiTokenWithOAuth = async (
   if (!apiToken && isInteractive) {
     const tokens = await performOAuthLogin();
     apiToken = tokens.accessToken;
+    await maybeAutoSelectProject(apiToken, logger);
   }
 
   if (!apiToken) {
@@ -230,6 +236,33 @@ export const resolveApiTokenWithOAuth = async (
   }
 
   return apiToken;
+};
+
+/**
+ * After a fresh OAuth login, if the user has access to exactly one project
+ * and none has been stored yet, picks it automatically. Best-effort: any
+ * failure (network, missing backend endpoint, etc.) is logged at debug and
+ * swallowed — the user can always run `meticulous auth set-project` later.
+ */
+const maybeAutoSelectProject = async (
+  apiToken: string,
+  logger: log.Logger,
+): Promise<void> => {
+  if (getStoredProjectId()) {
+    return;
+  }
+  try {
+    const client = buildClient(apiToken, logger);
+    const projects = await getOAuthProjects(client);
+    if (projects.length === 1) {
+      const only = projects[0];
+      const projectSlug = `${only.organization.name}/${only.name}`;
+      setStoredProject({ project: projectSlug, projectId: only.id });
+      logger.info(`Selected project: ${projectSlug}`);
+    }
+  } catch (error) {
+    logger.debug(`Skipping auto-project selection after login: ${error}`);
+  }
 };
 
 export const createClientWithOAuth = async (

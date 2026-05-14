@@ -5,7 +5,17 @@ import {
 } from "@alwaysmeticulous/api";
 import { MeticulousClient } from "../types/client.types";
 
-export interface RequestAssetUploadParams {
+/**
+ * Identifies a project for OAuth callers, whose token does not by itself
+ * pin a project. The id is the one returned by `oauth/projects` and
+ * persisted via `meticulous auth set-project`. Omitted when authenticating
+ * with a project-scoped API token (the token already pins the project).
+ */
+export interface ProjectIdentifier {
+  projectId?: string | undefined;
+}
+
+export interface RequestAssetUploadParams extends ProjectIdentifier {
   size: number;
 }
 
@@ -14,7 +24,7 @@ export interface RequestAssetUploadResponse {
   uploadUrl: string;
 }
 
-export interface RequestMultipartAssetUploadParams {
+export interface RequestMultipartAssetUploadParams extends ProjectIdentifier {
   archiveType: DeploymentArchiveType;
 }
 
@@ -25,7 +35,7 @@ export interface RequestMultipartAssetUploadResponse {
   uploadChunkSize: number;
 }
 
-export interface RequestUploadPartParams {
+export interface RequestUploadPartParams extends ProjectIdentifier {
   uploadId: string;
   awsUploadId: string;
   size: number;
@@ -42,7 +52,7 @@ export interface MultiPartUploadInfo {
   eTags: string[];
 }
 
-export interface RequestGitDiffUploadParams {
+export interface RequestGitDiffUploadParams extends ProjectIdentifier {
   uploadId: string;
   size: number;
 }
@@ -51,7 +61,7 @@ export interface RequestGitDiffUploadResponse {
   uploadUrl: string;
 }
 
-export interface CompleteAssetUploadParams {
+export interface CompleteAssetUploadParams extends ProjectIdentifier {
   uploadId: string;
   commitSha: string;
   baseSha?: string | undefined;
@@ -69,7 +79,7 @@ export interface CompleteAssetUploadResponse {
   message?: string;
 }
 
-export interface CompleteContainerUploadParams {
+export interface CompleteContainerUploadParams extends ProjectIdentifier {
   uploadId: string;
   commitSha: string;
   baseSha?: string | undefined;
@@ -109,94 +119,135 @@ export interface DownloadDeploymentResponse {
   archiveType: DeploymentArchiveType;
 }
 
+/**
+ * Builds a `RequestConfig` that puts `projectId` (if present) into the query
+ * string. Every project-deployment endpoint reads `projectId` from
+ * `@Query("projectId")` on the backend, not from the body.
+ */
+const projectIdQuery = (
+  projectId: string | undefined,
+): { params: { projectId: string } } | undefined =>
+  projectId ? { params: { projectId } } : undefined;
+
 export const requestAssetUpload = async ({
   client,
-  ...params
+  projectId,
+  ...body
 }: RequestAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestAssetUploadResponse> => {
   const { data } = await client.post<
-    RequestAssetUploadParams,
+    typeof body,
     { data: RequestAssetUploadResponse }
-  >("project-deployments/request-asset-upload", params);
+  >(
+    "project-deployments/request-asset-upload",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
 export const requestMultipartAssetUpload = async ({
   client,
-  ...params
+  projectId,
+  ...body
 }: RequestMultipartAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestMultipartAssetUploadResponse> => {
   const { data } = await client.post<
-    RequestMultipartAssetUploadParams,
+    typeof body,
     { data: RequestMultipartAssetUploadResponse }
-  >("project-deployments/request-multipart-asset-upload", params);
+  >(
+    "project-deployments/request-multipart-asset-upload",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
 export const requestUploadPart = async ({
   client,
-  ...params
+  projectId,
+  ...body
 }: RequestUploadPartParams & {
   client: MeticulousClient;
 }): Promise<RequestUploadPartResponse> => {
   const { data } = await client.post<
-    RequestUploadPartParams,
+    typeof body,
     { data: RequestUploadPartResponse }
-  >("project-deployments/request-upload-part", params);
+  >(
+    "project-deployments/request-upload-part",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
 export const requestGitDiffUpload = async ({
   client,
-  ...params
+  projectId,
+  ...body
 }: RequestGitDiffUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestGitDiffUploadResponse> => {
   const { data } = await client.post<
-    RequestGitDiffUploadParams,
+    typeof body,
     { data: RequestGitDiffUploadResponse }
-  >("project-deployments/request-git-diff-upload", params);
+  >(
+    "project-deployments/request-git-diff-upload",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
 export const triggerRunOnDeployment = async ({
   client,
-  ...params
+  projectId,
+  ...body
 }: CompleteAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
   const { data } = await client.post<
-    CompleteAssetUploadParams,
+    typeof body,
     { data: CompleteAssetUploadResponse }
-  >("project-deployments/trigger-run", params);
+  >("project-deployments/trigger-run", body, projectIdQuery(projectId));
   return data;
 };
 
 export const completeAssetUpload = async ({
   client,
-  ...params
+  projectId,
+  ...body
 }: CompleteAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
   const { data } = await client.post<
-    CompleteAssetUploadParams,
+    typeof body,
     { data: CompleteAssetUploadResponse }
-  >("project-deployments/complete-asset-upload-and-maybe-trigger-run", params);
+  >(
+    "project-deployments/complete-asset-upload-and-maybe-trigger-run",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
 export const completeContainerUpload = async ({
   client,
-  ...params
+  projectId,
+  ...body
 }: CompleteContainerUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteContainerUploadResponse> => {
   const { data } = await client.post<
-    CompleteContainerUploadParams,
+    typeof body,
     { data: CompleteContainerUploadResponse }
-  >("project-deployments/complete-container-upload", params);
+  >(
+    "project-deployments/complete-container-upload",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 

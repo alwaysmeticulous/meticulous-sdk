@@ -1,5 +1,6 @@
 import {
-  createClientWithOAuth,
+  createClient,
+  resolveApiTokenWithOAuth,
   AgentFeature,
   trackAgentFeatureUsage,
 } from "@alwaysmeticulous/client";
@@ -7,6 +8,7 @@ import { runDebugPipeline } from "@alwaysmeticulous/debug-workspace";
 import { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { getProjectIdForOAuthCaller } from "../../utils/resolve-project-identifier";
 import { cleanWorkspaces } from "./clean-workspaces";
 import { presentWorkspace } from "./present-workspace";
 import {
@@ -36,13 +38,18 @@ const runPipeline = async (opts: {
   replayIds?: string[] | undefined;
   sessionId?: string | undefined;
 }): Promise<void> => {
-  const client = await createClientWithOAuth({
+  const apiToken = await resolveApiTokenWithOAuth({
     apiToken: opts.apiToken,
     enableOAuthLogin: true,
   });
+  const client = createClient({ apiToken });
 
   // Fire-and-forget: don't block the pipeline on telemetry
-  void trackAgentFeatureUsage(client, opts.feature);
+  void trackAgentFeatureUsage({
+    client,
+    feature: opts.feature,
+    projectId: getProjectIdForOAuthCaller(apiToken),
+  });
 
   await runDebugPipeline({
     client,

@@ -13,6 +13,18 @@ export interface StoredOAuthTokens {
   refreshToken: string;
   expiresAt: number; // Unix seconds
   idToken?: string | undefined;
+  /**
+   * The id of the project the user has selected via `auth set-project`.
+   * Used by project-scoped CLI commands that authenticate with an OAuth
+   * token (which by itself does not pin a project).
+   */
+  projectId?: string | undefined;
+  /**
+   * Human-readable "<organization-name>/<project-name>" slug for the
+   * selected project. Stored alongside `projectId` so it can be displayed
+   * (e.g. by `auth whoami`) without an extra API round-trip.
+   */
+  project?: string | undefined;
 }
 
 const METICULOUS_DIR = join(homedir(), ".meticulous");
@@ -47,4 +59,42 @@ export const clearOAuthTokens = (): void => {
   } catch {
     // Ignore errors during cleanup
   }
+};
+
+export const getStoredProjectId = (): string | null => {
+  return getStoredOAuthTokens()?.projectId ?? null;
+};
+
+export const getStoredProject = (): string | null => {
+  return getStoredOAuthTokens()?.project ?? null;
+};
+
+export const setStoredProject = ({
+  project,
+  projectId,
+}: {
+  project: string;
+  projectId: string;
+}): void => {
+  const existing = getStoredOAuthTokens();
+  if (!existing) {
+    throw new Error(
+      "No stored OAuth tokens found. Run `meticulous auth login` (or any " +
+        "command that triggers OAuth login) before selecting a project.",
+    );
+  }
+  storeOAuthTokens({ ...existing, project, projectId });
+};
+
+export const clearStoredProject = (): void => {
+  const existing = getStoredOAuthTokens();
+  if (!existing) {
+    return;
+  }
+  storeOAuthTokens({
+    accessToken: existing.accessToken,
+    refreshToken: existing.refreshToken,
+    expiresAt: existing.expiresAt,
+    ...(existing.idToken ? { idToken: existing.idToken } : {}),
+  });
 };

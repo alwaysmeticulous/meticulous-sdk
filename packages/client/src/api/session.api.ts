@@ -32,18 +32,28 @@ export const getRecordedSessionData = async (
   return data;
 };
 
-export const getRecordingCommandId: (
+export const getRecordingCommandId = async (
   client: MeticulousClient,
-) => Promise<string> = async (client) => {
-  const { data } = await client.post("sessions/start");
+  projectId?: string,
+): Promise<string> => {
+  const { data } = await client.post(
+    "sessions/start",
+    undefined,
+    projectId ? { params: { projectId } } : undefined,
+  );
   const { recordingCommandId } = data as { recordingCommandId: string };
   return recordingCommandId;
 };
 
-export const postSessionIdNotification: (
+export const postSessionIdNotification = async (
   client: MeticulousClient,
   sessionId: string,
   recordingCommandId: string,
-) => Promise<void> = async (client, sessionId, recordingCommandId) => {
-  await client.post(`sessions/${sessionId}/notify`, { recordingCommandId });
+  projectId?: string,
+): Promise<void> => {
+  await client.post(
+    `sessions/${sessionId}/notify`,
+    { recordingCommandId },
+    projectId ? { params: { projectId } } : undefined,
+  );
 };

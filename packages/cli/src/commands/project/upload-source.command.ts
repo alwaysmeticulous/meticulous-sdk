@@ -4,7 +4,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { pipeline } from "stream/promises";
 import {
-  createClientWithOAuth,
+  createClient,
   putFileToSignedUrl,
   requestSourceCodeUploadUrl,
   retryTransientUploadErrors,
@@ -70,10 +70,7 @@ export const uploadSourceCommand: CommandModule<unknown, Options> = {
   },
   handler: wrapHandler(async ({ apiToken, commitSha, sourceDir }) => {
     const logger = initLogger();
-    const client = await createClientWithOAuth({
-      apiToken,
-      enableOAuthLogin: true,
-    });
+    const client = createClient({ apiToken });
 
     const tmpDir = await mkdtemp(join(tmpdir(), "meticulous-source-"));
     const archivePath = join(tmpDir, "source.tar.gz");

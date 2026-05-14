@@ -15,6 +15,7 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
+import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 import {
   hasGitContextForTestRunWait,
   resolveGitOptions,
@@ -99,6 +100,8 @@ const handler = async ({
     enableOAuthLogin: true,
   });
 
+  const projectIdentifier = resolveProjectIdentifier(apiToken_);
+
   let testRunId: string | null;
 
   try {
@@ -113,6 +116,7 @@ const handler = async ({
       containerPort,
       containerEnv,
       containerHealthCheckEndpoint,
+      ...projectIdentifier,
     });
     testRunId = result.testRun?.id ?? null;
 

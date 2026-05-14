@@ -50,6 +50,7 @@ export const getValidAccessToken = async (): Promise<string | null> => {
     };
 
     const updatedTokens = {
+      ...tokens,
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresAt: Math.floor(Date.now() / 1000) + data.expires_in,
