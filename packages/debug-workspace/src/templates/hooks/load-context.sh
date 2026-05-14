@@ -2,7 +2,7 @@
 #
 # SessionStart hook: loads context.json into Claude's context automatically.
 
-CONTEXT_FILE="debug-data/context.json"
+CONTEXT_FILE="${CLAUDE_PROJECT_DIR}/debug-data/context.json"
 
 if [ ! -f "$CONTEXT_FILE" ]; then
   exit 0

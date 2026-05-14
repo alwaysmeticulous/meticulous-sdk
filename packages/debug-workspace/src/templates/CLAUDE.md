@@ -64,9 +64,9 @@ Each replay directory (`debug-data/replays/<role>/<replayId>/`) contains:
 - `timeline-stats.json` -- Aggregated statistics about timeline events.
 - `metadata.json` -- Replay configuration, parameters, and environment info.
 - `launchBrowserAndReplayParams.json` -- The exact parameters used to launch the replay.
-- `stack-traces.ndjson` -- JavaScript stack traces captured during replay (if any errors
-  occurred), one JSON object per line.
-- `accuracy.json` -- Replay accuracy assessment comparing to expected behavior.
+- `stackTraces.json` -- JavaScript stack traces captured during replay (if any errors
+  occurred).
+- `accuracyData.json` -- Replay accuracy assessment comparing to expected behavior.
 - `cookies.json` -- Cookies captured at session record time. Rarely needed; useful only when
   authentication or cookie-driven behavior is part of the investigation.
 - `mapped-coverage.json` -- JS code coverage for the whole replay, mapped back to source files.

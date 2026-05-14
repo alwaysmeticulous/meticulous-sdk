@@ -2148,6 +2148,11 @@ const defaultWriteContextJson = (
   replayComparison: ReplayComparisonEntry[],
   domDiffMap: DomDiffMap,
 ): void => {
+  const logDiffsDir = join(workspaceDir, DEBUG_DATA_DIRECTORY, "log-diffs");
+  const hasLogDiffs =
+    existsSync(logDiffsDir) &&
+    readdirSync(logDiffsDir).some((f) => f.endsWith(".diff"));
+
   const headIds = new Set(debugContext.replayDiffs.map((d) => d.headReplayId));
   const baseIds = new Set(debugContext.replayDiffs.map((d) => d.baseReplayId));
 
@@ -2189,9 +2194,11 @@ const defaultWriteContextJson = (
       replays: "replays/",
       sessions: "sessions/",
       diffs: "diffs/",
-      logDiffs: "log-diffs/",
-      logDiffsFiltered: "log-diffs/*.filtered.diff",
-      logDiffsSummary: "log-diffs/*.summary.txt",
+      ...(hasLogDiffs && {
+        logDiffs: "log-diffs/",
+        logDiffsFiltered: "log-diffs/*.filtered.diff",
+        logDiffsSummary: "log-diffs/*.summary.txt",
+      }),
       paramsDiffs: "params-diffs/",
       assetsDiffs: "assets-diffs/",
       timelineSummaries: "timeline-summaries/",

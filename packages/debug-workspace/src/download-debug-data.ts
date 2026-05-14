@@ -83,6 +83,13 @@ const downloadReplays = async (
           { excludeFileTypes: DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES },
         );
         await ensureReplayLogTextFiles(cachedPath);
+        if (!existsSync(join(cachedPath, "logs.deterministic.txt"))) {
+          console.warn(
+            chalk.yellow(
+              `  Warning: logs.ndjson not available for replay ${replayId} — log text files were not generated. Log-diff artifacts will also be unavailable.`,
+            ),
+          );
+        }
         console.log(chalk.cyan(`  Downloaded replay ${replayId}`));
         return { replayId, cachedPath };
       }),
