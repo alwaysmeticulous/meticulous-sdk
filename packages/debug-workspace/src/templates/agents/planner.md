@@ -25,7 +25,9 @@ Gather context from these sources (in order):
 4. `diffs/*.summary.json` -- which screenshots differ and by how much (only present when
    comparing replays).
 5. `params-diffs/*.diff` -- parameter differences between head and base replays.
+<!-- if-pr-diff -->
 6. `pr-diff.txt` -- source code changes (first ~200 lines if large).
+<!-- end-if-pr-diff -->
 
 ## What to Produce
 

@@ -1,7 +1,6 @@
 import { execFileSync } from "child_process";
 import { createHash } from "crypto";
 import {
-  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -11,10 +10,14 @@ import {
   unlinkSync,
   writeFileSync,
 } from "fs";
-import { basename, dirname, join } from "path";
+import { basename, dirname, extname, join } from "path";
 import { MeticulousClient } from "@alwaysmeticulous/client";
-import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
+import {
+  getMeticulousLocalDataDir,
+  initLogger,
+} from "@alwaysmeticulous/common";
 import chalk from "chalk";
+import { format, type BuiltInParserName } from "prettier";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import { DebugContext } from "./debug.types";
 import { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
@@ -58,8 +61,6 @@ export interface ScreenshotMapEntry {
   eventNumber: number | null;
   /** Name of the `before.dom` HTML file in the replay's `screenshots/`, or `null` if missing. */
   htmlFilename: string | null;
-  /** Name of the `after.dom` HTML file, or `null` when the screenshot captured no after DOM. */
-  afterHtmlFilename: string | null;
 }
 
 export interface ReplayComparisonEntry {
@@ -81,6 +82,25 @@ export interface GenerateDebugWorkspaceOptions {
   projectRepoDir: string | undefined;
   maxConcurrency?: number | undefined;
   additionalTemplatesDir?: string | undefined;
+  /**
+   * When true, do not write `.claude/CLAUDE.md` or `.claude/settings.json`
+   * into the workspace. Used by the agent-cloud-worker, which inlines the
+   * rendered CLAUDE.md (returned by this function) into its system prompt
+   * and configures permissions and sandboxing inline via the Claude Agent
+   * SDK rather than from filesystem settings. Skills and agents are still
+   * written -- they're referenced by the Task and Skill tools at runtime
+   * and need to live on disk.
+   */
+  skipDefaultClaudeFiles?: boolean | undefined;
+  /**
+   * Whether the workspace is being prepared for the local `meticulous debug`
+   * CLI or for a non-CLI runner like the agent-cloud-worker. Defaults to
+   * `false`; the local CLI passes `true` explicitly. When `false`, CLI-specific
+   * guidance (project-repo paths, `--baseReplayId` notes, direct CLI
+   * invocations) is stripped from CLAUDE.md and templated agent markdown via
+   * `<!-- if-local-cli -->` markers.
+   */
+  isLocalCli?: boolean | undefined;
   writeContextJson?:
     | ((
         debugContext: DebugContext,
@@ -94,24 +114,53 @@ export interface GenerateDebugWorkspaceOptions {
     | undefined;
 }
 
+export interface GenerateDebugWorkspaceResult {
+  /**
+   * The fully-rendered CLAUDE.md content (with all `<!-- if-* -->` conditionals
+   * resolved). Returned regardless of whether the file was written to disk so
+   * SDK consumers can inline it into a custom system prompt directly.
+   */
+  claudeMd: string;
+}
+
 export const generateDebugWorkspace = async (
   options: GenerateDebugWorkspaceOptions,
-): Promise<void> => {
+): Promise<GenerateDebugWorkspaceResult> => {
   const { client, debugContext, workspaceDir } = options;
 
   const claudeDir = join(workspaceDir, ".claude");
   mkdirSync(claudeDir, { recursive: true });
 
-  copyClaudeMd(workspaceDir, options.additionalTemplatesDir);
   generateFilteredLogs(workspaceDir);
   generateLogDiffs(debugContext, workspaceDir);
   generateDiffSummaries(workspaceDir);
   generatePrDiff(debugContext, workspaceDir);
+  const hasPrDiff = existsSync(
+    join(workspaceDir, DEBUG_DATA_DIRECTORY, "pr-diff.txt"),
+  );
+  const hasPrDescription = existsSync(
+    join(workspaceDir, DEBUG_DATA_DIRECTORY, "pr-description.txt"),
+  );
+  const isLocalCli = options.isLocalCli ?? false;
+  const hasSnapshotAssets = detectSnapshotAssets(workspaceDir);
+  const conditions: MarkdownConditions = {
+    hasPrDiff,
+    hasPrDescription,
+    hasPrDescriptionAndDiff: hasPrDescription && hasPrDiff,
+    hasPrDescriptionOnly: hasPrDescription && !hasPrDiff,
+    hasPrDiffOnly: !hasPrDescription && hasPrDiff,
+    isLocalCli,
+    hasSnapshotAssets,
+  };
+  const claudeMd = renderClaudeMd(options.additionalTemplatesDir, conditions);
+  if (!options.skipDefaultClaudeFiles) {
+    writeFileSync(join(claudeDir, "CLAUDE.md"), claudeMd);
+  }
   generateParamsDiffs(debugContext, workspaceDir);
   generateAssetsDiff(debugContext, workspaceDir);
   generateTimelineSummaries(workspaceDir);
   generateSessionSummaries(debugContext, workspaceDir);
-  prettifySnapshotAssets(workspaceDir);
+  await prettifySnapshotAssets(workspaceDir);
   extractScreenshotDomFiles(workspaceDir);
   const domDiffMap = await fetchDomDiffs({
     client,
@@ -136,20 +185,22 @@ export const generateDebugWorkspace = async (
     domDiffMap,
   );
 
-  copyClaudeSubdir(workspaceDir, "rules", options.additionalTemplatesDir);
-  copyClaudeSubdir(workspaceDir, "hooks", options.additionalTemplatesDir, {
-    makeExecutable: true,
+  copyClaudeSubdir(workspaceDir, "agents", options.additionalTemplatesDir, {
+    conditions,
   });
-  copyClaudeSubdir(workspaceDir, "agents", options.additionalTemplatesDir);
-  copySkills(workspaceDir, options.additionalTemplatesDir);
+  copySkills(workspaceDir, options.additionalTemplatesDir, conditions);
 
-  const settingsSrc = resolveTemplateFile(
-    "settings.json",
-    options.additionalTemplatesDir,
-  );
-  if (settingsSrc) {
-    copyFileSync(settingsSrc, join(claudeDir, "settings.json"));
+  if (!options.skipDefaultClaudeFiles) {
+    const settingsSrc = resolveTemplateFile(
+      "settings.json",
+      options.additionalTemplatesDir,
+    );
+    if (settingsSrc) {
+      copyFileSync(settingsSrc, join(claudeDir, "settings.json"));
+    }
   }
+
+  return { claudeMd };
 };
 
 // ---------------------------------------------------------------------------
@@ -173,61 +224,84 @@ const resolveTemplateFile = (
   return undefined;
 };
 
-const copyClaudeMd = (
-  workspaceDir: string,
+// File names (within their template subdir) that are only relevant when a PR
+// diff is present in the workspace; skipped otherwise so the agent doesn't see
+// dangling references.
+const PR_DIFF_ONLY_AGENT_FILES = new Set<string>(["pr-analyzer.md"]);
+const PR_DIFF_ONLY_SKILL_DIRS = new Set<string>(["pr-analysis"]);
+
+interface MarkdownConditions {
+  hasPrDiff: boolean;
+  hasPrDescription: boolean;
+  /** Derived: PR diff AND description both available. */
+  hasPrDescriptionAndDiff: boolean;
+  /** Derived: PR description available but no PR diff. */
+  hasPrDescriptionOnly: boolean;
+  /** Derived: PR diff available but no PR description. */
+  hasPrDiffOnly: boolean;
+  isLocalCli: boolean;
+  hasSnapshotAssets: boolean;
+}
+
+const renderClaudeMd = (
   additionalTemplatesDir: string | undefined,
-): void => {
+  conditions: MarkdownConditions,
+): string => {
   const src = resolveTemplateFile("CLAUDE.md", additionalTemplatesDir);
-  if (src) {
-    copyFileSync(src, join(workspaceDir, ".claude", "CLAUDE.md"));
+  if (!src) {
+    throw new Error(
+      "CLAUDE.md template not found in the debug-workspace package. This indicates a packaging bug.",
+    );
   }
+  return renderMarkdownWithConditionals(readFileSync(src, "utf8"), conditions);
 };
 
 const copyClaudeSubdir = (
   workspaceDir: string,
   subdir: string,
   additionalTemplatesDir: string | undefined,
-  options: { makeExecutable?: boolean } = {},
+  options: {
+    conditions?: MarkdownConditions;
+  } = {},
 ): void => {
   const destDir = join(workspaceDir, ".claude", subdir);
+  const skipNames =
+    options.conditions?.hasPrDiff === false && subdir === "agents"
+      ? PR_DIFF_ONLY_AGENT_FILES
+      : new Set<string>();
   let copied = false;
+
+  const writeFromDir = (srcDir: string): void => {
+    const entries = readdirSync(srcDir).filter(
+      (f) => !statSync(join(srcDir, f)).isDirectory() && !skipNames.has(f),
+    );
+    if (entries.length === 0) {
+      return;
+    }
+    if (!copied) {
+      mkdirSync(destDir, { recursive: true });
+      copied = true;
+    }
+    for (const filename of entries) {
+      const destPath = join(destDir, filename);
+      const srcPath = join(srcDir, filename);
+      if (filename.endsWith(".md") && options.conditions) {
+        writeMarkdownWithConditionals(srcPath, destPath, options.conditions);
+      } else {
+        copyFileSync(srcPath, destPath);
+      }
+    }
+  };
 
   const baseSrcDir = join(TEMPLATES_DIR, subdir);
   if (existsSync(baseSrcDir)) {
-    const entries = readdirSync(baseSrcDir).filter(
-      (f) => !statSync(join(baseSrcDir, f)).isDirectory(),
-    );
-    if (entries.length > 0) {
-      mkdirSync(destDir, { recursive: true });
-      for (const filename of entries) {
-        const destPath = join(destDir, filename);
-        copyFileSync(join(baseSrcDir, filename), destPath);
-        if (options.makeExecutable) {
-          chmodSync(destPath, 0o755);
-        }
-      }
-      copied = true;
-    }
+    writeFromDir(baseSrcDir);
   }
 
   if (additionalTemplatesDir) {
     const overlaySrcDir = join(additionalTemplatesDir, subdir);
     if (existsSync(overlaySrcDir)) {
-      const entries = readdirSync(overlaySrcDir).filter(
-        (f) => !statSync(join(overlaySrcDir, f)).isDirectory(),
-      );
-      if (entries.length > 0) {
-        if (!copied) {
-          mkdirSync(destDir, { recursive: true });
-        }
-        for (const filename of entries) {
-          const destPath = join(destDir, filename);
-          copyFileSync(join(overlaySrcDir, filename), destPath);
-          if (options.makeExecutable) {
-            chmodSync(destPath, 0o755);
-          }
-        }
-      }
+      writeFromDir(overlaySrcDir);
     }
   }
 };
@@ -235,6 +309,7 @@ const copyClaudeSubdir = (
 const copySkills = (
   workspaceDir: string,
   additionalTemplatesDir: string | undefined,
+  conditions: MarkdownConditions,
 ): void => {
   const skillDirNames = new Set<string>();
 
@@ -259,12 +334,107 @@ const copySkills = (
   }
 
   for (const skillName of skillDirNames) {
+    if (!conditions.hasPrDiff && PR_DIFF_ONLY_SKILL_DIRS.has(skillName)) {
+      continue;
+    }
     copyClaudeSubdir(
       workspaceDir,
       join("skills", skillName),
       additionalTemplatesDir,
+      { conditions },
     );
   }
+};
+
+// Strips <!-- if-<marker> --> ... <!-- end-if-<marker> --> blocks (including the
+// markers and the trailing newline) when the corresponding condition is false.
+// When the condition is true, leaves the block content but removes the marker
+// comments so they don't leak into the rendered prompt.
+const CONDITION_MARKERS: Record<keyof MarkdownConditions, string> = {
+  hasPrDiff: "pr-diff",
+  hasPrDescription: "pr-description",
+  hasPrDescriptionAndDiff: "pr-description-and-diff",
+  hasPrDescriptionOnly: "pr-description-only",
+  hasPrDiffOnly: "pr-diff-only",
+  isLocalCli: "local-cli",
+  hasSnapshotAssets: "snapshot-assets",
+};
+
+const renderMarkdownWithConditionals = (
+  content: string,
+  conditions: MarkdownConditions,
+): string => {
+  let result = content;
+  for (const [conditionKey, marker] of Object.entries(CONDITION_MARKERS) as [
+    keyof MarkdownConditions,
+    string,
+  ][]) {
+    const startRe = new RegExp(
+      `^[ \\t]*<!--\\s*if-${marker}\\s*-->[ \\t]*\\r?\\n`,
+      "gm",
+    );
+    const endRe = new RegExp(
+      `^[ \\t]*<!--\\s*end-if-${marker}\\s*-->[ \\t]*\\r?\\n`,
+      "gm",
+    );
+    if (conditions[conditionKey]) {
+      result = result.replace(startRe, "").replace(endRe, "");
+    } else {
+      const blockRe = new RegExp(
+        `^[ \\t]*<!--\\s*if-${marker}\\s*-->[ \\t]*\\r?\\n[\\s\\S]*?^[ \\t]*<!--\\s*end-if-${marker}\\s*-->[ \\t]*\\r?\\n`,
+        "gm",
+      );
+      result = result.replace(blockRe, "");
+    }
+  }
+  return result;
+};
+
+const writeMarkdownWithConditionals = (
+  srcPath: string,
+  destPath: string,
+  conditions: MarkdownConditions,
+): void => {
+  const content = readFileSync(srcPath, "utf8");
+  writeFileSync(destPath, renderMarkdownWithConditionals(content, conditions));
+};
+
+// True when at least one replay's `snapshotted-assets/` directory exists and
+// contains files. Drives the `if-snapshot-assets` markdown conditional so that
+// snapshot/asset guidance is only surfaced when the data is actually available.
+// Exported for testing.
+export const detectSnapshotAssets = (workspaceDir: string): boolean => {
+  const replaysDir = join(workspaceDir, DEBUG_DATA_DIRECTORY, "replays");
+  if (!existsSync(replaysDir)) {
+    return false;
+  }
+  for (const subDir of ["head", "base", "other"]) {
+    const subDirPath = join(replaysDir, subDir);
+    if (!existsSync(subDirPath)) {
+      continue;
+    }
+    for (const replayId of readdirSync(subDirPath)) {
+      const assetsDir = join(subDirPath, replayId, "snapshotted-assets");
+      if (!existsSync(assetsDir)) {
+        continue;
+      }
+      try {
+        if (readdirSync(assetsDir).length > 0) {
+          return true;
+        }
+      } catch (err) {
+        // Permission/IO error reading this directory — keep scanning the
+        // others. Surface at warn so the snapshot-assets conditional being
+        // disabled isn't a silent surprise downstream.
+        initLogger().warn(
+          `Could not read snapshotted-assets dir ${assetsDir}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+  }
+  return false;
 };
 
 // ---------------------------------------------------------------------------
@@ -745,11 +915,10 @@ const resolveBaseShaFromGit = (
 ): string | undefined => {
   for (const branch of ["origin/main", "origin/master"]) {
     try {
-      const mergeBase = execFileSync(
-        "git",
-        ["merge-base", branch, headSha],
-        { cwd: repoDir, encoding: "utf8" },
-      ).trim();
+      const mergeBase = execFileSync("git", ["merge-base", branch, headSha], {
+        cwd: repoDir,
+        encoding: "utf8",
+      }).trim();
       if (mergeBase) {
         return mergeBase;
       }
@@ -1217,17 +1386,15 @@ const summarizeTimeline = (
 
 const MAX_ASSET_SIZE_BYTES = 1024 * 1024;
 
-const prettifySnapshotAssets = (workspaceDir: string): void => {
-  const prettierPath = findPrettier();
-  if (!prettierPath) {
-    console.log(
-      chalk.gray("  Skipping asset formatting (prettier not found on PATH)."),
-    );
-    return;
-  }
+const PARSER_BY_EXT: Record<string, BuiltInParserName> = {
+  ".js": "babel",
+  ".css": "css",
+};
 
+const prettifySnapshotAssets = async (workspaceDir: string): Promise<void> => {
   const replaySubDirs = ["head", "base", "other"];
-  let copiedCount = 0;
+  let formattedCount = 0;
+  let copiedRawCount = 0;
   let skippedLargeCount = 0;
 
   for (const subDir of replaySubDirs) {
@@ -1275,39 +1442,42 @@ const prettifySnapshotAssets = (workspaceDir: string): void => {
         }
         const destPath = join(formattedDir, relativePath);
         mkdirSync(dirname(destPath), { recursive: true });
-        copyFileSync(srcPath, destPath);
-        copiedCount++;
+        const content = readFileSync(srcPath, "utf8");
+        const parser = PARSER_BY_EXT[extname(relativePath).toLowerCase()];
+        if (parser) {
+          try {
+            const formatted = await format(content, {
+              filepath: relativePath,
+              parser,
+            });
+            writeFileSync(destPath, formatted);
+            formattedCount++;
+            continue;
+          } catch {
+            // Fall through to copying the raw content unchanged.
+          }
+        }
+        writeFileSync(destPath, content);
+        copiedRawCount++;
       }
     }
   }
 
-  if (copiedCount === 0) {
+  const totalCount = formattedCount + copiedRawCount;
+  if (totalCount === 0) {
     return;
   }
 
-  const formattedAssetsDir = join(
-    workspaceDir,
-    DEBUG_DATA_DIRECTORY,
-    "formatted-assets",
-  );
-  try {
-    execFileSync(
-      prettierPath,
-      ["--write", `${formattedAssetsDir}/**/*.{js,css}`],
-      {
-        timeout: 120000,
-        stdio: "ignore",
-      },
-    );
+  if (copiedRawCount === 0) {
     console.log(
       chalk.green(
-        `  Formatted ${copiedCount} snapshotted asset(s) in formatted-assets/`,
+        `  Formatted ${formattedCount} snapshotted asset(s) in formatted-assets/`,
       ),
     );
-  } catch {
+  } else {
     console.log(
       chalk.yellow(
-        `  Copied ${copiedCount} snapshotted asset(s) to formatted-assets/ (prettier formatting partially failed)`,
+        `  Wrote ${totalCount} snapshotted asset(s) to formatted-assets/ (formatted ${formattedCount}, copied ${copiedRawCount} unchanged)`,
       ),
     );
   }
@@ -1319,20 +1489,6 @@ const prettifySnapshotAssets = (workspaceDir: string): void => {
       ),
     );
   }
-};
-
-const findPrettier = (): string | undefined => {
-  try {
-    const whichResult = execFileSync("which", ["prettier"], {
-      encoding: "utf8",
-    }).trim();
-    if (whichResult) {
-      return whichResult;
-    }
-  } catch {
-    // Not on PATH
-  }
-  return undefined;
 };
 
 const findAssetFilesRecursive = (
@@ -1409,11 +1565,7 @@ const buildScreenshotMap = (
           ? filename.slice(0, -".png".length)
           : filename;
         const htmlFilename = `${baseName}.html`;
-        const afterHtmlFilename = `${baseName}.after.html`;
         const htmlExists = existsSync(join(screenshotsDir, htmlFilename));
-        const afterHtmlExists = existsSync(
-          join(screenshotsDir, afterHtmlFilename),
-        );
 
         map[`${subDir}/${replayId}/${filename}`] = {
           replayId,
@@ -1423,7 +1575,6 @@ const buildScreenshotMap = (
           virtualTimeEnd: e.virtualTimeEnd ?? null,
           eventNumber: e.data.identifier.eventNumber ?? null,
           htmlFilename: htmlExists ? htmlFilename : null,
-          afterHtmlFilename: afterHtmlExists ? afterHtmlFilename : null,
         };
       }
     }
@@ -1438,7 +1589,6 @@ const buildScreenshotMap = (
   }
   return map;
 };
-
 
 const generateScreenshotContext = (
   debugContext: DebugContext,
@@ -2041,6 +2191,7 @@ const defaultWriteContextJson = (
       domDiffs: "dom-diffs/",
       domDiffsSummary: "dom-diffs/*.summary.txt",
       prDiff: "pr-diff.txt",
+      prDescription: "pr-description.txt",
       formattedAssets: "formatted-assets/",
       testRun: "test-run/",
       projectRepo: projectRepoDir ? "project-repo/" : undefined,

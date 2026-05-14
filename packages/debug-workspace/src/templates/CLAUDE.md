@@ -5,8 +5,8 @@
 You are in a debugging workspace for the Meticulous automated UI testing platform.
 You are investigating a replay issue (flaky behavior, unexpected diffs, or replay failures).
 
-`debug-data/context.json` has been automatically loaded into your context. It contains all IDs, paths,
-metadata, and what data is available in this workspace. You do not need to read it again.
+`debug-data/context.json` is the index for this workspace. Read it first; it lists all IDs, paths,
+metadata, and what data is available.
 
 ## How Meticulous Works
 
@@ -27,13 +27,14 @@ diffs are computed and surfaced to the developer.
 The workspace root contains the debug workspace files. All downloaded debug data lives under
 the `debug-data/` subdirectory.
 
-- **`.claude/`** -- Configuration for this debugging workspace (hooks, skills, agents).
-- **`debug-data/context.json`** -- Loaded automatically into context by the SessionStart hook;
-  you do not need to read it again.
+- **`debug-data/context.json`** -- Index of IDs, paths, metadata, and what data is available
+  in this workspace. Read this first.
 - **`debug-data/`** -- All downloaded replay data, session recordings, diffs, and
   pre-computed analysis artifacts.
+<!-- if-local-cli -->
 - **`project-repo/`** -- (Optional) Your codebase checked out at the relevant commit.
   Only present if the command was run from within a git repository.
+<!-- end-if-local-cli -->
 
 ## debug-data/ Contents
 
@@ -42,10 +43,10 @@ comparing replays), and other data.
 
 ### Per-Replay Files (always available)
 
-Replay data is organized into `head/`, `base/`, and `other/` subdirectories under
+Replay data is organized into `head/` and `base/` subdirectories under
 `debug-data/replays/`. All files are searchable and can be found via glob/search.
 
-Each replay directory (`debug-data/replays/{head,base,other}/<replayId>/`) contains:
+Each replay directory (`debug-data/replays/<role>/<replayId>/`) contains:
 
 - `logs.deterministic.txt` -- Deterministic logs with non-deterministic data stripped. Best for
   diffing between replays. Can be very large (check `fileMetadata` in `context.json` for sizes).
@@ -63,23 +64,23 @@ Each replay directory (`debug-data/replays/{head,base,other}/<replayId>/`) conta
 - `timeline-stats.json` -- Aggregated statistics about timeline events.
 - `metadata.json` -- Replay configuration, parameters, and environment info.
 - `launchBrowserAndReplayParams.json` -- The exact parameters used to launch the replay.
-- `stackTraces.json` -- JavaScript stack traces captured during replay (if any errors occurred).
-- `accuracyData.json` -- Replay accuracy assessment comparing to expected behavior.
+- `stack-traces.ndjson` -- JavaScript stack traces captured during replay (if any errors
+  occurred), one JSON object per line.
+- `accuracy.json` -- Replay accuracy assessment comparing to expected behavior.
+- `cookies.json` -- Cookies captured at session record time. Rarely needed; useful only when
+  authentication or cookie-driven behavior is part of the investigation.
+- `mapped-coverage.json` -- JS code coverage for the whole replay, mapped back to source files.
+  Cross-reference with `pr-diff.txt` to check whether changed code actually executed during the replay.
+- `mapped-per-screenshot-js-coverage/<screenshotId>.json` -- Same coverage broken down per
+  screenshot. Use this to localize which code ran around a specific diff.
+<!-- if-snapshot-assets -->
 - `snapshotted-assets/` -- Static assets (JS/CSS) that were captured and used during replay.
-  **Only present if `snapshotAssets` was enabled** -- check `launchBrowserAndReplayParams.json`
-  for the `snapshotAssets` field before assuming this directory exists.
+<!-- end-if-snapshot-assets -->
 - `screenshots/<name>.metadata.json` -- Per-screenshot metadata, including the captured `before.dom`
-  (full HTML at screenshot time) and, when an interaction followed, `after.dom`.
+  (full HTML at screenshot time).
 - `screenshots/<name>.html` -- The `before.dom` extracted to a standalone HTML file. Prefer reading
   this over grepping the metadata JSON. The one-line `<!-- screenshot=... url=... vt=... -->`
   header at the top is for humans only and is not used when computing DOM diffs.
-- `screenshots/<name>.after.html` -- Same for `after.dom`, only present when the metadata
-  carried a non-null `after` side.
-
-Note: screenshot PNGs (the binary images themselves) are **not** copied into the workspace --
-only the `*.metadata.json` files that carry their DOM and the `.html` files extracted from
-them. Reference PNG paths via `screenshotMap` in `context.json`; the actual PNG files are in
-the replay cache at `~/.meticulous/replays/<replayId>/screenshots/`.
 
 Per-replay generated summaries:
 
@@ -104,13 +105,14 @@ Per-replay generated summaries:
   marked with `>>>`. Use these to understand what happened right before a screenshot.
 - `debug-data/timeline-summaries/<role>-<replayId>.txt` -- Compact summary of each replay's
   timeline: total entries, virtual time range, screenshot timestamps, event kind breakdown.
+<!-- if-snapshot-assets -->
 - `debug-data/formatted-assets/<role>/<replayId>/` -- Pretty-printed JS/CSS from
-  `snapshotted-assets/`. Only present if snapshotted assets exist. Use these instead of the originals.
+  `snapshotted-assets/`. Use these instead of the originals.
+<!-- end-if-snapshot-assets -->
 
 ### Diff Files (only when comparing replays)
 
-These files are only generated when comparing replays -- i.e. when using `meticulous debug replay-diff`
-or `meticulous debug replay` with `--baseReplayId`.
+These files are only generated when comparing replays.
 
 - `debug-data/diffs/<id>.json` -- Full diff data including replay metadata, test run config,
   and screenshot results. Can be very large (20K+ tokens). Only read this if you need the full context.
@@ -126,8 +128,10 @@ or `meticulous debug replay` with `--baseReplayId`.
   -46 in base, net +39 in head").
 - `debug-data/params-diffs/<id>.diff` -- JSON-aware diff of `launchBrowserAndReplayParams.json`
   between head and base. Keys are sorted and pretty-printed so only meaningful value changes appear.
+<!-- if-snapshot-assets -->
 - `debug-data/assets-diffs/<id>.txt` -- Comparison of snapshotted asset file lists between head
   and base (added/removed/changed by content hash). Not generated if assets are identical.
+<!-- end-if-snapshot-assets -->
 - `debug-data/screenshot-context/<id>.txt` -- Only generated with `--screenshot`. Shows ±30 lines
   of `logs.deterministic.txt` surrounding the screenshot for both head and base, with the
   screenshot line marked `>>>`.
@@ -142,10 +146,12 @@ or `meticulous debug replay` with `--baseReplayId`.
   diffs: total screenshots compared, count breakdown by status, and a TSV table (`screenshot`,
   `status`, `hunks`, `diff_bytes`, `url`).
 
+<!-- if-local-cli -->
 Note: DOM diffs are only generated when a `replayDiffId` is available (the normal
 `meticulous debug replay-diff <id>` path). On the rare `meticulous debug replay --baseReplayId`
 path there is no `replayDiffId`, so `dom-diffs/` is not generated — diff the per-replay
 `screenshots/<baseName>.html` files directly with the system `diff` command instead.
+<!-- end-if-local-cli -->
 
 Individual screenshots may also be marked `skipped-error` (backend fetch failed) or
 `skipped-unsupported` (e.g. redacted variants, or screenshots whose identifier couldn't
@@ -162,15 +168,17 @@ to diffing the two `screenshots/<baseName>.html` files directly.
   requests (HAR format), and application storage. Can be very large; prefer the session summary
   or use search to find relevant portions.
 - `debug-data/test-run/<testRunId>.json` -- Test run configuration, results, commit SHA, and status.
-- `debug-data/pr-diff.txt` -- Source code changes between the base and head commits. May not be present if
-  commit SHAs are unavailable.
-- `debug-data/project-repo/` -- Your codebase checked out at the relevant commit. Only present if
-  the command was run from within a git repository.
+<!-- if-pr-description -->
+- `debug-data/pr-description.txt` -- Pull request description/body.
+<!-- end-if-pr-description -->
+<!-- if-pr-diff -->
+- `debug-data/pr-diff.txt` -- Source code changes between the base and head commits.
+<!-- end-if-pr-diff -->
 
 ## Key `context.json` fields
 
-- `screenshotMap` -- maps each screenshot filename to its virtual timestamp and event number.
-  Use this to correlate e.g. `screenshot-after-event-00673.png` with a timeline position.
+- `screenshotMap` -- maps each screenshot identifier to its virtual timestamp and event number.
+  Use this to correlate e.g. `screenshot-after-event-00673` with a timeline position.
 - `replayComparison` -- side-by-side per-replay stats (events, network requests, animation
   frames, virtual time, screenshots). Scan for head-vs-base drift.
 - `domDiffMap` -- keyed by `"<headReplayId>-vs-<baseReplayId>/<screenshotBaseName>"`. Each
@@ -179,8 +187,7 @@ to diffing the two `screenshots/<baseName>.html` files directly.
   identical. `fullDiffPath` alone can also be `null` when the full-context fetch failed
   while the canonical succeeded — in that case `diffPath` is non-null and still usable.
   Screenshots that are only-in-one-side, `skipped-error`, or `skipped-unsupported` have
-  **no entry** in the map; consult the per-pair `.summary.txt` for the full list. Empty
-  on the `--baseReplayId` single-replay path.
+  **no entry** in the map; consult the per-pair `.summary.txt` for the full list.
 - `fileMetadata` -- byte sizes and line counts for key files. Check this before reading
   anything large; for files over ~5000 lines prefer grep/search or ranged reads.
 
@@ -212,8 +219,19 @@ replay), and drop into phase 4 only as needed.
 5. **Log diffs** -- **delegate to the log-diff-analyzer subagent** instead of reading
    `debug-data/log-diffs/*.filtered.diff` directly; only open the raw diff to verify
    specific findings.
+<!-- if-pr-description-and-diff -->
+6. **PR description and diff** -- read `debug-data/pr-description.txt` first to understand
+   the intended change, then **delegate to the pr-analyzer subagent** to correlate code
+   changes with visual diffs. Only open `debug-data/pr-diff.txt` directly to verify findings.
+<!-- end-if-pr-description-and-diff -->
+<!-- if-pr-description-only -->
+6. **PR description** -- read `debug-data/pr-description.txt` to understand the intended
+   change that triggered this test run.
+<!-- end-if-pr-description-only -->
+<!-- if-pr-diff-only -->
 6. **PR diff** -- **delegate to the pr-analyzer subagent** to correlate code changes with
    visual diffs. Only open `debug-data/pr-diff.txt` directly to verify findings.
+<!-- end-if-pr-diff-only -->
 
 ### 3. Investigate a single replay
 
@@ -235,12 +253,22 @@ replay), and drop into phase 4 only as needed.
     where head and base diverge.
 13. **Replay parameters** -- `debug-data/params-diffs/` for computed diffs, or
     `launchBrowserAndReplayParams.json` for a single replay.
-14. **Assets** -- `debug-data/assets-diffs/` for snapshotted JS/CSS diffs,
+14. **Code coverage** -- `mapped-coverage.json` for whole-replay coverage; correlate executed
+    code with `pr-diff.txt` to see whether the changed lines actually ran. Use
+    `mapped-per-screenshot-js-coverage/<screenshotId>.json` to localize what executed before
+    a specific screenshot.
+<!-- if-snapshot-assets -->
+15. **Assets** -- `debug-data/assets-diffs/` for snapshotted JS/CSS diffs,
     `debug-data/formatted-assets/` for pretty-printed bundles.
-15. **Session data** -- `debug-data/session-summaries/<sessionId>.txt` first; only read raw
+<!-- end-if-snapshot-assets -->
+16. **Session data** -- `debug-data/session-summaries/<sessionId>.txt` first; only read raw
     `sessions/<id>/data.json` for specific request bodies or event selectors.
-16. **Project source** -- `project-repo/` when present; `formatted-assets/` for third-party
-    library code.
+<!-- if-local-cli -->
+17. **Project source** -- `project-repo/` when present.
+<!-- if-snapshot-assets -->
+    For third-party library code, use `debug-data/formatted-assets/`.
+<!-- end-if-snapshot-assets -->
+<!-- end-if-local-cli -->
 
 **Important**: Do NOT use Python one-liners to parse `timeline.json` or `logs.ndjson`. The
 derived files above (`events-index/`, `logs-index/`, `network-log/`, `vt-progression/`,
@@ -249,41 +277,23 @@ derived files above (`events-index/`, `logs-index/`, `network-log/`, `vt-progres
 
 ## Subagents
 
-This workspace includes specialized subagents in `.claude/agents/`. Delegate to them
-to preserve your context window for deep investigation.
+Specialized subagents are available via the Task tool — the SDK surfaces each one's
+name, tools, and description automatically; you don't need to enumerate them. Two
+general-purpose subagents are worth calling out because they apply across all phases
+of the workflow:
 
-### Planner
+- **Planner** — when the user describes a complex or ambiguous issue, delegate to
+  the planner before starting your own investigation. It reads workspace summaries
+  and metadata to produce a structured debugging plan with prioritized investigation
+  steps. Skip it for straightforward cases (e.g. a specific screenshot diff with an
+  obvious focus, or a single diff to investigate).
+- **Summarizer** — when you need to understand a large file (over 5000 lines),
+  delegate to the summarizer instead of reading the file in full. It scans with
+  grep and targeted reads and returns a concise overview with line numbers for
+  follow-up.
 
-When the user describes a complex or ambiguous issue, delegate to the planner subagent
-before starting your own investigation. The planner reads workspace summaries and metadata
-to produce a structured debugging plan with prioritized investigation steps.
-
-Skip the planner for straightforward cases where the issue is obvious (e.g. the user
-points at a specific screenshot diff and asks why it changed, or there is only one diff
-to investigate).
-
-### Summarizer
-
-When you need to understand a large file (over 5000 lines), delegate to the summarizer
-subagent instead of reading the file in full. The summarizer scans the file using grep and
-targeted reads, returning a concise overview with line numbers for follow-up.
-
-### Log Diff Analyzer
-
-When comparing replays and log diffs are available, **delegate to the log-diff-analyzer
-subagent** instead of reading `debug-data/log-diffs/*.filtered.diff` directly. The analyzer
-reads the filtered diffs and summaries, then returns a structured report with the first
-divergence point, categorized changes, hypotheses ranked by likelihood, and specific line
-numbers for follow-up. Use its output to guide your investigation rather than consuming
-the raw diff in your context.
-
-### PR Analyzer
-
-When `debug-data/pr-diff.txt` is present and you need to understand which code changes
-caused visual differences, **delegate to the pr-analyzer subagent** instead of reading the
-PR diff directly. The analyzer reads the PR diff and diff summaries, then returns a
-structured correlation mapping code changes to specific screenshot diffs with judgments
-on expected vs unexpected changes.
+Phase-specific subagents (log-diff-analyzer, pr-analyzer) are referenced from the
+workflow steps above.
 
 ## Rules
 
@@ -295,10 +305,9 @@ on expected vs unexpected changes.
   since real-time timestamps are stripped.
 - Session data files can be very large. Use grep/search to find relevant portions rather than
   reading entire files.
-- Screenshot PNGs (the binary images) are stored in the replay cache (not in this workspace).
-  Reference them by path; for DOM content prefer reading
-  `debug-data/replays/<role>/<replayId>/screenshots/<name>.html` (or `.after.html`) rather than
-  parsing the raw `<name>.metadata.json`.
+- For per-screenshot DOM content, prefer reading
+  `debug-data/replays/<role>/<replayId>/screenshots/<name>.html` rather than parsing the raw
+  `<name>.metadata.json`.
 - For DOM changes between replays, prefer `debug-data/dom-diffs/` over diffing the two
   `<name>.html` files yourself -- the pre-computed `.diff` is identical to the diff shown
   in the Meticulous product and already has context lines added.

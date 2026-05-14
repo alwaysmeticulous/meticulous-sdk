@@ -23,7 +23,7 @@ describe("extractScreenshotDomFiles", () => {
     rmSync(workspace, { recursive: true, force: true });
   });
 
-  it("writes <name>.html and <name>.after.html when both DOMs are present", () => {
+  it("writes <name>.html when before.dom is present", () => {
     const screenshotsDir = join(
       workspace,
       DEBUG_DATA_DIRECTORY,
@@ -40,9 +40,6 @@ describe("extractScreenshotDomFiles", () => {
           routeData: { url: "https://example.com/page" },
           dom: "<div>before</div>",
         },
-        after: {
-          dom: "<div>after</div>",
-        },
       }),
     );
 
@@ -52,25 +49,16 @@ describe("extractScreenshotDomFiles", () => {
       screenshotsDir,
       "screenshot-after-event-00001.html",
     );
-    const afterPath = join(
-      screenshotsDir,
-      "screenshot-after-event-00001.after.html",
-    );
     expect(existsSync(beforePath)).toBe(true);
-    expect(existsSync(afterPath)).toBe(true);
 
     const beforeContent = readFileSync(beforePath, "utf-8");
     expect(beforeContent).toMatch(
-      /^<!-- screenshot=screenshot-after-event-00001 side=before url=https:\/\/example\.com\/page( vt=\d+)? -->\n/,
+      /^<!-- screenshot=screenshot-after-event-00001 url=https:\/\/example\.com\/page( vt=\d+)? -->\n/,
     );
     expect(beforeContent).toContain("<div>before</div>");
-
-    const afterContent = readFileSync(afterPath, "utf-8");
-    expect(afterContent).toContain("side=after");
-    expect(afterContent).toContain("<div>after</div>");
   });
 
-  it("skips .after.html when metadata.after is null", () => {
+  it("skips writing when before.dom is missing", () => {
     const screenshotsDir = join(
       workspace,
       DEBUG_DATA_DIRECTORY,
@@ -82,16 +70,13 @@ describe("extractScreenshotDomFiles", () => {
     mkdirSync(screenshotsDir, { recursive: true });
     writeFileSync(
       join(screenshotsDir, "final-state-v2.metadata.json"),
-      JSON.stringify({ before: { dom: "<p>only before</p>" }, after: null }),
+      JSON.stringify({ before: {} }),
     );
 
     extractScreenshotDomFiles(workspace);
 
     expect(
       existsSync(join(screenshotsDir, "final-state-v2.html")),
-    ).toBe(true);
-    expect(
-      existsSync(join(screenshotsDir, "final-state-v2.after.html")),
     ).toBe(false);
   });
 

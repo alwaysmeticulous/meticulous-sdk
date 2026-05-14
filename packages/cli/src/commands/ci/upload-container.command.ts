@@ -15,7 +15,10 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
-import { resolveGitOptions } from "./resolve-git-options";
+import {
+  hasGitContextForTestRunWait,
+  resolveGitOptions,
+} from "./resolve-git-options";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -49,6 +52,18 @@ const handler = async ({
   dryRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
+
+  if (
+    waitForTestRunToComplete &&
+    !hasGitContextForTestRunWait(repoDirectory, baseSha_, gitDiffOutput_)
+  ) {
+    logger.error(
+      "--waitForTestRunToComplete is only for runs from a local branch checkout: pass --repoDirectory " +
+        "(path to your clone on the branch under test) or both --baseSha and --gitDiffOutput from that branch. " +
+        "If you only pass --commitSha you are not on a branch checkout — omit this flag.",
+    );
+    process.exit(1);
+  }
 
   const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } = await resolveGitOptions({
     commitSha: commitSha_,
@@ -174,7 +189,8 @@ export const ciUploadContainerCommand: CommandModule<unknown, Options> = {
       boolean: true,
       default: false,
       description:
-        "If true, block and wait until the triggered test run is complete, then report results. Implies --waitForBase.",
+        "If true, block until the triggered test run finishes. Only for Meticulous runs tied to a local branch: " +
+        "requires --repoDirectory (your clone on that branch) or both --baseSha and --gitDiffOutput from it. Implies --waitForBase.",
     },
     containerPort: {
       number: true,

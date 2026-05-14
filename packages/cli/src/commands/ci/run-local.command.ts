@@ -41,6 +41,7 @@ interface Options
   enableCssCoverage?: boolean;
   enablePerScreenshotCoverage?: boolean;
   dryRun?: boolean;
+  onlyReplaySessionsInTestsFile: boolean;
 }
 
 const NO_PARALLELIZE_FLAG = "--no-parallelize";
@@ -77,6 +78,7 @@ const handler = async ({
   enableCssCoverage,
   enablePerScreenshotCoverage,
   dryRun,
+  onlyReplaySessionsInTestsFile,
 }: Options): Promise<void> => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -139,6 +141,7 @@ const handler = async ({
   try {
     const { testRun } = await executeTestRun({
       testsFile: testsFile ?? null,
+      onlyReplaySessionsInTestsFile,
       executionOptions,
       screenshottingOptions,
       apiToken: apiToken ?? null,
@@ -220,6 +223,12 @@ export const ciRunLocalCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "The path to the meticulous.json file containing the list of tests you want to run. If not set a search will be performed to find a meticulous.json file in the current directory or the nearest parent directory.",
+    },
+    onlyReplaySessionsInTestsFile: {
+      boolean: true,
+      description:
+        "Only run sessions listed in testsFile / meticulous.json. By default, UI-selected and automatically selected sessions (and sessions from the base test run) are also executed.",
+      default: false,
     },
     baseTestRunId: {
       string: true,

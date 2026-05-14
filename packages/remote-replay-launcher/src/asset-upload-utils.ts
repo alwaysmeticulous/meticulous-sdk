@@ -1,4 +1,4 @@
-import { createReadStream, existsSync } from "fs";
+import { existsSync } from "fs";
 import { stat, unlink } from "fs/promises";
 import { IncomingMessage } from "http";
 import { request as httpsRequest } from "https";
@@ -11,14 +11,20 @@ import {
   createClient,
   completeAssetUpload,
   getProxyAgent,
+  putFileToSignedUrl,
   requestMultipartAssetUpload,
   MultiPartUploadInfo,
+  UploadError,
+  retryTransientUploadErrors,
 } from "@alwaysmeticulous/client";
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
-import { MultipartCompressingUploader, UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
+import {
+  MultipartCompressingUploader,
+  UPLOAD_ARCHIVE_FILE_FORMAT,
+} from "./upload-utils/multipart-compressing-uploader";
 
 export interface UploadAssetsOptions {
   apiToken: string | null | undefined;
@@ -59,9 +65,9 @@ export const uploadAssets = async (
     if (!existsSync(indexHtmlPath)) {
       logger.warn(
         `Warning: No index.html found in the app directory (${resolvedAppDirectory}). ` +
-        `This may indicate that your build output is not properly configured for static hosting, unless you expect that the root url is invalid. ` +
-        `If you're using Next.js or another framework that requires server-side rendering, ` +
-        `you should use the \`cloud-compute\` GitHub Action or the \`run-all-tests-in-cloud\` command instead.`,
+          `This may indicate that your build output is not properly configured for static hosting, unless you expect that the root url is invalid. ` +
+          `If you're using Next.js or another framework that requires server-side rendering, ` +
+          `you should use the \`cloud-compute\` GitHub Action or the \`run-all-tests-in-cloud\` command instead.`,
       );
     }
   }
@@ -174,7 +180,10 @@ const uploadAssetsStreaming = async ({
   const logger = initLogger();
 
   const { uploadId, awsUploadId, uploadPartUrls, uploadChunkSize } =
-    await requestMultipartAssetUpload({ client, archiveType: UPLOAD_ARCHIVE_FILE_FORMAT });
+    await requestMultipartAssetUpload({
+      client,
+      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+    });
 
   logger.info(`Starting streaming upload for deployment ${uploadId}`);
 
@@ -220,6 +229,30 @@ const uploadBufferToSignedUrl = async (
   buffer: Buffer,
   options?: { contentType?: string },
 ): Promise<string> => {
+  return retryTransientUploadErrors(
+    () => putBufferToSignedUrl(signedUrl, buffer, options),
+    { onRetry: logTransientUploadRetry },
+  );
+};
+
+const logTransientUploadRetry = (attempt: number, error: unknown): void => {
+  const logger = initLogger();
+  const reason =
+    error instanceof UploadError
+      ? `HTTP ${error.statusCode}`
+      : error instanceof Error
+        ? error.message
+        : String(error);
+  logger.warn(
+    `Transient upload error on attempt ${attempt} (${reason}); will retry...`,
+  );
+};
+
+const putBufferToSignedUrl = async (
+  signedUrl: string,
+  buffer: Buffer,
+  options?: { contentType?: string },
+): Promise<string> => {
   return new Promise((resolve, reject) => {
     const headers: Record<string, string | number> = {
       "Content-Length": buffer.length,
@@ -246,8 +279,7 @@ const uploadBufferToSignedUrl = async (
           if (response.statusCode === 200) {
             resolve(response.headers["etag"] ?? "");
           } else {
-            const errorMessage = `Failed to upload!\nStatus ${response.statusCode}.\nResponse:\n${responseData}`;
-            reject(new Error(errorMessage));
+            reject(new UploadError(response.statusCode ?? 0, responseData));
           }
         });
       },
@@ -363,7 +395,6 @@ const uploadFileToSignedUrl = async (
   signedUrl: string,
   expectedFileSize: number,
 ): Promise<void> => {
-  const fileStream = createReadStream(filePath);
   const logger = initLogger();
   const fileStats = await stat(filePath);
   const fileSize = fileStats.size;
@@ -374,48 +405,15 @@ const uploadFileToSignedUrl = async (
   }
   logger.info(`Uploading deployment assets (${fileSize} bytes)...`);
 
-  return new Promise((resolve, reject) => {
-    const req = httpsRequest(
-      signedUrl,
-      {
-        agent: getProxyAgent(),
-        method: "PUT",
-        headers: {
-          "Content-Length": fileSize,
-          "Content-Type": "application/zip",
-        },
-      },
-      (response: IncomingMessage) => {
-        let responseData = "";
-
-        response.on("data", (chunk) => {
-          responseData += chunk;
-        });
-
-        response.on("end", () => {
-          if (response.statusCode === 200) {
-            logger.info("Successfully uploaded deployment assets");
-            resolve();
-          } else {
-            const errorMessage = `Failed to upload assets!\nSigned URL: ${signedUrl}\nStatus ${response.statusCode}.\nResponse:\n${responseData}`;
-            logger.error(errorMessage);
-            reject(new Error(errorMessage));
-          }
-        });
-      },
-    );
-
-    req.on("error", (error) => {
-      logger.error(`Upload request error: ${error.message}`);
-      reject(error);
-    });
-
-    fileStream.on("error", (error) => {
-      logger.error(`File stream error: ${error.message}`);
-      req.destroy(error);
-      reject(error);
-    });
-
-    fileStream.pipe(req);
-  });
+  await retryTransientUploadErrors(
+    () =>
+      putFileToSignedUrl({
+        filePath,
+        signedUrl,
+        size: fileSize,
+        contentType: "application/zip",
+      }),
+    { onRetry: logTransientUploadRetry },
+  );
+  logger.info("Successfully uploaded deployment assets");
 };

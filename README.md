@@ -33,6 +33,8 @@ npx @alwaysmeticulous/cli record --apiToken="<API_TOKEN>"
 
 For complete setup instructions, see the [Meticulous documentation](https://app.meticulous.ai/docs).
 
+> **Using Meticulous with AI coding agents?** For agent skills and agent CLI docs, see [alwaysmeticulous/skills](https://github.com/alwaysmeticulous/skills).
+
 ## Packages
 
 This monorepo contains the following packages. Each package has its own detailed README with additional documentation:
@@ -50,15 +52,23 @@ This monorepo contains the following packages. Each package has its own detailed
 
 ## Development
 
-This repository uses [Lerna](https://lerna.js.org/) and [pnpm workspaces](https://pnpm.io/workspaces) for monorepo management.
+This repository uses [pnpm workspaces](https://pnpm.io/workspaces) and [Changesets](https://github.com/changesets/changesets) for monorepo management and releases.
 
 ### Making a Release
 
-To publish a new release:
+Releases are driven by Changesets and happen automatically via CI:
 
-```bash
-git checkout main && git pull && pnpm run publish
-```
+1. **On your feature branch**, describe your change by running:
+
+   ```bash
+   pnpm changeset
+   ```
+
+   This opens an interactive prompt asking which packages changed and whether it's a `patch`, `minor`, or `major` bump. It writes a small Markdown file under `.changeset/` — commit this file with your PR.
+
+2. **Merge your PR** to `main`. CI will open (or update) a **"Version Packages"** pull request that accumulates all pending changesets, bumps `package.json` versions, and writes `CHANGELOG.md` entries.
+
+3. **When you're ready to publish**, merge the "Version Packages" PR. CI will automatically build and publish all updated packages to npm.
 
 ## Support
 
