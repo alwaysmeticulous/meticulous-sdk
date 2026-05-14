@@ -1,5 +1,12 @@
 # @alwaysmeticulous/cli
 
+## 2.283.2
+
+### Patch Changes
+
+- Updated dependencies [[`f3d6a9a`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/f3d6a9a15fe058614ee1ad9be13ec3c18165e874)]:
+  - @alwaysmeticulous/sentry@2.283.2
+
 ## 2.283.1
 
 ### Patch Changes
