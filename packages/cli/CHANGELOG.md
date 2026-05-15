@@ -1,5 +1,20 @@
 # @alwaysmeticulous/cli
 
+## 2.284.0
+
+### Minor Changes
+
+- [#1144](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1144) [`60154f4`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/60154f4e5a901423bf28e3deb37f5a6164d83ad3) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - cli: route all commands through unified OAuth-aware auth flow
+
+### Patch Changes
+
+- Updated dependencies [[`60154f4`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/60154f4e5a901423bf28e3deb37f5a6164d83ad3)]:
+  - @alwaysmeticulous/client@2.284.0
+  - @alwaysmeticulous/debug-workspace@2.284.0
+  - @alwaysmeticulous/downloading-helpers@2.284.0
+  - @alwaysmeticulous/remote-replay-launcher@2.284.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.284.0
+
 ## 2.283.2
 
 ### Patch Changes
