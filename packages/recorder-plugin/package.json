@@ -62,7 +62,7 @@
     "@nuxt/kit": "^3.13.0",
     "@rspack/core": "^1.0.0",
     "tsdown": "^0.21.7",
-    "vite": "^7.3.1",
+    "vite": "^7.3.2",
     "vitest": "catalog:",
     "webpack": "^5.106.1"
   },
