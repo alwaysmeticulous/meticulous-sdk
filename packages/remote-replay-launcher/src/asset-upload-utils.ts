@@ -11,6 +11,7 @@ import {
   createClient,
   completeAssetUpload,
   getProxyAgent,
+  ProjectIdentifier,
   putFileToSignedUrl,
   requestMultipartAssetUpload,
   MultiPartUploadInfo,
@@ -26,7 +27,7 @@ import {
   UPLOAD_ARCHIVE_FILE_FORMAT,
 } from "./upload-utils/multipart-compressing-uploader";
 
-export interface UploadAssetsOptions {
+export interface UploadAssetsOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
   commitSha: string;
   baseSha?: string | undefined;
@@ -100,7 +101,8 @@ const completeUploadAndWaitForBase = async ({
   rewrites,
   createDeployment,
   multipartUploadInfo,
-}: {
+  projectId,
+}: ProjectIdentifier & {
   client: ReturnType<typeof createClient>;
   uploadId: string;
   commitSha: string;
@@ -129,6 +131,7 @@ const completeUploadAndWaitForBase = async ({
     createDeployment,
     archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     ...(multipartUploadInfo ? { multipartUploadInfo } : {}),
+    ...(projectId ? { projectId } : {}),
   };
 
   const initialResult = await completeAssetUpload(completeAssetUploadArgs);
@@ -173,6 +176,7 @@ const uploadAssetsStreaming = async ({
   waitForBase = false,
   rewrites = [],
   createDeployment = true,
+  projectId,
 }: UploadAssetsOptions & {
   client: ReturnType<typeof createClient>;
   folderPath: string;
@@ -183,6 +187,7 @@ const uploadAssetsStreaming = async ({
     await requestMultipartAssetUpload({
       client,
       archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+      ...(projectId ? { projectId } : {}),
     });
 
   logger.info(`Starting streaming upload for deployment ${uploadId}`);
@@ -195,13 +200,19 @@ const uploadAssetsStreaming = async ({
     uploadId,
     client,
     uploadBufferToSignedUrl,
+    ...(projectId ? { projectId } : {}),
   });
   const multipartUploadInfo = await uploader.execute();
 
   logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
   if (gitDiffOutput) {
-    await uploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+    await uploadGitDiffToS3({
+      client,
+      uploadId,
+      gitDiffOutput,
+      ...(projectId ? { projectId } : {}),
+    });
   }
 
   const { testRun, message } = await completeUploadAndWaitForBase({
@@ -215,6 +226,7 @@ const uploadAssetsStreaming = async ({
     rewrites,
     createDeployment,
     multipartUploadInfo,
+    ...(projectId ? { projectId } : {}),
   });
 
   return {
@@ -298,7 +310,8 @@ export const uploadGitDiffToS3 = async ({
   client,
   uploadId,
   gitDiffOutput,
-}: {
+  projectId,
+}: ProjectIdentifier & {
   client: ReturnType<typeof createClient>;
   uploadId: string;
   gitDiffOutput: string;
@@ -312,6 +325,7 @@ export const uploadGitDiffToS3 = async ({
     client,
     uploadId,
     size: buffer.length,
+    ...(projectId ? { projectId } : {}),
   });
 
   await uploadBufferToSignedUrl(uploadUrl, buffer, {
@@ -332,6 +346,7 @@ export const uploadAssetsFromZip = async ({
   rewrites = [],
   createDeployment = true,
   deleteAfterUpload = false,
+  projectId,
 }: UploadAssetsOptions & {
   zipPath: string;
   deleteAfterUpload?: boolean;
@@ -348,18 +363,26 @@ export const uploadAssetsFromZip = async ({
 
   const client = createClient({ apiToken });
 
+  const projectIdentifier = projectId ? { projectId } : {};
+
   try {
     const fileStats = await stat(zipPath);
     const fileSize = fileStats.size;
     const { uploadId, uploadUrl } = await requestAssetUpload({
       client,
       size: fileSize,
+      ...projectIdentifier,
     });
     await uploadFileToSignedUrl(zipPath, uploadUrl, fileSize);
     logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
     if (gitDiffOutput) {
-      await uploadGitDiffToS3({ client, uploadId, gitDiffOutput });
+      await uploadGitDiffToS3({
+        client,
+        uploadId,
+        gitDiffOutput,
+        ...projectIdentifier,
+      });
     }
 
     const { testRun, message } = await completeUploadAndWaitForBase({
@@ -372,6 +395,7 @@ export const uploadAssetsFromZip = async ({
       waitForBase,
       rewrites,
       createDeployment,
+      ...projectIdentifier,
     });
 
     return {

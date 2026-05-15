@@ -4,6 +4,7 @@ import {
   getProject,
   getRelevantSessions,
   RelevantSession,
+  resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { getLocalBaseSha, initLogger } from "@alwaysmeticulous/common";
 import { writeManifest } from "@alwaysmeticulous/downloading-helpers";
@@ -15,6 +16,7 @@ import {
 } from "../../command-utils/common-options";
 import { downloadSingleSession } from "../../command-utils/download-session.utils";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 import {
   getGitDiff,
   parseGitDiffToEditedFiles,
@@ -40,8 +42,13 @@ const handler = async ({
   outputDir,
 }: Options) => {
   const logger = initLogger();
-  const client = createClient({ apiToken });
-  const project = await getProject(client);
+  const apiToken_ = await resolveApiTokenWithOAuth({
+    apiToken: apiToken ?? null,
+    enableOAuthLogin: true,
+  });
+  const { projectId } = resolveProjectIdentifier(apiToken_);
+  const client = createClient({ apiToken: apiToken_ });
+  const project = await getProject(client, projectId);
   if (!project) {
     logger.error("Could not retrieve project data. Is the API token correct?");
     process.exit(1);

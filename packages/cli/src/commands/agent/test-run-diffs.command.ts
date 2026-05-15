@@ -1,4 +1,7 @@
-import { createClient, getTestRunDiffsSummary } from "@alwaysmeticulous/client";
+import {
+  createClientWithOAuth,
+  getTestRunDiffsSummary,
+} from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
@@ -27,7 +30,10 @@ const handler = async ({
   verbose,
 }: Options): Promise<void> => {
   initLogger();
-  const client = createClient({ apiToken });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
   const t0 = performance.now();
 
   log(`Fetching diffs summary for test run ${testRunId}...`);

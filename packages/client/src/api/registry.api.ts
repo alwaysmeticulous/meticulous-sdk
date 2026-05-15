@@ -1,4 +1,5 @@
 import { MeticulousClient } from "../types/client.types";
+import { ProjectIdentifier } from "./project-deployments.api";
 
 export interface GetRegistryAuthResponse {
   registryUrl: string;
@@ -12,11 +13,13 @@ export interface GetRegistryAuthResponse {
 
 export const getRegistryAuth = async ({
   client,
-}: {
+  projectId,
+}: ProjectIdentifier & {
   client: MeticulousClient;
 }): Promise<GetRegistryAuthResponse> => {
   const { data } = await client.get<unknown, { data: GetRegistryAuthResponse }>(
-    "registry/auth"
+    "registry/auth",
+    projectId ? { params: { projectId } } : undefined,
   );
   return data;
 };

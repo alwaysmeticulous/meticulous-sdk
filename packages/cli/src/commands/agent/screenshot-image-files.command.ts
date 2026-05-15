@@ -1,6 +1,9 @@
 import { mkdir, readdir, stat, unlink } from "fs/promises";
 import { join } from "path";
-import { createClient, getScreenshotUrls } from "@alwaysmeticulous/client";
+import {
+  createClientWithOAuth,
+  getScreenshotUrls,
+} from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   initLogger,
@@ -61,7 +64,10 @@ const handler = async ({
   screenshotName,
 }: Options): Promise<void> => {
   initLogger();
-  const client = createClient({ apiToken });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
 
   const urls = await getScreenshotUrls(client, replayDiffId, screenshotName);
 

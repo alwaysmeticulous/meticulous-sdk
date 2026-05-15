@@ -4,6 +4,7 @@ import {
   getProject,
   getRecordingCommandId,
   postSessionIdNotification,
+  resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import {
   DebugLogger,
@@ -17,6 +18,7 @@ import { CommandModule } from "yargs";
 import { COMMON_RECORD_OPTIONS, OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { RECORDING_SNIPPET_PATH } from "../../utils/constants";
+import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 
 interface Options {
   apiToken: string | null | undefined;
@@ -52,8 +54,13 @@ const handler = async ({
 
   logger.info("Preparing recording...");
 
-  const client = createClient({ apiToken });
-  const project = await getProject(client);
+  const apiToken_ = await resolveApiTokenWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
+  const { projectId } = resolveProjectIdentifier(apiToken_);
+  const client = createClient({ apiToken: apiToken_ });
+  const project = await getProject(client, projectId);
   if (!project) {
     logger.error("Could not retrieve project data. Is the API token correct?");
     process.exit(1);
@@ -68,7 +75,7 @@ const handler = async ({
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
   const recordingSnippet = await fetchAsset(RECORDING_SNIPPET_PATH);
   const cookieDir = join(getMeticulousLocalDataDir(), "cookies");
-  const recordingCommandId = await getRecordingCommandId(client);
+  const recordingCommandId = await getRecordingCommandId(client, projectId);
 
   const onDetectedSession = (sessionId: string) => {
     const organizationName = encodeURIComponent(project.organization.name);
@@ -76,18 +83,21 @@ const handler = async ({
     const sessionUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/sessions/${sessionId}`;
     logger.info(`Recording session: ${sessionUrl}`);
 
-    postSessionIdNotification(client, sessionId, recordingCommandId).catch(
-      (error) => {
-        logger.error(
-          `Warning: error while notifying session recording ${sessionId}`,
-        );
-        logger.error(error);
-        debugLogger?.log(
-          `Warning: error while notifying session recording ${sessionId}`,
-        );
-        debugLogger?.log(`${error}`);
-      },
-    );
+    postSessionIdNotification(
+      client,
+      sessionId,
+      recordingCommandId,
+      projectId,
+    ).catch((error) => {
+      logger.error(
+        `Warning: error while notifying session recording ${sessionId}`,
+      );
+      logger.error(error);
+      debugLogger?.log(
+        `Warning: error while notifying session recording ${sessionId}`,
+      );
+      debugLogger?.log(`${error}`);
+    });
   };
 
   await recordSession({

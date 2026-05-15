@@ -15,6 +15,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
   withUncommittedChanges,
   rewrites,
   waitForBase,
+  projectId,
 }: UploadAssetsAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = initLogger();
 
@@ -29,6 +30,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
     waitForBase,
     rewrites: rewrites ?? [],
     createDeployment: true,
+    ...(projectId ? { projectId } : {}),
   };
 
   const result = appDirectory

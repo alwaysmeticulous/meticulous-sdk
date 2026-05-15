@@ -183,13 +183,24 @@ export type AgentFeature =
 // API methods
 // ---------------------------------------------------------------------------
 
-export const trackAgentFeatureUsage = async (
-  client: MeticulousClient,
-  feature: AgentFeature,
-): Promise<void> => {
-  await client.post("agent/telemetry", { feature }).catch(() => {
-    // Telemetry is best-effort — never fail the command
-  });
+export const trackAgentFeatureUsage = async ({
+  client,
+  feature,
+  projectId,
+}: {
+  client: MeticulousClient;
+  feature: AgentFeature;
+  projectId: string | undefined;
+}): Promise<void> => {
+  await client
+    .post(
+      "agent/telemetry",
+      { feature },
+      projectId ? { params: { projectId } } : undefined,
+    )
+    .catch(() => {
+      // Telemetry is best-effort — never fail the command
+    });
 };
 
 export const getTestRunDiffsSummary = async (

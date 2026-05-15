@@ -2,6 +2,7 @@ import { constants as zlibConstants } from "zlib";
 import { DeploymentArchiveType } from "@alwaysmeticulous/api";
 import {
   createClient,
+  ProjectIdentifier,
   requestUploadPart,
   MultiPartUploadInfo,
 } from "@alwaysmeticulous/client";
@@ -19,7 +20,7 @@ export const UPLOAD_ARCHIVE_FILE_FORMAT: DeploymentArchiveType = "tar.d";
  */
 const COMPRESSION_LEVEL = 3;
 
-export interface MultipartCompressingUploaderArgs {
+export interface MultipartCompressingUploaderArgs extends ProjectIdentifier {
   folderPath: string;
   uploadPartUrls: string[];
   uploadChunkSize: number;
@@ -127,6 +128,7 @@ export class MultipartCompressingUploader {
       partNumber,
       size: buffer.length,
       archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+      ...(this.args.projectId ? { projectId: this.args.projectId } : {}),
     });
 
     return uploadPartUrl;

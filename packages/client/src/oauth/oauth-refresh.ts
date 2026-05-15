@@ -44,16 +44,17 @@ export const getValidAccessToken = async (): Promise<string | null> => {
 
     const data = (await response.json()) as {
       access_token: string;
-      refresh_token: string;
+      refresh_token?: string;
       expires_in: number;
       id_token?: string;
     };
 
     const updatedTokens = {
+      ...tokens,
       accessToken: data.access_token,
-      refreshToken: data.refresh_token,
+      refreshToken: data.refresh_token ?? tokens.refreshToken,
       expiresAt: Math.floor(Date.now() / 1000) + data.expires_in,
-      idToken: data.id_token,
+      ...(data.id_token !== undefined ? { idToken: data.id_token } : {}),
     };
 
     storeOAuthTokens(updatedTokens);

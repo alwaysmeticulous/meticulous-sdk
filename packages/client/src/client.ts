@@ -6,8 +6,13 @@ import {
 } from "@alwaysmeticulous/common";
 import log from "loglevel";
 import type { RequestInit } from "undici";
+import { getOAuthProjects } from "./api/oauth.api";
 import { getApiToken, getAuthToken } from "./api-token.utils";
 import { performOAuthLogin } from "./oauth/oauth-login";
+import {
+  getStoredProjectId,
+  setStoredProject,
+} from "./oauth/oauth-token-store";
 import {
   MeticulousClient,
   RequestConfig,
@@ -197,9 +202,18 @@ export const createClient: (options: ClientOptions) => MeticulousClient = ({
 export const isInteractiveContext = (): boolean =>
   process.stdin.isTTY === true && !process.env["CI"];
 
-export const createClientWithOAuth = async (
+/**
+ * Resolves an API token using the full auth chain (explicit token → env var →
+ * stored OAuth → legacy config file), and falls back to an interactive browser
+ * OAuth login when nothing is stored and the process is attached to a TTY.
+ *
+ * Exits the process with code 1 if no token can be obtained. Use this anywhere
+ * a CLI command needs an API token — either to build a client (see
+ * `createClientWithOAuth`) or to pass directly to a launcher.
+ */
+export const resolveApiTokenWithOAuth = async (
   options: ClientOptions & { enableOAuthLogin?: boolean },
-): Promise<MeticulousClient> => {
+): Promise<string> => {
   const logger = initLogger();
 
   let apiToken = await getAuthToken(options.apiToken);
@@ -210,6 +224,7 @@ export const createClientWithOAuth = async (
   if (!apiToken && isInteractive) {
     const tokens = await performOAuthLogin();
     apiToken = tokens.accessToken;
+    await maybeAutoSelectProject(apiToken, logger);
   }
 
   if (!apiToken) {
@@ -220,7 +235,41 @@ export const createClientWithOAuth = async (
     return process.exit(1);
   }
 
-  return buildClient(apiToken, logger);
+  return apiToken;
+};
+
+/**
+ * After a fresh OAuth login, if the user has access to exactly one project
+ * and none has been stored yet, picks it automatically. Best-effort: any
+ * failure (network, missing backend endpoint, etc.) is logged at debug and
+ * swallowed — the user can always run `meticulous auth set-project` later.
+ */
+const maybeAutoSelectProject = async (
+  apiToken: string,
+  logger: log.Logger,
+): Promise<void> => {
+  if (getStoredProjectId()) {
+    return;
+  }
+  try {
+    const client = buildClient(apiToken, logger);
+    const projects = await getOAuthProjects(client);
+    if (projects.length === 1) {
+      const only = projects[0];
+      const projectSlug = `${only.organization.name}/${only.name}`;
+      setStoredProject({ project: projectSlug, projectId: only.id });
+      logger.info(`Selected project: ${projectSlug}`);
+    }
+  } catch (error) {
+    logger.debug(`Skipping auto-project selection after login: ${error}`);
+  }
+};
+
+export const createClientWithOAuth = async (
+  options: ClientOptions & { enableOAuthLogin?: boolean },
+): Promise<MeticulousClient> => {
+  const apiToken = await resolveApiTokenWithOAuth(options);
+  return buildClient(apiToken, initLogger());
 };
 
 const getApiUrl = () => {

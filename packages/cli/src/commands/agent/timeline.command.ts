@@ -1,4 +1,7 @@
-import { createClient, getTimelineDiff } from "@alwaysmeticulous/client";
+import {
+  createClientWithOAuth,
+  getTimelineDiff,
+} from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
@@ -17,7 +20,10 @@ const STATUS_PREFIX: Record<string, string> = {
 
 const handler = async ({ apiToken, replayDiffId }: Options): Promise<void> => {
   initLogger();
-  const client = createClient({ apiToken });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
 
   const { baseReplayId, headReplayId, entries } = await getTimelineDiff(
     client,

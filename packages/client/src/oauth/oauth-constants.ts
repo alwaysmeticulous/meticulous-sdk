@@ -4,7 +4,7 @@ export const KEYCLOAK_ISSUER_URL =
 
 export const CLI_CLIENT_ID = "meticulous-cli";
 
-export const OAUTH_SCOPES = "openid email profile";
+export const OAUTH_SCOPES = "openid email profile offline_access";
 
 const WELL_KNOWN_PATH = "/.well-known/openid-configuration";
 

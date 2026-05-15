@@ -1,4 +1,8 @@
-import { createClient, getProject } from "@alwaysmeticulous/client";
+import {
+  createClient,
+  getProject,
+  resolveApiTokenWithOAuth,
+} from "@alwaysmeticulous/client";
 import { DebugLogger, initLogger } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import { recordLoginFlowSession } from "@alwaysmeticulous/record";
@@ -6,6 +10,7 @@ import { CommandModule } from "yargs";
 import { COMMON_RECORD_OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { RECORDING_SNIPPET_PATH } from "../../utils/constants";
+import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 
 interface Options {
   apiToken: string | null | undefined;
@@ -33,8 +38,13 @@ const handler = async ({
   const logger = initLogger();
   const debugLogger = trace ? await DebugLogger.create() : null;
 
-  const client = createClient({ apiToken });
-  const project = await getProject(client);
+  const apiToken_ = await resolveApiTokenWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
+  const { projectId } = resolveProjectIdentifier(apiToken_);
+  const client = createClient({ apiToken: apiToken_ });
+  const project = await getProject(client, projectId);
   if (!project) {
     logger.error("Could not retrieve project data. Is the API token correct?");
     process.exit(1);

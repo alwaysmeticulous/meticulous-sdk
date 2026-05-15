@@ -18,7 +18,14 @@ export {
   trackAgentFeatureUsage,
 } from "./api/agent.api";
 export * from "./api/github-cloud-replay.api";
-export { WhoamiResponse, getWhoami } from "./api/oauth.api";
+export {
+  WhoamiOrganization,
+  WhoamiResponse,
+  getWhoami,
+  OAuthProject,
+  OAuthProjectsResponse,
+  getOAuthProjects,
+} from "./api/oauth.api";
 export {
   GetRepoUrlOptions,
   RepoUrlResponse,
@@ -69,10 +76,19 @@ export {
   createClientWithOAuth,
   isInteractiveContext,
   makeRequest,
+  resolveApiTokenWithOAuth,
 } from "./client";
 export { performOAuthLogin } from "./oauth/oauth-login";
 export { getValidAccessToken } from "./oauth/oauth-refresh";
-export { clearOAuthTokens } from "./oauth/oauth-token-store";
+export {
+  clearOAuthTokens,
+  clearStoredProject,
+  getStoredOAuthTokens,
+  getStoredProject,
+  getStoredProjectId,
+  setStoredProject,
+} from "./oauth/oauth-token-store";
+export { getJwtClaims, isJwtExpired, isOAuthJwt } from "./oauth/oauth-utils";
 export type { MeticulousClient } from "./types/client.types";
 export { getProxyAgent } from "./utils/get-proxy-agent";
 export {
@@ -86,6 +102,7 @@ export {
   RetryTransientUploadErrorsOptions,
 } from "./utils/retry-transient-upload-errors";
 export {
+  ProjectIdentifier,
   RequestAssetUploadParams,
   RequestAssetUploadResponse,
   requestAssetUpload,

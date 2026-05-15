@@ -1,9 +1,9 @@
 import {
   ContainerEnvVariable,
   createClient,
-  getApiToken,
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
+  resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { uploadContainer } from "@alwaysmeticulous/remote-replay-launcher";
@@ -15,6 +15,7 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
+import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 import {
   hasGitContextForTestRunWait,
   resolveGitOptions,
@@ -94,11 +95,18 @@ const handler = async ({
     extra: { commitSha, localImageTag },
   });
 
+  const apiToken_ = await resolveApiTokenWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
+
+  const projectIdentifier = resolveProjectIdentifier(apiToken_);
+
   let testRunId: string | null;
 
   try {
     const result = await uploadContainer({
-      apiToken,
+      apiToken: apiToken_,
       localImageTag,
       commitSha,
       ...(baseSha ? { baseSha } : {}),
@@ -108,6 +116,7 @@ const handler = async ({
       containerPort,
       containerEnv,
       containerHealthCheckEndpoint,
+      ...projectIdentifier,
     });
     testRunId = result.testRun?.id ?? null;
 
@@ -128,12 +137,7 @@ const handler = async ({
     return;
   }
 
-  const apiTokenToUse = getApiToken(apiToken);
-  if (!apiTokenToUse) {
-    logger.error("No API token found. Cannot wait for test run to complete.");
-    process.exit(1);
-  }
-  const client = createClient({ apiToken: apiTokenToUse });
+  const client = createClient({ apiToken: apiToken_ });
 
   logger.info(`Waiting for test run ${testRunId} to complete...`);
 

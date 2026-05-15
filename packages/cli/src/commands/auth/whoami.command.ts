@@ -1,11 +1,12 @@
 import {
   createClientWithOAuth,
+  getStoredProject,
   getWhoami,
-  isFetchError,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { handleAuthFailure } from "../../utils/handle-auth-failure";
 
 export const whoamiCommand: CommandModule = {
   command: "whoami",
@@ -29,19 +30,23 @@ export const whoamiCommand: CommandModule = {
       }
 
       if (organizations.length > 0) {
-        logger.info("Organizations:");
-        for (const org of organizations) {
-          logger.info(`  - ${org.name}`);
-        }
+        const formatted = organizations
+          .map((org) => (org.role ? `${org.name} (${org.role})` : org.name))
+          .join(", ");
+        logger.info(`Organizations: ${formatted}`);
+      }
+
+      const project = getStoredProject();
+      if (project) {
+        logger.info(`Selected project: ${project}`);
+      } else {
+        logger.info(
+          "No project selected. Run `meticulous auth set-project` to choose one.",
+        );
       }
     } catch (error) {
-      if (isFetchError(error) && error.response?.status === 403) {
-        logger.error(
-          "Authentication failed. Your token may be expired. Try logging in again.",
-        );
-      } else {
-        throw error;
-      }
+      handleAuthFailure(error);
+      throw error;
     }
   }),
 };

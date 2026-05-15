@@ -11,11 +11,15 @@ export interface RepoUrlResponse {
   caCertificate?: string;
 }
 
-export const getProject: (
+export const getProject = async (
   client: MeticulousClient,
-) => Promise<Project | null> = async (client) => {
+  projectId?: string,
+): Promise<Project | null> => {
   const { data } = await client
-    .get<Project>("projects/token-info")
+    .get<Project>(
+      "projects/token-info",
+      projectId ? { params: { projectId } } : undefined,
+    )
     .catch((error) => {
       if (isFetchError(error) && error.response?.status === 404) {
         return { data: null };
