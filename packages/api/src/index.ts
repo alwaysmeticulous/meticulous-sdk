@@ -3,6 +3,7 @@ export { Project, ProjectSettingsScreenshottingOptions } from "./project.types";
 export {
   EndStateScreenshot,
   ScreenshotAfterEvent,
+  ScreenshotAuxiliary,
   ScreenshotDiffResult,
   ScreenshotDiffResultCompared,
   ScreenshotDiffResultDifferentSize,
