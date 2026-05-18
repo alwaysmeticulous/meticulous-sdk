@@ -10,7 +10,10 @@ export type ScreenshotDiffResult = {
   identifier: ScreenshotIdentifier;
 } & (SingleTryScreenshotDiffResult | ScreenshotDiffResultFlake);
 
-export type ScreenshotIdentifier = EndStateScreenshot | ScreenshotAfterEvent;
+export type ScreenshotIdentifier =
+  | EndStateScreenshot
+  | ScreenshotAfterEvent
+  | ScreenshotAuxiliary;
 
 export interface LogicVersioned {
   /**
@@ -38,6 +41,23 @@ export interface ScreenshotAfterEvent extends LogicVersioned {
 
   /** 0 indexed */
   eventNumber: number;
+
+  /** If unset is normal variant */
+  variant?: ScreenshotVariant;
+
+  /** Optional image hash of the screenshot */
+  imageHash?: string;
+}
+
+// TODO: This is a new class and is subject to change. Do not use it.
+export interface ScreenshotAuxiliary extends LogicVersioned {
+  type: "auxiliary";
+
+  /** 0 indexed */
+  eventNumber: number;
+
+  /** Why we took the screenshot, e.g. "exit_animation". Matches /^[a-z_]{1,16}$/. */
+  reason: string;
 
   /** If unset is normal variant */
   variant?: ScreenshotVariant;
