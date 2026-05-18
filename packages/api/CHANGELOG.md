@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.285.0
+
+### Minor Changes
+
+- [#1160](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1160) [`9054b12`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/9054b12895986720514eb19db4445165ce627d03) Thanks [@sesajad](https://github.com/sesajad)! - Introducing a new experimental type of screenshot for non-event-triggered screenshots
+
 ## 2.283.1
 
 ### Patch Changes
