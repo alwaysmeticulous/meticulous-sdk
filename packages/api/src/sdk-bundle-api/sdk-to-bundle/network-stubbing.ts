@@ -39,7 +39,7 @@ export interface StubNonSSRRequests extends NetworkStubbingBase {
 
 /**
  * Passes through all requests that originate from the app, and only stubs
- * requests that were recorded in the session (e.g. third-party scripts loaded via <script> tags).
+ * requests that were recorded in the session (e.g. calls to third party services).
  */
 export interface PassthroughAppRequests extends NetworkStubbingBase {
   type: "passthrough-app-requests";
