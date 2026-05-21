@@ -1,7 +1,8 @@
 export type NetworkStubbingMode =
   | StubAllRequests
   | StubNonSSRRequests
-  | CustomStubbing;
+  | CustomStubbing
+  | PassthroughAppRequests;
 
 interface NetworkStubbingBase {
   /**
@@ -34,6 +35,14 @@ export interface StubAllRequests extends NetworkStubbingBase {
  */
 export interface StubNonSSRRequests extends NetworkStubbingBase {
   type: "stub-non-ssr-requests";
+}
+
+/**
+ * Passes through all requests that originate from the app, and only stubs
+ * requests that were recorded in the session (e.g. third-party scripts loaded via <script> tags).
+ */
+export interface PassthroughAppRequests extends NetworkStubbingBase {
+  type: "passthrough-app-requests";
 }
 
 export interface CustomStubbing extends NetworkStubbingBase {
