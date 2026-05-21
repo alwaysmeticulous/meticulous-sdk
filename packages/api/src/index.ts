@@ -105,6 +105,7 @@ export {
   NetworkStubbingMode,
   StubAllRequests,
   StubNonSSRRequests,
+  PassthroughAppRequests,
   NoStubbing,
   CustomStubbing,
   RequestFilter,
