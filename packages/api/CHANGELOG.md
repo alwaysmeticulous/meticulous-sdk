@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.286.0
+
+### Minor Changes
+
+- [#1167](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1167) [`66b4e0b`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/66b4e0b1699cc34b2387369e73939340599c5963) Thanks [@sesajad](https://github.com/sesajad)! - Add required `sequenceNumber` (0-indexed) to `ScreenshotAuxiliary` so multiple auxiliary screenshots sharing the same `eventNumber` and `reason` can be deterministically ordered.
+
 ## 2.285.2
 
 ### Patch Changes
