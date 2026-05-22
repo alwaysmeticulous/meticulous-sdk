@@ -36,6 +36,7 @@ export interface Project {
     externalHostsToConsiderAppRelated?: string[];
     disableSourceMapLoading?: boolean;
     assumeSourceMapEnabledForAllFiles?: boolean;
+    enableUploadedAssetRelevantSessions?: boolean;
   };
 
   experimentValues: Record<string, string>;
