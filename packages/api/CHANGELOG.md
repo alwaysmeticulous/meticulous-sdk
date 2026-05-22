@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.285.2
+
+### Patch Changes
+
+- [#1165](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1165) [`7d62b67`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/7d62b6701defc5eefbd6cf82c55336a930047d71) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add pre-processing status
+
 ## 2.285.1
 
 ### Patch Changes
