@@ -200,6 +200,7 @@ export const executeRemoteTestRun = async ({
           `Test run partially completed. Some test cases may not have been executed.`,
         );
         break;
+      case "PreProcessing":
       case "Scheduled":
       case "Running":
       case "PostProcessing":

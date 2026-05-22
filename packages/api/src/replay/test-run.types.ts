@@ -54,6 +54,8 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
 }
 
 /**
+ * `PreProcessing` = the test run is undergoing some pre-processing before it can be executed.
+ * 
  * `Scheduled` = the test run has been created, and a cloud replay job has been queued to run it. It will switch to Running soon.
  *
  * `Running` = a worker is actively running the test run.
@@ -73,6 +75,7 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
  * into 'Running' in this case, if the worker retries it.
  */
 export type TestRunStatus =
+  | "PreProcessing"
   | "Scheduled"
   | "Running"
   | "Partial"
