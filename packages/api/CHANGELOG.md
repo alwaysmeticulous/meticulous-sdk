@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.285.1
+
+### Patch Changes
+
+- [#1163](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1163) [`9b320d5`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/9b320d5f8702ceb25fa1a4a2c4858b713d1e7efe) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Extend two types for compiled RSE
+
 ## 2.285.0
 
 ### Minor Changes
