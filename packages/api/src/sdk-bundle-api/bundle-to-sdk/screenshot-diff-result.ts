@@ -56,9 +56,6 @@ export interface ScreenshotAuxiliary extends LogicVersioned {
   /** 0 indexed */
   eventNumber: number;
 
-  /** 0-indexed position among auxiliaries sharing the same `eventNumber`. */
-  sequenceNumber: number;
-
   /** Why we took the screenshot, e.g. "exit_animation". Matches /^[a-z_]{1,16}$/. */
   reason: string;
 
