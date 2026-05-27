@@ -246,6 +246,54 @@ export const completeContainerUpload = async ({
   return data;
 };
 
+export interface RequestAssetChunkUploadParams {
+  chunkName: string;
+  chunkVersionId: string;
+  tarballSize: number;
+  commitSha?: string | undefined;
+}
+
+export interface RequestAssetChunkUploadResponse {
+  tarballUploadUrl: string;
+}
+
+export interface CompleteAssetChunkUploadParams {
+  chunkName: string;
+  chunkVersionId: string;
+  uploadStatus?: "uploading" | "uploaded";
+  commitSha?: string | undefined;
+}
+
+export interface CompleteAssetChunkUploadResponse {
+  message: string;
+}
+
+export const requestAssetChunkUpload = async ({
+  client,
+  ...body
+}: RequestAssetChunkUploadParams & {
+  client: MeticulousClient;
+}): Promise<RequestAssetChunkUploadResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestAssetChunkUploadResponse }
+  >("project-deployments/request-asset-chunk-upload", body);
+  return data;
+};
+
+export const completeAssetChunkUpload = async ({
+  client,
+  ...body
+}: CompleteAssetChunkUploadParams & {
+  client: MeticulousClient;
+}): Promise<CompleteAssetChunkUploadResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: CompleteAssetChunkUploadResponse }
+  >("project-deployments/complete-asset-chunk-upload", body);
+  return data;
+};
+
 export const downloadProjectDeployment = async ({
   client,
   deploymentUploadId,

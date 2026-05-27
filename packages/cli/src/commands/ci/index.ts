@@ -3,6 +3,7 @@ import { ciPrepareCommand } from "./prepare.command";
 import { ciRunLocalCommand } from "./run-local.command";
 import { ciRunCommand } from "./run.command";
 import { ciStartTunnelCommand } from "./start-tunnel.command";
+import { ciUploadAssetChunkCommand } from "./upload-asset-chunk.command";
 import { ciUploadAssetsCommand } from "./upload-assets.command";
 import { ciUploadContainerCommand } from "./upload-container.command";
 
@@ -16,6 +17,7 @@ export const ciCommand: CommandModule = {
       .command(ciPrepareCommand)
       .command(ciStartTunnelCommand)
       .command(ciUploadAssetsCommand)
+      .command(ciUploadAssetChunkCommand)
       .command(ciUploadContainerCommand)
       .demandCommand()
       .help(),
