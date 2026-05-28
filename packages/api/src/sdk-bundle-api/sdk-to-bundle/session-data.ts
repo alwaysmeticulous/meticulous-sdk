@@ -41,6 +41,12 @@ export interface SessionData {
         | IDBObjectStoreSnapshot
         | Omit<IDBObjectStoreSnapshot, "createObjectStoreOptions">
       )[];
+      /**
+       * Only present on recordings since ~May 2026.
+       * Object stores that exist in the browser but are not in SUPPORTED_OBJECT_STORES.
+       * Useful for discovering IDB stores we should add support for.
+       */
+      unrecognizedStores?: { databaseName: string; objectStoreName: string }[];
     };
   };
 
