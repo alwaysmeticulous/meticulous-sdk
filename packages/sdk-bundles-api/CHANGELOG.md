@@ -1,5 +1,11 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.287.0
+
+### Minor Changes
+
+- [#1172](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1172) [`64c6ddf`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/64c6ddf344dad3faff6841e1582f10f5f8a9fe50) Thanks [@phreppo](https://github.com/phreppo)! - Expose the Chrome/Chromium version on `window.Meticulous.replay.browser.version` so that performance metrics reported via the Performance API can be tagged with the browser build that produced them.
+
 ## 2.286.0
 
 ### Patch Changes

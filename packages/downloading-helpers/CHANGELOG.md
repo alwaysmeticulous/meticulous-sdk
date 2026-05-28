@@ -1,5 +1,14 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 2.287.0
+
+### Patch Changes
+
+- [#1173](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1173) [`0716b8f`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/0716b8f47b220d306b12baba896bdb8d4c1db073) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add new replay download scope
+
+- Updated dependencies []:
+  - @alwaysmeticulous/common@2.283.1
+
 ## 2.286.0
 
 ### Patch Changes
