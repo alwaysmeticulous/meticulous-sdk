@@ -1,6 +1,7 @@
 import { CommandModule } from "yargs";
 import { ciPrepareCommand } from "./prepare.command";
 import { ciRunLocalCommand } from "./run-local.command";
+import { ciRunWithUploadedAssetChunksCommand } from "./run-with-uploaded-asset-chunks.command";
 import { ciRunCommand } from "./run.command";
 import { ciStartTunnelCommand } from "./start-tunnel.command";
 import { ciUploadAssetChunkCommand } from "./upload-asset-chunk.command";
@@ -18,6 +19,7 @@ export const ciCommand: CommandModule = {
       .command(ciStartTunnelCommand)
       .command(ciUploadAssetsCommand)
       .command(ciUploadAssetChunkCommand)
+      .command(ciRunWithUploadedAssetChunksCommand)
       .command(ciUploadContainerCommand)
       .demandCommand()
       .help(),

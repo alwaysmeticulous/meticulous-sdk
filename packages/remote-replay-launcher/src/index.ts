@@ -7,4 +7,9 @@ export {
   uploadAssetChunk,
   UploadAssetChunkOptions,
 } from "./upload-asset-chunk";
+export {
+  triggerRunWithUploadedAssetChunks,
+  TriggerRunWithUploadedAssetChunksOptions,
+  TriggerRunWithUploadedAssetChunksResult,
+} from "./trigger-run-with-uploaded-asset-chunks";
 export { TunnelData } from "./types";

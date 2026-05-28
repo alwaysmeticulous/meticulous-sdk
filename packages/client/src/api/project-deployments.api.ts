@@ -268,6 +268,42 @@ export interface CompleteAssetChunkUploadResponse {
   message: string;
 }
 
+export interface UploadedAssetChunkReference {
+  name: string;
+  versionId: string;
+}
+
+export interface RunWithUploadedAssetChunksParams extends ProjectIdentifier {
+  commitSha: string;
+  baseSha?: string | undefined;
+  hasGitDiff?: boolean | undefined;
+  withUncommittedChanges?: boolean | undefined;
+  mustHaveBase: boolean;
+  isUserVisible?: boolean;
+  skipPreprocessing?: boolean;
+  createDeployment?: boolean;
+  assetReferencesManifest: UploadedAssetChunkReference[];
+  rewrites?: AssetUploadMetadata["rewrites"];
+}
+
+export const runWithUploadedAssetChunks = async ({
+  client,
+  projectId,
+  ...body
+}: RunWithUploadedAssetChunksParams & {
+  client: MeticulousClient;
+}): Promise<CompleteAssetUploadResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: CompleteAssetUploadResponse }
+  >(
+    "project-deployments/run-with-uploaded-asset-chunks",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
 export const requestAssetChunkUpload = async ({
   client,
   ...body
