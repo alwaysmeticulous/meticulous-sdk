@@ -268,7 +268,7 @@ export interface CompleteAssetChunkUploadResponse {
   message: string;
 }
 
-export interface UploadedAssetChunkReference {
+export interface ProjectAssetChunkReference {
   name: string;
   versionId: string;
 }
@@ -282,7 +282,7 @@ export interface RunWithUploadedAssetChunksParams extends ProjectIdentifier {
   isUserVisible?: boolean;
   skipPreprocessing?: boolean;
   createDeployment?: boolean;
-  assetReferencesManifest: UploadedAssetChunkReference[];
+  assetReferencesManifest: ProjectAssetChunkReference[];
   rewrites?: AssetUploadMetadata["rewrites"];
 }
 

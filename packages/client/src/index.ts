@@ -121,7 +121,7 @@ export {
   CompleteContainerUploadResponse,
   completeContainerUpload,
   MultiPartUploadInfo,
-  UploadedAssetChunkReference,
+  ProjectAssetChunkReference,
   RunWithUploadedAssetChunksParams,
   runWithUploadedAssetChunks,
   RequestAssetChunkUploadParams,

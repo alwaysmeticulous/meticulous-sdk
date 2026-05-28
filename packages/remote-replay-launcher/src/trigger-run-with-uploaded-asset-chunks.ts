@@ -1,9 +1,9 @@
 import { AssetUploadMetadata, TestRun } from "@alwaysmeticulous/api";
 import {
   createClient,
+  ProjectAssetChunkReference,
   ProjectIdentifier,
   runWithUploadedAssetChunks,
-  UploadedAssetChunkReference,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
@@ -19,7 +19,7 @@ export interface TriggerRunWithUploadedAssetChunksOptions
   waitForBase: boolean;
   rewrites: AssetUploadMetadata["rewrites"];
   createDeployment?: boolean;
-  assetReferencesManifest: UploadedAssetChunkReference[];
+  assetReferencesManifest: ProjectAssetChunkReference[];
 }
 
 export interface TriggerRunWithUploadedAssetChunksResult {

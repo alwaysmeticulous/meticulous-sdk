@@ -3,8 +3,8 @@ import {
   createClient,
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
+  ProjectAssetChunkReference,
   resolveApiTokenWithOAuth,
-  UploadedAssetChunkReference,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { triggerRunWithUploadedAssetChunks } from "@alwaysmeticulous/remote-replay-launcher";
@@ -40,7 +40,7 @@ interface Options {
 
 const readAssetReferencesManifest = async (
   manifestPath: string,
-): Promise<UploadedAssetChunkReference[]> => {
+): Promise<ProjectAssetChunkReference[]> => {
   const logger = initLogger();
   let raw: string;
   try {
@@ -89,7 +89,7 @@ const readAssetReferencesManifest = async (
     process.exit(1);
   }
 
-  return parsed as UploadedAssetChunkReference[];
+  return parsed as ProjectAssetChunkReference[];
 };
 
 const handler = async ({
