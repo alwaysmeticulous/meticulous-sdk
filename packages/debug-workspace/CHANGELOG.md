@@ -1,5 +1,17 @@
 # @alwaysmeticulous/debug-workspace
 
+## 2.287.0
+
+### Minor Changes
+
+- [#1151](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1151) [`17dc189`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/17dc189dbe222d15a08cd9b52dffe60c819a8d15) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add network match quality check to met_debug CLAUDE.md
+
+### Patch Changes
+
+- Updated dependencies [[`0716b8f`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/0716b8f47b220d306b12baba896bdb8d4c1db073)]:
+  - @alwaysmeticulous/downloading-helpers@2.287.0
+  - @alwaysmeticulous/common@2.283.1
+
 ## 2.286.0
 
 ### Patch Changes
