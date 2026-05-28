@@ -70,6 +70,7 @@ export const getOrFetchReplay = async (
  * - `screenshots-only`: Download only the screenshots.
  * - `timeline-only`: Download only the timeline data.
  * - `post-test-run-processing-files-only`: Download only the files that are needed for post-test-run processing
+ * - `post-process-including-unmapped-ranges`: Download everything needed for post-process including unmapped ranges.
  * e.g mapped coverage and timeline data.
  */
 const DOWNLOAD_SCOPES = [
@@ -77,6 +78,7 @@ const DOWNLOAD_SCOPES = [
   "screenshots-only",
   "timeline-only",
   "post-test-run-processing-files-only",
+  "post-process-including-unmapped-ranges",
 ] as const;
 
 export type DownloadScope = (typeof DOWNLOAD_SCOPES)[number];
@@ -87,6 +89,8 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<DownloadScope, RegExp> = {
   "timeline-only": /^timeline/,
   "post-test-run-processing-files-only":
     /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage)/,
+  "post-process-including-unmapped-ranges":
+    /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage|rawCoverage)/,
 };
 
 const shouldDownloadFile = (
