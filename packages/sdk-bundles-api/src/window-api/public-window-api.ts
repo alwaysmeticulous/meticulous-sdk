@@ -214,6 +214,28 @@ export interface MeticulousPublicReplayApi {
      */
     id: string;
   };
+
+  /**
+   * Information about the browser that is running the replay.
+   *
+   * Useful for tagging the metrics you collect via {@link native} (heap
+   * usage, rendering time, JavaScript execution time, ...) with the
+   * Chrome/Chromium build that produced them. Different Chrome versions
+   * can have noticeably different rendering and JS performance
+   * characteristics, so aggregating across versions can mask real
+   * regressions.
+   */
+  browser: {
+    /**
+     * The Chrome/Chromium version that is running the replay, e.g.
+     * `"139.0.7258.5"`. The leading product label (`"Chrome/"`,
+     * `"HeadlessChrome/"`, ...) from `Browser.version()` is stripped, so
+     * the value can be parsed directly as a dotted version number. Falls
+     * back to `"unknown"` only in the very rare case that the replay
+     * runner could not read the version from the underlying browser.
+     */
+    version: string;
+  };
 }
 
 export interface MeticulousPublicRecordApi {
