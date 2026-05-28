@@ -76,13 +76,20 @@ export const uploadAssetChunk = async ({
     const { size: tarballSize } = await stat(tarballPath);
     logger.info(`Tarball built (${tarballSize} bytes). Requesting upload URL...`);
 
-    const { tarballUploadUrl } = await requestAssetChunkUpload({
+    const response = await requestAssetChunkUpload({
       client,
       chunkName,
       chunkVersionId,
       tarballSize,
       ...(commitSha ? { commitSha } : {}),
     });
+
+    if (response.alreadyUploaded) {
+      logger.info(`Asset chunk ${chunkName}@${chunkVersionId} already uploaded; skipping upload.`);
+      return;
+    }
+
+    const { tarballUploadUrl } = response;
 
     logger.info("Uploading tarball to S3...");
     await retryTransientUploadErrors(

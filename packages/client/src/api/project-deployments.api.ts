@@ -253,9 +253,9 @@ export interface RequestAssetChunkUploadParams {
   commitSha?: string | undefined;
 }
 
-export interface RequestAssetChunkUploadResponse {
-  tarballUploadUrl: string;
-}
+export type RequestAssetChunkUploadResponse =
+  | { alreadyUploaded: true }
+  | { alreadyUploaded: false; tarballUploadUrl: string };
 
 export interface CompleteAssetChunkUploadParams {
   chunkName: string;
