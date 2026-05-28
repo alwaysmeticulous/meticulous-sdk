@@ -1,6 +1,8 @@
+import { createWriteStream } from "fs";
 import { mkdtemp, rm, stat } from "fs/promises";
 import { tmpdir } from "os";
 import { join, resolve } from "path";
+import { constants as zlibConstants } from "zlib";
 import {
   completeAssetChunkUpload,
   createClient,
@@ -11,7 +13,15 @@ import {
   UploadError,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
+import { DeflateRaw } from "fast-zlib";
 import { c as tarCreate } from "tar";
+
+/**
+ * Matches the deflate level used by the non-chunked tar.d uploader so the
+ * two encoding paths produce comparable artifacts (see
+ * `MultipartCompressingUploader`).
+ */
+const COMPRESSION_LEVEL = 3;
 
 export interface UploadAssetChunkOptions {
   apiToken: string | null | undefined;
@@ -24,10 +34,11 @@ export interface UploadAssetChunkOptions {
 
 /**
  * Tars `chunkAssetsDirectory` (prepending `chunkAssetsDirectoryPrefix` to
- * each entry's path inside the tar), uploads the tarball to S3 via a
- * presigned URL, and asks the backend to mark the chunk as uploaded — at
- * which point the backend walks the tar headers to produce the per-chunk
- * index JSON.
+ * each entry's path inside the tar), compresses it with raw deflate (the
+ * same encoding the non-chunked tar.d path uses), uploads to S3 via a
+ * presigned URL, then marks the chunk as uploaded. The asset server
+ * inflates each chunk on demand and serves files through a tar-aware
+ * facade — there is no server-side index sidecar.
  */
 export const uploadAssetChunk = async ({
   apiToken: apiToken_,
@@ -42,37 +53,25 @@ export const uploadAssetChunk = async ({
   const resolvedDir = resolve(chunkAssetsDirectory);
   const dirStat = await stat(resolvedDir).catch(() => null);
   if (!dirStat?.isDirectory()) {
-    throw new Error(
-      `chunkAssetsDirectory does not exist or is not a directory: ${resolvedDir}`,
-    );
+    throw new Error(`chunkAssetsDirectory does not exist or is not a directory: ${resolvedDir}`);
   }
 
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {
-    throw new Error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
+    throw new Error("You must provide an API token by using the --apiToken parameter");
   }
 
   const client = createClient({ apiToken });
 
   const tempDir = await mkdtemp(join(tmpdir(), "asset-chunk-"));
-  const tarballPath = join(tempDir, "chunk.tar");
+  const tarballPath = join(tempDir, "chunk.tar.d");
   try {
-    logger.info(
-      `Building asset chunk tarball for ${chunkName}@${chunkVersionId}...`,
-    );
-    await tarCreate(
-      {
-        file: tarballPath,
-        cwd: resolvedDir,
-        portable: true,
-        ...(chunkAssetsDirectoryPrefix
-          ? { prefix: chunkAssetsDirectoryPrefix }
-          : {}),
-      },
-      ["."],
-    );
+    logger.info(`Building asset chunk tarball for ${chunkName}@${chunkVersionId}...`);
+    await writeCompressedTar({
+      cwd: resolvedDir,
+      destination: tarballPath,
+      ...(chunkAssetsDirectoryPrefix ? { prefix: chunkAssetsDirectoryPrefix } : {}),
+    });
 
     const { size: tarballSize } = await stat(tarballPath);
     logger.info(`Tarball built (${tarballSize} bytes). Requesting upload URL...`);
@@ -92,7 +91,7 @@ export const uploadAssetChunk = async ({
           filePath: tarballPath,
           signedUrl: tarballUploadUrl,
           size: tarballSize,
-          contentType: "application/x-tar",
+          contentType: "application/octet-stream",
         }),
       {
         onRetry: (attempt, error) => {
@@ -102,9 +101,7 @@ export const uploadAssetChunk = async ({
               : error instanceof Error
                 ? error.message
                 : String(error);
-          logger.warn(
-            `Transient upload error on attempt ${attempt} (${reason}); will retry...`,
-          );
+          logger.warn(`Transient upload error on attempt ${attempt} (${reason}); will retry...`);
         },
       },
     );
@@ -122,4 +119,57 @@ export const uploadAssetChunk = async ({
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+};
+
+/**
+ * Streams a tar of `cwd` through `DeflateRaw` and writes the compressed
+ * bytes to `destination`. Produces the same on-disk format as the
+ * non-chunked `tar.d` archives (raw deflate, no zlib header) so the asset
+ * server can decompress chunks with the existing
+ * `streamDownloadAndInflateTar` helper.
+ */
+const writeCompressedTar = ({
+  cwd,
+  destination,
+  prefix,
+}: {
+  cwd: string;
+  destination: string;
+  prefix?: string;
+}): Promise<void> => {
+  return new Promise<void>((resolvePromise, reject) => {
+    const deflate = new DeflateRaw({ level: COMPRESSION_LEVEL });
+    const outStream = createWriteStream(destination);
+    const tarStream = tarCreate(
+      {
+        cwd,
+        portable: true,
+        ...(prefix ? { prefix } : {}),
+      },
+      ["."],
+    );
+
+    const onError = (err: unknown) => {
+      tarStream.removeAllListeners();
+      outStream.removeAllListeners();
+      outStream.destroy();
+      reject(err);
+    };
+
+    tarStream.on("data", (chunk: Buffer) => {
+      const compressed = deflate.process(chunk);
+      if (compressed.length > 0) {
+        outStream.write(compressed);
+      }
+    });
+    tarStream.on("error", onError);
+    outStream.on("error", onError);
+    tarStream.on("end", () => {
+      const finalChunk = deflate.process(Buffer.alloc(0), zlibConstants.Z_FINISH);
+      if (finalChunk.length > 0) {
+        outStream.write(finalChunk);
+      }
+      outStream.end(() => resolvePromise());
+    });
+  });
 };

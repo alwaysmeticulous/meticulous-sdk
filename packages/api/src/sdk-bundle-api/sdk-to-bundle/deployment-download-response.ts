@@ -5,7 +5,6 @@ export interface DownloadedAssetChunk {
   name: string;
   versionId: string;
   tarballUrl: string;
-  indexUrl: string;
 }
 
 export interface SingleArchiveDownloadResponse {
@@ -21,6 +20,4 @@ export interface ChunkedDownloadResponse {
   metadata: AssetUploadMetadata;
 }
 
-export type DownloadDeploymentResponse =
-  | SingleArchiveDownloadResponse
-  | ChunkedDownloadResponse;
+export type DownloadDeploymentResponse = SingleArchiveDownloadResponse | ChunkedDownloadResponse;
