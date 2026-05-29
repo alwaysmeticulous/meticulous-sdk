@@ -74,10 +74,18 @@ export interface CompleteAssetUploadParams extends ProjectIdentifier {
   multipartUploadInfo?: MultiPartUploadInfo;
 }
 
+export interface ChunkPathOverlap {
+  path: string;
+  lowerChunk: { name: string; versionId: string };
+  upperChunk: { name: string; versionId: string };
+}
+
 export interface CompleteAssetUploadResponse {
   testRun?: TestRun;
   baseNotFound?: boolean;
   message?: string;
+  overlaps?: ChunkPathOverlap[];
+  overlapsTruncated?: boolean;
 }
 
 export interface CompleteContainerUploadParams extends ProjectIdentifier {
@@ -265,6 +273,7 @@ export type RequestAssetChunkUploadResponse =
   | {
       alreadyUploaded: false;
       tarballUploadUrl: string;
+      filesIndexUploadUrl: string;
       previousStatus: AssetChunkUploadPreviousStatus | null;
     };
 

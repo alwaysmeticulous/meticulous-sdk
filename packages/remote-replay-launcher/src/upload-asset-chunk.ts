@@ -1,5 +1,5 @@
 import { createWriteStream } from "fs";
-import { mkdtemp, rm, stat } from "fs/promises";
+import { mkdtemp, rm, stat, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join, resolve } from "path";
 import { constants as zlibConstants } from "zlib";
@@ -73,7 +73,7 @@ export const uploadAssetChunk = async ({
   const tarballPath = join(tempDir, "chunk.tar.d");
   try {
     logger.info(`Building asset chunk tarball for ${chunkName}@${chunkVersionId}...`);
-    await writeCompressedTar({
+    const { filePaths } = await writeCompressedTar({
       cwd: resolvedDir,
       destination: tarballPath,
       ...(chunkAssetsDirectoryPrefix ? { prefix: chunkAssetsDirectoryPrefix } : {}),
@@ -96,7 +96,7 @@ export const uploadAssetChunk = async ({
       return;
     }
 
-    const { tarballUploadUrl, previousStatus } = response;
+    const { tarballUploadUrl, filesIndexUploadUrl, previousStatus } = response;
     switch (previousStatus) {
       case null:
         break;
@@ -122,27 +122,46 @@ export const uploadAssetChunk = async ({
         break;
     }
 
-    logger.info("Uploading tarball to S3...");
-    await retryTransientUploadErrors(
-      () =>
-        putFileToSignedUrl({
-          filePath: tarballPath,
-          signedUrl: tarballUploadUrl,
-          size: tarballSize,
-          contentType: "application/octet-stream",
-        }),
-      {
-        onRetry: (attempt, error) => {
-          const reason =
-            error instanceof UploadError
-              ? `HTTP ${error.statusCode}`
-              : error instanceof Error
-                ? error.message
-                : String(error);
-          logger.warn(`Transient upload error on attempt ${attempt} (${reason}); will retry...`);
-        },
-      },
+    const filesIndexPath = join(tempDir, "files.json");
+    await writeFile(filesIndexPath, JSON.stringify(filePaths));
+    const { size: filesIndexSize } = await stat(filesIndexPath);
+
+    logger.info(
+      `Uploading tarball and files index to S3 (${filePaths.length} files)...`,
     );
+    const onRetry = (attempt: number, error: unknown) => {
+      const reason =
+        error instanceof UploadError
+          ? `HTTP ${error.statusCode}`
+          : error instanceof Error
+            ? error.message
+            : String(error);
+      logger.warn(
+        `Transient upload error on attempt ${attempt} (${reason}); will retry...`,
+      );
+    };
+    await Promise.all([
+      retryTransientUploadErrors(
+        () =>
+          putFileToSignedUrl({
+            filePath: tarballPath,
+            signedUrl: tarballUploadUrl,
+            size: tarballSize,
+            contentType: "application/octet-stream",
+          }),
+        { onRetry },
+      ),
+      retryTransientUploadErrors(
+        () =>
+          putFileToSignedUrl({
+            filePath: filesIndexPath,
+            signedUrl: filesIndexUploadUrl,
+            size: filesIndexSize,
+            contentType: "application/json",
+          }),
+        { onRetry },
+      ),
+    ]);
 
     logger.info("Finalizing chunk upload...");
     await completeAssetChunkUpload({
@@ -173,15 +192,21 @@ const writeCompressedTar = ({
   cwd: string;
   destination: string;
   prefix?: string;
-}): Promise<void> => {
-  return new Promise<void>((resolvePromise, reject) => {
+}): Promise<{ filePaths: string[] }> => {
+  return new Promise<{ filePaths: string[] }>((resolvePromise, reject) => {
     const deflate = new DeflateRaw({ level: COMPRESSION_LEVEL });
     const outStream = createWriteStream(destination);
+    const filePaths: string[] = [];
     const tarStream = tarCreate(
       {
         cwd,
         portable: true,
         ...(prefix ? { prefix } : {}),
+        onWriteEntry(entry) {
+          if (entry.type === "File") {
+            filePaths.push(entry.path);
+          }
+        },
       },
       ["."],
     );
@@ -206,7 +231,7 @@ const writeCompressedTar = ({
       if (finalChunk.length > 0) {
         outStream.write(finalChunk);
       }
-      outStream.end(() => resolvePromise());
+      outStream.end(() => resolvePromise({ filePaths }));
     });
   });
 };

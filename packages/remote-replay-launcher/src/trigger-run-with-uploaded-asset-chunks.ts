@@ -1,5 +1,6 @@
 import { AssetUploadMetadata, TestRun } from "@alwaysmeticulous/api";
 import {
+  ChunkPathOverlap,
   createClient,
   ProjectAssetChunkReference,
   ProjectIdentifier,
@@ -25,6 +26,8 @@ export interface TriggerRunWithUploadedAssetChunksOptions
 export interface TriggerRunWithUploadedAssetChunksResult {
   testRun: TestRun | null;
   message?: string;
+  overlaps?: ChunkPathOverlap[];
+  overlapsTruncated?: boolean;
 }
 
 /**
@@ -70,6 +73,10 @@ export const triggerRunWithUploadedAssetChunks = async ({
     fallbackFn: () =>
       runWithUploadedAssetChunks({ ...args, mustHaveBase: false }),
   });
+  // Overlaps are computed on the initial response only; they describe the
+  // manifest itself, which doesn't change across poll retries.
+  const overlaps = initialResult?.overlaps;
+  const overlapsTruncated = initialResult?.overlapsTruncated;
 
   Sentry.captureMessage("Test run triggered against uploaded asset chunks", {
     level: "debug",
@@ -87,5 +94,11 @@ export const triggerRunWithUploadedAssetChunks = async ({
   return {
     testRun: testRun ?? null,
     ...(message ? { message } : {}),
+    ...(overlaps && overlaps.length > 0
+      ? {
+          overlaps,
+          ...(overlapsTruncated ? { overlapsTruncated: true } : {}),
+        }
+      : {}),
   };
 };

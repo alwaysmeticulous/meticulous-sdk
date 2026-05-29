@@ -114,6 +114,7 @@ export {
   RequestGitDiffUploadParams,
   RequestGitDiffUploadResponse,
   requestGitDiffUpload,
+  ChunkPathOverlap,
   CompleteAssetUploadParams,
   CompleteAssetUploadResponse,
   completeAssetUpload,

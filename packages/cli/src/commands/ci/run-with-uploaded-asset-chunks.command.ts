@@ -174,6 +174,19 @@ const handler = async ({
       ...projectIdentifier,
     });
     testRunId = result.testRun?.id ?? null;
+    if (result.overlaps && result.overlaps.length > 0) {
+      logger.warn(
+        `${result.overlaps.length} file path(s) appear in multiple chunks. Later chunks in the manifest override earlier ones.`,
+      );
+      for (const overlap of result.overlaps) {
+        logger.warn(
+          `  - ${overlap.path}: ${overlap.lowerChunk.name}@${overlap.lowerChunk.versionId} → ${overlap.upperChunk.name}@${overlap.upperChunk.versionId}`,
+        );
+      }
+      if (result.overlapsTruncated) {
+        logger.warn(`  ... and more overlapping paths (not shown).`);
+      }
+    }
   } catch (error) {
     if (isOutOfDateClientError(error)) {
       throw new OutOfDateCLIError();
