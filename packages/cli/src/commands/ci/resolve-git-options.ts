@@ -1,4 +1,6 @@
 import {
+  getBitbucketPullRequestBaseShaFromCi,
+  getBitbucketPullRequestCommitShaFromCi,
   getCommitSha,
   getGitDiff,
   getLocalBaseSha,
@@ -125,15 +127,20 @@ const resolveFromExplicitArgs = async ({
 
   if (commitSha_) {
     logger.info(`Commit SHA provided: ${commitSha}`);
-  } else {
+  } else if (!getBitbucketPullRequestCommitShaFromCi()) {
     logger.info(`Commit SHA inferred from local repo: ${commitSha}`);
   }
 
-  const baseSha = baseSha_ || undefined;
+  const ciBaseSha = getBitbucketPullRequestBaseShaFromCi();
+  const baseSha = baseSha_ || ciBaseSha || undefined;
   const gitDiffOutput = gitDiffOutput_ || undefined;
 
-  if (baseSha) {
+  if (baseSha_) {
     logger.info(`Base SHA provided: ${baseSha}`);
+  } else if (ciBaseSha) {
+    logger.info(
+      `Base SHA inferred from Bitbucket Pipelines PR environment: ${baseSha}`,
+    );
   }
   if (gitDiffOutput) {
     logger.info(`Git diff output provided: ${gitDiffOutput.length} chars`);

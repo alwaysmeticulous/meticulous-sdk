@@ -29,6 +29,24 @@ const execFilePromise = (
   });
 };
 
+export const getBitbucketPullRequestCommitShaFromCi = (): string | undefined => {
+  const prId = process.env.BITBUCKET_PR_ID;
+  const commitSha = process.env.BITBUCKET_COMMIT;
+  if (prId && commitSha) {
+    return commitSha.trim();
+  }
+  return undefined;
+};
+
+export const getBitbucketPullRequestBaseShaFromCi = (): string | undefined => {
+  const prId = process.env.BITBUCKET_PR_ID;
+  const destinationCommit = process.env.BITBUCKET_PR_DESTINATION_COMMIT;
+  if (prId && destinationCommit) {
+    return destinationCommit.trim();
+  }
+  return undefined;
+};
+
 const getGitRevParseHead: (cwd?: string) => Promise<string> = (cwd) => {
   return new Promise((resolve, reject) => {
     exec("git rev-parse HEAD", { encoding: "utf-8", cwd }, (error, output) => {
@@ -50,6 +68,14 @@ export const getCommitSha: (
   }
 
   const logger = initLogger();
+
+  const bitbucketPullRequestCommitSha = getBitbucketPullRequestCommitShaFromCi();
+  if (bitbucketPullRequestCommitSha) {
+    logger.info(
+      `Commit SHA inferred from Bitbucket Pipelines PR environment: ${bitbucketPullRequestCommitSha}`,
+    );
+    return bitbucketPullRequestCommitSha;
+  }
 
   try {
     const gitCommitSha = (await getGitRevParseHead(options?.cwd)).trim();
