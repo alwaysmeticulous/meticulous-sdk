@@ -12,9 +12,18 @@ describe("wrapInShouldRecordCondition", () => {
         ].join("\n")
       )
     ).toMatchInlineSnapshot(`
-      "if (window.origin !== 'null' && !["https://app.meticulous.ai/docs/recording-a-test","https://app.meticulous.ai/docs/recording-a-login-flow","https://app.meticulous.ai/docs/recording-a-login-flow-saving"].includes(window.document.location.toString()) && !["chrome://","chrome-error://","about:"].some((protocol) => window.document.location.toString().startsWith(protocol))) {
+      "(function() {
+        var __meticulousRunRecorder = function() {
+      if (window.origin !== 'null' && !["https://app.meticulous.ai/docs/recording-a-test","https://app.meticulous.ai/docs/recording-a-login-flow","https://app.meticulous.ai/docs/recording-a-login-flow-saving"].includes(window.document.location.toString()) && !["chrome://","chrome-error://","about:"].some((protocol) => window.document.location.toString().startsWith(protocol))) {
       console.log('Hello World')
       }
+        };
+        if (document.documentElement) {
+          __meticulousRunRecorder();
+        } else {
+          document.addEventListener("DOMContentLoaded", __meticulousRunRecorder, { once: true });
+        }
+      })();
       //# sourceMappingURL=main.bundle.js.map
       "
     `);

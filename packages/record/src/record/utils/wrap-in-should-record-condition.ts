@@ -20,7 +20,9 @@ import {
  * though this has some complexities).
  */
 export const wrapInShouldRecordCondition = (recorderCode: string) =>
-  wrapScriptInCondition(recorderCode, constructShouldRecordCondition());
+  wrapScriptWhenDocumentElementExists(
+    wrapScriptInCondition(recorderCode, constructShouldRecordCondition()),
+  );
 
 const constructShouldRecordCondition = () => {
   // We don't record on the built in start pages
@@ -52,6 +54,46 @@ const constructShouldRecordCondition = () => {
     )}.some((protocol) => window.document.location.toString().startsWith(protocol))`;
 
   return shouldRecordFrame;
+};
+
+/**
+ * `evaluateOnNewDocument` runs before the HTML parser creates `<html>`, so
+ * `document.documentElement` can still be null when the recorder bundle executes.
+ * Iframe auto-install observes `document.documentElement` at init time and throws
+ * if it is missing. Defer recorder startup until the root element exists.
+ */
+const wrapScriptWhenDocumentElementExists = (scriptContents: string) => {
+  const lines = scriptContents.split("\n");
+  const { nonEmptyLines, trailingEmptyLines } =
+    splitOutTrailingEmptyLines(lines);
+  const initialLines = nonEmptyLines.slice(0, -1);
+  const lastNonEmptyLine = nonEmptyLines[nonEmptyLines.length - 1];
+  const hasSourceMapComment = lastNonEmptyLine?.startsWith("//#");
+
+  const recorderBody = hasSourceMapComment
+    ? initialLines
+    : [...initialLines, lastNonEmptyLine];
+
+  const deferredWrapper = [
+    "(function() {",
+    "  var __meticulousRunRecorder = function() {",
+    ...recorderBody,
+    "  };",
+    "  if (document.documentElement) {",
+    "    __meticulousRunRecorder();",
+    "  } else {",
+    '    document.addEventListener("DOMContentLoaded", __meticulousRunRecorder, { once: true });',
+    "  }",
+    "})();",
+  ];
+
+  if (hasSourceMapComment) {
+    return [...deferredWrapper, lastNonEmptyLine, ...trailingEmptyLines].join(
+      "\n",
+    );
+  }
+
+  return [...deferredWrapper, ...trailingEmptyLines].join("\n");
 };
 
 /**
