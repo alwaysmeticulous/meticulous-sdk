@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { stat, unlink } from "fs/promises";
-import { IncomingMessage } from "http";
+import { IncomingMessage, request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
 import { join, resolve } from "path";
 import { AssetUploadMetadata, TestRun } from "@alwaysmeticulous/api";
@@ -273,7 +273,8 @@ const putBufferToSignedUrl = async (
       headers["Content-Type"] = options.contentType;
     }
 
-    const req = httpsRequest(
+    const requestFn = signedUrl.startsWith("https:") ? httpsRequest : httpRequest;
+    const req = requestFn(
       signedUrl,
       {
         agent: getProxyAgent(),
