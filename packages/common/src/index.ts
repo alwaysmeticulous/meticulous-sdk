@@ -31,7 +31,6 @@ export {
   hasUncommittedChanges,
   getGitDiff,
   getBitbucketPullRequestCommitShaFromCi,
-  getBitbucketPullRequestBaseShaFromCi,
 } from "./commit-sha.utils";
 export {
   executeWithRetry,

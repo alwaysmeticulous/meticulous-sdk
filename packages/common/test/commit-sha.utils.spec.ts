@@ -85,38 +85,3 @@ describe("getCommitSha", () => {
     expect(execMock).not.toHaveBeenCalled();
   });
 });
-
-describe("getBitbucketPullRequestBaseShaFromCi", () => {
-  const originalEnv = process.env;
-
-  beforeEach(() => {
-    vi.resetModules();
-    process.env = { ...originalEnv };
-  });
-
-  afterEach(() => {
-    process.env = originalEnv;
-  });
-
-  it("returns BITBUCKET_PR_DESTINATION_COMMIT on PR builds", async () => {
-    process.env.BITBUCKET_PR_ID = "42";
-    process.env.BITBUCKET_PR_DESTINATION_COMMIT = "def456dest";
-
-    const { getBitbucketPullRequestBaseShaFromCi } = await import(
-      "../src/commit-sha.utils"
-    );
-
-    expect(getBitbucketPullRequestBaseShaFromCi()).toBe("def456dest");
-  });
-
-  it("returns undefined when BITBUCKET_PR_ID is not set", async () => {
-    delete process.env.BITBUCKET_PR_ID;
-    process.env.BITBUCKET_PR_DESTINATION_COMMIT = "def456dest";
-
-    const { getBitbucketPullRequestBaseShaFromCi } = await import(
-      "../src/commit-sha.utils"
-    );
-
-    expect(getBitbucketPullRequestBaseShaFromCi()).toBeUndefined();
-  });
-});
