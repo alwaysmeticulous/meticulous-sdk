@@ -52,6 +52,29 @@ describe("getCommitSha", () => {
     );
   });
 
+  it("uses git rev-parse in cwd instead of Bitbucket env when cwd is set", async () => {
+    process.env.BITBUCKET_PR_ID = "42";
+    process.env.BITBUCKET_COMMIT = "abc123source";
+
+    execMock.mockImplementation(
+      (_command, options, callback: (error: null, output: string) => void) => {
+        expect(options).toEqual({ encoding: "utf-8", cwd: "/cloned/repo" });
+        callback(null, "cloned-head-sha\n");
+      },
+    );
+
+    const { getCommitSha } = await import("../src/commit-sha.utils");
+
+    await expect(
+      getCommitSha(undefined, { cwd: "/cloned/repo" }),
+    ).resolves.toBe("cloned-head-sha");
+    expect(execMock).toHaveBeenCalledWith(
+      "git rev-parse HEAD",
+      { encoding: "utf-8", cwd: "/cloned/repo" },
+      expect.any(Function),
+    );
+  });
+
   it("prefers an explicit commitSha over Bitbucket CI env vars", async () => {
     process.env.BITBUCKET_PR_ID = "42";
     process.env.BITBUCKET_COMMIT = "abc123source";

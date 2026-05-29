@@ -69,12 +69,15 @@ export const getCommitSha: (
 
   const logger = initLogger();
 
-  const bitbucketPullRequestCommitSha = getBitbucketPullRequestCommitShaFromCi();
-  if (bitbucketPullRequestCommitSha) {
-    logger.info(
-      `Commit SHA inferred from Bitbucket Pipelines PR environment: ${bitbucketPullRequestCommitSha}`,
-    );
-    return bitbucketPullRequestCommitSha;
+  if (!options?.cwd) {
+    const bitbucketPullRequestCommitSha =
+      getBitbucketPullRequestCommitShaFromCi();
+    if (bitbucketPullRequestCommitSha) {
+      logger.info(
+        `Commit SHA inferred from Bitbucket Pipelines PR environment: ${bitbucketPullRequestCommitSha}`,
+      );
+      return bitbucketPullRequestCommitSha;
+    }
   }
 
   try {
