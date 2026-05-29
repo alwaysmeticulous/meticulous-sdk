@@ -20,6 +20,7 @@ export interface UploadContainerOptions extends ProjectIdentifier {
   baseSha?: string | undefined;
   gitDiffOutput?: string | undefined;
   withUncommittedChanges?: boolean | undefined;
+  pullRequestHostingProviderId?: string | undefined;
   waitForBase?: boolean;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
@@ -39,6 +40,7 @@ export const uploadContainer = async ({
   baseSha,
   gitDiffOutput,
   withUncommittedChanges,
+  pullRequestHostingProviderId,
   waitForBase = false,
   containerPort,
   containerEnv,
@@ -128,6 +130,9 @@ export const uploadContainer = async ({
     containerPort,
     containerEnv,
     containerHealthCheckEndpoint,
+    ...(pullRequestHostingProviderId
+      ? { pullRequestHostingProviderId }
+      : {}),
     ...projectIdentifier,
   };
 

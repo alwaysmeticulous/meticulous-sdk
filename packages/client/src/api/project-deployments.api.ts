@@ -67,6 +67,7 @@ export interface CompleteAssetUploadParams extends ProjectIdentifier {
   baseSha?: string | undefined;
   hasGitDiff?: boolean | undefined;
   withUncommittedChanges?: boolean | undefined;
+  pullRequestHostingProviderId?: string | undefined;
   rewrites: AssetUploadMetadata["rewrites"];
   mustHaveBase: boolean;
   createDeployment?: boolean;
@@ -85,6 +86,7 @@ export interface CompleteContainerUploadParams extends ProjectIdentifier {
   baseSha?: string | undefined;
   hasGitDiff?: boolean | undefined;
   withUncommittedChanges?: boolean | undefined;
+  pullRequestHostingProviderId?: string | undefined;
   mustHaveBase: boolean;
   isUserVisible?: boolean;
   skipPreprocessing?: boolean;

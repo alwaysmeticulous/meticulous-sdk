@@ -66,7 +66,7 @@ const handler = async ({
     process.exit(1);
   }
 
-  const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } = await resolveGitOptions({
+  const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges, pullRequestHostingProviderId } = await resolveGitOptions({
     commitSha: commitSha_,
     baseSha: baseSha_,
     gitDiffOutput: gitDiffOutput_,
@@ -112,6 +112,9 @@ const handler = async ({
       ...(baseSha ? { baseSha } : {}),
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
       ...(withUncommittedChanges ? { withUncommittedChanges } : {}),
+      ...(pullRequestHostingProviderId
+        ? { pullRequestHostingProviderId }
+        : {}),
       waitForBase: waitForBase || waitForTestRunToComplete,
       containerPort,
       containerEnv,

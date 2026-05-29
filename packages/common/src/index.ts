@@ -30,7 +30,7 @@ export {
   getLocalBaseSha,
   hasUncommittedChanges,
   getGitDiff,
-  getBitbucketPullRequestCommitShaFromCi,
+  getBitbucketPullRequestHostingProviderIdFromCi,
 } from "./commit-sha.utils";
 export {
   executeWithRetry,

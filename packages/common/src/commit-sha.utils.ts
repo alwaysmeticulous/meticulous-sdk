@@ -29,11 +29,12 @@ const execFilePromise = (
   });
 };
 
-export const getBitbucketPullRequestCommitShaFromCi = (): string | undefined => {
+export const getBitbucketPullRequestHostingProviderIdFromCi = ():
+  | string
+  | undefined => {
   const prId = process.env.BITBUCKET_PR_ID;
-  const commitSha = process.env.BITBUCKET_COMMIT;
-  if (prId && commitSha) {
-    return commitSha.trim();
+  if (prId) {
+    return prId.trim();
   }
   return undefined;
 };
@@ -59,17 +60,6 @@ export const getCommitSha: (
   }
 
   const logger = initLogger();
-
-  if (!options?.cwd) {
-    const bitbucketPullRequestCommitSha =
-      getBitbucketPullRequestCommitShaFromCi();
-    if (bitbucketPullRequestCommitSha) {
-      logger.info(
-        `Commit SHA inferred from Bitbucket Pipelines PR environment: ${bitbucketPullRequestCommitSha}`,
-      );
-      return bitbucketPullRequestCommitSha;
-    }
-  }
 
   try {
     const gitCommitSha = (await getGitRevParseHead(options?.cwd)).trim();

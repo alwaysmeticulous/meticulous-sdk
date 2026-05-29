@@ -33,6 +33,7 @@ export interface UploadAssetsOptions extends ProjectIdentifier {
   baseSha?: string | undefined;
   gitDiffOutput?: string | undefined;
   withUncommittedChanges?: boolean | undefined;
+  pullRequestHostingProviderId?: string | undefined;
   waitForBase?: boolean;
   rewrites?: AssetUploadMetadata["rewrites"];
   createDeployment?: boolean;
@@ -102,6 +103,7 @@ const completeUploadAndWaitForBase = async ({
   createDeployment,
   multipartUploadInfo,
   projectId,
+  pullRequestHostingProviderId,
 }: ProjectIdentifier & {
   client: ReturnType<typeof createClient>;
   uploadId: string;
@@ -109,6 +111,7 @@ const completeUploadAndWaitForBase = async ({
   baseSha?: string | undefined;
   hasGitDiff?: boolean | undefined;
   withUncommittedChanges?: boolean | undefined;
+  pullRequestHostingProviderId?: string | undefined;
   waitForBase: boolean;
   rewrites: AssetUploadMetadata["rewrites"];
   createDeployment: boolean;
@@ -132,6 +135,9 @@ const completeUploadAndWaitForBase = async ({
     archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     ...(multipartUploadInfo ? { multipartUploadInfo } : {}),
     ...(projectId ? { projectId } : {}),
+    ...(pullRequestHostingProviderId
+      ? { pullRequestHostingProviderId }
+      : {}),
   };
 
   const initialResult = await completeAssetUpload(completeAssetUploadArgs);
@@ -173,6 +179,7 @@ const uploadAssetsStreaming = async ({
   baseSha,
   gitDiffOutput,
   withUncommittedChanges,
+  pullRequestHostingProviderId,
   waitForBase = false,
   rewrites = [],
   createDeployment = true,
@@ -227,6 +234,7 @@ const uploadAssetsStreaming = async ({
     createDeployment,
     multipartUploadInfo,
     ...(projectId ? { projectId } : {}),
+    pullRequestHostingProviderId,
   });
 
   return {
@@ -342,6 +350,7 @@ export const uploadAssetsFromZip = async ({
   baseSha,
   gitDiffOutput,
   withUncommittedChanges,
+  pullRequestHostingProviderId,
   waitForBase = false,
   rewrites = [],
   createDeployment = true,
@@ -395,6 +404,7 @@ export const uploadAssetsFromZip = async ({
       waitForBase,
       rewrites,
       createDeployment,
+      pullRequestHostingProviderId,
       ...projectIdentifier,
     });
 

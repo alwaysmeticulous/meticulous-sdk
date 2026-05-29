@@ -80,6 +80,7 @@ export interface UploadAssetsAndTriggerTestRunOptions extends ProjectIdentifier 
   baseSha?: string | undefined;
   gitDiffOutput?: string | undefined;
   withUncommittedChanges?: boolean | undefined;
+  pullRequestHostingProviderId?: string | undefined;
   /**
    * If true, before triggering a test run, the launcher will wait for a base test run to be created. If that is not found,
    * it will trigger a test run without waiting for a base test run.
@@ -97,6 +98,7 @@ export interface UploadContainerAndTriggerTestRunOptions
   baseSha?: string | undefined;
   gitDiffOutput?: string | undefined;
   withUncommittedChanges?: boolean | undefined;
+  pullRequestHostingProviderId?: string | undefined;
   /**
    * If true, before triggering a test run, the launcher will wait for a base test run to be created. If that is not found,
    * it will trigger a test run without waiting for a base test run.

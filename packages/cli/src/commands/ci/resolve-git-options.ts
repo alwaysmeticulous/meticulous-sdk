@@ -1,5 +1,5 @@
 import {
-  getBitbucketPullRequestCommitShaFromCi,
+  getBitbucketPullRequestHostingProviderIdFromCi,
   getCommitSha,
   getGitDiff,
   getLocalBaseSha,
@@ -12,6 +12,7 @@ export interface ResolvedGitOptions {
   baseSha: string | undefined;
   gitDiffOutput: string | undefined;
   withUncommittedChanges: boolean;
+  pullRequestHostingProviderId: string | undefined;
 }
 
 /**
@@ -102,7 +103,7 @@ const resolveFromRepoDirectory = async (
     `Git diff output computed: ${gitDiffOutput.length} chars`,
   );
 
-  return { commitSha, baseSha, gitDiffOutput, withUncommittedChanges: uncommitted };
+  return { commitSha, baseSha, gitDiffOutput, withUncommittedChanges: uncommitted, pullRequestHostingProviderId: undefined };
 };
 
 const resolveFromExplicitArgs = async ({
@@ -126,8 +127,16 @@ const resolveFromExplicitArgs = async ({
 
   if (commitSha_) {
     logger.info(`Commit SHA provided: ${commitSha}`);
-  } else if (!getBitbucketPullRequestCommitShaFromCi()) {
+  } else {
     logger.info(`Commit SHA inferred from local repo: ${commitSha}`);
+  }
+
+  const pullRequestHostingProviderId =
+    getBitbucketPullRequestHostingProviderIdFromCi();
+  if (pullRequestHostingProviderId) {
+    logger.info(
+      `Pull request ID inferred from Bitbucket Pipelines environment: ${pullRequestHostingProviderId}`,
+    );
   }
 
   const baseSha = baseSha_ || undefined;
@@ -140,5 +149,11 @@ const resolveFromExplicitArgs = async ({
     logger.info(`Git diff output provided: ${gitDiffOutput.length} chars`);
   }
 
-  return { commitSha, baseSha, gitDiffOutput, withUncommittedChanges: false };
+  return {
+    commitSha,
+    baseSha,
+    gitDiffOutput,
+    withUncommittedChanges: false,
+    pullRequestHostingProviderId,
+  };
 };
