@@ -1,5 +1,22 @@
 # @alwaysmeticulous/cli
 
+## 2.287.1
+
+### Patch Changes
+
+- [#1176](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1176) [`57dddad`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/57dddad0861feb9f0bfc8947621106298cfe36b7) Thanks [@Genora51](https://github.com/Genora51)! - Auto-detect BitBucket SHAs
+
+- Updated dependencies [[`57dddad`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/57dddad0861feb9f0bfc8947621106298cfe36b7)]:
+  - @alwaysmeticulous/common@2.287.1
+  - @alwaysmeticulous/client@2.287.1
+  - @alwaysmeticulous/debug-workspace@2.287.1
+  - @alwaysmeticulous/downloading-helpers@2.287.1
+  - @alwaysmeticulous/record@2.287.1
+  - @alwaysmeticulous/remote-replay-launcher@2.287.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.287.1
+  - @alwaysmeticulous/sentry@2.287.1
+  - @alwaysmeticulous/tunnels-client@2.287.1
+
 ## 2.287.0
 
 ### Patch Changes
