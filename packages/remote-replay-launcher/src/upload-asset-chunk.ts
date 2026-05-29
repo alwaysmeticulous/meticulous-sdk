@@ -30,6 +30,11 @@ export interface UploadAssetChunkOptions {
   chunkAssetsDirectory: string;
   chunkAssetsDirectoryPrefix?: string | undefined;
   commitSha?: string | undefined;
+  /**
+   * When true, the server re-issues a presigned URL even if the chunk is
+   * already `uploaded`. Use for recovery from corrupted S3 objects.
+   */
+  force?: boolean;
 }
 
 /**
@@ -47,6 +52,7 @@ export const uploadAssetChunk = async ({
   chunkAssetsDirectory,
   chunkAssetsDirectoryPrefix,
   commitSha,
+  force,
 }: UploadAssetChunkOptions): Promise<void> => {
   const logger = initLogger();
 
@@ -82,6 +88,7 @@ export const uploadAssetChunk = async ({
       chunkVersionId,
       tarballSize,
       ...(commitSha ? { commitSha } : {}),
+      ...(force ? { force: true } : {}),
     });
 
     if (response.alreadyUploaded) {
@@ -89,7 +96,31 @@ export const uploadAssetChunk = async ({
       return;
     }
 
-    const { tarballUploadUrl } = response;
+    const { tarballUploadUrl, previousStatus } = response;
+    switch (previousStatus) {
+      case null:
+        break;
+      case "deleted":
+        logger.info(
+          `Asset chunk ${chunkName}@${chunkVersionId} was previously deleted by retention policy; re-uploading.`,
+        );
+        break;
+      case "failed_uploading":
+        logger.info(
+          `Asset chunk ${chunkName}@${chunkVersionId} had a prior failed upload attempt; re-uploading.`,
+        );
+        break;
+      case "pending_upload":
+        logger.warn(
+          `Asset chunk ${chunkName}@${chunkVersionId} appears to have a concurrent upload in progress; this upload will race.`,
+        );
+        break;
+      case "uploaded":
+        logger.warn(
+          `Force-overwriting existing asset chunk ${chunkName}@${chunkVersionId}.`,
+        );
+        break;
+    }
 
     logger.info("Uploading tarball to S3...");
     await retryTransientUploadErrors(
@@ -118,7 +149,6 @@ export const uploadAssetChunk = async ({
       client,
       chunkName,
       chunkVersionId,
-      uploadStatus: "uploaded",
       ...(commitSha ? { commitSha } : {}),
     });
 

@@ -246,21 +246,31 @@ export const completeContainerUpload = async ({
   return data;
 };
 
+export type AssetChunkUploadPreviousStatus =
+  | "pending_upload"
+  | "uploaded"
+  | "deleted"
+  | "failed_uploading";
+
 export interface RequestAssetChunkUploadParams {
   chunkName: string;
   chunkVersionId: string;
   tarballSize: number;
   commitSha?: string | undefined;
+  force?: boolean;
 }
 
 export type RequestAssetChunkUploadResponse =
   | { alreadyUploaded: true }
-  | { alreadyUploaded: false; tarballUploadUrl: string };
+  | {
+      alreadyUploaded: false;
+      tarballUploadUrl: string;
+      previousStatus: AssetChunkUploadPreviousStatus | null;
+    };
 
 export interface CompleteAssetChunkUploadParams {
   chunkName: string;
   chunkVersionId: string;
-  uploadStatus?: "uploading" | "uploaded";
   commitSha?: string | undefined;
 }
 

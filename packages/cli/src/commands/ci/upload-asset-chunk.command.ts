@@ -19,6 +19,7 @@ interface Options {
   chunkAssetsDirectory: string;
   chunkAssetsDirectoryPrefix?: string | undefined;
   commitSha?: string | undefined;
+  force?: boolean;
 }
 
 const handler = async ({
@@ -28,6 +29,7 @@ const handler = async ({
   chunkAssetsDirectory,
   chunkAssetsDirectoryPrefix,
   commitSha: commitSha_,
+  force,
 }: Options): Promise<void> => {
   const logger = initLogger();
 
@@ -59,6 +61,7 @@ const handler = async ({
         ? { chunkAssetsDirectoryPrefix }
         : {}),
       commitSha,
+      ...(force ? { force: true } : {}),
     });
   } catch (error) {
     if (isOutOfDateClientError(error)) {
@@ -97,6 +100,12 @@ export const ciUploadAssetChunkCommand: CommandModule<unknown, Options> = {
         "Optional path prefix prepended to every entry in the chunk (e.g. 'static/assets'). Files in chunkAssetsDirectory will be served under this prefix at replay time.",
     },
     commitSha: OPTIONS.commitSha,
+    force: {
+      boolean: true,
+      default: false,
+      description:
+        "Re-upload even if a chunk with the same name and versionId is already uploaded. Use for recovery; the server will overwrite the existing chunk.",
+    },
   },
   handler: wrapHandler(handler),
 };
