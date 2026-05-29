@@ -92,7 +92,7 @@ export async function bootstrapPage({
   await page.evaluateOnNewDocument(
     (requiredOrigins, docsPage) => {
       if (window.parent !== window) {
-        return; // Do not add redirect iframes to CSP warnings, since we don't try to record in iFrames anyway
+        return; // Only the top frame should trigger the bypass-CSP redirect; child frames must not navigate the whole tab.
       }
       addEventListener("securitypolicyviolation", (event) => {
         if (

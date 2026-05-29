@@ -58,9 +58,14 @@ const constructShouldRecordCondition = () => {
 
 /**
  * `evaluateOnNewDocument` runs before the HTML parser creates `<html>`, so
- * `document.documentElement` can still be null when the recorder bundle executes.
+ * `document.documentElement` can be null when the recorder bundle executes.
  * Iframe auto-install observes `document.documentElement` at init time and throws
- * if it is missing. Defer recorder startup until the root element exists.
+ * if it is missing, aborting the whole recorder bootstrap.
+ *
+ * Defer recorder startup only until the root element is attached — not until
+ * `DOMContentLoaded` — so network/DOM hooks still install as early as possible.
+ * `document` is always a valid node, so we can observe it for the insertion of
+ * `documentElement` even while `documentElement` itself is null.
  */
 const wrapScriptWhenDocumentElementExists = (scriptContents: string) => {
   const lines = scriptContents.split("\n");
@@ -82,7 +87,13 @@ const wrapScriptWhenDocumentElementExists = (scriptContents: string) => {
     "  if (document.documentElement) {",
     "    __meticulousRunRecorder();",
     "  } else {",
-    '    document.addEventListener("DOMContentLoaded", __meticulousRunRecorder, { once: true });',
+    "    var __meticulousRootObserver = new MutationObserver(function() {",
+    "      if (document.documentElement) {",
+    "        __meticulousRootObserver.disconnect();",
+    "        __meticulousRunRecorder();",
+    "      }",
+    "    });",
+    "    __meticulousRootObserver.observe(document, { childList: true });",
     "  }",
     "})();",
   ];
