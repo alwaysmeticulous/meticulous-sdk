@@ -73,6 +73,8 @@ export {
   SessionContext,
   ExpiringImage,
   CustomRecordingType,
+  HttpSpanAttributes,
+  SerializedBackendSpan,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export {
   SequenceNumber,
