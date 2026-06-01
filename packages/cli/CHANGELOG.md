@@ -1,5 +1,12 @@
 # @alwaysmeticulous/cli
 
+## 2.287.2
+
+### Patch Changes
+
+- Updated dependencies [[`3020c53`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/3020c53115e1bc39d89dab43f7f440d0b782a047)]:
+  - @alwaysmeticulous/record@2.287.2
+
 ## 2.287.1
 
 ### Patch Changes
