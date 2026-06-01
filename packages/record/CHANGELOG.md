@@ -1,5 +1,11 @@
 # @alwaysmeticulous/record
 
+## 2.287.2
+
+### Patch Changes
+
+- [#1175](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1175) [`3020c53`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/3020c53115e1bc39d89dab43f7f440d0b782a047) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Set `window.__meticulous.snippetScriptSrc` during CLI recorder bootstrap so the recorder can auto-install into same-origin iframes. When the recorder is injected via Puppeteer's `evaluateOnNewDocument` there is no `<script>` tag to derive the snippet URL from, so iframe auto-install previously never ran. This fixes `record session` / `record login` (and other `bootstrapRecordingPage` consumers such as the crawler) not recording same-origin iframe content.
+
 ## 2.287.1
 
 ### Patch Changes
