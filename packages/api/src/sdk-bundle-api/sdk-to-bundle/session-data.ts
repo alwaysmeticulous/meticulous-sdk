@@ -95,6 +95,12 @@ export interface SessionData {
    * Only present on some recordings since ~Feb 2026.
    */
   initialNavigationResponse?: HarResponse;
+
+  /**
+   * Backend spans captured by the backend recorder.
+   * Only present on recordings since ~June 2026.
+   */
+  backendSpans?: SerializedBackendSpan[];
 }
 
 export interface WindowData {
@@ -348,4 +354,72 @@ export interface ExpiringImage {
   height: number;
   compressionStrategy: string;
   data: string;
+}
+
+export interface HttpSpanAttributes {
+  "http.request.method"?: string;
+  "http.request.method_original"?: string;
+  "http.response.status_code"?: number;
+  "http.route"?: string;
+  "url.full"?: string;
+  "url.path"?: string;
+  "url.query"?: string;
+  "url.scheme"?: string;
+  "server.address"?: string;
+  "server.port"?: number;
+  "client.address"?: string;
+  "network.peer.address"?: string;
+  "network.peer.port"?: number;
+  "network.protocol.version"?: string;
+  "user_agent.original"?: string;
+  "user_agent.synthetic.type"?: string;
+  "error.type"?: string;
+
+  "http.url"?: string;
+  "http.method"?: string;
+  "http.target"?: string;
+  "http.host"?: string;
+  "http.scheme"?: string;
+  "http.status_code"?: number;
+  "http.status_text"?: string;
+  "http.flavor"?: string;
+  "http.user_agent"?: string;
+  "http.client_ip"?: string;
+  "http.server_name"?: string;
+  "http.request_content_length"?: number;
+  "http.request_content_length_uncompressed"?: number;
+  "http.response_content_length"?: number;
+  "http.response_content_length_uncompressed"?: number;
+  "http.error_name"?: string;
+  "http.error_message"?: string;
+  "net.host.ip"?: string;
+  "net.host.name"?: string;
+  "net.host.port"?: number;
+  "net.peer.ip"?: string;
+  "net.peer.name"?: string;
+  "net.peer.port"?: number;
+  "net.transport"?: string;
+
+  "http.request.body"?: string;
+  "http.request.body.truncated"?: boolean;
+  "http.response.body"?: string;
+  "http.response.body.truncated"?: boolean;
+
+  "meticulous.frontend_session_id"?: string;
+
+  [key: `http.request.header.${string}`]: string[] | undefined;
+  [key: `http.response.header.${string}`]: string[] | undefined;
+}
+
+export interface SerializedBackendSpan {
+  name: string;
+  traceId: string;
+  spanId: string;
+  parentSpanId: string | undefined;
+  kind: number;
+  status: unknown;
+  startTimeMs: number;
+  endTimeMs: number;
+  durationMs: number;
+  attributes: HttpSpanAttributes;
 }
