@@ -20,9 +20,7 @@ import {
  * though this has some complexities).
  */
 export const wrapInShouldRecordCondition = (recorderCode: string) =>
-  wrapScriptWhenDocumentElementExists(
-    wrapScriptInCondition(recorderCode, constructShouldRecordCondition()),
-  );
+  wrapScriptInCondition(recorderCode, constructShouldRecordCondition());
 
 const constructShouldRecordCondition = () => {
   // We don't record on the built in start pages
@@ -54,57 +52,6 @@ const constructShouldRecordCondition = () => {
     )}.some((protocol) => window.document.location.toString().startsWith(protocol))`;
 
   return shouldRecordFrame;
-};
-
-/**
- * `evaluateOnNewDocument` runs before the HTML parser creates `<html>`, so
- * `document.documentElement` can be null when the recorder bundle executes.
- * Iframe auto-install observes `document.documentElement` at init time and throws
- * if it is missing, aborting the whole recorder bootstrap.
- *
- * Defer recorder startup only until the root element is attached — not until
- * `DOMContentLoaded` — so network/DOM hooks still install as early as possible.
- * `document` is always a valid node, so we can observe it for the insertion of
- * `documentElement` even while `documentElement` itself is null.
- */
-const wrapScriptWhenDocumentElementExists = (scriptContents: string) => {
-  const lines = scriptContents.split("\n");
-  const { nonEmptyLines, trailingEmptyLines } =
-    splitOutTrailingEmptyLines(lines);
-  const initialLines = nonEmptyLines.slice(0, -1);
-  const lastNonEmptyLine = nonEmptyLines[nonEmptyLines.length - 1];
-  const hasSourceMapComment = lastNonEmptyLine?.startsWith("//#");
-
-  const recorderBody = hasSourceMapComment
-    ? initialLines
-    : [...initialLines, lastNonEmptyLine];
-
-  const deferredWrapper = [
-    "(function() {",
-    "  var __meticulousRunRecorder = function() {",
-    ...recorderBody,
-    "  };",
-    "  if (document.documentElement) {",
-    "    __meticulousRunRecorder();",
-    "  } else {",
-    "    var __meticulousRootObserver = new MutationObserver(function() {",
-    "      if (document.documentElement) {",
-    "        __meticulousRootObserver.disconnect();",
-    "        __meticulousRunRecorder();",
-    "      }",
-    "    });",
-    "    __meticulousRootObserver.observe(document, { childList: true });",
-    "  }",
-    "})();",
-  ];
-
-  if (hasSourceMapComment) {
-    return [...deferredWrapper, lastNonEmptyLine, ...trailingEmptyLines].join(
-      "\n",
-    );
-  }
-
-  return [...deferredWrapper, ...trailingEmptyLines].join("\n");
 };
 
 /**
