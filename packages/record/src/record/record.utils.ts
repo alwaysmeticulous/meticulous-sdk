@@ -4,6 +4,7 @@ import {
   METICULOUS_BYPASS_CSP_DOCS_URL,
   REQUIRED_CSP_ORIGINS,
 } from "./constants";
+import { getRecordingSnippetUrl } from "./get-recording-snippet-url";
 import { provideCookieAccess } from "./utils/provide-cookie-access";
 import { wrapInShouldRecordCondition } from "./utils/wrap-in-should-record-condition";
 
@@ -18,6 +19,7 @@ interface MeticulousRecorderWindow {
 
   __meticulous?: {
     initialiseRecorder?: () => void;
+    snippetScriptSrc?: string;
   };
 }
 
@@ -42,6 +44,7 @@ export async function bootstrapPage({
   disablePasswordRedaction?: boolean;
 }): Promise<void> {
   const recordingSnippetFile = await readFile(recordingSnippet, "utf8");
+  const snippetScriptUrl = getRecordingSnippetUrl();
 
   await page.evaluateOnNewDocument(
     ({
@@ -50,8 +53,11 @@ export async function bootstrapPage({
       recordingSource,
       uploadIntervalMs,
       disablePasswordRedaction,
+      snippetScriptUrl,
     }) => {
       const recorderWindow = window as MeticulousRecorderWindow;
+      recorderWindow.__meticulous = recorderWindow.__meticulous || {};
+      recorderWindow.__meticulous.snippetScriptSrc ??= snippetScriptUrl;
       recorderWindow["METICULOUS_RECORDING_TOKEN"] = recordingToken;
       recorderWindow["METICULOUS_APP_COMMIT_HASH"] = appCommitHash;
       recorderWindow["METICULOUS_FORCE_RECORDING"] = true;
@@ -71,6 +77,7 @@ export async function bootstrapPage({
       recordingSource,
       uploadIntervalMs,
       disablePasswordRedaction,
+      snippetScriptUrl,
     }
   );
 
@@ -85,7 +92,7 @@ export async function bootstrapPage({
   await page.evaluateOnNewDocument(
     (requiredOrigins, docsPage) => {
       if (window.parent !== window) {
-        return; // Do not add redirect iframes to CSP warnings, since we don't try to record in iFrames anyway
+        return; // Only the top frame should trigger the bypass-CSP redirect; child frames must not navigate the whole tab.
       }
       addEventListener("securitypolicyviolation", (event) => {
         if (

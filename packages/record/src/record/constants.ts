@@ -1,3 +1,5 @@
+export const RECORDING_SNIPPET_ASSET_PATH = "v1/meticulous.js";
+
 export const DEFAULT_UPLOAD_INTERVAL_MS = 1_000; // 1 second
 
 export const DEFAULT_NAVIGATION_TIMEOUT_MS = 120_000; // 2 minutes
