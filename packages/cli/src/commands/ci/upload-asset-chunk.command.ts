@@ -18,7 +18,7 @@ interface Options {
   chunkAssetsDirectory: string;
   chunkAssetsDirectoryPrefix?: string | undefined;
   commitSha?: string | undefined;
-  force?: boolean;
+  force: boolean;
 }
 
 const handler = async ({
@@ -60,7 +60,7 @@ const handler = async ({
       chunkAssetsDirectory,
       ...(chunkAssetsDirectoryPrefix ? { chunkAssetsDirectoryPrefix } : {}),
       commitSha,
-      ...(force ? { force: true } : {}),
+      force,
       ...projectIdentifier,
     });
   } catch (error) {
