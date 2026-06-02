@@ -146,3 +146,17 @@ export { AssetUploadMetadata } from "./sdk-bundle-api/sdk-to-bundle/asset-upload
 export { S3Location } from "./s3.types";
 export { CompanionAssetsInfo } from "./sdk-bundle-api/sdk-to-bundle/companion-assets";
 export { DeploymentArchiveType } from "./sdk-bundle-api/sdk-to-bundle/deployment-archive-type";
+export {
+  Snapshot,
+  CustomCheckInput,
+  CustomCheckVerdict,
+  CustomCheckOutput,
+  CustomCheckReport,
+  MarkdownReport,
+  CustomCheck,
+  CustomCheckPluginManifest,
+  PluginManifest,
+  NetworkRequestSnapshotData,
+  NETWORK_REQUESTS_SNAPSHOT_TYPE,
+  CUSTOM_CHECK_SUMMARY_MAX_LENGTH,
+} from "./custom-checks.types";

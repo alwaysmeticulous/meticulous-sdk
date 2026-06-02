@@ -15,6 +15,7 @@ import { debugCommand } from "./commands/debug/index";
 import { deprecatedAliases } from "./commands/deprecated-aliases";
 import { downloadCommand } from "./commands/download/index";
 import { localCommand } from "./commands/local";
+import { pluginsCommand } from "./commands/plugins/index";
 import { projectCommand } from "./commands/project/index";
 import { recordCommand } from "./commands/record/index";
 import { replayCommand } from "./commands/replay.command";
@@ -43,6 +44,7 @@ export const main = async (): Promise<void> => {
     .command(debugCommand)
     .command(downloadCommand)
     .command(localCommand)
+    .command(pluginsCommand)
     .command(projectCommand)
     .command(recordCommand)
     .command(replayCommand)
