@@ -142,7 +142,7 @@ export const uploadAssetChunk = async ({
     const { size: filesIndexSize } = await stat(filesIndexPath);
 
     logger.info(
-      `Uploading tarball and files index to S3 (${filePaths.length} files)...`,
+      `Uploading tarball and files index (${filePaths.length} files)...`,
     );
     const onRetry = (attempt: number, error: unknown) => {
       const reason =
