@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.288.0
+
+### Minor Changes
+
+- [#1181](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1181) [`87dde72`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/87dde72040ec16638df12d3914c58a48f2d5a39b) Thanks [@dennysem](https://github.com/dennysem)! - add backendSpans to SessionData
+
 ## 2.286.0
 
 ### Minor Changes

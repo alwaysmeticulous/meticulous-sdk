@@ -1,5 +1,14 @@
 # @alwaysmeticulous/debug-workspace
 
+## 2.288.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @alwaysmeticulous/client@2.288.0
+  - @alwaysmeticulous/common@2.287.1
+  - @alwaysmeticulous/downloading-helpers@2.288.0
+
 ## 2.287.1
 
 ### Patch Changes
