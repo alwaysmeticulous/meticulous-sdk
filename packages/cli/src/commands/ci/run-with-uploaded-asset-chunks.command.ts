@@ -7,21 +7,15 @@ import {
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
-import { triggerRunWithUploadedAssetChunks } from "@alwaysmeticulous/remote-replay-launcher";
+import { runWithUploadedAssetChunks } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
 import { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { parseRewrites } from "../../command-utils/parse-rewrites";
 import { wrapHandler } from "../../command-utils/sentry.utils";
-import {
-  isOutOfDateClientError,
-  OutOfDateCLIError,
-} from "../../utils/out-of-date-client-error";
+import { isOutOfDateClientError, OutOfDateCLIError } from "../../utils/out-of-date-client-error";
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
-import {
-  hasGitContextForTestRunWait,
-  resolveGitOptions,
-} from "./resolve-git-options";
+import { hasGitContextForTestRunWait, resolveGitOptions } from "./resolve-git-options";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -67,9 +61,7 @@ const readAssetReferencesManifest = async (
   }
 
   if (!Array.isArray(parsed)) {
-    logger.error(
-      `--assetReferencesManifest must be a JSON array of { name, versionId } objects.`,
-    );
+    logger.error(`--assetReferencesManifest must be a JSON array of { name, versionId } objects.`);
     process.exit(1);
   }
 
@@ -162,7 +154,7 @@ const handler = async ({
   let testRunId: string | null;
 
   try {
-    const result = await triggerRunWithUploadedAssetChunks({
+    const result = await runWithUploadedAssetChunks({
       client,
       commitSha,
       ...(baseSha ? { baseSha } : {}),
@@ -208,9 +200,7 @@ const handler = async ({
     logger.info(`Test run status: ${completedTestRun.status}`);
   }
 
-  logger.info(
-    `Test run ${testRunId} finished with status: ${completedTestRun.status}`,
-  );
+  logger.info(`Test run ${testRunId} finished with status: ${completedTestRun.status}`);
 };
 
 export const ciRunWithUploadedAssetChunksCommand: CommandModule<unknown, Options> = {
@@ -249,7 +239,7 @@ export const ciRunWithUploadedAssetChunksCommand: CommandModule<unknown, Options
       default: "[]",
       description:
         "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array." +
-        " Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule '{ source: \"**\", destination: \"/index.html\" }'.",
+        ' Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule \'{ source: "**", destination: "/index.html" }\'.',
     },
     waitForBase: {
       boolean: true,

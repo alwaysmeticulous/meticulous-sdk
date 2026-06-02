@@ -139,10 +139,7 @@ export const requestAssetUpload = async ({
 }: RequestAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestAssetUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestAssetUploadResponse }
-  >(
+  const { data } = await client.post<typeof body, { data: RequestAssetUploadResponse }>(
     "project-deployments/request-asset-upload",
     body,
     projectIdQuery(projectId),
@@ -157,10 +154,7 @@ export const requestMultipartAssetUpload = async ({
 }: RequestMultipartAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestMultipartAssetUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestMultipartAssetUploadResponse }
-  >(
+  const { data } = await client.post<typeof body, { data: RequestMultipartAssetUploadResponse }>(
     "project-deployments/request-multipart-asset-upload",
     body,
     projectIdQuery(projectId),
@@ -175,10 +169,7 @@ export const requestUploadPart = async ({
 }: RequestUploadPartParams & {
   client: MeticulousClient;
 }): Promise<RequestUploadPartResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestUploadPartResponse }
-  >(
+  const { data } = await client.post<typeof body, { data: RequestUploadPartResponse }>(
     "project-deployments/request-upload-part",
     body,
     projectIdQuery(projectId),
@@ -193,10 +184,7 @@ export const requestGitDiffUpload = async ({
 }: RequestGitDiffUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestGitDiffUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestGitDiffUploadResponse }
-  >(
+  const { data } = await client.post<typeof body, { data: RequestGitDiffUploadResponse }>(
     "project-deployments/request-git-diff-upload",
     body,
     projectIdQuery(projectId),
@@ -211,10 +199,11 @@ export const triggerRunOnDeployment = async ({
 }: CompleteAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: CompleteAssetUploadResponse }
-  >("project-deployments/trigger-run", body, projectIdQuery(projectId));
+  const { data } = await client.post<typeof body, { data: CompleteAssetUploadResponse }>(
+    "project-deployments/trigger-run",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
@@ -225,10 +214,7 @@ export const completeAssetUpload = async ({
 }: CompleteAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: CompleteAssetUploadResponse }
-  >(
+  const { data } = await client.post<typeof body, { data: CompleteAssetUploadResponse }>(
     "project-deployments/complete-asset-upload-and-maybe-trigger-run",
     body,
     projectIdQuery(projectId),
@@ -243,10 +229,7 @@ export const completeContainerUpload = async ({
 }: CompleteContainerUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteContainerUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: CompleteContainerUploadResponse }
-  >(
+  const { data } = await client.post<typeof body, { data: CompleteContainerUploadResponse }>(
     "project-deployments/complete-container-upload",
     body,
     projectIdQuery(projectId),
@@ -292,7 +275,28 @@ export interface ProjectAssetChunkReference {
   versionId: string;
 }
 
-export interface RunWithUploadedAssetChunksParams extends ProjectIdentifier {
+export interface CreateRunWithUploadedAssetChunksParams extends ProjectIdentifier {
+  commitSha: string;
+  isUserVisible?: boolean;
+  createDeployment?: boolean;
+  assetReferencesManifest: ProjectAssetChunkReference[];
+  rewrites?: AssetUploadMetadata["rewrites"];
+}
+
+export interface CreateRunWithUploadedAssetChunksResponse {
+  /**
+   * The server-generated deployment id. Absent when `createDeployment` is false
+   * (dry-run that only computes chunk path overlaps and creates nothing). Used
+   * to key the git-diff S3 upload and passed back to
+   * `triggerRunWithUploadedAssetChunks`.
+   */
+  sourceDeploymentId?: string;
+  overlaps?: ChunkPathOverlap[];
+  overlapsTruncated?: boolean;
+}
+
+export interface TriggerRunWithUploadedAssetChunksParams extends ProjectIdentifier {
+  sourceDeploymentId: string;
   commitSha: string;
   baseSha?: string | undefined;
   hasGitDiff?: boolean | undefined;
@@ -300,23 +304,31 @@ export interface RunWithUploadedAssetChunksParams extends ProjectIdentifier {
   mustHaveBase: boolean;
   isUserVisible?: boolean;
   skipPreprocessing?: boolean;
-  createDeployment?: boolean;
-  assetReferencesManifest: ProjectAssetChunkReference[];
-  rewrites?: AssetUploadMetadata["rewrites"];
 }
 
-export const runWithUploadedAssetChunks = async ({
+export const createRunWithUploadedAssetChunks = async ({
   client,
   projectId,
   ...body
-}: RunWithUploadedAssetChunksParams & {
+}: CreateRunWithUploadedAssetChunksParams & {
   client: MeticulousClient;
-}): Promise<CompleteAssetUploadResponse> => {
+}): Promise<CreateRunWithUploadedAssetChunksResponse> => {
   const { data } = await client.post<
     typeof body,
-    { data: CompleteAssetUploadResponse }
-  >(
-    "project-deployments/run-with-uploaded-asset-chunks",
+    { data: CreateRunWithUploadedAssetChunksResponse }
+  >("project-deployments/create-run-with-uploaded-asset-chunks", body, projectIdQuery(projectId));
+  return data;
+};
+
+export const triggerRunWithUploadedAssetChunks = async ({
+  client,
+  projectId,
+  ...body
+}: TriggerRunWithUploadedAssetChunksParams & {
+  client: MeticulousClient;
+}): Promise<CompleteAssetUploadResponse> => {
+  const { data } = await client.post<typeof body, { data: CompleteAssetUploadResponse }>(
+    "project-deployments/trigger-run-with-uploaded-asset-chunks",
     body,
     projectIdQuery(projectId),
   );
@@ -329,10 +341,10 @@ export const requestAssetChunkUpload = async ({
 }: RequestAssetChunkUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestAssetChunkUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestAssetChunkUploadResponse }
-  >("project-deployments/request-asset-chunk-upload", body);
+  const { data } = await client.post<typeof body, { data: RequestAssetChunkUploadResponse }>(
+    "project-deployments/request-asset-chunk-upload",
+    body,
+  );
   return data;
 };
 
@@ -342,10 +354,10 @@ export const completeAssetChunkUpload = async ({
 }: CompleteAssetChunkUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetChunkUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: CompleteAssetChunkUploadResponse }
-  >("project-deployments/complete-asset-chunk-upload", body);
+  const { data } = await client.post<typeof body, { data: CompleteAssetChunkUploadResponse }>(
+    "project-deployments/complete-asset-chunk-upload",
+    body,
+  );
   return data;
 };
 
@@ -356,10 +368,9 @@ export const downloadProjectDeployment = async ({
   client: MeticulousClient;
   deploymentUploadId: string;
 }): Promise<DownloadDeploymentResponse> => {
-  const { data } = await client.get<
-    unknown,
-    { data: DownloadDeploymentResponse }
-  >(`project-deployments/${deploymentUploadId}`);
+  const { data } = await client.get<unknown, { data: DownloadDeploymentResponse }>(
+    `project-deployments/${deploymentUploadId}`,
+  );
   return data;
 };
 
@@ -370,9 +381,8 @@ export const getContainerDeployment = async ({
   client: MeticulousClient;
   deploymentUploadId: string;
 }): Promise<GetContainerDeploymentResponse> => {
-  const { data } = await client.get<
-    unknown,
-    { data: GetContainerDeploymentResponse }
-  >(`project-deployments/container/${deploymentUploadId}`);
+  const { data } = await client.get<unknown, { data: GetContainerDeploymentResponse }>(
+    `project-deployments/container/${deploymentUploadId}`,
+  );
   return data;
 };

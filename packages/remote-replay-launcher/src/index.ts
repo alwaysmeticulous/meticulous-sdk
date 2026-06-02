@@ -3,13 +3,10 @@ export { uploadAssetsAndTriggerTestRun } from "./upload-assets-and-trigger-test-
 export { uploadAssets, uploadAssetsFromZip } from "./asset-upload-utils";
 export { uploadContainerAndTriggerTestRun } from "./upload-container-and-trigger-test-run";
 export { uploadContainer } from "./upload-container";
+export { uploadAssetChunk, UploadAssetChunkOptions } from "./upload-asset-chunk";
 export {
-  uploadAssetChunk,
-  UploadAssetChunkOptions,
-} from "./upload-asset-chunk";
-export {
-  triggerRunWithUploadedAssetChunks,
-  TriggerRunWithUploadedAssetChunksOptions,
-  TriggerRunWithUploadedAssetChunksResult,
-} from "./trigger-run-with-uploaded-asset-chunks";
+  runWithUploadedAssetChunks,
+  RunWithUploadedAssetChunksOptions,
+  RunWithUploadedAssetChunksResult,
+} from "./run-with-uploaded-asset-chunks";
 export { TunnelData } from "./types";
