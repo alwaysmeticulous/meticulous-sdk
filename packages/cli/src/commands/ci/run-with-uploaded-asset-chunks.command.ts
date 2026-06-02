@@ -179,6 +179,13 @@ const handler = async ({
         logger.warn(`  ... and more overlapping paths (not shown).`);
       }
     }
+
+    if (!result.testRun) {
+      throw new Error(
+        result.message ??
+          "Asset chunks resolved but test run not created",
+      );
+    }
   } catch (error) {
     if (isOutOfDateClientError(error)) {
       throw new OutOfDateCLIError();
