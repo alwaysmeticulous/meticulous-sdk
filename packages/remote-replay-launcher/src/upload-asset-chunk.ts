@@ -7,6 +7,7 @@ import {
   completeAssetChunkUpload,
   createClient,
   getApiToken,
+  ProjectIdentifier,
   putFileToSignedUrl,
   requestAssetChunkUpload,
   retryTransientUploadErrors,
@@ -23,7 +24,7 @@ import { c as tarCreate } from "tar";
  */
 const COMPRESSION_LEVEL = 3;
 
-export interface UploadAssetChunkOptions {
+export interface UploadAssetChunkOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
   chunkName: string;
   chunkVersionId: string;
@@ -53,18 +54,23 @@ export const uploadAssetChunk = async ({
   chunkAssetsDirectoryPrefix,
   commitSha,
   force,
+  projectId,
 }: UploadAssetChunkOptions): Promise<void> => {
   const logger = initLogger();
 
   const resolvedDir = resolve(chunkAssetsDirectory);
   const dirStat = await stat(resolvedDir).catch(() => null);
   if (!dirStat?.isDirectory()) {
-    throw new Error(`chunkAssetsDirectory does not exist or is not a directory: ${resolvedDir}`);
+    throw new Error(
+      `chunkAssetsDirectory does not exist or is not a directory: ${resolvedDir}`,
+    );
   }
 
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {
-    throw new Error("You must provide an API token by using the --apiToken parameter");
+    throw new Error(
+      "You must provide an API token by using the --apiToken parameter",
+    );
   }
 
   const client = createClient({ apiToken });
@@ -72,15 +78,21 @@ export const uploadAssetChunk = async ({
   const tempDir = await mkdtemp(join(tmpdir(), "asset-chunk-"));
   const tarballPath = join(tempDir, "chunk.tar.d");
   try {
-    logger.info(`Building asset chunk tarball for ${chunkName}@${chunkVersionId}...`);
+    logger.info(
+      `Building asset chunk tarball for ${chunkName}@${chunkVersionId}...`,
+    );
     const { filePaths } = await writeCompressedTar({
       cwd: resolvedDir,
       destination: tarballPath,
-      ...(chunkAssetsDirectoryPrefix ? { prefix: chunkAssetsDirectoryPrefix } : {}),
+      ...(chunkAssetsDirectoryPrefix
+        ? { prefix: chunkAssetsDirectoryPrefix }
+        : {}),
     });
 
     const { size: tarballSize } = await stat(tarballPath);
-    logger.info(`Tarball built (${tarballSize} bytes). Requesting upload URL...`);
+    logger.info(
+      `Tarball built (${tarballSize} bytes). Requesting upload URL...`,
+    );
 
     const response = await requestAssetChunkUpload({
       client,
@@ -89,10 +101,13 @@ export const uploadAssetChunk = async ({
       tarballSize,
       ...(commitSha ? { commitSha } : {}),
       ...(force ? { force: true } : {}),
+      ...(projectId ? { projectId } : {}),
     });
 
     if (response.alreadyUploaded) {
-      logger.info(`Asset chunk ${chunkName}@${chunkVersionId} already uploaded; skipping upload.`);
+      logger.info(
+        `Asset chunk ${chunkName}@${chunkVersionId} already uploaded; skipping upload.`,
+      );
       return;
     }
 
@@ -169,6 +184,7 @@ export const uploadAssetChunk = async ({
       chunkName,
       chunkVersionId,
       ...(commitSha ? { commitSha } : {}),
+      ...(projectId ? { projectId } : {}),
     });
 
     logger.info(`Asset chunk ${chunkName}@${chunkVersionId} uploaded.`);
@@ -227,7 +243,10 @@ const writeCompressedTar = ({
     tarStream.on("error", onError);
     outStream.on("error", onError);
     tarStream.on("end", () => {
-      const finalChunk = deflate.process(Buffer.alloc(0), zlibConstants.Z_FINISH);
+      const finalChunk = deflate.process(
+        Buffer.alloc(0),
+        zlibConstants.Z_FINISH,
+      );
       if (finalChunk.length > 0) {
         outStream.write(finalChunk);
       }

@@ -139,7 +139,10 @@ export const requestAssetUpload = async ({
 }: RequestAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestAssetUploadResponse> => {
-  const { data } = await client.post<typeof body, { data: RequestAssetUploadResponse }>(
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestAssetUploadResponse }
+  >(
     "project-deployments/request-asset-upload",
     body,
     projectIdQuery(projectId),
@@ -154,7 +157,10 @@ export const requestMultipartAssetUpload = async ({
 }: RequestMultipartAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestMultipartAssetUploadResponse> => {
-  const { data } = await client.post<typeof body, { data: RequestMultipartAssetUploadResponse }>(
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestMultipartAssetUploadResponse }
+  >(
     "project-deployments/request-multipart-asset-upload",
     body,
     projectIdQuery(projectId),
@@ -169,11 +175,10 @@ export const requestUploadPart = async ({
 }: RequestUploadPartParams & {
   client: MeticulousClient;
 }): Promise<RequestUploadPartResponse> => {
-  const { data } = await client.post<typeof body, { data: RequestUploadPartResponse }>(
-    "project-deployments/request-upload-part",
-    body,
-    projectIdQuery(projectId),
-  );
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestUploadPartResponse }
+  >("project-deployments/request-upload-part", body, projectIdQuery(projectId));
   return data;
 };
 
@@ -184,7 +189,10 @@ export const requestGitDiffUpload = async ({
 }: RequestGitDiffUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestGitDiffUploadResponse> => {
-  const { data } = await client.post<typeof body, { data: RequestGitDiffUploadResponse }>(
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestGitDiffUploadResponse }
+  >(
     "project-deployments/request-git-diff-upload",
     body,
     projectIdQuery(projectId),
@@ -199,11 +207,10 @@ export const triggerRunOnDeployment = async ({
 }: CompleteAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
-  const { data } = await client.post<typeof body, { data: CompleteAssetUploadResponse }>(
-    "project-deployments/trigger-run",
-    body,
-    projectIdQuery(projectId),
-  );
+  const { data } = await client.post<
+    typeof body,
+    { data: CompleteAssetUploadResponse }
+  >("project-deployments/trigger-run", body, projectIdQuery(projectId));
   return data;
 };
 
@@ -214,7 +221,10 @@ export const completeAssetUpload = async ({
 }: CompleteAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
-  const { data } = await client.post<typeof body, { data: CompleteAssetUploadResponse }>(
+  const { data } = await client.post<
+    typeof body,
+    { data: CompleteAssetUploadResponse }
+  >(
     "project-deployments/complete-asset-upload-and-maybe-trigger-run",
     body,
     projectIdQuery(projectId),
@@ -229,7 +239,10 @@ export const completeContainerUpload = async ({
 }: CompleteContainerUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteContainerUploadResponse> => {
-  const { data } = await client.post<typeof body, { data: CompleteContainerUploadResponse }>(
+  const { data } = await client.post<
+    typeof body,
+    { data: CompleteContainerUploadResponse }
+  >(
     "project-deployments/complete-container-upload",
     body,
     projectIdQuery(projectId),
@@ -243,7 +256,7 @@ export type AssetChunkUploadPreviousStatus =
   | "deleted"
   | "failed_uploading";
 
-export interface RequestAssetChunkUploadParams {
+export interface RequestAssetChunkUploadParams extends ProjectIdentifier {
   chunkName: string;
   chunkVersionId: string;
   tarballSize: number;
@@ -260,7 +273,7 @@ export type RequestAssetChunkUploadResponse =
       previousStatus: AssetChunkUploadPreviousStatus | null;
     };
 
-export interface CompleteAssetChunkUploadParams {
+export interface CompleteAssetChunkUploadParams extends ProjectIdentifier {
   chunkName: string;
   chunkVersionId: string;
   commitSha?: string | undefined;
@@ -316,7 +329,11 @@ export const createRunWithUploadedAssetChunks = async ({
   const { data } = await client.post<
     typeof body,
     { data: CreateRunWithUploadedAssetChunksResponse }
-  >("project-deployments/create-run-with-uploaded-asset-chunks", body, projectIdQuery(projectId));
+  >(
+    "project-deployments/create-run-with-uploaded-asset-chunks",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
@@ -327,7 +344,10 @@ export const triggerRunWithUploadedAssetChunks = async ({
 }: TriggerRunWithUploadedAssetChunksParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
-  const { data } = await client.post<typeof body, { data: CompleteAssetUploadResponse }>(
+  const { data } = await client.post<
+    typeof body,
+    { data: CompleteAssetUploadResponse }
+  >(
     "project-deployments/trigger-run-with-uploaded-asset-chunks",
     body,
     projectIdQuery(projectId),
@@ -337,26 +357,36 @@ export const triggerRunWithUploadedAssetChunks = async ({
 
 export const requestAssetChunkUpload = async ({
   client,
+  projectId,
   ...body
 }: RequestAssetChunkUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestAssetChunkUploadResponse> => {
-  const { data } = await client.post<typeof body, { data: RequestAssetChunkUploadResponse }>(
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestAssetChunkUploadResponse }
+  >(
     "project-deployments/request-asset-chunk-upload",
     body,
+    projectIdQuery(projectId),
   );
   return data;
 };
 
 export const completeAssetChunkUpload = async ({
   client,
+  projectId,
   ...body
 }: CompleteAssetChunkUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetChunkUploadResponse> => {
-  const { data } = await client.post<typeof body, { data: CompleteAssetChunkUploadResponse }>(
+  const { data } = await client.post<
+    typeof body,
+    { data: CompleteAssetChunkUploadResponse }
+  >(
     "project-deployments/complete-asset-chunk-upload",
     body,
+    projectIdQuery(projectId),
   );
   return data;
 };
@@ -368,9 +398,10 @@ export const downloadProjectDeployment = async ({
   client: MeticulousClient;
   deploymentUploadId: string;
 }): Promise<DownloadDeploymentResponse> => {
-  const { data } = await client.get<unknown, { data: DownloadDeploymentResponse }>(
-    `project-deployments/${deploymentUploadId}`,
-  );
+  const { data } = await client.get<
+    unknown,
+    { data: DownloadDeploymentResponse }
+  >(`project-deployments/${deploymentUploadId}`);
   return data;
 };
 
@@ -381,8 +412,9 @@ export const getContainerDeployment = async ({
   client: MeticulousClient;
   deploymentUploadId: string;
 }): Promise<GetContainerDeploymentResponse> => {
-  const { data } = await client.get<unknown, { data: GetContainerDeploymentResponse }>(
-    `project-deployments/container/${deploymentUploadId}`,
-  );
+  const { data } = await client.get<
+    unknown,
+    { data: GetContainerDeploymentResponse }
+  >(`project-deployments/container/${deploymentUploadId}`);
   return data;
 };

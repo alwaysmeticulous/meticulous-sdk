@@ -1,6 +1,4 @@
-import {
-  resolveApiTokenWithOAuth,
-} from "@alwaysmeticulous/client";
+import { resolveApiTokenWithOAuth } from "@alwaysmeticulous/client";
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { uploadAssetChunk } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
@@ -11,6 +9,7 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
+import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 
 interface Options {
   apiToken?: string | undefined;
@@ -51,17 +50,18 @@ const handler = async ({
     enableOAuthLogin: true,
   });
 
+  const projectIdentifier = resolveProjectIdentifier(apiToken_);
+
   try {
     await uploadAssetChunk({
       apiToken: apiToken_,
       chunkName,
       chunkVersionId,
       chunkAssetsDirectory,
-      ...(chunkAssetsDirectoryPrefix
-        ? { chunkAssetsDirectoryPrefix }
-        : {}),
+      ...(chunkAssetsDirectoryPrefix ? { chunkAssetsDirectoryPrefix } : {}),
       commitSha,
       ...(force ? { force: true } : {}),
+      ...projectIdentifier,
     });
   } catch (error) {
     if (isOutOfDateClientError(error)) {
