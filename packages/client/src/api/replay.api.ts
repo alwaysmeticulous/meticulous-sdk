@@ -43,6 +43,16 @@ export type ReplayV3UploadLocations = Record<string, S3Location> & {
     string,
     Record<string, { thumbnail: S3Location; full: S3Location }>
   >;
+  /**
+   * Grouped, NESTED artifact: a map of custom-check type to its snapshot
+   * file. Unlike the flat `Record<string, S3Location>` index signature, the
+   * URL lives at `entry.file.signedUrl` (there is no top-level `signedUrl`).
+   * The backend returns `{}` for replays without custom-check snapshots.
+   *
+   * Declared explicitly so consumers don't mistake it for a flat
+   * `S3Location` (which would lead to `signedUrl === undefined`).
+   */
+  customCheckSnapshots?: Record<string, { file: S3Location }>;
 };
 
 export const getReplayV3DownloadUrls: (

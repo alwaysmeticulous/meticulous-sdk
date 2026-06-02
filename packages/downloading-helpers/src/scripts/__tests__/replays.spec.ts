@@ -59,6 +59,17 @@ const buildDownloadUrls = (): unknown => ({
   rawPerScreenshotCssCoverage: null,
   rawPerScreenshotJsCoverage: null,
   mappedPerScreenshotJsCoverage: null,
+  // NESTED grouped key recently added by the backend. The URL lives at
+  // `entry.file.signedUrl`, so this must NOT be treated as a flat rest
+  // artifact (doing so would call `downloadAndExtractFile(undefined, ...)`).
+  customCheckSnapshots: {
+    "my-check": {
+      file: {
+        signedUrl: "https://example/customCheckSnapshots/my-check",
+        filePath: "customCheckSnapshots/my-check",
+      },
+    },
+  },
 });
 
 describe("getOrFetchReplayArchive — excludeFileTypes", () => {
@@ -122,6 +133,60 @@ describe("getOrFetchReplayArchive — excludeFileTypes", () => {
     );
     expect(downloadedKeys).not.toContain("https://example/playbackData");
     expect(downloadedKeys).not.toContain("https://example/rawCoverage");
+  });
+
+  it("does not treat customCheckSnapshots as a flat artifact and never downloads from an undefined URL", async () => {
+    await run();
+
+    const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
+      (call) => call[0] as unknown,
+    );
+
+    // The crux of the bug: the nested key must never reach `new URL` as
+    // `undefined`, and its inner `entry.file.signedUrl` must not be downloaded
+    // by this helper.
+    expect(downloadedKeys).not.toContain(undefined);
+    expect(downloadedKeys).not.toContain(
+      "https://example/customCheckSnapshots/my-check",
+    );
+    // The genuine flat artifacts are still downloaded.
+    expect(downloadedKeys).toEqual(
+      expect.arrayContaining([
+        "https://example/timeline",
+        "https://example/metadata",
+      ]),
+    );
+  });
+
+  it("handles an empty customCheckSnapshots ({}) without crashing", async () => {
+    (getReplayV3DownloadUrls as Mock).mockResolvedValue({
+      ...(buildDownloadUrls() as Record<string, unknown>),
+      customCheckSnapshots: {},
+    });
+
+    await expect(run()).resolves.toBeDefined();
+
+    const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
+      (call) => call[0] as unknown,
+    );
+    expect(downloadedKeys).not.toContain(undefined);
+  });
+
+  it("defensively skips any unknown grouped/nested key that lacks a top-level signedUrl", async () => {
+    // Simulate a hypothetical future backend key that, like customCheckSnapshots,
+    // is nested rather than a flat S3Location. The guard must skip it instead of
+    // passing `undefined` to `new URL`.
+    (getReplayV3DownloadUrls as Mock).mockResolvedValue({
+      ...(buildDownloadUrls() as Record<string, unknown>),
+      someFutureNestedKey: { foo: { file: { signedUrl: "x", filePath: "y" } } },
+    });
+
+    await expect(run()).resolves.toBeDefined();
+
+    const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
+      (call) => call[0] as unknown,
+    );
+    expect(downloadedKeys).not.toContain(undefined);
   });
 
   it("hits the cache short-circuit when the marker says 'everything' and no exclusions are set", async () => {

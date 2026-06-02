@@ -254,11 +254,46 @@ const downloadReplayV3Files = async (
     rawPerScreenshotCssCoverage,
     rawPerScreenshotJsCoverage,
     mappedPerScreenshotJsCoverage,
+    // Pulled out of `rest` so it isn't treated as a flat `S3Location`.
+    // `customCheckSnapshots` is a NESTED `Record<type, { file: S3Location }>`
+    // (the URL lives at `entry.file.signedUrl`, not at the top level), and the
+    // SDK has no consumer that needs it, so we intentionally don't download it
+    // here. Leaving it in `rest` would make the loop below call
+    // `downloadAndExtractFile(undefined, ...)` -> `new URL(undefined)`.
+    customCheckSnapshots,
     ...rest
   } = downloadUrls;
 
+  const logger = initLogger();
+
+  if (
+    customCheckSnapshots != null &&
+    Object.keys(customCheckSnapshots).length
+  ) {
+    logger.debug(
+      `Replay ${replayId} has ${
+        Object.keys(customCheckSnapshots).length
+      } customCheckSnapshots; these are not downloaded by this helper.`,
+    );
+  }
+
   const filePromises = Object.entries(rest)
     .filter(([fileType]) => includes(fileType))
+    // Defensive guard: every key left in `rest` is expected to be a flat
+    // `S3Location` with a top-level `signedUrl`. If the backend introduces
+    // another grouped/nested top-level key in the future, its entries won't
+    // have a `signedUrl`; skip (and log) them rather than passing `undefined`
+    // to `new URL` and crashing every replay download.
+    .filter(([fileType, data]) => {
+      if (data?.signedUrl != null) {
+        return true;
+      }
+      logger.warn(
+        `Skipping replay file "${fileType}" for replay ${replayId}: it has no top-level signedUrl. ` +
+          `This is likely a new grouped/nested download-urls key the SDK does not yet handle.`,
+      );
+      return false;
+    })
     .map(([fileType, data]) => {
       const filePath = join(replayDir, fileType);
       return async () => {
@@ -281,8 +316,7 @@ const downloadReplayV3Files = async (
   // Safe even when `excludeFileTypes` is set: we're leaving existing files in
   // place, not re-using stale data.
   const screenshotPromises: (() => Promise<string[] | void>)[] =
-    !includes("screenshots") ||
-    previouslyDownloadedScope === "screenshots-only"
+    !includes("screenshots") || previouslyDownloadedScope === "screenshots-only"
       ? []
       : Object.values(screenshots).flatMap((data) => {
           const imageFilePath = join(replayDir, data.image.filePath);
