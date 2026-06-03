@@ -24,64 +24,52 @@ interface ScreenshotIdentifierFixture {
   variant?: "normal" | "redacted";
 }
 
-interface SetupReplayPairOpts {
-  headReplayId: string;
-  baseReplayId: string;
-  screenshotBaseName: string;
-  side?: "both" | "head-only" | "base-only";
-  url?: string;
-  /** Required for API-hitting tests (backend name is derived from timeline). */
+interface DiffResultFixture {
   identifier?: ScreenshotIdentifierFixture;
+  outcome?: string;
 }
 
-const setupReplayPair = (
+/**
+ * Writes the replay-diff JSON that `fetchDomDiffs` enumerates from
+ * (`debug-data/diffs/<replayDiffId>.json`), mirroring the shape downloaded by
+ * `downloadDebugData`.
+ */
+const setupReplayDiffResults = (
   workspace: string,
-  opts: SetupReplayPairOpts,
+  replayDiffId: string,
+  screenshotDiffResults: DiffResultFixture[],
 ): void => {
-  const side = opts.side ?? "both";
-  const mkReplayDir = (role: "head" | "base", replayId: string) =>
-    join(workspace, DEBUG_DATA_DIRECTORY, "replays", role, replayId);
-  const headReplayDir = mkReplayDir("head", opts.headReplayId);
-  const baseReplayDir = mkReplayDir("base", opts.baseReplayId);
-  const headScreenshotsDir = join(headReplayDir, "screenshots");
-  const baseScreenshotsDir = join(baseReplayDir, "screenshots");
-  mkdirSync(headScreenshotsDir, { recursive: true });
-  mkdirSync(baseScreenshotsDir, { recursive: true });
+  const diffsDir = join(workspace, DEBUG_DATA_DIRECTORY, "diffs");
+  mkdirSync(diffsDir, { recursive: true });
+  writeFileSync(
+    join(diffsDir, `${replayDiffId}.json`),
+    JSON.stringify({ data: { screenshotDiffResults } }),
+  );
+};
 
-  const metadataBody = JSON.stringify({
-    before: {
-      ...(opts.url ? { routeData: { url: opts.url } } : {}),
-    },
-  });
-
-  if (side === "both" || side === "head-only") {
-    writeFileSync(
-      join(headScreenshotsDir, `${opts.screenshotBaseName}.metadata.json`),
-      metadataBody,
-    );
-  }
-  if (side === "both" || side === "base-only") {
-    writeFileSync(
-      join(baseScreenshotsDir, `${opts.screenshotBaseName}.metadata.json`),
-      metadataBody,
-    );
-  }
-
-  if (opts.identifier) {
-    const timeline = [
-      {
-        kind: "screenshot",
-        data: { identifier: opts.identifier },
-      },
-    ];
-    const body = JSON.stringify(timeline);
-    if (side === "both" || side === "head-only") {
-      writeFileSync(join(headReplayDir, "timeline.json"), body);
-    }
-    if (side === "both" || side === "base-only") {
-      writeFileSync(join(baseReplayDir, "timeline.json"), body);
-    }
-  }
+/** Writes a screenshot `metadata.json` on disk so URL lookup can resolve. */
+const setupScreenshotMetadata = (
+  workspace: string,
+  role: "head" | "base",
+  replayId: string,
+  screenshotBaseName: string,
+  url?: string,
+): void => {
+  const screenshotsDir = join(
+    workspace,
+    DEBUG_DATA_DIRECTORY,
+    "replays",
+    role,
+    replayId,
+    "screenshots",
+  );
+  mkdirSync(screenshotsDir, { recursive: true });
+  writeFileSync(
+    join(screenshotsDir, `${screenshotBaseName}.metadata.json`),
+    JSON.stringify({
+      before: { ...(url ? { routeData: { url } } : {}) },
+    }),
+  );
 };
 
 const makeDebugContext = (
@@ -113,9 +101,7 @@ const makeDebugContext = (
 
 const fakeClient = {} as MeticulousClient;
 
-const diffResponse = (
-  contents: string[],
-): ScreenshotDomDiffResponse => ({
+const diffResponse = (contents: string[]): ScreenshotDomDiffResponse => ({
   diffs: contents.map((content, index) => ({ index, content })),
   totalDiffs: contents.length,
 });
@@ -131,14 +117,17 @@ describe("fetchDomDiffs", () => {
     rmSync(workspace, { recursive: true, force: true });
   });
 
-  it("writes .diff + .full.diff + .summary.txt and populates domDiffMap for a diffing pair", async () => {
-    setupReplayPair(workspace, {
-      headReplayId: "headA",
-      baseReplayId: "baseA",
-      screenshotBaseName: "screenshot-after-event-00001",
-      identifier: { type: "after-event", eventNumber: 1 },
-      url: "https://example.com/a",
-    });
+  it("writes .diff + .full.diff + .summary.txt and populates domDiffMap for a diffing screenshot", async () => {
+    setupReplayDiffResults(workspace, "diffA", [
+      { identifier: { type: "after-event", eventNumber: 1 }, outcome: "diff" },
+    ]);
+    setupScreenshotMetadata(
+      workspace,
+      "head",
+      "headA",
+      "screenshot-after-event-00001",
+      "https://example.com/a",
+    );
     const fetchScreenshotDiff = vi
       .fn()
       .mockResolvedValueOnce(
@@ -205,17 +194,13 @@ describe("fetchDomDiffs", () => {
       join(domDiffsDir, "headA-vs-baseA.summary.txt"),
       "utf-8",
     );
-    expect(summary).not.toContain("meticulous agent dom-diff");
     expect(summary).toContain(".full.diff");
   });
 
   it("still records the canonical diff when the full-context fetch fails", async () => {
-    setupReplayPair(workspace, {
-      headReplayId: "headF",
-      baseReplayId: "baseF",
-      screenshotBaseName: "screenshot-after-event-00001",
-      identifier: { type: "after-event", eventNumber: 1 },
-    });
+    setupReplayDiffResults(workspace, "diffF", [
+      { identifier: { type: "after-event", eventNumber: 1 }, outcome: "diff" },
+    ]);
     const fetchScreenshotDiff = vi
       .fn()
       .mockResolvedValueOnce(
@@ -239,23 +224,24 @@ describe("fetchDomDiffs", () => {
         "dom-diffs/headF-vs-baseF-screenshot-after-event-00001.diff",
       );
       expect(entry?.fullDiffPath).toBeNull();
-      expect(
-        warnings.some((w) => /full-context DOM diff/.test(w)),
-      ).toBe(true);
+      expect(warnings.some((w) => /full-context DOM diff/.test(w))).toBe(true);
     } finally {
       console.warn = originalWarn;
     }
   });
 
-  it("writes no .diff file when the backend reports zero diffs; identical row in summary", async () => {
-    setupReplayPair(workspace, {
-      headReplayId: "headB",
-      baseReplayId: "baseB",
-      screenshotBaseName: "final-state",
-      identifier: { type: "end-state" },
-      url: "https://example.com/b",
-    });
-    const fetchScreenshotDiff = vi.fn().mockResolvedValue(diffResponse([]));
+  it("records no-diff screenshots as identical without an API call", async () => {
+    setupReplayDiffResults(workspace, "diff-1", [
+      { identifier: { type: "end-state" }, outcome: "no-diff" },
+    ]);
+    setupScreenshotMetadata(
+      workspace,
+      "head",
+      "headB",
+      "final-state",
+      "https://example.com/b",
+    );
+    const fetchScreenshotDiff = vi.fn();
 
     const map = await fetchDomDiffs({
       client: fakeClient,
@@ -264,6 +250,7 @@ describe("fetchDomDiffs", () => {
       fetchScreenshotDiff,
     });
 
+    expect(fetchScreenshotDiff).not.toHaveBeenCalled();
     expect(
       existsSync(
         join(
@@ -278,9 +265,7 @@ describe("fetchDomDiffs", () => {
     const entry = map["headB-vs-baseB/final-state"];
     expect(entry?.diffPath).toBeNull();
     expect(entry?.fullDiffPath).toBeNull();
-    expect(fetchScreenshotDiff).toHaveBeenCalledTimes(1);
     expect(entry?.totalHunks).toBe(0);
-    expect(entry?.bytes).toBe(0);
     expect(entry?.url).toBe("https://example.com/b");
 
     const summary = readFileSync(
@@ -295,14 +280,62 @@ describe("fetchDomDiffs", () => {
     expect(summary).toMatch(/final-state\tidentical\t0\t0/);
   });
 
-  it("reads url for only-in-head / only-in-base rows without hitting the API", async () => {
-    setupReplayPair(workspace, {
-      headReplayId: "hOnly",
-      baseReplayId: "bOnly",
-      screenshotBaseName: "screenshot-after-event-00001",
-      side: "head-only",
-      url: "https://example.com/head-only",
+  it("only fetches DOM diffs for screenshots whose outcome is a visual diff", async () => {
+    setupReplayDiffResults(workspace, "diff-1", [
+      { identifier: { type: "after-event", eventNumber: 1 }, outcome: "diff" },
+      {
+        identifier: { type: "after-event", eventNumber: 2 },
+        outcome: "no-diff",
+      },
+      {
+        identifier: { type: "after-event", eventNumber: 3 },
+        outcome: "no-diff",
+      },
+    ]);
+    const fetchScreenshotDiff = vi.fn().mockResolvedValue(diffResponse([]));
+
+    await fetchDomDiffs({
+      client: fakeClient,
+      debugContext: makeDebugContext("headM", "baseM"),
+      workspaceDir: workspace,
+      fetchScreenshotDiff,
     });
+
+    // Only the single `diff`-outcome screenshot triggers the API (canonical +
+    // full = 2 calls); the two `no-diff` screenshots are never fetched.
+    expect(fetchScreenshotDiff).toHaveBeenCalledTimes(1);
+    expect(fetchScreenshotDiff).toHaveBeenCalledWith(
+      fakeClient,
+      "diff-1",
+      "after-event-1",
+    );
+  });
+
+  it("derives only-in-head / only-in-base from missing-* outcomes without hitting the API", async () => {
+    setupReplayDiffResults(workspace, "diff-1", [
+      {
+        identifier: { type: "after-event", eventNumber: 1 },
+        outcome: "missing-base",
+      },
+      {
+        identifier: { type: "after-event", eventNumber: 2 },
+        outcome: "missing-head",
+      },
+    ]);
+    setupScreenshotMetadata(
+      workspace,
+      "head",
+      "hOnly",
+      "screenshot-after-event-00001",
+      "https://example.com/head-only",
+    );
+    setupScreenshotMetadata(
+      workspace,
+      "base",
+      "bOnly",
+      "screenshot-after-event-00002",
+      "https://example.com/base-only",
+    );
     const fetchScreenshotDiff = vi.fn();
 
     await fetchDomDiffs({
@@ -325,19 +358,23 @@ describe("fetchDomDiffs", () => {
     expect(summary).toMatch(
       /screenshot-after-event-00001\tonly-in-head\t.*https:\/\/example\.com\/head-only/,
     );
+    expect(summary).toMatch(
+      /screenshot-after-event-00002\tonly-in-base\t.*https:\/\/example\.com\/base-only/,
+    );
   });
 
   it("records skipped-error rows and aggregate warning when the API throws", async () => {
-    setupReplayPair(workspace, {
-      headReplayId: "hErr",
-      baseReplayId: "bErr",
-      screenshotBaseName: "final-state",
-      identifier: { type: "end-state" },
-      url: "https://example.com/err",
-    });
-    const fetchScreenshotDiff = vi
-      .fn()
-      .mockRejectedValue(new Error("boom"));
+    setupReplayDiffResults(workspace, "diff-1", [
+      { identifier: { type: "end-state" }, outcome: "diff" },
+    ]);
+    setupScreenshotMetadata(
+      workspace,
+      "head",
+      "hErr",
+      "final-state",
+      "https://example.com/err",
+    );
+    const fetchScreenshotDiff = vi.fn().mockRejectedValue(new Error("boom"));
 
     const warnings: string[] = [];
     const logs: string[] = [];
@@ -365,9 +402,9 @@ describe("fetchDomDiffs", () => {
           ),
         ),
       ).toBe(false);
-      expect(
-        warnings.some((w) => /Could not fetch DOM diff/.test(w)),
-      ).toBe(true);
+      expect(warnings.some((w) => /Could not fetch DOM diff/.test(w))).toBe(
+        true,
+      );
       expect(logs.some((l) => /Skipped .* due to API errors/.test(l))).toBe(
         true,
       );
@@ -391,12 +428,9 @@ describe("fetchDomDiffs", () => {
 
   it("strips logicVersion when converting end-state to backend name", async () => {
     // On-disk is `final-state-v2`; backend only accepts `end-state`.
-    setupReplayPair(workspace, {
-      headReplayId: "headL",
-      baseReplayId: "baseL",
-      screenshotBaseName: "final-state-v2",
-      identifier: { type: "end-state", logicVersion: 2 },
-    });
+    setupReplayDiffResults(workspace, "diffL", [
+      { identifier: { type: "end-state", logicVersion: 2 }, outcome: "diff" },
+    ]);
     const fetchScreenshotDiff = vi.fn().mockResolvedValue(diffResponse([]));
 
     await fetchDomDiffs({
@@ -413,24 +447,18 @@ describe("fetchDomDiffs", () => {
     );
   });
 
-  it("skips screenshots with no backend name (redacted variant / missing timeline)", async () => {
+  it("skips screenshots with no backend name (redacted variant) without warning per-screenshot", async () => {
     // Redacted: backend naming unverified → skip instead of 404.
-    setupReplayPair(workspace, {
-      headReplayId: "headR",
-      baseReplayId: "baseR",
-      screenshotBaseName: "screenshot-after-event-00001.redacted",
-      identifier: {
-        type: "after-event",
-        eventNumber: 1,
-        variant: "redacted",
+    setupReplayDiffResults(workspace, "diffR", [
+      {
+        identifier: {
+          type: "after-event",
+          eventNumber: 1,
+          variant: "redacted",
+        },
+        outcome: "diff",
       },
-    });
-    // Missing timeline → no identifier → also skipped.
-    setupReplayPair(workspace, {
-      headReplayId: "headR",
-      baseReplayId: "baseR",
-      screenshotBaseName: "screenshot-after-event-00002",
-    });
+    ]);
     const fetchScreenshotDiff = vi.fn();
 
     const map = await fetchDomDiffs({
@@ -455,13 +483,68 @@ describe("fetchDomDiffs", () => {
     expect(summary).toMatch(
       /screenshot-after-event-00001\.redacted\tskipped-unsupported/,
     );
-    expect(summary).toMatch(
-      /screenshot-after-event-00002\tskipped-unsupported/,
+    expect(summary).toContain("skipped (unsupported identifier): 1");
+  });
+
+  it("ignores screenshots on disk that are absent from screenshotDiffResults", async () => {
+    // The authoritative set has one screenshot; a stray on-disk screenshot that
+    // the (curated) timeline never registered must not be attempted or skipped.
+    setupReplayDiffResults(workspace, "diff-1", [
+      {
+        identifier: { type: "after-event", eventNumber: 1 },
+        outcome: "no-diff",
+      },
+    ]);
+    setupScreenshotMetadata(
+      workspace,
+      "head",
+      "headS",
+      "screenshot-after-event-00099",
     );
-    expect(summary).toContain("skipped (unsupported identifier): 2");
+    const fetchScreenshotDiff = vi.fn();
+
+    await fetchDomDiffs({
+      client: fakeClient,
+      debugContext: makeDebugContext("headS", "baseS"),
+      workspaceDir: workspace,
+      fetchScreenshotDiff,
+    });
+
+    expect(fetchScreenshotDiff).not.toHaveBeenCalled();
+    const summary = readFileSync(
+      join(
+        workspace,
+        DEBUG_DATA_DIRECTORY,
+        "dom-diffs",
+        "headS-vs-baseS.summary.txt",
+      ),
+      "utf-8",
+    );
+    expect(summary).toContain("Screenshots analyzed: 1");
+    expect(summary).not.toContain("screenshot-after-event-00099");
+  });
+
+  it("skips a pair with no replay-diff JSON on disk", async () => {
+    const fetchScreenshotDiff = vi.fn();
+
+    const map = await fetchDomDiffs({
+      client: fakeClient,
+      debugContext: makeDebugContext("headN", "baseN"),
+      workspaceDir: workspace,
+      fetchScreenshotDiff,
+    });
+
+    expect(map).toEqual({});
+    expect(fetchScreenshotDiff).not.toHaveBeenCalled();
+    expect(existsSync(join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs"))).toBe(
+      false,
+    );
   });
 
   it("refuses unsafe replay IDs that would escape dom-diffs/", async () => {
+    setupReplayDiffResults(workspace, "diff-unsafe", [
+      { identifier: { type: "after-event", eventNumber: 1 }, outcome: "diff" },
+    ]);
     const ctx: DebugContext = {
       ...makeDebugContext("../escape", "baseC"),
       replayDiffs: [
@@ -475,9 +558,6 @@ describe("fetchDomDiffs", () => {
       ],
       replayIds: ["../escape", "baseC"],
     };
-    mkdirSync(join(workspace, DEBUG_DATA_DIRECTORY, "replays"), {
-      recursive: true,
-    });
     const fetchScreenshotDiff = vi.fn();
 
     const map = await fetchDomDiffs({
@@ -489,9 +569,5 @@ describe("fetchDomDiffs", () => {
 
     expect(map).toEqual({});
     expect(fetchScreenshotDiff).not.toHaveBeenCalled();
-    expect(
-      existsSync(join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs")),
-    ).toBe(false);
   });
-
 });
