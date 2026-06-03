@@ -1,5 +1,12 @@
 # @alwaysmeticulous/remote-replay-launcher
 
+## 2.289.0
+
+### Patch Changes
+
+- Updated dependencies [[`966e0b0`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/966e0b0e110442a552aa0937c0570db7defd38a8)]:
+  - @alwaysmeticulous/client@2.289.0
+
 ## 2.288.2
 
 ### Patch Changes
