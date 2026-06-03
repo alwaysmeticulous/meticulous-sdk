@@ -553,6 +553,34 @@ describe("fetchDomDiffs", () => {
     }
   });
 
+  it("warns with the parse error when the replay-diff JSON is malformed", async () => {
+    const diffsDir = join(workspace, DEBUG_DATA_DIRECTORY, "diffs");
+    mkdirSync(diffsDir, { recursive: true });
+    writeFileSync(join(diffsDir, "diffP.json"), "{ not valid json");
+    const fetchScreenshotDiff = vi.fn();
+
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (msg: string) => warnings.push(String(msg));
+
+    try {
+      const map = await fetchDomDiffs({
+        client: fakeClient,
+        debugContext: makeDebugContext("headP", "baseP", "diffP"),
+        workspaceDir: workspace,
+        fetchScreenshotDiff,
+      });
+
+      expect(map).toEqual({});
+      expect(fetchScreenshotDiff).not.toHaveBeenCalled();
+      expect(
+        warnings.some((w) => /Could not parse replay diff JSON/.test(w)),
+      ).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
   it("refuses unsafe replay IDs that would escape dom-diffs/", async () => {
     setupReplayDiffResults(workspace, "diff-unsafe", [
       { identifier: { type: "after-event", eventNumber: 1 }, outcome: "diff" },

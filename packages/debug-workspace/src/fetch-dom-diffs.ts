@@ -468,7 +468,15 @@ const readScreenshotDiffResults = (
       data?: { screenshotDiffResults?: ScreenshotDiffResultEntry[] };
     };
     return raw?.data?.screenshotDiffResults ?? null;
-  } catch {
+  } catch (error) {
+    // Malformed JSON (e.g. a truncated download) — log the actual parse error
+    // so a real breakage is distinguishable from a benign absent/empty file.
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      chalk.yellow(
+        `  Warning: Could not parse replay diff JSON (diffs/${replayDiffId}.json): ${message}`,
+      ),
+    );
     return null;
   }
 };
