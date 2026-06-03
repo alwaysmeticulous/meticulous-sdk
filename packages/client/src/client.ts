@@ -262,7 +262,7 @@ export const resolveApiTokenWithOAuth = async (
   if (!apiToken && isInteractive) {
     const tokens = await performOAuthLogin();
     apiToken = tokens.accessToken;
-    await maybeAutoSelectProject(apiToken, logger);
+    await maybeAutoSelectProject(apiToken, logger, options.appInfo);
   }
 
   if (!apiToken) {
@@ -285,12 +285,13 @@ export const resolveApiTokenWithOAuth = async (
 const maybeAutoSelectProject = async (
   apiToken: string,
   logger: log.Logger,
+  appInfo?: string,
 ): Promise<void> => {
   if (getStoredProjectId()) {
     return;
   }
   try {
-    const client = buildClient(apiToken, logger);
+    const client = buildClient(apiToken, logger, appInfo);
     const projects = await getOAuthProjects(client);
     if (projects.length === 1) {
       const only = projects[0];
