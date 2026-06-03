@@ -1,5 +1,11 @@
 # @alwaysmeticulous/client
 
+## 2.289.2
+
+### Patch Changes
+
+- [#1191](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1191) [`8731225`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/8731225adb4cf22c9d1341972583931369c17882) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Allow consumers to append an app identifier to the client `User-Agent` (e.g. `@alwaysmeticulous/client/<version> report-diffs-action/cloud-compute@v1`), so backend logs can attribute traffic to a specific consumer and version. The suffix comes from the new `appInfo` option on `createClient`, falling back to the `METICULOUS_CLIENT_USER_AGENT_SUFFIX` env var — the env var also reaches clients built deep inside dependencies (e.g. the bundled `remote-replay-launcher`'s own client) where threading an option through is not possible.
+
 ## 2.289.1
 
 ### Patch Changes
