@@ -38,8 +38,10 @@ const USER_AGENT = `@alwaysmeticulous/client/${VERSION}`;
 // its own client) where threading an option through is not possible.
 const USER_AGENT_SUFFIX_ENV_VAR = "METICULOUS_CLIENT_USER_AGENT_SUFFIX";
 
-const buildUserAgent = (appInfo?: string): string => {
-  const suffix = (appInfo ?? process.env[USER_AGENT_SUFFIX_ENV_VAR])?.trim();
+// Exported for unit testing; not re-exported from the package index.
+export const buildUserAgent = (appInfo?: string): string => {
+  const suffix =
+    appInfo?.trim() || process.env[USER_AGENT_SUFFIX_ENV_VAR]?.trim();
   return suffix ? `${USER_AGENT} ${suffix}` : USER_AGENT;
 };
 
