@@ -11,6 +11,7 @@ import {
   ensureReplayLogTextFiles,
   getOrFetchReplayArchive,
   getOrFetchRecordedSessionData,
+  BestEffortFileType,
   ReplayFileType,
 } from "@alwaysmeticulous/downloading-helpers";
 import chalk from "chalk";
@@ -80,7 +81,10 @@ const downloadReplays = async (
           replayId,
           "everything",
           true,
-          { excludeFileTypes: DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES },
+          {
+            excludeFileTypes: DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES,
+            bestEffortFileTypes: DEBUG_WORKSPACE_BEST_EFFORT_FILE_TYPES,
+          },
         );
         await ensureReplayLogTextFiles(cachedPath);
         console.log(chalk.cyan(`  Downloaded replay ${replayId}`));
@@ -115,6 +119,15 @@ const DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES: ReadonlySet<ReplayFileType> =
     "rawPerScreenshotJsCoverage",
     "diffs",
   ]);
+
+// Snapshotted assets only feed optional enrichment (formatted JS/CSS and the
+// asset diff) — the agent never re-runs the replay, and the generated workspace
+// already degrades cleanly when they're absent. Old replays routinely have
+// their `snapshotted-assets.zip` pruned by an S3 lifecycle policy, which made
+// the presigned GET 403 and previously failed the whole run. Download them when
+// present, but never let their absence abort the debug run.
+const DEBUG_WORKSPACE_BEST_EFFORT_FILE_TYPES: ReadonlySet<BestEffortFileType> =
+  new Set<BestEffortFileType>(["snapshottedAssets"]);
 
 const copyReplayDir = (src: string, dest: string): void => {
   mkdirSync(dest, { recursive: true });
