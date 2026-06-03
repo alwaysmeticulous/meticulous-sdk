@@ -18,9 +18,16 @@ import {
   RequestConfig,
   Response,
 } from "./types/client.types";
+import { VERSION } from "./version";
 
 const DEFAULT_TIMEOUT = 60_000;
 const BASE_API_URL = "https://app.meticulous.ai/api/";
+
+// Sent on every request so the backend can attribute traffic to a client
+// version (queryable in Datadog). This package is Node-only (it imports
+// undici's fetch), so setting User-Agent is allowed. Callers may override it
+// by passing their own `user-agent` header.
+const USER_AGENT = `@alwaysmeticulous/client/${VERSION}`;
 
 export interface ClientOptions {
   apiToken: string | null | undefined;
@@ -96,6 +103,7 @@ export const makeRequest = async <T>(
 
   const finalHeaders = {
     "Content-Type": "application/json",
+    "user-agent": USER_AGENT,
     ...headers,
     ...config.headers,
     ...options.headers,

@@ -10,8 +10,9 @@
   ],
   "scripts": {
     "clean": "rimraf dist tsconfig.tsbuildinfo",
-    "build": "tsc --build tsconfig.json",
-    "dev": "tsc --build tsconfig.json --watch",
+    "generate-version": "node scripts/generate-version.mjs",
+    "build": "node scripts/generate-version.mjs && tsc --build tsconfig.json",
+    "dev": "node scripts/generate-version.mjs && tsc --build tsconfig.json --watch",
     "format": "prettier --write src",
     "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
