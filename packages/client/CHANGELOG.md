@@ -1,5 +1,11 @@
 # @alwaysmeticulous/client
 
+## 2.289.0
+
+### Patch Changes
+
+- [#1187](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1187) [`966e0b0`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/966e0b0e110442a552aa0937c0570db7defd38a8) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Stamp a `User-Agent` header (`@alwaysmeticulous/client/<version>`) on every request made by the client, so the backend can attribute traffic to a specific client version. The version is inlined at build time from `package.json` via a generated `version.ts`.
+
 ## 2.288.2
 
 ### Patch Changes

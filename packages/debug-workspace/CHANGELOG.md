@@ -1,5 +1,19 @@
 # @alwaysmeticulous/debug-workspace
 
+## 2.289.0
+
+### Minor Changes
+
+- [#1189](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1189) [`e7c39ab`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/e7c39abba7700fc3fb835e96602bb088498a3e81) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - fix(debug-replay-diff): enumerate DOM diffs from screenshotDiffResults, not the timeline
+
+- [#1188](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1188) [`3052822`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/3052822a4684a866f4feba10129757839c0ce844) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - fix(debug-replay-diff): make pruned/urlless replay assets non-fatal
+
+### Patch Changes
+
+- Updated dependencies [[`966e0b0`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/966e0b0e110442a552aa0937c0570db7defd38a8), [`3052822`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/3052822a4684a866f4feba10129757839c0ce844)]:
+  - @alwaysmeticulous/client@2.289.0
+  - @alwaysmeticulous/downloading-helpers@2.289.0
+
 ## 2.288.2
 
 ### Patch Changes
