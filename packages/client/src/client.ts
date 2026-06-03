@@ -29,8 +29,31 @@ const BASE_API_URL = "https://app.meticulous.ai/api/";
 // by passing their own `user-agent` header.
 const USER_AGENT = `@alwaysmeticulous/client/${VERSION}`;
 
+// Consumers can append their own identity to the User-Agent so backend logs
+// attribute traffic to a specific consumer and version (e.g.
+// `report-diffs-action/cloud-compute@v1`). The suffix is taken from the
+// `appInfo` client option, falling back to the
+// METICULOUS_CLIENT_USER_AGENT_SUFFIX env var — the env var covers clients that
+// are created deep inside dependencies (e.g. the remote-replay-launcher builds
+// its own client) where threading an option through is not possible.
+const USER_AGENT_SUFFIX_ENV_VAR = "METICULOUS_CLIENT_USER_AGENT_SUFFIX";
+
+// Exported for unit testing; not re-exported from the package index.
+export const buildUserAgent = (appInfo?: string): string => {
+  const suffix =
+    appInfo?.trim() || process.env[USER_AGENT_SUFFIX_ENV_VAR]?.trim();
+  return suffix ? `${USER_AGENT} ${suffix}` : USER_AGENT;
+};
+
 export interface ClientOptions {
   apiToken: string | null | undefined;
+
+  /**
+   * Optional identifier for the consuming application, appended to the
+   * User-Agent of every request (e.g. `report-diffs-action/cloud-compute@v1`).
+   * Use it to attribute backend traffic to a specific consumer/version.
+   */
+  appInfo?: string;
 }
 
 export interface MakeRequestOptions {
@@ -103,7 +126,7 @@ export const makeRequest = async <T>(
 
   const finalHeaders = {
     "Content-Type": "application/json",
-    "user-agent": USER_AGENT,
+    "user-agent": buildUserAgent(),
     ...headers,
     ...config.headers,
     ...options.headers,
@@ -133,7 +156,12 @@ export const makeRequest = async <T>(
   );
 };
 
-const buildClient = (token: string, logger: log.Logger): MeticulousClient => {
+const buildClient = (
+  token: string,
+  logger: log.Logger,
+  appInfo?: string,
+): MeticulousClient => {
+  const userAgent = buildUserAgent(appInfo);
   const makeRequestWithToken = async <T>(
     url: string,
     options: RequestInit = {},
@@ -141,6 +169,7 @@ const buildClient = (token: string, logger: log.Logger): MeticulousClient => {
   ): Promise<Response<T>> => {
     const headers = {
       authorization: token,
+      "user-agent": userAgent,
     };
 
     return makeRequest<T>({
@@ -194,6 +223,7 @@ const buildClient = (token: string, logger: log.Logger): MeticulousClient => {
 
 export const createClient: (options: ClientOptions) => MeticulousClient = ({
   apiToken: apiToken_,
+  appInfo,
 }) => {
   const logger = initLogger();
   const apiToken = getApiToken(apiToken_);
@@ -204,7 +234,7 @@ export const createClient: (options: ClientOptions) => MeticulousClient = ({
     process.exit(1);
   }
 
-  return buildClient(apiToken, logger);
+  return buildClient(apiToken, logger, appInfo);
 };
 
 export const isInteractiveContext = (): boolean =>
@@ -232,7 +262,7 @@ export const resolveApiTokenWithOAuth = async (
   if (!apiToken && isInteractive) {
     const tokens = await performOAuthLogin();
     apiToken = tokens.accessToken;
-    await maybeAutoSelectProject(apiToken, logger);
+    await maybeAutoSelectProject(apiToken, logger, options.appInfo);
   }
 
   if (!apiToken) {
@@ -255,12 +285,13 @@ export const resolveApiTokenWithOAuth = async (
 const maybeAutoSelectProject = async (
   apiToken: string,
   logger: log.Logger,
+  appInfo?: string,
 ): Promise<void> => {
   if (getStoredProjectId()) {
     return;
   }
   try {
-    const client = buildClient(apiToken, logger);
+    const client = buildClient(apiToken, logger, appInfo);
     const projects = await getOAuthProjects(client);
     if (projects.length === 1) {
       const only = projects[0];
@@ -277,7 +308,7 @@ export const createClientWithOAuth = async (
   options: ClientOptions & { enableOAuthLogin?: boolean },
 ): Promise<MeticulousClient> => {
   const apiToken = await resolveApiTokenWithOAuth(options);
-  return buildClient(apiToken, initLogger());
+  return buildClient(apiToken, initLogger(), options.appInfo);
 };
 
 const getApiUrl = () => {
