@@ -343,8 +343,6 @@ const downloadReplayV3Files = async (
     ...rest
   } = downloadUrls;
 
-  const logger = initLogger();
-
   if (
     customCheckSnapshots != null &&
     Object.keys(customCheckSnapshots).length
