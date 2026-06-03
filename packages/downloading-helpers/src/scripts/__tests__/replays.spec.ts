@@ -246,6 +246,9 @@ describe("getOrFetchReplayArchive — bestEffortFileTypes", () => {
     rmSync(dataDir, { recursive: true, force: true });
   });
 
+  const markerPath = (): string =>
+    join(dataDir, "replays", REPLAY_ID, "previously-downloaded.txt");
+
   const run = (
     bestEffortFileTypes?: ReadonlySet<ReplayFileType>,
   ): Promise<{ fileName: string }> =>
@@ -275,6 +278,15 @@ describe("getOrFetchReplayArchive — bestEffortFileTypes", () => {
 
   it("propagates the failure when the artifact is NOT marked best-effort", async () => {
     await expect(run()).rejects.toThrow("403");
+  });
+
+  it("does NOT write the cache marker when only best-effort types are set", async () => {
+    // A swallowed best-effort failure may leave the directory incomplete, so
+    // the marker must not be written — otherwise a later unfiltered caller
+    // would short-circuit and skip re-fetching the missing optional artifact.
+    await run(new Set<ReplayFileType>(["snapshottedAssets"]));
+
+    expect(existsSync(markerPath())).toBe(false);
   });
 });
 

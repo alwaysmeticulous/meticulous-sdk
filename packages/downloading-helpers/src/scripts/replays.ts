@@ -251,9 +251,11 @@ export const getOrFetchReplayArchive = async (
       );
     }
 
-    // Don't write the cache marker when excludes are set; the cache directory
-    // would otherwise look complete to future unfiltered callers.
-    if (!hasExcludes) {
+    // Don't write the cache marker when excludes or best-effort file types are
+    // set; the cache directory would otherwise look complete to future
+    // unfiltered callers even though a swallowed best-effort failure (or an
+    // exclusion) may have left it incomplete.
+    if (!bypassCache) {
       await writeFile(previouslyDownloadedFile, downloadScope, "utf-8");
     }
     logger.debug(`Extracted replay archive in ${replayDir}`);
