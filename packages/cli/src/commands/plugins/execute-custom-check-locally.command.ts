@@ -59,8 +59,9 @@ const handler = async ({
   printResult(manifest.configuration.displayName, output, logger);
 
   // Exit non-zero when the check did not pass cleanly so the command is usable
-  // as a gate while iterating on a plugin locally.
-  if (output.verdict === "fail" || output.verdict === "execution-error") {
+  // as a gate while iterating on a plugin locally. (A check that throws while
+  // running surfaces as an error from `execute` above, not as a verdict.)
+  if (output.verdict === "fail") {
     process.exit(1);
   }
 };
@@ -74,7 +75,6 @@ const printResult = (
     pass: chalk.green("pass"),
     warn: chalk.yellow("warn"),
     fail: chalk.red("fail"),
-    "execution-error": chalk.red("execution-error"),
   }[output.verdict];
 
   logger.info("");
