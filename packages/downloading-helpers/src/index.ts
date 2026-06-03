@@ -5,6 +5,7 @@ export {
   getOrFetchReplayArchive,
   DownloadScope,
   ReplayFileType,
+  BestEffortFileType,
   ReplayArchiveOptions,
 } from "./scripts/replays";
 export {

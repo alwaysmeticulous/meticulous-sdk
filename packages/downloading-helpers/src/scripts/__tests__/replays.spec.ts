@@ -17,7 +17,11 @@ import {
   downloadAndExtractFile,
   downloadFile,
 } from "../../file-downloads/download-file";
-import { getOrFetchReplayArchive, type ReplayFileType } from "../replays";
+import {
+  getOrFetchReplayArchive,
+  type BestEffortFileType,
+  type ReplayFileType,
+} from "../replays";
 
 // `vi.mock` calls are auto-hoisted above the imports above; the order matches
 // the project's `import/order` rule.
@@ -250,7 +254,7 @@ describe("getOrFetchReplayArchive — bestEffortFileTypes", () => {
     join(dataDir, "replays", REPLAY_ID, "previously-downloaded.txt");
 
   const run = (
-    bestEffortFileTypes?: ReadonlySet<ReplayFileType>,
+    bestEffortFileTypes?: ReadonlySet<BestEffortFileType>,
   ): Promise<{ fileName: string }> =>
     runWithLocalDataDir(dataDir, () =>
       getOrFetchReplayArchive(
@@ -264,7 +268,7 @@ describe("getOrFetchReplayArchive — bestEffortFileTypes", () => {
 
   it("swallows a best-effort artifact failure and still downloads the rest", async () => {
     await expect(
-      run(new Set<ReplayFileType>(["snapshottedAssets"])),
+      run(new Set<BestEffortFileType>(["snapshottedAssets"])),
     ).resolves.toBeDefined();
 
     const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
@@ -284,7 +288,7 @@ describe("getOrFetchReplayArchive — bestEffortFileTypes", () => {
     // A swallowed best-effort failure may leave the directory incomplete, so
     // the marker must not be written — otherwise a later unfiltered caller
     // would short-circuit and skip re-fetching the missing optional artifact.
-    await run(new Set<ReplayFileType>(["snapshottedAssets"]));
+    await run(new Set<BestEffortFileType>(["snapshottedAssets"]));
 
     expect(existsSync(markerPath())).toBe(false);
   });
@@ -314,7 +318,7 @@ describe("getOrFetchReplayArchive — missing signedUrl", () => {
   });
 
   const run = (
-    bestEffortFileTypes?: ReadonlySet<ReplayFileType>,
+    bestEffortFileTypes?: ReadonlySet<BestEffortFileType>,
   ): Promise<{ fileName: string }> =>
     runWithLocalDataDir(dataDir, () =>
       getOrFetchReplayArchive(
@@ -336,7 +340,7 @@ describe("getOrFetchReplayArchive — missing signedUrl", () => {
 
   it("swallows a missing URL when the artifact is marked best-effort", async () => {
     await expect(
-      run(new Set<ReplayFileType>(["snapshottedAssets"])),
+      run(new Set<BestEffortFileType>(["snapshottedAssets"])),
     ).resolves.toBeDefined();
   });
 });

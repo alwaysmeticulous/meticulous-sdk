@@ -140,6 +140,20 @@ export type ReplayFileType =
   | "launchBrowserAndReplayParams"
   | "logs";
 
+/**
+ * The subset of {@link ReplayFileType}s that are downloaded as unzipped archive
+ * directories and are therefore eligible for best-effort handling (see
+ * {@link ReplayArchiveOptions.bestEffortFileTypes}). Best-effort wrapping is
+ * only applied to these artifacts; the other file types (e.g. `timeline`,
+ * `logs`, `screenshots`, `diffs`) always fail hard, so they're excluded from
+ * this type to make misuse a compile-time error rather than a silent no-op.
+ */
+export type BestEffortFileType =
+  | "snapshottedAssets"
+  | "rawPerScreenshotCssCoverage"
+  | "rawPerScreenshotJsCoverage"
+  | "mappedPerScreenshotJsCoverage";
+
 export interface ReplayArchiveOptions {
   /**
    * File-type keys to skip during download (e.g. `playbackData`, `rawCoverage`,
@@ -159,11 +173,15 @@ export interface ReplayArchiveOptions {
    * (e.g. `snapshottedAssets` for an old replay whose assets were pruned by an
    * S3 lifecycle policy). Mandatory artifacts must NOT be listed here.
    *
+   * Best-effort handling is only wired up for the unzipped-archive artifacts
+   * (see {@link BestEffortFileType}); other file types always fail hard, which
+   * is why the key type is restricted to that subset.
+   *
    * Like `excludeFileTypes`, setting this bypasses the cross-tool cache (the
    * marker is not written), since a swallowed failure may leave the replay
    * directory incomplete.
    */
-  bestEffortFileTypes?: ReadonlySet<ReplayFileType>;
+  bestEffortFileTypes?: ReadonlySet<BestEffortFileType>;
 }
 
 export const getOrFetchReplayArchive = async (
