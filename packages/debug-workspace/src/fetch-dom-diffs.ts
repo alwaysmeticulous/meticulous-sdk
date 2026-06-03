@@ -1,9 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  writeFileSync,
-} from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import {
   getScreenshotDomDiff,
@@ -13,23 +8,24 @@ import chalk from "chalk";
 import pLimit from "p-limit";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import type { DebugContext } from "./debug.types";
+import { readScreenshotMetadata } from "./replay-walk";
 import {
-  readScreenshotMetadata,
-  readTimelineJson,
-} from "./replay-walk";
-import {
+  ScreenshotIdentifier,
   screenshotIdentifierToBaseName,
   screenshotIdentifierToBackendName,
 } from "./screenshot-identifier";
 
 export interface DomDiffMapEntry {
-  /** 3-lines-of-context diff. `null` when DOMs are identical. */
+  /**
+   * 3-lines-of-context diff. An entry only exists for screenshots with a real
+   * DOM diff, so this is always set (identical screenshots have no map entry).
+   */
   diffPath: string | null;
   /**
    * Full-file-context diff (same hunks as `diffPath`, more surrounding lines).
-   * `null` when DOMs are identical, OR when the full-context fetch failed
-   * while the canonical fetch succeeded (check `diffPath`: if non-null, the
-   * canonical diff is still usable and a warning was logged).
+   * `null` when the full-context fetch failed while the canonical fetch
+   * succeeded (check `diffPath`: it is non-null, so the canonical diff is still
+   * usable and a warning was logged).
    */
   fullDiffPath: string | null;
   totalHunks: number;
@@ -55,6 +51,12 @@ interface ReplayDiffPair {
   label: string;
 }
 
+/** One entry of `replay_diffs.data.screenshotDiffResults` (the fields we use). */
+interface ScreenshotDiffResultEntry {
+  identifier?: ScreenshotIdentifier;
+  outcome?: string;
+}
+
 interface SummaryRow {
   screenshotBaseName: string;
   status:
@@ -72,12 +74,20 @@ interface SummaryRow {
 const DEFAULT_MAX_CONCURRENCY = 8;
 
 /**
- * Fetch per-screenshot DOM diffs for every replay diff in `debugContext`
- * and write `<label>-<baseName>.diff` (3 lines of context), a sibling
- * `<label>-<baseName>.full.diff` (full-file context), and
- * `<label>.summary.txt` under `debug-data/dom-diffs/`. Per-screenshot
- * errors are logged and recorded as `skipped-error`; the pipeline never
- * fails on a fetch error.
+ * Fetch per-screenshot DOM diffs for every replay diff in `debugContext` and
+ * write `<label>-<baseName>.diff` (3 lines of context), a sibling
+ * `<label>-<baseName>.full.diff` (full-file context), and `<label>.summary.txt`
+ * under `debug-data/dom-diffs/`.
+ *
+ * Enumeration is driven by the replay diff's `screenshotDiffResults`
+ * (downloaded to `debug-data/diffs/<replayDiffId>.json`), which is the
+ * authoritative set of compared screenshots — each entry carries the
+ * `identifier` (so we can derive the backend name directly, without consulting
+ * the curated `timeline.json`) and the `outcome`. We only call the DOM-diff API
+ * for outcomes that represent a real visual difference; `no-diff` screenshots
+ * are recorded as identical without an API round-trip. Per-screenshot fetch
+ * errors are logged and recorded as `skipped-error`; the pipeline never fails
+ * on a fetch error.
  */
 export const fetchDomDiffs = async (
   options: FetchDomDiffsOptions,
@@ -92,16 +102,12 @@ export const fetchDomDiffs = async (
 
   const domDiffMap: DomDiffMap = {};
 
-  const replaysDir = join(workspaceDir, DEBUG_DATA_DIRECTORY, "replays");
-  if (!existsSync(replaysDir)) {
-    return domDiffMap;
-  }
-
   const pairs = collectReplayDiffPairs(debugContext);
   if (pairs.length === 0) {
     return domDiffMap;
   }
 
+  const replaysDir = join(workspaceDir, DEBUG_DATA_DIRECTORY, "replays");
   const domDiffsDir = join(workspaceDir, DEBUG_DATA_DIRECTORY, "dom-diffs");
   const limit = pLimit(maxConcurrency);
 
@@ -119,61 +125,36 @@ export const fetchDomDiffs = async (
       continue;
     }
 
-    const headScreenshotsDir = join(
-      replaysDir,
-      "head",
-      pair.headReplayId,
-      "screenshots",
-    );
-    const baseScreenshotsDir = join(
-      replaysDir,
-      "base",
-      pair.baseReplayId,
-      "screenshots",
-    );
-    if (
-      !existsSync(headScreenshotsDir) ||
-      !existsSync(baseScreenshotsDir)
-    ) {
+    const results = readScreenshotDiffResults(workspaceDir, pair.replayDiffId);
+    if (results == null) {
+      console.warn(
+        chalk.yellow(
+          `  Warning: Skipping DOM diffs for ${pair.label}: replay diff JSON (diffs/${pair.replayDiffId}.json) is missing or unreadable — fall back to diffing <name>.html files on disk`,
+        ),
+      );
       continue;
     }
-
-    const headScreenshots = indexScreenshotsByBaseName(headScreenshotsDir);
-    const baseScreenshots = indexScreenshotsByBaseName(baseScreenshotsDir);
-    const allNames = new Set([
-      ...headScreenshots.keys(),
-      ...baseScreenshots.keys(),
-    ]);
-    if (allNames.size === 0) {
+    if (results.length === 0) {
       continue;
     }
-
-    // Map on-disk basename → backend-format name via timeline.json
-    // (the identifier isn't persisted in screenshot metadata).
-    const backendNames = readBackendNameMap([
-      join(replaysDir, "head", pair.headReplayId, "timeline.json"),
-      join(replaysDir, "base", pair.baseReplayId, "timeline.json"),
-    ]);
 
     mkdirSync(domDiffsDir, { recursive: true });
 
-    const tasks = [...allNames].sort().map((screenshotBaseName) =>
+    const tasks = results.map((result) =>
       resolveScreenshot({
         pair,
-        screenshotBaseName,
-        backendName: backendNames.get(screenshotBaseName) ?? null,
-        headMetadataPath: headScreenshots.get(screenshotBaseName),
-        baseMetadataPath: baseScreenshots.get(screenshotBaseName),
+        result,
+        replaysDir,
         domDiffsDir,
         limit,
         fetchScreenshotDiff,
         client,
       }),
     );
-    const results = await Promise.all(tasks);
+    const resolved = await Promise.all(tasks);
 
     const summaryRows: SummaryRow[] = [];
-    for (const result of results) {
+    for (const result of resolved) {
       if (result == null) {
         continue;
       }
@@ -216,7 +197,7 @@ export const fetchDomDiffs = async (
   if (skippedUnsupportedCount > 0) {
     console.log(
       chalk.yellow(
-        `  Skipped ${skippedUnsupportedCount} screenshot DOM diff(s) with unsupported identifier (e.g. redacted variant, missing timeline entry) — fall back to diffing <name>.html files on disk`,
+        `  Skipped ${skippedUnsupportedCount} screenshot DOM diff(s) with unsupported identifier (e.g. redacted variant) — fall back to diffing <name>.html files on disk`,
       ),
     );
   }
@@ -231,10 +212,8 @@ interface ScreenshotResolution {
 
 const resolveScreenshot = async (args: {
   pair: ReplayDiffPair;
-  screenshotBaseName: string;
-  backendName: string | null;
-  headMetadataPath: string | undefined;
-  baseMetadataPath: string | undefined;
+  result: ScreenshotDiffResultEntry;
+  replaysDir: string;
   domDiffsDir: string;
   limit: ReturnType<typeof pLimit>;
   fetchScreenshotDiff: typeof getScreenshotDomDiff;
@@ -242,44 +221,60 @@ const resolveScreenshot = async (args: {
 }): Promise<ScreenshotResolution | null> => {
   const {
     pair,
-    screenshotBaseName,
-    backendName,
-    headMetadataPath,
-    baseMetadataPath,
+    result,
+    replaysDir,
     domDiffsDir,
     limit,
     fetchScreenshotDiff,
     client,
   } = args;
 
-  if (!isSafePathSegment(screenshotBaseName)) {
+  const identifier = result.identifier;
+  if (identifier == null) {
     return null;
   }
 
-  if (!headMetadataPath || !baseMetadataPath) {
-    const availablePath = headMetadataPath ?? baseMetadataPath;
+  const screenshotBaseName = screenshotIdentifierToBaseName(identifier);
+  if (screenshotBaseName == null || !isSafePathSegment(screenshotBaseName)) {
+    return null;
+  }
+
+  const outcome = result.outcome;
+  const url = readUrlForScreenshot(replaysDir, pair, screenshotBaseName);
+
+  // No head/base pair to diff — record which side has the screenshot.
+  if (outcome === "missing-base") {
+    return onlyInRow(screenshotBaseName, "only-in-head", url);
+  }
+  if (outcome === "missing-head") {
+    return onlyInRow(screenshotBaseName, "only-in-base", url);
+  }
+  if (outcome === "missing-base-and-head") {
+    return null;
+  }
+
+  // `no-diff`: the DOM diff is empty by definition — record identical without
+  // an API round-trip. No `mapEntry`: an all-null entry gives the agent nothing
+  // to navigate to (the identical status is in the summary), and emitting one
+  // per compared screenshot would bloat the context for diff-free replays.
+  if (outcome === "no-diff") {
     return {
       summaryRow: {
         screenshotBaseName,
-        status: !headMetadataPath ? "only-in-base" : "only-in-head",
+        status: "identical",
         totalHunks: 0,
         bytes: 0,
-        url: availablePath ? readUrlFromMetadata(availablePath) : null,
+        url,
       },
       mapEntry: null,
     };
   }
 
-  const url = readUrlFromMetadata(headMetadataPath);
-
-  // Can't derive a backend-compatible name (redacted variant, unknown
-  // type, or missing timeline entry) — skip the API call (it would 404).
+  // A visual difference (`diff` / `flake` / `different-size`, or any
+  // unknown/future outcome we default to fetching). Derive the backend name
+  // directly from the identifier — redacted/unknown variants can't be named.
+  const backendName = screenshotIdentifierToBackendName(identifier);
   if (backendName == null) {
-    console.warn(
-      chalk.yellow(
-        `  Warning: Skipping DOM diff for ${pair.label}/${screenshotBaseName}: no backend name available (unsupported variant or missing timeline entry)`,
-      ),
-    );
     return {
       summaryRow: {
         screenshotBaseName,
@@ -320,6 +315,8 @@ const resolveScreenshot = async (args: {
     }
 
     if (response.totalDiffs === 0 || response.diffs.length === 0) {
+      // Pixel-diffed but DOM-identical — same as `no-diff`: nothing to navigate
+      // to, so no map entry (the identical status is in the summary).
       return {
         summaryRow: {
           screenshotBaseName,
@@ -328,13 +325,7 @@ const resolveScreenshot = async (args: {
           bytes: 0,
           url,
         },
-        mapEntry: {
-          diffPath: null,
-          fullDiffPath: null,
-          totalHunks: 0,
-          bytes: 0,
-          url,
-        },
+        mapEntry: null,
       };
     }
 
@@ -387,6 +378,15 @@ const resolveScreenshot = async (args: {
   });
 };
 
+const onlyInRow = (
+  screenshotBaseName: string,
+  status: "only-in-head" | "only-in-base",
+  url: string | null,
+): ScreenshotResolution => ({
+  summaryRow: { screenshotBaseName, status, totalHunks: 0, bytes: 0, url },
+  mapEntry: null,
+});
+
 const renderPairSummary = (
   pair: ReplayDiffPair,
   rows: SummaryRow[],
@@ -433,11 +433,79 @@ const renderPairSummary = (
       row.url ?? "",
     ].join("\t"),
   );
-  const tableHeader = ["screenshot", "status", "hunks", "diff_bytes", "url"].join(
-    "\t",
-  );
+  const tableHeader = [
+    "screenshot",
+    "status",
+    "hunks",
+    "diff_bytes",
+    "url",
+  ].join("\t");
 
   return `${header}\n${[tableHeader, ...tableRows].join("\n")}\n`;
+};
+
+/**
+ * Reads `screenshotDiffResults` from the replay diff JSON downloaded to
+ * `debug-data/diffs/<replayDiffId>.json`. Returns `null` when the file is
+ * absent or unreadable (the caller skips the pair — the agent can still diff
+ * the on-disk `<name>.html` files).
+ */
+const readScreenshotDiffResults = (
+  workspaceDir: string,
+  replayDiffId: string,
+): ScreenshotDiffResultEntry[] | null => {
+  const file = join(
+    workspaceDir,
+    DEBUG_DATA_DIRECTORY,
+    "diffs",
+    `${replayDiffId}.json`,
+  );
+  if (!existsSync(file)) {
+    return null;
+  }
+  try {
+    const raw = JSON.parse(readFileSync(file, "utf-8")) as {
+      data?: { screenshotDiffResults?: ScreenshotDiffResultEntry[] };
+    };
+    return raw?.data?.screenshotDiffResults ?? null;
+  } catch (error) {
+    // Malformed JSON (e.g. a truncated download) — log the actual parse error
+    // so a real breakage is distinguishable from a benign absent/empty file.
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      chalk.yellow(
+        `  Warning: Could not parse replay diff JSON (diffs/${replayDiffId}.json): ${message}`,
+      ),
+    );
+    return null;
+  }
+};
+
+const readUrlForScreenshot = (
+  replaysDir: string,
+  pair: ReplayDiffPair,
+  screenshotBaseName: string,
+): string | null => {
+  const headPath = join(
+    replaysDir,
+    "head",
+    pair.headReplayId,
+    "screenshots",
+    `${screenshotBaseName}.metadata.json`,
+  );
+  const basePath = join(
+    replaysDir,
+    "base",
+    pair.baseReplayId,
+    "screenshots",
+    `${screenshotBaseName}.metadata.json`,
+  );
+  const metadataPath = existsSync(headPath)
+    ? headPath
+    : existsSync(basePath)
+      ? basePath
+      : null;
+  return metadataPath ? readUrlFromMetadata(metadataPath) : null;
 };
 
 const readUrlFromMetadata = (metadataPath: string): string | null =>
@@ -464,49 +532,6 @@ const formatBytes = (bytes: number): string => {
     return `${(bytes / 1024).toFixed(1)}k`;
   }
   return `${(bytes / (1024 * 1024)).toFixed(1)}M`;
-};
-
-const indexScreenshotsByBaseName = (
-  screenshotsDir: string,
-): Map<string, string> => {
-  const index = new Map<string, string>();
-  for (const filename of readdirSync(screenshotsDir)) {
-    if (!filename.endsWith(".metadata.json")) {
-      continue;
-    }
-    const baseName = filename.slice(0, -".metadata.json".length);
-    index.set(baseName, join(screenshotsDir, filename));
-  }
-  return index;
-};
-
-/**
- * Map on-disk basename (e.g. `screenshot-after-event-00164`) to the
- * backend-format name (e.g. `after-event-164`). First timeline wins on
- * disagreement.
- */
-const readBackendNameMap = (timelinePaths: string[]): Map<string, string> => {
-  const map = new Map<string, string>();
-  for (const timelinePath of timelinePaths) {
-    const timeline = readTimelineJson(timelinePath);
-    if (timeline == null) {
-      continue;
-    }
-    for (const entry of timeline) {
-      if (entry.kind !== "screenshot" || !entry.data?.identifier) {
-        continue;
-      }
-      const baseName = screenshotIdentifierToBaseName(entry.data.identifier);
-      const backendName = screenshotIdentifierToBackendName(
-        entry.data.identifier,
-      );
-      if (baseName == null || backendName == null || map.has(baseName)) {
-        continue;
-      }
-      map.set(baseName, backendName);
-    }
-  }
-  return map;
 };
 
 const collectReplayDiffPairs = (

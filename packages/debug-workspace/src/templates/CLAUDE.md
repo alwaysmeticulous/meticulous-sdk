@@ -181,13 +181,14 @@ to diffing the two `screenshots/<baseName>.html` files directly.
   Use this to correlate e.g. `screenshot-after-event-00673` with a timeline position.
 - `replayComparison` -- side-by-side per-replay stats (events, network requests, animation
   frames, virtual time, screenshots). Scan for head-vs-base drift.
-- `domDiffMap` -- keyed by `"<headReplayId>-vs-<baseReplayId>/<screenshotBaseName>"`. Each
-  entry carries `diffPath` (3-line-context), `fullDiffPath` (full-file-context),
-  `totalHunks`, `bytes`, and `url`. Both paths are `null` when HEAD and BASE DOMs were
-  identical. `fullDiffPath` alone can also be `null` when the full-context fetch failed
-  while the canonical succeeded — in that case `diffPath` is non-null and still usable.
-  Screenshots that are only-in-one-side, `skipped-error`, or `skipped-unsupported` have
-  **no entry** in the map; consult the per-pair `.summary.txt` for the full list.
+- `domDiffMap` -- keyed by `"<headReplayId>-vs-<baseReplayId>/<screenshotBaseName>"`. An
+  entry is present **only** for screenshots with a real DOM diff to open; each carries
+  `diffPath` (3-line-context), `fullDiffPath` (full-file-context), `totalHunks`, `bytes`,
+  and `url`. `fullDiffPath` alone can be `null` when the full-context fetch failed while
+  the canonical succeeded — in that case `diffPath` is non-null and still usable.
+  Screenshots that are identical, only-in-one-side, `skipped-error`, or
+  `skipped-unsupported` have **no entry** in the map; consult the per-pair `.summary.txt`
+  for the full list (it records every compared screenshot and its status).
 - `fileMetadata` -- byte sizes and line counts for key files. Check this before reading
   anything large; for files over ~5000 lines prefer grep/search or ranged reads.
 
