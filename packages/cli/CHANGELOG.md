@@ -1,5 +1,23 @@
 # @alwaysmeticulous/cli
 
+## 2.289.1
+
+### Patch Changes
+
+- [#1192](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1192) [`c22df85`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/c22df8563fd645f56149c1fae68a3e53e17f7fef) Thanks [@phreppo](https://github.com/phreppo)! - Custom check execution errors are now reported for the run as a whole rather than per check: `CustomCheckVerdict` no longer includes `execution-error` (a verdict is only `pass | warn | fail`). A check that fails to run is surfaced as a run-level execution error instead of a per-check verdict.
+
+- Updated dependencies [[`c22df85`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/c22df8563fd645f56149c1fae68a3e53e17f7fef)]:
+  - @alwaysmeticulous/api@2.289.1
+  - @alwaysmeticulous/client@2.289.1
+  - @alwaysmeticulous/common@2.287.1
+  - @alwaysmeticulous/downloading-helpers@2.289.1
+  - @alwaysmeticulous/record@2.289.1
+  - @alwaysmeticulous/remote-replay-launcher@2.289.1
+  - @alwaysmeticulous/sdk-bundles-api@2.289.1
+  - @alwaysmeticulous/debug-workspace@2.289.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.289.1
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+
 ## 2.289.0
 
 ### Patch Changes
