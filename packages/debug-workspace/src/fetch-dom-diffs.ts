@@ -16,13 +16,16 @@ import {
 } from "./screenshot-identifier";
 
 export interface DomDiffMapEntry {
-  /** 3-lines-of-context diff. `null` when DOMs are identical. */
+  /**
+   * 3-lines-of-context diff. An entry only exists for screenshots with a real
+   * DOM diff, so this is always set (identical screenshots have no map entry).
+   */
   diffPath: string | null;
   /**
    * Full-file-context diff (same hunks as `diffPath`, more surrounding lines).
-   * `null` when DOMs are identical, OR when the full-context fetch failed
-   * while the canonical fetch succeeded (check `diffPath`: if non-null, the
-   * canonical diff is still usable and a warning was logged).
+   * `null` when the full-context fetch failed while the canonical fetch
+   * succeeded (check `diffPath`: it is non-null, so the canonical diff is still
+   * usable and a warning was logged).
    */
   fullDiffPath: string | null;
   totalHunks: number;
@@ -123,7 +126,15 @@ export const fetchDomDiffs = async (
     }
 
     const results = readScreenshotDiffResults(workspaceDir, pair.replayDiffId);
-    if (results == null || results.length === 0) {
+    if (results == null) {
+      console.warn(
+        chalk.yellow(
+          `  Warning: Skipping DOM diffs for ${pair.label}: replay diff JSON (diffs/${pair.replayDiffId}.json) is missing or unreadable — fall back to diffing <name>.html files on disk`,
+        ),
+      );
+      continue;
+    }
+    if (results.length === 0) {
       continue;
     }
 
@@ -243,7 +254,9 @@ const resolveScreenshot = async (args: {
   }
 
   // `no-diff`: the DOM diff is empty by definition — record identical without
-  // an API round-trip.
+  // an API round-trip. No `mapEntry`: an all-null entry gives the agent nothing
+  // to navigate to (the identical status is in the summary), and emitting one
+  // per compared screenshot would bloat the context for diff-free replays.
   if (outcome === "no-diff") {
     return {
       summaryRow: {
@@ -253,13 +266,7 @@ const resolveScreenshot = async (args: {
         bytes: 0,
         url,
       },
-      mapEntry: {
-        diffPath: null,
-        fullDiffPath: null,
-        totalHunks: 0,
-        bytes: 0,
-        url,
-      },
+      mapEntry: null,
     };
   }
 
@@ -308,6 +315,8 @@ const resolveScreenshot = async (args: {
     }
 
     if (response.totalDiffs === 0 || response.diffs.length === 0) {
+      // Pixel-diffed but DOM-identical — same as `no-diff`: nothing to navigate
+      // to, so no map entry (the identical status is in the summary).
       return {
         summaryRow: {
           screenshotBaseName,
@@ -316,13 +325,7 @@ const resolveScreenshot = async (args: {
           bytes: 0,
           url,
         },
-        mapEntry: {
-          diffPath: null,
-          fullDiffPath: null,
-          totalHunks: 0,
-          bytes: 0,
-          url,
-        },
+        mapEntry: null,
       };
     }
 

@@ -262,11 +262,9 @@ describe("fetchDomDiffs", () => {
       ),
     ).toBe(false);
 
-    const entry = map["headB-vs-baseB/final-state"];
-    expect(entry?.diffPath).toBeNull();
-    expect(entry?.fullDiffPath).toBeNull();
-    expect(entry?.totalHunks).toBe(0);
-    expect(entry?.url).toBe("https://example.com/b");
+    // No map entry for identical screenshots — there is nothing to navigate to,
+    // and emitting one per compared screenshot would bloat the context.
+    expect(map["headB-vs-baseB/final-state"]).toBeUndefined();
 
     const summary = readFileSync(
       join(
@@ -277,7 +275,10 @@ describe("fetchDomDiffs", () => {
       ),
       "utf-8",
     );
-    expect(summary).toMatch(/final-state\tidentical\t0\t0/);
+    // The url is still recorded in the summary row even without a map entry.
+    expect(summary).toMatch(
+      /final-state\tidentical\t0\t0\thttps:\/\/example\.com\/b/,
+    );
   });
 
   it("only fetches DOM diffs for screenshots whose outcome is a visual diff", async () => {
@@ -524,21 +525,32 @@ describe("fetchDomDiffs", () => {
     expect(summary).not.toContain("screenshot-after-event-00099");
   });
 
-  it("skips a pair with no replay-diff JSON on disk", async () => {
+  it("warns and skips a pair with no replay-diff JSON on disk", async () => {
     const fetchScreenshotDiff = vi.fn();
 
-    const map = await fetchDomDiffs({
-      client: fakeClient,
-      debugContext: makeDebugContext("headN", "baseN"),
-      workspaceDir: workspace,
-      fetchScreenshotDiff,
-    });
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (msg: string) => warnings.push(String(msg));
 
-    expect(map).toEqual({});
-    expect(fetchScreenshotDiff).not.toHaveBeenCalled();
-    expect(existsSync(join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs"))).toBe(
-      false,
-    );
+    try {
+      const map = await fetchDomDiffs({
+        client: fakeClient,
+        debugContext: makeDebugContext("headN", "baseN"),
+        workspaceDir: workspace,
+        fetchScreenshotDiff,
+      });
+
+      expect(map).toEqual({});
+      expect(fetchScreenshotDiff).not.toHaveBeenCalled();
+      expect(
+        existsSync(join(workspace, DEBUG_DATA_DIRECTORY, "dom-diffs")),
+      ).toBe(false);
+      expect(
+        warnings.some((w) => /replay diff JSON .* is missing/.test(w)),
+      ).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
   });
 
   it("refuses unsafe replay IDs that would escape dom-diffs/", async () => {
