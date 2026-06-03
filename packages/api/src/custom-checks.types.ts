@@ -39,12 +39,16 @@ export interface CustomCheckInput {
 }
 
 /**
+ * The outcome of comparing the base and head snapshots:
  * - `pass`: no regression; the check is green and no report is surfaced.
  * - `warn`: the check is green but its report is shown to the user.
  * - `fail`: the check is red.
- * - `execution-error`: the check failed to run.
+ *
+ * A check failing to *run* is not a verdict: an execution error applies to the
+ * custom check results as a whole (every check), not to an individual check, so
+ * it is reported at that level rather than as a per-check verdict.
  */
-export type CustomCheckVerdict = "pass" | "warn" | "fail" | "execution-error";
+export type CustomCheckVerdict = "pass" | "warn" | "fail";
 
 /**
  * Maximum length of a custom check `summary`. The summary is rendered inline in
