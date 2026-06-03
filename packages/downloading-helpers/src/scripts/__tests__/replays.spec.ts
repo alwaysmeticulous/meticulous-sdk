@@ -2,10 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "fs";
 import { writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import {
-  getReplay,
-  getReplayV3DownloadUrls,
-} from "@alwaysmeticulous/client";
+import { getReplay, getReplayV3DownloadUrls } from "@alwaysmeticulous/client";
 import { runWithLocalDataDir } from "@alwaysmeticulous/common";
 import {
   afterEach,
@@ -20,10 +17,7 @@ import {
   downloadAndExtractFile,
   downloadFile,
 } from "../../file-downloads/download-file";
-import {
-  getOrFetchReplayArchive,
-  type ReplayFileType,
-} from "../replays";
+import { getOrFetchReplayArchive, type ReplayFileType } from "../replays";
 
 // `vi.mock` calls are auto-hoisted above the imports above; the order matches
 // the project's `import/order` rule.
@@ -217,5 +211,120 @@ describe("getOrFetchReplayArchive — excludeFileTypes", () => {
     expect(downloadedKeys).not.toContain("https://example/playbackData");
     // Marker is preserved (not overwritten) — we read but didn't rewrite it.
     expect(readFileSync(markerPath(), "utf8")).toBe("everything");
+  });
+});
+
+describe("getOrFetchReplayArchive — bestEffortFileTypes", () => {
+  let dataDir: string;
+
+  const SNAPSHOT_ASSETS_URL = "https://example/snapshotted-assets";
+
+  beforeEach(() => {
+    dataDir = mkdtempSync(join(tmpdir(), "met-replays-besteffort-"));
+    vi.clearAllMocks();
+    (getReplay as Mock).mockResolvedValue({ version: "v3" });
+    // Give snapshottedAssets a real URL so its download thunk actually runs.
+    (getReplayV3DownloadUrls as Mock).mockResolvedValue({
+      ...(buildDownloadUrls() as Record<string, unknown>),
+      snapshottedAssets: {
+        signedUrl: SNAPSHOT_ASSETS_URL,
+        filePath: "snapshotted-assets.zip",
+      },
+    });
+    // Fail only the snapshotted-assets download (simulates a pruned object / 403).
+    (downloadAndExtractFile as Mock).mockImplementation(
+      async (signedUrl: string) => {
+        if (signedUrl === SNAPSHOT_ASSETS_URL) {
+          throw new Error("Request failed with status code 403");
+        }
+        return undefined;
+      },
+    );
+  });
+
+  afterEach(() => {
+    rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  const run = (
+    bestEffortFileTypes?: ReadonlySet<ReplayFileType>,
+  ): Promise<{ fileName: string }> =>
+    runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive(
+        {} as never,
+        REPLAY_ID,
+        "everything",
+        false,
+        bestEffortFileTypes ? { bestEffortFileTypes } : {},
+      ),
+    );
+
+  it("swallows a best-effort artifact failure and still downloads the rest", async () => {
+    await expect(
+      run(new Set<ReplayFileType>(["snapshottedAssets"])),
+    ).resolves.toBeDefined();
+
+    const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
+      (call) => call[0] as string,
+    );
+    // The failing asset download was attempted, but the mandatory files still
+    // downloaded and the overall call resolved.
+    expect(downloadedKeys).toContain(SNAPSHOT_ASSETS_URL);
+    expect(downloadedKeys).toContain("https://example/timeline");
+  });
+
+  it("propagates the failure when the artifact is NOT marked best-effort", async () => {
+    await expect(run()).rejects.toThrow("403");
+  });
+});
+
+describe("getOrFetchReplayArchive — missing signedUrl", () => {
+  let dataDir: string;
+
+  beforeEach(() => {
+    dataDir = mkdtempSync(join(tmpdir(), "met-replays-nourl-"));
+    vi.clearAllMocks();
+    (getReplay as Mock).mockResolvedValue({ version: "v3" });
+    // A replay record present but missing its `signedUrl` — the input shape
+    // behind the `Invalid URL: 'undefined'` crashes.
+    (getReplayV3DownloadUrls as Mock).mockResolvedValue({
+      ...(buildDownloadUrls() as Record<string, unknown>),
+      snapshottedAssets: {
+        signedUrl: undefined,
+        filePath: "snapshotted-assets.zip",
+      },
+    });
+    (downloadAndExtractFile as Mock).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  const run = (
+    bestEffortFileTypes?: ReadonlySet<ReplayFileType>,
+  ): Promise<{ fileName: string }> =>
+    runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive(
+        {} as never,
+        REPLAY_ID,
+        "everything",
+        false,
+        bestEffortFileTypes ? { bestEffortFileTypes } : {},
+      ),
+    );
+
+  it("throws a diagnosable error (not a cryptic Invalid URL) when a mandatory artifact has no URL", async () => {
+    const error = await run().catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain("snapshotted-assets");
+    expect((error as Error).message).toContain("no download URL");
+    expect((error as Error).message).not.toContain("Invalid URL");
+  });
+
+  it("swallows a missing URL when the artifact is marked best-effort", async () => {
+    await expect(
+      run(new Set<ReplayFileType>(["snapshottedAssets"])),
+    ).resolves.toBeDefined();
   });
 });

@@ -31,6 +31,18 @@ const downloadAndUnzipIntoDirectory = async (
     return;
   }
 
+  // A present record with a missing `signedUrl` otherwise reaches `new URL()`
+  // downstream and throws a cryptic `Invalid URL: 'undefined'`. Fail with a
+  // diagnosable message naming the artifact instead. For best-effort artifacts
+  // the caller's wrapper swallows this; for mandatory ones it surfaces clearly.
+  if (!archiveData.signedUrl) {
+    throw new Error(
+      `Replay artifact "${directoryName}" has no download URL (signedUrl is ${String(
+        archiveData.signedUrl,
+      )}); the replay record is missing this asset.`,
+    );
+  }
+
   const targetDir = join(replayDir, directoryName);
   await mkdir(targetDir, { recursive: true });
   await downloadAndExtractFile(
@@ -139,6 +151,19 @@ export interface ReplayArchiveOptions {
    * subsequent unfiltered callers will re-download into the cache.
    */
   excludeFileTypes?: ReadonlySet<ReplayFileType>;
+
+  /**
+   * File-type keys whose download is attempted but treated as best-effort: a
+   * failure is logged and swallowed instead of failing the whole archive. Use
+   * for artifacts that are merely enriching and may legitimately be absent
+   * (e.g. `snapshottedAssets` for an old replay whose assets were pruned by an
+   * S3 lifecycle policy). Mandatory artifacts must NOT be listed here.
+   *
+   * Like `excludeFileTypes`, setting this bypasses the cross-tool cache (the
+   * marker is not written), since a swallowed failure may leave the replay
+   * directory incomplete.
+   */
+  bestEffortFileTypes?: ReadonlySet<ReplayFileType>;
 }
 
 export const getOrFetchReplayArchive = async (
@@ -149,8 +174,14 @@ export const getOrFetchReplayArchive = async (
   options: ReplayArchiveOptions = {},
 ): Promise<{ fileName: string }> => {
   const logger = initLogger();
-  const { excludeFileTypes } = options;
+  const { excludeFileTypes, bestEffortFileTypes } = options;
   const hasExcludes = excludeFileTypes != null && excludeFileTypes.size > 0;
+  const hasBestEffort =
+    bestEffortFileTypes != null && bestEffortFileTypes.size > 0;
+  // A best-effort artifact may fail and leave the directory incomplete, so —
+  // like `excludeFileTypes` — bypass the cache short-circuit and don't write
+  // the "fully downloaded" marker.
+  const bypassCache = hasExcludes || hasBestEffort;
 
   const replayDir = getReplayDir(replayId);
   await mkdir(replayDir, { recursive: true });
@@ -177,13 +208,13 @@ export const getOrFetchReplayArchive = async (
       if (DOWNLOAD_SCOPES.includes(fileContents as DownloadScope)) {
         previouslyDownloadedScope = fileContents as DownloadScope;
         if (
-          !hasExcludes &&
+          !bypassCache &&
           (previouslyDownloadedScope === downloadScope ||
             previouslyDownloadedScope === "everything")
         ) {
           logger.debug(`Replay archive already downloaded at ${replayDir}`);
           return { fileName: replayDir };
-        } else if (!hasExcludes) {
+        } else if (!bypassCache) {
           // Instead of trying to reason about how to combine the two scopes, let's bump
           // to downloading everything which is guaranteed to be a superset.
           logger.debug(
@@ -212,6 +243,7 @@ export const getOrFetchReplayArchive = async (
         // for caller-side typo safety, but internally we check against
         // arbitrary keys returned by the server.
         excludeFileTypes as ReadonlySet<string> | undefined,
+        bestEffortFileTypes as ReadonlySet<string> | undefined,
       );
     } else {
       throw new Error(
@@ -239,7 +271,9 @@ const downloadReplayV3Files = async (
   formatJsonFiles: boolean,
   previouslyDownloadedScope: DownloadScope | undefined,
   excludeFileTypes: ReadonlySet<string> | undefined,
+  bestEffortFileTypes: ReadonlySet<string> | undefined,
 ) => {
+  const logger = initLogger();
   const downloadUrls = await getReplayV3DownloadUrls(client, replayId);
   if (!downloadUrls) {
     throw new Error(
@@ -250,6 +284,27 @@ const downloadReplayV3Files = async (
   const includes = (fileType: string): boolean =>
     shouldDownloadFile(fileType, downloadScope) &&
     !(excludeFileTypes?.has(fileType) ?? false);
+
+  // Wrap a download thunk so that, for file types the caller marked best-effort,
+  // a failure (e.g. a 403/404 on a pruned artifact) is logged and swallowed
+  // rather than failing the whole archive.
+  const maybeBestEffort = (
+    fileType: string,
+    thunk: () => Promise<unknown>,
+  ): (() => Promise<unknown>) =>
+    bestEffortFileTypes?.has(fileType)
+      ? async () => {
+          try {
+            await thunk();
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            logger.warn(
+              `Skipping optional replay artifact "${fileType}" for replay ${replayId}: ${message}`,
+            );
+          }
+        }
+      : thunk;
 
   const {
     screenshots,
@@ -375,43 +430,47 @@ const downloadReplayV3Files = async (
   const archivePromises = [
     ...(includes("snapshottedAssets")
       ? [
-          () =>
+          maybeBestEffort("snapshottedAssets", () =>
             downloadAndUnzipIntoDirectory(
               snapshottedAssets,
               replayDir,
               "snapshotted-assets",
             ),
+          ),
         ]
       : []),
     ...(includes("rawPerScreenshotCssCoverage") && rawPerScreenshotCssCoverage
       ? [
-          () =>
+          maybeBestEffort("rawPerScreenshotCssCoverage", () =>
             downloadAndUnzipIntoDirectory(
               rawPerScreenshotCssCoverage,
               replayDir,
               "raw-per-screenshot-css-coverage",
             ),
+          ),
         ]
       : []),
     ...(includes("rawPerScreenshotJsCoverage") && rawPerScreenshotJsCoverage
       ? [
-          () =>
+          maybeBestEffort("rawPerScreenshotJsCoverage", () =>
             downloadAndUnzipIntoDirectory(
               rawPerScreenshotJsCoverage,
               replayDir,
               "raw-per-screenshot-js-coverage",
             ),
+          ),
         ]
       : []),
     ...(includes("mappedPerScreenshotJsCoverage") &&
     mappedPerScreenshotJsCoverage
       ? [
-          () =>
+          maybeBestEffort("mappedPerScreenshotJsCoverage", () =>
             downloadAndUnzipIntoDirectory(
               mappedPerScreenshotJsCoverage,
               replayDir,
               "mapped-per-screenshot-js-coverage",
             ),
+          ),
         ]
       : []),
   ];
