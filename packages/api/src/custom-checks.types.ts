@@ -143,3 +143,43 @@ export interface NetworkRequestSnapshotData {
   /** Whether the request was matched to a recorded request and stubbed. */
   matched: boolean;
 }
+
+/**
+ * Status of the custom check results reported for a test run as a whole:
+ * - `complete`: the run finished and produced a verdict for every check.
+ * - `execution-error`: computing the custom checks failed (e.g. the script
+ *   threw before producing results). This is a property of the run as a whole,
+ *   not of any individual check — an individual check only ever has a
+ *   {@link CustomCheckVerdict}.
+ */
+export const CUSTOM_CHECK_RESULTS_STATUSES = [
+  "complete",
+  "execution-error",
+] as const;
+
+export type CustomCheckResultsStatus =
+  (typeof CUSTOM_CHECK_RESULTS_STATUSES)[number];
+
+/**
+ * A single custom check's result: a {@link CustomCheckOutput} (verdict, summary
+ * and report) tagged with the check's id.
+ */
+export interface ReportedCustomCheckResult extends CustomCheckOutput {
+  /** Stable identifier of the check, e.g. "accessibility-check". */
+  checkId: string;
+}
+
+/**
+ * The custom check results computed for a test run, reported in a single call to
+ * `reportCustomCheckResults`. Either every check's result (`status: "complete"`),
+ * or a single execution error for the run as a whole (`status: "execution-error"`).
+ */
+export type ReportCustomCheckResultsRequest =
+  | {
+      status: "complete";
+      checks: ReportedCustomCheckResult[];
+    }
+  | {
+      status: "execution-error";
+      error: string;
+    };
