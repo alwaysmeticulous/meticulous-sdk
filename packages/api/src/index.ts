@@ -159,4 +159,8 @@ export {
   NetworkRequestSnapshotData,
   NETWORK_REQUESTS_SNAPSHOT_TYPE,
   CUSTOM_CHECK_SUMMARY_MAX_LENGTH,
+  CUSTOM_CHECK_RESULTS_STATUSES,
+  CustomCheckResultsStatus,
+  ReportedCustomCheckResult,
+  ReportCustomCheckResultsRequest,
 } from "./custom-checks.types";

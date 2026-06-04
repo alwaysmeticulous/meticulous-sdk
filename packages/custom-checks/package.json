@@ -1,0 +1,47 @@
+{
+  "name": "@alwaysmeticulous/custom-checks",
+  "version": "2.289.2",
+  "description": "Helpers for writing Meticulous custom checks: fetch snapshots, wait for a test run, and report results from any script",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "build": "tsc --build tsconfig.json",
+    "dev": "tsc --build tsconfig.json --watch",
+    "format": "prettier --write src",
+    "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
+    "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
+    "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
+    "depcheck": "depcheck --ignore-patterns=dist",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@alwaysmeticulous/api": "workspace:*",
+    "@alwaysmeticulous/client": "workspace:*",
+    "@alwaysmeticulous/common": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/custom-checks"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}

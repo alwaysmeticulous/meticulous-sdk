@@ -66,9 +66,6 @@ export {
   getLatestTestRunResults,
   TestRun,
   emitTelemetry,
-  GetSnapshotsFromTestRunOptions,
-  SnapshotsFromTestRun,
-  getSnapshotsFromTestRun,
 } from "./api/test-run.api";
 export { GetIsLockedOptions, getIsLocked } from "./api/deployment-lock.api";
 export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
@@ -131,7 +128,7 @@ export {
   ContainerEnvVariable,
 } from "./api/project-deployments.api";
 export { GetRegistryAuthResponse, getRegistryAuth } from "./api/registry.api";
-export { isFetchError } from "./errors";
+export { isFetchError, maybeEnrichFetchError } from "./errors";
 export {
   EditedFileWithLines,
   GetRelevantSessionsParams,
