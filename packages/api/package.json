@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/api",
-  "version": "2.289.1",
+  "version": "2.290.0",
   "description": "Meticulous API types",
   "license": "ISC",
   "main": "dist/index.js",

@@ -1,5 +1,12 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.290.0
+
+### Patch Changes
+
+- Updated dependencies [[`a1b7cbe`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/a1b7cbe49fae94621b9a2c9542c8d30cfbc06919)]:
+  - @alwaysmeticulous/api@2.290.0
+
 ## 2.289.1
 
 ### Patch Changes
