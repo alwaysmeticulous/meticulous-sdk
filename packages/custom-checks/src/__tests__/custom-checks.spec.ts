@@ -111,6 +111,21 @@ describe("custom checks SDK helpers", () => {
       expect(client.get).toHaveBeenCalledTimes(3);
     });
 
+    it("returns when a run leaves the in-progress states (e.g. Partial), not only on Success/Failure", async () => {
+      client.get
+        .mockResolvedValueOnce({ data: testRun("tr-1", "Running") })
+        .mockResolvedValueOnce({ data: testRun("tr-1", "Partial") });
+
+      const result = await findTestRunByIdAndWaitForCompletion({
+        client: asClient(),
+        testRunId: "tr-1",
+        pollIntervalMs: 1,
+      });
+
+      expect(result.testRun.status).toBe("Partial");
+      expect(client.get).toHaveBeenCalledTimes(2);
+    });
+
     it("throws once the timeout elapses", async () => {
       client.get.mockResolvedValue({ data: testRun("tr-1", "Running") });
 

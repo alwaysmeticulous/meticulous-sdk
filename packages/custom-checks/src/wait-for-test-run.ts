@@ -1,8 +1,8 @@
 import type { TestRun } from "@alwaysmeticulous/api";
 import {
-  COMPLETED_TEST_RUN_STATUSES,
   getLatestTestRunResults,
   getTestRun,
+  IN_PROGRESS_TEST_RUN_STATUS,
   type MeticulousClient,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
@@ -83,7 +83,11 @@ export const findTestRunByIdAndWaitForCompletion = async ({
 
   for (;;) {
     const testRun = await getTestRun({ client, testRunId });
-    if (COMPLETED_TEST_RUN_STATUSES.includes(testRun.status)) {
+    // Done once the run leaves the in-progress states — matching how the rest of
+    // the SDK determines completion. This also returns for `Partial` (lazy
+    // session pools), which is terminal enough and would otherwise hang here
+    // until the timeout.
+    if (!IN_PROGRESS_TEST_RUN_STATUS.includes(testRun.status)) {
       return { testRunId: testRun.id, testRun };
     }
 

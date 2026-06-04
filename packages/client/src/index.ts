@@ -68,10 +68,7 @@ export {
   emitTelemetry,
 } from "./api/test-run.api";
 export { GetIsLockedOptions, getIsLocked } from "./api/deployment-lock.api";
-export {
-  COMPLETED_TEST_RUN_STATUSES,
-  IN_PROGRESS_TEST_RUN_STATUS,
-} from "./api/test-run.constants";
+export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
 export { getApiToken, getAuthToken } from "./api-token.utils";
 export {
   ClientOptions,
