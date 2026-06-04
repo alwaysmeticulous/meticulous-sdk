@@ -262,6 +262,12 @@ importers:
       '@alwaysmeticulous/common':
         specifier: workspace:*
         version: link:../common
+      '@alwaysmeticulous/downloading-helpers':
+        specifier: workspace:*
+        version: link:../downloading-helpers
+      p-limit:
+        specifier: ^3.1.0
+        version: 3.1.0
     devDependencies:
       vitest:
         specifier: 'catalog:'

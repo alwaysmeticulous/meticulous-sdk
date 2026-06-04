@@ -5,12 +5,21 @@ import type {
 } from "@alwaysmeticulous/api";
 import type { MeticulousClient } from "@alwaysmeticulous/client";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import { downloadAndAssembleSnapshots } from "../download-snapshots";
 import { getSnapshotsFromTestRun } from "../get-snapshots-from-test-run";
 import { reportCustomCheckResults } from "../report-custom-check-results";
 import {
   findTestRunByCommitAndWaitForCompletion,
   findTestRunByIdAndWaitForCompletion,
 } from "../wait-for-test-run";
+
+// Stub the download/assemble step so this suite stays a pure unit test of the
+// orchestration: it asserts the right endpoint is called and the downloaded
+// snapshots are wired through. The download module is covered separately in
+// download-snapshots.spec.ts.
+vi.mock("../download-snapshots", () => ({
+  downloadAndAssembleSnapshots: vi.fn(),
+}));
 
 const testRun = (id: string, status: TestRunStatus): TestRun =>
   ({ id, status }) as unknown as TestRun;
@@ -72,14 +81,51 @@ describe("custom checks SDK helpers", () => {
   });
 
   describe("getSnapshotsFromTestRun", () => {
-    it("fetches snapshots for the requested types", async () => {
+    it("fetches the download urls then downloads and assembles base + head snapshots", async () => {
       const response = {
         testRunId: "tr-1",
         baseTestRunId: "base-1",
-        baseSnapshots: [],
-        headSnapshots: [],
+        signedBaseUrl: "https://cf.example/?Signature=sig&Key-Pair-Id=k",
+        baseSnapshotFiles: [
+          {
+            type: "network-requests",
+            sessionId: "sess-base",
+            key: "proj/replay-base/custom-checks-snapshots/network-requests.json.gz",
+          },
+        ],
+        headSnapshotFiles: [
+          {
+            type: "network-requests",
+            sessionId: "sess-head",
+            key: "proj/replay-head/custom-checks-snapshots/network-requests.json.gz",
+          },
+        ],
       };
       client.get.mockResolvedValue({ data: response });
+
+      const baseSnapshots = [
+        {
+          type: "network-requests",
+          sessionId: "sess-base",
+          stageDuringSession: "final-state",
+          data: { count: 1 },
+        },
+      ];
+      const headSnapshots = [
+        {
+          type: "network-requests",
+          sessionId: "sess-head",
+          stageDuringSession: "final-state",
+          data: { count: 2 },
+        },
+      ];
+      // Return base vs head snapshots by which file list was passed (the same
+      // array references the response holds), proving each side is assembled
+      // from its own files.
+      (downloadAndAssembleSnapshots as Mock).mockImplementation(
+        async ({ files }: { files: unknown }) =>
+          files === response.baseSnapshotFiles ? baseSnapshots : headSnapshots,
+      );
 
       const result = await getSnapshotsFromTestRun({
         client: asClient(),
@@ -87,10 +133,23 @@ describe("custom checks SDK helpers", () => {
         snapshotTypes: ["network-requests"],
       });
 
-      expect(result).toEqual(response);
       expect(client.get).toHaveBeenCalledWith(
-        "test-runs/tr-1/custom-check-snapshots?snapshotTypes=network-requests",
+        "test-runs/tr-1/custom-check-snapshots-download-urls?snapshotTypes=network-requests",
       );
+      expect(downloadAndAssembleSnapshots).toHaveBeenCalledWith({
+        signedBaseUrl: response.signedBaseUrl,
+        files: response.baseSnapshotFiles,
+      });
+      expect(downloadAndAssembleSnapshots).toHaveBeenCalledWith({
+        signedBaseUrl: response.signedBaseUrl,
+        files: response.headSnapshotFiles,
+      });
+      expect(result).toEqual({
+        testRunId: "tr-1",
+        baseTestRunId: "base-1",
+        baseSnapshots,
+        headSnapshots,
+      });
     });
   });
 
