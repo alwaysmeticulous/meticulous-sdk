@@ -1,5 +1,15 @@
 # @alwaysmeticulous/custom-checks
 
+## 2.290.2
+
+### Patch Changes
+
+- Updated dependencies [[`d34feed`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/d34feed457cb7200f0deb98c64f239f144b9119f)]:
+  - @alwaysmeticulous/api@2.290.2
+  - @alwaysmeticulous/client@2.290.2
+  - @alwaysmeticulous/common@2.287.1
+  - @alwaysmeticulous/downloading-helpers@2.290.2
+
 ## 2.290.1
 
 ### Patch Changes

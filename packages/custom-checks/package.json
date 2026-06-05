@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/custom-checks",
-  "version": "2.290.1",
+  "version": "2.290.2",
   "description": "Helpers for writing Meticulous custom checks: fetch snapshots, wait for a test run, and report results from any script",
   "license": "ISC",
   "main": "dist/index.js",
