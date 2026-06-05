@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.290.2
+
+### Patch Changes
+
+- [#1200](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1200) [`d34feed`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/d34feed457cb7200f0deb98c64f239f144b9119f) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add type for GQL-over-WS divergence
+
 ## 2.290.0
 
 ### Minor Changes
