@@ -1,5 +1,13 @@
 # @alwaysmeticulous/common
 
+## 2.290.3
+
+### Patch Changes
+
+- [#1199](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1199) [`09b9e8b`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/09b9e8bcd3b613fac3afcf778365d63051d8e557) Thanks [@Genora51](https://github.com/Genora51)! - Remove Bitbucket Pipelines `BITBUCKET_COMMIT` auto-detection for commit SHA resolution. Commit SHA is now always inferred via `git rev-parse HEAD` when not explicitly provided.
+
+  For Bitbucket Pipelines pull-request builds, checkout the PR source tip at the start of your pipeline step (before building): `git reset --hard "$BITBUCKET_COMMIT"`. Bitbucket merges the destination branch into the source branch during Build Setup; Meticulous does not support testing that ephemeral merge commit.
+
 ## 2.287.1
 
 ### Patch Changes
