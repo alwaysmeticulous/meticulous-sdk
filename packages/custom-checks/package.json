@@ -22,7 +22,9 @@
   "dependencies": {
     "@alwaysmeticulous/api": "workspace:*",
     "@alwaysmeticulous/client": "workspace:*",
-    "@alwaysmeticulous/common": "workspace:*"
+    "@alwaysmeticulous/common": "workspace:*",
+    "@alwaysmeticulous/downloading-helpers": "workspace:*",
+    "p-limit": "^3.1.0"
   },
   "devDependencies": {
     "vitest": "catalog:"
