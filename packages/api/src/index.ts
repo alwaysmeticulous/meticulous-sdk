@@ -136,6 +136,7 @@ export {
   Divergence,
   DivergenceConsoleError,
   DivergenceIndicator,
+  GraphQLWebSocketActivityDivergenceIndicator,
   InitialNavigationDivergenceIndicator,
   NetworkActivityDivergenceIndicator,
   ScreenshotDivergenceIdentifier,

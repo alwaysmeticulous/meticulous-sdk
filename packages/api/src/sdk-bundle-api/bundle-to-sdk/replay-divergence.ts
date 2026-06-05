@@ -4,6 +4,7 @@ export type DivergenceIndicator =
   | UserEventDivergenceIndicator
   | UrlChangeEventDivergenceIndicator
   | NetworkActivityDivergenceIndicator
+  | GraphQLWebSocketActivityDivergenceIndicator
   | InitialNavigationDivergenceIndicator
   | ConsoleErrorDivergenceIndicator;
 
@@ -24,6 +25,20 @@ export interface NetworkActivityDivergenceIndicator {
   beforeEventIndices?: number[] | undefined;
   afterEventIndices: number[];
   kind: "completed-requests" | "pending-requests";
+}
+
+/**
+ * Indicates that one or more GraphQL-over-websocket subscriptions degraded
+ * between the base and head replays (e.g. a subscribe frame that matched a
+ * recorded response exactly in the base now only matches by a relaxed strategy,
+ * or no longer matches at all). The event indices reference `graphQLWebSocket`
+ * timeline entries. Analogous to {@link NetworkActivityDivergenceIndicator} for
+ * HTTP requests.
+ */
+export interface GraphQLWebSocketActivityDivergenceIndicator {
+  type: "graphql-websocket-activity";
+  beforeEventIndices?: number[] | undefined;
+  afterEventIndices: number[];
 }
 
 export interface InitialNavigationDivergenceIndicator {
