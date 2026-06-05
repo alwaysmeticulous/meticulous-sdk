@@ -1,5 +1,11 @@
 # @alwaysmeticulous/recorder-plugin
 
+## 2.290.4
+
+### Patch Changes
+
+- [#1203](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1203) [`849aae8`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/849aae82b884469f5c6b333e00d61ee8fbf4945c) Thanks [@Genora51](https://github.com/Genora51)! - Fix silent HTML injection failure when using the rspack plugin with Rsbuild, and add a dedicated `@alwaysmeticulous/recorder-plugin/rsbuild` entry.
+
 ## 2.285.0
 
 ### Patch Changes
