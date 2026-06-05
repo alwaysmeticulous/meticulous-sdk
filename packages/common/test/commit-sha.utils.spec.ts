@@ -22,20 +22,7 @@ describe("getCommitSha", () => {
     process.env = originalEnv;
   });
 
-  it("uses BITBUCKET_COMMIT on Bitbucket PR builds", async () => {
-    process.env.BITBUCKET_PR_ID = "42";
-    process.env.BITBUCKET_COMMIT = "abc123source";
-
-    const { getCommitSha } = await import("../src/commit-sha.utils");
-
-    await expect(getCommitSha(undefined)).resolves.toBe("abc123source");
-    expect(execMock).not.toHaveBeenCalled();
-  });
-
-  it("falls back to git rev-parse HEAD when not on a Bitbucket PR build", async () => {
-    delete process.env.BITBUCKET_PR_ID;
-    delete process.env.BITBUCKET_COMMIT;
-
+  it("falls back to git rev-parse HEAD when commitSha is not provided", async () => {
     execMock.mockImplementation(
       (_command, _options, callback: (error: null, output: string) => void) => {
         callback(null, "local-head-sha\n");
@@ -52,10 +39,7 @@ describe("getCommitSha", () => {
     );
   });
 
-  it("uses git rev-parse in cwd instead of Bitbucket env when cwd is set", async () => {
-    process.env.BITBUCKET_PR_ID = "42";
-    process.env.BITBUCKET_COMMIT = "abc123source";
-
+  it("uses git rev-parse in cwd when cwd is set", async () => {
     execMock.mockImplementation(
       (_command, options, callback: (error: null, output: string) => void) => {
         expect(options).toEqual({ encoding: "utf-8", cwd: "/cloned/repo" });
@@ -75,10 +59,7 @@ describe("getCommitSha", () => {
     );
   });
 
-  it("prefers an explicit commitSha over Bitbucket CI env vars", async () => {
-    process.env.BITBUCKET_PR_ID = "42";
-    process.env.BITBUCKET_COMMIT = "abc123source";
-
+  it("prefers an explicit commitSha over git rev-parse", async () => {
     const { getCommitSha } = await import("../src/commit-sha.utils");
 
     await expect(getCommitSha("explicit-sha")).resolves.toBe("explicit-sha");
