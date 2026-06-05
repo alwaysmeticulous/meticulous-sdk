@@ -62,7 +62,7 @@ present, and otherwise falls back to rewriting any emitted `.html` assets.
 </details>
 
 <details>
-<summary>Rspack (and rsbuild)</summary>
+<summary>Rspack</summary>
 
 ```js
 // rspack.config.mjs
@@ -75,7 +75,27 @@ export default {
 };
 ```
 
-For [rsbuild](https://rsbuild.dev/), pass the plugin through `tools.rspack`:
+</details>
+
+<details>
+<summary>Rsbuild</summary>
+
+Prefer the dedicated Rsbuild entry, which hooks into Rsbuild's `modifyHTML` API:
+
+```ts
+// rsbuild.config.ts
+import { defineConfig } from "@rsbuild/core";
+import meticulous from "@alwaysmeticulous/recorder-plugin/rsbuild";
+
+export default defineConfig({
+  plugins: [
+    meticulous({ recordingToken: "<your-recording-token>" }),
+  ],
+});
+```
+
+You can also pass the rspack plugin through `tools.rspack` if you need to
+compose it with other rspack-only plugins:
 
 ```ts
 // rsbuild.config.ts
