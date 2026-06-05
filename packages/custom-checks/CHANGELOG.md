@@ -1,5 +1,11 @@
 # @alwaysmeticulous/custom-checks
 
+## 2.290.1
+
+### Patch Changes
+
+- [#1197](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1197) [`998373e`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/998373e9ad240bb5ae2c1f700d25b96f8e616b61) Thanks [@phreppo](https://github.com/phreppo)! - Rework `getSnapshotsFromTestRun` to download custom check snapshots on the client. It now asks the backend for a single (once-)signed base URL plus the list of snapshot files for the test run and its base, then downloads and assembles them in parallel — instead of the backend reading, unzipping and returning every snapshot inline, which was slow (>3m) for large runs.
+
 ## 2.290.0
 
 ### Minor Changes
