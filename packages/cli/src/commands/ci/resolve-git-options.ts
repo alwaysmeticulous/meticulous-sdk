@@ -1,5 +1,4 @@
 import {
-  getBitbucketPullRequestCommitShaFromCi,
   getCommitSha,
   getGitDiff,
   getLocalBaseSha,
@@ -126,7 +125,7 @@ const resolveFromExplicitArgs = async ({
 
   if (commitSha_) {
     logger.info(`Commit SHA provided: ${commitSha}`);
-  } else if (!getBitbucketPullRequestCommitShaFromCi()) {
+  } else {
     logger.info(`Commit SHA inferred from local repo: ${commitSha}`);
   }
 
