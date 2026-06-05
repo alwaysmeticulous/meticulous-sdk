@@ -5,17 +5,17 @@ import {
   type UnpluginInstance,
 } from "unplugin";
 import type { ConfigEnv } from "vite";
-import { injectIntoHtml } from "./core/inject-html";
 import { resolveOptions } from "./core/options";
+import {
+  applyInjection,
+  tapHtmlBeforeEmitHooks,
+  tapHtmlProcessAssetsFallback,
+} from "./core/rspack-html-hooks";
 import { shouldInject } from "./core/should-inject";
 import { buildScriptTag } from "./core/snippet";
-import type { EnabledContext, Options, ResolvedOptions } from "./types";
+import type { EnabledContext, Options } from "./types";
 
 const PLUGIN_NAME = "@alwaysmeticulous/recorder-plugin";
-
-type Logger = {
-  warn: (message: string) => void;
-};
 
 const tryRequire = <T>(moduleId: string, from: string): T | null => {
   try {
@@ -28,24 +28,6 @@ const tryRequire = <T>(moduleId: string, from: string): T | null => {
 
 const tryRequireFromCwd = <T>(moduleId: string): T | null => {
   return tryRequire<T>(moduleId, `${process.cwd()}/__noop__.js`);
-};
-
-const applyInjection = (
-  html: string,
-  scriptTag: string,
-  options: ResolvedOptions,
-  logger: Logger,
-): string => {
-  const result = injectIntoHtml(
-    html,
-    scriptTag,
-    options.inject,
-    options.placeholderAttribute,
-  );
-  if (result.warning) {
-    logger.warn(result.warning);
-  }
-  return result.html;
 };
 
 const isProductionMode = (mode: string | undefined): boolean =>
@@ -180,69 +162,29 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
         isProduction: ctx.isProduction,
       });
 
-      const rspackCore = tryRequireFromCwd<{
-        HtmlRspackPlugin?: {
-          getCompilationHooks?: (compilation: unknown) => {
-            beforeEmit: {
-              tapAsync: (
-                name: string,
-                handler: (
-                  data: { html: string; outputName: string },
-                  cb: (
-                    err: Error | null,
-                    data: { html: string; outputName: string },
-                  ) => void,
-                ) => void,
-              ) => void;
-            };
-          };
-        };
-      }>("@rspack/core");
-
       compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation) => {
         const logger = {
           warn: (message: string) =>
             console.warn(`[${PLUGIN_NAME}] ${message}`),
         };
 
-        const hooks =
-          rspackCore?.HtmlRspackPlugin?.getCompilationHooks?.(compilation);
-        if (hooks) {
-          hooks.beforeEmit.tapAsync(PLUGIN_NAME, (data, cb) => {
-            const html = applyInjection(data.html, scriptTag, options, logger);
-            cb(null, { ...data, html });
-          });
-          return;
-        }
+        tapHtmlBeforeEmitHooks({
+          tryRequireModule: tryRequireFromCwd,
+          compilation,
+          pluginName: PLUGIN_NAME,
+          scriptTag,
+          options,
+          logger,
+        });
 
-        // Fallback: rewrite any emitted .html assets in processAssets.
-        const { Compilation, sources } = compiler.rspack;
-        compilation.hooks.processAssets.tap(
-          {
-            name: PLUGIN_NAME,
-            stage: Compilation.PROCESS_ASSETS_STAGE_ADDITIONS,
-          },
-          (assets: Record<string, { source(): string | Buffer }>) => {
-            for (const [filename, source] of Object.entries(assets)) {
-              if (!filename.endsWith(".html")) continue;
-              const original = source.source().toString();
-              // Skip partial/fragment HTML that isn't a full document.
-              if (!/<html\b/i.test(original)) continue;
-              const updated = applyInjection(
-                original,
-                scriptTag,
-                options,
-                logger,
-              );
-              if (updated !== original) {
-                compilation.updateAsset(
-                  filename,
-                  new sources.RawSource(updated),
-                );
-              }
-            }
-          },
-        );
+        tapHtmlProcessAssetsFallback({
+          compilation,
+          compilerRspack: compiler.rspack,
+          pluginName: PLUGIN_NAME,
+          scriptTag,
+          options,
+          logger,
+        });
       });
     },
   };
