@@ -42,13 +42,13 @@ const createRsbuildPlugin = (rawOptions?: Options): RsbuildPlugin => ({
       if (!shouldInject(options.enabled, ctx)) {
         return html;
       }
-      if (isAlreadyInjected(html, options)) {
-        return html;
-      }
 
       const scriptTag = buildScriptTag(options, {
         isProduction: ctx.isProduction,
       });
+      if (isAlreadyInjected(html, options, scriptTag)) {
+        return html;
+      }
       return applyInjection(html, scriptTag, options, {
         warn: (message) => console.warn(`[${PLUGIN_NAME}] ${message}`),
       });

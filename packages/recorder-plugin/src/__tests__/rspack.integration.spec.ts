@@ -93,4 +93,14 @@ describe("Rspack plugin integration", () => {
     const matches = html.match(/data-recording-token="tok-123"/g) ?? [];
     expect(matches).toHaveLength(1);
   });
+
+  it("does not duplicate injection for HTML-escaped recording tokens", async () => {
+    const html = await runBuild(
+      { recordingToken: 'tok"<>&special', enabled: "always" },
+      "development",
+    );
+    expect(html).toContain('data-recording-token="tok&quot;&lt;&gt;&amp;special"');
+    const matches = html.match(/data-recording-token=/g) ?? [];
+    expect(matches).toHaveLength(1);
+  });
 });

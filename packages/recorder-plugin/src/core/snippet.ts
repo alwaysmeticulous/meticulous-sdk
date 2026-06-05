@@ -1,6 +1,6 @@
 import type { ResolvedOptions, ScriptAttributeValue } from "../types";
 
-const escapeAttributeValue = (value: string): string =>
+export const escapeAttributeValue = (value: string): string =>
   value
     .replace(/&/g, "&amp;")
     .replace(/"/g, "&quot;")

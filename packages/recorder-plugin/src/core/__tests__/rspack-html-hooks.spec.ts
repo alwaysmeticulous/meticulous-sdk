@@ -1,7 +1,11 @@
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 import { resolveOptions } from "../options";
-import { getHtmlRspackPluginModuleIds, isAlreadyInjected } from "../rspack-html-hooks";
+import {
+  getHtmlRspackPluginModuleIds,
+  isAlreadyInjected,
+} from "../rspack-html-hooks";
+import { buildScriptTag } from "../snippet";
 
 const tryRequireFromCwd = <T>(moduleId: string): T | null => {
   try {
@@ -32,16 +36,53 @@ describe("rspack-html-hooks", () => {
     );
   });
 
-  it("detects when the recorder script is already present", () => {
+  it("detects when the exact built script tag is already present", () => {
     const options = resolveOptions({ recordingToken: "abc" });
-    expect(
-      isAlreadyInjected(
-        '<html><head><script data-recording-token="abc"></script></head></html>',
-        options,
-      ),
-    ).toBe(true);
-    expect(isAlreadyInjected("<html><head></head></html>", options)).toBe(
+    const scriptTag = buildScriptTag(options, { isProduction: false });
+    const html = `<html><head>${scriptTag}<title>x</title></head></html>`;
+
+    expect(isAlreadyInjected(html, options, scriptTag)).toBe(true);
+    expect(isAlreadyInjected("<html><head></head></html>", options, scriptTag)).toBe(
       false,
     );
+  });
+
+  it("detects HTML-escaped recording tokens from buildScriptTag output", () => {
+    const options = resolveOptions({ recordingToken: 'evil"<>&value' });
+    const scriptTag = buildScriptTag(options, { isProduction: false });
+    const html = `<html><head>${scriptTag}</head></html>`;
+
+    expect(
+      isAlreadyInjected(html, options, "<script data-recording-token=\"evil\"><>&value\"></script>"),
+    ).toBe(true);
+    expect(
+      html.includes('data-recording-token="evil&quot;&lt;&gt;&amp;value"'),
+    ).toBe(true);
+  });
+
+  it("detects overridden data-recording-token and snippet src attributes", () => {
+    const options = resolveOptions({
+      recordingToken: "ignored",
+      attributes: {
+        "data-recording-token": "override-token",
+        src: "https://example.test/snippet.js",
+      },
+    });
+    const scriptTag = buildScriptTag(options, { isProduction: false });
+    const html =
+      '<html><head><script data-recording-token="override-token" src="https://example.test/snippet.js"></script></head></html>';
+
+    expect(isAlreadyInjected(html, options, scriptTag)).toBe(true);
+  });
+
+  it("prevents duplicate injection when beforeEmit output is checked by processAssets", () => {
+    const options = resolveOptions({ recordingToken: 'tok"special' });
+    const scriptTag = buildScriptTag(options, { isProduction: false });
+    const afterBeforeEmit = `<html><head>${scriptTag}<title>x</title></head></html>`;
+
+    expect(isAlreadyInjected(afterBeforeEmit, options, scriptTag)).toBe(true);
+    const matches =
+      afterBeforeEmit.match(/data-recording-token=/g)?.length ?? 0;
+    expect(matches).toBe(1);
   });
 });

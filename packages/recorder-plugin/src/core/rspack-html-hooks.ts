@@ -1,6 +1,7 @@
 import type { Compilation, rspack } from "@rspack/core";
 import type { ResolvedOptions } from "../types";
 import { injectIntoHtml } from "./inject-html";
+import { escapeAttributeValue } from "./snippet";
 
 type RspackRuntime = typeof rspack;
 
@@ -35,10 +36,56 @@ const HTML_RSPACK_PLUGIN_MODULE_IDS = [
   "@rsbuild/core/compiled/html-rspack-plugin",
 ] as const;
 
+const escapeForRegex = (value: string): string =>
+  value.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+
+const getEffectiveSnippetUrl = (options: ResolvedOptions): string => {
+  const src = options.attributes.src;
+  return typeof src === "string" ? src : options.snippetUrl;
+};
+
+const getEffectiveRecordingToken = (options: ResolvedOptions): string => {
+  const override = options.attributes["data-recording-token"];
+  return typeof override === "string" ? override : options.recordingToken;
+};
+
+const hasRecorderScriptSrc = (html: string, snippetUrl: string): boolean =>
+  new RegExp(
+    `<script\\b[^>]*\\bsrc=["']${escapeForRegex(snippetUrl)}["']`,
+    "i",
+  ).test(html);
+
+const hasRecorderTokenAttribute = (
+  html: string,
+  token: string,
+): boolean => {
+  const escapedToken = escapeAttributeValue(token);
+  return (
+    html.includes(`data-recording-token="${escapedToken}"`) ||
+    html.includes(`data-recording-token='${escapedToken}'`)
+  );
+};
+
 export const isAlreadyInjected = (
   html: string,
   options: ResolvedOptions,
-): boolean => html.includes(`data-recording-token="${options.recordingToken}"`);
+  scriptTag: string,
+): boolean => {
+  if (html.includes(scriptTag)) {
+    return true;
+  }
+
+  const snippetUrl = getEffectiveSnippetUrl(options);
+  if (hasRecorderScriptSrc(html, snippetUrl)) {
+    return true;
+  }
+
+  if (hasRecorderTokenAttribute(html, getEffectiveRecordingToken(options))) {
+    return true;
+  }
+
+  return /<script\b[^>]*\bdata-recording-token(?:=["']|\s|>)/i.test(html);
+};
 
 export const applyInjection = (
   html: string,
@@ -118,7 +165,7 @@ export const tapHtmlBeforeEmitHooks = ({
     }
 
     hooks.beforeEmit.tapAsync(pluginName, (data, cb) => {
-      if (isAlreadyInjected(data.html, options)) {
+      if (isAlreadyInjected(data.html, options, scriptTag)) {
         cb(null, data);
         return;
       }
@@ -159,7 +206,7 @@ export const tapHtmlProcessAssetsFallback = ({
         if (!/<html\b/i.test(original)) {
           continue;
         }
-        if (isAlreadyInjected(original, options)) {
+        if (isAlreadyInjected(original, options, scriptTag)) {
           continue;
         }
         const updated = applyInjection(original, scriptTag, options, logger);
