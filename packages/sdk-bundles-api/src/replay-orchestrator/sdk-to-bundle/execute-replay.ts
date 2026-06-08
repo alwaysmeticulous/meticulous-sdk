@@ -386,6 +386,8 @@ export interface GeneratedByReplayCommand {
   type: "replayCommand";
 }
 
+export type SessionStartUrlTransform = { type: "extractHashRoute" };
+
 export interface AppUrlConfig {
   /**
    * If set, we will ensure that the appUrl pathname is prefixed with this value for the initial navigation.
@@ -417,6 +419,16 @@ export interface AppUrlConfig {
    * List of query parameters to set to `""` from the app URL before the initial navigation.
    */
   queryParamsToEmpty?: string[];
+
+  /**
+   * If set, transforms the session start URL before computing the initial navigation URL.
+   *
+   * `extractHashRoute`: when the session URL has a hash that begins with `#/` (SPA hash routing),
+   * promotes the hash content to the real pathname and discards the original pathname.
+   * Example: `https://preview.example.com/pr-123/#/dashboard/settings` → pathname `/dashboard/settings`, no hash.
+   * Sessions without a `#/` hash are returned unchanged.
+   */
+  sessionStartUrlTransform?: SessionStartUrlTransform;
 }
 
 export interface NetworkDebuggingOptions {
