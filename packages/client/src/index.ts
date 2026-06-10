@@ -121,7 +121,6 @@ export {
   CompleteContainerUploadResponse,
   completeContainerUpload,
   MultiPartUploadInfo,
-  DownloadDeploymentResponse,
   downloadProjectDeployment,
   GetContainerDeploymentResponse,
   getContainerDeployment,

@@ -1,6 +1,7 @@
 import {
   AssetUploadMetadata,
   DeploymentArchiveType,
+  DownloadDeploymentResponse,
   type TestRun,
 } from "@alwaysmeticulous/api";
 import { MeticulousClient } from "../types/client.types";
@@ -111,12 +112,6 @@ export interface GetContainerDeploymentResponse {
 export interface ContainerEnvVariable {
   name: string;
   value: string;
-}
-
-export interface DownloadDeploymentResponse {
-  assetsUrl: string;
-  metadataUrl: string;
-  archiveType: DeploymentArchiveType;
 }
 
 /**
