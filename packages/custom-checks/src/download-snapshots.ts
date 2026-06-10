@@ -79,14 +79,21 @@ const downloadSnapshotFile = async (
       );
     }
 
-    return (parsed as Array<{ stageDuringSession: string; data: unknown }>).map(
-      (snapshot) => ({
-        type: file.type,
-        sessionId: file.sessionId,
-        stageDuringSession: snapshot.stageDuringSession,
-        data: snapshot.data,
-      }),
-    );
+    return (
+      parsed as Array<{
+        stageDuringSession: string;
+        data: unknown;
+        versionNumber?: number;
+      }>
+    ).map((snapshot) => ({
+      type: file.type,
+      sessionId: file.sessionId,
+      stageDuringSession: snapshot.stageDuringSession,
+      data: snapshot.data,
+      ...(snapshot.versionNumber != null
+        ? { versionNumber: snapshot.versionNumber }
+        : {}),
+    }));
   } finally {
     await rm(workDir, { recursive: true, force: true });
   }
