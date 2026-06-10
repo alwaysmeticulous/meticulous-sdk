@@ -9,7 +9,10 @@ import { recordLoginFlowSession } from "@alwaysmeticulous/record";
 import { CommandModule } from "yargs";
 import { COMMON_RECORD_OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
-import { RECORDING_SNIPPET_PATH } from "../../utils/constants";
+import {
+  RECORDING_SNIPPET_PATH,
+  WORKER_RECORDING_SNIPPET_PATH,
+} from "../../utils/constants";
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 
 interface Options {
@@ -57,12 +60,14 @@ const handler = async ({
   }
 
   const recordingSnippet = await fetchAsset(RECORDING_SNIPPET_PATH);
+  const workerRecordingSnippet = await fetchAsset(WORKER_RECORDING_SNIPPET_PATH);
 
   await recordLoginFlowSession({
     recordingToken,
     devTools,
     bypassCSP,
     recordingSnippet,
+    workerRecordingSnippet,
     width,
     height,
     uploadIntervalMs,

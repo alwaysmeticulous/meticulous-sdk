@@ -20,6 +20,7 @@ interface MeticulousRecorderWindow {
   __meticulous?: {
     initialiseRecorder?: () => void;
     snippetScriptSrc?: string;
+    sendWorkerBootstrapToAllWorkers?: () => void;
   };
 }
 
@@ -29,6 +30,7 @@ export async function bootstrapPage({
   recordingToken,
   appCommitHash,
   recordingSnippet,
+  workerRecordingSnippet,
   uploadIntervalMs,
   captureHttpOnlyCookies,
   recordingSource = "cli",
@@ -38,6 +40,7 @@ export async function bootstrapPage({
   recordingToken: string;
   appCommitHash: string;
   recordingSnippet: string;
+  workerRecordingSnippet: string;
   uploadIntervalMs: number | null;
   captureHttpOnlyCookies: boolean;
   recordingSource?: string;
@@ -84,6 +87,19 @@ export async function bootstrapPage({
   if (captureHttpOnlyCookies) {
     await provideCookieAccess(page);
   }
+
+  const workerBundleSource = await readFile(workerRecordingSnippet, "utf8");
+  page.on("workercreated", (worker) => {
+    void (async () => {
+      await worker.evaluate((src: string) => {
+        (0, eval)(src);
+      }, workerBundleSource);
+      await page.evaluate(() => {
+        const recorderWindow = window as MeticulousRecorderWindow;
+        recorderWindow.__meticulous?.sendWorkerBootstrapToAllWorkers?.();
+      });
+    })();
+  });
 
   await page.evaluateOnNewDocument(
     wrapInShouldRecordCondition(recordingSnippetFile)
