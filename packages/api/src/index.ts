@@ -166,7 +166,6 @@ export {
   ReportCustomCheckResultsRequest,
 } from "./custom-checks.types";
 export {
-  DownloadedAssetChunk,
   SingleArchiveDownloadResponse,
   ChunkedDownloadResponse,
   DownloadDeploymentResponse,

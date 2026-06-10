@@ -1,12 +1,6 @@
 import { AssetUploadMetadata } from "./asset-upload-metadata";
 import { DeploymentArchiveType } from "./deployment-archive-type";
 
-export interface DownloadedAssetChunk {
-  name: string;
-  versionId: string;
-  tarballUrl: string;
-}
-
 export interface SingleArchiveDownloadResponse {
   kind: "singleArchive";
   assetsUrl: string;
@@ -16,7 +10,12 @@ export interface SingleArchiveDownloadResponse {
 
 export interface ChunkedDownloadResponse {
   kind: "chunked";
-  assetChunks: DownloadedAssetChunk[];
+  /**
+   * Presigned tarball download URLs, one per chunk, in manifest order.
+   * Order is significant: later chunks override earlier ones on path
+   * collision (last-wins), so consumers must preserve it.
+   */
+  assetChunkTarballUrls: string[];
   metadata: AssetUploadMetadata;
 }
 
