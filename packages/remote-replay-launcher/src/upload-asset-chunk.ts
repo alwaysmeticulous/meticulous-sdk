@@ -199,8 +199,10 @@ export const uploadAssetChunk = async ({
  * non-chunked `tar.d` archives (raw deflate, no zlib header) so the asset
  * server can decompress chunks with the existing
  * `streamDownloadAndInflateTar` helper.
+ *
+ * Exported for tests.
  */
-const writeCompressedTar = ({
+export const writeCompressedTar = ({
   cwd,
   destination,
   prefix,
@@ -216,6 +218,7 @@ const writeCompressedTar = ({
     const tarStream = tarCreate(
       {
         cwd,
+        follow: true,
         portable: true,
         ...(prefix ? { prefix } : {}),
         onWriteEntry(entry) {
