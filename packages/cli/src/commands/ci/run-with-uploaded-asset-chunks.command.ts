@@ -151,7 +151,7 @@ const handler = async ({
   const projectIdentifier = resolveProjectIdentifier(apiToken_);
   const client = createClient({ apiToken: apiToken_ });
 
-  let testRunId: string | null;
+  let testRunId: string;
 
   try {
     const result = await runWithUploadedAssetChunks({
@@ -165,7 +165,6 @@ const handler = async ({
       waitForBase: waitForBase || waitForTestRunToComplete,
       ...projectIdentifier,
     });
-    testRunId = result.testRun?.id ?? null;
     if (result.overlaps && result.overlaps.length > 0) {
       logger.warn(
         `${result.overlaps.length} file path(s) appear in multiple chunks. Later chunks in the manifest override earlier ones.`,
@@ -186,6 +185,7 @@ const handler = async ({
           "Asset chunks resolved but test run not created",
       );
     }
+    testRunId = result.testRun.id;
   } catch (error) {
     if (isOutOfDateClientError(error)) {
       throw new OutOfDateCLIError();
@@ -194,7 +194,7 @@ const handler = async ({
     }
   }
 
-  if (!waitForTestRunToComplete || !testRunId) {
+  if (!waitForTestRunToComplete) {
     return;
   }
 
