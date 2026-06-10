@@ -1,5 +1,21 @@
 # @alwaysmeticulous/cli
 
+## 2.291.0
+
+### Minor Changes
+
+- [#1206](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1206) [`a3fc01f`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/a3fc01fdb82cbe659c1e0969b4ab7a4d237fa04b) Thanks [@Genora51](https://github.com/Genora51)! - Inject worker network recorder into web workers when recording via CLI
+
+### Patch Changes
+
+- Updated dependencies [[`a3fc01f`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/a3fc01fdb82cbe659c1e0969b4ab7a4d237fa04b)]:
+  - @alwaysmeticulous/client@2.291.0
+  - @alwaysmeticulous/record@2.291.0
+  - @alwaysmeticulous/debug-workspace@2.291.0
+  - @alwaysmeticulous/downloading-helpers@2.291.0
+  - @alwaysmeticulous/remote-replay-launcher@2.291.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.291.0
+
 ## 2.290.3
 
 ### Patch Changes
