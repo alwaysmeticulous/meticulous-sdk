@@ -19,6 +19,7 @@ export const recordSession = async ({
   devTools,
   bypassCSP,
   recordingSnippet,
+  workerRecordingSnippet,
   width,
   height,
   uploadIntervalMs,
@@ -126,6 +127,7 @@ export const recordSession = async ({
     recordingToken,
     appCommitHash,
     recordingSnippet,
+    workerRecordingSnippet,
     uploadIntervalMs: uploadIntervalMs || DEFAULT_UPLOAD_INTERVAL_MS,
     captureHttpOnlyCookies: captureHttpOnlyCookies ?? true,
   });

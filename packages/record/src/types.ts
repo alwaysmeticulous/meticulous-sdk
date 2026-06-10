@@ -6,6 +6,7 @@ export interface RecordSessionOptions {
   devTools?: boolean | null | undefined;
   bypassCSP?: boolean | null | undefined;
   recordingSnippet: string;
+  workerRecordingSnippet: string;
   width?: number | null | undefined;
   height?: number | null | undefined;
   uploadIntervalMs?: number | null | undefined;
