@@ -49,14 +49,19 @@ export interface CustomCheckInput {
 /**
  * The outcome of comparing the base and head snapshots:
  * - `pass`: no regression; the check is green and no report is surfaced.
- * - `warn`: the check is green but its report is shown to the user.
- * - `fail`: the check is red.
+ * - `warn-without-requiring-user-ack`: the check surfaces a report to the user,
+ *   but does not require them to acknowledge (review) it.
+ * - `warn-and-require-user-ack`: the check surfaces a report that the user is
+ *   asked to acknowledge (review) before the run is considered actioned.
  *
  * A check failing to *run* is not a verdict: an execution error applies to the
  * custom check results as a whole (every check), not to an individual check, so
  * it is reported at that level rather than as a per-check verdict.
  */
-export type CustomCheckVerdict = "pass" | "warn" | "fail";
+export type CustomCheckVerdict =
+  | "pass"
+  | "warn-without-requiring-user-ack"
+  | "warn-and-require-user-ack";
 
 /**
  * Maximum length of a custom check `summary`. The summary is rendered inline in

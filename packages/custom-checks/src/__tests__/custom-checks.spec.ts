@@ -41,7 +41,7 @@ describe("custom checks SDK helpers", () => {
         checks: [
           {
             checkId: "network-requests-diff",
-            verdict: "warn",
+            verdict: "warn-without-requiring-user-ack",
             summary: "1 session changed",
             report: { type: "markdown", markdown: "# Report" },
           },
