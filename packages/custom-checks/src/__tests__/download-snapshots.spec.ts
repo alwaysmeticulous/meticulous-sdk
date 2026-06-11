@@ -59,12 +59,14 @@ describe("downloadAndAssembleSnapshots", () => {
         sessionId: "sess-a",
         stageDuringSession: "final-state",
         data: { fromKey: files[0].key },
+        versionNumber: 0,
       },
       {
         type: "network-requests",
         sessionId: "sess-b",
         stageDuringSession: "final-state",
         data: { fromKey: files[1].key },
+        versionNumber: 0,
       },
     ]);
 
