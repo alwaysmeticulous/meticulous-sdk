@@ -25,10 +25,10 @@ export interface MeticulousPublicApiCommon {
  */
 export interface RecordCustomSnapshotOptions<T = unknown> {
   /**
-   * The kind of snapshot, e.g. "axe-report". Used to group snapshots so a
-   * custom check can fetch every snapshot of a given type across the test run.
-   * Must match `^[a-z0-9-]{1,64}$` and must not collide with a built-in snapshot
-   * type (e.g. "network-requests").
+   * The kind of snapshot. Used to group snapshots so a custom check can fetch
+   * every snapshot of a given type across the test run. Must match
+   * `^[a-z0-9-]{1,64}$` and must not collide with a built-in snapshot type
+   * (e.g. "network-requests").
    */
   snapshotType: string;
 
@@ -120,9 +120,8 @@ export interface MeticulousPublicReplayApi {
    * head snapshots of the same {@link RecordCustomSnapshotOptions.snapshotType}
    * across a test run.
    *
-   * Use this to capture things Meticulous does not snapshot natively — for
-   * example an accessibility (axe) report, product-specific performance metrics,
-   * or details of the network requests the page made.
+   * Use this to capture custom data that Meticulous does not snapshot natively,
+   * for use by a custom check.
    *
    * Snapshots are only collected when custom snapshotting is enabled for the
    * project; otherwise this is a no-op (the data is still validated).
@@ -149,8 +148,8 @@ export interface MeticulousPublicReplayApi {
    * Prefer **synchronous** work. The listener is awaited on the screenshot
    * critical path and bounded by an internal timeout, and during replay the
    * page's timers run on (frozen) virtual time — so async work that relies on
-   * real timers to make progress (e.g. `axe-core`, which yields via
-   * `setTimeout`) will not complete and will be skipped.
+   * real timers (e.g. `setTimeout`) to make progress will not complete and will
+   * be skipped.
    *
    * Listeners are only invoked when custom snapshotting is enabled for the
    * project.
