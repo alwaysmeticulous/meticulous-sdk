@@ -32,6 +32,7 @@ export {
   AppContainerLogsLocations,
   TestRunDataLocations,
   TestRun,
+  TestRunNetworkPatchingResult,
   ExecuteSecureTunnelTestRunOptions,
   ExecuteSecureTunnelTestRunResponse,
 } from "./replay/test-run.types";

@@ -55,7 +55,7 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
 
 /**
  * `PreProcessing` = the test run is undergoing some pre-processing before it can be executed.
- * 
+ *
  * `Scheduled` = the test run has been created, and a cloud replay job has been queued to run it. It will switch to Running soon.
  *
  * `Running` = a worker is actively running the test run.
@@ -138,6 +138,32 @@ export interface TestRun {
     results?: TestCaseResult[];
   };
   url: string;
+}
+
+/**
+ * Result of resolving the "effective" test run for a (potentially network
+ * patched) test run.
+ *
+ * When network patching (session repair) is enabled, completing the original
+ * test run may trigger a hidden patching test run whose results are merged into
+ * a separate merged test run. The merged test run is the one surfaced in the
+ * Meticulous UI, so custom check results must be reported against it rather than
+ * the original run.
+ */
+export interface TestRunNetworkPatchingResult {
+  /**
+   * The test run that custom check results should be reported against. Equal to
+   * the requested test run id when no network patching applies, otherwise the
+   * merged test run id once it has been created.
+   */
+  effectiveTestRunId: string;
+
+  /**
+   * True while a session-repair (network patching) run and/or its merged test
+   * run is still expected or in progress. Clients should keep polling while this
+   * is true, and report against `effectiveTestRunId` once it is false.
+   */
+  isNetworkPatchingInProgress: boolean;
 }
 
 export interface ExecuteSecureTunnelTestRunOptions {

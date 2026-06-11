@@ -3,6 +3,7 @@ import type {
   ExecuteSecureTunnelTestRunResponse,
   TestRun,
   TestRunDataLocations,
+  TestRunNetworkPatchingResult,
 } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
 import { MeticulousClient } from "../types/client.types";
@@ -55,6 +56,34 @@ export const getTestRun: (options: {
     `test-runs/${testRunId}`,
   );
   return data;
+};
+
+/**
+ * Resolves the "effective" test run that custom check results should be reported
+ * against, accounting for network patching (session repair).
+ *
+ * Returns `null` if the backend does not support this endpoint (older backends),
+ * so callers can fall back to reporting against the requested test run.
+ */
+export const getTestRunNetworkPatchingResult = async ({
+  client,
+  testRunId,
+}: {
+  client: MeticulousClient;
+  testRunId: string;
+}): Promise<TestRunNetworkPatchingResult | null> => {
+  const { data } = await client
+    .get<
+      unknown,
+      { data: TestRunNetworkPatchingResult | null }
+    >(`test-runs/${testRunId}/network-patching-result`)
+    .catch((error) => {
+      if (isFetchError(error) && error.response?.status === 404) {
+        return { data: null };
+      }
+      throw maybeEnrichFetchError(error);
+    });
+  return data ?? null;
 };
 
 export const getTestRunData: (options: {
