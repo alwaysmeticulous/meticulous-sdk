@@ -142,6 +142,16 @@ export interface MeticulousPublicReplayApi {
    * point. Any snapshots recorded synchronously (or awaited) within the listener
    * are tagged with the screenshot about to be taken.
    *
+   * The listener must be **read-only**: it runs after the page has settled but
+   * before the screenshot is captured, so mutating the DOM (or triggering a
+   * re-render) would change the captured screenshot.
+   *
+   * Prefer **synchronous** work. The listener is awaited on the screenshot
+   * critical path and bounded by an internal timeout, and during replay the
+   * page's timers run on (frozen) virtual time — so async work that relies on
+   * real timers to make progress (e.g. `axe-core`, which yields via
+   * `setTimeout`) will not complete and will be skipped.
+   *
    * Listeners are only invoked when custom snapshotting is enabled for the
    * project.
    */
@@ -152,6 +162,10 @@ export interface MeticulousPublicReplayApi {
    * capture end-of-replay information — for example final performance metrics —
    * via {@link recordCustomSnapshot}. Snapshots recorded within the listener are
    * tagged with the "final-state" stage.
+   *
+   * As with {@link addOnBeforeScreenshotListener}, the listener is bounded by an
+   * internal timeout and timer-based async work may not complete under virtual
+   * time, so prefer synchronous capture.
    *
    * Listeners are only invoked when custom snapshotting is enabled for the
    * project.

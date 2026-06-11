@@ -90,9 +90,9 @@ const downloadSnapshotFile = async (
       sessionId: file.sessionId,
       stageDuringSession: snapshot.stageDuringSession,
       data: snapshot.data,
-      ...(snapshot.versionNumber != null
-        ? { versionNumber: snapshot.versionNumber }
-        : {}),
+      // Default to 0 so built-in snapshots (written without a version) surface as
+      // the documented default rather than `undefined`.
+      versionNumber: snapshot.versionNumber ?? 0,
     }));
   } finally {
     await rm(workDir, { recursive: true, force: true });
