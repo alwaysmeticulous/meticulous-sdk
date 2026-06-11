@@ -20,7 +20,6 @@ interface MeticulousRecorderWindow {
   __meticulous?: {
     initialiseRecorder?: () => void;
     snippetScriptSrc?: string;
-    sendWorkerBootstrapToAllWorkers?: () => void;
   };
 }
 
@@ -90,15 +89,9 @@ export async function bootstrapPage({
 
   const workerBundleSource = await readFile(workerRecordingSnippet, "utf8");
   page.on("workercreated", (worker) => {
-    void (async () => {
-      await worker.evaluate((src: string) => {
-        (0, eval)(src);
-      }, workerBundleSource);
-      await page.evaluate(() => {
-        const recorderWindow = window as MeticulousRecorderWindow;
-        recorderWindow.__meticulous?.sendWorkerBootstrapToAllWorkers?.();
-      });
-    })();
+    void worker.evaluate((src: string) => {
+      (0, eval)(src);
+    }, workerBundleSource);
   });
 
   await page.evaluateOnNewDocument(
