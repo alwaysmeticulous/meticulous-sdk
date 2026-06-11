@@ -1,5 +1,11 @@
 # @alwaysmeticulous/record
 
+## 2.291.1
+
+### Patch Changes
+
+- [#1209](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1209) [`dcda697`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/dcda69796a14164f6bf6d5cd3cd52d889d9881cd) Thanks [@Genora51](https://github.com/Genora51)! - Don't send worker bootstrap from puppeteer
+
 ## 2.291.0
 
 ### Minor Changes
