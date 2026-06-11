@@ -70,6 +70,24 @@ interface BaseLoaderOptions {
    * This is particularly useful if you can't allow the script to create an iframe to meticulous.ai to track the session.
    */
   disableTrackerId?: boolean;
+
+  /**
+   * Maximum size in bytes of a single session payload upload.
+   *
+   * Without a cap, long or network-heavy sessions can produce payloads large enough
+   * to exceed V8's maximum string length (~512 MB), which will crash any Node.js
+   * process that buffers the upload body. Set this when running the recorder inside
+   * an environment where outgoing HTTP request bodies are captured in-process
+   * (e.g. Playwright with tracing, HAR recording, or any `page.route()` handler).
+   *
+   * ```typescript
+   * await tryLoadAndStartRecorder({
+   *   recordingToken: '...',
+   *   maxPayloadSize: 50 * 1024 * 1024, // 50 MB
+   * });
+   * ```
+   */
+  maxPayloadSize?: number;
 }
 
 /**
