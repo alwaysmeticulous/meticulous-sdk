@@ -79,14 +79,21 @@ const downloadSnapshotFile = async (
       );
     }
 
-    return (parsed as Array<{ stageDuringSession: string; data: unknown }>).map(
-      (snapshot) => ({
-        type: file.type,
-        sessionId: file.sessionId,
-        stageDuringSession: snapshot.stageDuringSession,
-        data: snapshot.data,
-      }),
-    );
+    return (
+      parsed as Array<{
+        stageDuringSession: string;
+        data: unknown;
+        versionNumber?: number;
+      }>
+    ).map((snapshot) => ({
+      type: file.type,
+      sessionId: file.sessionId,
+      stageDuringSession: snapshot.stageDuringSession,
+      data: snapshot.data,
+      // Default to 0 so built-in snapshots (written without a version) surface as
+      // the documented default rather than `undefined`.
+      versionNumber: snapshot.versionNumber ?? 0,
+    }));
   } finally {
     await rm(workDir, { recursive: true, force: true });
   }

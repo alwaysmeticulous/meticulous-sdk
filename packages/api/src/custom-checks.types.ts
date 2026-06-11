@@ -30,6 +30,14 @@ export interface Snapshot<T = unknown> {
   stageDuringSession: string;
 
   data: T;
+
+  /**
+   * Version number the snapshot was recorded with (see
+   * `recordCustomSnapshot`). Defaults to 0 for snapshots recorded without one
+   * (including all built-in snapshots). When the version differs between the
+   * base and head snapshots, a failing check can be caveated in the UI.
+   */
+  versionNumber?: number;
 }
 
 /** The base and head snapshots passed to a custom check. */

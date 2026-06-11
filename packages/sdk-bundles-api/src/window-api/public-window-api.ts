@@ -20,6 +20,54 @@ export interface MeticulousPublicApiCommon {
   context: MeticulousPublicContextApi;
 }
 
+/**
+ * Options for {@link MeticulousPublicReplayApi.recordCustomSnapshot}.
+ */
+export interface RecordCustomSnapshotOptions<T = unknown> {
+  /**
+   * The kind of snapshot. Used to group snapshots so a custom check can fetch
+   * every snapshot of a given type across the test run. Must match
+   * `^[a-z0-9-]{1,64}$` and must not collide with a built-in snapshot type
+   * (e.g. "network-requests").
+   */
+  snapshotType: string;
+
+  /** The data to snapshot. Must be JSON-serializable. */
+  data: T;
+
+  /**
+   * Optional version number for the snapshot's shape/semantics. If the version
+   * differs between the base and head replays, a failing custom check can be
+   * caveated in the UI (the difference may be due to the snapshot format
+   * changing rather than a real regression). Defaults to 0 when omitted.
+   */
+  versionNumber?: number;
+}
+
+/** Details passed to an {@link OnBeforeScreenshotListener}. */
+export interface OnBeforeScreenshotListenerOptions {
+  /**
+   * The stage the upcoming screenshot will be tagged with (e.g.
+   * "screenshot-after-event-12"). Snapshots recorded during this listener are
+   * tagged with the same stage.
+   */
+  stageDuringSession: string;
+}
+
+export type OnBeforeScreenshotListener = (
+  options: OnBeforeScreenshotListenerOptions,
+) => void | Promise<void>;
+
+/** Details passed to an {@link OnReplayCompletionListener}. */
+export interface OnReplayCompletionListenerOptions {
+  /** The id of the session being replayed. */
+  sessionId: string;
+}
+
+export type OnReplayCompletionListener = (
+  options: OnReplayCompletionListenerOptions,
+) => void | Promise<void>;
+
 export interface MeticulousPublicReplayApi {
   /**
    * Call this method to pause the Meticulous replay while your code performs an asynchronous operation
@@ -62,6 +110,66 @@ export interface MeticulousPublicReplayApi {
    * this may trigger custom events to be fired.
    */
   recordCustomEvent(type: string, serializedData: string): { success: boolean };
+
+  /**
+   * Record a snapshot of custom data at the current point in the replay, for use
+   * by a custom check. The snapshot is persisted alongside the replay and
+   * auto-tagged with the stage during the session at which it was taken
+   * (identified by the next screenshot, e.g. "screenshot-after-event-12" or
+   * "final-state"), so a custom check can later align and compare the base and
+   * head snapshots of the same {@link RecordCustomSnapshotOptions.snapshotType}
+   * across a test run.
+   *
+   * Use this to capture custom data that Meticulous does not snapshot natively,
+   * for use by a custom check.
+   *
+   * Snapshots are only collected when custom snapshotting is enabled for the
+   * project; otherwise this is a no-op (the data is still validated).
+   *
+   * @throws if `data` is not JSON-serializable, or if `snapshotType` is invalid
+   * (it must match `^[a-z0-9-]{1,64}$` and must not collide with a built-in
+   * snapshot type such as "network-requests").
+   */
+  recordCustomSnapshot<T = unknown>(
+    options: RecordCustomSnapshotOptions<T>,
+  ): { success: boolean };
+
+  /**
+   * Register a listener invoked immediately before each screenshot is taken,
+   * once the page has settled. Use it to inspect the state of the page and
+   * {@link recordCustomSnapshot | record a snapshot} of it at each screenshot
+   * point. Any snapshots recorded synchronously (or awaited) within the listener
+   * are tagged with the screenshot about to be taken.
+   *
+   * The listener must be **read-only**: it runs after the page has settled but
+   * before the screenshot is captured, so mutating the DOM (or triggering a
+   * re-render) would change the captured screenshot.
+   *
+   * Prefer **synchronous** work. The listener is awaited on the screenshot
+   * critical path and bounded by an internal timeout, and during replay the
+   * page's timers run on (frozen) virtual time — so async work that relies on
+   * real timers (e.g. `setTimeout`) to make progress will not complete and will
+   * be skipped.
+   *
+   * Listeners are only invoked when custom snapshotting is enabled for the
+   * project.
+   */
+  addOnBeforeScreenshotListener(listener: OnBeforeScreenshotListener): void;
+
+  /**
+   * Register a listener invoked once when the replay completes. Use it to
+   * capture end-of-replay information — for example final performance metrics —
+   * via {@link recordCustomSnapshot}. Snapshots recorded within the listener are
+   * tagged with the "final-state" stage.
+   *
+   * As with {@link addOnBeforeScreenshotListener}, the listener is bounded by an
+   * internal timeout and timer-based async work may not complete under virtual
+   * time, so prefer synchronous capture.
+   *
+   * Listeners are only invoked when custom snapshotting is enabled for the
+   * project.
+   */
+  addOnReplayCompletionListener(listener: OnReplayCompletionListener): void;
 
   /**
    * True only in case the performance data associated with this replay is

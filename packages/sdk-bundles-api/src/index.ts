@@ -61,6 +61,11 @@ export {
   MeticulousPressureRecord,
   MeticulousPressureSource,
   MeticulousPressureState,
+  RecordCustomSnapshotOptions,
+  OnBeforeScreenshotListener,
+  OnBeforeScreenshotListenerOptions,
+  OnReplayCompletionListener,
+  OnReplayCompletionListenerOptions,
 } from "./window-api/public-window-api";
 export { MeticulousPrivateApi } from "./window-api/private-window-api";
 export { BackendRecorderConfig } from "./backend-recorder/sdk-to-bundle/init-backend-recorder";
