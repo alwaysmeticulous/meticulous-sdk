@@ -154,11 +154,28 @@ describe("custom checks SDK helpers", () => {
   });
 
   describe("findTestRunByIdAndWaitForCompletion", () => {
+    // After the run reaches a terminal status the wait resolves the "effective"
+    // test run via the network-patching-result endpoint. These tests have no
+    // patching, so it reports the original run as not-in-progress.
+    const noNetworkPatching = (id: string) => ({
+      data: { effectiveTestRunId: id, isNetworkPatchingInProgress: false },
+    });
+
     it("polls until the test run reaches a terminal status", async () => {
-      client.get
-        .mockResolvedValueOnce({ data: testRun("tr-1", "Running") })
-        .mockResolvedValueOnce({ data: testRun("tr-1", "PostProcessing") })
-        .mockResolvedValueOnce({ data: testRun("tr-1", "Success") });
+      const statuses: TestRunStatus[] = [
+        "Running",
+        "PostProcessing",
+        "Success",
+      ];
+      let statusCalls = 0;
+      client.get.mockImplementation(async (url: string) => {
+        if (url.endsWith("/network-patching-result")) {
+          return noNetworkPatching("tr-1");
+        }
+        const status = statuses[Math.min(statusCalls, statuses.length - 1)];
+        statusCalls += 1;
+        return { data: testRun("tr-1", status) };
+      });
 
       const result = await findTestRunByIdAndWaitForCompletion({
         client: asClient(),
@@ -167,13 +184,21 @@ describe("custom checks SDK helpers", () => {
       });
 
       expect(result.testRun.status).toBe("Success");
-      expect(client.get).toHaveBeenCalledTimes(3);
+      expect(result.testRunId).toBe("tr-1");
+      expect(statusCalls).toBe(3);
     });
 
     it("returns when a run leaves the in-progress states (e.g. Partial), not only on Success/Failure", async () => {
-      client.get
-        .mockResolvedValueOnce({ data: testRun("tr-1", "Running") })
-        .mockResolvedValueOnce({ data: testRun("tr-1", "Partial") });
+      const statuses: TestRunStatus[] = ["Running", "Partial"];
+      let statusCalls = 0;
+      client.get.mockImplementation(async (url: string) => {
+        if (url.endsWith("/network-patching-result")) {
+          return noNetworkPatching("tr-1");
+        }
+        const status = statuses[Math.min(statusCalls, statuses.length - 1)];
+        statusCalls += 1;
+        return { data: testRun("tr-1", status) };
+      });
 
       const result = await findTestRunByIdAndWaitForCompletion({
         client: asClient(),
@@ -182,7 +207,7 @@ describe("custom checks SDK helpers", () => {
       });
 
       expect(result.testRun.status).toBe("Partial");
-      expect(client.get).toHaveBeenCalledTimes(2);
+      expect(statusCalls).toBe(2);
     });
 
     it("throws once the timeout elapses", async () => {
@@ -201,11 +226,20 @@ describe("custom checks SDK helpers", () => {
 
   describe("findTestRunByCommitAndWaitForCompletion", () => {
     it("resolves the latest run for the commit, then waits for it to complete", async () => {
-      client.get.mockImplementation(async (url: string) =>
-        url === "test-runs/cache"
-          ? { data: testRun("tr-9", "Running") }
-          : { data: testRun("tr-9", "Success") },
-      );
+      client.get.mockImplementation(async (url: string) => {
+        if (url === "test-runs/cache") {
+          return { data: testRun("tr-9", "Running") };
+        }
+        if (url.endsWith("/network-patching-result")) {
+          return {
+            data: {
+              effectiveTestRunId: "tr-9",
+              isNetworkPatchingInProgress: false,
+            },
+          };
+        }
+        return { data: testRun("tr-9", "Success") };
+      });
 
       const result = await findTestRunByCommitAndWaitForCompletion({
         client: asClient(),
