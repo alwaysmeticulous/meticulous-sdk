@@ -1,4 +1,4 @@
-import { SessionContext } from "@alwaysmeticulous/api";
+import { SessionContext, TestRunStatus } from "@alwaysmeticulous/api";
 import { maybeEnrichFetchError } from "../errors";
 import { MeticulousClient } from "../types/client.types";
 
@@ -40,6 +40,63 @@ export interface DiffsSummaryResponse {
 export interface ScreenshotDomDiffResponse {
   diffs: Array<{ index: number; content: string }>;
   totalDiffs: number;
+}
+
+// ---------------------------------------------------------------------------
+// Screenshot JS coverage types
+// ---------------------------------------------------------------------------
+
+export type CompactRange = [startLineInc: number, endLineInc: number];
+export type FileWithCompactRanges = [filePath: string, ranges: CompactRange[]];
+
+export interface TestRunForCommitResponse {
+  /**
+   * The id of the most recent user-visible test run for the commit, including
+   * one still in progress (`ExecutionError`/`Aborted` runs are skipped), or
+   * `null` if the project has no such run.
+   */
+  testRunId: string | null;
+  /**
+   * The matched run's status (`null` iff `testRunId` is null). An in-progress
+   * status lets the caller decide whether to wait for the run to finish.
+   */
+  status: TestRunStatus | null;
+}
+
+export interface TestRunJsCoverageResponse {
+  /**
+   * Executed line ranges per file across the whole test run, keyed by
+   * repo-relative path (from the precomputed, repo-mapped coverage.json).
+   */
+  files: FileWithCompactRanges[];
+}
+
+export interface ReplayJsCoverageResponse {
+  /**
+   * Executed line ranges for a single replay (whole replay, or one screenshot),
+   * keyed by repo-relative path. Source-map paths that don't resolve to a repo
+   * file are dropped. `null` only when a specific screenshot has no coverage.
+   */
+  files: FileWithCompactRanges[] | null;
+}
+
+export interface CoverageFileDiff {
+  /** Repo-relative file path. */
+  filePath: string;
+  status: "added" | "removed" | "modified";
+  baseRanges: CompactRange[];
+  headRanges: CompactRange[];
+}
+
+export interface ReplayDiffJsCoverageDiffResponse {
+  /**
+   * Base/head executed line ranges and their diff, all keyed by repo-relative
+   * path. Source-map paths that don't resolve to a repo file (e.g. a file
+   * deleted at head, or third-party code) are dropped.
+   */
+  base: FileWithCompactRanges[] | null;
+  head: FileWithCompactRanges[] | null;
+  diff: CoverageFileDiff[];
 }
 
 // ---------------------------------------------------------------------------
@@ -175,9 +232,7 @@ export interface StructuredSessionDataResponse {
 // Telemetry types
 // ---------------------------------------------------------------------------
 
-export type AgentFeature =
-  | "debug-replay-diff"
-  | "debug-replay";
+export type AgentFeature = "debug-replay-diff" | "debug-replay";
 
 // ---------------------------------------------------------------------------
 // API methods
@@ -245,6 +300,88 @@ export const getScreenshotDomDiff = async (
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
+  return data;
+};
+
+// Resolves the latest test run for a commit so the current checkout can be
+// mapped to a test run (e.g. before requesting js-coverage). Returns
+// `{ testRunId: null }` when the project has no matching run. The project comes
+// from the token; OAuth user tokens must pass `projectId`.
+export const getTestRunForCommit = async (
+  client: MeticulousClient,
+  commitSha: string,
+  options?: { projectId?: string | undefined },
+): Promise<TestRunForCommitResponse> => {
+  const params: Record<string, string> = { commitSha };
+  if (options?.projectId != null) {
+    params.projectId = options.projectId;
+  }
+  const { data } = await client
+    .get("agent/test-runs", { params })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+// Returns the whole test run's executed line ranges from the precomputed,
+// repo-mapped coverage.json (keyed by repo-relative path).
+export const getTestRunJsCoverage = async (
+  client: MeticulousClient,
+  testRunId: string,
+): Promise<TestRunJsCoverageResponse> => {
+  const { data } = await client
+    .get(`agent/test-runs/${testRunId}/js-coverage`)
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+// Plain coverage for a single replay. Omit screenshotName for the whole replay.
+// Repo file paths always resolve against the run that executed the replay as its
+// head (its source maps were built at that run's commit). testRunId, when given,
+// gates membership (the replay must belong to that run, head or base) and
+// disambiguates: if the replay was that run's head, paths resolve against it —
+// useful when a head replay belongs to several runs (e.g. proxy / copied diffs).
+// When omitted, the execution run is inferred from replay-diffs and must be
+// unique (restricted to user-visible runs).
+export const getReplayJsCoverage = async (
+  client: MeticulousClient,
+  replayId: string,
+  options?: {
+    screenshotName?: string | undefined;
+    testRunId?: string | undefined;
+  },
+): Promise<ReplayJsCoverageResponse> => {
+  const path =
+    options?.screenshotName != null
+      ? `agent/replays/${replayId}/screenshots/${encodeURIComponent(options.screenshotName)}/js-coverage`
+      : `agent/replays/${replayId}/js-coverage`;
+  const params: Record<string, string> = {};
+  if (options?.testRunId != null) {
+    params.testRunId = options.testRunId;
+  }
+  const { data } = await client.get(path, { params }).catch((error) => {
+    throw maybeEnrichFetchError(error);
+  });
+  return data;
+};
+
+// Coverage *diff* for a replay diff (base vs head). Omit screenshotName for the
+// whole-replay diff.
+export const getReplayDiffJsCoverage = async (
+  client: MeticulousClient,
+  replayDiffId: string,
+  screenshotName?: string,
+): Promise<ReplayDiffJsCoverageDiffResponse> => {
+  const path =
+    screenshotName != null
+      ? `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/js-coverage-diff`
+      : `agent/replay-diffs/${replayDiffId}/js-coverage-diff`;
+  const { data } = await client.get(path).catch((error) => {
+    throw maybeEnrichFetchError(error);
+  });
   return data;
 };
 

@@ -1,14 +1,25 @@
+import { TestRunStatus } from "@alwaysmeticulous/api";
 import {
-  createClientWithOAuth,
+  createClient,
+  getTestRun,
   getTestRunDiffsSummary,
+  resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { CliUserError } from "../../utils/cli-user-error";
+import {
+  awaitTestRunCompletion,
+  isTestRunInProgress,
+  resolveTestRunForCommitOrThrow,
+} from "../../utils/resolve-test-run-from-commit";
 
 interface Options {
   apiToken?: string | null | undefined;
-  testRunId: string;
+  testRunId: string | undefined;
+  commitSha: string | undefined;
+  waitForTestRunToComplete: boolean;
   includeMatches: boolean;
   includeReplayIds: boolean;
   verbose: boolean;
@@ -25,20 +36,61 @@ const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
 const handler = async ({
   apiToken,
   testRunId,
+  commitSha,
+  waitForTestRunToComplete,
   includeMatches,
   includeReplayIds,
   verbose,
 }: Options): Promise<void> => {
   initLogger();
-  const client = await createClientWithOAuth({
+
+  if (testRunId != null && commitSha != null) {
+    throw new CliUserError("Pass either --testRunId or --commitSha, not both.");
+  }
+
+  const apiToken_ = await resolveApiTokenWithOAuth({
     apiToken,
     enableOAuthLogin: true,
   });
+  const client = createClient({ apiToken: apiToken_ });
+
+  // Use --testRunId, else resolve the run from --commitSha or, when neither is
+  // given, from the local checkout's HEAD.
+  let resolvedTestRunId: string;
+  let status: TestRunStatus;
+  if (testRunId != null) {
+    resolvedTestRunId = testRunId;
+    status = (await getTestRun({ client, testRunId })).status;
+  } else {
+    const run = await resolveTestRunForCommitOrThrow(
+      client,
+      apiToken_,
+      commitSha,
+    );
+    resolvedTestRunId = run.testRunId;
+    status = run.status;
+  }
+
+  // Diffs are only meaningful once the run has finished. If it is still running
+  // and the caller didn't opt to wait, report it and stop — regardless of how
+  // the run was selected.
+  if (isTestRunInProgress(status) && !waitForTestRunToComplete) {
+    log(
+      `Test run ${resolvedTestRunId} is still in progress (status: ${status}); ` +
+        "pass --waitForTestRunToComplete to block until it finishes and then show diffs.",
+    );
+    return;
+  }
+
+  if (waitForTestRunToComplete) {
+    await awaitTestRunCompletion(client, resolvedTestRunId);
+  }
+
   const t0 = performance.now();
 
-  log(`Fetching diffs summary for test run ${testRunId}...`);
+  log(`Fetching diffs summary for test run ${resolvedTestRunId}...`);
 
-  let response = await getTestRunDiffsSummary(client, testRunId, {
+  let response = await getTestRunDiffsSummary(client, resolvedTestRunId, {
     includeReplayIds,
     includeMatches,
   });
@@ -47,7 +99,7 @@ const handler = async ({
   while (response.status === "pending" || response.status === "processing") {
     if (verbose) log(`Status: ${response.status}`);
     await sleep(2000);
-    response = await getTestRunDiffsSummary(client, testRunId, {
+    response = await getTestRunDiffsSummary(client, resolvedTestRunId, {
       includeReplayIds,
       includeMatches,
     });
@@ -113,8 +165,19 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     apiToken: { string: true, description: "Meticulous API token" },
     testRunId: {
       string: true,
-      description: "The test run ID",
-      demandOption: true,
+      description:
+        "The test run ID. When omitted, the run is resolved from --commitSha, or from the local git HEAD when that is also omitted.",
+    },
+    commitSha: {
+      string: true,
+      description:
+        "A commit SHA, used as an alternative to --testRunId: the latest test run for the commit is resolved and used. Defaults to the local git HEAD when neither --testRunId nor --commitSha is given.",
+    },
+    waitForTestRunToComplete: {
+      boolean: true,
+      default: false,
+      description:
+        "If the test run is still in progress, block until it finishes before fetching diffs (otherwise an in-progress run is reported and the command exits).",
     },
     includeMatches: {
       boolean: true,
