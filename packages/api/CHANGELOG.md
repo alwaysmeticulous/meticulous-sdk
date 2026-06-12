@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.292.0
+
+### Minor Changes
+
+- [#1214](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1214) [`654879d`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/654879d3b68ccd9a63d65ce5e16c100279dbd6ec) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `ElementRedactionMode` and an optional `redactionMode` field on `CSSSelectorToIgnore`, letting each ignored element choose in which contexts it is hidden: `"always"`, `"replay-and-diff"` (default), or `"diff-only"`.
+
 ## 2.291.2
 
 ### Patch Changes

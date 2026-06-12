@@ -1,5 +1,12 @@
 # @alwaysmeticulous/recorder-loader
 
+## 2.292.0
+
+### Patch Changes
+
+- Updated dependencies [[`c99a4bb`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/c99a4bb037128e0ed93622045438ebd7cd5fdfa5)]:
+  - @alwaysmeticulous/sdk-bundles-api@2.292.0
+
 ## 2.291.2
 
 ### Patch Changes

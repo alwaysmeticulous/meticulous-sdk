@@ -1,5 +1,21 @@
 # @alwaysmeticulous/cli
 
+## 2.292.0
+
+### Patch Changes
+
+- Updated dependencies [[`654879d`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/654879d3b68ccd9a63d65ce5e16c100279dbd6ec), [`c99a4bb`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/c99a4bb037128e0ed93622045438ebd7cd5fdfa5)]:
+  - @alwaysmeticulous/api@2.292.0
+  - @alwaysmeticulous/sdk-bundles-api@2.292.0
+  - @alwaysmeticulous/client@2.292.0
+  - @alwaysmeticulous/common@2.290.3
+  - @alwaysmeticulous/downloading-helpers@2.292.0
+  - @alwaysmeticulous/record@2.292.0
+  - @alwaysmeticulous/remote-replay-launcher@2.292.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.292.0
+  - @alwaysmeticulous/debug-workspace@2.292.0
+
 ## 2.291.2
 
 ### Patch Changes
