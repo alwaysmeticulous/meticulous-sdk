@@ -7,8 +7,7 @@ export type ScreenshotAssertionsOptions =
   | { enabled: false }
   | ScreenshotAssertionsEnabledOptions;
 
-export interface ScreenshotAssertionsEnabledOptions
-  extends ScreenshottingEnabledOptions {
+export interface ScreenshotAssertionsEnabledOptions extends ScreenshottingEnabledOptions {
   diffOptions: ScreenshotDiffOptions;
 }
 
@@ -33,6 +32,26 @@ export interface ScreenshotDiffOptions {
 export type ElementToIgnore = CSSSelectorToIgnore;
 
 /**
+ * Controls in which contexts a matched element is hidden. Named for where it is hidden.
+ * Defaults to "replay-and-diff".
+ *
+ * The element is always hidden for the diff screenshot used in comparison — that is what makes
+ * it "ignored". The mode controls whether it is *additionally* hidden during the replay itself
+ * and in the user-facing screenshot:
+ *
+ * - "diff-only": hidden only for the diff screenshot. The element stays present and interactive
+ *   throughout the replay and is visible in the user-facing screenshot. Use for content that is
+ *   noisy/non-deterministic to diff but whose existence, size and position are stable (so
+ *   interacting with it and letting it hold layout is safe).
+ * - "replay-and-diff": additionally removed throughout the replay, so it can never be interacted
+ *   with and never affects layout, but is still shown in the user-facing screenshot. This is the
+ *   default and avoids "shifted diff" flakes from elements that load at inconsistent sizes.
+ * - "always": additionally hidden in the user-facing screenshot, so the element is never visible
+ *   anywhere.
+ */
+export type ElementRedactionMode = "always" | "replay-and-diff" | "diff-only";
+
+/**
  * Any elements that match this CSS selector will be hidden/removed before taking a screenshot.
  *
  * The diff will only be shown to the user if the both the original unredacted screenshots differ,
@@ -47,4 +66,9 @@ export interface CSSSelectorToIgnore {
    */
   shadowHostSelector?: string;
   comment?: string;
+  /**
+   * Controls in which contexts the matched element is hidden. Defaults to "replay-and-diff".
+   * See {@link ElementRedactionMode}.
+   */
+  redactionMode?: ElementRedactionMode;
 }
