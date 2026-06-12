@@ -102,6 +102,7 @@ export {
   ScreenshotDiffOptions,
   ElementToIgnore,
   CSSSelectorToIgnore,
+  ElementRedactionMode,
 } from "./sdk-bundle-api/sdk-to-bundle/screenshotting-options";
 export {
   NetworkStubbingMode,
