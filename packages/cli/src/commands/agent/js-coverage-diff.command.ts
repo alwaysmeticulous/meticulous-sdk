@@ -1,11 +1,11 @@
 import {
-  CompactRange,
   createClientWithOAuth,
   getReplayDiffJsCoverage,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -15,11 +15,6 @@ interface Options {
 }
 
 const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
-
-const fmtRanges = (ranges: CompactRange[]): string =>
-  ranges
-    .map(([start, end]) => (start === end ? `${start}` : `${start}-${end}`))
-    .join(";");
 
 const handler = async ({
   apiToken,
@@ -55,14 +50,14 @@ const handler = async ({
       added++;
     } else if (d.status === "removed") {
       removed++;
-    } else {
+    } else if (d.status === "modified") {
       modified++;
     }
     const fields = [
       d.filePath,
       d.status,
-      fmtRanges(d.baseRanges),
-      fmtRanges(d.headRanges),
+      formatCoverageRanges(d.baseRanges),
+      formatCoverageRanges(d.headRanges),
     ];
     console.log(fields.join("\t"));
   }

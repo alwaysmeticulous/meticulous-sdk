@@ -1,5 +1,4 @@
 import {
-  CompactRange,
   createClient,
   getReplayJsCoverage,
   getTestRunJsCoverage,
@@ -12,9 +11,11 @@ import { initLogger } from "@alwaysmeticulous/common";
 import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
+import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
 import {
   isTestRunInProgress,
   resolveTestRunForCommitOrThrow,
+  throwIfTestRunCoverageNotReady,
   tryResolveTestRunForCommit,
 } from "../../utils/resolve-test-run-from-commit";
 
@@ -29,11 +30,6 @@ interface Options {
 
 const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
 
-const fmtRanges = (ranges: CompactRange[]): string =>
-  ranges
-    .map(([start, end]) => (start === end ? `${start}` : `${start}-${end}`))
-    .join(";");
-
 const handler = async ({
   apiToken,
   replayId,
@@ -44,9 +40,6 @@ const handler = async ({
 }: Options): Promise<void> => {
   initLogger();
 
-  if (testRunId != null && commitSha != null) {
-    throw new CliUserError("Pass either --testRunId or --commitSha, not both.");
-  }
   if (screenshotName != null && replayId == null) {
     throw new CliUserError("--screenshotName only applies to --replayId.");
   }
@@ -70,12 +63,25 @@ const handler = async ({
       json,
     });
   } else {
+    if (testRunId != null && commitSha != null) {
+      throw new CliUserError(
+        "Pass either --testRunId or --commitSha, not both.",
+      );
+    }
     // Test-run coverage: use --testRunId, else resolve the run from --commitSha
-    // or, when neither is given, from the local checkout's HEAD.
-    const resolvedTestRunId =
-      testRunId ??
-      (await resolveCompletedTestRunIdForCommit(client, apiToken_, commitSha));
-    await printTestRunCoverage(client, resolvedTestRunId, json);
+    // or, when neither is given, from the local checkout's HEAD. Either way the
+    // run must have finished for coverage to exist.
+    if (testRunId != null) {
+      await throwIfTestRunCoverageNotReady(client, testRunId);
+      await printTestRunCoverage(client, testRunId, json);
+    } else {
+      const resolvedTestRunId = await resolveCompletedTestRunIdForCommit(
+        client,
+        apiToken_,
+        commitSha,
+      );
+      await printTestRunCoverage(client, resolvedTestRunId, json);
+    }
   }
 };
 
@@ -147,12 +153,19 @@ const printReplayCoverage = async (
         log(
           `Replay is the head of multiple test runs; retrying against test run ${fallback.testRunId} resolved from the local commit.`,
         );
-        const result = await getReplayJsCoverage(client, replayId, {
-          screenshotName,
-          testRunId: fallback.testRunId,
-        });
-        printReplayResult(result, json);
-        return;
+        try {
+          const result = await getReplayJsCoverage(client, replayId, {
+            screenshotName,
+            testRunId: fallback.testRunId,
+          });
+          printReplayResult(result, json);
+          return;
+        } catch {
+          // The local-HEAD run may not contain this replay (e.g. inspecting a
+          // replay from a different commit), in which case the retry 404s.
+          // Surface the original, actionable "pass --testRunId" error instead.
+          throw error;
+        }
       }
     }
     throw error;
@@ -173,7 +186,7 @@ const printReplayResult = (
   // are dropped), matching the test-run shape.
   const files = result.files ?? [];
   for (const [filePath, ranges] of files) {
-    console.log([filePath, fmtRanges(ranges)].join("\t"));
+    console.log([filePath, formatCoverageRanges(ranges)].join("\t"));
   }
 
   log(`${files.length} file(s) with coverage`);
@@ -194,7 +207,7 @@ const printTestRunCoverage = async (
   console.log(["repoFilePath", "executedRanges"].join("\t"));
   // Test-run coverage is the precomputed repo-mapped coverage, keyed by repo paths.
   for (const [filePath, ranges] of result.files) {
-    console.log([filePath, fmtRanges(ranges)].join("\t"));
+    console.log([filePath, formatCoverageRanges(ranges)].join("\t"));
   }
 
   log(`${result.files.length} file(s) with coverage`);

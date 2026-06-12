@@ -77,6 +77,24 @@ export const tryResolveTestRunForCommit = async (
 };
 
 /**
+ * Throws a `CliUserError` if the given test run is still in progress, since
+ * coverage only exists once a run has finished. Used to guard an explicitly
+ * passed `testRunId`, mirroring the in-progress check applied to runs resolved
+ * from a commit.
+ */
+export const throwIfTestRunCoverageNotReady = async (
+  client: MeticulousClient,
+  testRunId: string,
+): Promise<void> => {
+  const testRun = await getTestRun({ client, testRunId });
+  if (isTestRunInProgress(testRun.status)) {
+    throw new CliUserError(
+      `Test run ${testRunId} is still in progress (status: ${testRun.status}); coverage is not available yet.`,
+    );
+  }
+};
+
+/**
  * Polls a (possibly in-progress) test run until it reaches a terminal status,
  * logging each transition. Throws a `CliUserError` if the run finishes
  * unsuccessfully (`ExecutionError`/`Aborted`). Returns the final status.
