@@ -19,6 +19,8 @@ export interface RecordSessionOptions {
   appUrl?: string | null | undefined;
   /** If set, will set the max payload size for the session */
   maxPayloadSize?: number | null | undefined;
+  /** If set, exposes Chrome DevTools Protocol on this port for external agents */
+  remoteDebuggingPort?: number | null | undefined;
   onDetectedSession?: (sessionId: string) => void;
 }
 

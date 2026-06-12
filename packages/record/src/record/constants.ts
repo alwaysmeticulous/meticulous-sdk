@@ -24,6 +24,16 @@ export const COMMON_RECORD_CHROME_LAUNCH_ARGS = [
   "--disable-blink-features=AutomationControlled",
 ];
 
+export const buildRecordChromeLaunchArgs = (
+  remoteDebuggingPort?: number | null,
+): string[] => {
+  const args = [...COMMON_RECORD_CHROME_LAUNCH_ARGS];
+  if (remoteDebuggingPort != null) {
+    args.push(`--remote-debugging-port=${remoteDebuggingPort}`);
+  }
+  return args;
+};
+
 // We don't require https://snippet.meticulous.ai since the snippet is injected via
 // evaluateOnNewDocument
 export const REQUIRED_CSP_ORIGINS = [
