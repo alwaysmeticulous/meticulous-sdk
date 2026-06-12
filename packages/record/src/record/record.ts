@@ -80,7 +80,7 @@ export const recordSession = async ({
   // Incognito browser contexts are not visible to external CDP clients (e.g.
   // agent-browser connect). Force the default context when exposing a debug port.
   const useIncognito =
-    remoteDebuggingPort != null ? false : (incognito ?? true);
+    remoteDebuggingPort != null ? false : Boolean(incognito);
   if (remoteDebuggingPort != null && incognito) {
     logger.info(
       "Disabling incognito mode because --remoteDebuggingPort requires the default browser context for external agents.",
@@ -93,9 +93,8 @@ export const recordSession = async ({
     defaultViewport,
     headless: false,
     devtools: devTools || false,
-    // pipe:true uses stdin/stdout instead of the debug port; external agents
-    // need WebSocket access via --remote-debugging-port.
-    pipe: remoteDebuggingPort == null,
+    // External agents need WebSocket CDP access via --remote-debugging-port.
+    ...(remoteDebuggingPort != null ? { pipe: false } : {}),
     args: buildRecordChromeLaunchArgs(remoteDebuggingPort),
   });
 
