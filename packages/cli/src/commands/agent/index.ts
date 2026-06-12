@@ -2,7 +2,10 @@ import { CommandModule } from "yargs";
 import { domDiffCommand } from "./screenshot-dom-diff.command";
 import { imageFilesCommand } from "./screenshot-image-files.command";
 import { imageUrlsCommand } from "./screenshot-image.command";
+import { jsCoverageCommand } from "./js-coverage.command";
+import { jsCoverageDiffCommand } from "./js-coverage-diff.command";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
+import { testRunForCommitCommand } from "./test-run-for-commit.command";
 import { timelineDiffCommand } from "./timeline.command";
 
 export const agentCommand: CommandModule = {
@@ -12,6 +15,9 @@ export const agentCommand: CommandModule = {
     yargs
       .command(testRunDiffsCommand)
       .command(domDiffCommand)
+      .command(testRunForCommitCommand)
+      .command(jsCoverageCommand)
+      .command(jsCoverageDiffCommand)
       .command(imageFilesCommand)
       .command(imageUrlsCommand)
       .command(timelineDiffCommand)
