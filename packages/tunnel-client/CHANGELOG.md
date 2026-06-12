@@ -1,5 +1,16 @@
 # @alwaysmeticulous/tunnels-client
 
+## 2.293.0
+
+### Minor Changes
+
+- [#1219](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1219) [`762b5c7`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/762b5c7aa30b9f031164b5fb1594d79d313a5ce4) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - feat(cli): add agent JS coverage commands and resolve test runs by commit
+
+### Patch Changes
+
+- Updated dependencies [[`762b5c7`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/762b5c7aa30b9f031164b5fb1594d79d313a5ce4)]:
+  - @alwaysmeticulous/common@2.293.0
+
 ## 2.290.3
 
 ### Patch Changes

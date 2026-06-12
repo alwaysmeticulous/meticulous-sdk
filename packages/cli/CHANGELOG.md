@@ -1,5 +1,29 @@
 # @alwaysmeticulous/cli
 
+## 2.293.0
+
+### Minor Changes
+
+- [#1219](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1219) [`762b5c7`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/762b5c7aa30b9f031164b5fb1594d79d313a5ce4) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - feat(cli): add agent JS coverage commands and resolve test runs by commit
+
+### Patch Changes
+
+- [#1219](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1219) [`762b5c7`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/762b5c7aa30b9f031164b5fb1594d79d313a5ce4) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - feat(cli): add agent JS coverage commands and resolve test runs by commit
+
+- Updated dependencies [[`762b5c7`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/762b5c7aa30b9f031164b5fb1594d79d313a5ce4), [`762b5c7`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/762b5c7aa30b9f031164b5fb1594d79d313a5ce4)]:
+  - @alwaysmeticulous/client@2.293.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.293.0
+  - @alwaysmeticulous/remote-replay-launcher@2.293.0
+  - @alwaysmeticulous/downloading-helpers@2.293.0
+  - @alwaysmeticulous/debug-workspace@2.293.0
+  - @alwaysmeticulous/sdk-bundles-api@2.293.0
+  - @alwaysmeticulous/tunnels-client@2.293.0
+  - @alwaysmeticulous/common@2.293.0
+  - @alwaysmeticulous/record@2.293.0
+  - @alwaysmeticulous/sentry@2.293.0
+  - @alwaysmeticulous/api@2.293.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+
 ## 2.292.1
 
 ### Patch Changes
