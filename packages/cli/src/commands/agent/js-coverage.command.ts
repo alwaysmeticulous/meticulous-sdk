@@ -150,20 +150,22 @@ const printReplayCoverage = async (
       );
       // Only retry against a finished run — an in-progress one has no coverage.
       if (fallback != null && !isTestRunInProgress(fallback.status)) {
-        log(
-          `Replay is the head of multiple test runs; retrying against test run ${fallback.testRunId} resolved from the local commit.`,
-        );
         try {
           const result = await getReplayJsCoverage(client, replayId, {
             screenshotName,
             testRunId: fallback.testRunId,
           });
+          // Only announce the fallback once it has actually worked, so a doomed
+          // retry doesn't leave a misleading "retrying against run X" line.
+          log(
+            `Replay is the head of multiple test runs; resolved coverage against test run ${fallback.testRunId} from the local commit.`,
+          );
           printReplayResult(result, json);
           return;
         } catch {
-          // The local-HEAD run may not contain this replay (e.g. inspecting a
-          // replay from a different commit), in which case the retry 404s.
-          // Surface the original, actionable "pass --testRunId" error instead.
+          // The local-HEAD run doesn't contain this replay (e.g. inspecting a
+          // replay from a different commit), so it can't disambiguate. Surface
+          // the original, actionable "pass --testRunId" error instead.
           throw error;
         }
       }
