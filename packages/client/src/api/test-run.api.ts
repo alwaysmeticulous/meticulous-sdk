@@ -86,6 +86,29 @@ export const getTestRunNetworkPatchingResult = async ({
   return data ?? null;
 };
 
+/**
+ * Registers that a test run is expecting custom check results, so the Meticulous
+ * UI shows the "Checks" tab for it while the results are computed and reported.
+ *
+ * Call this with the *effective* test run id (the merged run when network
+ * patching applied — see {@link getTestRunNetworkPatchingResult}) so the tab
+ * appears on the run the user actually sees. Best-effort by design: it is fine
+ * for this to no-op against older backends that don't expose the endpoint.
+ */
+export const markTestRunExpectsCustomChecks = async ({
+  client,
+  testRunId,
+}: {
+  client: MeticulousClient;
+  testRunId: string;
+}): Promise<void> => {
+  await client
+    .post(`test-runs/${testRunId}/expect-custom-checks`, {})
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+};
+
 export const getTestRunData: (options: {
   client: MeticulousClient;
   testRunId: string;

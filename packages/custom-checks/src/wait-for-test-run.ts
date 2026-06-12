@@ -7,6 +7,7 @@ import {
   getTestRun,
   getTestRunNetworkPatchingResult,
   IN_PROGRESS_TEST_RUN_STATUS,
+  markTestRunExpectsCustomChecks,
   type MeticulousClient,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
@@ -42,6 +43,18 @@ export interface WaitForTestRunCompletionOptions {
    * Defaults to 30 minutes.
    */
   timeoutMs?: number;
+  /**
+   * When true, skip registering with the backend that this test run will report
+   * custom check results (the `expect-custom-checks` signal that makes the
+   * "Checks" tab appear in the Meticulous UI). Defaults to false.
+   *
+   * Useful when iterating on a custom check locally against a real test run: you
+   * can wait for the run and pull its snapshots without making that run show a
+   * "waiting for checks" tab to everyone. Note that actually reporting results
+   * (`reportCustomCheckResults`) still marks the run, so set this only while
+   * experimenting and not reporting results to the real run.
+   */
+  skipRegisteringExpectedCustomChecks?: boolean;
 }
 
 export interface WaitForTestRunResult {
@@ -104,6 +117,7 @@ export const findTestRunByIdAndWaitForCompletion = async ({
   testRunId,
   pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  skipRegisteringExpectedCustomChecks = false,
 }: FindTestRunByIdAndWaitForCompletionOptions): Promise<WaitForTestRunResult> => {
   const phase: WaitPhaseOptions = {
     client,
@@ -122,17 +136,40 @@ export const findTestRunByIdAndWaitForCompletion = async ({
   // patching. Returns the original test run id when no patching applies.
   const effectiveTestRunId = await resolveEffectiveTestRunId(phase);
 
+  let result: WaitForTestRunResult;
   if (effectiveTestRunId === testRun.id) {
-    return { testRunId: testRun.id, testRun };
+    result = { testRunId: testRun.id, testRun };
+  } else {
+    phase.logger.info(
+      `Test run ${testRunId} was network patched; reporting against merged test run ${effectiveTestRunId}.`,
+    );
+    // Phase 3: fetch the merged run, falling back to the (already-terminal)
+    // original run if it can't be fetched, so a transient error here doesn't
+    // fail the whole wait after the run has completed.
+    result = await fetchEffectiveTestRunOrFallback(
+      phase,
+      effectiveTestRunId,
+      testRun,
+    );
   }
 
-  phase.logger.info(
-    `Test run ${testRunId} was network patched; reporting against merged test run ${effectiveTestRunId}.`,
-  );
-  // Phase 3: fetch the merged run, falling back to the (already-terminal)
-  // original run if it can't be fetched, so a transient error here doesn't fail
-  // the whole wait after the run has completed.
-  return fetchEffectiveTestRunOrFallback(phase, effectiveTestRunId, testRun);
+  // Now that we've resolved the run the user will actually see (the merged run
+  // when network patching applied, otherwise the original), register that it
+  // expects custom check results — before the caller goes on to download
+  // snapshots and compute the checks — so the UI shows the "Checks" tab while
+  // they're in flight. Reporting against the same run id is the backstop that
+  // marks it if this best-effort call doesn't land. Skipped for local
+  // experimentation, so fetching a real run's snapshots doesn't make it show a
+  // "waiting for checks" tab.
+  if (skipRegisteringExpectedCustomChecks) {
+    phase.logger.info(
+      `Not registering that test run ${result.testRunId} expects custom check results (skipRegisteringExpectedCustomChecks is set).`,
+    );
+  } else {
+    await markExpectsCustomChecksBestEffort(phase, result.testRunId);
+  }
+
+  return result;
 };
 
 interface WaitPhaseOptions {
@@ -297,6 +334,26 @@ export const fetchEffectiveTestRunOrFallback = async (
       }
       await clock.sleep(pollIntervalMs);
     }
+  }
+};
+
+/**
+ * Best-effort registration that the resolved (effective) test run expects custom
+ * check results. Never throws: the run has already completed by this point and
+ * the only consequence of failure is that the "Checks" tab appears slightly
+ * later (once results are reported, which also marks the run), so a transient
+ * error or an older backend without the endpoint must not fail the wait.
+ */
+const markExpectsCustomChecksBestEffort = async (
+  { client, logger }: WaitPhaseOptions,
+  testRunId: string,
+): Promise<void> => {
+  try {
+    await markTestRunExpectsCustomChecks({ client, testRunId });
+  } catch (error) {
+    logger.warn(
+      `Could not register that test run ${testRunId} expects custom check results; the Checks tab will still appear once results are reported. ${error}`,
+    );
   }
 };
 

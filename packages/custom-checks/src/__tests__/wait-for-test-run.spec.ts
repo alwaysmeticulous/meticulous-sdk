@@ -2,12 +2,14 @@ import type { TestRun } from "@alwaysmeticulous/api";
 import {
   getTestRun,
   getTestRunNetworkPatchingResult,
+  markTestRunExpectsCustomChecks,
   type MeticulousClient,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import {
   fetchEffectiveTestRunOrFallback,
+  findTestRunByIdAndWaitForCompletion,
   resolveEffectiveTestRunId,
   type WaitClock,
 } from "../wait-for-test-run";
@@ -19,6 +21,7 @@ vi.mock("@alwaysmeticulous/client", async (importOriginal) => {
     ...actual,
     getTestRun: vi.fn(),
     getTestRunNetworkPatchingResult: vi.fn(),
+    markTestRunExpectsCustomChecks: vi.fn(),
   };
 });
 
@@ -151,5 +154,93 @@ describe("fetchEffectiveTestRunOrFallback", () => {
     await expect(
       fetchEffectiveTestRunOrFallback(phase(makeClock()), MERGED, original),
     ).resolves.toEqual({ testRunId: ORIGINAL, testRun: original });
+  });
+});
+
+describe("findTestRunByIdAndWaitForCompletion", () => {
+  const client = {} as MeticulousClient;
+
+  it("registers the original run as expecting custom checks when no patching applies", async () => {
+    (getTestRun as Mock).mockResolvedValue(testRunFixture(ORIGINAL));
+    (getTestRunNetworkPatchingResult as Mock).mockResolvedValue({
+      effectiveTestRunId: ORIGINAL,
+      isNetworkPatchingInProgress: false,
+    });
+
+    const result = await findTestRunByIdAndWaitForCompletion({
+      client,
+      testRunId: ORIGINAL,
+    });
+
+    expect(result).toEqual({
+      testRunId: ORIGINAL,
+      testRun: testRunFixture(ORIGINAL),
+    });
+    expect(markTestRunExpectsCustomChecks).toHaveBeenCalledWith({
+      client,
+      testRunId: ORIGINAL,
+    });
+  });
+
+  it("registers the merged run (not the original) when network patching applied", async () => {
+    (getTestRun as Mock)
+      .mockResolvedValueOnce(testRunFixture(ORIGINAL))
+      .mockResolvedValueOnce(testRunFixture(MERGED));
+    (getTestRunNetworkPatchingResult as Mock).mockResolvedValue({
+      effectiveTestRunId: MERGED,
+      isNetworkPatchingInProgress: false,
+    });
+
+    const result = await findTestRunByIdAndWaitForCompletion({
+      client,
+      testRunId: ORIGINAL,
+    });
+
+    expect(result).toEqual({
+      testRunId: MERGED,
+      testRun: testRunFixture(MERGED),
+    });
+    expect(markTestRunExpectsCustomChecks).toHaveBeenCalledWith({
+      client,
+      testRunId: MERGED,
+    });
+  });
+
+  it("does not fail the wait if registering the expectation throws", async () => {
+    (getTestRun as Mock).mockResolvedValue(testRunFixture(ORIGINAL));
+    (getTestRunNetworkPatchingResult as Mock).mockResolvedValue({
+      effectiveTestRunId: ORIGINAL,
+      isNetworkPatchingInProgress: false,
+    });
+    (markTestRunExpectsCustomChecks as Mock).mockRejectedValue(
+      new Error("expect endpoint down"),
+    );
+
+    await expect(
+      findTestRunByIdAndWaitForCompletion({ client, testRunId: ORIGINAL }),
+    ).resolves.toEqual({
+      testRunId: ORIGINAL,
+      testRun: testRunFixture(ORIGINAL),
+    });
+  });
+
+  it("does not register the expectation when skipRegisteringExpectedCustomChecks is set", async () => {
+    (getTestRun as Mock).mockResolvedValue(testRunFixture(ORIGINAL));
+    (getTestRunNetworkPatchingResult as Mock).mockResolvedValue({
+      effectiveTestRunId: ORIGINAL,
+      isNetworkPatchingInProgress: false,
+    });
+
+    const result = await findTestRunByIdAndWaitForCompletion({
+      client,
+      testRunId: ORIGINAL,
+      skipRegisteringExpectedCustomChecks: true,
+    });
+
+    expect(result).toEqual({
+      testRunId: ORIGINAL,
+      testRun: testRunFixture(ORIGINAL),
+    });
+    expect(markTestRunExpectsCustomChecks).not.toHaveBeenCalled();
   });
 });
