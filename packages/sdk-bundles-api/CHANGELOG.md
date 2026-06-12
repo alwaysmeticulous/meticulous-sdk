@@ -1,5 +1,16 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.292.0
+
+### Minor Changes
+
+- [#1205](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1205) [`c99a4bb`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/c99a4bb037128e0ed93622045438ebd7cd5fdfa5) Thanks [@narobertson42](https://github.com/narobertson42)! - Add `SessionStartUrlTransform` type and `sessionStartUrlTransform` field to `AppUrlConfig`
+
+### Patch Changes
+
+- Updated dependencies [[`654879d`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/654879d3b68ccd9a63d65ce5e16c100279dbd6ec)]:
+  - @alwaysmeticulous/api@2.292.0
+
 ## 2.291.2
 
 ### Patch Changes
