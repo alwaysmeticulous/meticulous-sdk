@@ -71,7 +71,13 @@ export const tryResolveTestRunForCommit = async (
     return testRunId != null && status != null
       ? { testRunId, status }
       : null;
-  } catch {
+  } catch (error) {
+    // A CliUserError (e.g. no project selected for an OAuth caller) is an
+    // actionable configuration problem the user must address, not a reason to
+    // silently skip the fallback — let it propagate so its message surfaces.
+    if (error instanceof CliUserError) {
+      throw error;
+    }
     return null;
   }
 };

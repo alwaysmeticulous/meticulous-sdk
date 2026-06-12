@@ -1,5 +1,7 @@
+import { TestRunStatus } from "@alwaysmeticulous/api";
 import {
   createClient,
+  getTestRun,
   getTestRunDiffsSummary,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
@@ -55,8 +57,10 @@ const handler = async ({
   // Use --testRunId, else resolve the run from --commitSha or, when neither is
   // given, from the local checkout's HEAD.
   let resolvedTestRunId: string;
+  let status: TestRunStatus;
   if (testRunId != null) {
     resolvedTestRunId = testRunId;
+    status = (await getTestRun({ client, testRunId })).status;
   } else {
     const run = await resolveTestRunForCommitOrThrow(
       client,
@@ -64,15 +68,18 @@ const handler = async ({
       commitSha,
     );
     resolvedTestRunId = run.testRunId;
-    // Diffs are only meaningful once the run has finished. If it is still
-    // running and the caller didn't opt to wait, report it and stop.
-    if (isTestRunInProgress(run.status) && !waitForTestRunToComplete) {
-      log(
-        `Test run ${run.testRunId} is still in progress (status: ${run.status}); ` +
-          "pass --waitForTestRunToComplete to block until it finishes and then show diffs.",
-      );
-      return;
-    }
+    status = run.status;
+  }
+
+  // Diffs are only meaningful once the run has finished. If it is still running
+  // and the caller didn't opt to wait, report it and stop — regardless of how
+  // the run was selected.
+  if (isTestRunInProgress(status) && !waitForTestRunToComplete) {
+    log(
+      `Test run ${resolvedTestRunId} is still in progress (status: ${status}); ` +
+        "pass --waitForTestRunToComplete to block until it finishes and then show diffs.",
+    );
+    return;
   }
 
   if (waitForTestRunToComplete) {
