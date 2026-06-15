@@ -9,7 +9,7 @@ import { initLogger } from "@alwaysmeticulous/common";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import {
   fetchEffectiveTestRunOrFallback,
-  findTestRunByIdAndWaitForCompletion,
+  findTestRunForCustomChecks,
   resolveEffectiveTestRunId,
   type WaitClock,
 } from "../wait-for-test-run";
@@ -157,7 +157,7 @@ describe("fetchEffectiveTestRunOrFallback", () => {
   });
 });
 
-describe("findTestRunByIdAndWaitForCompletion", () => {
+describe("findTestRunForCustomChecks", () => {
   const client = {} as MeticulousClient;
 
   it("registers the original run as expecting custom checks when no patching applies", async () => {
@@ -167,7 +167,7 @@ describe("findTestRunByIdAndWaitForCompletion", () => {
       isNetworkPatchingInProgress: false,
     });
 
-    const result = await findTestRunByIdAndWaitForCompletion({
+    const result = await findTestRunForCustomChecks({
       client,
       testRunId: ORIGINAL,
     });
@@ -191,7 +191,7 @@ describe("findTestRunByIdAndWaitForCompletion", () => {
       isNetworkPatchingInProgress: false,
     });
 
-    const result = await findTestRunByIdAndWaitForCompletion({
+    const result = await findTestRunForCustomChecks({
       client,
       testRunId: ORIGINAL,
     });
@@ -217,7 +217,7 @@ describe("findTestRunByIdAndWaitForCompletion", () => {
     );
 
     await expect(
-      findTestRunByIdAndWaitForCompletion({ client, testRunId: ORIGINAL }),
+      findTestRunForCustomChecks({ client, testRunId: ORIGINAL }),
     ).resolves.toEqual({
       testRunId: ORIGINAL,
       testRun: testRunFixture(ORIGINAL),
@@ -231,7 +231,7 @@ describe("findTestRunByIdAndWaitForCompletion", () => {
       isNetworkPatchingInProgress: false,
     });
 
-    const result = await findTestRunByIdAndWaitForCompletion({
+    const result = await findTestRunForCustomChecks({
       client,
       testRunId: ORIGINAL,
       skipRegisteringExpectedCustomChecks: true,

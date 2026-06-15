@@ -69,9 +69,19 @@ export type FindTestRunByCommitAndWaitForCompletionOptions =
   };
 
 /**
- * Resolves the latest test run for a commit and waits for it to reach a terminal
- * status, returning it. Throws if no test run exists for the commit, or if it
- * does not complete within the timeout.
+ * Like {@link findTestRunForCustomChecks}, but takes a commit SHA instead of a
+ * test run id: it resolves the latest test run for the commit first, then waits
+ * for and returns the run to report custom check results against (registering it
+ * as expecting custom checks along the way).
+ *
+ * Call this at the start of a custom check script when you have the commit SHA
+ * rather than a test run id — before downloading snapshots or computing results.
+ * For a dry run that will NOT report results (e.g. testing your check script),
+ * set `skipRegisteringExpectedCustomChecks: true` so the run doesn't show a
+ * "waiting for checks" tab that never resolves.
+ *
+ * Throws if no test run exists for the commit, or if it does not complete within
+ * the timeout.
  */
 export const findTestRunByCommitAndWaitForCompletion = async ({
   client,
@@ -87,38 +97,53 @@ export const findTestRunByCommitAndWaitForCompletion = async ({
   initLogger().info(
     `Found test run ${latest.id} for commit ${commitSha}; waiting for it to complete...`,
   );
-  return findTestRunByIdAndWaitForCompletion({
+  return findTestRunForCustomChecks({
     client,
     testRunId: latest.id,
     ...waitOptions,
   });
 };
 
-export type FindTestRunByIdAndWaitForCompletionOptions =
+export type FindTestRunForCustomChecksOptions =
   WaitForTestRunCompletionOptions & {
     client: MeticulousClient;
     testRunId: string;
   };
 
 /**
- * Waits for a known test run to reach a terminal status, returning it. Throws if
- * it does not complete within the timeout.
+ * Waits for a test run to be ready to run custom checks against, and returns the
+ * test run you should report results for.
  *
- * If network patching (session repair) is or may be triggered for the run, the
- * results surfaced in the Meticulous UI come from the merged test run, not the
- * original run. In that case this waits for patching to settle and returns the
- * merged test run, so that custom check results reported against the returned id
- * are attached to the run the user actually sees. Resilient to runs where no
- * patching happens, and to patching that never finishes (bounded by the timeout,
- * after which the best-known effective test run is returned rather than throwing).
+ * Call this at the start of your custom check script — before downloading
+ * snapshots or computing any results. It:
+ *
+ *  1. Waits for the test run to reach a terminal status.
+ *  2. Resolves the "effective" run to report against. When network patching
+ *     (session repair) is triggered, the results surfaced in the Meticulous UI
+ *     come from the merged run, not the original, so this returns the merged run
+ *     once patching settles (and the original when no patching applies). Report
+ *     your results against the returned `testRunId` so they attach to the run
+ *     the user actually sees.
+ *  3. Registers that the returned run expects custom check results, so the UI
+ *     shows the "Checks" tab while your checks are in flight (and doesn't time
+ *     out waiting). This is why it must be called before you run the checks.
+ *
+ * If you are NOT going to report results for this run — e.g. a dry run that just
+ * tests your custom check script — set `skipRegisteringExpectedCustomChecks:
+ * true` so the run doesn't show a "waiting for checks" tab that never resolves.
+ *
+ * Resilient to runs where no patching happens, and to patching that never
+ * finishes (bounded by the timeout, after which the best-known effective test
+ * run is returned rather than throwing). Throws only if the run doesn't reach a
+ * terminal status within the timeout.
  */
-export const findTestRunByIdAndWaitForCompletion = async ({
+export const findTestRunForCustomChecks = async ({
   client,
   testRunId,
   pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   skipRegisteringExpectedCustomChecks = false,
-}: FindTestRunByIdAndWaitForCompletionOptions): Promise<WaitForTestRunResult> => {
+}: FindTestRunForCustomChecksOptions): Promise<WaitForTestRunResult> => {
   const phase: WaitPhaseOptions = {
     client,
     testRunId,
