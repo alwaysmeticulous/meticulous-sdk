@@ -7,8 +7,8 @@ export {
   WaitForTestRunResult,
   FindTestRunByCommitAndWaitForCompletionOptions,
   findTestRunByCommitAndWaitForCompletion,
-  FindTestRunByIdAndWaitForCompletionOptions,
-  findTestRunByIdAndWaitForCompletion,
+  FindTestRunForCustomChecksOptions,
+  findTestRunForCustomChecks,
 } from "./wait-for-test-run";
 export {
   GetSnapshotsFromTestRunOptions,

@@ -86,6 +86,36 @@ export const getTestRunNetworkPatchingResult = async ({
   return data ?? null;
 };
 
+/**
+ * Registers that a test run is expecting custom check results, so the Meticulous
+ * UI shows the "Checks" tab for it while the results are computed and reported.
+ *
+ * Call this with the *effective* test run id (the merged run when network
+ * patching applied — see {@link getTestRunNetworkPatchingResult}) so the tab
+ * appears on the run the user actually sees.
+ *
+ * Older backends don't expose this endpoint, so a 404 is treated as a no-op
+ * (mirroring {@link getTestRunNetworkPatchingResult}) rather than throwing. Any
+ * other error is rethrown for the caller to handle.
+ */
+export const markTestRunExpectsCustomChecks = async ({
+  client,
+  testRunId,
+}: {
+  client: MeticulousClient;
+  testRunId: string;
+}): Promise<void> => {
+  await client
+    .post(`test-runs/${testRunId}/expect-custom-checks`, {})
+    .catch((error) => {
+      // Older backend without the endpoint: nothing to register, so no-op.
+      if (isFetchError(error) && error.response?.status === 404) {
+        return;
+      }
+      throw maybeEnrichFetchError(error);
+    });
+};
+
 export const getTestRunData: (options: {
   client: MeticulousClient;
   testRunId: string;

@@ -72,6 +72,7 @@ export {
   executeSecureTunnelTestRun,
   getTestRun,
   getTestRunNetworkPatchingResult,
+  markTestRunExpectsCustomChecks,
   getTestRunData,
   getTestRunReplayDiffs,
   GetLatestTestRunOptions,

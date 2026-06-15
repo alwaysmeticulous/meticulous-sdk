@@ -10,7 +10,7 @@ import { getSnapshotsFromTestRun } from "../get-snapshots-from-test-run";
 import { reportCustomCheckResults } from "../report-custom-check-results";
 import {
   findTestRunByCommitAndWaitForCompletion,
-  findTestRunByIdAndWaitForCompletion,
+  findTestRunForCustomChecks,
 } from "../wait-for-test-run";
 
 // Stub the download/assemble step so this suite stays a pure unit test of the
@@ -153,7 +153,7 @@ describe("custom checks SDK helpers", () => {
     });
   });
 
-  describe("findTestRunByIdAndWaitForCompletion", () => {
+  describe("findTestRunForCustomChecks", () => {
     // After the run reaches a terminal status the wait resolves the "effective"
     // test run via the network-patching-result endpoint. These tests have no
     // patching, so it reports the original run as not-in-progress.
@@ -177,7 +177,7 @@ describe("custom checks SDK helpers", () => {
         return { data: testRun("tr-1", status) };
       });
 
-      const result = await findTestRunByIdAndWaitForCompletion({
+      const result = await findTestRunForCustomChecks({
         client: asClient(),
         testRunId: "tr-1",
         pollIntervalMs: 1,
@@ -200,7 +200,7 @@ describe("custom checks SDK helpers", () => {
         return { data: testRun("tr-1", status) };
       });
 
-      const result = await findTestRunByIdAndWaitForCompletion({
+      const result = await findTestRunForCustomChecks({
         client: asClient(),
         testRunId: "tr-1",
         pollIntervalMs: 1,
@@ -214,7 +214,7 @@ describe("custom checks SDK helpers", () => {
       client.get.mockResolvedValue({ data: testRun("tr-1", "Running") });
 
       await expect(
-        findTestRunByIdAndWaitForCompletion({
+        findTestRunForCustomChecks({
           client: asClient(),
           testRunId: "tr-1",
           pollIntervalMs: 1,
