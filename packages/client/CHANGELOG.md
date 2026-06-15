@@ -1,5 +1,13 @@
 # @alwaysmeticulous/client
 
+## 2.295.0
+
+### Patch Changes
+
+- Updated dependencies [[`2a9e978`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/2a9e9785875d48311e0bcbb03167a1fddbe44be0)]:
+  - @alwaysmeticulous/api@2.295.0
+  - @alwaysmeticulous/common@2.293.0
+
 ## 2.294.0
 
 ### Patch Changes

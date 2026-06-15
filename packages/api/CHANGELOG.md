@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.295.0
+
+### Patch Changes
+
+- [#1226](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1226) [`2a9e978`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/2a9e9785875d48311e0bcbb03167a1fddbe44be0) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add typings for different screenshot sizes
+
 ## 2.294.0
 
 ### Minor Changes
