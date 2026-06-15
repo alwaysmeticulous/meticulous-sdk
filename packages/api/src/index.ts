@@ -99,6 +99,7 @@ export {
   ScreenshotAssertionsOptions,
   ScreenshotAssertionsEnabledOptions,
   ScreenshottingEnabledOptions,
+  AuxiliaryViewportScreenshotRange,
   StoryboardOptions,
   ScreenshotDiffOptions,
   ElementToIgnore,

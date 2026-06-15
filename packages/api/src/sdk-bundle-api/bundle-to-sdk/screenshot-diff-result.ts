@@ -53,8 +53,18 @@ export interface ScreenshotAfterEvent extends LogicVersioned {
 export interface ScreenshotAuxiliary extends LogicVersioned {
   type: "auxiliary";
 
-  /** 0 indexed */
+  /**
+   * 0 indexed. For auxiliaries anchored to the end-state (i.e. {@link endState}
+   * is `true`), this is the final event index and is used only for ordering.
+   */
   eventNumber: number;
+
+  /**
+   * When `true`, this auxiliary was captured at the end-state of the replay
+   * rather than before a specific event. {@link eventNumber} is then only used
+   * for ordering relative to other screenshots.
+   */
+  endState?: true;
 
   /** 0-indexed position among auxiliaries sharing the same `eventNumber`. */
   sequenceNumber: number;

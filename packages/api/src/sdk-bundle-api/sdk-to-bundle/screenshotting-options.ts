@@ -18,6 +18,32 @@ export interface ScreenshottingEnabledOptions {
 
   waitBeforeScreenshotsMs?: number;
   captureFullPage?: boolean;
+
+  /**
+   * Configuration for capturing additional ("auxiliary") screenshots at
+   * different viewport sizes during replay. For each configured range, an
+   * auxiliary screenshot is captured at its representative viewport whenever
+   * the current viewport width does not already fall into that range.
+   */
+  auxiliaryViewportScreenshots?: AuxiliaryViewportScreenshotRange[];
+}
+
+/**
+ * A range of screen widths together with the representative viewport size at
+ * which an auxiliary screenshot should be captured for that range.
+ */
+export interface AuxiliaryViewportScreenshotRange {
+  /** Inclusive lower bound of the screen-width range this entry represents. */
+  minWidth: number;
+
+  /** Inclusive upper bound of the screen-width range this entry represents. */
+  maxWidth: number;
+
+  /** Width of the representative viewport to screenshot at for this range. */
+  viewportWidth: number;
+
+  /** Height of the representative viewport to screenshot at for this range. */
+  viewportHeight: number;
 }
 
 export declare type StoryboardOptions = { enabled: false } | { enabled: true };
