@@ -1,5 +1,11 @@
 # @alwaysmeticulous/record
 
+## 2.295.1
+
+### Patch Changes
+
+- [#1222](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1222) [`0fc943a`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/0fc943a8f71e7caa317612fe16a40eb2e3217572) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Expose CDP port on record session for external agent control
+
 ## 2.295.0
 
 ### Patch Changes
