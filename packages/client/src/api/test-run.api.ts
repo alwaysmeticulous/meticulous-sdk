@@ -92,8 +92,11 @@ export const getTestRunNetworkPatchingResult = async ({
  *
  * Call this with the *effective* test run id (the merged run when network
  * patching applied — see {@link getTestRunNetworkPatchingResult}) so the tab
- * appears on the run the user actually sees. Best-effort by design: it is fine
- * for this to no-op against older backends that don't expose the endpoint.
+ * appears on the run the user actually sees.
+ *
+ * Older backends don't expose this endpoint, so a 404 is treated as a no-op
+ * (mirroring {@link getTestRunNetworkPatchingResult}) rather than throwing. Any
+ * other error is rethrown for the caller to handle.
  */
 export const markTestRunExpectsCustomChecks = async ({
   client,
@@ -105,6 +108,10 @@ export const markTestRunExpectsCustomChecks = async ({
   await client
     .post(`test-runs/${testRunId}/expect-custom-checks`, {})
     .catch((error) => {
+      // Older backend without the endpoint: nothing to register, so no-op.
+      if (isFetchError(error) && error.response?.status === 404) {
+        return;
+      }
       throw maybeEnrichFetchError(error);
     });
 };
