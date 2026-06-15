@@ -44,7 +44,8 @@ export interface UploadAssetChunkOptions extends ProjectIdentifier {
  * same encoding the non-chunked tar.d path uses), uploads to S3 via a
  * presigned URL, then marks the chunk as uploaded. The asset server
  * inflates each chunk on demand and serves files through a tar-aware
- * facade — there is no server-side index sidecar.
+ * facade. A `files.json` index listing the paths inside the tar is uploaded
+ * alongside the tarball so the server can serve individual files by name.
  */
 export const uploadAssetChunk = async ({
   apiToken: apiToken_,
