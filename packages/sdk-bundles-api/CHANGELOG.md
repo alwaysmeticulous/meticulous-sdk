@@ -1,5 +1,16 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.295.0
+
+### Minor Changes
+
+- [#1224](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1224) [`85cde31`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/85cde31621286698f37e29a94d089557daf3ce93) Thanks [@phreppo](https://github.com/phreppo)! - Expose native setTimeout, setInterval, clearTimeout, and clearInterval on replay.native API
+
+### Patch Changes
+
+- Updated dependencies [[`2a9e978`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/2a9e9785875d48311e0bcbb03167a1fddbe44be0)]:
+  - @alwaysmeticulous/api@2.295.0
+
 ## 2.294.0
 
 ### Minor Changes
