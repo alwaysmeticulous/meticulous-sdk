@@ -176,12 +176,14 @@ const handler = async ({
     }
 
     if (!result.testRun) {
-      throw new Error(
-        result.message ??
-          "Asset chunks resolved but test run not created",
-      );
+      throw new Error(result.message ?? "Asset chunks resolved but test run not created");
     }
     testRunId = result.testRun.id;
+
+    logger.info(`Test run created: ${result.testRun.url}`);
+    // Verify the assembled (concatenated) build assets via the test-run URL
+    // with `/download-build-assets` appended.
+    logger.info(`Verify assembled build assets: ${result.testRun.url}/download-build-assets`);
   } catch (error) {
     if (isOutOfDateClientError(error)) {
       throw new OutOfDateCLIError();
