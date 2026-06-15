@@ -65,6 +65,11 @@ const readAssetReferencesManifest = async (
     process.exit(1);
   }
 
+  if (parsed.length === 0) {
+    logger.error(`--assetReferencesManifest must not be empty.`);
+    process.exit(1);
+  }
+
   const isValid = parsed.every(
     (item) =>
       typeof item === "object" &&
