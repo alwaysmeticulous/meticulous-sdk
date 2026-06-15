@@ -29,7 +29,6 @@ interface Options {
   rewrites?: string;
   waitForBase: boolean;
   waitForTestRunToComplete: boolean;
-  dryRun?: boolean;
 }
 
 const readAssetReferencesManifest = async (
@@ -99,7 +98,6 @@ const handler = async ({
   rewrites,
   waitForBase,
   waitForTestRunToComplete,
-  dryRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
 
@@ -135,13 +133,6 @@ const handler = async ({
   logger.info(
     `Triggering test run for commit ${commitSha} against ${manifest.length} uploaded asset chunk(s)`,
   );
-
-  if (dryRun) {
-    logger.info(
-      `Dry run: would trigger a test run for commit ${commitSha}${baseSha ? ` (base: ${baseSha})` : ""} against ${manifest.length} uploaded asset chunk(s)`,
-    );
-    return;
-  }
 
   Sentry.captureMessage("Received run-with-uploaded-asset-chunks request", {
     level: "debug",
