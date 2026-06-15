@@ -252,6 +252,53 @@ export interface MeticulousPublicReplayApi {
     };
 
     /**
+     * Schedules a callback using the real wall-clock timer (not virtual time).
+     * Uses the native setTimeout() that was captured before stubbing.
+     *
+     * Callbacks run on real time and are not synchronized with Meticulous's
+     * screenshot points (which advance on virtual time). Scheduling work here
+     * from application logic can fire at unpredictable moments relative to
+     * screenshots and cause nondeterministic visual diffs.
+     *
+     * Intended for custom snapshot listeners and other Meticulous hooks (e.g.
+     * {@link addOnBeforeScreenshotListener}), not as a general timer replacement
+     * during replay.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout
+     */
+    setTimeout: typeof window.setTimeout;
+
+    /**
+     * Schedules a repeating callback using the real wall-clock timer (not virtual
+     * time). Uses the native setInterval() that was captured before stubbing.
+     *
+     * Like {@link setTimeout}, callbacks are not synchronized with screenshot
+     * points and can cause nondeterministic visual diffs if used from application
+     * logic. Prefer Meticulous hooks (e.g.
+     * {@link addOnBeforeScreenshotListener}) over app-level intervals during
+     * replay.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval
+     */
+    setInterval: typeof window.setInterval;
+
+    /**
+     * Cancels a timeout scheduled with {@link setTimeout}.
+     * Uses the native clearTimeout() that was captured before stubbing.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/clearTimeout
+     */
+    clearTimeout: typeof window.clearTimeout;
+
+    /**
+     * Cancels an interval scheduled with {@link setInterval}.
+     * Uses the native clearInterval() that was captured before stubbing.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/clearInterval
+     */
+    clearInterval: typeof window.clearInterval;
+
+    /**
      * The native PerformanceObserver API for monitoring real performance metrics.
      * Use this to observe actual performance entries (e.g., navigation,
      * resource, measure) that are not affected by Meticulous's virtual
