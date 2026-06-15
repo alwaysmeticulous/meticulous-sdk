@@ -4,7 +4,7 @@ import { initLogger, ensureBrowser } from "@alwaysmeticulous/common";
 import puppeteer, { Browser, launch, PuppeteerNode } from "puppeteer-core";
 import { RecordSessionOptions } from "../types";
 import {
-  COMMON_RECORD_CHROME_LAUNCH_ARGS,
+  buildRecordChromeLaunchArgs,
   DEFAULT_NAVIGATION_TIMEOUT_MS,
   DEFAULT_UPLOAD_INTERVAL_MS,
   INITIAL_METICULOUS_RECORD_DOCS_URL,
@@ -30,6 +30,7 @@ export const recordSession = async ({
   captureHttpOnlyCookies,
   appUrl,
   maxPayloadSize,
+  remoteDebuggingPort,
 }: RecordSessionOptions) => {
   const logger = initLogger();
 
@@ -76,16 +77,28 @@ export const recordSession = async ({
 
   const defaultViewport = width && height ? { width, height } : null;
 
+  // Incognito browser contexts are not visible to external CDP clients (e.g.
+  // agent-browser connect). Force the default context when exposing a debug port.
+  const useIncognito =
+    remoteDebuggingPort != null ? false : Boolean(incognito);
+  if (remoteDebuggingPort != null && incognito) {
+    logger.info(
+      "Disabling incognito mode because --remoteDebuggingPort requires the default browser context for external agents.",
+    );
+  }
+
   const executablePath = await ensureBrowser();
   const browser: Browser = await launch({
     executablePath,
     defaultViewport,
     headless: false,
     devtools: devTools || false,
-    args: COMMON_RECORD_CHROME_LAUNCH_ARGS,
+    // External agents need WebSocket CDP access via --remote-debugging-port.
+    ...(remoteDebuggingPort != null ? { pipe: false } : {}),
+    args: buildRecordChromeLaunchArgs(remoteDebuggingPort),
   });
 
-  const context = incognito
+  const context = useIncognito
     ? await browser.createBrowserContext()
     : browser.defaultBrowserContext();
 
@@ -106,7 +119,7 @@ export const recordSession = async ({
   }
 
   // Restore cookies when not in incognito context
-  if (!incognito && cookieDir) {
+  if (!useIncognito && cookieDir) {
     await mkdir(cookieDir, { recursive: true });
     const cookiesStr = await readFile(
       join(cookieDir, COOKIE_FILENAME),
@@ -135,6 +148,12 @@ export const recordSession = async ({
   await page.goto(appUrl ?? INITIAL_METICULOUS_RECORD_DOCS_URL);
 
   logger.info("Browser ready");
+  if (remoteDebuggingPort != null) {
+    logger.info(
+      `Remote debugging enabled on port ${remoteDebuggingPort}. Connect an agent with: agent-browser connect ${remoteDebuggingPort}`,
+    );
+    logger.info(`Recording page URL: ${page.url()}`);
+  }
 
   // Collect and show recorded session ids
   // Also save page cookies if not in incognito context
@@ -150,7 +169,7 @@ export const recordSession = async ({
           onDetectedSession(sessionId);
         }
       }
-      if (!incognito && cookieDir) {
+      if (!useIncognito && cookieDir) {
         const cookies = await page.cookies();
         await writeFile(
           join(cookieDir, COOKIE_FILENAME),

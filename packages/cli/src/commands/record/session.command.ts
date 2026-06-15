@@ -33,6 +33,7 @@ interface Options {
   captureHttpOnlyCookies: boolean;
   appUrl: string | null | undefined;
   maxPayloadSize: number | null | undefined;
+  remoteDebuggingPort: number | null | undefined;
 }
 
 const handler = async ({
@@ -48,6 +49,7 @@ const handler = async ({
   captureHttpOnlyCookies,
   appUrl,
   maxPayloadSize,
+  remoteDebuggingPort,
 }: Options): Promise<void> => {
   const logger = initLogger();
   const debugLogger = trace ? await DebugLogger.create() : null;
@@ -109,6 +111,7 @@ const handler = async ({
     captureHttpOnlyCookies,
     appUrl,
     maxPayloadSize,
+    remoteDebuggingPort,
   }).catch((error) => {
     debugLogger?.log(`${error}`);
     throw error;
@@ -125,6 +128,11 @@ export const recordSessionCommand: CommandModule<unknown, Options> = {
       boolean: true,
       description: "Use an incognito browsing context",
       default: true,
+    },
+    remoteDebuggingPort: {
+      number: true,
+      description:
+        "Expose Chrome DevTools Protocol on this port so external agents (e.g. agent-browser connect <port>) can drive the recording browser",
     },
   },
   handler: wrapHandler(handler),
