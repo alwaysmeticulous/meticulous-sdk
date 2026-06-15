@@ -1,5 +1,19 @@
 # @alwaysmeticulous/custom-checks
 
+## 2.294.0
+
+### Minor Changes
+
+- [#1211](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1211) [`b1e7f49`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/b1e7f498c93575b339e90c1d41e0f144f73daffb) Thanks [@phreppo](https://github.com/phreppo)! - Rename the `CustomCheckVerdict` values reported by custom checks: `warn` → `warn-without-requiring-user-ack` and `fail` → `warn-and-require-user-ack` (`pass` is unchanged). The two warning verdicts now make the distinction explicit: `warn-and-require-user-ack` surfaces a report the user is asked to acknowledge (review), while `warn-without-requiring-user-ack` is informational only.
+
+### Patch Changes
+
+- Updated dependencies [[`b1e7f49`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/b1e7f498c93575b339e90c1d41e0f144f73daffb)]:
+  - @alwaysmeticulous/api@2.294.0
+  - @alwaysmeticulous/common@2.293.0
+  - @alwaysmeticulous/client@2.294.0
+  - @alwaysmeticulous/downloading-helpers@2.294.0
+
 ## 2.293.1
 
 ### Patch Changes
