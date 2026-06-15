@@ -1,5 +1,16 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.294.0
+
+### Minor Changes
+
+- [#1216](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1216) [`b0cc565`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/b0cc56553437bfe3ae2ba52c1187af61906b2548) Thanks [@narobertson42](https://github.com/narobertson42)! - Add `maxPayloadSize` option to cap the size of individual session payload uploads
+
+### Patch Changes
+
+- Updated dependencies [[`b1e7f49`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/b1e7f498c93575b339e90c1d41e0f144f73daffb)]:
+  - @alwaysmeticulous/api@2.294.0
+
 ## 2.293.0
 
 ### Minor Changes
