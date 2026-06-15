@@ -60,6 +60,7 @@ const unsafeLoadAndStartRecorder = ({
   nonce,
   disableErrorReporting,
   disableTrackerId,
+  maxPayloadSize,
 }: LoaderOptions): Promise<Recorder> => {
   let abandoned = false;
 
@@ -141,6 +142,10 @@ const unsafeLoadAndStartRecorder = ({
 
     if (disableTrackerId != null) {
       typedWindow.METICULOUS_DISABLE_TRACKER_ID = disableTrackerId;
+    }
+
+    if (maxPayloadSize !== undefined) {
+      typedWindow.METICULOUS_MAX_PAYLOAD_SIZE = maxPayloadSize;
     }
 
     script.onload = function () {

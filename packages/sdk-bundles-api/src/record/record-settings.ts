@@ -13,6 +13,18 @@ export interface MeticulousWindowConfig {
   METICULOUS_RECORDER_MIDDLEWARE_V1: RecorderMiddleware[];
   METICULOUS_DISABLE_ERROR_REPORTING?: boolean;
   METICULOUS_DISABLE_TRACKER_ID?: boolean;
+
+  /**
+   * Maximum size in bytes of a single session payload upload.
+   *
+   * Without a cap, long or network-heavy sessions can produce payloads large
+   * enough to exceed V8's maximum string length (~512 MB), causing a
+   * "Cannot create a string longer than 0x1fffffe8 characters" crash in any
+   * Node.js process that buffers the upload body (e.g. Playwright's CDP layer).
+   *
+   * @see {@link LoaderOptions.maxPayloadSize}
+   */
+  METICULOUS_MAX_PAYLOAD_SIZE?: number;
 }
 
 /**
