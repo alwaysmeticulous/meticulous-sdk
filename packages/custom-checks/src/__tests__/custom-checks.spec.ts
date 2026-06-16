@@ -9,7 +9,7 @@ import { downloadAndAssembleSnapshots } from "../download-snapshots";
 import { getSnapshotsFromTestRun } from "../get-snapshots-from-test-run";
 import { reportCustomCheckResults } from "../report-custom-check-results";
 import {
-  findTestRunByCommitAndWaitForCompletion,
+  findTestRunByCommitForCustomChecks,
   findTestRunForCustomChecks,
 } from "../wait-for-test-run";
 
@@ -224,7 +224,7 @@ describe("custom checks SDK helpers", () => {
     });
   });
 
-  describe("findTestRunByCommitAndWaitForCompletion", () => {
+  describe("findTestRunByCommitForCustomChecks", () => {
     it("resolves the latest run for the commit, then waits for it to complete", async () => {
       client.get.mockImplementation(async (url: string) => {
         if (url === "test-runs/cache") {
@@ -241,7 +241,7 @@ describe("custom checks SDK helpers", () => {
         return { data: testRun("tr-9", "Success") };
       });
 
-      const result = await findTestRunByCommitAndWaitForCompletion({
+      const result = await findTestRunByCommitForCustomChecks({
         client: asClient(),
         commitSha: "abc123",
         pollIntervalMs: 1,
@@ -256,7 +256,7 @@ describe("custom checks SDK helpers", () => {
       client.get.mockResolvedValue({ data: null });
 
       await expect(
-        findTestRunByCommitAndWaitForCompletion({
+        findTestRunByCommitForCustomChecks({
           client: asClient(),
           commitSha: "missing",
         }),
