@@ -1,5 +1,11 @@
 # @alwaysmeticulous/client
 
+## 2.296.0
+
+### Minor Changes
+
+- [#1229](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1229) [`bfee3f0`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/bfee3f0e146549ecfd652e58e628a5a45fa4c0f4) Thanks [@dennysem](https://github.com/dennysem)! - add backend-replay-env api
+
 ## 2.295.0
 
 ### Patch Changes
