@@ -62,7 +62,7 @@ export interface WaitForTestRunResult {
   testRun: TestRun;
 }
 
-export type FindTestRunByCommitAndWaitForCompletionOptions =
+export type FindTestRunByCommitForCustomChecksOptions =
   WaitForTestRunCompletionOptions & {
     client: MeticulousClient;
     commitSha: string;
@@ -83,11 +83,11 @@ export type FindTestRunByCommitAndWaitForCompletionOptions =
  * Throws if no test run exists for the commit, or if it does not complete within
  * the timeout.
  */
-export const findTestRunByCommitAndWaitForCompletion = async ({
+export const findTestRunByCommitForCustomChecks = async ({
   client,
   commitSha,
   ...waitOptions
-}: FindTestRunByCommitAndWaitForCompletionOptions): Promise<WaitForTestRunResult> => {
+}: FindTestRunByCommitForCustomChecksOptions): Promise<WaitForTestRunResult> => {
   const latest = await getLatestTestRunResults({ client, commitSha });
   if (!latest) {
     throw new Error(
