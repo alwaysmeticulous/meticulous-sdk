@@ -1,5 +1,15 @@
 # @alwaysmeticulous/custom-checks
 
+## 2.296.0
+
+### Patch Changes
+
+- [#1230](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1230) [`85f0d62`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/85f0d62f111dd5052ed716313a535996aa66497b) Thanks [@phreppo](https://github.com/phreppo)! - Rename `findTestRunByCommitAndWaitForCompletion` to `findTestRunByCommitForCustomChecks` (and `FindTestRunByCommitAndWaitForCompletionOptions` to `FindTestRunByCommitForCustomChecksOptions`) so both test-run lookup helpers clearly target custom checks.
+
+- Updated dependencies [[`bfee3f0`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/bfee3f0e146549ecfd652e58e628a5a45fa4c0f4)]:
+  - @alwaysmeticulous/client@2.296.0
+  - @alwaysmeticulous/downloading-helpers@2.296.0
+
 ## 2.295.0
 
 ### Patch Changes
