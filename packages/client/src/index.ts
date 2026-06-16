@@ -58,6 +58,8 @@ export {
 export {
   getRecordedSession,
   getRecordedSessionData,
+  getBackendReplayEnv,
+  BackendReplayEnvVariable,
   getRecordingCommandId,
   postSessionIdNotification,
 } from "./api/session.api";

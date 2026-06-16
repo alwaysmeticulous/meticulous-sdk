@@ -32,6 +32,39 @@ export const getRecordedSessionData = async (
   return data;
 };
 
+export interface BackendReplayEnvVariable {
+  name: string;
+  value: string;
+}
+
+/**
+ * Fetches the env vars that put the backend recorder into replay mode and
+ * point it at the session's recorded data (presigned URLs). Returns an empty
+ * array for non-backend sessions. Used by `simulate` against an uploaded
+ * container to mock the backend's outbound calls.
+ */
+export const getBackendReplayEnv = async ({
+  client,
+  sessionId,
+}: {
+  client: MeticulousClient;
+  sessionId: string;
+}): Promise<BackendReplayEnvVariable[]> => {
+  const { data } = await client
+    .get<
+      unknown,
+      { data: BackendReplayEnvVariable[] }
+    >(`sessions/${sessionId}/backend-replay-env`)
+    .catch((error) => {
+      if (isFetchError(error) && error.response?.status === 404) {
+        return { data: [] };
+      }
+
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
 export const getRecordingCommandId = async (
   client: MeticulousClient,
   projectId?: string,
