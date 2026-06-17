@@ -1,25 +1,21 @@
+import { readFile } from "fs/promises";
 import {
   createClient,
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
+  ProjectAssetChunkReference,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
-import { uploadAssetsAndTriggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
+import { runWithUploadedAssetChunks } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
 import { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { parseRewrites } from "../../command-utils/parse-rewrites";
 import { wrapHandler } from "../../command-utils/sentry.utils";
-import {
-  isOutOfDateClientError,
-  OutOfDateCLIError,
-} from "../../utils/out-of-date-client-error";
+import { isOutOfDateClientError, OutOfDateCLIError } from "../../utils/out-of-date-client-error";
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
-import {
-  hasGitContextForTestRunWait,
-  resolveGitOptions,
-} from "./resolve-git-options";
+import { hasGitContextForTestRunWait, resolveGitOptions } from "./resolve-git-options";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -29,13 +25,68 @@ interface Options {
   baseSha?: string | undefined;
   gitDiffOutput?: string | undefined;
   repoDirectory?: string | undefined;
-  appDirectory?: string | undefined;
-  appZip?: string | undefined;
+  assetReferencesManifest: string;
   rewrites?: string;
   waitForBase: boolean;
   waitForTestRunToComplete: boolean;
-  dryRun?: boolean;
 }
+
+const readAssetReferencesManifest = async (
+  manifestPath: string,
+): Promise<ProjectAssetChunkReference[]> => {
+  const logger = initLogger();
+  let raw: string;
+  try {
+    raw = await readFile(manifestPath, "utf-8");
+  } catch (error) {
+    logger.error(
+      `Could not read --assetReferencesManifest at ${manifestPath}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    process.exit(1);
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    logger.error(
+      `--assetReferencesManifest at ${manifestPath} is not valid JSON: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    process.exit(1);
+  }
+
+  if (!Array.isArray(parsed)) {
+    logger.error(`--assetReferencesManifest must be a JSON array of { name, versionId } objects.`);
+    process.exit(1);
+  }
+
+  if (parsed.length === 0) {
+    logger.error(`--assetReferencesManifest must not be empty.`);
+    process.exit(1);
+  }
+
+  const isValid = parsed.every(
+    (item) =>
+      typeof item === "object" &&
+      item !== null &&
+      typeof (item as { name?: unknown }).name === "string" &&
+      typeof (item as { versionId?: unknown }).versionId === "string" &&
+      (item as { name: string }).name.length > 0 &&
+      (item as { versionId: string }).versionId.length > 0,
+  );
+  if (!isValid) {
+    logger.error(
+      `--assetReferencesManifest entries must each be { name: string, versionId: string } with non-empty values.`,
+    );
+    process.exit(1);
+  }
+
+  return parsed as ProjectAssetChunkReference[];
+};
 
 const handler = async ({
   apiToken,
@@ -43,21 +94,12 @@ const handler = async ({
   baseSha: baseSha_,
   gitDiffOutput: gitDiffOutput_,
   repoDirectory,
-  appDirectory,
-  appZip,
+  assetReferencesManifest: manifestPath,
   rewrites,
   waitForBase,
   waitForTestRunToComplete,
-  dryRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
-
-  if (!appDirectory && !appZip) {
-    logger.error(
-      "No app directory or app zip provided, you must provide one with --appDirectory or --appZip",
-    );
-    process.exit(1);
-  }
 
   if (
     waitForTestRunToComplete &&
@@ -86,18 +128,15 @@ const handler = async ({
     return;
   }
 
-  logger.info(`Uploading build artifacts for commit ${commitSha}`);
+  const manifest = await readAssetReferencesManifest(manifestPath);
 
-  if (dryRun) {
-    logger.info(
-      `Dry run: would upload ${appDirectory ?? appZip} and trigger a test run for commit ${commitSha}${baseSha ? ` (base: ${baseSha})` : ""}`,
-    );
-    return;
-  }
+  logger.info(
+    `Triggering test run for commit ${commitSha} against ${manifest.length} uploaded asset chunk(s)`,
+  );
 
-  Sentry.captureMessage("Received upload assets request", {
+  Sentry.captureMessage("Received run-with-uploaded-asset-chunks request", {
     level: "debug",
-    extra: { commitSha },
+    extra: { commitSha, chunkCount: manifest.length },
   });
 
   const apiToken_ = await resolveApiTokenWithOAuth({
@@ -106,23 +145,45 @@ const handler = async ({
   });
 
   const projectIdentifier = resolveProjectIdentifier(apiToken_);
+  const client = createClient({ apiToken: apiToken_ });
 
-  let testRunId: string | null;
+  let testRunId: string;
 
   try {
-    const result = await uploadAssetsAndTriggerTestRun({
-      apiToken: apiToken_,
+    const result = await runWithUploadedAssetChunks({
+      client,
       commitSha,
       ...(baseSha ? { baseSha } : {}),
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
       ...(withUncommittedChanges ? { withUncommittedChanges } : {}),
-      appDirectory,
-      appZip,
+      assetReferencesManifest: manifest,
       rewrites: parseRewrites(rewrites),
       waitForBase: waitForBase || waitForTestRunToComplete,
       ...projectIdentifier,
     });
-    testRunId = result.testRun?.id ?? null;
+    if (result.overlaps && result.overlaps.length > 0) {
+      logger.warn(
+        `${result.overlaps.length} file path(s) appear in multiple chunks. Later chunks in the manifest override earlier ones.`,
+      );
+      for (const overlap of result.overlaps) {
+        logger.warn(
+          `  - ${overlap.path}: ${overlap.lowerChunk.name}@${overlap.lowerChunk.versionId} → ${overlap.upperChunk.name}@${overlap.upperChunk.versionId}`,
+        );
+      }
+      if (result.overlapsTruncated) {
+        logger.warn(`  ... and more overlapping paths (not shown).`);
+      }
+    }
+
+    if (!result.testRun) {
+      throw new Error(result.message ?? "Asset chunks resolved but test run not created");
+    }
+    testRunId = result.testRun.id;
+
+    logger.info(`Test run created: ${result.testRun.url}`);
+    // Verify the assembled (concatenated) build assets via the test-run URL
+    // with `/download-build-assets` appended.
+    logger.info(`Verify assembled build assets: ${result.testRun.url}/download-build-assets`);
   } catch (error) {
     if (isOutOfDateClientError(error)) {
       throw new OutOfDateCLIError();
@@ -131,11 +192,9 @@ const handler = async ({
     }
   }
 
-  if (!waitForTestRunToComplete || !testRunId) {
+  if (!waitForTestRunToComplete) {
     return;
   }
-
-  const client = createClient({ apiToken: apiToken_ });
 
   logger.info(`Waiting for test run ${testRunId} to complete...`);
 
@@ -146,15 +205,13 @@ const handler = async ({
     logger.info(`Test run status: ${completedTestRun.status}`);
   }
 
-  logger.info(
-    `Test run ${testRunId} finished with status: ${completedTestRun.status}`,
-  );
+  logger.info(`Test run ${testRunId} finished with status: ${completedTestRun.status}`);
 };
 
-export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
-  command: "upload-assets",
+export const ciRunWithUploadedAssetChunksCommand: CommandModule<unknown, Options> = {
+  command: "run-with-uploaded-asset-chunks",
   describe:
-    "Upload build artifacts to Meticulous, potentially triggering a test run",
+    "Trigger a test run against already-uploaded asset chunks. Together with `upload-asset-chunk`, this is the chunked equivalent of `upload-assets`.",
   builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
@@ -175,22 +232,19 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
         "Automatically infers --commitSha, --baseSha, and --gitDiffOutput from the repo. " +
         "Cannot be combined with --commitSha, --baseSha, or --gitDiffOutput.",
     },
-    appDirectory: {
+    assetReferencesManifest: {
       string: true,
+      demandOption: true,
       description:
-        "The directory containing the application's static assets. Either this or --appZip must be provided.",
-    },
-    appZip: {
-      string: true,
-      description:
-        "The zip file containing the application's static assets. Either this or --appDirectory must be provided.",
+        "Path to a JSON file containing a list of { name, versionId } references to previously uploaded asset chunks (see `ci upload-asset-chunk`). " +
+        "Chunked analog of --appDirectory / --appZip on `ci upload-assets`.",
     },
     rewrites: {
       string: true,
       default: "[]",
       description:
         "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array." +
-        " Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule '{ source: \"**\", destination: \"/index.html\" }'.",
+        ' Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule \'{ source: "**", destination: "/index.html" }\'.',
     },
     waitForBase: {
       boolean: true,

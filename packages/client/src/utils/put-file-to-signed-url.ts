@@ -1,5 +1,5 @@
 import { createReadStream } from "fs";
-import { IncomingMessage } from "http";
+import { IncomingMessage, request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
 import { getProxyAgent } from "./get-proxy-agent";
 import { UploadError } from "./retry-transient-upload-errors";
@@ -31,7 +31,8 @@ export const putFileToSignedUrl = async ({
   return new Promise((resolve, reject) => {
     // A new read stream is required on every attempt — streams cannot be replayed.
     const fileStream = createReadStream(filePath);
-    const req = httpsRequest(
+    const requestFn = signedUrl.startsWith("https:") ? httpsRequest : httpRequest;
+    const req = requestFn(
       signedUrl,
       {
         agent: getProxyAgent(),

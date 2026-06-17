@@ -168,3 +168,8 @@ export {
   ReportedCustomCheckResult,
   ReportCustomCheckResultsRequest,
 } from "./custom-checks.types";
+export {
+  SingleArchiveDownloadResponse,
+  ChunkedDownloadResponse,
+  DownloadDeploymentResponse,
+} from "./sdk-bundle-api/sdk-to-bundle/deployment-download-response";

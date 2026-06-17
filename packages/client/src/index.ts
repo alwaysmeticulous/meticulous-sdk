@@ -64,11 +64,7 @@ export {
   postSessionIdNotification,
 } from "./api/session.api";
 export { ReplayDiffResponse, getReplayDiff } from "./api/replay-diff.api";
-export {
-  getPrDescriptionForTestRun,
-  getPrDiff,
-  getPrDiffForTestRun,
-} from "./api/source-code.api";
+export { getPrDescriptionForTestRun, getPrDiff, getPrDiffForTestRun } from "./api/source-code.api";
 export {
   ExecuteSecureTunnelTestRunOptions,
   executeSecureTunnelTestRun,
@@ -106,10 +102,7 @@ export {
 export { getJwtClaims, isJwtExpired, isOAuthJwt } from "./oauth/oauth-utils";
 export type { MeticulousClient } from "./types/client.types";
 export { getProxyAgent } from "./utils/get-proxy-agent";
-export {
-  PutFileToSignedUrlOptions,
-  putFileToSignedUrl,
-} from "./utils/put-file-to-signed-url";
+export { PutFileToSignedUrlOptions, putFileToSignedUrl } from "./utils/put-file-to-signed-url";
 export {
   UploadError,
   isTransientUploadError,
@@ -129,6 +122,7 @@ export {
   RequestGitDiffUploadParams,
   RequestGitDiffUploadResponse,
   requestGitDiffUpload,
+  ChunkPathOverlap,
   CompleteAssetUploadParams,
   CompleteAssetUploadResponse,
   completeAssetUpload,
@@ -136,7 +130,18 @@ export {
   CompleteContainerUploadResponse,
   completeContainerUpload,
   MultiPartUploadInfo,
-  DownloadDeploymentResponse,
+  ProjectAssetChunkReference,
+  CreateRunWithUploadedAssetChunksParams,
+  CreateRunWithUploadedAssetChunksResponse,
+  createRunWithUploadedAssetChunks,
+  TriggerRunWithUploadedAssetChunksParams,
+  triggerRunWithUploadedAssetChunks,
+  RequestAssetChunkUploadParams,
+  RequestAssetChunkUploadResponse,
+  requestAssetChunkUpload,
+  CompleteAssetChunkUploadParams,
+  CompleteAssetChunkUploadResponse,
+  completeAssetChunkUpload,
   downloadProjectDeployment,
   GetContainerDeploymentResponse,
   getContainerDeployment,

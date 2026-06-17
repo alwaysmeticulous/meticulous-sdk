@@ -1,6 +1,7 @@
 import {
   AssetUploadMetadata,
   DeploymentArchiveType,
+  DownloadDeploymentResponse,
   type TestRun,
 } from "@alwaysmeticulous/api";
 import { MeticulousClient } from "../types/client.types";
@@ -73,10 +74,18 @@ export interface CompleteAssetUploadParams extends ProjectIdentifier {
   multipartUploadInfo?: MultiPartUploadInfo;
 }
 
+export interface ChunkPathOverlap {
+  path: string;
+  lowerChunk: { name: string; versionId: string };
+  upperChunk: { name: string; versionId: string };
+}
+
 export interface CompleteAssetUploadResponse {
   testRun?: TestRun;
   baseNotFound?: boolean;
   message?: string;
+  overlaps?: ChunkPathOverlap[];
+  overlapsTruncated?: boolean;
 }
 
 export interface CompleteContainerUploadParams extends ProjectIdentifier {
@@ -111,12 +120,6 @@ export interface GetContainerDeploymentResponse {
 export interface ContainerEnvVariable {
   name: string;
   value: string;
-}
-
-export interface DownloadDeploymentResponse {
-  assetsUrl: string;
-  metadataUrl: string;
-  archiveType: DeploymentArchiveType;
 }
 
 /**
@@ -175,11 +178,7 @@ export const requestUploadPart = async ({
   const { data } = await client.post<
     typeof body,
     { data: RequestUploadPartResponse }
-  >(
-    "project-deployments/request-upload-part",
-    body,
-    projectIdQuery(projectId),
-  );
+  >("project-deployments/request-upload-part", body, projectIdQuery(projectId));
   return data;
 };
 
@@ -245,6 +244,147 @@ export const completeContainerUpload = async ({
     { data: CompleteContainerUploadResponse }
   >(
     "project-deployments/complete-container-upload",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export type AssetChunkUploadPreviousStatus =
+  | "pending_upload"
+  | "uploaded"
+  | "deleted"
+  | "failed_uploading";
+
+export interface RequestAssetChunkUploadParams extends ProjectIdentifier {
+  chunkName: string;
+  chunkVersionId: string;
+  tarballSize: number;
+  commitSha?: string | undefined;
+  force?: boolean;
+}
+
+export type RequestAssetChunkUploadResponse =
+  | { alreadyUploaded: true }
+  | {
+      alreadyUploaded: false;
+      tarballUploadUrl: string;
+      filesIndexUploadUrl: string;
+      previousStatus: AssetChunkUploadPreviousStatus | null;
+    };
+
+export interface CompleteAssetChunkUploadParams extends ProjectIdentifier {
+  chunkName: string;
+  chunkVersionId: string;
+  commitSha?: string | undefined;
+}
+
+export interface CompleteAssetChunkUploadResponse {
+  message: string;
+}
+
+export interface ProjectAssetChunkReference {
+  name: string;
+  versionId: string;
+}
+
+export interface CreateRunWithUploadedAssetChunksParams extends ProjectIdentifier {
+  commitSha: string;
+  isUserVisible?: boolean;
+  createDeployment?: boolean;
+  assetReferencesManifest: ProjectAssetChunkReference[];
+  rewrites?: AssetUploadMetadata["rewrites"];
+}
+
+export interface CreateRunWithUploadedAssetChunksResponse {
+  /**
+   * The server-generated deployment id. Absent when `createDeployment` is false
+   * (dry-run that only computes chunk path overlaps and creates nothing). Used
+   * to key the git-diff S3 upload and passed back to
+   * `triggerRunWithUploadedAssetChunks`.
+   */
+  sourceDeploymentId?: string;
+  overlaps?: ChunkPathOverlap[];
+  overlapsTruncated?: boolean;
+}
+
+export interface TriggerRunWithUploadedAssetChunksParams extends ProjectIdentifier {
+  sourceDeploymentId: string;
+  commitSha: string;
+  baseSha?: string | undefined;
+  hasGitDiff?: boolean | undefined;
+  withUncommittedChanges?: boolean | undefined;
+  mustHaveBase: boolean;
+  isUserVisible?: boolean;
+  skipPreprocessing?: boolean;
+}
+
+export const createRunWithUploadedAssetChunks = async ({
+  client,
+  projectId,
+  ...body
+}: CreateRunWithUploadedAssetChunksParams & {
+  client: MeticulousClient;
+}): Promise<CreateRunWithUploadedAssetChunksResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: CreateRunWithUploadedAssetChunksResponse }
+  >(
+    "project-deployments/create-run-with-uploaded-asset-chunks",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export const triggerRunWithUploadedAssetChunks = async ({
+  client,
+  projectId,
+  ...body
+}: TriggerRunWithUploadedAssetChunksParams & {
+  client: MeticulousClient;
+}): Promise<CompleteAssetUploadResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: CompleteAssetUploadResponse }
+  >(
+    "project-deployments/trigger-run-with-uploaded-asset-chunks",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export const requestAssetChunkUpload = async ({
+  client,
+  projectId,
+  ...body
+}: RequestAssetChunkUploadParams & {
+  client: MeticulousClient;
+}): Promise<RequestAssetChunkUploadResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestAssetChunkUploadResponse }
+  >(
+    "project-deployments/request-asset-chunk-upload",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export const completeAssetChunkUpload = async ({
+  client,
+  projectId,
+  ...body
+}: CompleteAssetChunkUploadParams & {
+  client: MeticulousClient;
+}): Promise<CompleteAssetChunkUploadResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: CompleteAssetChunkUploadResponse }
+  >(
+    "project-deployments/complete-asset-chunk-upload",
     body,
     projectIdQuery(projectId),
   );
