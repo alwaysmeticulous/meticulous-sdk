@@ -1,5 +1,13 @@
 # @alwaysmeticulous/debug-workspace
 
+## 2.297.1
+
+### Patch Changes
+
+- Updated dependencies [[`142a03f`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/142a03f40c4c535014b01c65cbf0a2ab4f4f0240)]:
+  - @alwaysmeticulous/client@2.297.1
+  - @alwaysmeticulous/downloading-helpers@2.297.1
+
 ## 2.297.0
 
 ### Patch Changes
