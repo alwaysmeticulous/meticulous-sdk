@@ -9,7 +9,9 @@ import type { RequestInit } from "undici";
 import { getOAuthProjects } from "./api/oauth.api";
 import { getApiToken, getAuthToken } from "./api-token.utils";
 import { performOAuthLogin } from "./oauth/oauth-login";
+import { getValidAccessToken } from "./oauth/oauth-refresh";
 import {
+  getStoredOAuthTokens,
   getStoredProjectId,
   setStoredProject,
 } from "./oauth/oauth-token-store";
@@ -156,19 +158,29 @@ export const makeRequest = async <T>(
   );
 };
 
-const buildClient = (
-  token: string,
+/**
+ * The token to authenticate requests with. A plain string is used as-is for the
+ * client's lifetime; a provider function is invoked on every request so the
+ * token can be refreshed (e.g. short-lived OAuth access tokens).
+ */
+type TokenProvider = string | (() => Promise<string>);
+
+// Exported for unit testing; not re-exported from the package index.
+export const buildClient = (
+  token: TokenProvider,
   logger: log.Logger,
   appInfo?: string,
 ): MeticulousClient => {
   const userAgent = buildUserAgent(appInfo);
+  const getToken =
+    typeof token === "function" ? token : () => Promise.resolve(token);
   const makeRequestWithToken = async <T>(
     url: string,
     options: RequestInit = {},
     config?: RequestConfig<any>,
   ): Promise<Response<T>> => {
     const headers = {
-      authorization: token,
+      authorization: await getToken(),
       "user-agent": userAgent,
     };
 
@@ -256,8 +268,7 @@ export const resolveApiTokenWithOAuth = async (
 
   let apiToken = await getAuthToken(options.apiToken);
 
-  const isInteractive =
-    options.enableOAuthLogin && isInteractiveContext();
+  const isInteractive = options.enableOAuthLogin && isInteractiveContext();
 
   if (!apiToken && isInteractive) {
     const tokens = await performOAuthLogin();
@@ -307,8 +318,27 @@ const maybeAutoSelectProject = async (
 export const createClientWithOAuth = async (
   options: ClientOptions & { enableOAuthLogin?: boolean },
 ): Promise<MeticulousClient> => {
+  // Resolve once up front: this performs the interactive browser login when
+  // needed (and any post-login project auto-select).
   const apiToken = await resolveApiTokenWithOAuth(options);
-  return buildClient(apiToken, initLogger(), options.appInfo);
+
+  // OAuth access tokens are short-lived, so a client that bakes in a single
+  // token starts failing once it expires — e.g. during a long poll loop waiting
+  // for a test run to complete. When the token came from OAuth, install a
+  // provider that re-resolves it per request (auto-refreshing via the stored
+  // refresh token); static tokens (explicit / env var / config file) never
+  // expire, so we keep using the resolved string directly to avoid re-reading
+  // it on every request.
+  const usingOAuth =
+    !options.apiToken &&
+    !process.env["METICULOUS_API_TOKEN"] &&
+    getStoredOAuthTokens() != null;
+
+  const token: string | (() => Promise<string>) = usingOAuth
+    ? async () => (await getValidAccessToken()) ?? apiToken
+    : apiToken;
+
+  return buildClient(token, initLogger(), options.appInfo);
 };
 
 const getApiUrl = () => {
