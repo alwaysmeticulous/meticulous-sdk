@@ -1,5 +1,25 @@
 # @alwaysmeticulous/cli
 
+## 2.297.0
+
+### Minor Changes
+
+- [#1171](https://github.com/alwaysmeticulous/meticulous-sdk/pull/1171) [`9f22143`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/9f2214326c94005c9be6a058eacf52226b81fb55) Thanks [@sesajad](https://github.com/sesajad)! - Add support for uploading assets as incremental chunks. New `ci upload-asset-chunk` and `ci run-with-uploaded-asset-chunks` CLI commands upload each asset chunk as a compressed `tar` archive to a signed URL, skipping chunks the server already has and warning on overlapping files.
+
+### Patch Changes
+
+- Updated dependencies [[`9f22143`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/9f2214326c94005c9be6a058eacf52226b81fb55)]:
+  - @alwaysmeticulous/remote-replay-launcher@2.297.0
+  - @alwaysmeticulous/client@2.297.0
+  - @alwaysmeticulous/api@2.297.0
+  - @alwaysmeticulous/debug-workspace@2.297.0
+  - @alwaysmeticulous/downloading-helpers@2.297.0
+  - @alwaysmeticulous/common@2.293.0
+  - @alwaysmeticulous/record@2.297.0
+  - @alwaysmeticulous/sdk-bundles-api@2.297.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.297.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+
 ## 2.296.0
 
 ### Patch Changes
