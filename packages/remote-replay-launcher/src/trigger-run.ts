@@ -8,7 +8,6 @@ import {
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { uploadBufferToSignedUrl } from "./asset-upload-utils";
-import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 
 export interface TriggerRunOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
@@ -18,11 +17,6 @@ export interface TriggerRunOptions extends ProjectIdentifier {
   /** Raw `git diff base..head` output. Requires `baseSha`. */
   gitDiffOutput?: string | undefined;
   withUncommittedChanges?: boolean | undefined;
-  /**
-   * If true, try to wait for a base test run to be created before triggering;
-   * fall back to triggering without a base if none appears.
-   */
-  waitForBase: boolean;
 }
 
 export interface TriggerRunResult {
@@ -30,9 +24,13 @@ export interface TriggerRunResult {
 }
 
 /**
- * Triggers a test run against a previously-uploaded deployment. Uploads the git
- * diff (keyed by the deployment) when provided, then triggers — polling for a
- * base test run when `waitForBase` is set.
+ * Triggers a test run against a previously-uploaded deployment, uploading the
+ * git diff (keyed by the deployment) first when provided.
+ *
+ * The backend resolves the base synchronously and the agent endpoint fails
+ * (HTTP 422) rather than producing a baseless run, so there is no client-side
+ * base polling: a single trigger call either returns a run with a base, or
+ * rejects with a clear error.
  */
 export const triggerRun = async ({
   apiToken: apiToken_,
@@ -40,7 +38,6 @@ export const triggerRun = async ({
   baseSha,
   gitDiffOutput,
   withUncommittedChanges,
-  waitForBase,
   projectId,
 }: TriggerRunOptions): Promise<TriggerRunResult> => {
   const logger = initLogger();
@@ -68,34 +65,18 @@ export const triggerRun = async ({
     });
   }
 
-  const triggerArgs = {
+  const result = await agentTriggerTestRun({
     client,
     deploymentId,
     ...(baseSha ? { baseSha } : {}),
     ...(gitDiffOutput ? { hasGitDiff: true } : {}),
     ...(withUncommittedChanges ? { withUncommittedChanges } : {}),
-    mustHaveBase: waitForBase,
     ...projectIdentifier,
-  };
-
-  const initialResult = await agentTriggerTestRun(triggerArgs);
-
-  const pollResult = await pollWhileBaseNotFound({
-    initialResult: {
-      testRun: initialResult.testRun ?? null,
-      baseNotFound: waitForBase ? initialResult.baseNotFound : false,
-      message: initialResult.message,
-    },
-    retryFn: () => agentTriggerTestRun({ ...triggerArgs, mustHaveBase: true }),
-    fallbackFn: () => {
-      logger.info("No base test run found, creating test run without base");
-      return agentTriggerTestRun({ ...triggerArgs, mustHaveBase: false });
-    },
   });
 
-  const testRun = pollResult.testRun ?? null;
+  const testRun = result.testRun ?? null;
   if (!testRun) {
-    throw new Error(`${pollResult.message ?? "Test run was not created"}`);
+    throw new Error(`${result.message ?? "Test run was not created"}`);
   }
 
   const organizationName = encodeURIComponent(

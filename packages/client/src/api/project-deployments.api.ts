@@ -363,7 +363,6 @@ export interface AgentTriggerTestRunParams extends ProjectIdentifier {
   baseSha?: string;
   hasGitDiff?: boolean;
   withUncommittedChanges?: boolean;
-  mustHaveBase: boolean;
 }
 
 export interface AgentTriggerTestRunResponse {

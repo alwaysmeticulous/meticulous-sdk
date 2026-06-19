@@ -7,6 +7,7 @@ import { triggerRun } from "@alwaysmeticulous/remote-replay-launcher";
 import { CommandModule } from "yargs";
 import { OPTIONS } from "../../../command-utils/common-options";
 import { wrapHandler } from "../../../command-utils/sentry.utils";
+import { CliUserError } from "../../../utils/cli-user-error";
 import {
   isOutOfDateClientError,
   OutOfDateCLIError,
@@ -44,6 +45,14 @@ const handler = async ({
     repoDirectory,
   });
 
+  // A test run is only useful with a base to compare against, and the backend
+  // refuses to create a baseless run, so require a base up front.
+  if (!baseSha) {
+    throw new CliUserError(
+      "A base is required: pass --baseSha, or --repoDirectory to infer it from the merge-base with the origin default branch.",
+    );
+  }
+
   if (dryRun) {
     logger.info(
       `Dry run: would trigger a test run for deployment ${deploymentId}${baseSha ? ` (base: ${baseSha})` : ""}`,
@@ -62,12 +71,8 @@ const handler = async ({
     const { testRun } = await triggerRun({
       apiToken: apiToken_,
       deploymentId,
-      ...(baseSha ? { baseSha } : {}),
+      baseSha,
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
-      // The backend sets up the base test run in parallel with the head (it
-      // creates a Partial session-pool base on demand), so there's no need to
-      // block the trigger waiting for a base to exist first.
-      waitForBase: false,
       ...projectIdentifier,
     });
     testRunId = testRun?.id ?? null;

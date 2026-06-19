@@ -117,13 +117,21 @@ deployment, so `--commitSha` and all build flags are gone.
 | `--waitForTestRunToComplete` | block until the run finishes — **default true** (`--no-waitForTestRunToComplete` to opt out) |
 | `--json` | output |
 
-There is no `--waitForBase` flag. The backend runs the base test run **in
-parallel** with the head: when no base exists yet, `tryTriggerTestRunOnBaseCommit`
-creates a `Partial` session-pool base and the head triggers immediately with its
-`baseTestRunId` set, with base sessions executed on demand during head
-preprocessing (`RequestBaseSessionsService`). So the trigger does not block
-waiting for a base to exist; only "wait for the (head) test run to complete" is
-user-configurable. (`mustHaveBase` is sent as `false`.)
+**A base is required** (`--baseSha` or `--repoDirectory`): a run with no base is
+useless to the agent. There is no `--waitForBase` flag and no base polling —
+base resolution is synchronous on the backend, so the base either resolves at
+trigger time or never:
+
+- If a base test run exists for `baseSha`, or a base **deployment** exists (so
+  the backend can create a `Partial` session-pool base that runs **in parallel**
+  with the head via `RequestBaseSessionsService`), the head triggers with its
+  `baseTestRunId` set.
+- If neither exists (e.g. the base commit was never built/uploaded), the agent
+  endpoint **fails fast** (HTTP 422, via the `failIfNoBase` flag) instead of
+  creating a baseless run. The fix is to `agent upload-build` the base commit
+  first. We deliberately don't auto-build the base (exotic case → fail).
+
+Only "wait for the (head) test run to complete" is user-configurable.
 
 **Returns**: `{ "testRunId": "...", "status": "..." }` (unchanged).
 
@@ -159,8 +167,11 @@ fused `project-deployments/complete-*` endpoints are untouched (deprecated path)
    Metric: `backend.agent.upload_build` (tag `mode: asset|container`).
 2. `POST agent/trigger-test-run` — looks the deployment up by id
    (`findOneById`, scoped to the caller's project) and calls
-   `processProjectDeployment` with the request's `baseSha`/`hasGitDiff`/
-   `mustHaveBase` and the deployment's own `commitSha` as head.
+   `processProjectDeployment` with the request's `baseSha`/`hasGitDiff`, the
+   deployment's own `commitSha` as head, and `failIfNoBase: true` (a flag
+   threaded through `triggerCloudReplayForDeployment` → `tryTriggerCloudReplay`
+   so the throw fires for non-PR custom triggers too). If no base can be
+   established it returns **422** rather than creating a baseless run.
    Metric: `backend.agent.trigger_test_run`.
 3. `POST agent/upload-build/git-diff` — accepts `deploymentId`, resolves the
    git-diff S3 location server-side from the deployment's `sourceDeploymentId`,
