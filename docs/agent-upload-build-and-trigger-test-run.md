@@ -114,9 +114,14 @@ deployment, so `--commitSha` and all build flags are gone.
 | `--baseSha` | comparison target |
 | `--gitDiffOutput` | `base..head`; requires `--baseSha` |
 | `--repoDirectory` | convenience: infer `baseSha` (merge-base with `origin/main`) and `gitDiffOutput` (`base..head`, two commits) |
-| `--waitForBase` | trigger behavior (default true) |
-| `--waitForTestRunToComplete` | CLI-side poll to completion |
+| `--waitForTestRunToComplete` | block until the run finishes — **default true** (`--no-waitForTestRunToComplete` to opt out) |
 | `--json` | output |
+
+There is no `--waitForBase` flag: the run always waits for a base test run to
+compare against and falls back to triggering without a base if none appears
+(`pollWhileBaseNotFound`). "Wait for base" (before triggering, so the head run
+has a baseline) and "wait for test run to complete" (after triggering, for the
+result) are different phases; only the latter is user-configurable.
 
 **Returns**: `{ "testRunId": "...", "status": "..." }` (unchanged).
 
@@ -155,10 +160,10 @@ fused `project-deployments/complete-*` endpoints are untouched (deprecated path)
    `processProjectDeployment` with the request's `baseSha`/`hasGitDiff`/
    `mustHaveBase` and the deployment's own `commitSha` as head.
    Metric: `backend.agent.trigger_test_run`.
-3. `POST agent/upload-build/request-git-diff-upload` — accepts `deploymentId`,
-   resolves the git-diff S3 location server-side from the deployment's
-   `sourceDeploymentId`, returns a presigned URL. The client never handles the
-   upload id. Metric: `backend.agent.request_git_diff_upload`.
+3. `POST agent/upload-build/git-diff` — accepts `deploymentId`, resolves the
+   git-diff S3 location server-side from the deployment's `sourceDeploymentId`,
+   returns a presigned URL. The client never handles the upload id.
+   Metric: `backend.agent.request_git_diff_upload`.
 
 `withUncommittedChanges` remains supported by the trigger endpoint but the new
 CLI path never sets it: a dirty tree is captured as a real `git stash create`

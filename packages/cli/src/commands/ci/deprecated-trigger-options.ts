@@ -1,15 +1,18 @@
-/**
- * The custom test-run-trigger options that were added to `ci upload-assets` /
- * `ci upload-container` and have since moved to the streamlined
- * `meticulous agent trigger-test-run` command. They keep working here but are
- * deprecated and will be removed in a future version.
- */
-export const DEPRECATED_TRIGGER_OPTION_DESCRIPTION =
-  "[DEPRECATED] Use 'meticulous agent trigger-test-run' instead.";
+import { initLogger } from "@alwaysmeticulous/common";
 
 /**
- * Emits a one-line stderr deprecation warning when any of the moved
- * custom-trigger options is passed to a `ci` upload command.
+ * The custom test-run-trigger options that were added to `ci upload-assets` /
+ * `ci upload-container`. They drive custom (manually triggered) test runs,
+ * which now live in the dedicated `agent` commands (`agent upload-build` +
+ * `agent trigger-test-run`). They keep working here but are deprecated and will
+ * be removed in a future version.
+ */
+export const DEPRECATED_TRIGGER_OPTION_DESCRIPTION =
+  "[DEPRECATED] For custom test-run triggers, use 'meticulous agent upload-build' + 'meticulous agent trigger-test-run' instead.";
+
+/**
+ * Logs a deprecation warning when any of the moved custom-trigger options is
+ * passed to a `ci` upload command.
  */
 export const warnIfDeprecatedTriggerOptionsUsed = (options: {
   baseSha?: string | undefined;
@@ -28,9 +31,11 @@ export const warnIfDeprecatedTriggerOptionsUsed = (options: {
     return;
   }
 
-  process.stderr.write(
-    `\nDEPRECATION WARNING: ${used.join(", ")} ${used.length === 1 ? "is" : "are"} deprecated on this command. ` +
-      "Use 'meticulous agent trigger-test-run' instead. " +
-      "These options will be removed from the 'ci' upload commands in a future version.\n\n",
+  const logger = initLogger();
+  logger.warn(
+    `${used.join(", ")} ${used.length === 1 ? "is" : "are"} deprecated on this command. ` +
+      "These options are for custom (manually triggered) test runs, which have moved to the dedicated agent commands: " +
+      "use 'meticulous agent upload-build' to upload your build, then 'meticulous agent trigger-test-run' to trigger the run. " +
+      "They will be removed from the 'ci' upload commands in a future version.",
   );
 };

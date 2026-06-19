@@ -21,7 +21,6 @@ interface Options {
   baseSha?: string | undefined;
   gitDiffOutput?: string | undefined;
   repoDirectory?: string | undefined;
-  waitForBase: boolean;
   waitForTestRunToComplete: boolean;
   json: boolean;
   dryRun?: boolean;
@@ -33,7 +32,6 @@ const handler = async ({
   baseSha: baseSha_,
   gitDiffOutput: gitDiffOutput_,
   repoDirectory,
-  waitForBase,
   waitForTestRunToComplete,
   json,
   dryRun,
@@ -66,7 +64,9 @@ const handler = async ({
       deploymentId,
       ...(baseSha ? { baseSha } : {}),
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
-      waitForBase: waitForBase || waitForTestRunToComplete,
+      // Always try to wait for a base to compare against; triggerRun falls back
+      // to triggering without a base if none appears (see pollWhileBaseNotFound).
+      waitForBase: true,
       ...projectIdentifier,
     });
     testRunId = testRun?.id ?? null;
@@ -119,17 +119,12 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
       description:
         "Path to a git repository. Infers --baseSha (merge-base with the origin default branch) and --gitDiffOutput (base..head). Cannot be combined with --baseSha or --gitDiffOutput.",
     },
-    waitForBase: {
+    waitForTestRunToComplete: {
       boolean: true,
       default: true,
       description:
-        "If true, try to wait for a base test run to be created before triggering.",
-    },
-    waitForTestRunToComplete: {
-      boolean: true,
-      default: false,
-      description:
-        "If true, block until the triggered test run finishes. Implies --waitForBase.",
+        "Block until the triggered test run finishes (default). Pass --no-waitForTestRunToComplete to return as soon as the run is triggered. " +
+        "The run always waits for a base test run to compare against, falling back to no base if none appears.",
     },
     json: {
       boolean: true,

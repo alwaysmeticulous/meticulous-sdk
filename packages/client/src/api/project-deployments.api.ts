@@ -354,11 +354,7 @@ export const agentRequestGitDiffUpload = async ({
   const { data } = await client.post<
     typeof body,
     { data: RequestGitDiffUploadResponse }
-  >(
-    "agent/upload-build/request-git-diff-upload",
-    body,
-    projectIdQuery(projectId),
-  );
+  >("agent/upload-build/git-diff", body, projectIdQuery(projectId));
   return data;
 };
 
