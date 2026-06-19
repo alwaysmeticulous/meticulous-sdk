@@ -44,11 +44,21 @@ export const isTestRunFailed = (status: TestRunStatus): boolean =>
   FAILED_TEST_RUN_STATUS.includes(status);
 
 /**
+ * Whether the run is a session-pool base: it executes sessions on demand for
+ * other PRs (lazy session execution) rather than representing a specific
+ * change, and never finishes on its own — it stays `Partial` until some future
+ * PR requests more of its sessions. So it isn't a proper test run with a
+ * comparable set of diffs.
+ */
+export const isTestRunPartial = (status: TestRunStatus): boolean =>
+  status === "Partial";
+
+/**
  * Asserts a resolved run has finished with a usable verdict (Success/Failure),
  * for commands that need finished results and can't wait for them (e.g.
  * coverage). Throws a `CliUserError` otherwise, distinguishing fatal failures
- * (`Aborted`/`ExecutionError`) from runs that simply aren't finished yet
- * (in-progress or `Partial`, where more sessions can still be added on demand).
+ * (`Aborted`/`ExecutionError`) and session-pool bases (`Partial`, which never
+ * finish on their own) from runs that simply aren't finished yet (in-progress).
  */
 export const assertTestRunComplete = (
   testRunId: string,
@@ -58,6 +68,11 @@ export const assertTestRunComplete = (
   if (isTestRunFailed(status)) {
     throw new CliUserError(
       `Test run ${testRunId} finished unsuccessfully (status: ${status}).`,
+    );
+  }
+  if (isTestRunPartial(status)) {
+    throw new CliUserError(
+      `Test run ${testRunId} is a session-pool base run (status: Partial), not a test run for a specific change, so it has no complete ${resultName} available.`,
     );
   }
   if (!isTestRunComplete(status)) {

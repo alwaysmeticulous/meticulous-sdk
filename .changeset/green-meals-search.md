@@ -16,9 +16,12 @@ New flags: `--includeDomDiffIds` (adds the `domDiffIds` column),
 (orders by replay diff then event index, adding the `index`/`total` columns).
 
 The command also reports `Test run is not complete (status: …)` and exits for
-in-progress/`Partial` runs (use `--waitForTestRunToComplete` to block), fails
-fast on `Aborted`/`ExecutionError`, and gives up polling after 10 minutes. The
-same completed/failed/not-complete handling is now applied consistently across
+in-progress runs (use `--waitForTestRunToComplete` to block — only suggested
+when waiting can actually help), fails fast on `Aborted`/`ExecutionError`, and
+gives up polling after 10 minutes. `Partial` runs are session-pool bases rather
+than test runs for a specific change, so `test-run-diffs` now rejects them as
+having no diffs to show instead of suggesting a no-op wait. The same
+completed/failed/not-complete handling is otherwise applied consistently across
 `test-run-diffs`, `js-coverage`, and `test-run-for-commit` — so `js-coverage`
 now treats `Partial`/`Aborted`/`ExecutionError` runs as having no usable
 results rather than querying them.

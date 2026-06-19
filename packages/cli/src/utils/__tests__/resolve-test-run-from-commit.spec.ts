@@ -5,6 +5,7 @@ import {
   assertTestRunComplete,
   isTestRunComplete,
   isTestRunFailed,
+  isTestRunPartial,
 } from "../resolve-test-run-from-commit";
 
 describe("isTestRunComplete", () => {
@@ -33,6 +34,19 @@ describe("isTestRunFailed", () => {
   });
 });
 
+describe("isTestRunPartial", () => {
+  test.each<[TestRunStatus, boolean]>([
+    ["Partial", true],
+    ["Success", false],
+    ["Failure", false],
+    ["Running", false],
+    ["Aborted", false],
+    ["ExecutionError", false],
+  ])("%s -> %s", (status, expected) => {
+    expect(isTestRunPartial(status)).toBe(expected);
+  });
+});
+
 describe("assertTestRunComplete", () => {
   test.each<TestRunStatus>(["Success", "Failure"])(
     "does not throw for %s",
@@ -51,15 +65,19 @@ describe("assertTestRunComplete", () => {
     },
   );
 
-  test.each<TestRunStatus>(["Running", "Partial"])(
-    "throws 'not complete' for %s",
-    (status) => {
-      expect(() => assertTestRunComplete("tr-1", status)).toThrow(CliUserError);
-      expect(() => assertTestRunComplete("tr-1", status)).toThrow(
-        /is not complete/,
-      );
-    },
-  );
+  test("throws 'not complete' for Running", () => {
+    expect(() => assertTestRunComplete("tr-1", "Running")).toThrow(CliUserError);
+    expect(() => assertTestRunComplete("tr-1", "Running")).toThrow(
+      /is not complete/,
+    );
+  });
+
+  test("throws 'session-pool base run' for Partial", () => {
+    expect(() => assertTestRunComplete("tr-1", "Partial")).toThrow(CliUserError);
+    expect(() => assertTestRunComplete("tr-1", "Partial")).toThrow(
+      /session-pool base run/,
+    );
+  });
 
   test("uses the resultName in the not-yet-available message", () => {
     expect(() =>

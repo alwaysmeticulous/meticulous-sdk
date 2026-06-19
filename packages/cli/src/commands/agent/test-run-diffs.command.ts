@@ -14,6 +14,7 @@ import {
   isTestRunComplete,
   isTestRunFailed,
   isTestRunInProgress,
+  isTestRunPartial,
   resolveTestRunForCommitOrThrow,
 } from "../../utils/resolve-test-run-from-commit";
 import {
@@ -98,10 +99,19 @@ const handler = async ({
     );
   }
 
+  if (isTestRunPartial(status)) {
+    // A Partial run is a session-pool base, not a test run for a specific
+    // change: it executes sessions on demand for other PRs and never finishes
+    // on its own, so it has no meaningful set of diffs. Reject it rather than
+    // suggest waiting (which would be a no-op).
+    throw new CliUserError(
+      `Test run ${resolvedTestRunId} is a session-pool base run (status: Partial), not a test run for a specific change, so it has no diffs to show.`,
+    );
+  }
+
   if (!isTestRunComplete(status)) {
-    // Either still in progress (and the caller didn't wait) or Partial (more
-    // sessions can still be added on demand) — diffs would be incomplete, so
-    // report and stop regardless of how the run was selected.
+    // Still in progress and the caller didn't wait — diffs aren't available
+    // yet, so report and stop. Waiting would let it finish with a verdict.
     const hint = waitForTestRunToComplete
       ? ""
       : " Pass --waitForTestRunToComplete to block until it finishes and then show diffs.";
