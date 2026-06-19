@@ -34,6 +34,8 @@ export {
 export {
   executeWithRetry,
   defaultShouldRetry,
+  getRetryAfterMs,
+  computeRetryDelayMs,
   type RetryOptions,
 } from "./http-retry.utils";
 export { getErrorCode } from "./error-code.utils";
