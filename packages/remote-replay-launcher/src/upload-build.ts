@@ -93,8 +93,6 @@ const uploadAssetBuild = async ({
   rewrites,
   projectId,
 }: UploadBuildOptions): Promise<AgentUploadBuildResponse> => {
-  const logger = initLogger();
-
   if (!appDirectory && !appZip) {
     throw new Error(
       "Expected either appDirectory, appZip or localImageTag to be provided",
@@ -103,10 +101,9 @@ const uploadAssetBuild = async ({
 
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {
-    logger.error(
+    throw new Error(
       "You must provide an API token by using the --apiToken parameter",
     );
-    process.exit(1);
   }
   const client = createClient({ apiToken });
 

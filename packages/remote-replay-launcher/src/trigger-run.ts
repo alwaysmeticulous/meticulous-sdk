@@ -47,10 +47,9 @@ export const triggerRun = async ({
 
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {
-    logger.error(
+    throw new Error(
       "You must provide an API token by using the --apiToken parameter",
     );
-    process.exit(1);
   }
   const client = createClient({ apiToken });
   const projectIdentifier = projectId ? { projectId } : {};
