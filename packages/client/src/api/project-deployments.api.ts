@@ -278,3 +278,114 @@ export const getContainerDeployment = async ({
   >(`project-deployments/container/${deploymentUploadId}`);
   return data;
 };
+
+// ===========================================================================
+// Agent namespace: split "upload a build" from "trigger a test run".
+// `uploadBuild` registers a reusable deployment without triggering; the
+// returned `deploymentId` is then passed to `triggerTestRun`.
+// ===========================================================================
+
+export type ProjectDeploymentSource = "assetUpload" | "containerUpload";
+
+export interface AgentUploadBuildResponse {
+  deploymentId: string;
+  source: ProjectDeploymentSource;
+  commitSha: string;
+}
+
+export interface AgentUploadAssetBuildParams extends ProjectIdentifier {
+  uploadId: string;
+  commitSha: string;
+  rewrites: AssetUploadMetadata["rewrites"];
+  isUserVisible?: boolean;
+  multipartUploadInfo?: MultiPartUploadInfo;
+  archiveType: DeploymentArchiveType;
+}
+
+export const agentUploadAssetBuild = async ({
+  client,
+  projectId,
+  ...body
+}: AgentUploadAssetBuildParams & {
+  client: MeticulousClient;
+}): Promise<AgentUploadBuildResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: AgentUploadBuildResponse }
+  >("agent/upload-build/asset", body, projectIdQuery(projectId));
+  return data;
+};
+
+export interface AgentUploadContainerBuildParams extends ProjectIdentifier {
+  uploadId: string;
+  commitSha: string;
+  containerPort?: number;
+  containerEnv?: ContainerEnvVariable[];
+  containerHealthCheckEndpoint?: string;
+  isUserVisible?: boolean;
+}
+
+export const agentUploadContainerBuild = async ({
+  client,
+  projectId,
+  ...body
+}: AgentUploadContainerBuildParams & {
+  client: MeticulousClient;
+}): Promise<AgentUploadBuildResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: AgentUploadBuildResponse }
+  >("agent/upload-build/container", body, projectIdQuery(projectId));
+  return data;
+};
+
+export interface AgentRequestGitDiffUploadParams extends ProjectIdentifier {
+  deploymentId: string;
+  size: number;
+}
+
+export const agentRequestGitDiffUpload = async ({
+  client,
+  projectId,
+  ...body
+}: AgentRequestGitDiffUploadParams & {
+  client: MeticulousClient;
+}): Promise<RequestGitDiffUploadResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestGitDiffUploadResponse }
+  >(
+    "agent/upload-build/request-git-diff-upload",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export interface AgentTriggerTestRunParams extends ProjectIdentifier {
+  deploymentId: string;
+  baseSha?: string;
+  hasGitDiff?: boolean;
+  withUncommittedChanges?: boolean;
+  mustHaveBase: boolean;
+}
+
+export interface AgentTriggerTestRunResponse {
+  testRun?: TestRun;
+  message?: string;
+  baseNotFound?: boolean;
+}
+
+export const agentTriggerTestRun = async ({
+  client,
+  projectId,
+  ...body
+}: AgentTriggerTestRunParams & {
+  client: MeticulousClient;
+}): Promise<AgentTriggerTestRunResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: AgentTriggerTestRunResponse }
+  >("agent/trigger-test-run", body, projectIdQuery(projectId));
+  return data;
+};

@@ -7,12 +7,16 @@ import { imageUrlsCommand } from "./screenshot-image.command";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
 import { testRunForCommitCommand } from "./test-run-for-commit.command";
 import { timelineDiffCommand } from "./timeline.command";
+import { triggerTestRunCommand } from "./trigger-test-run/trigger-test-run.command";
+import { uploadBuildCommand } from "./upload-build.command";
 
 export const agentCommand: CommandModule = {
   command: "agent",
-  describe: "Agent analysis commands for test run diffs",
+  describe: "Agent commands for triggering and analysing test runs",
   builder: (yargs) =>
     yargs
+      .command(uploadBuildCommand)
+      .command(triggerTestRunCommand)
       .command(testRunDiffsCommand)
       .command(domDiffCommand)
       .command(testRunForCommitCommand)

@@ -32,19 +32,28 @@ export interface UploadContainerResult {
   message?: string;
 }
 
-export const uploadContainer = async ({
+export interface PushContainerImageResult {
+  client: ReturnType<typeof createClient>;
+  uploadId: string;
+  imageReference: string;
+}
+
+/**
+ * Verifies, tags and pushes the local Docker image to the Meticulous registry,
+ * returning the `uploadId` that identifies the pushed image. This is the
+ * "upload the bytes" half of a container build — it does NOT register a
+ * deployment or trigger a run. Shared by {@link uploadContainer} (deprecated
+ * fused path) and the build/trigger split (`uploadBuild`).
+ */
+export const pushContainerImage = async ({
   apiToken: apiToken_,
   localImageTag,
-  commitSha,
-  baseSha,
-  gitDiffOutput,
-  withUncommittedChanges,
-  waitForBase = false,
-  containerPort,
-  containerEnv,
-  containerHealthCheckEndpoint,
   projectId,
-}: UploadContainerOptions): Promise<UploadContainerResult> => {
+}: {
+  apiToken: string | null | undefined;
+  localImageTag: string;
+  projectId?: string | undefined;
+}): Promise<PushContainerImageResult> => {
   const logger = initLogger();
 
   const apiToken = getApiToken(apiToken_);
@@ -105,6 +114,32 @@ export const uploadContainer = async ({
 
   await pushImage(docker, imageReference, authconfig);
   logger.info(`Successfully pushed image ${imageReference}`);
+
+  return { client, uploadId, imageReference };
+};
+
+export const uploadContainer = async ({
+  apiToken: apiToken_,
+  localImageTag,
+  commitSha,
+  baseSha,
+  gitDiffOutput,
+  withUncommittedChanges,
+  waitForBase = false,
+  containerPort,
+  containerEnv,
+  containerHealthCheckEndpoint,
+  projectId,
+}: UploadContainerOptions): Promise<UploadContainerResult> => {
+  const logger = initLogger();
+
+  const projectIdentifier = projectId ? { projectId } : {};
+
+  const { client, uploadId, imageReference } = await pushContainerImage({
+    apiToken: apiToken_,
+    localImageTag,
+    projectId,
+  });
 
   logger.info("Completing container upload and triggering test run...");
 

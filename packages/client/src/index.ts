@@ -139,6 +139,17 @@ export {
   GetContainerDeploymentResponse,
   getContainerDeployment,
   ContainerEnvVariable,
+  ProjectDeploymentSource,
+  AgentUploadBuildResponse,
+  AgentUploadAssetBuildParams,
+  agentUploadAssetBuild,
+  AgentUploadContainerBuildParams,
+  agentUploadContainerBuild,
+  AgentRequestGitDiffUploadParams,
+  agentRequestGitDiffUpload,
+  AgentTriggerTestRunParams,
+  AgentTriggerTestRunResponse,
+  agentTriggerTestRun,
 } from "./api/project-deployments.api";
 export { GetRegistryAuthResponse, getRegistryAuth } from "./api/registry.api";
 export { isFetchError, maybeEnrichFetchError } from "./errors";

@@ -166,21 +166,20 @@ const completeUploadAndWaitForBase = async ({
   };
 };
 
-const uploadAssetsStreaming = async ({
+/**
+ * Streams a directory's assets to the Meticulous bundle store and returns the
+ * `uploadId` + multipart info. This is the "upload the bytes" half of an asset
+ * build — it does NOT register a deployment or trigger a run. Shared by the
+ * deprecated fused path and the build/trigger split (`uploadBuild`).
+ */
+export const uploadAssetBytesFromDirectory = async ({
   client,
   folderPath,
-  commitSha,
-  baseSha,
-  gitDiffOutput,
-  withUncommittedChanges,
-  waitForBase = false,
-  rewrites = [],
-  createDeployment = true,
   projectId,
-}: UploadAssetsOptions & {
+}: ProjectIdentifier & {
   client: ReturnType<typeof createClient>;
   folderPath: string;
-}): Promise<UploadAssetsResult> => {
+}): Promise<{ uploadId: string; multipartUploadInfo: MultiPartUploadInfo }> => {
   const logger = initLogger();
 
   const { uploadId, awsUploadId, uploadPartUrls, uploadChunkSize } =
@@ -205,6 +204,30 @@ const uploadAssetsStreaming = async ({
   const multipartUploadInfo = await uploader.execute();
 
   logger.info(`Deployment assets ${uploadId} uploaded successfully`);
+
+  return { uploadId, multipartUploadInfo };
+};
+
+const uploadAssetsStreaming = async ({
+  client,
+  folderPath,
+  commitSha,
+  baseSha,
+  gitDiffOutput,
+  withUncommittedChanges,
+  waitForBase = false,
+  rewrites = [],
+  createDeployment = true,
+  projectId,
+}: UploadAssetsOptions & {
+  client: ReturnType<typeof createClient>;
+  folderPath: string;
+}): Promise<UploadAssetsResult> => {
+  const { uploadId, multipartUploadInfo } = await uploadAssetBytesFromDirectory({
+    client,
+    folderPath,
+    ...(projectId ? { projectId } : {}),
+  });
 
   if (gitDiffOutput) {
     await uploadGitDiffToS3({
@@ -236,7 +259,7 @@ const uploadAssetsStreaming = async ({
   };
 };
 
-const uploadBufferToSignedUrl = async (
+export const uploadBufferToSignedUrl = async (
   signedUrl: string,
   buffer: Buffer,
   options?: { contentType?: string },
@@ -335,6 +358,32 @@ export const uploadGitDiffToS3 = async ({
   logger.info("Git diff uploaded to S3 successfully");
 };
 
+/**
+ * Uploads a zip of assets to the Meticulous bundle store and returns the
+ * `uploadId`. The "upload the bytes" half of a zip asset build — does NOT
+ * register a deployment or trigger a run.
+ */
+export const uploadAssetBytesFromZip = async ({
+  client,
+  zipPath,
+  projectId,
+}: ProjectIdentifier & {
+  client: ReturnType<typeof createClient>;
+  zipPath: string;
+}): Promise<{ uploadId: string }> => {
+  const logger = initLogger();
+  const fileStats = await stat(zipPath);
+  const fileSize = fileStats.size;
+  const { uploadId, uploadUrl } = await requestAssetUpload({
+    client,
+    size: fileSize,
+    ...(projectId ? { projectId } : {}),
+  });
+  await uploadFileToSignedUrl(zipPath, uploadUrl, fileSize);
+  logger.info(`Deployment assets ${uploadId} uploaded successfully`);
+  return { uploadId };
+};
+
 export const uploadAssetsFromZip = async ({
   apiToken: apiToken_,
   zipPath,
@@ -366,15 +415,11 @@ export const uploadAssetsFromZip = async ({
   const projectIdentifier = projectId ? { projectId } : {};
 
   try {
-    const fileStats = await stat(zipPath);
-    const fileSize = fileStats.size;
-    const { uploadId, uploadUrl } = await requestAssetUpload({
+    const { uploadId } = await uploadAssetBytesFromZip({
       client,
-      size: fileSize,
+      zipPath,
       ...projectIdentifier,
     });
-    await uploadFileToSignedUrl(zipPath, uploadUrl, fileSize);
-    logger.info(`Deployment assets ${uploadId} uploaded successfully`);
 
     if (gitDiffOutput) {
       await uploadGitDiffToS3({

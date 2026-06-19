@@ -30,6 +30,7 @@ export {
   getLocalBaseSha,
   hasUncommittedChanges,
   getGitDiff,
+  getStashCreateSha,
 } from "./commit-sha.utils";
 export {
   executeWithRetry,

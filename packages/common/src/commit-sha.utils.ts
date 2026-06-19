@@ -204,6 +204,22 @@ export const getGitDiff = async (
 };
 
 /**
+ * Captures the current index + working tree as a real (unreferenced) commit via
+ * `git stash create`, returning its SHA. Does NOT modify HEAD, the branch, or
+ * the working tree. Returns `undefined` when the tree is clean (stash create
+ * prints nothing). Use to label a build of a dirty working tree with a
+ * content-faithful commit, without forcing the user to commit.
+ */
+export const getStashCreateSha = async (options?: {
+  cwd?: string;
+}): Promise<string | undefined> => {
+  const output = (
+    await execFilePromise("git", ["stash", "create"], options?.cwd)
+  ).trim();
+  return output || undefined;
+};
+
+/**
  * Detects the default branch on origin. Tries local symbolic-ref first,
  * then falls back to `git remote show origin` (requires network).
  * Returns e.g. "origin/main" or null if detection fails.

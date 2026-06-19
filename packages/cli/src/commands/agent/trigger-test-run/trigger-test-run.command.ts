@@ -1,0 +1,141 @@
+import {
+  createClient,
+  resolveApiTokenWithOAuth,
+} from "@alwaysmeticulous/client";
+import { initLogger } from "@alwaysmeticulous/common";
+import { triggerRun } from "@alwaysmeticulous/remote-replay-launcher";
+import { CommandModule } from "yargs";
+import { OPTIONS } from "../../../command-utils/common-options";
+import { wrapHandler } from "../../../command-utils/sentry.utils";
+import {
+  isOutOfDateClientError,
+  OutOfDateCLIError,
+} from "../../../utils/out-of-date-client-error";
+import { resolveProjectIdentifier } from "../../../utils/resolve-project-identifier";
+import { awaitTestRunCompletion } from "../../../utils/resolve-test-run-from-commit";
+import { resolveComparisonOptions } from "../build-git-options";
+
+interface Options {
+  apiToken?: string | undefined;
+  deploymentId: string;
+  baseSha?: string | undefined;
+  gitDiffOutput?: string | undefined;
+  repoDirectory?: string | undefined;
+  waitForBase: boolean;
+  waitForTestRunToComplete: boolean;
+  json: boolean;
+  dryRun?: boolean;
+}
+
+const handler = async ({
+  apiToken,
+  deploymentId,
+  baseSha: baseSha_,
+  gitDiffOutput: gitDiffOutput_,
+  repoDirectory,
+  waitForBase,
+  waitForTestRunToComplete,
+  json,
+  dryRun,
+}: Options): Promise<void> => {
+  const logger = initLogger();
+
+  const { baseSha, gitDiffOutput } = await resolveComparisonOptions({
+    baseSha: baseSha_,
+    gitDiffOutput: gitDiffOutput_,
+    repoDirectory,
+  });
+
+  if (dryRun) {
+    logger.info(
+      `Dry run: would trigger a test run for deployment ${deploymentId}${baseSha ? ` (base: ${baseSha})` : ""}`,
+    );
+    return;
+  }
+
+  const apiToken_ = await resolveApiTokenWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
+  const projectIdentifier = resolveProjectIdentifier(apiToken_);
+
+  let testRunId: string | null;
+  try {
+    const { testRun } = await triggerRun({
+      apiToken: apiToken_,
+      deploymentId,
+      ...(baseSha ? { baseSha } : {}),
+      ...(gitDiffOutput ? { gitDiffOutput } : {}),
+      waitForBase: waitForBase || waitForTestRunToComplete,
+      ...projectIdentifier,
+    });
+    testRunId = testRun?.id ?? null;
+  } catch (error) {
+    if (isOutOfDateClientError(error)) {
+      throw new OutOfDateCLIError();
+    }
+    throw error;
+  }
+
+  let status: string | null = null;
+  if (waitForTestRunToComplete && testRunId) {
+    const client = createClient({ apiToken: apiToken_ });
+    status = await awaitTestRunCompletion(client, testRunId);
+  }
+
+  if (json) {
+    console.log(JSON.stringify({ testRunId, status }, null, 2));
+    return;
+  }
+  if (testRunId) {
+    console.log(testRunId);
+  }
+};
+
+export const triggerTestRunCommand: CommandModule<unknown, Options> = {
+  command: "trigger-test-run",
+  describe:
+    "Trigger a test run against a deployment created by 'agent upload-build'",
+  builder: {
+    apiToken: OPTIONS.apiToken,
+    deploymentId: {
+      demandOption: true,
+      string: true,
+      description:
+        "The deployment to test, as returned by 'agent upload-build'.",
+    },
+    baseSha: {
+      string: true,
+      description:
+        "The base commit SHA to compare against. Cannot be combined with --repoDirectory.",
+    },
+    gitDiffOutput: {
+      string: true,
+      description:
+        "Raw git diff output between the base and the deployment's commit. Requires --baseSha. Cannot be combined with --repoDirectory.",
+    },
+    repoDirectory: {
+      string: true,
+      description:
+        "Path to a git repository. Infers --baseSha (merge-base with the origin default branch) and --gitDiffOutput (base..head). Cannot be combined with --baseSha or --gitDiffOutput.",
+    },
+    waitForBase: {
+      boolean: true,
+      default: true,
+      description:
+        "If true, try to wait for a base test run to be created before triggering.",
+    },
+    waitForTestRunToComplete: {
+      boolean: true,
+      default: false,
+      description:
+        "If true, block until the triggered test run finishes. Implies --waitForBase.",
+    },
+    json: {
+      boolean: true,
+      default: false,
+      description: "Output the result ({ testRunId, status }) as JSON.",
+    },
+  },
+  handler: wrapHandler(handler),
+};
