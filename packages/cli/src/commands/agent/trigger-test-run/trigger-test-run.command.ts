@@ -64,9 +64,10 @@ const handler = async ({
       deploymentId,
       ...(baseSha ? { baseSha } : {}),
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
-      // Always try to wait for a base to compare against; triggerRun falls back
-      // to triggering without a base if none appears (see pollWhileBaseNotFound).
-      waitForBase: true,
+      // The backend sets up the base test run in parallel with the head (it
+      // creates a Partial session-pool base on demand), so there's no need to
+      // block the trigger waiting for a base to exist first.
+      waitForBase: false,
       ...projectIdentifier,
     });
     testRunId = testRun?.id ?? null;
@@ -124,7 +125,7 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
       default: true,
       description:
         "Block until the triggered test run finishes (default). Pass --no-waitForTestRunToComplete to return as soon as the run is triggered. " +
-        "The run always waits for a base test run to compare against, falling back to no base if none appears.",
+        "The base test run is set up by the backend in parallel with the head, so there is no separate base-wait step.",
     },
     json: {
       boolean: true,

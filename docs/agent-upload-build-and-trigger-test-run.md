@@ -117,11 +117,13 @@ deployment, so `--commitSha` and all build flags are gone.
 | `--waitForTestRunToComplete` | block until the run finishes — **default true** (`--no-waitForTestRunToComplete` to opt out) |
 | `--json` | output |
 
-There is no `--waitForBase` flag: the run always waits for a base test run to
-compare against and falls back to triggering without a base if none appears
-(`pollWhileBaseNotFound`). "Wait for base" (before triggering, so the head run
-has a baseline) and "wait for test run to complete" (after triggering, for the
-result) are different phases; only the latter is user-configurable.
+There is no `--waitForBase` flag. The backend runs the base test run **in
+parallel** with the head: when no base exists yet, `tryTriggerTestRunOnBaseCommit`
+creates a `Partial` session-pool base and the head triggers immediately with its
+`baseTestRunId` set, with base sessions executed on demand during head
+preprocessing (`RequestBaseSessionsService`). So the trigger does not block
+waiting for a base to exist; only "wait for the (head) test run to complete" is
+user-configurable. (`mustHaveBase` is sent as `false`.)
 
 **Returns**: `{ "testRunId": "...", "status": "..." }` (unchanged).
 
