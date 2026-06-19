@@ -10,26 +10,36 @@ import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
+  assertTestRunComplete,
   awaitTestRunCompletion,
   isTestRunInProgress,
   resolveTestRunForCommitOrThrow,
 } from "../../utils/resolve-test-run-from-commit";
+import {
+  buildDiffsSummaryHeader,
+  flattenDiffRows,
+  formatDiffRow,
+  resolveIncludeAllDiffs,
+} from "./test-run-diffs.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
   testRunId: string | undefined;
   commitSha: string | undefined;
   waitForTestRunToComplete: boolean;
-  includeMatches: boolean;
   includeReplayIds: boolean;
+  includeDomDiffIds: boolean;
+  includeAllDiffs: boolean;
+  includeMatches: boolean;
+  orderByReplayDiffs: boolean;
   verbose: boolean;
 }
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-const fmtMismatch = (v: number | null): string =>
-  v != null ? v.toFixed(5) : "";
+/** Give up polling the diffs summary after this long, rather than forever. */
+const SUMMARY_POLL_TIMEOUT_MS = 10 * 60_000;
 
 const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
 
@@ -38,8 +48,11 @@ const handler = async ({
   testRunId,
   commitSha,
   waitForTestRunToComplete,
-  includeMatches,
   includeReplayIds,
+  includeDomDiffIds,
+  includeAllDiffs,
+  includeMatches,
+  orderByReplayDiffs,
   verbose,
 }: Options): Promise<void> => {
   initLogger();
@@ -71,38 +84,68 @@ const handler = async ({
     status = run.status;
   }
 
-  // Diffs are only meaningful once the run has finished. If it is still running
-  // and the caller didn't opt to wait, report it and stop — regardless of how
-  // the run was selected.
-  if (isTestRunInProgress(status) && !waitForTestRunToComplete) {
+  // Diffs are only meaningful once the run has finished with a verdict
+  // (Success/Failure). Wait if asked and the run is still in progress, then
+  // classify the resulting status.
+  if (waitForTestRunToComplete && isTestRunInProgress(status)) {
+    status = await awaitTestRunCompletion(client, resolvedTestRunId);
+  }
+
+  if (isTestRunInProgress(status)) {
+    // Reached only when the caller didn't wait (waiting resolves in-progress
+    // above), so the hint is always worth showing. Diffs aren't available yet,
+    // so report and stop rather than error out.
     log(
-      `Test run ${resolvedTestRunId} is still in progress (status: ${status}); ` +
-        "pass --waitForTestRunToComplete to block until it finishes and then show diffs.",
+      `Test run ${resolvedTestRunId} is not complete (status: ${status}). ` +
+        "Pass --waitForTestRunToComplete to block until it finishes and then show diffs.",
     );
     return;
   }
 
-  if (waitForTestRunToComplete) {
-    await awaitTestRunCompletion(client, resolvedTestRunId);
-  }
+  // Reject fatal failures (Aborted/ExecutionError) and session-pool bases
+  // (Partial, which never finish on their own and aren't tied to a change).
+  assertTestRunComplete(resolvedTestRunId, status, { resultName: "diffs" });
 
   const t0 = performance.now();
 
   log(`Fetching diffs summary for test run ${resolvedTestRunId}...`);
 
-  let response = await getTestRunDiffsSummary(client, resolvedTestRunId, {
-    includeReplayIds,
-    includeMatches,
-  });
+  // --includeMatches implies --includeAllDiffs (matches are never part of the
+  // selected subset, so they only make sense alongside the full set). Use the
+  // effective value for both the request and the isSelected column.
+  const allDiffs = resolveIncludeAllDiffs({ includeAllDiffs, includeMatches });
 
-  // Poll until complete
+  const diffsSummaryOptions = {
+    includeReplayIds,
+    includeDomDiffIds,
+    includeAllDiffs: allDiffs,
+    includeMatches,
+    orderByReplayDiffs,
+  };
+
+  let response = await getTestRunDiffsSummary(
+    client,
+    resolvedTestRunId,
+    diffsSummaryOptions,
+  );
+
+  // Poll until complete (or give up after the timeout, rather than forever).
+  const summaryDeadline = performance.now() + SUMMARY_POLL_TIMEOUT_MS;
   while (response.status === "pending" || response.status === "processing") {
     if (verbose) log(`Status: ${response.status}`);
+    if (performance.now() >= summaryDeadline) {
+      log(
+        `Diffs summary for test run ${resolvedTestRunId} did not complete within 10 minutes ` +
+          `(status: ${response.status}). Something may have gone wrong — try again later.`,
+      );
+      process.exit(1);
+    }
     await sleep(2000);
-    response = await getTestRunDiffsSummary(client, resolvedTestRunId, {
-      includeReplayIds,
-      includeMatches,
-    });
+    response = await getTestRunDiffsSummary(
+      client,
+      resolvedTestRunId,
+      diffsSummaryOptions,
+    );
   }
 
   if (response.status !== "complete") {
@@ -117,39 +160,25 @@ const handler = async ({
     return;
   }
 
-  // Print TSV header
-  const headerFields = [
-    "replayDiffId",
-    "screenshotName",
-    "index",
-    "total",
-    "outcome",
-    "mismatch",
-    "domDiffIds",
-  ];
-  if (includeReplayIds) headerFields.push("baseReplayId", "headReplayId");
-  console.log(headerFields.join("\t"));
+  // The backend sets `index` to the priority rank by default, or the
+  // within-replay position (with `total`) when orderByReplayDiffs is set.
+  const rows = flattenDiffRows(data, orderByReplayDiffs);
+  const columns = {
+    orderByReplayDiffs,
+    includeDomDiffIds,
+    includeAllDiffs: allDiffs,
+    includeReplayIds,
+  };
+
+  console.log(buildDiffsSummaryHeader(columns).join("\t"));
 
   let totalDiffScreenshots = 0;
 
-  for (const rd of data) {
-    for (const s of rd.screenshots) {
-      if (s.userVisibleOutcome === "difference") {
-        totalDiffScreenshots++;
-      }
-      const fields: (string | number)[] = [
-        rd.replayDiffId,
-        s.screenshotName,
-        s.index,
-        s.total,
-        s.outcome,
-        fmtMismatch(s.mismatchFraction),
-        s.domDiffIds,
-      ];
-      if (includeReplayIds)
-        fields.push(rd.baseReplayId ?? "", rd.headReplayId ?? "");
-      console.log(fields.join("\t"));
+  for (const row of rows) {
+    if (row.screenshot.userVisibleOutcome === "difference") {
+      totalDiffScreenshots++;
     }
+    console.log(formatDiffRow(row, columns).join("\t"));
   }
 
   const tEnd = performance.now();
@@ -179,14 +208,33 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
       description:
         "If the test run is still in progress, block until it finishes before fetching diffs (otherwise an in-progress run is reported and the command exits).",
     },
-    includeMatches: {
-      boolean: true,
-      description: "Include all screenshots (matches, known flakes), not just differences",
-      default: false,
-    },
     includeReplayIds: {
       boolean: true,
       description: "Include base and head replay IDs per replay diff",
+      default: false,
+    },
+    includeDomDiffIds: {
+      boolean: true,
+      description:
+        "Add a domDiffIds column grouping screenshots by structural DOM change",
+      default: false,
+    },
+    includeAllDiffs: {
+      boolean: true,
+      description:
+        "Return every diff instead of only the selected representative subset; adds an isSelected column",
+      default: false,
+    },
+    includeMatches: {
+      boolean: true,
+      description:
+        "Include matching screenshots (matches, known flakes), not just differences. Implies --includeAllDiffs.",
+      default: false,
+    },
+    orderByReplayDiffs: {
+      boolean: true,
+      description:
+        "Order rows by replay diff then event index (instead of by selection priority) and include the index/total columns",
       default: false,
     },
     verbose: {

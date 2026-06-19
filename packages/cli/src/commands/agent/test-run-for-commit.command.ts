@@ -8,15 +8,11 @@ import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
-import {
-  awaitTestRunCompletion,
-  isTestRunInProgress,
-} from "../../utils/resolve-test-run-from-commit";
+import { isTestRunComplete } from "../../utils/resolve-test-run-from-commit";
 
 interface Options {
   apiToken?: string | null | undefined;
   commitSha: string | undefined;
-  waitForTestRunToComplete: boolean;
   json: boolean;
 }
 
@@ -25,7 +21,6 @@ const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
 const handler = async ({
   apiToken,
   commitSha,
-  waitForTestRunToComplete,
   json,
 }: Options): Promise<void> => {
   initLogger();
@@ -48,19 +43,9 @@ const handler = async ({
   const { projectId } = resolveProjectIdentifier(apiToken_);
   const client = createClient({ apiToken: apiToken_ });
 
-  let result = await getTestRunForCommit(client, resolvedCommitSha, {
+  const result = await getTestRunForCommit(client, resolvedCommitSha, {
     projectId,
   });
-
-  if (
-    result.testRunId != null &&
-    result.status != null &&
-    waitForTestRunToComplete &&
-    isTestRunInProgress(result.status)
-  ) {
-    const status = await awaitTestRunCompletion(client, result.testRunId);
-    result = { ...result, status };
-  }
 
   if (json) {
     console.log(JSON.stringify(result, null, 2));
@@ -72,11 +57,11 @@ const handler = async ({
     return;
   }
   console.log(result.testRunId);
-  if (result.status != null && isTestRunInProgress(result.status)) {
-    log(
-      `Test run is still in progress (status: ${result.status}); ` +
-        "pass --waitForTestRunToComplete to block until it finishes.",
-    );
+  if (result.status != null && !isTestRunComplete(result.status)) {
+    // Surface in-progress/Partial/failed runs so the caller knows the run isn't
+    // a finished verdict yet. Commands that consume the results (test-run-diffs,
+    // js-coverage) each have their own --waitForTestRunToComplete to block on it.
+    log(`Test run is not complete (status: ${result.status}).`);
   }
 };
 
@@ -90,12 +75,6 @@ export const testRunForCommitCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "Commit SHA to look up. Defaults to the current git HEAD when omitted.",
-    },
-    waitForTestRunToComplete: {
-      boolean: true,
-      default: false,
-      description:
-        "If the matched test run is still in progress, block until it finishes before returning.",
     },
     json: {
       boolean: true,

@@ -8,12 +8,24 @@ import { MeticulousClient } from "../types/client.types";
 
 export interface DiffsSummaryScreenshot {
   screenshotName: string;
+  /**
+   * By default the global priority rank (selection importance). With
+   * `orderByReplayDiffs`, the screenshot's position within its replay diff.
+   */
   index: number;
-  total: number;
+  /** Total screenshots in the replay diff. Present only with `orderByReplayDiffs`. */
+  total?: number;
   outcome: string;
   userVisibleOutcome: string;
   mismatchFraction: number | null;
-  domDiffIds: string;
+  /** Present only when `includeDomDiffIds` is set. */
+  domDiffIds?: string;
+  /**
+   * Whether this screenshot is part of the selected representative subset.
+   * Present only when `includeAllDiffs` is set — otherwise the response
+   * already contains only selected screenshots.
+   */
+  isSelected?: boolean;
 }
 
 export interface DiffsSummaryReplayDiff {
@@ -25,13 +37,40 @@ export interface DiffsSummaryReplayDiff {
 
 export interface DiffsSummaryOptions {
   includeReplayIds?: boolean;
+  /** Include the `domDiffIds` field on each screenshot. Default false. */
+  includeDomDiffIds?: boolean;
+  /**
+   * Return every diff rather than only the pre-selected representative subset.
+   * When true, `isSelected` marks which screenshots are in the selected subset.
+   */
+  includeAllDiffs?: boolean;
+  /** Include matching screenshots (matches, known flakes), not just differences. */
   includeMatches?: boolean;
+  /**
+   * Order by replay diff then event index: `index` becomes the within-replay
+   * position and `total` is included. Otherwise `index` is the priority rank.
+   */
+  orderByReplayDiffs?: boolean;
 }
 
 export interface DiffsSummaryResponse {
   status: "pending" | "processing" | "complete";
   data?: DiffsSummaryReplayDiff[];
 }
+
+/**
+ * The agent diffs-summary API contract version this client speaks. Sent on
+ * every request so the backend can apply version-appropriate defaults; older
+ * backends ignore it. Bump when the client adopts a new default contract.
+ *
+ * - v1 (no clientVersion sent): behaves as if `--includeDomDiffIds` and
+ *   `--includeAllDiffs` were always on — the full set of diffs including
+ *   `domDiffIds`. This is the implicit behaviour for pre-versioning clients.
+ * - v2: introduces `--includeDomDiffIds` / `--includeAllDiffs` as opt-in flags
+ *   (default off), so the response defaults to the curated selected subset
+ *   with `domDiffIds` omitted.
+ */
+export const DIFFS_SUMMARY_CLIENT_VERSION = 2;
 
 // ---------------------------------------------------------------------------
 // Screenshot DOM Diff types
@@ -263,12 +302,23 @@ export const getTestRunDiffsSummary = async (
   testRunId: string,
   options?: DiffsSummaryOptions,
 ): Promise<DiffsSummaryResponse> => {
-  const params: Record<string, string> = {};
+  const params: Record<string, string> = {
+    clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
+  };
   if (options?.includeReplayIds) {
     params.includeReplayIds = "true";
   }
+  if (options?.includeDomDiffIds) {
+    params.includeDomDiffIds = "true";
+  }
+  if (options?.includeAllDiffs) {
+    params.includeAllDiffs = "true";
+  }
   if (options?.includeMatches) {
     params.includeMatches = "true";
+  }
+  if (options?.orderByReplayDiffs) {
+    params.orderByReplayDiffs = "true";
   }
   const { data } = await client
     .get(`agent/test-runs/${testRunId}/diffs-summary`, { params })

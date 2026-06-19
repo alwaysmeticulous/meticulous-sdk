@@ -1,6 +1,7 @@
 import {
   createClient,
   getReplayJsCoverage,
+  getTestRun,
   getTestRunJsCoverage,
   isFetchError,
   MeticulousClient,
@@ -13,9 +14,9 @@ import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
 import {
-  isTestRunInProgress,
+  assertTestRunComplete,
+  isTestRunComplete,
   resolveTestRunForCommitOrThrow,
-  throwIfTestRunCoverageNotReady,
   tryResolveTestRunForCommit,
 } from "../../utils/resolve-test-run-from-commit";
 
@@ -72,7 +73,11 @@ const handler = async ({
     // or, when neither is given, from the local checkout's HEAD. Either way the
     // run must have finished for coverage to exist.
     if (testRunId != null) {
-      await throwIfTestRunCoverageNotReady(client, testRunId);
+      // Coverage only exists once a run has finished with a verdict; guard an
+      // explicitly passed testRunId, mirroring the check for runs resolved from
+      // a commit.
+      const { status } = await getTestRun({ client, testRunId });
+      assertTestRunComplete(testRunId, status, { resultName: "coverage" });
       await printTestRunCoverage(client, testRunId, json);
     } else {
       const resolvedTestRunId = await resolveCompletedTestRunIdForCommit(
@@ -86,8 +91,8 @@ const handler = async ({
 };
 
 // Resolves a commit to a test run for coverage. Coverage only exists once a run
-// has finished, so an in-progress run is reported as not-yet-available rather
-// than queried.
+// has finished with a usable verdict, so an unfinished or failed run is
+// reported as not-yet-available rather than queried.
 const resolveCompletedTestRunIdForCommit = async (
   client: MeticulousClient,
   apiToken: string,
@@ -98,11 +103,7 @@ const resolveCompletedTestRunIdForCommit = async (
     apiToken,
     commitSha,
   );
-  if (isTestRunInProgress(status)) {
-    throw new CliUserError(
-      `Test run ${testRunId} for this commit is still in progress (status: ${status}); coverage is not available yet.`,
-    );
-  }
+  assertTestRunComplete(testRunId, status, { resultName: "coverage" });
   return testRunId;
 };
 
@@ -148,8 +149,9 @@ const printReplayCoverage = async (
         apiToken,
         undefined,
       );
-      // Only retry against a finished run — an in-progress one has no coverage.
-      if (fallback != null && !isTestRunInProgress(fallback.status)) {
+      // Only retry against a run that finished with a verdict — an unfinished
+      // or failed one has no usable coverage.
+      if (fallback != null && isTestRunComplete(fallback.status)) {
         try {
           const result = await getReplayJsCoverage(client, replayId, {
             screenshotName,
