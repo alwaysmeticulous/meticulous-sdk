@@ -45,7 +45,13 @@ export const resolveTestRunForCommitOrThrow = async (
   if (testRunId == null || status == null) {
     throw new CliUserError(`No test run found for commit ${sha}.`);
   }
-  log(`Resolved test run ${testRunId} for commit ${sha} (status: ${status}).`);
+  // Mention the status only when it's not a normal completed verdict:
+  // "Success"/"Failure" just indicate whether diffs were found (and "Failure"
+  // reads alarmingly), whereas in-progress/Aborted/ExecutionError/Partial are
+  // worth surfacing — those usually mean we exit here or the run is unreliable.
+  const statusSuffix =
+    status === "Success" || status === "Failure" ? "" : ` (status: ${status})`;
+  log(`Resolved test run ${testRunId} for commit ${sha}${statusSuffix}.`);
   return { testRunId, status };
 };
 
@@ -68,9 +74,7 @@ export const tryResolveTestRunForCommit = async (
     const { testRunId, status } = await getTestRunForCommit(client, sha, {
       projectId,
     });
-    return testRunId != null && status != null
-      ? { testRunId, status }
-      : null;
+    return testRunId != null && status != null ? { testRunId, status } : null;
   } catch (error) {
     // A CliUserError (e.g. no project selected for an OAuth caller) is an
     // actionable configuration problem the user must address, not a reason to
@@ -102,8 +106,9 @@ export const throwIfTestRunCoverageNotReady = async (
 
 /**
  * Polls a (possibly in-progress) test run until it reaches a terminal status,
- * logging each transition. Throws a `CliUserError` if the run finishes
- * unsuccessfully (`ExecutionError`/`Aborted`). Returns the final status.
+ * logging once when it starts waiting (no per-poll output). Throws a
+ * `CliUserError` if the run finishes unsuccessfully (`ExecutionError`/
+ * `Aborted`). Returns the final status.
  */
 export const awaitTestRunCompletion = async (
   client: MeticulousClient,
@@ -116,7 +121,6 @@ export const awaitTestRunCompletion = async (
   while (isTestRunInProgress(testRun.status)) {
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     testRun = await getTestRun({ client, testRunId });
-    log(`Test run status: ${testRun.status}`);
   }
   if (testRun.status === "ExecutionError" || testRun.status === "Aborted") {
     throw new CliUserError(

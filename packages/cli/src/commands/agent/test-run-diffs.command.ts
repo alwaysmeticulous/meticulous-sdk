@@ -20,8 +20,11 @@ interface Options {
   testRunId: string | undefined;
   commitSha: string | undefined;
   waitForTestRunToComplete: boolean;
-  includeMatches: boolean;
   includeReplayIds: boolean;
+  includeDomDiffIds: boolean;
+  includeAllDiffs: boolean;
+  includeMatches: boolean;
+  orderByReplayDiffs: boolean;
   verbose: boolean;
 }
 
@@ -38,8 +41,11 @@ const handler = async ({
   testRunId,
   commitSha,
   waitForTestRunToComplete,
-  includeMatches,
   includeReplayIds,
+  includeDomDiffIds,
+  includeAllDiffs,
+  includeMatches,
+  orderByReplayDiffs,
   verbose,
 }: Options): Promise<void> => {
   initLogger();
@@ -90,19 +96,34 @@ const handler = async ({
 
   log(`Fetching diffs summary for test run ${resolvedTestRunId}...`);
 
-  let response = await getTestRunDiffsSummary(client, resolvedTestRunId, {
+  // --includeMatches implies --includeAllDiffs (matches are never part of the
+  // selected subset, so they only make sense alongside the full set). Use the
+  // effective value for both the request and the isSelected column.
+  const allDiffs = includeAllDiffs || includeMatches;
+
+  const diffsSummaryOptions = {
     includeReplayIds,
+    includeDomDiffIds,
+    includeAllDiffs: allDiffs,
     includeMatches,
-  });
+    orderByReplayDiffs,
+  };
+
+  let response = await getTestRunDiffsSummary(
+    client,
+    resolvedTestRunId,
+    diffsSummaryOptions,
+  );
 
   // Poll until complete
   while (response.status === "pending" || response.status === "processing") {
     if (verbose) log(`Status: ${response.status}`);
     await sleep(2000);
-    response = await getTestRunDiffsSummary(client, resolvedTestRunId, {
-      includeReplayIds,
-      includeMatches,
-    });
+    response = await getTestRunDiffsSummary(
+      client,
+      resolvedTestRunId,
+      diffsSummaryOptions,
+    );
   }
 
   if (response.status !== "complete") {
@@ -117,39 +138,43 @@ const handler = async ({
     return;
   }
 
-  // Print TSV header
-  const headerFields = [
-    "replayDiffId",
-    "screenshotName",
-    "index",
-    "total",
-    "outcome",
-    "mismatch",
-    "domDiffIds",
-  ];
+  // Flatten into one list of (replayDiff, screenshot) rows. The backend sets
+  // `index` to the priority rank by default, or the within-replay position
+  // (with `total`) when orderByReplayDiffs is set.
+  const rows = data.flatMap((rd) => rd.screenshots.map((s) => ({ rd, s })));
+
+  // With --orderByReplayDiffs the backend already returns rows grouped by
+  // replay diff in event order, so we keep that order. Otherwise sort by the
+  // priority index (a flat cross-replay-diff order the grouped response can't
+  // express).
+  if (!orderByReplayDiffs) {
+    rows.sort((a, b) => a.s.index - b.s.index);
+  }
+
+  // Print TSV header. index/total are only meaningful with orderByReplayDiffs;
+  // by default rows are already in priority order, so the index is omitted.
+  const headerFields = ["replayDiffId", "screenshotName"];
+  if (orderByReplayDiffs) headerFields.push("index", "total");
+  headerFields.push("outcome", "mismatch");
+  if (includeDomDiffIds) headerFields.push("domDiffIds");
+  if (allDiffs) headerFields.push("isSelected");
   if (includeReplayIds) headerFields.push("baseReplayId", "headReplayId");
   console.log(headerFields.join("\t"));
 
   let totalDiffScreenshots = 0;
 
-  for (const rd of data) {
-    for (const s of rd.screenshots) {
-      if (s.userVisibleOutcome === "difference") {
-        totalDiffScreenshots++;
-      }
-      const fields: (string | number)[] = [
-        rd.replayDiffId,
-        s.screenshotName,
-        s.index,
-        s.total,
-        s.outcome,
-        fmtMismatch(s.mismatchFraction),
-        s.domDiffIds,
-      ];
-      if (includeReplayIds)
-        fields.push(rd.baseReplayId ?? "", rd.headReplayId ?? "");
-      console.log(fields.join("\t"));
+  for (const { rd, s } of rows) {
+    if (s.userVisibleOutcome === "difference") {
+      totalDiffScreenshots++;
     }
+    const fields: (string | number)[] = [rd.replayDiffId, s.screenshotName];
+    if (orderByReplayDiffs) fields.push(s.index, s.total ?? "");
+    fields.push(s.outcome, fmtMismatch(s.mismatchFraction));
+    if (includeDomDiffIds) fields.push(s.domDiffIds ?? "");
+    if (allDiffs) fields.push(String(s.isSelected ?? false));
+    if (includeReplayIds)
+      fields.push(rd.baseReplayId ?? "", rd.headReplayId ?? "");
+    console.log(fields.join("\t"));
   }
 
   const tEnd = performance.now();
@@ -179,14 +204,33 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
       description:
         "If the test run is still in progress, block until it finishes before fetching diffs (otherwise an in-progress run is reported and the command exits).",
     },
-    includeMatches: {
-      boolean: true,
-      description: "Include all screenshots (matches, known flakes), not just differences",
-      default: false,
-    },
     includeReplayIds: {
       boolean: true,
       description: "Include base and head replay IDs per replay diff",
+      default: false,
+    },
+    includeDomDiffIds: {
+      boolean: true,
+      description:
+        "Add a domDiffIds column grouping screenshots by structural DOM change",
+      default: false,
+    },
+    includeAllDiffs: {
+      boolean: true,
+      description:
+        "Return every diff instead of only the selected representative subset; adds an isSelected column",
+      default: false,
+    },
+    includeMatches: {
+      boolean: true,
+      description:
+        "Include matching screenshots (matches, known flakes), not just differences. Implies --includeAllDiffs.",
+      default: false,
+    },
+    orderByReplayDiffs: {
+      boolean: true,
+      description:
+        "Order rows by replay diff then event index (instead of by selection priority) and include the index/total columns",
       default: false,
     },
     verbose: {
