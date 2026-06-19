@@ -13,7 +13,8 @@ import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
 import {
-  isTestRunInProgress,
+  assertTestRunComplete,
+  isTestRunComplete,
   resolveTestRunForCommitOrThrow,
   throwIfTestRunCoverageNotReady,
   tryResolveTestRunForCommit,
@@ -86,8 +87,8 @@ const handler = async ({
 };
 
 // Resolves a commit to a test run for coverage. Coverage only exists once a run
-// has finished, so an in-progress run is reported as not-yet-available rather
-// than queried.
+// has finished with a usable verdict, so an unfinished or failed run is
+// reported as not-yet-available rather than queried.
 const resolveCompletedTestRunIdForCommit = async (
   client: MeticulousClient,
   apiToken: string,
@@ -98,11 +99,7 @@ const resolveCompletedTestRunIdForCommit = async (
     apiToken,
     commitSha,
   );
-  if (isTestRunInProgress(status)) {
-    throw new CliUserError(
-      `Test run ${testRunId} for this commit is still in progress (status: ${status}); coverage is not available yet.`,
-    );
-  }
+  assertTestRunComplete(testRunId, status, { resultName: "coverage" });
   return testRunId;
 };
 
@@ -148,8 +145,9 @@ const printReplayCoverage = async (
         apiToken,
         undefined,
       );
-      // Only retry against a finished run — an in-progress one has no coverage.
-      if (fallback != null && !isTestRunInProgress(fallback.status)) {
+      // Only retry against a run that finished with a verdict — an unfinished
+      // or failed one has no usable coverage.
+      if (fallback != null && isTestRunComplete(fallback.status)) {
         try {
           const result = await getReplayJsCoverage(client, replayId, {
             screenshotName,

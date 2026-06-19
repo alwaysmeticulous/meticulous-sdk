@@ -10,6 +10,7 @@ import { CliUserError } from "../../utils/cli-user-error";
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 import {
   awaitTestRunCompletion,
+  isTestRunComplete,
   isTestRunInProgress,
 } from "../../utils/resolve-test-run-from-commit";
 
@@ -72,11 +73,13 @@ const handler = async ({
     return;
   }
   console.log(result.testRunId);
-  if (result.status != null && isTestRunInProgress(result.status)) {
-    log(
-      `Test run is still in progress (status: ${result.status}); ` +
-        "pass --waitForTestRunToComplete to block until it finishes.",
-    );
+  if (result.status != null && !isTestRunComplete(result.status)) {
+    // Covers in-progress and Partial (more sessions can still be added on
+    // demand), as well as runs that finished unsuccessfully.
+    const hint = waitForTestRunToComplete
+      ? ""
+      : " Pass --waitForTestRunToComplete to block until it finishes.";
+    log(`Test run is not complete (status: ${result.status}).${hint}`);
   }
 };
 

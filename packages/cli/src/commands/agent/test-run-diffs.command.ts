@@ -11,9 +11,17 @@ import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
   awaitTestRunCompletion,
+  isTestRunComplete,
+  isTestRunFailed,
   isTestRunInProgress,
   resolveTestRunForCommitOrThrow,
 } from "../../utils/resolve-test-run-from-commit";
+import {
+  buildDiffsSummaryHeader,
+  flattenDiffRows,
+  formatDiffRow,
+  resolveIncludeAllDiffs,
+} from "./test-run-diffs.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -31,8 +39,8 @@ interface Options {
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-const fmtMismatch = (v: number | null): string =>
-  v != null ? v.toFixed(5) : "";
+/** Give up polling the diffs summary after this long, rather than forever. */
+const SUMMARY_POLL_TIMEOUT_MS = 10 * 60_000;
 
 const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
 
@@ -77,19 +85,30 @@ const handler = async ({
     status = run.status;
   }
 
-  // Diffs are only meaningful once the run has finished. If it is still running
-  // and the caller didn't opt to wait, report it and stop — regardless of how
-  // the run was selected.
-  if (isTestRunInProgress(status) && !waitForTestRunToComplete) {
-    log(
-      `Test run ${resolvedTestRunId} is still in progress (status: ${status}); ` +
-        "pass --waitForTestRunToComplete to block until it finishes and then show diffs.",
-    );
-    return;
+  // Diffs are only meaningful once the run has finished with a verdict
+  // (Success/Failure). Wait if asked and the run is still in progress, then
+  // classify the resulting status.
+  if (waitForTestRunToComplete && isTestRunInProgress(status)) {
+    status = await awaitTestRunCompletion(client, resolvedTestRunId);
   }
 
-  if (waitForTestRunToComplete) {
-    await awaitTestRunCompletion(client, resolvedTestRunId);
+  if (isTestRunFailed(status)) {
+    throw new CliUserError(
+      `Test run ${resolvedTestRunId} finished unsuccessfully (status: ${status}).`,
+    );
+  }
+
+  if (!isTestRunComplete(status)) {
+    // Either still in progress (and the caller didn't wait) or Partial (more
+    // sessions can still be added on demand) — diffs would be incomplete, so
+    // report and stop regardless of how the run was selected.
+    const hint = waitForTestRunToComplete
+      ? ""
+      : " Pass --waitForTestRunToComplete to block until it finishes and then show diffs.";
+    log(
+      `Test run ${resolvedTestRunId} is not complete (status: ${status}).${hint}`,
+    );
+    return;
   }
 
   const t0 = performance.now();
@@ -99,7 +118,7 @@ const handler = async ({
   // --includeMatches implies --includeAllDiffs (matches are never part of the
   // selected subset, so they only make sense alongside the full set). Use the
   // effective value for both the request and the isSelected column.
-  const allDiffs = includeAllDiffs || includeMatches;
+  const allDiffs = resolveIncludeAllDiffs({ includeAllDiffs, includeMatches });
 
   const diffsSummaryOptions = {
     includeReplayIds,
@@ -115,9 +134,17 @@ const handler = async ({
     diffsSummaryOptions,
   );
 
-  // Poll until complete
+  // Poll until complete (or give up after the timeout, rather than forever).
+  const summaryDeadline = performance.now() + SUMMARY_POLL_TIMEOUT_MS;
   while (response.status === "pending" || response.status === "processing") {
     if (verbose) log(`Status: ${response.status}`);
+    if (performance.now() >= summaryDeadline) {
+      log(
+        `Diffs summary for test run ${resolvedTestRunId} did not complete within 10 minutes ` +
+          `(status: ${response.status}). Something may have gone wrong — try again later.`,
+      );
+      process.exit(1);
+    }
     await sleep(2000);
     response = await getTestRunDiffsSummary(
       client,
@@ -138,43 +165,25 @@ const handler = async ({
     return;
   }
 
-  // Flatten into one list of (replayDiff, screenshot) rows. The backend sets
-  // `index` to the priority rank by default, or the within-replay position
-  // (with `total`) when orderByReplayDiffs is set.
-  const rows = data.flatMap((rd) => rd.screenshots.map((s) => ({ rd, s })));
+  // The backend sets `index` to the priority rank by default, or the
+  // within-replay position (with `total`) when orderByReplayDiffs is set.
+  const rows = flattenDiffRows(data, orderByReplayDiffs);
+  const columns = {
+    orderByReplayDiffs,
+    includeDomDiffIds,
+    includeAllDiffs: allDiffs,
+    includeReplayIds,
+  };
 
-  // With --orderByReplayDiffs the backend already returns rows grouped by
-  // replay diff in event order, so we keep that order. Otherwise sort by the
-  // priority index (a flat cross-replay-diff order the grouped response can't
-  // express).
-  if (!orderByReplayDiffs) {
-    rows.sort((a, b) => a.s.index - b.s.index);
-  }
-
-  // Print TSV header. index/total are only meaningful with orderByReplayDiffs;
-  // by default rows are already in priority order, so the index is omitted.
-  const headerFields = ["replayDiffId", "screenshotName"];
-  if (orderByReplayDiffs) headerFields.push("index", "total");
-  headerFields.push("outcome", "mismatch");
-  if (includeDomDiffIds) headerFields.push("domDiffIds");
-  if (allDiffs) headerFields.push("isSelected");
-  if (includeReplayIds) headerFields.push("baseReplayId", "headReplayId");
-  console.log(headerFields.join("\t"));
+  console.log(buildDiffsSummaryHeader(columns).join("\t"));
 
   let totalDiffScreenshots = 0;
 
-  for (const { rd, s } of rows) {
-    if (s.userVisibleOutcome === "difference") {
+  for (const row of rows) {
+    if (row.screenshot.userVisibleOutcome === "difference") {
       totalDiffScreenshots++;
     }
-    const fields: (string | number)[] = [rd.replayDiffId, s.screenshotName];
-    if (orderByReplayDiffs) fields.push(s.index, s.total ?? "");
-    fields.push(s.outcome, fmtMismatch(s.mismatchFraction));
-    if (includeDomDiffIds) fields.push(s.domDiffIds ?? "");
-    if (allDiffs) fields.push(String(s.isSelected ?? false));
-    if (includeReplayIds)
-      fields.push(rd.baseReplayId ?? "", rd.headReplayId ?? "");
-    console.log(fields.join("\t"));
+    console.log(formatDiffRow(row, columns).join("\t"));
   }
 
   const tEnd = performance.now();
