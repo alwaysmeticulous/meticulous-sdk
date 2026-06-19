@@ -1,6 +1,7 @@
 import {
   createClient,
   getReplayJsCoverage,
+  getTestRun,
   getTestRunJsCoverage,
   isFetchError,
   MeticulousClient,
@@ -16,7 +17,6 @@ import {
   assertTestRunComplete,
   isTestRunComplete,
   resolveTestRunForCommitOrThrow,
-  throwIfTestRunCoverageNotReady,
   tryResolveTestRunForCommit,
 } from "../../utils/resolve-test-run-from-commit";
 
@@ -73,7 +73,11 @@ const handler = async ({
     // or, when neither is given, from the local checkout's HEAD. Either way the
     // run must have finished for coverage to exist.
     if (testRunId != null) {
-      await throwIfTestRunCoverageNotReady(client, testRunId);
+      // Coverage only exists once a run has finished with a verdict; guard an
+      // explicitly passed testRunId, mirroring the check for runs resolved from
+      // a commit.
+      const { status } = await getTestRun({ client, testRunId });
+      assertTestRunComplete(testRunId, status, { resultName: "coverage" });
       await printTestRunCoverage(client, testRunId, json);
     } else {
       const resolvedTestRunId = await resolveCompletedTestRunIdForCommit(

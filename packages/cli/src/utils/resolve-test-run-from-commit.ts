@@ -147,20 +147,6 @@ export const tryResolveTestRunForCommit = async (
 };
 
 /**
- * Throws a `CliUserError` if the given test run hasn't finished with a usable
- * verdict, since coverage only exists once a run has completed. Used to guard
- * an explicitly passed `testRunId`, mirroring the check applied to runs
- * resolved from a commit.
- */
-export const throwIfTestRunCoverageNotReady = async (
-  client: MeticulousClient,
-  testRunId: string,
-): Promise<void> => {
-  const { status } = await getTestRun({ client, testRunId });
-  assertTestRunComplete(testRunId, status, { resultName: "coverage" });
-};
-
-/**
  * Polls a (possibly in-progress) test run until it reaches a terminal status,
  * logging once when it starts waiting (no per-poll output — this runs for
  * agents, where per-poll lines are just noisy context). Throws a `CliUserError`

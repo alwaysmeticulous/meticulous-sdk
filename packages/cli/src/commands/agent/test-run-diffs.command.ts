@@ -10,11 +10,9 @@ import { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
+  assertTestRunComplete,
   awaitTestRunCompletion,
-  isTestRunComplete,
-  isTestRunFailed,
   isTestRunInProgress,
-  isTestRunPartial,
   resolveTestRunForCommitOrThrow,
 } from "../../utils/resolve-test-run-from-commit";
 import {
@@ -93,33 +91,20 @@ const handler = async ({
     status = await awaitTestRunCompletion(client, resolvedTestRunId);
   }
 
-  if (isTestRunFailed(status)) {
-    throw new CliUserError(
-      `Test run ${resolvedTestRunId} finished unsuccessfully (status: ${status}).`,
-    );
-  }
-
-  if (isTestRunPartial(status)) {
-    // A Partial run is a session-pool base, not a test run for a specific
-    // change: it executes sessions on demand for other PRs and never finishes
-    // on its own, so it has no meaningful set of diffs. Reject it rather than
-    // suggest waiting (which would be a no-op).
-    throw new CliUserError(
-      `Test run ${resolvedTestRunId} is a session-pool base run (status: Partial), not a test run for a specific change, so it has no diffs to show.`,
-    );
-  }
-
-  if (!isTestRunComplete(status)) {
-    // Still in progress and the caller didn't wait — diffs aren't available
-    // yet, so report and stop. Waiting would let it finish with a verdict.
-    const hint = waitForTestRunToComplete
-      ? ""
-      : " Pass --waitForTestRunToComplete to block until it finishes and then show diffs.";
+  if (isTestRunInProgress(status)) {
+    // Reached only when the caller didn't wait (waiting resolves in-progress
+    // above), so the hint is always worth showing. Diffs aren't available yet,
+    // so report and stop rather than error out.
     log(
-      `Test run ${resolvedTestRunId} is not complete (status: ${status}).${hint}`,
+      `Test run ${resolvedTestRunId} is not complete (status: ${status}). ` +
+        "Pass --waitForTestRunToComplete to block until it finishes and then show diffs.",
     );
     return;
   }
+
+  // Reject fatal failures (Aborted/ExecutionError) and session-pool bases
+  // (Partial, which never finish on their own and aren't tied to a change).
+  assertTestRunComplete(resolvedTestRunId, status, { resultName: "diffs" });
 
   const t0 = performance.now();
 
