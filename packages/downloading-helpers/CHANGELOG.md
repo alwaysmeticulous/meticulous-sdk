@@ -1,5 +1,13 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 2.298.0
+
+### Patch Changes
+
+- Updated dependencies [[`5f5122a`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/5f5122a7e69d2f0b80dfb26bf883acc9e5e3743d), [`27df430`](https://github.com/alwaysmeticulous/meticulous-sdk/commit/27df430046651864302df98d548a8a91df069521)]:
+  - @alwaysmeticulous/client@2.298.0
+  - @alwaysmeticulous/common@2.298.0
+
 ## 2.297.1
 
 ### Patch Changes
