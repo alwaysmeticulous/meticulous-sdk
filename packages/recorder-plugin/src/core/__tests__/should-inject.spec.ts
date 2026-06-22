@@ -40,9 +40,7 @@ describe("shouldInject", () => {
   it("only treats strict `true` as truthy from a function predicate", () => {
     expect(shouldInject(() => false, devCtx)).toBe(false);
     // Non-boolean truthy values must not enable injection.
-    expect(shouldInject((() => "yes" as unknown as boolean), devCtx)).toBe(
-      false,
-    );
+    expect(shouldInject(() => "yes" as unknown as boolean, devCtx)).toBe(false);
     expect(shouldInject(() => true, devCtx)).toBe(true);
   });
 });

@@ -1,10 +1,10 @@
 import cx from "classnames";
-import {
+import type {
   ButtonHTMLAttributes,
   DetailedHTMLProps,
   FunctionComponent,
-  useCallback,
 } from "react";
+import { useCallback } from "react";
 import { ReplayUserEvents } from "./user-events";
 import { useReplayDebuggerContext } from "src/lib/replay-debugger/replay-debugger.context";
 import { ReplayDebuggerProvider } from "src/lib/replay-debugger/replay-debugger.provider";
@@ -30,7 +30,7 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
           "sm:max-w-xl",
           "sm:px-6",
           "sm:py-4",
-          "lg:px-8"
+          "lg:px-8",
         )}
       >
         <div
@@ -39,7 +39,7 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
             "overflow-hidden",
             "mx-auto",
             "shadow",
-            "sm:rounded-lg"
+            "sm:rounded-lg",
           )}
         >
           <div
@@ -53,7 +53,7 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
               "sm:flex-row",
               "sm:space-x-4",
               "sm:space-y-0",
-              "sm:p-6"
+              "sm:p-6",
             )}
           >
             <VioletButton onClick={onCheckNextEventTarget} disabled={loading}>
@@ -77,7 +77,7 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
           "sm:max-w-xl",
           "sm:px-6",
           "sm:py-4",
-          "lg:px-8"
+          "lg:px-8",
         )}
       >
         <div
@@ -86,7 +86,7 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
             "overflow-hidden",
             "mx-auto",
             "shadow",
-            "sm:rounded-lg"
+            "sm:rounded-lg",
           )}
         >
           <div
@@ -96,7 +96,7 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
               "border-b",
               "border-zinc-200",
               "sm:px-6",
-              "select-none"
+              "select-none",
             )}
           >
             <h3
@@ -104,7 +104,7 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
                 "text-lg",
                 "leading-6",
                 "font-medium",
-                "text-zinc-900"
+                "text-zinc-900",
               )}
             >
               Replay debugger state
@@ -121,7 +121,7 @@ const ReplayDebuggerWrapped: FunctionComponent = () => {
               "text-zinc-900",
               "font-mono",
               "sm:px-6",
-              "select-all"
+              "select-all",
             )}
           >
             <code className="language-json">
@@ -191,7 +191,7 @@ const VioletButton: FunctionComponent<
       "focus:ring-2",
       "focus:ring-offset-2",
       "focus:ring-violet-500",
-      className
+      className,
     )}
   >
     {children}

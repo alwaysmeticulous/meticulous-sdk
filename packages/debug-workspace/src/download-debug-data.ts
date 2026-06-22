@@ -1,23 +1,25 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
 import { join } from "path";
+import type { MeticulousClient } from "@alwaysmeticulous/client";
 import {
   getPrDescriptionForTestRun,
   getPrDiffForTestRun,
   getReplayDiff,
   getTestRun,
-  MeticulousClient,
 } from "@alwaysmeticulous/client";
+import type {
+  BestEffortFileType,
+  ReplayFileType,
+} from "@alwaysmeticulous/downloading-helpers";
 import {
   ensureReplayLogTextFiles,
   getOrFetchReplayArchive,
   getOrFetchRecordedSessionData,
-  BestEffortFileType,
-  ReplayFileType,
 } from "@alwaysmeticulous/downloading-helpers";
 import chalk from "chalk";
 import pLimit from "p-limit";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
-import { DebugContext } from "./debug.types";
+import type { DebugContext } from "./debug.types";
 
 const DEFAULT_MAX_REPLAY_DOWNLOADS = 8;
 

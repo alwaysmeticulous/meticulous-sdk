@@ -1,10 +1,7 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { dirname, join } from "path";
-import {
-  getReplay,
-  getReplayV3DownloadUrls,
-  MeticulousClient,
-} from "@alwaysmeticulous/client";
+import type { MeticulousClient } from "@alwaysmeticulous/client";
+import { getReplay, getReplayV3DownloadUrls } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   initLogger,

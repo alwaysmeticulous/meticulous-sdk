@@ -1,5 +1,5 @@
-import { AssetUploadMetadata } from "./asset-upload-metadata";
-import { DeploymentArchiveType } from "./deployment-archive-type";
+import type { AssetUploadMetadata } from "./asset-upload-metadata";
+import type { DeploymentArchiveType } from "./deployment-archive-type";
 
 export interface SingleArchiveDownloadResponse {
   kind: "singleArchive";
@@ -19,4 +19,6 @@ export interface ChunkedDownloadResponse {
   metadata: AssetUploadMetadata;
 }
 
-export type DownloadDeploymentResponse = SingleArchiveDownloadResponse | ChunkedDownloadResponse;
+export type DownloadDeploymentResponse =
+  | SingleArchiveDownloadResponse
+  | ChunkedDownloadResponse;

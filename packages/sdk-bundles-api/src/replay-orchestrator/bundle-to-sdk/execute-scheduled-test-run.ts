@@ -1,4 +1,4 @@
-import { ExecuteTestRunResult } from "./execute-test-run";
+import type { ExecuteTestRunResult } from "./execute-test-run";
 
 export interface InProgressTestRun {
   /**

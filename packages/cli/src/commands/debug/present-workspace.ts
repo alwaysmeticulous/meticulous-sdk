@@ -26,9 +26,7 @@ export const presentWorkspace = (options: PresentWorkspaceOptions): void => {
     "    .claude/        AI agent context files (CLAUDE.md, rules, skills, hooks)",
   );
   if (projectRepoDir) {
-    console.log(
-      "    project-repo/   Your codebase at the relevant commit",
-    );
+    console.log("    project-repo/   Your codebase at the relevant commit");
   }
   console.log("");
   console.log(chalk.bold("  Open in your preferred AI tool:"));

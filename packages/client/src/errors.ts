@@ -88,7 +88,7 @@ const dataToString = (data: unknown) => {
     return truncate(data, 50);
   }
   if (!data) {
-    return data + "";
+    return String(data);
   }
   try {
     return truncate(JSON.stringify(data), 50);

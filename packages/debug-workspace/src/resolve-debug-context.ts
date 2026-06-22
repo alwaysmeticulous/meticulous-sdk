@@ -1,10 +1,7 @@
-import {
-  getReplayDiff,
-  getTestRun,
-  MeticulousClient,
-} from "@alwaysmeticulous/client";
+import type { MeticulousClient } from "@alwaysmeticulous/client";
+import { getReplayDiff, getTestRun } from "@alwaysmeticulous/client";
 import chalk from "chalk";
-import { DebugContext } from "./debug.types";
+import type { DebugContext } from "./debug.types";
 
 interface ReplayApiResponse {
   id: string;

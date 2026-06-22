@@ -30,10 +30,10 @@ the `debug-data/` subdirectory.
 - **`debug-data/context.json`** -- Index of IDs, paths, metadata, and what data is available
   in this workspace. Read this first.
 - **`debug-data/`** -- All downloaded replay data, session recordings, diffs, and
-  pre-computed analysis artifacts.
+pre-computed analysis artifacts.
 <!-- if-local-cli -->
 - **`project-repo/`** -- (Optional) Your codebase checked out at the relevant commit.
-  Only present if the command was run from within a git repository.
+Only present if the command was run from within a git repository.
 <!-- end-if-local-cli -->
 
 ## debug-data/ Contents
@@ -72,7 +72,7 @@ Each replay directory (`debug-data/replays/<role>/<replayId>/`) contains:
 - `mapped-coverage.json` -- JS code coverage for the whole replay, mapped back to source files.
   Cross-reference with `pr-diff.txt` to check whether changed code actually executed during the replay.
 - `mapped-per-screenshot-js-coverage/<screenshotId>.json` -- Same coverage broken down per
-  screenshot. Use this to localize which code ran around a specific diff.
+screenshot. Use this to localize which code ran around a specific diff.
 <!-- if-snapshot-assets -->
 - `snapshotted-assets/` -- Static assets (JS/CSS) that were captured and used during replay.
 <!-- end-if-snapshot-assets -->
@@ -104,10 +104,10 @@ Per-replay generated summaries:
   surrounding each screenshot (30 before, 10 after) from the timeline. The screenshot line is
   marked with `>>>`. Use these to understand what happened right before a screenshot.
 - `debug-data/timeline-summaries/<role>-<replayId>.txt` -- Compact summary of each replay's
-  timeline: total entries, virtual time range, screenshot timestamps, event kind breakdown.
+timeline: total entries, virtual time range, screenshot timestamps, event kind breakdown.
 <!-- if-snapshot-assets -->
 - `debug-data/formatted-assets/<role>/<replayId>/` -- Pretty-printed JS/CSS from
-  `snapshotted-assets/`. Use these instead of the originals.
+`snapshotted-assets/`. Use these instead of the originals.
 <!-- end-if-snapshot-assets -->
 
 ### Diff Files (only when comparing replays)
@@ -127,10 +127,10 @@ These files are only generated when comparing replays.
   point, and categorized change counts with direction (e.g. "animation frames: +85 in head /
   -46 in base, net +39 in head").
 - `debug-data/params-diffs/<id>.diff` -- JSON-aware diff of `launchBrowserAndReplayParams.json`
-  between head and base. Keys are sorted and pretty-printed so only meaningful value changes appear.
+between head and base. Keys are sorted and pretty-printed so only meaningful value changes appear.
 <!-- if-snapshot-assets -->
 - `debug-data/assets-diffs/<id>.txt` -- Comparison of snapshotted asset file lists between head
-  and base (added/removed/changed by content hash). Not generated if assets are identical.
+and base (added/removed/changed by content hash). Not generated if assets are identical.
 <!-- end-if-snapshot-assets -->
 - `debug-data/screenshot-context/<id>.txt` -- Only generated with `--screenshot`. Shows ±30 lines
   of `logs.deterministic.txt` surrounding the screenshot for both head and base, with the
@@ -147,10 +147,12 @@ These files are only generated when comparing replays.
   `status`, `hunks`, `diff_bytes`, `url`).
 
 <!-- if-local-cli -->
+
 Note: DOM diffs are only generated when a `replayDiffId` is available (the normal
 `meticulous debug replay-diff <id>` path). On the rare `meticulous debug replay --baseReplayId`
 path there is no `replayDiffId`, so `dom-diffs/` is not generated — diff the per-replay
 `screenshots/<baseName>.html` files directly with the system `diff` command instead.
+
 <!-- end-if-local-cli -->
 
 Individual screenshots may also be marked `skipped-error` (backend fetch failed) or
@@ -170,8 +172,8 @@ to diffing the two `screenshots/<baseName>.html` files directly.
 - `debug-data/test-run/<testRunId>.json` -- Test run configuration, results, commit SHA, and status.
 <!-- if-pr-description -->
 - `debug-data/pr-description.txt` -- Pull request description/body.
-<!-- end-if-pr-description -->
-<!-- if-pr-diff -->
+  <!-- end-if-pr-description -->
+  <!-- if-pr-diff -->
 - `debug-data/pr-diff.txt` -- Source code changes between the base and head commits.
 <!-- end-if-pr-diff -->
 
@@ -218,20 +220,20 @@ replay), and drop into phase 4 only as needed.
    hunk isn't enough, open the sibling `.full.diff` file (same hunks with full-file context,
    path on `domDiffMap[...].fullDiffPath`).
 5. **Log diffs** -- **delegate to the log-diff-analyzer subagent** instead of reading
-   `debug-data/log-diffs/*.filtered.diff` directly; only open the raw diff to verify
-   specific findings.
+`debug-data/log-diffs/*.filtered.diff` directly; only open the raw diff to verify
+specific findings.
 <!-- if-pr-description-and-diff -->
 6. **PR description and diff** -- read `debug-data/pr-description.txt` first to understand
    the intended change, then **delegate to the pr-analyzer subagent** to correlate code
    changes with visual diffs. Only open `debug-data/pr-diff.txt` directly to verify findings.
-<!-- end-if-pr-description-and-diff -->
-<!-- if-pr-description-only -->
-6. **PR description** -- read `debug-data/pr-description.txt` to understand the intended
+   <!-- end-if-pr-description-and-diff -->
+   <!-- if-pr-description-only -->
+7. **PR description** -- read `debug-data/pr-description.txt` to understand the intended
    change that triggered this test run.
-<!-- end-if-pr-description-only -->
-<!-- if-pr-diff-only -->
-6. **PR diff** -- **delegate to the pr-analyzer subagent** to correlate code changes with
-   visual diffs. Only open `debug-data/pr-diff.txt` directly to verify findings.
+   <!-- end-if-pr-description-only -->
+   <!-- if-pr-diff-only -->
+8. **PR diff** -- **delegate to the pr-analyzer subagent** to correlate code changes with
+visual diffs. Only open `debug-data/pr-diff.txt` directly to verify findings.
 <!-- end-if-pr-diff-only -->
 
 ### 3. Investigate a single replay
@@ -281,21 +283,21 @@ can be disregarded -- it stems from a network matching issue, not a real code re
 13. **Replay parameters** -- `debug-data/params-diffs/` for computed diffs, or
     `launchBrowserAndReplayParams.json` for a single replay.
 14. **Code coverage** -- `mapped-coverage.json` for whole-replay coverage; correlate executed
-    code with `pr-diff.txt` to see whether the changed lines actually ran. Use
-    `mapped-per-screenshot-js-coverage/<screenshotId>.json` to localize what executed before
-    a specific screenshot.
+code with `pr-diff.txt` to see whether the changed lines actually ran. Use
+`mapped-per-screenshot-js-coverage/<screenshotId>.json` to localize what executed before
+a specific screenshot.
 <!-- if-snapshot-assets -->
 15. **Assets** -- `debug-data/assets-diffs/` for snapshotted JS/CSS diffs,
-    `debug-data/formatted-assets/` for pretty-printed bundles.
+`debug-data/formatted-assets/` for pretty-printed bundles.
 <!-- end-if-snapshot-assets -->
 16. **Session data** -- `debug-data/session-summaries/<sessionId>.txt` first; only read raw
-    `sessions/<id>/data.json` for specific request bodies or event selectors.
+`sessions/<id>/data.json` for specific request bodies or event selectors.
 <!-- if-local-cli -->
 17. **Project source** -- `project-repo/` when present.
-<!-- if-snapshot-assets -->
-    For third-party library code, use `debug-data/formatted-assets/`.
-<!-- end-if-snapshot-assets -->
-<!-- end-if-local-cli -->
+    <!-- if-snapshot-assets -->
+        For third-party library code, use `debug-data/formatted-assets/`.
+    <!-- end-if-snapshot-assets -->
+    <!-- end-if-local-cli -->
 
 **Important**: Do NOT use Python one-liners to parse `timeline.json` or `logs.ndjson`. The
 derived files above (`events-index/`, `logs-index/`, `network-log/`, `vt-progression/`,

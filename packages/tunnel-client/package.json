@@ -12,9 +12,9 @@
     "clean": "rimraf dist tsconfig.tsbuildinfo",
     "build": "tsc --build tsconfig.json",
     "format": "prettier --write src",
-    "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
+    "lint": "oxlint --type-aware src",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
-    "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
+    "lint:fix": "oxlint --type-aware src --fix",
     "depcheck": "depcheck --ignore-patterns=dist",
     "test": "vitest run --passWithNoTests"
   },

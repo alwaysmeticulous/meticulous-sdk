@@ -16,7 +16,7 @@ export const getMeticulousLocalDataDir: () => string = () => {
   if (!_localDataDir) {
     setMeticulousLocalDataDir();
     logger.debug(
-      `Local data dir has not been set explictly, so defaulting to ${_localDataDir}`
+      `Local data dir has not been set explictly, so defaulting to ${_localDataDir}`,
     );
   } else {
     logger.debug(`Using local data dir at ${_localDataDir}`);
@@ -25,12 +25,12 @@ export const getMeticulousLocalDataDir: () => string = () => {
 };
 
 export const setMeticulousLocalDataDir: (
-  localDataDir?: string | null | undefined
+  localDataDir?: string | null,
 ) => void = (localDataDir) => {
   const logger = initLogger();
   if (_localDataDir) {
     logger.warn(
-      "Meticulous local data dir has already been set by a prior call to setMeticulousLocalDataDir()"
+      "Meticulous local data dir has already been set by a prior call to setMeticulousLocalDataDir()",
     );
   }
 
@@ -50,7 +50,11 @@ export const setMeticulousLocalDataDir: (
  */
 export const runWithLocalDataDir = <T>(
   dataDir: string,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
 ): Promise<T> => {
-  return asyncLocalDataDir.run(dataDir, fn);
+  let result: Promise<T>;
+  asyncLocalDataDir.run(dataDir, () => {
+    result = fn();
+  });
+  return result!;
 };

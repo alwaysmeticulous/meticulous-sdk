@@ -1,4 +1,4 @@
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { relevantSessionsCommand } from "./relevant-sessions.command";
 
 export const localCommand: CommandModule = {

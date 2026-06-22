@@ -42,9 +42,9 @@ describe("rspack-html-hooks", () => {
     const html = `<html><head>${scriptTag}<title>x</title></head></html>`;
 
     expect(isAlreadyInjected(html, options, scriptTag)).toBe(true);
-    expect(isAlreadyInjected("<html><head></head></html>", options, scriptTag)).toBe(
-      false,
-    );
+    expect(
+      isAlreadyInjected("<html><head></head></html>", options, scriptTag),
+    ).toBe(false);
   });
 
   it("detects HTML-escaped recording tokens from buildScriptTag output", () => {
@@ -53,7 +53,11 @@ describe("rspack-html-hooks", () => {
     const html = `<html><head>${scriptTag}</head></html>`;
 
     expect(
-      isAlreadyInjected(html, options, "<script data-recording-token=\"evil\"><>&value\"></script>"),
+      isAlreadyInjected(
+        html,
+        options,
+        '<script data-recording-token="evil"><>&value"></script>',
+      ),
     ).toBe(true);
     expect(
       html.includes('data-recording-token="evil&quot;&lt;&gt;&amp;value"'),

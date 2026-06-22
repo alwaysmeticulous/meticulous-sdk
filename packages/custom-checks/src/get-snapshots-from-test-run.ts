@@ -55,10 +55,9 @@ export const getSnapshotsFromTestRun = async ({
     params.append("snapshotTypes", snapshotType);
   }
   const { data } = await client
-    .get<
-      unknown,
-      { data: SnapshotDownloadUrlsResponse }
-    >(`test-runs/${testRunId}/custom-check-snapshots-download-urls?${params.toString()}`)
+    .get<unknown, { data: SnapshotDownloadUrlsResponse }>(
+      `test-runs/${testRunId}/custom-check-snapshots-download-urls?${params.toString()}`,
+    )
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });

@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from "fs";
 import { basename, dirname, extname, join } from "path";
-import { MeticulousClient } from "@alwaysmeticulous/client";
+import type { MeticulousClient } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   initLogger,
@@ -19,7 +19,7 @@ import {
 import chalk from "chalk";
 import { format, type BuiltInParserName } from "prettier";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
-import { DebugContext } from "./debug.types";
+import type { DebugContext } from "./debug.types";
 import { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
 import { fetchDomDiffs, type DomDiffMap } from "./fetch-dom-diffs";
 import { generateDebugDerivedFiles } from "./generate-debug-derived-files";

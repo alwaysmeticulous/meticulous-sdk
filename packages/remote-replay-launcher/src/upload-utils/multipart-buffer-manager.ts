@@ -56,15 +56,15 @@ export class MultipartBufferManager {
    *
    * @param isLastPart - Whether this is the last part to be uploaded
    */
-  public async flush(isLastPart: boolean): Promise<void> {
+  public flush(isLastPart: boolean): Promise<void> {
     if (this.currentBuffer.length === 0) {
-      return;
+      return Promise.resolve();
     }
 
     const combinedBuffer = Buffer.concat(this.currentBuffer);
 
     if (!isLastPart && combinedBuffer.length < this.uploadChunkSize) {
-      return;
+      return Promise.resolve();
     }
 
     let bufferToUpload: Buffer;
@@ -90,6 +90,8 @@ export class MultipartBufferManager {
       this.currentBuffer = [];
       this.currentBufferSize = 0;
     }
+
+    return Promise.resolve();
   }
 
   /**

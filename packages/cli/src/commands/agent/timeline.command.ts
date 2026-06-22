@@ -3,7 +3,7 @@ import {
   getTimelineDiff,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {

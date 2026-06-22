@@ -27,7 +27,7 @@ export const startUIServer = async (): Promise<Server> => {
         resolve({ url, close: () => server.close() });
       });
     } catch (err) {
-      reject(err);
+      reject(err instanceof Error ? err : new Error(String(err)));
     }
   });
 };

@@ -7,7 +7,7 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import { uploadAssetsAndTriggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { parseRewrites } from "../../command-utils/parse-rewrites";
 import { wrapHandler } from "../../command-utils/sentry.utils";
@@ -71,12 +71,13 @@ const handler = async ({
     process.exit(1);
   }
 
-  const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } = await resolveGitOptions({
-    commitSha: commitSha_,
-    baseSha: baseSha_,
-    gitDiffOutput: gitDiffOutput_,
-    repoDirectory,
-  });
+  const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } =
+    await resolveGitOptions({
+      commitSha: commitSha_,
+      baseSha: baseSha_,
+      gitDiffOutput: gitDiffOutput_,
+      repoDirectory,
+    });
 
   if (baseSha && baseSha === commitSha && !gitDiffOutput) {
     logger.info(
@@ -190,7 +191,7 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
       default: "[]",
       description:
         "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array." +
-        " Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule '{ source: \"**\", destination: \"/index.html\" }'.",
+        ' Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule \'{ source: "**", destination: "/index.html" }\'.',
     },
     waitForBase: {
       boolean: true,

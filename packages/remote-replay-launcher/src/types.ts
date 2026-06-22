@@ -1,9 +1,9 @@
-import {
+import type {
   AssetUploadMetadata,
   TestRun,
   TestRunTriggerDebugContext,
 } from "@alwaysmeticulous/api";
-import {
+import type {
   ContainerEnvVariable,
   ProjectIdentifier,
 } from "@alwaysmeticulous/client";
@@ -64,7 +64,6 @@ export interface ExecuteRemoteTestRunOptions {
    */
   postComment?: boolean;
 
-
   debugContext?: TestRunTriggerDebugContext;
 }
 
@@ -89,8 +88,7 @@ export interface UploadAssetsAndTriggerTestRunOptions extends ProjectIdentifier 
   createDeployment?: boolean;
 }
 
-export interface UploadContainerAndTriggerTestRunOptions
-  extends ProjectIdentifier {
+export interface UploadContainerAndTriggerTestRunOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
   localImageTag: string;
   commitSha: string;

@@ -8,7 +8,7 @@ describe("retryTransientUploadErrors", () => {
   const noSleep = async () => {};
 
   it("returns the value when the operation succeeds on the first attempt", async () => {
-    const operation = vi.fn(async () => "ok");
+    const operation = vi.fn(() => "ok");
 
     const result = await retryTransientUploadErrors(operation, {
       sleep: noSleep,
@@ -20,7 +20,7 @@ describe("retryTransientUploadErrors", () => {
 
   it("retries on 503 SlowDown and eventually succeeds", async () => {
     let attempts = 0;
-    const operation = async () => {
+    const operation = () => {
       attempts++;
       if (attempts < 3) {
         throw new UploadError(503, "<Code>SlowDown</Code>");
@@ -38,7 +38,7 @@ describe("retryTransientUploadErrors", () => {
 
   it("retries on 500 InternalError", async () => {
     let attempts = 0;
-    const operation = async () => {
+    const operation = () => {
       attempts++;
       if (attempts < 2) {
         throw new UploadError(500, "<Code>InternalError</Code>");
@@ -56,7 +56,7 @@ describe("retryTransientUploadErrors", () => {
 
   it("retries on 429 Too Many Requests", async () => {
     let attempts = 0;
-    const operation = async () => {
+    const operation = () => {
       attempts++;
       if (attempts < 2) {
         throw new UploadError(429, "");
@@ -74,7 +74,7 @@ describe("retryTransientUploadErrors", () => {
 
   it("retries on transient network errors like ECONNRESET", async () => {
     let attempts = 0;
-    const operation = async () => {
+    const operation = () => {
       attempts++;
       if (attempts < 2) {
         const err = new Error("socket hang up") as Error & { code: string };
@@ -93,7 +93,7 @@ describe("retryTransientUploadErrors", () => {
   });
 
   it("does not retry on 4xx client errors (e.g. 403 Forbidden)", async () => {
-    const operation = vi.fn(async () => {
+    const operation = vi.fn(() => {
       throw new UploadError(403, "<Code>AccessDenied</Code>");
     });
 
@@ -104,7 +104,7 @@ describe("retryTransientUploadErrors", () => {
   });
 
   it("does not retry on arbitrary non-transient errors", async () => {
-    const operation = vi.fn(async () => {
+    const operation = vi.fn(() => {
       throw new Error("something unrelated");
     });
 
@@ -115,7 +115,7 @@ describe("retryTransientUploadErrors", () => {
   });
 
   it("throws the last error after exhausting retries", async () => {
-    const operation = vi.fn(async () => {
+    const operation = vi.fn(() => {
       throw new UploadError(503, "<Code>SlowDown</Code>");
     });
 
@@ -130,12 +130,12 @@ describe("retryTransientUploadErrors", () => {
 
   it("applies exponential backoff with jitter between retries", async () => {
     const delays: number[] = [];
-    const sleep = async (ms: number) => {
+    const sleep = (ms: number) => {
       delays.push(ms);
     };
 
     let attempts = 0;
-    const operation = async () => {
+    const operation = () => {
       attempts++;
       if (attempts < 4) {
         throw new UploadError(503, "");
@@ -162,7 +162,7 @@ describe("retryTransientUploadErrors", () => {
   it("invokes onRetry with attempt number and error before sleeping", async () => {
     const onRetry = vi.fn();
     let attempts = 0;
-    const operation = async () => {
+    const operation = () => {
       attempts++;
       if (attempts < 3) {
         throw new UploadError(503, "");

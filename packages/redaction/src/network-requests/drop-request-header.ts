@@ -1,5 +1,5 @@
-import { HarRequest } from "@alwaysmeticulous/api";
-import { RecorderMiddleware } from "@alwaysmeticulous/sdk-bundles-api";
+import type { HarRequest } from "@alwaysmeticulous/api";
+import type { RecorderMiddleware } from "@alwaysmeticulous/sdk-bundles-api";
 
 /**
  * Drops a request header from network requests.
@@ -11,13 +11,13 @@ export const dropRequestHeader = (headerName: string): RecorderMiddleware => {
     transformNetworkRequest: (request: Omit<HarRequest, "queryString">) => {
       if (
         request.headers.find(
-          (header) => header.name.toLowerCase() === headerName.toLowerCase()
+          (header) => header.name.toLowerCase() === headerName.toLowerCase(),
         )
       ) {
         return {
           ...request,
           headers: request.headers.filter(
-            (header) => header.name.toLowerCase() !== headerName.toLowerCase()
+            (header) => header.name.toLowerCase() !== headerName.toLowerCase(),
           ),
         };
       }

@@ -73,7 +73,8 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
     },
 
     webpack(compiler) {
-      const mode = compiler.options.mode ?? process.env["NODE_ENV"] ?? undefined;
+      const mode =
+        compiler.options.mode ?? process.env["NODE_ENV"] ?? undefined;
       const ctx: EnabledContext = {
         framework: "webpack",
         mode,
@@ -94,7 +95,10 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
               name: string,
               handler: (
                 data: { html: string; outputName: string },
-                cb: (err: Error | null, data: { html: string; outputName: string }) => void,
+                cb: (
+                  err: Error | null,
+                  data: { html: string; outputName: string },
+                ) => void,
               ) => void,
             ) => void;
           };
@@ -148,7 +152,8 @@ export const unpluginFactory: UnpluginFactory<Options | undefined, false> = (
     },
 
     rspack(compiler) {
-      const mode = compiler.options.mode ?? process.env["NODE_ENV"] ?? undefined;
+      const mode =
+        compiler.options.mode ?? process.env["NODE_ENV"] ?? undefined;
       const ctx: EnabledContext = {
         framework: "rspack",
         mode,

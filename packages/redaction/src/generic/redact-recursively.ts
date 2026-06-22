@@ -59,11 +59,11 @@ export const redactRecursively = (
     redactNumber?: (num: number, jsonPath: string[]) => number;
     redactBoolean?: (bool: boolean, jsonPath: string[]) => boolean;
     redactBigInt?: (bigInt: bigint, jsonPath: string[]) => bigint;
-  }
+  },
 ) => {
   const redactValueRecursively = (
     value: unknown,
-    jsonPath: string[]
+    jsonPath: string[],
   ): unknown => {
     if (typeof value === "object" && value !== null) {
       if (Array.isArray(value)) {
@@ -88,7 +88,7 @@ export const redactRecursively = (
         return hasRedacted ? redactedValueEntries : value;
       } else {
         if (redactObject) {
-          const redactedValue = redactObject(value as object, jsonPath);
+          const redactedValue = redactObject(value, jsonPath);
           if (redactedValue !== value) {
             return redactedValue;
           }
@@ -102,7 +102,7 @@ export const redactRecursively = (
               hasRedacted = true;
             }
             return [key, redacted];
-          }
+          },
         );
         return hasRedacted ? Object.fromEntries(redactedValueEntries) : value;
       }

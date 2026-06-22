@@ -2,7 +2,8 @@ import { access, mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, join } from "path";
 import { initLogger } from "@alwaysmeticulous/common";
 import { Duration } from "luxon";
-import { lock, LockOptions } from "proper-lockfile";
+import type { LockOptions } from "proper-lockfile";
+import { lock } from "proper-lockfile";
 
 /**
  * proper-lockfile v4 uses a timer that periodically stat()s the lock file to

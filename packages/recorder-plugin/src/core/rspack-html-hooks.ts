@@ -55,10 +55,7 @@ const hasRecorderScriptSrc = (html: string, snippetUrl: string): boolean =>
     "i",
   ).test(html);
 
-const hasRecorderTokenAttribute = (
-  html: string,
-  token: string,
-): boolean => {
+const hasRecorderTokenAttribute = (html: string, token: string): boolean => {
   const escapedToken = escapeAttributeValue(token);
   return (
     html.includes(`data-recording-token="${escapedToken}"`) ||
@@ -120,7 +117,10 @@ const resolveHtmlRspackPlugin = (
   }
 
   const candidates: unknown[] = [moduleExports];
-  if (typeof moduleExports === "function" || typeof moduleExports === "object") {
+  if (
+    typeof moduleExports === "function" ||
+    typeof moduleExports === "object"
+  ) {
     const record = moduleExports as Record<string, unknown>;
     if (record["default"] != null) {
       candidates.push(record["default"]);

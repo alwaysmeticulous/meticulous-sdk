@@ -21,7 +21,7 @@ const execFilePromise = (
   return new Promise((resolve, reject) => {
     execFile(file, args, { encoding: "utf-8", cwd }, (error, output) => {
       if (error) {
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
         return;
       }
       resolve(output.trim());
@@ -78,7 +78,7 @@ const getGitCommitDate: (commitSha: string, cwd?: string) => Promise<string> = (
       { encoding: "utf-8", cwd },
       (error, output) => {
         if (error) {
-          reject(error);
+          reject(error instanceof Error ? error : new Error(String(error)));
           return;
         }
         resolve(output);
@@ -127,10 +127,7 @@ export const getLocalBaseSha = async (options?: {
     ? [defaultBranchName]
     : ["main", "master"];
 
-  if (
-    branchName === "HEAD" ||
-    defaultBranchCandidates.includes(branchName)
-  ) {
+  if (branchName === "HEAD" || defaultBranchCandidates.includes(branchName)) {
     try {
       const headSha = await execPromise("git rev-parse HEAD", cwd);
       logger.debug(
@@ -167,9 +164,7 @@ export const getLocalBaseSha = async (options?: {
     }
   }
 
-  logger.warn(
-    "Could not compute base SHA: no default branch found on origin.",
-  );
+  logger.warn("Could not compute base SHA: no default branch found on origin.");
   return null;
 };
 
@@ -180,7 +175,10 @@ export const hasUncommittedChanges = async (options?: {
   cwd?: string;
 }): Promise<boolean> => {
   try {
-    const output = await execPromise("git status --porcelain --untracked-files=no", options?.cwd);
+    const output = await execPromise(
+      "git status --porcelain --untracked-files=no",
+      options?.cwd,
+    );
     return output.length > 0;
   } catch {
     return false;
@@ -197,9 +195,7 @@ export const getGitDiff = async (
   headSha: string | undefined,
   options?: { cwd?: string },
 ): Promise<string> => {
-  const args = headSha
-    ? ["diff", baseSha, headSha]
-    : ["diff", baseSha];
+  const args = headSha ? ["diff", baseSha, headSha] : ["diff", baseSha];
   return execFilePromise("git", args, options?.cwd);
 };
 

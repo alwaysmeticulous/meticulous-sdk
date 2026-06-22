@@ -1,15 +1,15 @@
 import { SessionRelevance } from "@alwaysmeticulous/api";
+import type { RelevantSession } from "@alwaysmeticulous/client";
 import {
   createClient,
   getProject,
   getRelevantSessions,
-  RelevantSession,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { getLocalBaseSha, initLogger } from "@alwaysmeticulous/common";
 import { writeManifest } from "@alwaysmeticulous/downloading-helpers";
 import chalk from "chalk";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import {
   DEFAULT_SESSION_OUTPUT_DIR,
   OPTIONS,
@@ -98,7 +98,9 @@ const handler = async ({
   const maybeSessions = response.testCases.filter((s) => !isMainRelevant(s));
 
   if (mainSessions.length === 0) {
-    logger.info(chalk.dim("No relevant sessions found for the current changes."));
+    logger.info(
+      chalk.dim("No relevant sessions found for the current changes."),
+    );
   } else {
     logger.info(chalk.bold(`Found ${mainSessions.length} relevant sessions:`));
     mainSessions.forEach((session) => {
@@ -199,9 +201,7 @@ const downloadAllSessionData = async ({
     }),
   );
 
-  return results.filter(
-    (s): s is NonNullable<typeof s> => s != null,
-  );
+  return results.filter((s): s is NonNullable<typeof s> => s != null);
 };
 
 const isMainRelevant = (session: RelevantSession): boolean => {

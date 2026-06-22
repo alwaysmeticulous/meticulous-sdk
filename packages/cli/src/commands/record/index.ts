@@ -1,4 +1,4 @@
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { recordLoginCommand } from "./login.command";
 import { recordSessionCommand } from "./session.command";
 

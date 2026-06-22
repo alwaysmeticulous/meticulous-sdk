@@ -1,5 +1,9 @@
-import { Project, TestCaseResult, TestRunStatus } from "@alwaysmeticulous/api";
-import { ScreenshotDiffData } from "./execute-replay";
+import type {
+  Project,
+  TestCaseResult,
+  TestRunStatus,
+} from "@alwaysmeticulous/api";
+import type { ScreenshotDiffData } from "./execute-replay";
 
 export interface ExecuteTestRunResult {
   testRun: FinishedTestRunExecution;

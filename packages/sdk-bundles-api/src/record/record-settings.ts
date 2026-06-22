@@ -1,6 +1,6 @@
 // Settings sent from the recorder-loader to the recorder bundle
 
-import { NetworkResponseTimings, RecorderMiddleware } from "./middleware";
+import type { NetworkResponseTimings, RecorderMiddleware } from "./middleware";
 
 export interface MeticulousWindowConfig {
   METICULOUS_RECORDING_TOKEN?: string;

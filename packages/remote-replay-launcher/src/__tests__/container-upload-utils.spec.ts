@@ -239,18 +239,18 @@ describe("uploadContainer", () => {
 
     let callCount = 0;
     // Always return baseNotFound until timeout, then return test run
-    (completeContainerUpload as any).mockImplementation(async () => {
+    (completeContainerUpload as any).mockImplementation(() => {
       callCount++;
       // Keep returning baseNotFound for multiple calls (simulating timeout scenario)
       if (callCount <= 30) {
         // Simulate many polls
-        return {
+        return Promise.resolve({
           testRun: null,
           baseNotFound: true,
-        };
+        });
       }
       // Final call without mustHaveBase returns test run
-      return {
+      return Promise.resolve({
         testRun: {
           id: "test-run-789",
           project: {
@@ -261,7 +261,7 @@ describe("uploadContainer", () => {
           },
         },
         baseNotFound: false,
-      };
+      });
     });
 
     const resultPromise = uploadContainer({

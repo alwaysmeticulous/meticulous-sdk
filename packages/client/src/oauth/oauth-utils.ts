@@ -26,9 +26,7 @@ export const isOAuthJwt = (token: string): boolean => {
  * Intended for client-side hints (e.g. "is this token expired?"). Never
  * use the result for authorization decisions.
  */
-export const getJwtClaims = (
-  token: string,
-): Record<string, unknown> | null => {
+export const getJwtClaims = (token: string): Record<string, unknown> | null => {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) {

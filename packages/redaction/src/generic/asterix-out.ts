@@ -5,7 +5,7 @@
  */
 export const asterixOut = (
   str: string,
-  opts: { preserveWhitespace?: boolean } = { preserveWhitespace: true }
+  opts: { preserveWhitespace?: boolean } = { preserveWhitespace: true },
 ) => {
   return opts.preserveWhitespace
     ? str.replace(/[^ ]/g, "*")

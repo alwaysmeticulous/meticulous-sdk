@@ -1,4 +1,4 @@
-import { CompactRange } from "@alwaysmeticulous/client";
+import type { CompactRange } from "@alwaysmeticulous/client";
 
 /**
  * Formats compact line ranges for TSV output, e.g. `[[1, 1], [4, 9]]` becomes

@@ -1,13 +1,12 @@
 import net from "net";
 import tls from "tls";
-import { Logger } from "loglevel";
-import { TunnelInfo } from "../types";
+import type { Logger } from "loglevel";
+import type { TunnelInfo } from "../types";
 
-interface OpenSocketOptions
-  extends Pick<
-    TunnelInfo,
-    "useTls" | "remoteHost" | "multiplexingRemotePort" | "tunnelPassphrase"
-  > {
+interface OpenSocketOptions extends Pick<
+  TunnelInfo,
+  "useTls" | "remoteHost" | "multiplexingRemotePort" | "tunnelPassphrase"
+> {
   sendAuthOkAck?: boolean;
   logger: Logger;
   onError?: (error: Error) => void;

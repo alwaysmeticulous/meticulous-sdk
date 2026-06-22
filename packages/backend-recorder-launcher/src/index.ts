@@ -1,12 +1,11 @@
 import { initLogger } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
-import {
+import type {
   BackendRecorderConfig,
   BackendRecorderHandle,
 } from "@alwaysmeticulous/sdk-bundles-api";
 
-const MANUAL_INIT_BUNDLE_PATH =
-  "backend-record-js/v1/manual-init.bundle.js";
+const MANUAL_INIT_BUNDLE_PATH = "backend-record-js/v1/manual-init.bundle.js";
 
 export const initBackendRecorder = async (
   config?: BackendRecorderConfig,
@@ -22,7 +21,6 @@ export const initBackendRecorder = async (
 export const getBackendRecorderBundlePath = (
   version?: string | null,
 ): string => {
-  const versionFolder =
-    version == null ? "v1" : `v/${version}`;
+  const versionFolder = version == null ? "v1" : `v/${version}`;
   return `backend-record-js/${versionFolder}/manual-init.bundle.js`;
 };

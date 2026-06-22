@@ -1,17 +1,17 @@
 import { mkdirSync } from "fs";
 import { join } from "path";
-import { MeticulousClient } from "@alwaysmeticulous/client";
+import type { MeticulousClient } from "@alwaysmeticulous/client";
 import chalk from "chalk";
 import { getDebugSessionsDir } from "./debug-constants";
-import { DebugContext } from "./debug.types";
+import type { DebugContext } from "./debug.types";
 import { downloadDebugData } from "./download-debug-data";
 import type { DomDiffMap } from "./fetch-dom-diffs";
-import {
-  generateDebugWorkspace,
+import type {
   FileMetadataEntry,
   ScreenshotMapEntry,
   ReplayComparisonEntry,
 } from "./generate-debug-workspace";
+import { generateDebugWorkspace } from "./generate-debug-workspace";
 import { resolveDebugContext } from "./resolve-debug-context";
 
 export interface DebugPipelineOptions {

@@ -14,7 +14,7 @@ export const ReplayDebuggerProvider: FunctionComponent<{
     loading: true,
   });
   const [dispatchEvent, setDispatchEvent] = useState<DispatchEvent | null>(
-    null
+    null,
   );
 
   useEffect(() => {

@@ -97,11 +97,14 @@ const resolveFromRepoDirectory = async (
     `Commit SHA inferred from repo${uncommitted ? " (with uncommitted changes)" : ""}: ${commitSha}`,
   );
   logger.info(`Base SHA inferred from merge-base: ${baseSha}`);
-  logger.info(
-    `Git diff output computed: ${gitDiffOutput.length} chars`,
-  );
+  logger.info(`Git diff output computed: ${gitDiffOutput.length} chars`);
 
-  return { commitSha, baseSha, gitDiffOutput, withUncommittedChanges: uncommitted };
+  return {
+    commitSha,
+    baseSha,
+    gitDiffOutput,
+    withUncommittedChanges: uncommitted,
+  };
 };
 
 const resolveFromExplicitArgs = async ({

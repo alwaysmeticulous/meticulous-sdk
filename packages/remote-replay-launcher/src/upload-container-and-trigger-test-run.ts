@@ -1,5 +1,5 @@
 import { initLogger } from "@alwaysmeticulous/common";
-import {
+import type {
   UploadContainerAndTriggerTestRunOptions,
   ExecuteRemoteTestRunResult,
 } from "./types";

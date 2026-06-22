@@ -3,7 +3,7 @@ import { asterixOut } from "../asterix-out";
 import { doNotRedact } from "../redact-nested-fields/common-redactors";
 import { redactKey } from "../redact-nested-fields/pattern-based-redactors";
 import { NestedFieldsRedactor } from "../redact-nested-fields/redact-nested-fields";
-import { Tweet } from "./typings/twitter-example";
+import type { Tweet } from "./typings/twitter-example";
 
 describe("redactNestedFields", () => {
   it("can use a completely custom redactor", () => {

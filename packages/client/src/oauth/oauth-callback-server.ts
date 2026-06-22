@@ -1,4 +1,5 @@
-import { createServer, IncomingMessage, Server, ServerResponse } from "http";
+import type { IncomingMessage, Server, ServerResponse } from "http";
+import { createServer } from "http";
 
 const CALLBACK_TIMEOUT_MS = 120_000;
 

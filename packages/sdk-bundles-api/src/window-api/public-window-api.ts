@@ -1,4 +1,4 @@
-import { HarResponse } from "@alwaysmeticulous/api";
+import type { HarResponse } from "@alwaysmeticulous/api";
 
 /**
  * This API is exposed on the window under `window.Meticulous`.

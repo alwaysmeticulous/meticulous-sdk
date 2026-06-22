@@ -2,10 +2,8 @@ import { mkdir, writeFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import {
-  MultipartCompressingUploader,
-  MultipartCompressingUploaderArgs,
-} from "../multipart-compressing-uploader";
+import type { MultipartCompressingUploaderArgs } from "../multipart-compressing-uploader";
+import { MultipartCompressingUploader } from "../multipart-compressing-uploader";
 
 vi.mock("@alwaysmeticulous/client", async () => {
   const actual = await vi.importActual("@alwaysmeticulous/client");
@@ -49,9 +47,9 @@ describe("MultipartCompressingUploader", () => {
       awsUploadId: "upload-123",
       uploadId: "id-123",
       client: {} as any,
-      uploadBufferToSignedUrl: async (url: string, buffer: Buffer) => {
+      uploadBufferToSignedUrl: (url: string, buffer: Buffer) => {
         uploadedParts.push({ url, size: buffer.length });
-        return `etag-${uploadedParts.length}`;
+        return Promise.resolve(`etag-${uploadedParts.length}`);
       },
       ...overrides,
     };

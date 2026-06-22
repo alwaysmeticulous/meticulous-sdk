@@ -4,6 +4,7 @@ import http from "http";
 import { tmpdir } from "os";
 import { join } from "path";
 import { constants as zlibConstants } from "zlib";
+import type * as FsPromises from "fs/promises";
 import { DeflateRaw } from "fast-zlib";
 import { create as tarCreate } from "tar";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,9 +20,7 @@ import {
 const writeFileStallMode = { enabled: false };
 
 vi.mock("fs/promises", async () => {
-  const actual = await vi.importActual<typeof import("fs/promises")>(
-    "fs/promises",
-  );
+  const actual = await vi.importActual<typeof FsPromises>("fs/promises");
   return {
     ...actual,
     writeFile: (
@@ -212,7 +211,10 @@ describe("streamDownloadAndExtractTar", () => {
     try {
       await new Promise<void>((resolve) => server.listen(1237, resolve));
 
-      const entries = await streamDownloadAndExtractTar("http://localhost:1237", extractDir);
+      const entries = await streamDownloadAndExtractTar(
+        "http://localhost:1237",
+        extractDir,
+      );
 
       expect(entries.length).toBeGreaterThan(0);
 
@@ -222,7 +224,10 @@ describe("streamDownloadAndExtractTar", () => {
       const data = await readFile(join(extractDir, "data.json"), "utf8");
       expect(data).toBe('{"key": "value"}');
 
-      const nested = await readFile(join(extractDir, "subdir", "nested.txt"), "utf8");
+      const nested = await readFile(
+        join(extractDir, "subdir", "nested.txt"),
+        "utf8",
+      );
       expect(nested).toBe("Nested!");
     } finally {
       server.close();
@@ -534,7 +539,7 @@ describe("streamDownloadAndExtractTarGz", () => {
     const chunks: Buffer[] = [];
     const tarStream = tarCreate({ cwd: folderPath, gzip: true }, ["."]);
     for await (const chunk of tarStream) {
-      chunks.push(chunk as Buffer);
+      chunks.push(chunk);
     }
     return Buffer.concat(chunks);
   };
@@ -587,11 +592,9 @@ describe("streamDownloadAndExtractTarGz", () => {
       await new Promise<void>((resolve) => server.listen(1247, resolve));
 
       await expect(
-        streamDownloadAndExtractTarGz(
-          "http://localhost:1247",
-          extractDir,
-          { maxRetries: 0 },
-        ),
+        streamDownloadAndExtractTarGz("http://localhost:1247", extractDir, {
+          maxRetries: 0,
+        }),
       ).rejects.toThrow();
     } finally {
       server.close();

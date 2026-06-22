@@ -14,10 +14,16 @@ import {
 } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import { recordSession } from "@alwaysmeticulous/record";
-import { CommandModule } from "yargs";
-import { COMMON_RECORD_OPTIONS, OPTIONS } from "../../command-utils/common-options";
+import type { CommandModule } from "yargs";
+import {
+  COMMON_RECORD_OPTIONS,
+  OPTIONS,
+} from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
-import { RECORDING_SNIPPET_PATH, WORKER_RECORDING_SNIPPET_PATH } from "../../utils/constants";
+import {
+  RECORDING_SNIPPET_PATH,
+  WORKER_RECORDING_SNIPPET_PATH,
+} from "../../utils/constants";
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 
 interface Options {
@@ -76,7 +82,9 @@ const handler = async ({
 
   const commitSha = (await getCommitSha(commitSha_)) || "unknown";
   const recordingSnippet = await fetchAsset(RECORDING_SNIPPET_PATH);
-  const workerRecordingSnippet = await fetchAsset(WORKER_RECORDING_SNIPPET_PATH);
+  const workerRecordingSnippet = await fetchAsset(
+    WORKER_RECORDING_SNIPPET_PATH,
+  );
   const cookieDir = join(getMeticulousLocalDataDir(), "cookies");
   const recordingCommandId = await getRecordingCommandId(client, projectId);
 
@@ -86,10 +94,19 @@ const handler = async ({
     const sessionUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/sessions/${sessionId}`;
     logger.info(`Recording session: ${sessionUrl}`);
 
-    postSessionIdNotification(client, sessionId, recordingCommandId, projectId).catch((error) => {
-      logger.error(`Warning: error while notifying session recording ${sessionId}`);
+    postSessionIdNotification(
+      client,
+      sessionId,
+      recordingCommandId,
+      projectId,
+    ).catch((error) => {
+      logger.error(
+        `Warning: error while notifying session recording ${sessionId}`,
+      );
       logger.error(error);
-      debugLogger?.log(`Warning: error while notifying session recording ${sessionId}`);
+      debugLogger?.log(
+        `Warning: error while notifying session recording ${sessionId}`,
+      );
       debugLogger?.log(`${error}`);
     });
   };

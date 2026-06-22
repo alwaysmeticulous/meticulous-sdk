@@ -1,11 +1,11 @@
-import { RequestFilter } from "./network-stubbing";
+import type { RequestFilter } from "./network-stubbing";
 
 export interface InjectableRequestHeader {
   name: string;
   value: StaticHeaderValue | DynamicHeaderValue;
   requestTargets: AllRequests | AppUrlRequestsOnly | CustomRequests;
 }
-  
+
 export interface StaticHeaderValue {
   type: "static";
   value: string;

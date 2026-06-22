@@ -1,4 +1,4 @@
-import { TestRunStatus } from "./test-run.types";
+import type { TestRunStatus } from "./test-run.types";
 
 /**
  * Execution of a chunk of a test run chunk.

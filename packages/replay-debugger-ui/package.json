@@ -16,9 +16,9 @@
     "build": "pnpm build:next && pnpm build:scripts",
     "dev": "next dev -p 3005",
     "format": "prettier --write src",
-    "lint": "eslint \"src/**/*.{js,ts,tsx}\"  --cache",
+    "lint": "oxlint --type-aware src",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
-    "lint:fix": "eslint \"src/**/*.{js,ts,tsx}\"  --cache --fix",
+    "lint:fix": "oxlint --type-aware src --fix",
     "depcheck": "depcheck --ignores='src,postcss,autoprefixer' --ignore-patterns='dist,*.eslintrc.json'"
   },
   "dependencies": {
@@ -31,6 +31,8 @@
     "@tailwindcss/forms": "0.5.10",
     "@types/express": "^5.0.2",
     "@types/luxon": "^3.2.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.7",
     "classnames": "^2.3.1",
     "next": "^16.1.5",

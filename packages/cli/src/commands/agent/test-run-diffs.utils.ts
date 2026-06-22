@@ -1,4 +1,4 @@
-import {
+import type {
   DiffsSummaryReplayDiff,
   DiffsSummaryScreenshot,
 } from "@alwaysmeticulous/client";

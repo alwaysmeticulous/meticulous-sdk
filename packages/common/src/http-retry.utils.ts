@@ -1,4 +1,4 @@
-import log from "loglevel";
+import type log from "loglevel";
 import { getErrorCode } from "./error-code.utils";
 
 export interface RetryOptions {
@@ -48,7 +48,10 @@ export const defaultShouldRetry = (error: any): boolean => {
  * from an error thrown by the client. Returns the wait in milliseconds, or
  * `null` when no usable header is present.
  */
-export const getRetryAfterMs = (error: any, now: number = Date.now()): number | null => {
+export const getRetryAfterMs = (
+  error: any,
+  now: number = Date.now(),
+): number | null => {
   const headers = error?.response?.headers;
   if (!headers || typeof headers !== "object") {
     return null;

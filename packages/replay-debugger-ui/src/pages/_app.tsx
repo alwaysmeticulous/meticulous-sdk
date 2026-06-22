@@ -1,13 +1,14 @@
 import type { AppProps } from "next/app";
 import Head from "next/head";
-import { FunctionComponent, StrictMode } from "react";
+import type { FunctionComponent } from "react";
+import { StrictMode } from "react";
 import "src/style/global.css";
 
 const MyApp: FunctionComponent<AppProps> = ({
   Component: Component_,
   pageProps,
 }) => {
-  const Component = Component_ as any;
+  const Component = Component_;
 
   return (
     <>

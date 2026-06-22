@@ -6,7 +6,7 @@ import {
 import { DebugLogger, initLogger } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import { recordLoginFlowSession } from "@alwaysmeticulous/record";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { COMMON_RECORD_OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import {
@@ -60,7 +60,9 @@ const handler = async ({
   }
 
   const recordingSnippet = await fetchAsset(RECORDING_SNIPPET_PATH);
-  const workerRecordingSnippet = await fetchAsset(WORKER_RECORDING_SNIPPET_PATH);
+  const workerRecordingSnippet = await fetchAsset(
+    WORKER_RECORDING_SNIPPET_PATH,
+  );
 
   await recordLoginFlowSession({
     recordingToken,

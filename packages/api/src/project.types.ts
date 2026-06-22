@@ -1,6 +1,6 @@
-import { Organization } from "./organization.types";
-import { NetworkStubbingMode } from "./sdk-bundle-api/sdk-to-bundle/network-stubbing";
-import { ScreenshottingEnabledOptions } from "./sdk-bundle-api/sdk-to-bundle/screenshotting-options";
+import type { Organization } from "./organization.types";
+import type { NetworkStubbingMode } from "./sdk-bundle-api/sdk-to-bundle/network-stubbing";
+import type { ScreenshottingEnabledOptions } from "./sdk-bundle-api/sdk-to-bundle/screenshotting-options";
 
 export interface Project {
   id: string;

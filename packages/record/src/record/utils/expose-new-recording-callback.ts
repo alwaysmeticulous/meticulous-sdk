@@ -1,13 +1,13 @@
-import { Page } from "puppeteer-core";
+import type { Page } from "puppeteer-core";
 
 export interface BaseMeticulousConfig {
   sessionId: string;
 }
 export const exposeNewRecordingCallback = async <
-  T extends BaseMeticulousConfig
+  T extends BaseMeticulousConfig,
 >(
   page: Page,
-  callback: (config: T) => void
+  callback: (config: T) => void,
 ) => {
   await page.exposeFunction("__meticulous_onBeginRecording", callback);
 };

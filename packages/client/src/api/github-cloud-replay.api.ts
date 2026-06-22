@@ -1,6 +1,6 @@
 import type { TestRun } from "@alwaysmeticulous/api";
 import { maybeEnrichFetchError } from "../errors";
-import { MeticulousClient } from "../types/client.types";
+import type { MeticulousClient } from "../types/client.types";
 
 export interface GetBaseTestRunOptions {
   client: MeticulousClient;

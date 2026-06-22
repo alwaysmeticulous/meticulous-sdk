@@ -3,12 +3,19 @@ import type { Options, ResolvedOptions } from "../types";
 const DEFAULT_SNIPPET_URL = "https://snippet.meticulous.ai/v1/meticulous.js";
 const DEFAULT_PLACEHOLDER_ATTRIBUTE = "data-meticulous";
 
-export const resolveOptions = (options: Options | undefined): ResolvedOptions => {
+export const resolveOptions = (
+  options: Options | undefined,
+): ResolvedOptions => {
   const enabled = options?.enabled ?? "development";
   // Skip token validation when injection is permanently disabled so callers
   // can do `RecorderPlugin({ enabled: "never" })` without a dummy token.
   const tokenRequired = enabled !== "never";
-  if (tokenRequired && (!options || typeof options.recordingToken !== "string" || options.recordingToken.length === 0)) {
+  if (
+    tokenRequired &&
+    (!options ||
+      typeof options.recordingToken !== "string" ||
+      options.recordingToken.length === 0)
+  ) {
     throw new Error(
       "@alwaysmeticulous/recorder-plugin: `recordingToken` is required. Pass it when constructing the plugin, e.g. `RecorderPlugin({ recordingToken: '...' })`.",
     );

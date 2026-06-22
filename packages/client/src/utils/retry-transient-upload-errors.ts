@@ -44,7 +44,7 @@ export interface RetryTransientUploadErrorsOptions {
   maxAttempts?: number;
   baseDelayMs?: number;
   onRetry?: (attempt: number, error: unknown) => void;
-  sleep?: (ms: number) => Promise<void>;
+  sleep?: (ms: number) => Promise<void> | void;
 }
 
 const DEFAULT_MAX_ATTEMPTS = 5;
@@ -55,7 +55,7 @@ const defaultSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 export const retryTransientUploadErrors = async <T>(
-  operation: () => Promise<T>,
+  operation: () => Promise<T> | T,
   options: RetryTransientUploadErrorsOptions = {},
 ): Promise<T> => {
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;

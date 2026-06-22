@@ -1,6 +1,6 @@
-import { TestCase } from "@alwaysmeticulous/api";
+import type { TestCase } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
-import { MeticulousClient } from "../types/client.types";
+import type { MeticulousClient } from "../types/client.types";
 
 export interface GetRelevantSessionsParams {
   projectId: string;
@@ -34,10 +34,10 @@ export const getRelevantSessions = async (
   params: GetRelevantSessionsParams,
 ): Promise<GetRelevantSessionsResponse> => {
   const { data } = await client
-    .post<
-      unknown,
-      { data: GetRelevantSessionsResponse }
-    >("local-changes/relevant-sessions", params)
+    .post<unknown, { data: GetRelevantSessionsResponse }>(
+      "local-changes/relevant-sessions",
+      params,
+    )
     .catch((error) => {
       if (isFetchError(error) && error.response?.status === 404) {
         return {

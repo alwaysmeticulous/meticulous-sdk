@@ -75,9 +75,7 @@ describe("extractScreenshotDomFiles", () => {
 
     extractScreenshotDomFiles(workspace);
 
-    expect(
-      existsSync(join(screenshotsDir, "final-state-v2.html")),
-    ).toBe(false);
+    expect(existsSync(join(screenshotsDir, "final-state-v2.html"))).toBe(false);
   });
 
   it("tolerates malformed metadata JSON without throwing", () => {
@@ -90,10 +88,7 @@ describe("extractScreenshotDomFiles", () => {
       "screenshots",
     );
     mkdirSync(screenshotsDir, { recursive: true });
-    writeFileSync(
-      join(screenshotsDir, "bad.metadata.json"),
-      "not json at all",
-    );
+    writeFileSync(join(screenshotsDir, "bad.metadata.json"), "not json at all");
 
     expect(() => extractScreenshotDomFiles(workspace)).not.toThrow();
   });

@@ -34,6 +34,7 @@ Use this guide when investigating unexpected visual differences between head and
 - Check if the diff is in a dynamic content area (timestamps, counters, user-specific data).
 
 <!-- if-snapshot-assets -->
+
 ### 5. Examine Snapshotted Assets
 
 - Compare JS/CSS between head and base under `debug-data/replays/{head,base}/<replayId>/snapshotted-assets/`.
@@ -41,6 +42,7 @@ Use this guide when investigating unexpected visual differences between head and
 - Check for new or modified JavaScript that affects rendering.
 
 <!-- end-if-snapshot-assets -->
+
 ### 6. Review Screenshot Assertions Config
 
 - Check `screenshotAssertionsOptions` in the diff JSON for threshold settings.

@@ -1,12 +1,14 @@
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
-import { SessionData } from "@alwaysmeticulous/api";
-import {
-  getRecordedSession,
-  getRecordedSessionData,
+import type { SessionData } from "@alwaysmeticulous/api";
+import type {
   MeticulousClient,
   StructuredSessionDataResponse,
   StructuredSessionSummary,
+} from "@alwaysmeticulous/client";
+import {
+  getRecordedSession,
+  getRecordedSessionData,
 } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
@@ -81,7 +83,11 @@ export const writeStructuredSessionData = async ({
   outputDir,
   sessionData,
 }: WriteStructuredSessionOptions): Promise<void> => {
-  const sessionDir = join(outputDir, "sessions", sanitizeFilename(sessionData.summary.sessionId));
+  const sessionDir = join(
+    outputDir,
+    "sessions",
+    sanitizeFilename(sessionData.summary.sessionId),
+  );
   const networkDir = join(sessionDir, "network-requests");
   const storageDir = join(sessionDir, "storage");
 
@@ -168,4 +174,3 @@ export const writeManifest = async (
 const writeJson = async (filePath: string, data: unknown): Promise<void> => {
   await writeFile(filePath, JSON.stringify(data, null, 2) + "\n", "utf-8");
 };
-

@@ -1,7 +1,7 @@
-import { Project } from "../project.types";
-import { S3Location } from "../s3.types";
-import { CompanionAssetsInfo } from "../sdk-bundle-api/sdk-to-bundle/companion-assets";
-import { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screenshotting-options";
+import type { Project } from "../project.types";
+import type { S3Location } from "../s3.types";
+import type { CompanionAssetsInfo } from "../sdk-bundle-api/sdk-to-bundle/companion-assets";
+import type { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screenshotting-options";
 import type { TestRunTriggerDebugContext } from "./test-run-debug-context.types";
 
 /**

@@ -16,8 +16,8 @@ describe("redactRecursively", () => {
         },
         {
           redactString: (str) => asterixOut(str),
-        }
-      )
+        },
+      ),
     ).toEqual({
       a: {
         b: {
@@ -41,7 +41,7 @@ describe("redactRecursively", () => {
       redactRecursively(o, {
         redactString: (str, path) =>
           path.at(-1) === "i-do-not-exist" ? asterixOut(str) : str,
-      })
+      }),
     ).toBe(o);
   });
 
@@ -58,7 +58,7 @@ describe("redactRecursively", () => {
       },
       {
         redactString,
-      }
+      },
     );
     expect(redactString.mock.calls).toEqual([
       ["hello", ["a", "b", "c"]],
@@ -80,8 +80,8 @@ describe("redactRecursively", () => {
         {
           redactObject: (value, jsonPath) =>
             jsonPath.length > 2 ? { redacted: true } : value,
-        }
-      )
+        },
+      ),
     ).toEqual({
       a: {
         b: {

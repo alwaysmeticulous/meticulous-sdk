@@ -1,6 +1,6 @@
 import { appendFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { AppContainerLogsLocations } from "@alwaysmeticulous/api";
+import type { AppContainerLogsLocations } from "@alwaysmeticulous/api";
 import { initLogger } from "@alwaysmeticulous/common";
 
 export const downloadAppContainerLogs = async (

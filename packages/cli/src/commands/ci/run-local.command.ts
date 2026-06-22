@@ -1,13 +1,13 @@
-import {
+import type {
   ScreenshotAssertionsOptions,
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { executeTestRun } from "@alwaysmeticulous/replay-orchestrator-launcher";
-import { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
+import type { ReplayExecutionOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import chalk from "chalk";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import {
   COMMON_REPLAY_OPTIONS,
   HEADLESS_FLAG,
@@ -21,7 +21,8 @@ import {
 } from "../../utils/out-of-date-client-error";
 
 interface Options
-  extends ScreenshotDiffOptions,
+  extends
+    ScreenshotDiffOptions,
     Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount"> {
   apiToken?: string | undefined;
   commitSha?: string | undefined;

@@ -7,21 +7,31 @@ Utilities for implementing common redaction logic for the [Meticulous Recorder M
 ### Example Usage
 
 ```ts
-import { dropRequestHeader, transformJsonResponse, redactRecursively, asterixOut } from "@alwaysmeticulous/redaction";
+import {
+  dropRequestHeader,
+  transformJsonResponse,
+  redactRecursively,
+  asterixOut,
+} from "@alwaysmeticulous/redaction";
 
 const middleware = [
   dropRequestHeader("Authorization"),
   transformJsonResponse({
     urlRegExp: /https:\/\/api\.example\.com\/.*/,
     transform: (data) => {
-      return { ...data, ...(data.sensitive ? { sensitive: asterixOut(data.sensitive) } : {}) };
+      return {
+        ...data,
+        ...(data.sensitive ? { sensitive: asterixOut(data.sensitive) } : {}),
+      };
     },
   }),
   transformJsonResponse({
     urlRegExp: /https:\/\/api\.example\.com\/sensitive.*/,
-    transform: (data) => redactRecursively(data, {
-      redactString: (str, path) => path[path.length - 1] === "uuid" ? str : asterixOut(str),
-    }),
+    transform: (data) =>
+      redactRecursively(data, {
+        redactString: (str, path) =>
+          path[path.length - 1] === "uuid" ? str : asterixOut(str),
+      }),
   }),
 ];
 ```
@@ -45,7 +55,7 @@ const redacted = asterixOut("some sensitive text"); // returns "**** ********* *
 
 Redact string intelligently redacts the string by checking for common data formats. This reduces the
 risk of your app error'ing during the replay of Meticulous tests due to it failing to operate on the
-redacted data (e.g. "*******" is not a valid URL):
+redacted data (e.g. "**\*\*\***" is not a valid URL):
 
 ```ts
 import { redactString } from "@alwaysmeticulous/redaction";
@@ -66,7 +76,11 @@ inside the object) that you have not specified a redaction policy for.
 #### Basic Usage
 
 ```ts
-import { transformJsonResponse, NestedFieldsRedactor, redactString } from "@alwaysmeticulous/redaction";
+import {
+  transformJsonResponse,
+  NestedFieldsRedactor,
+  redactString,
+} from "@alwaysmeticulous/redaction";
 
 interface MyComplexApiType {
   details: {
@@ -79,13 +93,14 @@ interface MyComplexApiType {
 }
 
 // Important: include your API type explictly in the call to createRedactor (`createRedactor<MyComplexApiType>`)
-const complexApiTypeRedactor = NestedFieldsRedactor.builder().createRedactor<MyComplexApiType>({
-  strings: {
-    ssn: redactString,
-    mobile: redactString,
-    home: redactString,
-  },
-});
+const complexApiTypeRedactor =
+  NestedFieldsRedactor.builder().createRedactor<MyComplexApiType>({
+    strings: {
+      ssn: redactString,
+      mobile: redactString,
+      home: redactString,
+    },
+  });
 
 const middleware = [
   transformJsonResponse({
@@ -126,14 +141,15 @@ for most common field names. If there are any string fields not covered by those
 force you to specify a redaction policy for them:
 
 ```ts
-const complexApiTypeRedactor = NestedFieldsRedactor.builderWithDefaults().createRedactor<MyComplexApiType>({
-  strings: {
-    // Don't need to specify a redaction policy for `ssn` as it's covered by the defaults,
-    // but we do need to specify a redaction policy for `mobile` and `home` as they're not covered by the defaults.
-    mobile: redactString,
-    home: redactString,
-  },
-});
+const complexApiTypeRedactor =
+  NestedFieldsRedactor.builderWithDefaults().createRedactor<MyComplexApiType>({
+    strings: {
+      // Don't need to specify a redaction policy for `ssn` as it's covered by the defaults,
+      // but we do need to specify a redaction policy for `mobile` and `home` as they're not covered by the defaults.
+      mobile: redactString,
+      home: redactString,
+    },
+  });
 ```
 
 #### Pattern Based Redactors
@@ -149,20 +165,19 @@ Recursively iterates through a JSON object applying the provided redaction funct
 This can be combined with `NestedFieldsRedactor` to provide extra safety. For example:
 
 ```ts
-const complexApiTypeRedactor = NestedFieldsRedactor.builder().createRedactor<MyComplexApiType>({
-  strings: {
-    ssn: redactString,
-    mobile: redactString,
-    home: redactString,
-  },
-});
+const complexApiTypeRedactor =
+  NestedFieldsRedactor.builder().createRedactor<MyComplexApiType>({
+    strings: {
+      ssn: redactString,
+      mobile: redactString,
+      home: redactString,
+    },
+  });
 
-const redactAnythingThatLooksLikeAnSSN = <T>(data: T) => redactRecursively(
-    data,
-    {
-      redactString: (str) => looksLikeAnSSN(str) ? asterixOut(str) : str,
-    }
-  );
+const redactAnythingThatLooksLikeAnSSN = <T>(data: T) =>
+  redactRecursively(data, {
+    redactString: (str) => (looksLikeAnSSN(str) ? asterixOut(str) : str),
+  });
 
 const middleware = [
   transformJsonResponse({

@@ -1,4 +1,4 @@
-import {
+import type {
   NetworkResponseSanitizer,
   RecorderMiddleware,
 } from "@alwaysmeticulous/sdk-bundles-api";

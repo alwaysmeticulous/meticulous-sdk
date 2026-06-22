@@ -1,8 +1,9 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { initLogger, ensureBrowser } from "@alwaysmeticulous/common";
-import puppeteer, { Browser, launch, PuppeteerNode } from "puppeteer-core";
-import { RecordSessionOptions } from "../types";
+import type { Browser, PuppeteerNode } from "puppeteer-core";
+import puppeteer, { launch } from "puppeteer-core";
+import type { RecordSessionOptions } from "../types";
 import {
   buildRecordChromeLaunchArgs,
   DEFAULT_NAVIGATION_TIMEOUT_MS,
@@ -79,8 +80,7 @@ export const recordSession = async ({
 
   // Incognito browser contexts are not visible to external CDP clients (e.g.
   // agent-browser connect). Force the default context when exposing a debug port.
-  const useIncognito =
-    remoteDebuggingPort != null ? false : Boolean(incognito);
+  const useIncognito = remoteDebuggingPort != null ? false : Boolean(incognito);
   if (remoteDebuggingPort != null && incognito) {
     logger.info(
       "Disabling incognito mode because --remoteDebuggingPort requires the default browser context for external agents.",
@@ -102,9 +102,9 @@ export const recordSession = async ({
     ? await browser.createBrowserContext()
     : browser.defaultBrowserContext();
 
-  (await browser.defaultBrowserContext().pages()).forEach((page) =>
-    page.close(),
-  );
+  (await browser.defaultBrowserContext().pages()).forEach((page) => {
+    void page.close();
+  });
 
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(DEFAULT_NAVIGATION_TIMEOUT_MS); // 2 minutes
@@ -158,35 +158,37 @@ export const recordSession = async ({
   // Collect and show recorded session ids
   // Also save page cookies if not in incognito context
   const sessionIds: string[] = [];
-  const interval = setInterval(async () => {
-    try {
-      const sessionId = await page.evaluate<[], () => string | undefined>(
-        "window?.__meticulous?.config?.sessionId",
-      );
-      if (sessionId && !sessionIds.find((id) => id === sessionId)) {
-        sessionIds.push(sessionId);
-        if (onDetectedSession) {
-          onDetectedSession(sessionId);
-        }
-      }
-      if (!useIncognito && cookieDir) {
-        const cookies = await page.cookies();
-        await writeFile(
-          join(cookieDir, COOKIE_FILENAME),
-          JSON.stringify(cookies, null, 2),
-          "utf-8",
+  const interval = setInterval(() => {
+    void (async () => {
+      try {
+        const sessionId = await page.evaluate<[], () => string | undefined>(
+          "window?.__meticulous?.config?.sessionId",
         );
+        if (sessionId && !sessionIds.find((id) => id === sessionId)) {
+          sessionIds.push(sessionId);
+          if (onDetectedSession) {
+            onDetectedSession(sessionId);
+          }
+        }
+        if (!useIncognito && cookieDir) {
+          const cookies = await page.cookies();
+          await writeFile(
+            join(cookieDir, COOKIE_FILENAME),
+            JSON.stringify(cookies, null, 2),
+            "utf-8",
+          );
+        }
+      } catch (error) {
+        // Suppress expected errors due to page navigation
+        if (
+          error instanceof Error &&
+          error.message.startsWith("Execution context was destroyed")
+        ) {
+          return;
+        }
+        logger.error(error);
       }
-    } catch (error) {
-      // Suppress expected errors due to page navigation
-      if (
-        error instanceof Error &&
-        error.message.startsWith("Execution context was destroyed")
-      ) {
-        return;
-      }
-      logger.error(error);
-    }
+    })();
   }, 1000);
 
   await closePromise;

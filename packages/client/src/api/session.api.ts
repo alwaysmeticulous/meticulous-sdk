@@ -1,6 +1,6 @@
-import { SessionData } from "@alwaysmeticulous/api";
+import type { SessionData } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
-import { MeticulousClient } from "../types/client.types";
+import type { MeticulousClient } from "../types/client.types";
 
 export const getRecordedSession = async (
   client: MeticulousClient,
@@ -51,10 +51,9 @@ export const getBackendReplayEnv = async ({
   sessionId: string;
 }): Promise<BackendReplayEnvVariable[]> => {
   const { data } = await client
-    .get<
-      unknown,
-      { data: BackendReplayEnvVariable[] }
-    >(`sessions/${sessionId}/backend-replay-env`)
+    .get<unknown, { data: BackendReplayEnvVariable[] }>(
+      `sessions/${sessionId}/backend-replay-env`,
+    )
     .catch((error) => {
       if (isFetchError(error) && error.response?.status === 404) {
         return { data: [] };

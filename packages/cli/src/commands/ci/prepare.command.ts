@@ -6,8 +6,8 @@ import {
 } from "@alwaysmeticulous/client";
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
-import log from "loglevel";
-import { CommandModule } from "yargs";
+import type log from "loglevel";
+import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import {

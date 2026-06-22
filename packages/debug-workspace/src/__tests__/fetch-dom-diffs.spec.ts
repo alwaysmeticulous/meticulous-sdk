@@ -18,7 +18,7 @@ import type { DebugContext } from "../debug.types";
 import { fetchDomDiffs } from "../fetch-dom-diffs";
 
 interface ScreenshotIdentifierFixture {
-  type?: "after-event" | "end-state" | string;
+  type?: string;
   eventNumber?: number;
   logicVersion?: number;
   variant?: "normal" | "redacted";

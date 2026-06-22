@@ -1,11 +1,11 @@
 import { constants as zlibConstants } from "zlib";
-import { DeploymentArchiveType } from "@alwaysmeticulous/api";
-import {
+import type { DeploymentArchiveType } from "@alwaysmeticulous/api";
+import type {
   createClient,
   ProjectIdentifier,
-  requestUploadPart,
   MultiPartUploadInfo,
 } from "@alwaysmeticulous/client";
+import { requestUploadPart } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { DeflateRaw } from "fast-zlib";
 import { create as tarCreate } from "tar";
@@ -49,10 +49,7 @@ export class MultipartCompressingUploader {
 
     await this.streamTarCompressed(deflate);
 
-    const finalChunk = deflate.process(
-      Buffer.alloc(0),
-      zlibConstants.Z_FINISH,
-    );
+    const finalChunk = deflate.process(Buffer.alloc(0), zlibConstants.Z_FINISH);
     if (finalChunk.length > 0) {
       this.bufferManager.addChunk(finalChunk);
     }
@@ -78,9 +75,7 @@ export class MultipartCompressingUploader {
         if (compressed.length > 0) {
           this.bufferManager.addChunk(compressed);
           if (this.bufferManager.getBufferSize() >= this.args.uploadChunkSize) {
-            this.bufferManager
-              .flush(false)
-              .catch(reject);
+            this.bufferManager.flush(false).catch(reject);
           }
         }
       });

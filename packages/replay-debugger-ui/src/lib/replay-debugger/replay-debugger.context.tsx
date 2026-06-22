@@ -9,7 +9,7 @@ export interface ReplayDebuggerState<T = ReplayableEvent> {
 
 export type DispatchEvent = (
   eventType: string,
-  eventData: any
+  eventData: any,
 ) => Promise<void>;
 
 export interface ReplayDebuggerContextType<T = ReplayableEvent> {
@@ -25,7 +25,7 @@ export const useReplayDebuggerContext: () => ReplayDebuggerContextType = () => {
 
   if (!context) {
     throw new Error(
-      "useReplayDebuggerContext() must be used within a <ReplayDebuggerProvider> component"
+      "useReplayDebuggerContext() must be used within a <ReplayDebuggerProvider> component",
     );
   }
 

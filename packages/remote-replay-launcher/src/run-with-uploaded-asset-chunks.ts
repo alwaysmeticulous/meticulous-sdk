@@ -1,10 +1,12 @@
-import { AssetUploadMetadata, TestRun } from "@alwaysmeticulous/api";
-import {
+import type { AssetUploadMetadata, TestRun } from "@alwaysmeticulous/api";
+import type {
   ChunkPathOverlap,
   createClient,
-  createRunWithUploadedAssetChunks,
   ProjectAssetChunkReference,
   ProjectIdentifier,
+} from "@alwaysmeticulous/client";
+import {
+  createRunWithUploadedAssetChunks,
   triggerRunWithUploadedAssetChunks,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
@@ -109,7 +111,8 @@ export const runWithUploadedAssetChunks = async ({
       message: initialResult?.message,
     },
     retryFn: () => triggerRunWithUploadedAssetChunks(args),
-    fallbackFn: () => triggerRunWithUploadedAssetChunks({ ...args, mustHaveBase: false }),
+    fallbackFn: () =>
+      triggerRunWithUploadedAssetChunks({ ...args, mustHaveBase: false }),
   });
 
   Sentry.captureMessage("Test run triggered against uploaded asset chunks", {

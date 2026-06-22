@@ -1,6 +1,6 @@
-import { SessionContext, TestRunStatus } from "@alwaysmeticulous/api";
+import type { SessionContext, TestRunStatus } from "@alwaysmeticulous/api";
 import { maybeEnrichFetchError } from "../errors";
-import { MeticulousClient } from "../types/client.types";
+import type { MeticulousClient } from "../types/client.types";
 
 // ---------------------------------------------------------------------------
 // Diffs Summary types

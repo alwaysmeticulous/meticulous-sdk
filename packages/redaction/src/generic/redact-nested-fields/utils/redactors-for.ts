@@ -10,7 +10,7 @@ type AllValues<T> = UnionToIntersection<T>[keyof UnionToIntersection<T>];
 
 type RelevantPrimitiveFieldNames<
   T,
-  PRIMATIVES_TO_REDACT = string | Date
+  PRIMATIVES_TO_REDACT = string | Date,
 > = AllValues<{
   [K in keyof T]: PrimitiveFieldNamesHelper<
     K,
@@ -23,17 +23,17 @@ type PrimitiveFieldNamesHelper<K, V, PRIMATIVES_TO_REDACT> =
   IsFixedStringUnion<V> extends true
     ? never
     : V extends PRIMATIVES_TO_REDACT
-    ? [K, V]
-    : V extends Array<infer U>
-    ? U extends PRIMATIVES_TO_REDACT
-      ? [K, U]
-      : RelevantPrimitiveFieldNames<U>
-    : V extends object
-    ? RelevantPrimitiveFieldNames<V>
-    : never;
+      ? [K, V]
+      : V extends Array<infer U>
+        ? U extends PRIMATIVES_TO_REDACT
+          ? [K, U]
+          : RelevantPrimitiveFieldNames<U>
+        : V extends object
+          ? RelevantPrimitiveFieldNames<V>
+          : never;
 
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
-  k: infer I
+  k: infer I,
 ) => void
   ? I
   : never;
@@ -51,7 +51,7 @@ type TuplePairsToRedactorObject<T> = UnionToIntersection<ToRedactorObject<T>>;
 
 export type RedactorsFor<
   T,
-  PRIMATIVES_TO_REDACT = string
+  PRIMATIVES_TO_REDACT = string,
 > = TuplePairsToRedactorObject<
   RelevantPrimitiveFieldNames<T, PRIMATIVES_TO_REDACT>
 >;

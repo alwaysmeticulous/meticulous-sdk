@@ -1,4 +1,4 @@
-import { MeticulousClient } from "../types/client.types";
+import type { MeticulousClient } from "../types/client.types";
 
 export const getPrDiff = async ({
   client,

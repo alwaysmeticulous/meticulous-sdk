@@ -2,7 +2,7 @@ import { resolveApiTokenWithOAuth } from "@alwaysmeticulous/client";
 import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
 import { uploadAssetChunk } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import {

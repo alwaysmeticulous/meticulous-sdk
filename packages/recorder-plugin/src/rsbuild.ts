@@ -16,10 +16,7 @@
  */
 import type { RsbuildPlugin } from "@rsbuild/core";
 import { resolveOptions } from "./core/options";
-import {
-  applyInjection,
-  isAlreadyInjected,
-} from "./core/rspack-html-hooks";
+import { applyInjection, isAlreadyInjected } from "./core/rspack-html-hooks";
 import { shouldInject } from "./core/should-inject";
 import { buildScriptTag } from "./core/snippet";
 import type { Options } from "./types";

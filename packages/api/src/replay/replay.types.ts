@@ -1,4 +1,4 @@
-import { Project } from "../project.types";
+import type { Project } from "../project.types";
 
 export interface Replay {
   id: string;

@@ -1,4 +1,4 @@
-import { RecorderMiddleware } from "@alwaysmeticulous/sdk-bundles-api";
+import type { RecorderMiddleware } from "@alwaysmeticulous/sdk-bundles-api";
 
 /**
  * Redacts cookie values from network requests during recording, by replacing them with asterisks.

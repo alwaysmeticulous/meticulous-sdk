@@ -20,7 +20,7 @@ describe("buildScriptTag", () => {
     );
   });
 
-  it("emits data-is-production-environment=\"true\" in production builds", () => {
+  it('emits data-is-production-environment="true" in production builds', () => {
     expect(
       buildScriptTag(baseOptions, { isProduction: true }),
     ).toMatchInlineSnapshot(

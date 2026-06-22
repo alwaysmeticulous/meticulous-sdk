@@ -66,14 +66,18 @@ describe("assertTestRunComplete", () => {
   );
 
   test("throws 'not complete' for Running", () => {
-    expect(() => assertTestRunComplete("tr-1", "Running")).toThrow(CliUserError);
+    expect(() => assertTestRunComplete("tr-1", "Running")).toThrow(
+      CliUserError,
+    );
     expect(() => assertTestRunComplete("tr-1", "Running")).toThrow(
       /is not complete/,
     );
   });
 
   test("throws 'session-pool base run' for Partial", () => {
-    expect(() => assertTestRunComplete("tr-1", "Partial")).toThrow(CliUserError);
+    expect(() => assertTestRunComplete("tr-1", "Partial")).toThrow(
+      CliUserError,
+    );
     expect(() => assertTestRunComplete("tr-1", "Partial")).toThrow(
       /session-pool base run/,
     );

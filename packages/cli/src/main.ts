@@ -81,7 +81,7 @@ export const main = async (): Promise<void> => {
       [
         (argv) => {
           if (argv.rawJson) {
-            Object.assign(argv, JSON.parse(argv.rawJson as string));
+            Object.assign(argv, JSON.parse(argv.rawJson));
           }
         },
       ],

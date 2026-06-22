@@ -16,9 +16,7 @@ export interface EnabledContext {
   isProduction: boolean;
 }
 
-export type EnabledOption =
-  | EnabledMode
-  | ((ctx: EnabledContext) => boolean);
+export type EnabledOption = EnabledMode | ((ctx: EnabledContext) => boolean);
 
 export type ScriptAttributeValue = string | boolean | null | undefined;
 

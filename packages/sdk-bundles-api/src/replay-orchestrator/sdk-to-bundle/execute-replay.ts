@@ -1,4 +1,4 @@
-import {
+import type {
   Cookie,
   CompanionAssetsInfo,
   InjectableRequestHeader,
@@ -8,8 +8,8 @@ import {
   ScreenshottingEnabledOptions,
   StorageEntry,
 } from "@alwaysmeticulous/api";
-import { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
-import { LogLevelNumbers } from "./loglevel";
+import type { BeforeUserEventResult } from "../bundle-to-sdk/execute-replay";
+import type { LogLevelNumbers } from "./loglevel";
 
 export interface ReplayAndStoreResultsOptions {
   chromeExecutablePath?: string;

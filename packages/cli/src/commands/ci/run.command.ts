@@ -6,19 +6,18 @@ import {
   IN_PROGRESS_TEST_RUN_STATUS,
 } from "@alwaysmeticulous/client";
 import { defer, getCommitSha, initLogger } from "@alwaysmeticulous/common";
-import {
-  executeRemoteTestRun,
-  TunnelData,
-} from "@alwaysmeticulous/remote-replay-launcher";
+import type { TunnelData } from "@alwaysmeticulous/remote-replay-launcher";
+import { executeRemoteTestRun } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
 import chalk from "chalk";
 import cliProgress from "cli-progress";
-import log from "loglevel";
+import type log from "loglevel";
 import ora from "ora";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
-import { Environment, getEnvironment } from "../../utils/environment.utils";
+import type { Environment } from "../../utils/environment.utils";
+import { getEnvironment } from "../../utils/environment.utils";
 import {
   isOutOfDateClientError,
   OutOfDateCLIError,
@@ -321,7 +320,10 @@ const waitForBase = async ({
       );
       logger.error(timeoutError.message);
       Sentry.captureException(timeoutError, {
-        tags: { command: "ci run-with-tunnel", failureType: "base-test-run-timeout" },
+        tags: {
+          command: "ci run-with-tunnel",
+          failureType: "base-test-run-timeout",
+        },
         extra: {
           commitSha,
           timeoutMs: POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS,
@@ -353,7 +355,10 @@ const waitForBase = async ({
       Sentry.captureEvent({
         message: "Base test run found after waiting for it",
         level: "info",
-        tags: { command: "ci run-with-tunnel", eventType: "base-test-run-found" },
+        tags: {
+          command: "ci run-with-tunnel",
+          eventType: "base-test-run-found",
+        },
         extra: {
           commitSha,
           baseCommitSha: cloudReplayBaseTestRun.baseCommitSha,

@@ -5,6 +5,7 @@ import {
   markTestRunExpectsCustomChecks,
   type MeticulousClient,
 } from "@alwaysmeticulous/client";
+import type * as MeticulousClientModule from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import {
@@ -15,8 +16,7 @@ import {
 } from "../wait-for-test-run";
 
 vi.mock("@alwaysmeticulous/client", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@alwaysmeticulous/client")>();
+  const actual = await importOriginal<typeof MeticulousClientModule>();
   return {
     ...actual,
     getTestRun: vi.fn(),
@@ -36,8 +36,9 @@ const makeClock = (): WaitClock => {
   let current = 0;
   return {
     now: () => current,
-    sleep: vi.fn(async (ms: number) => {
+    sleep: vi.fn((ms: number) => {
       current += ms;
+      return Promise.resolve();
     }),
   };
 };

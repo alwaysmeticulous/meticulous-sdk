@@ -1,4 +1,4 @@
-import { CommandModule, Options as YargsOptions } from "yargs";
+import type { CommandModule, Options as YargsOptions } from "yargs";
 import { wrapHandler } from "../command-utils/sentry.utils";
 import { authCommand } from "./auth/index";
 import { ciCommand } from "./ci/index";
@@ -171,7 +171,7 @@ const stripOptions = (node: CommandSchema): Omit<CommandSchema, "options"> => ({
     : {}),
 });
 
-const handler = async ({ command }: Options): Promise<void> => {
+const handler = ({ command }: Options): Promise<void> => {
   const schema = buildCommandSchema(ALL_COMMANDS);
   const result =
     command && command.length > 0 ? findInSchema(schema, command) : schema;
@@ -184,6 +184,7 @@ const handler = async ({ command }: Options): Promise<void> => {
       : stripOptions(result);
 
   process.stdout.write(JSON.stringify(output, null, 2) + "\n");
+  return Promise.resolve();
 };
 
 export const schemaCommand: CommandModule<unknown, Options> = {

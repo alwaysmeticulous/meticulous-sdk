@@ -1,4 +1,4 @@
-import { DeploymentArchiveType } from "./deployment-archive-type";
+import type { DeploymentArchiveType } from "./deployment-archive-type";
 
 /**
  * Information about companion assets to serve _together_ with a deployment. Note this

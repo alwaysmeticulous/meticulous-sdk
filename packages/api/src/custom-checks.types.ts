@@ -1,4 +1,4 @@
-import {
+import type {
   HarRequest,
   HarResponse,
 } from "./sdk-bundle-api/sdk-to-bundle/har-log";

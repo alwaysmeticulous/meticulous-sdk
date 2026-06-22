@@ -1,4 +1,4 @@
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { ciPrepareCommand } from "./prepare.command";
 import { ciRunLocalCommand } from "./run-local.command";
 import { ciRunWithUploadedAssetChunksCommand } from "./run-with-uploaded-asset-chunks.command";

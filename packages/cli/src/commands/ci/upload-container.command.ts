@@ -1,5 +1,5 @@
+import type { ContainerEnvVariable } from "@alwaysmeticulous/client";
 import {
-  ContainerEnvVariable,
   createClient,
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
@@ -8,7 +8,7 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import { uploadContainer } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import {
@@ -66,12 +66,13 @@ const handler = async ({
     process.exit(1);
   }
 
-  const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } = await resolveGitOptions({
-    commitSha: commitSha_,
-    baseSha: baseSha_,
-    gitDiffOutput: gitDiffOutput_,
-    repoDirectory,
-  });
+  const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } =
+    await resolveGitOptions({
+      commitSha: commitSha_,
+      baseSha: baseSha_,
+      gitDiffOutput: gitDiffOutput_,
+      repoDirectory,
+    });
 
   if (baseSha && baseSha === commitSha && !gitDiffOutput) {
     logger.info(
@@ -81,7 +82,9 @@ const handler = async ({
     return;
   }
 
-  logger.info(`Uploading Docker container ${localImageTag} for commit ${commitSha}`);
+  logger.info(
+    `Uploading Docker container ${localImageTag} for commit ${commitSha}`,
+  );
 
   if (dryRun) {
     logger.info(

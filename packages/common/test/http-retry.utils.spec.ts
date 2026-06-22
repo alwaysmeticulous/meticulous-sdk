@@ -69,10 +69,7 @@ describe("getRetryAfterMs", () => {
     const now = Date.parse("2026-01-01T00:00:00Z");
     const value = new Date(now + 4_000).toUTCString();
     expect(
-      getRetryAfterMs(
-        { response: { headers: { "retry-after": value } } },
-        now,
-      ),
+      getRetryAfterMs({ response: { headers: { "retry-after": value } } }, now),
     ).toBe(4_000);
   });
 

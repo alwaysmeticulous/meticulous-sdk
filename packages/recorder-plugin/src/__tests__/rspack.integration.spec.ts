@@ -48,7 +48,7 @@ const runBuild = async (
   await new Promise<void>((resolve, reject) => {
     compiler.run((error) => {
       if (error) {
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
         return;
       }
       resolve();
@@ -99,7 +99,9 @@ describe("Rspack plugin integration", () => {
       { recordingToken: 'tok"<>&special', enabled: "always" },
       "development",
     );
-    expect(html).toContain('data-recording-token="tok&quot;&lt;&gt;&amp;special"');
+    expect(html).toContain(
+      'data-recording-token="tok&quot;&lt;&gt;&amp;special"',
+    );
     const matches = html.match(/data-recording-token=/g) ?? [];
     expect(matches).toHaveLength(1);
   });

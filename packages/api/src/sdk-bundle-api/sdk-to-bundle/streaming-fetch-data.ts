@@ -1,4 +1,4 @@
-import { SequenceNumber } from "./websocket-data";
+import type { SequenceNumber } from "./websocket-data";
 
 /**
  * A single chunk of streamed response data from a fetch request

@@ -1,11 +1,11 @@
+import type { AgentFeature } from "@alwaysmeticulous/client";
 import {
   createClient,
   resolveApiTokenWithOAuth,
-  AgentFeature,
   trackAgentFeatureUsage,
 } from "@alwaysmeticulous/client";
 import { runDebugPipeline } from "@alwaysmeticulous/debug-workspace";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { getProjectIdForOAuthCaller } from "../../utils/resolve-project-identifier";

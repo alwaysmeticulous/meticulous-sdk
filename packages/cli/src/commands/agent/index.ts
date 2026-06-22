@@ -1,4 +1,4 @@
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { jsCoverageDiffCommand } from "./js-coverage-diff.command";
 import { jsCoverageCommand } from "./js-coverage.command";
 import { domDiffCommand } from "./screenshot-dom-diff.command";

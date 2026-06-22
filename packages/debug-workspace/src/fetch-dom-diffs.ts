@@ -1,16 +1,14 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import {
-  getScreenshotDomDiff,
-  MeticulousClient,
-} from "@alwaysmeticulous/client";
+import type { MeticulousClient } from "@alwaysmeticulous/client";
+import { getScreenshotDomDiff } from "@alwaysmeticulous/client";
 import chalk from "chalk";
 import pLimit from "p-limit";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import type { DebugContext } from "./debug.types";
 import { readScreenshotMetadata } from "./replay-walk";
+import type { ScreenshotIdentifier } from "./screenshot-identifier";
 import {
-  ScreenshotIdentifier,
   screenshotIdentifierToBaseName,
   screenshotIdentifierToBackendName,
 } from "./screenshot-identifier";

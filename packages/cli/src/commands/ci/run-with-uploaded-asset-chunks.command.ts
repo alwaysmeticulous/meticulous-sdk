@@ -1,21 +1,27 @@
 import { readFile } from "fs/promises";
+import type { ProjectAssetChunkReference } from "@alwaysmeticulous/client";
 import {
   createClient,
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
-  ProjectAssetChunkReference,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { runWithUploadedAssetChunks } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { parseRewrites } from "../../command-utils/parse-rewrites";
 import { wrapHandler } from "../../command-utils/sentry.utils";
-import { isOutOfDateClientError, OutOfDateCLIError } from "../../utils/out-of-date-client-error";
+import {
+  isOutOfDateClientError,
+  OutOfDateCLIError,
+} from "../../utils/out-of-date-client-error";
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
-import { hasGitContextForTestRunWait, resolveGitOptions } from "./resolve-git-options";
+import {
+  hasGitContextForTestRunWait,
+  resolveGitOptions,
+} from "./resolve-git-options";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -60,7 +66,9 @@ const readAssetReferencesManifest = async (
   }
 
   if (!Array.isArray(parsed)) {
-    logger.error(`--assetReferencesManifest must be a JSON array of { name, versionId } objects.`);
+    logger.error(
+      `--assetReferencesManifest must be a JSON array of { name, versionId } objects.`,
+    );
     process.exit(1);
   }
 
@@ -113,12 +121,13 @@ const handler = async ({
     process.exit(1);
   }
 
-  const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } = await resolveGitOptions({
-    commitSha: commitSha_,
-    baseSha: baseSha_,
-    gitDiffOutput: gitDiffOutput_,
-    repoDirectory,
-  });
+  const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } =
+    await resolveGitOptions({
+      commitSha: commitSha_,
+      baseSha: baseSha_,
+      gitDiffOutput: gitDiffOutput_,
+      repoDirectory,
+    });
 
   if (baseSha && baseSha === commitSha && !gitDiffOutput) {
     logger.info(
@@ -176,14 +185,18 @@ const handler = async ({
     }
 
     if (!result.testRun) {
-      throw new Error(result.message ?? "Asset chunks resolved but test run not created");
+      throw new Error(
+        result.message ?? "Asset chunks resolved but test run not created",
+      );
     }
     testRunId = result.testRun.id;
 
     logger.info(`Test run created: ${result.testRun.url}`);
     // Verify the assembled (concatenated) build assets via the test-run URL
     // with `/download-build-assets` appended.
-    logger.info(`Verify assembled build assets: ${result.testRun.url}/download-build-assets`);
+    logger.info(
+      `Verify assembled build assets: ${result.testRun.url}/download-build-assets`,
+    );
   } catch (error) {
     if (isOutOfDateClientError(error)) {
       throw new OutOfDateCLIError();
@@ -205,10 +218,15 @@ const handler = async ({
     logger.info(`Test run status: ${completedTestRun.status}`);
   }
 
-  logger.info(`Test run ${testRunId} finished with status: ${completedTestRun.status}`);
+  logger.info(
+    `Test run ${testRunId} finished with status: ${completedTestRun.status}`,
+  );
 };
 
-export const ciRunWithUploadedAssetChunksCommand: CommandModule<unknown, Options> = {
+export const ciRunWithUploadedAssetChunksCommand: CommandModule<
+  unknown,
+  Options
+> = {
   command: "run-with-uploaded-asset-chunks",
   describe:
     "Trigger a test run against already-uploaded asset chunks. Together with `upload-asset-chunk`, this is the chunked equivalent of `upload-assets`.",

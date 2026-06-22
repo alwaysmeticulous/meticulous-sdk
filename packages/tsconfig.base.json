@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    // The imported SDK packages use ES2022 features (e.g. `new Error(msg, { cause })`),
+    // so they need a higher target/lib than the monorepo's ES2020 default.
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  }
+}

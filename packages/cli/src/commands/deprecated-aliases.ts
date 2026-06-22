@@ -1,4 +1,4 @@
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { ciPrepareCommand } from "./ci/prepare.command";
 import { ciRunCommand } from "./ci/run.command";
 import { ciUploadAssetsCommand } from "./ci/upload-assets.command";

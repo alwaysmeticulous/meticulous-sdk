@@ -51,7 +51,7 @@ export default defineNuxtModule<Options>({
 
     for (const [key, val] of Object.entries(resolved.attributes)) {
       if (val === false || val === null || val === undefined) continue;
-      scriptEntry[key] = val === true ? true : (val as string);
+      scriptEntry[key] = val === true ? true : val;
     }
 
     nuxt.options.app.head ??= {};

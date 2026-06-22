@@ -1,9 +1,9 @@
-import {
+import type {
   StructuredSessionSummary,
-  getStructuredSessionData,
   MeticulousClient,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { getStructuredSessionData } from "@alwaysmeticulous/client";
+import type { initLogger } from "@alwaysmeticulous/common";
 import { writeStructuredSessionData } from "@alwaysmeticulous/downloading-helpers";
 
 export const downloadSingleSession = async (

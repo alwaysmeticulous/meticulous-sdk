@@ -1,11 +1,11 @@
-import { Page } from "puppeteer-core";
+import type { Page } from "puppeteer-core";
 
 /**
  * Injects an iframe that allows the user to finish recording.
  */
 export const injectFinishRecordingFrame = async (
   page: Page,
-  callbackFnName: string
+  callbackFnName: string,
 ): Promise<void> => {
   // Check that callbackFnName is a valid function name
   const typeCheck = await page.evaluate(`typeof window["${callbackFnName}"]`);
@@ -13,43 +13,44 @@ export const injectFinishRecordingFrame = async (
     throw new Error("Finish recording callback fn not ready in browser");
   }
 
-  page.on("framenavigated", async (frame) => {
-    try {
-      if (page.mainFrame() !== frame) {
-        return;
-      }
+  page.on("framenavigated", (frame) => {
+    void (async () => {
+      try {
+        if (page.mainFrame() !== frame) {
+          return;
+        }
 
-      await frame.evaluate((callbackFnName) => {
-        window.addEventListener("load", () => {
-          const hasFinishRecordingIframe = !!document.getElementById(
-            "__meticulous__finish_recording_iframe"
-          );
-
-          if (hasFinishRecordingIframe) {
-            return;
-          }
-
-          const iframe = document.createElement("iframe");
-          iframe.style.position = "fixed";
-          iframe.style.bottom = "25px";
-          iframe.style.right = "25px";
-          iframe.style.width = "150px";
-          iframe.style.height = "50px";
-          iframe.style.border = "1px solid #000000a0";
-          iframe.style.boxShadow = "#00000012 5px 5px 5px";
-          iframe.style.borderRadius = "5px";
-          iframe.style.zIndex = (Math.pow(2, 31) - 1).toString();
-          iframe.id = "__meticulous__finish_recording_iframe";
-          document.body.appendChild(iframe);
-
-          const iframeDoc = iframe.contentDocument;
-          if (!iframeDoc) {
-            throw new Error(
-              "iframe document not found, this should not happen"
+        await frame.evaluate((callbackFnName) => {
+          window.addEventListener("load", () => {
+            const hasFinishRecordingIframe = !!document.getElementById(
+              "__meticulous__finish_recording_iframe",
             );
-          }
-          iframeDoc.open();
-          iframeDoc.write(`
+
+            if (hasFinishRecordingIframe) {
+              return;
+            }
+
+            const iframe = document.createElement("iframe");
+            iframe.style.position = "fixed";
+            iframe.style.bottom = "25px";
+            iframe.style.right = "25px";
+            iframe.style.width = "150px";
+            iframe.style.height = "50px";
+            iframe.style.border = "1px solid #000000a0";
+            iframe.style.boxShadow = "#00000012 5px 5px 5px";
+            iframe.style.borderRadius = "5px";
+            iframe.style.zIndex = (Math.pow(2, 31) - 1).toString();
+            iframe.id = "__meticulous__finish_recording_iframe";
+            document.body.appendChild(iframe);
+
+            const iframeDoc = iframe.contentDocument;
+            if (!iframeDoc) {
+              throw new Error(
+                "iframe document not found, this should not happen",
+              );
+            }
+            iframeDoc.open();
+            iframeDoc.write(`
           <html>
             <head>
               <style>
@@ -81,11 +82,12 @@ export const injectFinishRecordingFrame = async (
             </body>
           </html>
         `);
-          iframeDoc.close();
-        });
-      }, callbackFnName);
-    } catch (err) {
-      console.error(err);
-    }
+            iframeDoc.close();
+          });
+        }, callbackFnName);
+      } catch (err) {
+        console.error(err);
+      }
+    })();
   });
 };

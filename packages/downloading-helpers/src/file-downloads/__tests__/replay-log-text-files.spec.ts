@@ -56,10 +56,7 @@ describe("ensureReplayLogTextFiles", () => {
 
     await ensureReplayLogTextFiles(replayDir);
 
-    const concise = readFileSync(
-      join(replayDir, "logs.concise.txt"),
-      "utf8",
-    );
+    const concise = readFileSync(join(replayDir, "logs.concise.txt"), "utf8");
     const deterministic = readFileSync(
       join(replayDir, "logs.deterministic.txt"),
       "utf8",

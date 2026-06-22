@@ -13,7 +13,8 @@ import {
   generateCodeVerifier,
   generateState,
 } from "./oauth-pkce";
-import { StoredOAuthTokens, storeOAuthTokens } from "./oauth-token-store";
+import type { StoredOAuthTokens } from "./oauth-token-store";
+import { storeOAuthTokens } from "./oauth-token-store";
 
 export const performOAuthLogin = async (): Promise<StoredOAuthTokens> => {
   const logger = initLogger();

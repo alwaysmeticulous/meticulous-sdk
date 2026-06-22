@@ -1,4 +1,4 @@
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { downloadReplayCommand } from "./replay.command";
 import { downloadSessionCommand } from "./session.command";
 import { downloadTestRunCommand } from "./test-run.command";

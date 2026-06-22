@@ -2,22 +2,22 @@ import {
   ALL_DEFAULT_DATE_REDACTORS,
   ALL_DEFAULT_STRING_REDACTORS,
 } from "./common-redactors";
-import {
+import type {
   PatternBasedRedactor,
   PatternBasedRedactorSet,
 } from "./pattern-based-redactors";
-import { Redactor, RedactorsFor } from "./utils/redactors-for";
+import type { Redactor, RedactorsFor } from "./utils/redactors-for";
 
 export class NestedFieldsRedactor<
   HANDLED_STRING_KEY_TYPES extends string,
-  HANDLED_DATE_KEY_TYPES extends string
+  HANDLED_DATE_KEY_TYPES extends string,
 > {
   private constructor(
     private readonly stringRedactors: Array<
       PatternBasedRedactor<string, string>
     >,
     private readonly dateRedactors: Array<PatternBasedRedactor<string, Date>>,
-    private readonly defaultStringRedactor?: Redactor<string>
+    private readonly defaultStringRedactor?: Redactor<string>,
   ) {}
 
   public static builder() {
@@ -45,7 +45,7 @@ export class NestedFieldsRedactor<
   }
 
   public withPatternBasedStringRedactor<KEY_TYPE extends string>(
-    redactor: PatternBasedRedactor<KEY_TYPE, string>
+    redactor: PatternBasedRedactor<KEY_TYPE, string>,
   ): NestedFieldsRedactor<
     HANDLED_STRING_KEY_TYPES & KEY_TYPE,
     HANDLED_DATE_KEY_TYPES
@@ -57,7 +57,7 @@ export class NestedFieldsRedactor<
   }
 
   public withPatternBasedStringRedactors<KEY_TYPE extends string>(
-    set: PatternBasedRedactorSet<KEY_TYPE, string>
+    set: PatternBasedRedactorSet<KEY_TYPE, string>,
   ): NestedFieldsRedactor<
     HANDLED_STRING_KEY_TYPES | KEY_TYPE,
     HANDLED_DATE_KEY_TYPES
@@ -69,7 +69,7 @@ export class NestedFieldsRedactor<
   }
 
   public withPatternBasedDateRedactor<KEY_TYPE extends string>(
-    redactor: PatternBasedRedactor<KEY_TYPE, Date>
+    redactor: PatternBasedRedactor<KEY_TYPE, Date>,
   ): NestedFieldsRedactor<
     HANDLED_STRING_KEY_TYPES,
     HANDLED_DATE_KEY_TYPES | KEY_TYPE
@@ -81,7 +81,7 @@ export class NestedFieldsRedactor<
   }
 
   public withPatternBasedDateRedactors<KEY_TYPE extends string>(
-    set: PatternBasedRedactorSet<KEY_TYPE, Date>
+    set: PatternBasedRedactorSet<KEY_TYPE, Date>,
   ): NestedFieldsRedactor<
     HANDLED_STRING_KEY_TYPES,
     HANDLED_DATE_KEY_TYPES | KEY_TYPE
@@ -226,7 +226,7 @@ const createRedactor = <T>({
         const patternBasedRedactor = key
           ? findApplicablePatternBasedStringRedactor(
               key,
-              indexedPatternBasedStringRedactors
+              indexedPatternBasedStringRedactors,
             )
           : null;
         if (patternBasedRedactor) {
@@ -307,7 +307,7 @@ const createRedactor = <T>({
 
 const findApplicablePatternBasedRedactor = <T>(
   key: string,
-  redactors: PatternBasedRedactor<string, T>[]
+  redactors: PatternBasedRedactor<string, T>[],
 ) => {
   return redactors.find((redactor) => {
     if (redactor.type === "key-postfix") {
@@ -328,11 +328,11 @@ const findApplicablePatternBasedStringRedactor = (
       Array<PatternBasedRedactor<string, string>>
     >;
     other: Array<PatternBasedRedactor<string, string>>;
-  }
+  },
 ) => {
   const redactor = findApplicablePatternBasedRedactor(
     key,
-    indexedPatternBasedStringRedactors.other
+    indexedPatternBasedStringRedactors.other,
   );
   if (redactor || key.length < 2) {
     return redactor;

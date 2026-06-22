@@ -1,5 +1,5 @@
-import { MeticulousClient } from "../types/client.types";
-import { ProjectIdentifier } from "./project-deployments.api";
+import type { MeticulousClient } from "../types/client.types";
+import type { ProjectIdentifier } from "./project-deployments.api";
 
 export interface GetRegistryAuthResponse {
   registryUrl: string;

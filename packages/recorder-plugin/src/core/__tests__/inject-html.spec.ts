@@ -20,7 +20,9 @@ describe("injectIntoHtml — auto mode", () => {
       '<html><head lang="en" data-x="1"><title>t</title></head><body></body></html>';
     const result = injectIntoHtml(html, SCRIPT, "auto", "data-meticulous");
     expect(result.injected).toBe(true);
-    expect(result.html).toContain(`<head lang="en" data-x="1">${SCRIPT}<title>`);
+    expect(result.html).toContain(
+      `<head lang="en" data-x="1">${SCRIPT}<title>`,
+    );
   });
 
   it("returns injected=false plus a warning when there is no <head>", () => {
@@ -80,8 +82,12 @@ describe("injectIntoHtml — replace mode", () => {
       "<html><head><script data-meticulous-recording></script></head><body></body></html>";
     const result = injectIntoHtml(html, SCRIPT, "replace", "data-meticulous");
     // Falls back to auto-injection because the placeholder is not found.
-    expect(result.warning).toMatch(/Could not find a placeholder.*data-meticulous/);
-    expect(result.html).toContain("<script data-meticulous-recording></script>");
+    expect(result.warning).toMatch(
+      /Could not find a placeholder.*data-meticulous/,
+    );
+    expect(result.html).toContain(
+      "<script data-meticulous-recording></script>",
+    );
     expect(result.html).toContain(SCRIPT);
   });
 
@@ -111,7 +117,9 @@ describe("injectIntoHtml — replace mode", () => {
     const html = "<html><head><title>t</title></head><body></body></html>";
     const result = injectIntoHtml(html, SCRIPT, "replace", "data-meticulous");
     expect(result.injected).toBe(true);
-    expect(result.warning).toMatch(/Could not find a placeholder.*data-meticulous/);
+    expect(result.warning).toMatch(
+      /Could not find a placeholder.*data-meticulous/,
+    );
     expect(result.html).toBe(
       `<html><head>${SCRIPT}<title>t</title></head><body></body></html>`,
     );

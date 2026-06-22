@@ -1,11 +1,12 @@
-import { ReplayableEvent } from "@alwaysmeticulous/api";
+import type { ReplayableEvent } from "@alwaysmeticulous/api";
 import { initLogger, ensureBrowser } from "@alwaysmeticulous/common";
 import { startUIServer } from "@alwaysmeticulous/replay-debugger-ui";
-import {
+import type {
   BeforeUserEventOptions,
   BeforeUserEventResult,
 } from "@alwaysmeticulous/sdk-bundles-api";
-import { Browser, Page, launch } from "puppeteer-core";
+import type { Browser, Page } from "puppeteer-core";
+import { launch } from "puppeteer-core";
 
 export interface ReplayDebuggerState {
   events: ReplayableEvent[];
@@ -56,11 +57,11 @@ export const openStepThroughDebuggerUI = async ({
       const eventsWithIndices = replayableEvents
         .map((e, idx) => ({
           arrayIndex: idx,
-          eventNumber:
-            "originalEventIndex" in e ? e.originalEventIndex : null,
+          eventNumber: "originalEventIndex" in e ? e.originalEventIndex : null,
         }))
-        .filter((e): e is { arrayIndex: number; eventNumber: number } =>
-          e.eventNumber != null,
+        .filter(
+          (e): e is { arrayIndex: number; eventNumber: number } =>
+            e.eventNumber != null,
         );
 
       if (eventsWithIndices.length === 0) {

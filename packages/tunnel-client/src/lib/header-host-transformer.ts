@@ -18,7 +18,7 @@ export class HeaderHostTransformer extends Transform {
   override _transform(
     data: any,
     _: BufferEncoding,
-    callback: TransformCallback
+    callback: TransformCallback,
   ) {
     callback(
       null,
@@ -29,7 +29,7 @@ export class HeaderHostTransformer extends Transform {
             .replace(/(\r\n[Hh]ost: )\S+/, (_: string, $1: string) => {
               this.replaced = true;
               return $1 + this.host;
-            })
+            }),
     );
   }
 }

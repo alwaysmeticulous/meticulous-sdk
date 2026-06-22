@@ -1,4 +1,4 @@
-import { DebugLogger } from "@alwaysmeticulous/common";
+import type { DebugLogger } from "@alwaysmeticulous/common";
 
 export interface RecordSessionOptions {
   recordingToken: string;

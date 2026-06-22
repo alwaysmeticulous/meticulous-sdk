@@ -1,4 +1,4 @@
-import { CompanionAssetsInfo, TestRun } from "@alwaysmeticulous/api";
+import type { CompanionAssetsInfo, TestRun } from "@alwaysmeticulous/api";
 import {
   createClient,
   executeSecureTunnelTestRun,
@@ -11,7 +11,7 @@ import { defer, initLogger } from "@alwaysmeticulous/common";
 import { localtunnel } from "@alwaysmeticulous/tunnels-client";
 import { uploadAssets, uploadAssetsFromZip } from "./asset-upload-utils";
 import { ResourceTracker } from "./resource-tracker";
-import {
+import type {
   ExecuteRemoteTestRunOptions,
   ExecuteRemoteTestRunResult,
 } from "./types";
@@ -219,21 +219,30 @@ export const executeRemoteTestRun = async ({
 
   // Poll every few seconds for progress updates and exit when the test run is completed
   const resourceTracker = new ResourceTracker(logger, testRun);
-  progressUpdateInterval = setInterval(async () => {
-    const updatedTestRun = await getTestRun({ client, testRunId: testRun.id });
-    onProgressUpdate?.(updatedTestRun);
+  progressUpdateInterval = setInterval(() => {
+    void (async () => {
+      const updatedTestRun = await getTestRun({
+        client,
+        testRunId: testRun.id,
+      });
+      onProgressUpdate?.(updatedTestRun);
 
-    if (!IN_PROGRESS_TEST_RUN_STATUS.includes(updatedTestRun.status)) {
-      onTestRunCompleted(updatedTestRun);
+      if (!IN_PROGRESS_TEST_RUN_STATUS.includes(updatedTestRun.status)) {
+        onTestRunCompleted(updatedTestRun);
 
-      return;
-    } else if (startedWaitingForRetryAt !== undefined) {
-      logger.info(
-        `Retrying test run... (status is now ${updatedTestRun.status})`,
+        return;
+      } else if (startedWaitingForRetryAt !== undefined) {
+        logger.info(
+          `Retrying test run... (status is now ${updatedTestRun.status})`,
+        );
+        startedWaitingForRetryAt = undefined;
+      }
+      await resourceTracker.checkUsage();
+    })().catch((error: unknown) => {
+      testRunCompleted.reject(
+        error instanceof Error ? error : new Error(String(error)),
       );
-      startedWaitingForRetryAt = undefined;
-    }
-    await resourceTracker.checkUsage();
+    });
   }, PROGRESS_UPDATE_INTERVAL_MS);
 
   const completedTestRun = await testRunCompleted.promise;
@@ -252,7 +261,13 @@ export const executeRemoteTestRun = async ({
   };
   const alreadyUnlocked = await checkUnlocked();
   if (!alreadyUnlocked) {
-    tunnelCheckInterval = setInterval(checkUnlocked, POLL_LOCK_INTERVAL_MS);
+    tunnelCheckInterval = setInterval(() => {
+      checkUnlocked().catch((error: unknown) => {
+        tunnelUnlocked.reject(
+          error instanceof Error ? error : new Error(String(error)),
+        );
+      });
+    }, POLL_LOCK_INTERVAL_MS);
     await tunnelUnlocked.promise;
   }
   if (tunnelCheckInterval) {

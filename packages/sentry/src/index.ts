@@ -18,8 +18,8 @@ const getTracesSampleRate: () => number = () => {
  */
 export const initSentry: (
   meticulousVersion: string,
-  tracesSampleRateOverride?: number
-) => Promise<void> = async (meticulousVersion, tracesSampleRateOverride) => {
+  tracesSampleRateOverride?: number,
+) => Promise<void> = (meticulousVersion, tracesSampleRateOverride) => {
   Sentry.init({
     enabled: process.env.METICULOUS_DISABLE_SENTRY?.toLowerCase() !== "true",
     dsn: SENTRY_DSN,
@@ -35,4 +35,5 @@ export const initSentry: (
       "SecureTunnelInactiveForAppUrlError",
     ],
   });
+  return Promise.resolve();
 };

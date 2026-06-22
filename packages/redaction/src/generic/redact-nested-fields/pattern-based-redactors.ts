@@ -4,7 +4,7 @@ export type PatternBasedRedactor<KEY_TYPE extends string, VALUE_TYPE> =
 
 export interface PostfixPatternBasedRedactor<
   KEY_TYPE extends string,
-  VALUE_TYPE
+  VALUE_TYPE,
 > {
   type: "key-postfix";
   postfix: string;
@@ -18,7 +18,7 @@ export interface PostfixPatternBasedRedactor<
 
 export interface ExactPatternBasedRedactor<
   KEY_TYPE extends string,
-  VALUE_TYPE
+  VALUE_TYPE,
 > {
   type: "key-exact";
   key: KEY_TYPE;
@@ -41,27 +41,27 @@ export interface ExactPatternBasedRedactor<
  */
 export const redactKeysEndingWith = <POSTFIX_TYPE extends string, VALUE_TYPE>(
   postfix: string extends POSTFIX_TYPE ? never : POSTFIX_TYPE,
-  redactor: (value: VALUE_TYPE) => VALUE_TYPE
+  redactor: (value: VALUE_TYPE) => VALUE_TYPE,
 ): PatternBasedRedactor<`${string}${POSTFIX_TYPE}`, VALUE_TYPE> => {
   return { type: "key-postfix", postfix, redactor };
 };
 
 export const redactKey = <KEY_TYPE extends string, VALUE_TYPE>(
   key: KEY_TYPE,
-  redactor: (value: VALUE_TYPE) => VALUE_TYPE
+  redactor: (value: VALUE_TYPE) => VALUE_TYPE,
 ): PatternBasedRedactor<KEY_TYPE, VALUE_TYPE> => {
   return { type: "key-exact", key, redactor };
 };
 
 export class PatternBasedRedactorSet<
   HANDLED_KEYS_TYPE extends string,
-  VALUE_TYPE
+  VALUE_TYPE,
 > {
   private constructor(
     public readonly redactors: PatternBasedRedactor<
       HANDLED_KEYS_TYPE,
       VALUE_TYPE
-    >[]
+    >[],
   ) {}
 
   public static create<VALUE_TYPE>() {
@@ -69,7 +69,7 @@ export class PatternBasedRedactorSet<
   }
 
   public with<KEY_TYPE extends string>(
-    redactor: PatternBasedRedactor<KEY_TYPE, VALUE_TYPE>
+    redactor: PatternBasedRedactor<KEY_TYPE, VALUE_TYPE>,
   ): PatternBasedRedactorSet<HANDLED_KEYS_TYPE | KEY_TYPE, VALUE_TYPE> {
     return new PatternBasedRedactorSet<
       HANDLED_KEYS_TYPE | KEY_TYPE,
@@ -78,7 +78,7 @@ export class PatternBasedRedactorSet<
   }
 
   public withSet<KEY_TYPE extends string>(
-    set: PatternBasedRedactorSet<KEY_TYPE, VALUE_TYPE>
+    set: PatternBasedRedactorSet<KEY_TYPE, VALUE_TYPE>,
   ): PatternBasedRedactorSet<HANDLED_KEYS_TYPE | KEY_TYPE, VALUE_TYPE> {
     return new PatternBasedRedactorSet<
       HANDLED_KEYS_TYPE | KEY_TYPE,

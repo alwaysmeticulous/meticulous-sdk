@@ -1,4 +1,4 @@
-import { ScreenshotDiffResult } from "./screenshot-diff-result";
+import type { ScreenshotDiffResult } from "./screenshot-diff-result";
 
 export type DivergenceIndicator =
   | UserEventDivergenceIndicator

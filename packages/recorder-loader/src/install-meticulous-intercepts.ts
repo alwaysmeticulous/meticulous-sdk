@@ -1,8 +1,9 @@
 import { SNIPPETS_BASE_URL } from "./constants";
 import { getSnippetVersionFolder } from "./get-snippet-version-folder";
-import { Recorder, tryLoadAndStartRecorder } from "./loader";
-import { LoaderOptions } from "./loader.types";
-import { PrivateWindowApi } from "./private-window-api";
+import type { Recorder } from "./loader";
+import { tryLoadAndStartRecorder } from "./loader";
+import type { LoaderOptions } from "./loader.types";
+import type { PrivateWindowApi } from "./private-window-api";
 
 export interface Interceptor {
   startRecordingSession: (options: LoaderOptions) => Promise<Recorder>;
@@ -65,7 +66,7 @@ const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2000;
  * ```
  */
 export const tryInstallMeticulousIntercepts = async (
-  options: InterceptorOptions
+  options: InterceptorOptions,
 ): Promise<Interceptor> => {
   let requestedToStopIntercepting = false;
   let disposedEarlyNetworkRecorder = false;
@@ -96,7 +97,7 @@ export const tryInstallMeticulousIntercepts = async (
     const script = document.createElement("script");
     script.type = "text/javascript";
     script.src = `${SNIPPETS_BASE_URL}/record/${getSnippetVersionFolder(
-      options.version ?? null
+      options.version ?? null,
     )}/network-recorder.bundle.js`;
 
     script.onload = function () {
@@ -109,7 +110,9 @@ export const tryInstallMeticulousIntercepts = async (
       if (timeout) {
         window.clearTimeout(timeout);
       }
-      reject("Meticulous early network recorder failed to initialise.");
+      reject(
+        new Error("Meticulous early network recorder failed to initialise."),
+      );
     };
 
     document.head.appendChild(script);

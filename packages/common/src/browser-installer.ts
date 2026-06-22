@@ -1,12 +1,11 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import type { InstallOptions, InstalledBrowser } from "@puppeteer/browsers";
 import {
   install,
   Browser,
   detectBrowserPlatform,
-  InstallOptions,
-  InstalledBrowser,
   resolveBuildId,
   getInstalledBrowsers,
 } from "@puppeteer/browsers";
@@ -19,15 +18,13 @@ async function loadPuppeteerRevisions(): Promise<
   { chrome: string } | undefined
 > {
   try {
-    const revisions = await import(
-      "puppeteer-core/lib/cjs/puppeteer/revisions.js"
-    );
+    const revisions =
+      await import("puppeteer-core/lib/cjs/puppeteer/revisions.js");
     return revisions.PUPPETEER_REVISIONS;
   } catch {
     try {
-      const revisions = await import(
-        "puppeteer-core/lib/esm/puppeteer/revisions.js"
-      );
+      const revisions =
+        await import("puppeteer-core/lib/esm/puppeteer/revisions.js");
       return revisions.PUPPETEER_REVISIONS;
     } catch {
       return undefined;

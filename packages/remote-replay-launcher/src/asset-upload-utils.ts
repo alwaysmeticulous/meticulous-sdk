@@ -1,9 +1,14 @@
 import { existsSync } from "fs";
 import { stat, unlink } from "fs/promises";
-import { IncomingMessage, request as httpRequest } from "http";
+import type { IncomingMessage } from "http";
+import { request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
 import { join, resolve } from "path";
-import { AssetUploadMetadata, TestRun } from "@alwaysmeticulous/api";
+import type { AssetUploadMetadata, TestRun } from "@alwaysmeticulous/api";
+import type {
+  ProjectIdentifier,
+  MultiPartUploadInfo,
+} from "@alwaysmeticulous/client";
 import {
   getApiToken,
   requestAssetUpload,
@@ -11,10 +16,8 @@ import {
   createClient,
   completeAssetUpload,
   getProxyAgent,
-  ProjectIdentifier,
   putFileToSignedUrl,
   requestMultipartAssetUpload,
-  MultiPartUploadInfo,
   UploadError,
   retryTransientUploadErrors,
 } from "@alwaysmeticulous/client";
@@ -273,7 +276,9 @@ const putBufferToSignedUrl = async (
       headers["Content-Type"] = options.contentType;
     }
 
-    const requestFn = signedUrl.startsWith("https:") ? httpsRequest : httpRequest;
+    const requestFn = signedUrl.startsWith("https:")
+      ? httpsRequest
+      : httpRequest;
     const req = requestFn(
       signedUrl,
       {

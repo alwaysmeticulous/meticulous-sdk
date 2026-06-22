@@ -1,11 +1,11 @@
 import { createClientWithOAuth } from "@alwaysmeticulous/client";
 import { initLogger, IS_METICULOUS_SUPER_USER } from "@alwaysmeticulous/common";
+import type { TestRunDownloadScope } from "@alwaysmeticulous/downloading-helpers";
 import {
   getOrFetchTestRunData,
   TEST_RUN_DOWNLOAD_SCOPES,
-  TestRunDownloadScope,
 } from "@alwaysmeticulous/downloading-helpers";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {

@@ -1,4 +1,12 @@
-import { lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "fs/promises";
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { inflateRawSync } from "zlib";

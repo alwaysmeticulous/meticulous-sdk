@@ -17,8 +17,8 @@ export const meticulousFetch = (
   input: Parameters<typeof undiciFetch>[0],
   init?: Parameters<typeof undiciFetch>[1],
 ) => {
-  return undiciFetch(input as Parameters<typeof undiciFetch>[0], {
-    ...(init as Parameters<typeof undiciFetch>[1]),
+  return undiciFetch(input, {
+    ...init,
     dispatcher: getDispatcherForInput(input),
   });
 };
@@ -100,7 +100,8 @@ function shouldProxy(url: URL, noProxy: string): boolean {
   }
 
   const hostname = url.hostname.toLowerCase();
-  const port = Number.parseInt(url.port, 10) || DEFAULT_PORTS[url.protocol] || 0;
+  const port =
+    Number.parseInt(url.port, 10) || DEFAULT_PORTS[url.protocol] || 0;
 
   for (const entry of entries) {
     if (entry.port !== 0 && entry.port !== port) {

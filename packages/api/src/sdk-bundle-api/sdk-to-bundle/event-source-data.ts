@@ -1,4 +1,4 @@
-import { SequenceNumber } from "./websocket-data";
+import type { SequenceNumber } from "./websocket-data";
 
 export interface EventSourceConnectionData {
   id: SequenceNumber;

@@ -1,5 +1,5 @@
 import { execFile } from "child_process";
-import { EditedFileWithLines } from "@alwaysmeticulous/client";
+import type { EditedFileWithLines } from "@alwaysmeticulous/client";
 import parseDiff from "parse-diff";
 
 export const getGitDiff = (baseSha: string, cwd?: string): Promise<string> => {
@@ -10,7 +10,7 @@ export const getGitDiff = (baseSha: string, cwd?: string): Promise<string> => {
       { encoding: "utf-8", cwd },
       (error, output) => {
         if (error) {
-          reject(error);
+          reject(error instanceof Error ? error : new Error(String(error)));
           return;
         }
         resolve(output);

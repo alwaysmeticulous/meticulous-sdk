@@ -63,13 +63,10 @@ describe("meticulousFetch", () => {
     ).resolves.toBe(response as never);
     expect(agentMock).toHaveBeenCalledTimes(1);
     expect(proxyAgentMock).not.toHaveBeenCalled();
-    expect(undiciFetchMock).toHaveBeenCalledWith(
-      "https://example.com/test",
-      {
-        ...init,
-        dispatcher: directDispatcher,
-      },
-    );
+    expect(undiciFetchMock).toHaveBeenCalledWith("https://example.com/test", {
+      ...init,
+      dispatcher: directDispatcher,
+    });
   });
 
   it("uses a proxy dispatcher when proxy env vars are configured", async () => {
@@ -80,16 +77,13 @@ describe("meticulousFetch", () => {
 
     const { meticulousFetch } = await import("../src/fetch.utils");
 
-    await expect(
-      meticulousFetch("https://example.com/test"),
-    ).resolves.toBe(response as never);
+    await expect(meticulousFetch("https://example.com/test")).resolves.toBe(
+      response as never,
+    );
     expect(agentMock).not.toHaveBeenCalled();
     expect(proxyAgentMock).toHaveBeenCalledTimes(1);
-    expect(undiciFetchMock).toHaveBeenCalledWith(
-      "https://example.com/test",
-      {
-        dispatcher: proxyDispatcher,
-      },
-    );
+    expect(undiciFetchMock).toHaveBeenCalledWith("https://example.com/test", {
+      dispatcher: proxyDispatcher,
+    });
   });
 });

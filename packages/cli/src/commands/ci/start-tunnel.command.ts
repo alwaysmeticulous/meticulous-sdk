@@ -4,11 +4,9 @@ import {
   IS_METICULOUS_SUPER_USER,
   initLogger,
 } from "@alwaysmeticulous/common";
-import {
-  IncomingRequestEvent,
-  localtunnel,
-} from "@alwaysmeticulous/tunnels-client";
-import { CommandModule } from "yargs";
+import type { IncomingRequestEvent } from "@alwaysmeticulous/tunnels-client";
+import { localtunnel } from "@alwaysmeticulous/tunnels-client";
+import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {
@@ -78,7 +76,7 @@ const handler = async (argv: Options): Promise<void> => {
     throw err;
   });
 
-  tunnel.on("close", async () => {
+  tunnel.on("close", () => {
     tunnelClosedCallback.resolve(null);
   });
 

@@ -1,7 +1,8 @@
 import { createWriteStream, existsSync } from "fs";
 import { mkdir, rm, writeFile } from "fs/promises";
 import { dirname, isAbsolute, relative, resolve } from "path";
-import { Readable, Stream, finished, Transform } from "stream";
+import type { Readable, Stream } from "stream";
+import { finished, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { promisify } from "util";
 import { constants as zlibConstants, createGunzip } from "zlib";
@@ -74,9 +75,10 @@ export const downloadFile = async (
 
   const contentLength = parseInt(
     String(response.headers["content-length"] ?? "0"),
-    10
+    10,
   );
 
+  // oxlint-disable-next-line typescript-eslint/no-redundant-type-constituents -- cli-progress types resolve under tsc; tsgolint false positive
   let progressBar: cliProgress.SingleBar | null = null;
   let downloadedBytes = 0;
 
@@ -114,7 +116,7 @@ export const downloadFile = async (
 
   const writer = createWriteStream(path);
   (response.data as Stream).pipe(progressTransform).pipe(writer);
-  const timeoutId = setTimeout(async () => {
+  const timeoutId = setTimeout(() => {
     const error = `Download timed out after ${downloadCompleteTimeoutInMs}ms`;
     source.cancel(error);
     writer.destroy(new Error(error));
@@ -588,8 +590,7 @@ const extractTarWithParallelWrites = async ({
       entry.on("data", (chunk: Buffer) => chunks.push(chunk));
       entry.on("error", (err) => recordError(err));
       entry.on("end", () => {
-        const content =
-          chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
+        const content = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
         const mode =
           entry.mode != null && entry.mode > 0 ? entry.mode : DEFAULT_FILE_MODE;
         pendingWrites.push(
@@ -635,7 +636,7 @@ const extractTarWithParallelWrites = async ({
   );
 
   if (firstError != null) {
-    throw firstError;
+    throw firstError as Error;
   }
 
   return entries;
@@ -674,7 +675,7 @@ const raceAgainstAbort = <T>(
       },
       (err) => {
         abortSignal.removeEventListener("abort", onAbort);
-        reject(err);
+        reject(err instanceof Error ? err : new Error(String(err)));
       },
     );
   });

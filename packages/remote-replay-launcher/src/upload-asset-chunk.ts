@@ -3,11 +3,11 @@ import { mkdtemp, rm, stat, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join, resolve } from "path";
 import { constants as zlibConstants } from "zlib";
+import type { ProjectIdentifier } from "@alwaysmeticulous/client";
 import {
   completeAssetChunkUpload,
   createClient,
   getApiToken,
-  ProjectIdentifier,
   putFileToSignedUrl,
   requestAssetChunkUpload,
   retryTransientUploadErrors,
@@ -235,7 +235,7 @@ export const writeCompressedTar = ({
       tarStream.removeAllListeners();
       outStream.removeAllListeners();
       outStream.destroy();
-      reject(err);
+      reject(err instanceof Error ? err : new Error(String(err)));
     };
 
     tarStream.on("data", (chunk: Buffer) => {

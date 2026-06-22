@@ -1,4 +1,4 @@
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { logoutCommand } from "./logout.command";
 import { setProjectCommand } from "./set-project.command";
 import { unsetProjectCommand } from "./unset-project.command";

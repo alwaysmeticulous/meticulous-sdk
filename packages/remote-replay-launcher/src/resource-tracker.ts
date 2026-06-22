@@ -1,7 +1,7 @@
 import os from "os";
-import { TestRun } from "@alwaysmeticulous/api";
+import type { TestRun } from "@alwaysmeticulous/api";
 import * as Sentry from "@sentry/node";
-import { Logger } from "loglevel";
+import type { Logger } from "loglevel";
 import { mem } from "systeminformation";
 
 export class ResourceTracker {

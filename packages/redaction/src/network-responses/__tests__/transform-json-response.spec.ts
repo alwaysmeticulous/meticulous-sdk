@@ -1,5 +1,5 @@
-import { HarResponse } from "@alwaysmeticulous/api";
-import { NetworkResponseMetadata } from "@alwaysmeticulous/sdk-bundles-api";
+import type { HarResponse } from "@alwaysmeticulous/api";
+import type { NetworkResponseMetadata } from "@alwaysmeticulous/sdk-bundles-api";
 import { describe, expect, it } from "vitest";
 import { transformJsonResponse } from "../transform-json-response";
 
@@ -35,10 +35,10 @@ describe("transformJsonResponse", () => {
 
     const result = middleware.transformNetworkResponse!(
       mockResponse,
-      mockMetadata
+      mockMetadata,
     );
 
-    expect(JSON.parse(result!.content.text!)).toEqual({
+    expect(JSON.parse(result.content.text!)).toEqual({
       sensitive: "<REDACTED>",
       public: "info",
     });
@@ -54,10 +54,10 @@ describe("transformJsonResponse", () => {
 
     const result = middleware.transformNetworkResponse!(
       mockResponse,
-      mockMetadata
+      mockMetadata,
     );
 
-    expect(JSON.parse(result!.content.text!)).toEqual({
+    expect(JSON.parse(result.content.text!)).toEqual({
       sensitive: "<REDACTED>",
       public: "info",
     });
@@ -73,7 +73,7 @@ describe("transformJsonResponse", () => {
 
     const result = middleware.transformNetworkResponse!(
       mockResponse,
-      mockMetadata
+      mockMetadata,
     );
 
     expect(result).toBe(mockResponse);
@@ -96,7 +96,7 @@ describe("transformJsonResponse", () => {
 
     const resultSkip = middlewareSkip.transformNetworkResponse!(
       nonJsonResponse,
-      mockMetadata
+      mockMetadata,
     );
     expect(resultSkip).toBe(nonJsonResponse);
 
@@ -107,8 +107,8 @@ describe("transformJsonResponse", () => {
 
     const resultRedact = middlewareRedact.transformNetworkResponse!(
       nonJsonResponse,
-      mockMetadata
+      mockMetadata,
     );
-    expect(resultRedact!.content.text).toBe("<REDACTED>");
+    expect(resultRedact.content.text).toBe("<REDACTED>");
   });
 });

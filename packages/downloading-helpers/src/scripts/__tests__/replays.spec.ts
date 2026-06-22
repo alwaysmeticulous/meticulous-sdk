@@ -26,13 +26,13 @@ import {
 // `vi.mock` calls are auto-hoisted above the imports above; the order matches
 // the project's `import/order` rule.
 vi.mock("@alwaysmeticulous/client", () => ({
-  getReplay: vi.fn(async () => ({ version: "v3" })),
-  getReplayV3DownloadUrls: vi.fn(async () => buildDownloadUrls()),
+  getReplay: vi.fn(() => ({ version: "v3" })),
+  getReplayV3DownloadUrls: vi.fn(() => buildDownloadUrls()),
 }));
 
 vi.mock("../../file-downloads/download-file", () => ({
-  downloadFile: vi.fn(async () => undefined),
-  downloadAndExtractFile: vi.fn(async () => undefined),
+  downloadFile: vi.fn(() => undefined),
+  downloadAndExtractFile: vi.fn(() => undefined),
 }));
 
 const REPLAY_ID = "replay-123";
@@ -236,14 +236,12 @@ describe("getOrFetchReplayArchive — bestEffortFileTypes", () => {
       },
     });
     // Fail only the snapshotted-assets download (simulates a pruned object / 403).
-    (downloadAndExtractFile as Mock).mockImplementation(
-      async (signedUrl: string) => {
-        if (signedUrl === SNAPSHOT_ASSETS_URL) {
-          throw new Error("Request failed with status code 403");
-        }
-        return undefined;
-      },
-    );
+    (downloadAndExtractFile as Mock).mockImplementation((signedUrl: string) => {
+      if (signedUrl === SNAPSHOT_ASSETS_URL) {
+        throw new Error("Request failed with status code 403");
+      }
+      return undefined;
+    });
   });
 
   afterEach(() => {

@@ -123,7 +123,7 @@ describe("custom checks SDK helpers", () => {
       // array references the response holds), proving each side is assembled
       // from its own files.
       (downloadAndAssembleSnapshots as Mock).mockImplementation(
-        async ({ files }: { files: unknown }) =>
+        ({ files }: { files: unknown }) =>
           files === response.baseSnapshotFiles ? baseSnapshots : headSnapshots,
       );
 
@@ -168,13 +168,13 @@ describe("custom checks SDK helpers", () => {
         "Success",
       ];
       let statusCalls = 0;
-      client.get.mockImplementation(async (url: string) => {
+      client.get.mockImplementation((url: string) => {
         if (url.endsWith("/network-patching-result")) {
-          return noNetworkPatching("tr-1");
+          return Promise.resolve(noNetworkPatching("tr-1"));
         }
         const status = statuses[Math.min(statusCalls, statuses.length - 1)];
         statusCalls += 1;
-        return { data: testRun("tr-1", status) };
+        return Promise.resolve({ data: testRun("tr-1", status) });
       });
 
       const result = await findTestRunForCustomChecks({
@@ -191,13 +191,13 @@ describe("custom checks SDK helpers", () => {
     it("returns when a run leaves the in-progress states (e.g. Partial), not only on Success/Failure", async () => {
       const statuses: TestRunStatus[] = ["Running", "Partial"];
       let statusCalls = 0;
-      client.get.mockImplementation(async (url: string) => {
+      client.get.mockImplementation((url: string) => {
         if (url.endsWith("/network-patching-result")) {
-          return noNetworkPatching("tr-1");
+          return Promise.resolve(noNetworkPatching("tr-1"));
         }
         const status = statuses[Math.min(statusCalls, statuses.length - 1)];
         statusCalls += 1;
-        return { data: testRun("tr-1", status) };
+        return Promise.resolve({ data: testRun("tr-1", status) });
       });
 
       const result = await findTestRunForCustomChecks({
@@ -226,19 +226,19 @@ describe("custom checks SDK helpers", () => {
 
   describe("findTestRunByCommitForCustomChecks", () => {
     it("resolves the latest run for the commit, then waits for it to complete", async () => {
-      client.get.mockImplementation(async (url: string) => {
+      client.get.mockImplementation((url: string) => {
         if (url === "test-runs/cache") {
-          return { data: testRun("tr-9", "Running") };
+          return Promise.resolve({ data: testRun("tr-9", "Running") });
         }
         if (url.endsWith("/network-patching-result")) {
-          return {
+          return Promise.resolve({
             data: {
               effectiveTestRunId: "tr-9",
               isNetworkPatchingInProgress: false,
             },
-          };
+          });
         }
-        return { data: testRun("tr-9", "Success") };
+        return Promise.resolve({ data: testRun("tr-9", "Success") });
       });
 
       const result = await findTestRunByCommitForCustomChecks({

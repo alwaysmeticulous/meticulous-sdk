@@ -1,4 +1,4 @@
-import {
+import type {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
@@ -9,7 +9,7 @@ import {
 } from "@alwaysmeticulous/client";
 import { defer, initLogger } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
-import {
+import type {
   BeforeUserEventOptions,
   BeforeUserEventResult,
   GeneratedBy,
@@ -18,7 +18,7 @@ import {
   ReplayTarget,
   ScreenshotComparisonOptions,
 } from "@alwaysmeticulous/sdk-bundles-api";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import {
   COMMON_REPLAY_OPTIONS,
   OPTIONS,
@@ -32,7 +32,8 @@ import {
 import { openStepThroughDebuggerUI } from "./replay-debugger.ui";
 
 interface Options
-  extends ScreenshotDiffOptions,
+  extends
+    ScreenshotDiffOptions,
     Omit<ReplayExecutionOptions, "maxDurationMs" | "maxEventCount"> {
   takeSnapshots: boolean;
   appUrl: string | null | undefined;
@@ -198,7 +199,9 @@ const handler = async ({
   }
 
   const getOnBeforeUserEventCallback =
-    defer<(options: BeforeUserEventOptions) => Promise<BeforeUserEventResult>>();
+    defer<
+      (options: BeforeUserEventOptions) => Promise<BeforeUserEventResult>
+    >();
   const getOnClosePageCallback = defer<() => Promise<void>>();
 
   try {
@@ -225,7 +228,9 @@ const handler = async ({
         ? {
             onBeforeUserEvent: async (options) =>
               (await getOnBeforeUserEventCallback.promise)(options),
-            onClosePage: async () => (await getOnClosePageCallback.promise)(),
+            onClosePage: () => {
+              void (async () => (await getOnClosePageCallback.promise)())();
+            },
           }
         : {}),
       maxSemanticVersionSupported: 1,
@@ -234,7 +239,9 @@ const handler = async ({
     if (enableStepThroughDebugger) {
       const stepThroughDebuggerUI = await openStepThroughDebuggerUI({
         onLogEventTarget: replayExecution.logEventTarget,
-        onCloseReplayedPage: replayExecution.closePage,
+        onCloseReplayedPage: () => {
+          void replayExecution.closePage();
+        },
         replayableEvents: replayExecution.eventsBeingReplayed,
         ...(startAtEvent != null ? { startAtEvent } : {}),
       });

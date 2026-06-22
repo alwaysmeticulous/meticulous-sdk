@@ -6,8 +6,8 @@ import type {
   TestRunNetworkPatchingResult,
 } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
-import { MeticulousClient } from "../types/client.types";
-import { ReplayDiffResponse } from "./replay-diff.api";
+import type { MeticulousClient } from "../types/client.types";
+import type { ReplayDiffResponse } from "./replay-diff.api";
 
 export type ExecuteSecureTunnelTestRunOptions =
   ExecuteSecureTunnelTestRunPayload & {
@@ -73,10 +73,9 @@ export const getTestRunNetworkPatchingResult = async ({
   testRunId: string;
 }): Promise<TestRunNetworkPatchingResult | null> => {
   const { data } = await client
-    .get<
-      unknown,
-      { data: TestRunNetworkPatchingResult | null }
-    >(`test-runs/${testRunId}/network-patching-result`)
+    .get<unknown, { data: TestRunNetworkPatchingResult | null }>(
+      `test-runs/${testRunId}/network-patching-result`,
+    )
     .catch((error) => {
       if (isFetchError(error) && error.response?.status === 404) {
         return { data: null };

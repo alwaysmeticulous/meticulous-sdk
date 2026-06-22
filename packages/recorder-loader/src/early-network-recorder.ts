@@ -1,4 +1,4 @@
-import { PrivateWindowApi } from "./private-window-api";
+import type { PrivateWindowApi } from "./private-window-api";
 
 /**
  * If you add 'https://snippet.meticulous.ai/record/v1/network-recorder.bundle.js' as a script tag

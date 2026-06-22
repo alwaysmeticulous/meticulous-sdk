@@ -1,5 +1,5 @@
 import { maybeEnrichFetchError } from "../errors";
-import { MeticulousClient } from "../types/client.types";
+import type { MeticulousClient } from "../types/client.types";
 
 export interface GetIsLockedOptions {
   client: MeticulousClient;

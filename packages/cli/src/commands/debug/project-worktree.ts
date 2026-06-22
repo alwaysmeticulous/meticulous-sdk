@@ -1,7 +1,7 @@
 import { execSync } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
-import { DebugContext } from "@alwaysmeticulous/debug-workspace";
+import type { DebugContext } from "@alwaysmeticulous/debug-workspace";
 import chalk from "chalk";
 
 interface CreateProjectWorktreeOptions {

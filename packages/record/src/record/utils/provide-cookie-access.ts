@@ -1,5 +1,5 @@
-import { Cookie } from "@alwaysmeticulous/api";
-import { Page } from "puppeteer-core";
+import type { Cookie } from "@alwaysmeticulous/api";
+import type { Page } from "puppeteer-core";
 import { convertCookieToMeticulous } from "./cookie-helpers";
 
 type ModifiedWindow = {
@@ -13,7 +13,7 @@ export const provideCookieAccess = async (page: Page) => {
   const client = await page.target().createCDPSession();
   const getCookies = async () =>
     (await client.send("Network.getAllCookies")).cookies.map(
-      convertCookieToMeticulous
+      convertCookieToMeticulous,
     );
   await page.exposeFunction("__meticulous_getAllCookies", getCookies);
 

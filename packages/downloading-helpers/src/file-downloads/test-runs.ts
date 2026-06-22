@@ -1,7 +1,8 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import { TestRunDataLocations } from "@alwaysmeticulous/api";
-import { getTestRunData, MeticulousClient } from "@alwaysmeticulous/client";
+import type { TestRunDataLocations } from "@alwaysmeticulous/api";
+import type { MeticulousClient } from "@alwaysmeticulous/client";
+import { getTestRunData } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   initLogger,
@@ -149,7 +150,11 @@ export const getOrFetchTestRunData = async (
           if (humanReadable && targetFilePath.endsWith(".json")) {
             const fileContents = await readFile(targetFilePath, "utf-8");
             const json = JSON.parse(fileContents);
-            await writeFile(targetFilePath, JSON.stringify(json, null, 2), "utf-8");
+            await writeFile(
+              targetFilePath,
+              JSON.stringify(json, null, 2),
+              "utf-8",
+            );
           }
         };
       })

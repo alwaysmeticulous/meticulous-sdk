@@ -1,4 +1,4 @@
-import { ExecuteTestRunOptions } from "./execute-test-run";
+import type { ExecuteTestRunOptions } from "./execute-test-run";
 
 export type ExecuteScheduledTestRunChunkOptions = Pick<
   ExecuteTestRunOptions,

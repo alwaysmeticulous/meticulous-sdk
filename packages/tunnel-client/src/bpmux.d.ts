@@ -5,8 +5,8 @@
  */
 
 declare module "bpmux" {
-  import { Http2Session } from "node:http2";
-  import { Duplex } from "stream";
+  import type { Http2Session } from "node:http2";
+  import type { Duplex } from "stream";
 
   interface BPMuxDuplexOpts {
     /**
@@ -33,6 +33,7 @@ declare module "bpmux" {
     highWaterMark?: number | undefined;
   }
 
+  // oxlint-disable-next-line typescript-eslint/no-redundant-type-constituents -- node:http2/stream types resolve under tsc; tsgolint false positive in ambient .d.ts
   export class BPMux<T extends Duplex | Http2Session> {
     constructor(
       carrier: T,
@@ -79,7 +80,7 @@ declare module "bpmux" {
         keep_alive?: boolean;
 
         peer_multiplex_options?: GenericDuplexOpts & BPMuxDuplexOpts;
-      }
+      },
     ): Duplex;
 
     on(event: "handshake", listener: (duplex: Duplex) => void): this;

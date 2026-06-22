@@ -1,7 +1,7 @@
 import { SNIPPETS_BASE_URL } from "./constants";
 import { getSnippetVersionFolder } from "./get-snippet-version-folder";
-import { LoaderOptions } from "./loader.types";
-import { PrivateWindowApi } from "./private-window-api";
+import type { LoaderOptions } from "./loader.types";
+import type { PrivateWindowApi } from "./private-window-api";
 
 const DEFAULT_MAX_MS_TO_BLOCK_FOR = 2_000;
 
@@ -160,18 +160,18 @@ const unsafeLoadAndStartRecorder = ({
       const initialiseRecorder = (window as PrivateWindowApi).__meticulous
         ?.initialiseRecorder;
       if (typeof initialiseRecorder !== "function") {
-        reject("Meticulous recorder failed to initialise.");
+        reject(new Error("Meticulous recorder failed to initialise."));
         return;
       }
 
       try {
         initialiseRecorder();
       } catch (error) {
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       }
 
       resolve({
-        stopRecording: async () => {
+        stopRecording: () => {
           const stopRecording = (window as PrivateWindowApi).__meticulous
             ?.stopRecording;
           if (!stopRecording) {
@@ -179,13 +179,13 @@ const unsafeLoadAndStartRecorder = ({
               "Recorder not initialised: window.__meticulous.stopRecording is not defined.",
             );
           }
-          await stopRecording();
-          return;
+          stopRecording();
+          return Promise.resolve();
         },
       });
     };
     script.onerror = () => {
-      reject("Meticulous recorder failed to initialise.");
+      reject(new Error("Meticulous recorder failed to initialise."));
     };
 
     document.head.appendChild(script);

@@ -1,17 +1,16 @@
 // These tests run at compile time, and will produce compile errors if they fail
 // They test the typing functions
 
-import {
+import type {
   Redactor,
   RedactorsFor,
 } from "../redact-nested-fields/utils/redactors-for";
 
 type Assert<T extends true> = T;
-type Equal<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
-  ? 1
-  : 2
-  ? true
-  : false;
+type Equal<X, Y> =
+  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2
+    ? true
+    : false;
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace RedactorsForTests {

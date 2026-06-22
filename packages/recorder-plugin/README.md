@@ -49,9 +49,7 @@ export default defineConfig({
 import meticulous from "@alwaysmeticulous/recorder-plugin/webpack";
 
 export default {
-  plugins: [
-    meticulous({ recordingToken: "<your-recording-token>" }),
-  ],
+  plugins: [meticulous({ recordingToken: "<your-recording-token>" })],
 };
 ```
 
@@ -69,9 +67,7 @@ present, and otherwise falls back to rewriting any emitted `.html` assets.
 import meticulous from "@alwaysmeticulous/recorder-plugin/rspack";
 
 export default {
-  plugins: [
-    meticulous({ recordingToken: "<your-recording-token>" }),
-  ],
+  plugins: [meticulous({ recordingToken: "<your-recording-token>" })],
 };
 ```
 
@@ -88,9 +84,7 @@ import { defineConfig } from "@rsbuild/core";
 import meticulous from "@alwaysmeticulous/recorder-plugin/rsbuild";
 
 export default defineConfig({
-  plugins: [
-    meticulous({ recordingToken: "<your-recording-token>" }),
-  ],
+  plugins: [meticulous({ recordingToken: "<your-recording-token>" })],
 });
 ```
 
@@ -105,9 +99,7 @@ import meticulous from "@alwaysmeticulous/recorder-plugin/rspack";
 export default defineConfig({
   tools: {
     rspack: {
-      plugins: [
-        meticulous({ recordingToken: "<your-recording-token>" }),
-      ],
+      plugins: [meticulous({ recordingToken: "<your-recording-token>" })],
     },
   },
 });
@@ -142,13 +134,13 @@ which bundler Nuxt is using.
 import type { Options } from "@alwaysmeticulous/recorder-plugin";
 ```
 
-| Option                 | Type                                                       | Default                                            | Description |
-| ---------------------- | ---------------------------------------------------------- | -------------------------------------------------- | ----------- |
-| `recordingToken`       | `string` (required)                                        | —                                                  | Your Meticulous recording token. Emitted as `data-recording-token` on the injected `<script>`. |
-| `enabled`              | `"development" \| "always" \| "never" \| (ctx) => boolean` | `"development"`                                    | When to inject. `"development"` only injects during development builds (Vite `command === "serve"` or webpack/rspack `mode !== "production"`). Pass a function for full control. |
-| `inject`               | `"auto" \| "replace"`                                      | `"auto"`                                           | `"auto"` prepends a new `<script>` as the first child of `<head>`. `"replace"` swaps a placeholder script tag (see below). |
-| `placeholderAttribute` | `string`                                                   | `"data-meticulous"`                                | Attribute name used to find the placeholder when `inject: "replace"`. |
-| `snippetUrl`           | `string`                                                   | `"https://snippet.meticulous.ai/v1/meticulous.js"` | Override the snippet URL. |
+| Option                 | Type                                                       | Default                                            | Description                                                                                                                                                                                               |
+| ---------------------- | ---------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `recordingToken`       | `string` (required)                                        | —                                                  | Your Meticulous recording token. Emitted as `data-recording-token` on the injected `<script>`.                                                                                                            |
+| `enabled`              | `"development" \| "always" \| "never" \| (ctx) => boolean` | `"development"`                                    | When to inject. `"development"` only injects during development builds (Vite `command === "serve"` or webpack/rspack `mode !== "production"`). Pass a function for full control.                          |
+| `inject`               | `"auto" \| "replace"`                                      | `"auto"`                                           | `"auto"` prepends a new `<script>` as the first child of `<head>`. `"replace"` swaps a placeholder script tag (see below).                                                                                |
+| `placeholderAttribute` | `string`                                                   | `"data-meticulous"`                                | Attribute name used to find the placeholder when `inject: "replace"`.                                                                                                                                     |
+| `snippetUrl`           | `string`                                                   | `"https://snippet.meticulous.ai/v1/meticulous.js"` | Override the snippet URL.                                                                                                                                                                                 |
 | `attributes`           | `Record<string, string \| boolean \| null \| undefined>`   | `{}`                                               | Extra attributes on the `<script>` tag (e.g. `nonce`). `true` emits a boolean attribute; `false`/`null`/`undefined` skip it. Overrides any default attribute, including `data-is-production-environment`. |
 
 The plugin always emits `data-is-production-environment="true"` or
@@ -161,7 +153,8 @@ need different behaviour:
 meticulous({
   recordingToken: "<your-recording-token>",
   attributes: {
-    "data-is-production-environment": process.env.MY_ENV === "prod" ? "true" : "false",
+    "data-is-production-environment":
+      process.env.MY_ENV === "prod" ? "true" : "false",
   },
 });
 ```
@@ -187,7 +180,7 @@ The predicate receives an `EnabledContext`:
 ```ts
 interface EnabledContext {
   framework: "vite" | "webpack" | "rspack";
-  mode?: string;        // Vite mode / webpack mode / NODE_ENV fallback
+  mode?: string; // Vite mode / webpack mode / NODE_ENV fallback
   command?: "serve" | "build"; // Vite-only
   isProduction: boolean;
 }

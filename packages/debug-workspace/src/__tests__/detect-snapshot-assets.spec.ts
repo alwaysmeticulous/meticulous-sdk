@@ -31,10 +31,9 @@ describe("detectSnapshotAssets", () => {
   });
 
   it("returns false when no snapshotted-assets directories exist", () => {
-    mkdirSync(
-      join(workspace, DEBUG_DATA_DIRECTORY, "replays", "head", "r1"),
-      { recursive: true },
-    );
+    mkdirSync(join(workspace, DEBUG_DATA_DIRECTORY, "replays", "head", "r1"), {
+      recursive: true,
+    });
     expect(detectSnapshotAssets(workspace)).toBe(false);
   });
 

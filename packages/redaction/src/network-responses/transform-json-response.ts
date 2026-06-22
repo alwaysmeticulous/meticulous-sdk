@@ -1,5 +1,5 @@
-import { HarResponse } from "@alwaysmeticulous/api";
-import {
+import type { HarResponse } from "@alwaysmeticulous/api";
+import type {
   NetworkResponseMetadata,
   RecorderMiddleware,
 } from "@alwaysmeticulous/sdk-bundles-api";

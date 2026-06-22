@@ -26,7 +26,7 @@ export const wrapHandler = function wrapHandler_<T>(
         process.exit(0);
       })
       .catch(async (error) => {
-        const exitCode = await reportHandlerError(error);
+        const exitCode = reportHandlerError(error);
         const currentSpan = Sentry.getActiveSpan();
         if (currentSpan) {
           currentSpan.setStatus({ code: 2 });
@@ -40,7 +40,7 @@ export const wrapHandler = function wrapHandler_<T>(
   };
 };
 
-const reportHandlerError = async (error: unknown): Promise<number> => {
+const reportHandlerError = (error: unknown): number => {
   const logger = initLogger();
   logger.info("");
 

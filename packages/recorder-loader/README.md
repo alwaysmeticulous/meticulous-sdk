@@ -17,22 +17,21 @@ pnpm add @alwaysmeticulous/recorder-loader
 Within your app entrypoint:
 
 ```javascript
-import { loadAndStartRecorder } from '@alwaysmeticulous/recorder-loader'
+import { loadAndStartRecorder } from "@alwaysmeticulous/recorder-loader";
 
 async function startApp() {
-    // Start the Meticulous recorder before you initialise your app.
-    try {
-        await loadAndStartRecorder({
-            recordingToken: '<recording token>',
-        })
-    } catch (err) {
-        console.error(`Meticulous failed to initialise ${err}`)
-    }
+  // Start the Meticulous recorder before you initialise your app.
+  try {
+    await loadAndStartRecorder({
+      recordingToken: "<recording token>",
+    });
+  } catch (err) {
+    console.error(`Meticulous failed to initialise ${err}`);
+  }
 
-    // Initalise app after Meticulous' snippet, e.g:
-    ReactDOM.render(component, document.getElementById('root'))
+  // Initalise app after Meticulous' snippet, e.g:
+  ReactDOM.render(component, document.getElementById("root"));
 }
-
 
 startApp();
 ```

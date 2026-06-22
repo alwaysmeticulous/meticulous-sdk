@@ -1,5 +1,5 @@
-import { SessionData } from "@alwaysmeticulous/api";
-import { RecordedSession } from "./session.types";
+import type { SessionData } from "@alwaysmeticulous/api";
+import type { RecordedSession } from "./session.types";
 
 export interface ReplayDebuggerDependency<Key extends string> {
   key: Key;
@@ -26,5 +26,5 @@ export interface ReplayDebuggerOptions {
 }
 
 export type CreateReplayDebuggerFn = (
-  options: ReplayDebuggerOptions
+  options: ReplayDebuggerOptions,
 ) => Promise<any>;

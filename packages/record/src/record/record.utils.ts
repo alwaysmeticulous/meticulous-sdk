@@ -1,5 +1,5 @@
 import { readFile } from "fs/promises";
-import { Page } from "puppeteer-core";
+import type { Page } from "puppeteer-core";
 import {
   METICULOUS_BYPASS_CSP_DOCS_URL,
   REQUIRED_CSP_ORIGINS,
@@ -80,7 +80,7 @@ export async function bootstrapPage({
       uploadIntervalMs,
       disablePasswordRedaction,
       snippetScriptUrl,
-    }
+    },
   );
 
   if (captureHttpOnlyCookies) {
@@ -95,7 +95,7 @@ export async function bootstrapPage({
   });
 
   await page.evaluateOnNewDocument(
-    wrapInShouldRecordCondition(recordingSnippetFile)
+    wrapInShouldRecordCondition(recordingSnippetFile),
   );
 
   await page.evaluateOnNewDocument(
@@ -112,6 +112,6 @@ export async function bootstrapPage({
       });
     },
     REQUIRED_CSP_ORIGINS,
-    METICULOUS_BYPASS_CSP_DOCS_URL
+    METICULOUS_BYPASS_CSP_DOCS_URL,
   );
 }

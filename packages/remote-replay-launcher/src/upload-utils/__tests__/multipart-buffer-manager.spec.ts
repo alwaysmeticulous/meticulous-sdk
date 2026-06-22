@@ -5,8 +5,8 @@ describe("MultipartBufferManager", () => {
   const CHUNK_SIZE = 1024;
 
   const createManager = (maxConcurrentUploads = 4) => {
-    const uploadPart = async (_buffer: Buffer, partNumber: number) => {
-      return `etag-${partNumber}`;
+    const uploadPart = (_buffer: Buffer, partNumber: number) => {
+      return Promise.resolve(`etag-${partNumber}`);
     };
 
     return new MultipartBufferManager({
@@ -235,8 +235,8 @@ describe("MultipartBufferManager", () => {
   describe("error handling", () => {
     it("should not throw during flush but propagate errors during finalize", async () => {
       const uploadError = new Error("Upload failed");
-      const uploadPart = async () => {
-        throw uploadError;
+      const uploadPart = () => {
+        return Promise.reject(uploadError);
       };
 
       const manager = new MultipartBufferManager({

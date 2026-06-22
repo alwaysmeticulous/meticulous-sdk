@@ -10,9 +10,7 @@ describe("resolveOptions", () => {
 
   it("throws when recordingToken is missing", () => {
     // @ts-expect-error intentionally invalid input
-    expect(() => resolveOptions({})).toThrow(
-      /`recordingToken` is required/,
-    );
+    expect(() => resolveOptions({})).toThrow(/`recordingToken` is required/);
   });
 
   it("throws when recordingToken is the empty string", () => {

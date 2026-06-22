@@ -1,6 +1,6 @@
 import { access, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import { ConsoleMessageWithStackTracePointer } from "@alwaysmeticulous/api";
+import type { ConsoleMessageWithStackTracePointer } from "@alwaysmeticulous/api";
 import { initLogger } from "@alwaysmeticulous/common";
 
 const LOGS_NDJSON = "logs.ndjson";
@@ -45,9 +45,7 @@ export const ensureReplayLogTextFiles = async (
     const logs = (await readFile(ndjsonPath, "utf8"))
       .split("\n")
       .filter((line) => line !== "")
-      .map(
-        (line) => JSON.parse(line) as ConsoleMessageWithStackTracePointer,
-      );
+      .map((line) => JSON.parse(line) as ConsoleMessageWithStackTracePointer);
 
     await writeFile(concisePath, formatConciseLogs(logs));
     await writeFile(deterministicPath, formatDeterministicLogs(logs));

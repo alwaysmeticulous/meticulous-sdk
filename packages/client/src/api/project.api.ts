@@ -1,6 +1,6 @@
-import { Project } from "@alwaysmeticulous/api";
+import type { Project } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
-import { MeticulousClient } from "../types/client.types";
+import type { MeticulousClient } from "../types/client.types";
 
 export interface GetRepoUrlOptions {
   client: MeticulousClient;

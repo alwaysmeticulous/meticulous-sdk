@@ -41,9 +41,7 @@ export const extractScreenshotDomFiles = (workspaceDir: string): void => {
       }
       const baseName = filename.slice(0, -".metadata.json".length);
 
-      const metadata = readScreenshotMetadata(
-        join(screenshotsDir, filename),
-      );
+      const metadata = readScreenshotMetadata(join(screenshotsDir, filename));
       if (metadata == null) {
         logMalformed(replayDir, filename);
         skippedMalformedCount++;

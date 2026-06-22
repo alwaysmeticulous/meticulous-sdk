@@ -1,4 +1,4 @@
-import { IndexedReplayableEvent } from "@alwaysmeticulous/sdk-bundles-api";
+import type { IndexedReplayableEvent } from "@alwaysmeticulous/sdk-bundles-api";
 import {
   ArrowDownTrayIcon,
   ArrowsUpDownIcon,
@@ -14,8 +14,9 @@ import {
 } from "@heroicons/react/20/solid";
 import cx from "classnames";
 import { Duration } from "luxon";
-import { FunctionComponent, useCallback, useEffect, useRef } from "react";
-import { ReplayableEvent } from "src/lib/event/event.types";
+import type { FunctionComponent } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import type { ReplayableEvent } from "src/lib/event/event.types";
 import { useReplayDebuggerContext } from "src/lib/replay-debugger/replay-debugger.context";
 
 interface EventListItemProps {
@@ -100,7 +101,7 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
         "ring-2",
         "ring-inset",
         current && "bg-violet-100/50",
-        current ? "ring-violet-500" : "ring-transparent"
+        current ? "ring-violet-500" : "ring-transparent",
       )}
       ref={ref}
     >
@@ -111,7 +112,7 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
           "rounded-full",
           "shadow-sm",
           "bg-violet-200",
-          "text-violet-800"
+          "text-violet-800",
         )}
       >
         {Icon && <Icon className={cx("w-5", "h-5")} aria-hidden="true" />}
@@ -125,7 +126,7 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
               "items-center",
               "text-base",
               "font-bold",
-              "select-none"
+              "select-none",
             )}
             aria-hidden="true"
           >
@@ -151,7 +152,7 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
               "focus:outline-none",
               "focus:ring-2",
               "focus:ring-offset-2",
-              "focus:ring-violet-500"
+              "focus:ring-violet-500",
             )}
             onClick={onPlayNextEvent}
             disabled={loading}
@@ -178,7 +179,7 @@ const EventListItem: FunctionComponent<EventListItemProps> = ({
               "focus:outline-none",
               "focus:ring-2",
               "focus:ring-offset-2",
-              "focus:ring-violet-500"
+              "focus:ring-violet-500",
             )}
             onClick={onSetIndex}
             disabled={loading}
@@ -225,7 +226,7 @@ const EndOfReplayItem: FunctionComponent<{ current?: boolean }> = ({
         "ring-2",
         "ring-inset",
         current && "bg-violet-100/50",
-        current ? "ring-violet-500" : "ring-transparent"
+        current ? "ring-violet-500" : "ring-transparent",
       )}
     >
       <div
@@ -235,7 +236,7 @@ const EndOfReplayItem: FunctionComponent<{ current?: boolean }> = ({
           "rounded-full",
           "shadow-sm",
           "bg-violet-200",
-          "text-violet-800"
+          "text-violet-800",
         )}
       >
         <XMarkIcon className={cx("w-5", "h-5")} aria-hidden="true" />
@@ -258,7 +259,7 @@ const EndOfReplayItem: FunctionComponent<{ current?: boolean }> = ({
             "focus:ring-2",
             "focus:ring-offset-2",
             "focus:ring-violet-500",
-            !current && "cursor-not-allowed"
+            !current && "cursor-not-allowed",
           )}
           onClick={onReset}
           disabled={loading || !current}
@@ -296,7 +297,7 @@ export const ReplayUserEvents: FunctionComponent = () => {
         "sm:max-w-xl",
         "sm:px-6",
         "sm:py-4",
-        "lg:px-8"
+        "lg:px-8",
       )}
     >
       <div
@@ -305,7 +306,7 @@ export const ReplayUserEvents: FunctionComponent = () => {
           "overflow-hidden",
           "mx-auto",
           "shadow",
-          "sm:rounded-lg"
+          "sm:rounded-lg",
         )}
       >
         <div
@@ -314,7 +315,7 @@ export const ReplayUserEvents: FunctionComponent = () => {
             "py-5",
             "border-b",
             "border-zinc-200",
-            "sm:px-6"
+            "sm:px-6",
           )}
         >
           <h3
@@ -322,7 +323,7 @@ export const ReplayUserEvents: FunctionComponent = () => {
               "text-lg",
               "leading-6",
               "font-medium",
-              "text-zinc-900"
+              "text-zinc-900",
             )}
           >
             User events
@@ -338,7 +339,7 @@ export const ReplayUserEvents: FunctionComponent = () => {
             "divide-y",
             "divide-zinc-100",
             "snap-y",
-            "scroll-py-2"
+            "scroll-py-2",
           )}
         >
           {events.map((event, idx) => (
@@ -358,7 +359,7 @@ export const ReplayUserEvents: FunctionComponent = () => {
             "border-t",
             "border-zinc-200",
             "bg-zinc-100",
-            "sm:px-6"
+            "sm:px-6",
           )}
         >
           <h4
@@ -367,7 +368,7 @@ export const ReplayUserEvents: FunctionComponent = () => {
               "text-base",
               "font-medium",
               "text-zinc-900",
-              "select-none"
+              "select-none",
             )}
           >
             Event data
@@ -378,7 +379,7 @@ export const ReplayUserEvents: FunctionComponent = () => {
               "overflow-auto",
               "text-zinc-900",
               "font-mono",
-              "select-all"
+              "select-all",
             )}
           >
             <code>

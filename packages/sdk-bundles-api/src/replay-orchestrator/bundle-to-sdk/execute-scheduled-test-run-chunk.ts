@@ -1,5 +1,8 @@
-import { Project, TestRunChunkStatus } from "@alwaysmeticulous/api";
-import { DetailedTestCaseResult, ExecutionProgress } from "./execute-test-run";
+import type { Project, TestRunChunkStatus } from "@alwaysmeticulous/api";
+import type {
+  DetailedTestCaseResult,
+  ExecutionProgress,
+} from "./execute-test-run";
 
 export interface ExecuteTestRunChunkResult {
   testRunChunk: TestRunChunkExecution;

@@ -1,3 +1,4 @@
+import type * as Common from "@alwaysmeticulous/common";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildClient } from "../client";
 
@@ -6,8 +7,7 @@ const { meticulousFetch } = vi.hoisted(() => ({
 }));
 
 vi.mock("@alwaysmeticulous/common", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@alwaysmeticulous/common")>();
+  const actual = await importOriginal<typeof Common>();
   return {
     ...actual,
     meticulousFetch: (...args: unknown[]) => meticulousFetch(...args),
@@ -22,8 +22,8 @@ const okResponse = () => ({
     forEach: () => {},
     get: () => "application/json",
   },
-  json: async () => ({ ok: true }),
-  text: async () => "",
+  json: () => ({ ok: true }),
+  text: () => "",
 });
 
 const authHeaderOfCall = (callIndex: number): string => {

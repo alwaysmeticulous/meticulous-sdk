@@ -1,6 +1,6 @@
 import { initLogger } from "@alwaysmeticulous/common";
 import { uploadAssets, uploadAssetsFromZip } from "./asset-upload-utils";
-import {
+import type {
   UploadAssetsAndTriggerTestRunOptions,
   ExecuteRemoteTestRunResult,
 } from "./types";
@@ -40,7 +40,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
       : undefined;
 
   if (!result) {
-    throw new Error("Expected either appDirectory or appZip to be provided!");
+    throw new Error("Expected either appDirectory or appZip to be provided");
   }
 
   if (result.testRun) {

@@ -1,4 +1,4 @@
-import { AssetUploadMetadata } from "@alwaysmeticulous/api";
+import type { AssetUploadMetadata } from "@alwaysmeticulous/api";
 import { initLogger } from "@alwaysmeticulous/common";
 
 /**

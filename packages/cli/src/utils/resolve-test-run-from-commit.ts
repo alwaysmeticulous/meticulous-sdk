@@ -1,9 +1,9 @@
-import { TestRunStatus } from "@alwaysmeticulous/api";
+import type { TestRunStatus } from "@alwaysmeticulous/api";
+import type { MeticulousClient } from "@alwaysmeticulous/client";
 import {
   getTestRun,
   getTestRunForCommit,
   IN_PROGRESS_TEST_RUN_STATUS,
-  MeticulousClient,
 } from "@alwaysmeticulous/client";
 import { getCommitSha } from "@alwaysmeticulous/common";
 import { CliUserError } from "./cli-user-error";

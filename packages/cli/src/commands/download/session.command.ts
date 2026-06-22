@@ -5,7 +5,7 @@ import {
   getOrFetchRecordedSessionData,
   writeManifest,
 } from "@alwaysmeticulous/downloading-helpers";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { DEFAULT_SESSION_OUTPUT_DIR } from "../../command-utils/common-options";
 import { downloadSingleSession } from "../../command-utils/download-session.utils";
 import { wrapHandler } from "../../command-utils/sentry.utils";

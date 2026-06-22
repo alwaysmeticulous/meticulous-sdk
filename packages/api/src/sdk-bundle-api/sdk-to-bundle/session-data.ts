@@ -1,8 +1,8 @@
-import { ReplayableEvent } from "../bidirectional/replayable-event";
-import { EventSourceConnectionData } from "./event-source-data";
-import { HarLog, HarResponse } from "./har-log";
-import { StreamingFetchResponseData } from "./streaming-fetch-data";
-import { WebSocketConnectionData } from "./websocket-data";
+import type { ReplayableEvent } from "../bidirectional/replayable-event";
+import type { EventSourceConnectionData } from "./event-source-data";
+import type { HarLog, HarResponse } from "./har-log";
+import type { StreamingFetchResponseData } from "./streaming-fetch-data";
+import type { WebSocketConnectionData } from "./websocket-data";
 
 export interface SessionData {
   userEvents: {

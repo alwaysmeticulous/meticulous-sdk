@@ -3,14 +3,14 @@ import chalk from "chalk";
 export const printPageClosedWarning = (): void => {
   printWarning(
     "Login flow session recording aborted. " +
-      "To complete the recording, please click the 'Finish recording' button."
+      "To complete the recording, please click the 'Finish recording' button.",
   );
 };
 
 export const printNoLoginSessionRecordedWarning = (): void => {
   printWarning(
     "No login flow session was recorded. " +
-      "Record your flow by signing in into your application."
+      "Record your flow by signing in into your application.",
   );
 };
 

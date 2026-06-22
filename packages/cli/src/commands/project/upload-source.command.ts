@@ -12,7 +12,7 @@ import {
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { create as tarCreate } from "tar";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {

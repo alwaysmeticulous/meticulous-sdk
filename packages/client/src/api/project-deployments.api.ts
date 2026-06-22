@@ -1,10 +1,10 @@
-import {
+import type {
   AssetUploadMetadata,
   DeploymentArchiveType,
   DownloadDeploymentResponse,
-  type TestRun,
 } from "@alwaysmeticulous/api";
-import { MeticulousClient } from "../types/client.types";
+import { type TestRun } from "@alwaysmeticulous/api";
+import type { MeticulousClient } from "../types/client.types";
 
 /**
  * Identifies a project for OAuth callers, whose token does not by itself

@@ -9,8 +9,8 @@ describe("wrapInShouldRecordCondition", () => {
           "console.log('Hello World')",
           "//# sourceMappingURL=main.bundle.js.map",
           "",
-        ].join("\n")
-      )
+        ].join("\n"),
+      ),
     ).toMatchInlineSnapshot(`
       "if (window.origin !== 'null' && !["https://app.meticulous.ai/docs/recording-a-test","https://app.meticulous.ai/docs/recording-a-login-flow","https://app.meticulous.ai/docs/recording-a-login-flow-saving"].includes(window.document.location.toString()) && !["chrome://","chrome-error://","about:"].some((protocol) => window.document.location.toString().startsWith(protocol))) {
       console.log('Hello World')

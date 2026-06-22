@@ -37,8 +37,9 @@ export interface RecordSettings {
  * The record configuration is immutable and represents the final parameter
  * values used during recording.
  */
-export interface RecordConfig
-  extends DeepRequired<Omit<RecordSettings, "disabled">> {
+export interface RecordConfig extends DeepRequired<
+  Omit<RecordSettings, "disabled">
+> {
   /** Maximum number of data payloads which can be sent during recording */
   maxUploads: number;
   /** Recording start time */

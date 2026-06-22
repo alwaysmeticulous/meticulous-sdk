@@ -1,5 +1,5 @@
-import { Cookie } from "@alwaysmeticulous/api";
-import { Protocol } from "puppeteer-core";
+import type { Cookie } from "@alwaysmeticulous/api";
+import type { Protocol } from "puppeteer-core";
 
 export const convertCookieToMeticulous = ({
   sameSite,
@@ -15,7 +15,7 @@ export const convertCookieToMeticulous = ({
 };
 
 const convertSameSiteValue = (
-  sameSite: Protocol.Network.CookieSameSite | undefined
+  sameSite: Protocol.Network.CookieSameSite | undefined,
 ) => {
   switch (sameSite) {
     case "None":

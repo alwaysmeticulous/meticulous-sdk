@@ -1,11 +1,13 @@
-import { TestRun } from "@alwaysmeticulous/api";
+import type { TestRun } from "@alwaysmeticulous/api";
+import type {
+  ContainerEnvVariable,
+  ProjectIdentifier,
+} from "@alwaysmeticulous/client";
 import {
   getApiToken,
   createClient,
   getRegistryAuth,
   completeContainerUpload,
-  ContainerEnvVariable,
-  ProjectIdentifier,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
@@ -211,6 +213,7 @@ const verifyDockerConnection = async (docker: Docker): Promise<void> => {
 const getImageInfo = async (
   docker: Docker,
   imageTag: string,
+  // oxlint-disable-next-line typescript-eslint/no-redundant-type-constituents -- dockerode types resolve under tsc; tsgolint false positive
 ): Promise<Docker.ImageInspectInfo | null> => {
   const logger = initLogger();
   try {
@@ -272,7 +275,7 @@ const pushImage = async (
       docker.modem.followProgress(stream, (err) => {
         if (err) {
           logger.error(`Error during image push: ${err.message}`);
-          reject(err);
+          reject(err instanceof Error ? err : new Error(String(err)));
           return;
         }
         logger.info(`Successfully pushed image ${imageReference}`);

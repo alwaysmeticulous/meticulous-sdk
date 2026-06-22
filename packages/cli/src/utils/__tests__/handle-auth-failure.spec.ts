@@ -14,7 +14,7 @@ vi.mock("@alwaysmeticulous/client", () => ({
   // Use a real shape-check for fetch errors so the unit test stays close
   // to production behavior.
   isFetchError: (error: unknown): boolean =>
-    !!error && typeof error === "object" && "response" in (error as object),
+    !!error && typeof error === "object" && "response" in error,
   isJwtExpired: mocks.isJwtExpired,
 }));
 
@@ -63,9 +63,7 @@ describe("handleAuthFailure", () => {
 
     let caught: unknown;
     try {
-      handleAuthFailure(
-        makeFetchError(403, { message: "audience mismatch" }),
-      );
+      handleAuthFailure(makeFetchError(403, { message: "audience mismatch" }));
     } catch (error) {
       caught = error;
     }

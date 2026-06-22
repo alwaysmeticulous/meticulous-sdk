@@ -1,4 +1,4 @@
-import { OutOfDateClientError } from "@alwaysmeticulous/sdk-bundles-api";
+import type { OutOfDateClientError } from "@alwaysmeticulous/sdk-bundles-api";
 
 export const isOutOfDateClientError = (
   error: unknown,

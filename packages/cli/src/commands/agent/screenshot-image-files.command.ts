@@ -9,7 +9,7 @@ import {
   initLogger,
 } from "@alwaysmeticulous/common";
 import { downloadFile } from "@alwaysmeticulous/downloading-helpers";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {

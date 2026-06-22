@@ -62,8 +62,10 @@ await runDebugPipeline({
   client,
   replayDiffId: "some-replay-diff-id",
   screenshot: "screenshot-after-event-00042.png",
-  createWorktree: (ctx, workspaceDir) => createProjectWorktree({ debugContext: ctx, workspaceDir }),
-  onWorkspaceReady: (workspaceDir, projectRepoDir) => presentWorkspace({ workspaceDir, projectRepoDir }),
+  createWorktree: (ctx, workspaceDir) =>
+    createProjectWorktree({ debugContext: ctx, workspaceDir }),
+  onWorkspaceReady: (workspaceDir, projectRepoDir) =>
+    presentWorkspace({ workspaceDir, projectRepoDir }),
 });
 ```
 
@@ -78,7 +80,12 @@ import {
 
 const debugContext = await resolveDebugContext({ client, replayDiffId });
 await downloadDebugData({ client, debugContext, workspaceDir });
-await generateDebugWorkspace({ client, debugContext, workspaceDir, projectRepoDir });
+await generateDebugWorkspace({
+  client,
+  debugContext,
+  workspaceDir,
+  projectRepoDir,
+});
 ```
 
 ## Key exports

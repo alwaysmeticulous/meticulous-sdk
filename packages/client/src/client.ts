@@ -4,7 +4,7 @@ import {
   defaultShouldRetry,
   meticulousFetch,
 } from "@alwaysmeticulous/common";
-import log from "loglevel";
+import type log from "loglevel";
 import type { RequestInit } from "undici";
 import { getOAuthProjects } from "./api/oauth.api";
 import { getApiToken, getAuthToken } from "./api-token.utils";
@@ -15,7 +15,7 @@ import {
   getStoredProjectId,
   setStoredProject,
 } from "./oauth/oauth-token-store";
-import {
+import type {
   MeticulousClient,
   RequestConfig,
   Response,

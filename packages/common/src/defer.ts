@@ -21,7 +21,7 @@ export function defer<T = void>(): Deferred<T> {
     },
     () => {
       state = "rejected";
-    }
+    },
   );
   return {
     resolve: resolve as any,

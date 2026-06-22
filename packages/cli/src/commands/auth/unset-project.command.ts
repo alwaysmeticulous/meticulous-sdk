@@ -1,16 +1,13 @@
-import {
-  clearStoredProject,
-  getStoredProject,
-} from "@alwaysmeticulous/client";
+import { clearStoredProject, getStoredProject } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
 export const unsetProjectCommand: CommandModule = {
   command: "unset-project",
   describe: "Clear the project selected via `auth set-project`",
   builder: {},
-  handler: wrapHandler(async () => {
+  handler: wrapHandler(() => {
     const logger = initLogger();
     const previous = getStoredProject();
     clearStoredProject();
@@ -19,5 +16,6 @@ export const unsetProjectCommand: CommandModule = {
     } else {
       logger.info("No project was selected.");
     }
+    return Promise.resolve();
   }),
 };

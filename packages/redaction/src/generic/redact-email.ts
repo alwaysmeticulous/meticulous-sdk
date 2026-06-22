@@ -5,7 +5,7 @@ export const redactEmail = (email: string) => {
       str
         .split(".")
         .map((subStr) => redactComponent(subStr))
-        .join(".")
+        .join("."),
     )
     .join("@");
 };

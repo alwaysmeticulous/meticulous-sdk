@@ -1,14 +1,14 @@
+import type { OAuthProject } from "@alwaysmeticulous/client";
 import {
   createClient,
   getOAuthProjects,
   isOAuthJwt,
-  OAuthProject,
   resolveApiTokenWithOAuth,
   setStoredProject,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import inquirer from "inquirer";
-import { CommandModule } from "yargs";
+import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { handleAuthFailure } from "../../utils/handle-auth-failure";
