@@ -57,6 +57,7 @@ describe("downloadAndAssembleSnapshots", () => {
       {
         type: "network-requests",
         sessionId: "sess-a",
+        sessionDescription: null,
         stageDuringSession: "final-state",
         data: { fromKey: files[0].key },
         versionNumber: 0,
@@ -64,6 +65,7 @@ describe("downloadAndAssembleSnapshots", () => {
       {
         type: "network-requests",
         sessionId: "sess-b",
+        sessionDescription: null,
         stageDuringSession: "final-state",
         data: { fromKey: files[1].key },
         versionNumber: 0,
@@ -81,6 +83,45 @@ describe("downloadAndAssembleSnapshots", () => {
         `https://cf.example/${files[1].key}?Signature=sig&Key-Pair-Id=k`,
       ]),
     );
+  });
+
+  it("preserves a stored sessionDescription on each entry", async () => {
+    (downloadAndExtractFile as Mock).mockImplementation(
+      async (url: string, _zipPath: string, extractDir: string) => {
+        const key = keyFromUrl(url);
+        const fileName = key.split("/").pop()!.replace(/\.gz$/, "");
+        await mkdir(extractDir, { recursive: true });
+        await writeFile(
+          join(extractDir, fileName),
+          JSON.stringify([
+            {
+              stageDuringSession: "final-state",
+              data: { fromKey: key },
+              sessionDescription: "Added an item to the cart",
+            },
+          ]),
+        );
+        return [fileName];
+      },
+    );
+
+    const key =
+      "proj/replay-a/custom-checks-snapshots/network-requests.json.gz";
+    const snapshots = await downloadAndAssembleSnapshots({
+      signedBaseUrl: SIGNED_BASE_URL,
+      files: [{ type: "network-requests", sessionId: "sess-a", key }],
+    });
+
+    expect(snapshots).toEqual([
+      {
+        type: "network-requests",
+        sessionId: "sess-a",
+        sessionDescription: "Added an item to the cart",
+        stageDuringSession: "final-state",
+        data: { fromKey: key },
+        versionNumber: 0,
+      },
+    ]);
   });
 
   it("returns no snapshots and does not download when there are no files", async () => {

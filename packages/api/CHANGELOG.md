@@ -1,5 +1,15 @@
 # @alwaysmeticulous/api
 
+## 2.300.0
+
+### Minor Changes
+
+- [#10377](https://github.com/alwaysmeticulous/meticulous/pull/10377) [`df7aad6`](https://github.com/alwaysmeticulous/meticulous/commit/df7aad61870c8d6a1a64daa62f444256c78b7740) Thanks [@phreppo](https://github.com/phreppo)! - Add `sessionDescription` to custom-check snapshots. Each `Snapshot` now carries the session's short, human-readable description (what the user was doing in the session), or `null` when the session has no description. It is populated at replay time from data already in memory, so custom checks can label sessions in their reports without an extra lookup.
+
+### Patch Changes
+
+- [#10375](https://github.com/alwaysmeticulous/meticulous/pull/10375) [`48a8d66`](https://github.com/alwaysmeticulous/meticulous/commit/48a8d66d22964c2d5ec40f1899a2587458399b5d) Thanks [@narobertson42](https://github.com/narobertson42)! - Record the IndexedDB database schema version (`IDBDatabase.version`) at snapshot time via a new optional `version` field on `IDBObjectStoreSnapshot`. It is captured for every snapshotted store so that replay seeding can re-open each database at the version the application expects, avoiding "blocked by another connection" upgrade errors during replay.
+
 ## 2.297.0
 
 ### Minor Changes

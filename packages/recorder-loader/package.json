@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/recorder-loader",
-  "version": "2.297.0",
+  "version": "2.300.0",
   "license": "ISC",
   "source": "src/index.ts",
   "main": "dist/index.js",

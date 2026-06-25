@@ -43,6 +43,24 @@ describe("defaultShouldRetry", () => {
     expect(defaultShouldRetry(error)).toBe(true);
   });
 
+  it("retries undici connect-timeout errors with no deeper cause", () => {
+    const error = new TypeError("fetch failed");
+    (error as TypeError & { cause?: unknown }).cause = {
+      code: "UND_ERR_CONNECT_TIMEOUT",
+    };
+
+    expect(defaultShouldRetry(error)).toBe(true);
+  });
+
+  it("retries ECONNREFUSED (e.g. service pod restarting)", () => {
+    const error = new TypeError("fetch failed");
+    (error as TypeError & { cause?: unknown }).cause = {
+      code: "ECONNREFUSED",
+    };
+
+    expect(defaultShouldRetry(error)).toBe(true);
+  });
+
   it("retries abort errors (internal per-request timeouts from makeSingleRequest)", () => {
     expect(defaultShouldRetry({ name: "AbortError" })).toBe(true);
   });

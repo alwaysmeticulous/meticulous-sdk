@@ -22,12 +22,29 @@ const DEFAULT_MAX_RETRY_DELAY_MS = 30_000;
  */
 const RETRY_AFTER_JITTER_MS = 1_000;
 
+/**
+ * Node.js / undici network error codes that indicate a transient connection
+ * failure worth retrying. Covers both classic Node.js socket codes and the
+ * undici-specific variants surfaced as the inner `.cause` of a
+ * `TypeError: fetch failed`.
+ */
+const RETRYABLE_NETWORK_ERROR_CODES = new Set([
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  // undici-specific codes (surfaced via fetch's cause chain)
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_SOCKET",
+]);
+
 export const defaultShouldRetry = (error: any): boolean => {
   if (error.name === "AbortError") {
     return true;
   }
   const errorCode = getErrorCode(error);
-  if (errorCode === "ECONNRESET" || errorCode === "ETIMEDOUT") {
+  if (errorCode != null && RETRYABLE_NETWORK_ERROR_CODES.has(errorCode)) {
     return true;
   }
   const status: unknown = error.response?.status;

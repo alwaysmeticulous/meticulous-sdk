@@ -246,6 +246,16 @@ export type IDBObjectStoreSnapshot = Pick<
    * snapshot.
    */
   indexes?: IDBIndexSnapshot[];
+
+  /**
+   * The schema version of the database at snapshot time (the value of `IDBDatabase.version`).
+   *
+   * Only present on snapshots taken since this field was added. When seeding, this lets us
+   * re-open the database at the version the application expects, so the app's own open call
+   * does not trigger a version upgrade. Without it (older snapshots) we fall back to opening
+   * without an explicit version, which creates the database at version 1.
+   */
+  version?: number;
 };
 
 /**

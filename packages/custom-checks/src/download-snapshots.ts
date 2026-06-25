@@ -84,10 +84,14 @@ const downloadSnapshotFile = async (
         stageDuringSession: string;
         data: unknown;
         versionNumber?: number;
+        sessionDescription?: string | null;
       }>
     ).map((snapshot) => ({
       type: file.type,
       sessionId: file.sessionId,
+      // Persisted at replay time (see CustomCheckSnapshot.sessionDescription);
+      // absent for sessions without a description.
+      sessionDescription: snapshot.sessionDescription ?? null,
       stageDuringSession: snapshot.stageDuringSession,
       data: snapshot.data,
       // Default to 0 so built-in snapshots (written without a version) surface as

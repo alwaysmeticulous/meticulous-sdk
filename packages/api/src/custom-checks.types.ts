@@ -24,6 +24,14 @@ export interface Snapshot<T = unknown> {
   sessionId: string;
 
   /**
+   * Short, human readable description of what the user was doing in the session
+   * (e.g. "Added an item to the cart"), useful for labelling the session in a
+   * check's report. `undefined`/`null` when the session has no description (e.g.
+   * older or unselected sessions), so checks must not rely on it being present.
+   */
+  sessionDescription?: string | null;
+
+  /**
    * Where in the session the snapshot was captured, identified by the screenshot
    * taken at that point (e.g. "screenshot-after-event-2", "final-state").
    */
