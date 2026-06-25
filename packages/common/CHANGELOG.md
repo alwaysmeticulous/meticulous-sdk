@@ -1,5 +1,11 @@
 # @alwaysmeticulous/common
 
+## 2.299.0
+
+### Patch Changes
+
+- [#10371](https://github.com/alwaysmeticulous/meticulous/pull/10371) [`ae52f77`](https://github.com/alwaysmeticulous/meticulous/commit/ae52f77bf4b3541da7c2eeb6fa10345c660d0c2c) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Improvements to replay downloading
+
 ## 2.298.0
 
 ### Patch Changes

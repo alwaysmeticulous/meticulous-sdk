@@ -55,12 +55,32 @@ export type ReplayV3UploadLocations = Record<string, S3Location> & {
   customCheckSnapshots?: Record<string, { file: S3Location }>;
 };
 
+export interface GetReplayV3DownloadUrlsOptions {
+  includeScreenshots?: boolean;
+  includeDiffs?: boolean;
+}
+
 export const getReplayV3DownloadUrls: (
   client: MeticulousClient,
   replayId: string,
-) => Promise<ReplayV3UploadLocations | null> = async (client, replayId) => {
+  options?: GetReplayV3DownloadUrlsOptions,
+) => Promise<ReplayV3UploadLocations | null> = async (
+  client,
+  replayId,
+  options,
+) => {
+  const params: Record<string, string> = {};
+  if (options?.includeScreenshots === false) {
+    params["includeScreenshots"] = "false";
+  }
+  if (options?.includeDiffs === false) {
+    params["includeDiffs"] = "false";
+  }
+
   const { data } = await client
-    .get<ReplayV3UploadLocations>(`replays/${replayId}/download-urls`)
+    .get<ReplayV3UploadLocations>(`replays/${replayId}/download-urls`, {
+      params,
+    })
     .catch((error) => {
       if (isFetchError(error) && error.response?.status === 404) {
         return { data: null };

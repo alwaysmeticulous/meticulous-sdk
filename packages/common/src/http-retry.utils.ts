@@ -24,7 +24,7 @@ const RETRY_AFTER_JITTER_MS = 1_000;
 
 export const defaultShouldRetry = (error: any): boolean => {
   if (error.name === "AbortError") {
-    return false;
+    return true;
   }
   const errorCode = getErrorCode(error);
   if (errorCode === "ECONNRESET" || errorCode === "ETIMEDOUT") {

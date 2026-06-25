@@ -19,6 +19,8 @@ import {
  * Download scope for test run data:
  * - `everything`: Download all available test run data
  * - `app-container-logs`: Download app container logs only
+ * - `coverage-only`: Download coverage.json and coverage-stats.json
+ * - `coverage-pr-only`: Download coverage.pr.json and coverage-stats.pr.json
  * - `coverageByReplayPrOnly`: Download only coverageByReplayPr
  */
 export const DOWNLOAD_SCOPES = [
@@ -41,11 +43,11 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<
   everything: /.*/,
   "app-container-logs": /^$/,
   "coverage-by-replay-pr-only": /^coverageByReplayPr/,
-  "coverage-only": /^coverage$/,
-  "coverage-pr-only": /^coveragePr/,
+  "coverage-only": /^coverage(?:Stats)?$/,
+  "coverage-pr-only": /^coverage(?:Stats)?Pr$/,
 };
 
-const shouldDownloadFile = (
+export const shouldDownloadTestRunFile = (
   fileType: string,
   downloadScope: TestRunDownloadScope,
 ): boolean => {
@@ -128,7 +130,9 @@ export const getOrFetchTestRunData = async (
 
     logger.info("Downloading test run data...");
     const downloadPromises = Object.entries(testRunData)
-      .filter(([fileType]) => shouldDownloadFile(fileType, downloadScope))
+      .filter(([fileType]) =>
+        shouldDownloadTestRunFile(fileType, downloadScope),
+      )
       .map(([fileType, location]) => {
         if (location == null) {
           return null;

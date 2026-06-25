@@ -1,24 +1,31 @@
-import type { OAuthProject } from "@alwaysmeticulous/client";
 import {
   createClient,
-  getOAuthProjects,
   isOAuthJwt,
   resolveApiTokenWithOAuth,
-  setStoredProject,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
-import inquirer from "inquirer";
 import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
-import { handleAuthFailure } from "../../utils/handle-auth-failure";
+import { selectAndStoreProject } from "../../utils/select-project";
 
-export const setProjectCommand: CommandModule = {
+interface Options {
+  project?: string;
+}
+
+export const setProjectCommand: CommandModule<unknown, Options> = {
   command: "set-project",
   describe:
     "Select the Meticulous project to use with OAuth-authenticated commands",
-  builder: {},
-  handler: wrapHandler(async () => {
+  builder: {
+    project: {
+      string: true,
+      description:
+        "Project to select in 'organization/project' format (e.g. 'MyOrg/My App'). " +
+        "When provided, skips the interactive picker.",
+    },
+  },
+  handler: wrapHandler(async ({ project }: Options) => {
     const logger = initLogger();
 
     const apiToken = await resolveApiTokenWithOAuth({
@@ -40,49 +47,6 @@ export const setProjectCommand: CommandModule = {
     }
 
     const client = createClient({ apiToken });
-
-    let projects: OAuthProject[];
-    try {
-      projects = await getOAuthProjects(client);
-    } catch (error) {
-      handleAuthFailure(error);
-      throw error;
-    }
-
-    if (projects.length === 0) {
-      throw new CliUserError(
-        "No projects are accessible to your account. Ask an organization " +
-          "admin to add you to a project.",
-      );
-    }
-
-    const selected =
-      projects.length === 1 ? projects[0] : await promptForProject(projects);
-
-    const projectSlug = `${selected.organization.name}/${selected.name}`;
-    setStoredProject({ project: projectSlug, projectId: selected.id });
-    logger.info(`Selected project: ${projectSlug}`);
+    await selectAndStoreProject({ client, logger, project });
   }),
-};
-
-const promptForProject = async (
-  projects: OAuthProject[],
-): Promise<OAuthProject> => {
-  const { projectId } = await inquirer.prompt<{ projectId: string }>([
-    {
-      type: "list",
-      name: "projectId",
-      message: "Select a project:",
-      choices: projects.map((project) => ({
-        name: `${project.organization.name}/${project.name}`,
-        value: project.id,
-      })),
-    },
-  ]);
-
-  const selected = projects.find((project) => project.id === projectId);
-  if (!selected) {
-    throw new Error("Selected project not found in fetched list");
-  }
-  return selected;
 };

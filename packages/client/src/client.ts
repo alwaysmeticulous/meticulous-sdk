@@ -9,7 +9,6 @@ import type { RequestInit } from "undici";
 import { getOAuthProjects } from "./api/oauth.api";
 import { getApiToken, getAuthToken } from "./api-token.utils";
 import { performOAuthLogin } from "./oauth/oauth-login";
-import { getValidAccessToken } from "./oauth/oauth-refresh";
 import {
   getStoredOAuthTokens,
   getStoredProjectId,
@@ -325,17 +324,19 @@ export const createClientWithOAuth = async (
   // OAuth access tokens are short-lived, so a client that bakes in a single
   // token starts failing once it expires — e.g. during a long poll loop waiting
   // for a test run to complete. When the token came from OAuth, install a
-  // provider that re-resolves it per request (auto-refreshing via the stored
-  // refresh token); static tokens (explicit / env var / config file) never
-  // expire, so we keep using the resolved string directly to avoid re-reading
-  // it on every request.
-  const usingOAuth =
-    !options.apiToken &&
-    !process.env["METICULOUS_API_TOKEN"] &&
-    getStoredOAuthTokens() != null;
+  // provider that re-resolves the full auth chain per request via
+  // `getAuthToken` (which auto-refreshes the OAuth token via the stored refresh
+  // token); static tokens (explicit / env var / config file) never expire, so
+  // we keep using the resolved string directly to avoid re-reading it on every
+  // request. Re-resolving the whole chain — rather than only `getValidAccessToken` —
+  // matters when the refresh itself fails: `getValidAccessToken` clears the
+  // stored OAuth tokens on failure, and `getAuthToken` then falls back to the
+  // METICULOUS_API_TOKEN env var / config file instead of replaying the stale
+  // initial access token.
+  const usingOAuth = !options.apiToken && getStoredOAuthTokens() != null;
 
   const token: string | (() => Promise<string>) = usingOAuth
-    ? async () => (await getValidAccessToken()) ?? apiToken
+    ? async () => (await getAuthToken(options.apiToken)) ?? apiToken
     : apiToken;
 
   return buildClient(token, initLogger(), options.appInfo);

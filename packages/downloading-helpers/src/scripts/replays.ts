@@ -254,6 +254,11 @@ export const getOrFetchReplayArchive = async (
         downloadScope,
         formatJsonFiles,
         previouslyDownloadedScope,
+        // Avoid requesting presigned URLs for sections the scope won't use.
+        // Screenshots and diffs can each have hundreds of entries, making the
+        // response payload large; skipping them keeps the request lightweight.
+        shouldDownloadFile("screenshots", downloadScope),
+        shouldDownloadFile("diffs", downloadScope),
         // Widen to `ReadonlySet<string>` at the boundary: `ReplayFileType` is
         // for caller-side typo safety, but internally we check against
         // arbitrary keys returned by the server.
@@ -287,11 +292,16 @@ const downloadReplayV3Files = async (
   downloadScope: DownloadScope,
   formatJsonFiles: boolean,
   previouslyDownloadedScope: DownloadScope | undefined,
+  includeScreenshots: boolean,
+  includeDiffs: boolean,
   excludeFileTypes: ReadonlySet<string> | undefined,
   bestEffortFileTypes: ReadonlySet<string> | undefined,
 ) => {
   const logger = initLogger();
-  const downloadUrls = await getReplayV3DownloadUrls(client, replayId);
+  const downloadUrls = await getReplayV3DownloadUrls(client, replayId, {
+    includeScreenshots,
+    includeDiffs,
+  });
   if (!downloadUrls) {
     throw new Error(
       "Error: Could not retrieve replay download URLs. This may be an invalid replay",

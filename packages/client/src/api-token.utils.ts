@@ -10,7 +10,10 @@ interface PersonalConfig {
   apiToken?: string;
 }
 
-const getFileBasedToken = (): string | null => {
+export const readFileBasedToken = (): {
+  token: string;
+  path: string;
+} | null => {
   const personalConfigFileAbsolutePath = join(
     homedir(),
     PERSONAL_CONFIG_FILE_PATH,
@@ -20,10 +23,17 @@ const getFileBasedToken = (): string | null => {
       readFileSync(personalConfigFileAbsolutePath).toString("utf-8"),
     );
     if (config.apiToken) {
-      const logger = initLogger();
-      logger.info(`Using apiToken from ${personalConfigFileAbsolutePath}`);
-      return config.apiToken;
+      return { token: config.apiToken, path: personalConfigFileAbsolutePath };
     }
+  }
+  return null;
+};
+
+const getFileBasedToken = (): string | null => {
+  const fileToken = readFileBasedToken();
+  if (fileToken) {
+    initLogger().info(`Using apiToken from ${fileToken.path}`);
+    return fileToken.token;
   }
   return null;
 };
@@ -55,24 +65,41 @@ export const getApiToken = (
  *
  * Resolution order:
  * 1. Explicit apiToken parameter (CLI flag)
- * 2. METICULOUS_API_TOKEN env var
- * 3. OAuth access token (with auto-refresh)
+ * 2. OAuth access token (with auto-refresh)
+ * 3. METICULOUS_API_TOKEN env var
  * 4. Legacy ~/.meticulous/config.json
+ *
+ * OAuth is preferred over the env var / legacy config file so that a logged-in
+ * user is used unless they explicitly `meticulous auth logout`. An explicit
+ * `--apiToken` still wins over everything. The chosen source is logged at debug
+ * (`meticulous auth whoami` surfaces it at info).
  */
 export const getAuthToken = async (
   apiToken: string | null | undefined,
 ): Promise<string | null> => {
+  const logger = initLogger();
+
   if (apiToken) {
+    logger.debug("Authenticated via --apiToken flag");
     return apiToken;
-  }
-  if (process.env["METICULOUS_API_TOKEN"]) {
-    return process.env["METICULOUS_API_TOKEN"];
   }
 
   const oauthToken = await getValidAccessToken();
   if (oauthToken) {
+    logger.debug("Authenticated via OAuth");
     return oauthToken;
   }
 
-  return getFileBasedToken();
+  if (process.env["METICULOUS_API_TOKEN"]) {
+    logger.debug("Authenticated via METICULOUS_API_TOKEN environment variable");
+    return process.env["METICULOUS_API_TOKEN"];
+  }
+
+  const fileToken = readFileBasedToken();
+  if (fileToken) {
+    logger.debug(`Authenticated via ${fileToken.path}`);
+    return fileToken.token;
+  }
+
+  return null;
 };

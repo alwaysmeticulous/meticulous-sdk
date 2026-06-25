@@ -43,8 +43,8 @@ describe("defaultShouldRetry", () => {
     expect(defaultShouldRetry(error)).toBe(true);
   });
 
-  it("does not retry abort errors", () => {
-    expect(defaultShouldRetry({ name: "AbortError" })).toBe(false);
+  it("retries abort errors (internal per-request timeouts from makeSingleRequest)", () => {
+    expect(defaultShouldRetry({ name: "AbortError" })).toBe(true);
   });
 
   it("retries 429 and 503 backpressure responses", () => {

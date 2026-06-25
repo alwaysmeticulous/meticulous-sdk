@@ -1,5 +1,14 @@
 # @alwaysmeticulous/remote-replay-launcher
 
+## 2.299.0
+
+### Patch Changes
+
+- Updated dependencies [[`4406b07`](https://github.com/alwaysmeticulous/meticulous/commit/4406b07d938d31583e87e80c3a7d3da658e695ce), [`ae52f77`](https://github.com/alwaysmeticulous/meticulous/commit/ae52f77bf4b3541da7c2eeb6fa10345c660d0c2c)]:
+  - @alwaysmeticulous/client@2.299.0
+  - @alwaysmeticulous/common@2.299.0
+  - @alwaysmeticulous/tunnels-client@2.299.0
+
 ## 2.298.1
 
 ### Patch Changes

@@ -51,6 +51,7 @@ export {
 } from "./api/project.api";
 export {
   ReplayV3UploadLocations,
+  GetReplayV3DownloadUrlsOptions,
   getReplay,
   getReplayDownloadUrl,
   getReplayV3DownloadUrls,
@@ -84,7 +85,11 @@ export {
 } from "./api/test-run.api";
 export { GetIsLockedOptions, getIsLocked } from "./api/deployment-lock.api";
 export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
-export { getApiToken, getAuthToken } from "./api-token.utils";
+export {
+  getApiToken,
+  getAuthToken,
+  readFileBasedToken,
+} from "./api-token.utils";
 export {
   ClientOptions,
   createClient,

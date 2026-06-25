@@ -1,5 +1,24 @@
 # @alwaysmeticulous/cli
 
+## 2.299.0
+
+### Minor Changes
+
+- [#10340](https://github.com/alwaysmeticulous/meticulous/pull/10340) [`4406b07`](https://github.com/alwaysmeticulous/meticulous/commit/4406b07d938d31583e87e80c3a7d3da658e695ce) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Improve the OAuth auth UX and add non-interactive project commands. A stored OAuth login now takes precedence over `METICULOUS_API_TOKEN` and the legacy config file, so a stale token no longer masks a fresh browser login. Adds `meticulous auth login` and `meticulous auth list-projects` plus a `--project` flag, and makes `auth whoami`/`auth logout` report and clear the active credential.
+
+### Patch Changes
+
+- Updated dependencies [[`4406b07`](https://github.com/alwaysmeticulous/meticulous/commit/4406b07d938d31583e87e80c3a7d3da658e695ce), [`184a84e`](https://github.com/alwaysmeticulous/meticulous/commit/184a84e9128b8db17853bd5b61c9cf851148212e), [`ae52f77`](https://github.com/alwaysmeticulous/meticulous/commit/ae52f77bf4b3541da7c2eeb6fa10345c660d0c2c)]:
+  - @alwaysmeticulous/client@2.299.0
+  - @alwaysmeticulous/downloading-helpers@2.299.0
+  - @alwaysmeticulous/common@2.299.0
+  - @alwaysmeticulous/debug-workspace@2.299.0
+  - @alwaysmeticulous/remote-replay-launcher@2.299.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.299.0
+  - @alwaysmeticulous/record@2.299.0
+  - @alwaysmeticulous/sentry@2.299.0
+  - @alwaysmeticulous/tunnels-client@2.299.0
+
 ## 2.298.1
 
 ### Patch Changes
