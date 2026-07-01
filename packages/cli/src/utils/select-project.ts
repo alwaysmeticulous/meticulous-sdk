@@ -28,18 +28,26 @@ export const fetchAccessibleProjects = async (
  *   project non-interactively, erroring with the available list if it does
  *   not match.
  * - Otherwise auto-selects the only project, or prompts interactively when
- *   there are several.
+ *   there are several — unless `allowInteractivePrompt` is `false` (e.g. a
+ *   headless login), in which case it keeps `fallbackToProject` if that is
+ *   still accessible, and otherwise throws with guidance rather than blocking
+ *   on a prompt that no terminal can answer.
  *
- * Throws `CliUserError` when the caller has no accessible projects.
+ * Throws `CliUserError` when the caller has no accessible projects, or when a
+ * project cannot be resolved without an interactive prompt.
  */
 export const selectAndStoreProject = async ({
   client,
   logger,
   project,
+  allowInteractivePrompt = true,
+  fallbackToProject,
 }: {
   client: MeticulousClient;
   logger: log.Logger;
   project?: string | undefined;
+  allowInteractivePrompt?: boolean;
+  fallbackToProject?: string | undefined;
 }): Promise<string> => {
   const projects = await fetchAccessibleProjects(client);
 
@@ -66,9 +74,32 @@ export const selectAndStoreProject = async ({
       );
     }
     selected = match;
+  } else if (projects.length === 1) {
+    selected = projects[0];
+  } else if (allowInteractivePrompt) {
+    selected = await promptForProject(projects);
   } else {
-    selected =
-      projects.length === 1 ? projects[0] : await promptForProject(projects);
+    // No interactive terminal to answer the picker. Keep the previously
+    // selected project if it's still accessible; otherwise fail with guidance
+    // on how to choose one, so callers (and scripts) know no project is set.
+    const fallback = fallbackToProject
+      ? projects.find(
+          (p) => `${p.organization.name}/${p.name}` === fallbackToProject,
+        )
+      : undefined;
+    if (fallback) {
+      const fallbackSlug = `${fallback.organization.name}/${fallback.name}`;
+      setStoredProject({ project: fallbackSlug, projectId: fallback.id });
+      logger.info(`Kept previously selected project: ${fallbackSlug}`);
+      return fallbackSlug;
+    }
+    throw new CliUserError(
+      "Multiple projects are accessible but none was selected (no interactive " +
+        "terminal). Pass `--project` or run `meticulous auth set-project` to " +
+        "choose one.",
+      1,
+      "warn",
+    );
   }
 
   const projectSlug = `${selected.organization.name}/${selected.name}`;

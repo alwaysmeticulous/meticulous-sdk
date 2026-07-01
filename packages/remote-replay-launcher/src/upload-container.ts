@@ -9,7 +9,7 @@ import {
   getRegistryAuth,
   completeContainerUpload,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { initLogger, logProgress } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import Docker from "dockerode";
 import { uploadGitDiffToS3 } from "./asset-upload-utils";
@@ -21,7 +21,6 @@ export interface UploadContainerOptions extends ProjectIdentifier {
   commitSha: string;
   baseSha?: string | undefined;
   gitDiffOutput?: string | undefined;
-  withUncommittedChanges?: boolean | undefined;
   waitForBase?: boolean;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
@@ -34,27 +33,33 @@ export interface UploadContainerResult {
   message?: string;
 }
 
-export const uploadContainer = async ({
+export interface PushContainerImageResult {
+  client: ReturnType<typeof createClient>;
+  uploadId: string;
+  imageReference: string;
+}
+
+/**
+ * Verifies, tags and pushes the local Docker image to the Meticulous registry,
+ * returning the `uploadId` that identifies the pushed image. This is the
+ * "upload the bytes" half of a container build — it does NOT register a
+ * deployment or trigger a run. Shared by {@link uploadContainer} (deprecated
+ * fused path) and the build/trigger split (`uploadBuild`).
+ */
+export const pushContainerImage = async ({
   apiToken: apiToken_,
   localImageTag,
-  commitSha,
-  baseSha,
-  gitDiffOutput,
-  withUncommittedChanges,
-  waitForBase = false,
-  containerPort,
-  containerEnv,
-  containerHealthCheckEndpoint,
   projectId,
-}: UploadContainerOptions): Promise<UploadContainerResult> => {
-  const logger = initLogger();
-
+}: {
+  apiToken: string | null | undefined;
+  localImageTag: string;
+  projectId?: string | undefined;
+}): Promise<PushContainerImageResult> => {
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {
-    logger.error(
+    throw new Error(
       "You must provide an API token by using the --apiToken parameter",
     );
-    process.exit(1);
   }
 
   const client = createClient({ apiToken });
@@ -63,20 +68,20 @@ export const uploadContainer = async ({
 
   const docker = getDockerClient();
 
-  logger.info("Verifying Docker connection...");
+  logProgress("Verifying Docker connection...");
   await verifyDockerConnection(docker);
-  logger.info("Docker connection verified");
+  logProgress("Docker connection verified");
 
-  logger.info(`Verifying local Docker image: ${localImageTag}`);
+  logProgress(`Verifying local Docker image: ${localImageTag}`);
   const imageInfo = await getImageInfo(docker, localImageTag);
   if (!imageInfo) {
     throw new Error(
       `Docker image '${localImageTag}' not found locally. Please build the image first.`,
     );
   }
-  logger.info(`Found Docker image: ${localImageTag}`);
+  logProgress(`Found Docker image: ${localImageTag}`);
 
-  logger.info("Getting registry credentials...");
+  logProgress("Getting registry credentials...");
   const registryAuth = await getRegistryAuth({
     client,
     ...projectIdentifier,
@@ -90,25 +95,48 @@ export const uploadContainer = async ({
     robotAccountSecret,
   } = registryAuth;
 
-  logger.info(`Registry: ${registryUrl}`);
-  logger.info(`Upload ID: ${uploadId}`);
-  logger.info(`Image reference: ${imageReference}`);
+  logProgress(`Registry: ${registryUrl}`);
+  logProgress(`Upload ID: ${uploadId}`);
+  logProgress(`Image reference: ${imageReference}`);
 
-  logger.info("Tagging image for registry...");
+  logProgress("Tagging image for registry...");
   await tagImage(docker, localImageTag, imageReference);
-  logger.info(`Tagged image as ${imageReference}`);
 
-  logger.info(`Pushing image to registry: ${imageReference}`);
+  logProgress(`Pushing image to registry: ${imageReference}`);
   const authconfig: Docker.AuthConfig = {
     username: robotAccountName,
     password: robotAccountSecret,
     serveraddress: registryUrl,
   };
 
+  // `tagImage` and `pushImage` each log their own success line, so we don't
+  // repeat it here.
   await pushImage(docker, imageReference, authconfig);
-  logger.info(`Successfully pushed image ${imageReference}`);
 
-  logger.info("Completing container upload and triggering test run...");
+  return { client, uploadId, imageReference };
+};
+
+export const uploadContainer = async ({
+  apiToken: apiToken_,
+  localImageTag,
+  commitSha,
+  baseSha,
+  gitDiffOutput,
+  waitForBase = false,
+  containerPort,
+  containerEnv,
+  containerHealthCheckEndpoint,
+  projectId,
+}: UploadContainerOptions): Promise<UploadContainerResult> => {
+  const projectIdentifier = projectId ? { projectId } : {};
+
+  const { client, uploadId, imageReference } = await pushContainerImage({
+    apiToken: apiToken_,
+    localImageTag,
+    projectId,
+  });
+
+  logProgress("Completing container upload and triggering test run...");
 
   if (gitDiffOutput) {
     await uploadGitDiffToS3({
@@ -125,7 +153,6 @@ export const uploadContainer = async ({
     commitSha,
     ...(baseSha ? { baseSha } : {}),
     ...(gitDiffOutput ? { hasGitDiff: true } : {}),
-    ...(withUncommittedChanges ? { withUncommittedChanges } : {}),
     mustHaveBase: waitForBase,
     containerPort,
     containerEnv,
@@ -147,7 +174,7 @@ export const uploadContainer = async ({
         mustHaveBase: true,
       }),
     fallbackFn: () => {
-      logger.info("No base test run found, creating test run without base");
+      logProgress("No base test run found, creating test run without base");
       return completeContainerUpload({
         ...completeContainerArgs,
         mustHaveBase: false,
@@ -165,7 +192,7 @@ export const uploadContainer = async ({
     );
     const projectName = encodeURIComponent(testRun.project.name);
     const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${testRun.id}`;
-    logger.info(`Test run triggered: ${testRunUrl}`);
+    logProgress(`Test run triggered: ${testRunUrl}`);
   }
 
   Sentry.captureMessage("Container uploaded and deployment created", {
@@ -179,7 +206,7 @@ export const uploadContainer = async ({
     },
   });
 
-  logger.info(`Container upload completed. Upload ID: ${uploadId}`);
+  logProgress(`Container upload completed. Upload ID: ${uploadId}`);
 
   return {
     uploadId,
@@ -239,7 +266,7 @@ const tagImage = async (
     const image = docker.getImage(sourceImage);
     const [repo, tag] = targetImage.split(":");
     await image.tag({ repo, tag: tag || "latest" });
-    logger.info(`Tagged image ${sourceImage} as ${targetImage}`);
+    logProgress(`Tagged image ${sourceImage} as ${targetImage}`);
   } catch (error) {
     logger.error(`Failed to tag image ${sourceImage} as ${targetImage}`);
     if (error instanceof Error) {
@@ -278,7 +305,7 @@ const pushImage = async (
           reject(err instanceof Error ? err : new Error(String(err)));
           return;
         }
-        logger.info(`Successfully pushed image ${imageReference}`);
+        logProgress(`Successfully pushed image ${imageReference}`);
         resolve();
       });
     });

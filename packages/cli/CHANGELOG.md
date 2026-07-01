@@ -1,5 +1,101 @@
 # @alwaysmeticulous/cli
 
+## 2.303.0
+
+### Minor Changes
+
+- [#10567](https://github.com/alwaysmeticulous/meticulous/pull/10567) [`b43046e`](https://github.com/alwaysmeticulous/meticulous/commit/b43046e23b30209c02a96d5b620c7a22289c9be6) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent trigger-test-run` no longer requires `--deploymentId` or `--commitSha`: when both are omitted, it now looks up an already-uploaded deployment for the local repo's HEAD commit. The working tree must be clean for this — unlike `agent upload-build`, a dirty tree is a hard failure rather than falling back to an ephemeral `git stash create` commit, since no deployment could ever have been uploaded for an ephemeral commit.
+
+### Patch Changes
+
+- Updated dependencies [[`76d9a10`](https://github.com/alwaysmeticulous/meticulous/commit/76d9a10b51cb553b3cb438893c2f5b2aaf7877bf)]:
+  - @alwaysmeticulous/sdk-bundles-api@2.303.0
+  - @alwaysmeticulous/common@2.301.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.303.0
+
+## 2.302.0
+
+### Minor Changes
+
+- [#10515](https://github.com/alwaysmeticulous/meticulous/pull/10515) [`132ce89`](https://github.com/alwaysmeticulous/meticulous/commit/132ce893095bc0eb89abb000ae4982f3fed85355) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - feat(agent): richer `agent js-coverage` columns and filters for whole test runs
+
+  `agent js-coverage` can now emit, in addition to the executed line ranges, the executable line ranges (`--includeExecutableRanges`), the uncovered ranges (executable − executed, `--includeUncoveredRanges`) and a per-file coverage percentage (`--includeCoveragePercentage`); columns appear after `repoFilePath` in that fixed order. A file is dropped unless at least one requested column has a value for it (so an executed-only request returns only files with executed lines, while requesting uncovered ranges already includes never-executed files); `--includeAllFiles` returns every file regardless. Coverage can be scoped to the PR diff with `--prDiffOnly` and filtered to matching repo paths with `--globFilter`. The executable/uncovered/percentage columns and `--prDiffOnly` rely on whole-test-run data and are rejected alongside `--replayId`.
+
+  `--globFilter` and `--includeAllFiles` now apply to a single replay, a whole test run, and the `js-coverage-diff` command alike — for the diff, `--globFilter` scopes base, head, and the diff, and `--includeAllFiles` keeps base/head rows with no executed ranges (dropped by default).
+
+  The client's `getTestRunJsCoverage` sends a `clientVersion` and returns the detailed per-file (V2) response; the backend keeps serving the legacy tuple-keyed executed-ranges response to pre-versioning clients. `getTestRunJsCoverage` defaults to executed ranges when no column option is passed, so a bare `getTestRunJsCoverage(client, testRunId)` keeps returning executed ranges rather than erroring.
+
+  `getReplayJsCoverage` and `getReplayDiffJsCoverage` now take `screenshotName` as a positional argument (`(client, id, screenshotName?, options?)`) rather than inside the `options` object, since it selects _which_ coverage to fetch rather than shaping the response. Any caller passing `screenshotName` inside `options` must move it to the third argument.
+
+- [#10524](https://github.com/alwaysmeticulous/meticulous/pull/10524) [`d46e16b`](https://github.com/alwaysmeticulous/meticulous/commit/d46e16b439be7b82baa824ab78475c1bf7631659) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent trigger-test-run` now accepts `--commitSha` as an alternative to
+  `--deploymentId`: it resolves to the most recent non-ephemeral deployment
+  already uploaded for that commit in the project (e.g. by an earlier CI run),
+  so you don't need to look up a `deploymentId` to re-trigger a run — for
+  example to test the coverage impact of `--sessionIds` against a commit that
+  has already gone through Meticulous. Exactly one of `--deploymentId` or
+  `--commitSha` is required. `--commitSha` cannot be combined with a git diff
+  (`--gitDiffOutput`, or one inferred via `--repoDirectory`), since uploading a
+  diff requires an already-known deployment to key it by.
+
+- [#10524](https://github.com/alwaysmeticulous/meticulous/pull/10524) [`d46e16b`](https://github.com/alwaysmeticulous/meticulous/commit/d46e16b439be7b82baa824ab78475c1bf7631659) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add an optional `--sessionIds` argument to `agent trigger-test-run`. When
+  provided (a comma-separated list of session IDs), the run replays exactly those
+  sessions — for both the base and the head — instead of the project's
+  auto-selected ("golden set") sessions. When omitted, behaviour is unchanged.
+  An explicitly-provided list that is empty or contains duplicate session IDs is
+  rejected up front (at the agent endpoint) rather than silently falling back to
+  the golden set or de-duplicating.
+
+  Note: as part of this change, externally-supplied session IDs (the agent
+  `--sessionIds` trigger and the `meticulous.json` `testCases` list consumed by the
+  legacy `addTestRun` endpoint) are now validated to exist and belong to the
+  project before a run is created. A request referencing an unknown, deleted, or
+  cross-project session ID is now rejected with a `400` instead of having that one
+  session silently dropped — so an out-of-date `meticulous.json` session list that
+  previously degraded gracefully will now fail the request until the stale IDs are
+  removed. (Duplicate-session rejection applies only to the agent `--sessionIds`
+  trigger; the legacy path continues to de-duplicate silently.)
+
+### Patch Changes
+
+- [#10521](https://github.com/alwaysmeticulous/meticulous/pull/10521) [`41ae1dd`](https://github.com/alwaysmeticulous/meticulous/commit/41ae1dd2a01114677015abfbe905192b46aea471) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous auth login` now accepts `--non-interactive`, for running without a TTY: it prints the login URL instead of opening a browser and skips the interactive project picker. This lets the OAuth flow be started in a non-interactive environment (e.g. by an agent) and completed by a human opening the printed URL on the same machine (the localhost callback still lands the token locally). When the picker is skipped, a previously-selected project is kept if it's still accessible; otherwise the command warns with guidance to pass `--project` or run `auth set-project` and exits non-zero, so scripts can detect that no project is selected. `performOAuthLogin` gains a matching `openBrowserAutomatically` option.
+
+- Updated dependencies [[`132ce89`](https://github.com/alwaysmeticulous/meticulous/commit/132ce893095bc0eb89abb000ae4982f3fed85355), [`d46e16b`](https://github.com/alwaysmeticulous/meticulous/commit/d46e16b439be7b82baa824ab78475c1bf7631659), [`d46e16b`](https://github.com/alwaysmeticulous/meticulous/commit/d46e16b439be7b82baa824ab78475c1bf7631659), [`41ae1dd`](https://github.com/alwaysmeticulous/meticulous/commit/41ae1dd2a01114677015abfbe905192b46aea471), [`9a9c564`](https://github.com/alwaysmeticulous/meticulous/commit/9a9c564a7cf88da3872eb303981409eb178ef44b), [`d78f1a9`](https://github.com/alwaysmeticulous/meticulous/commit/d78f1a9f54461825700ffff970ddb0bf77c8da67)]:
+  - @alwaysmeticulous/client@2.302.0
+  - @alwaysmeticulous/remote-replay-launcher@2.302.0
+  - @alwaysmeticulous/sdk-bundles-api@2.302.0
+  - @alwaysmeticulous/debug-workspace@2.302.0
+  - @alwaysmeticulous/downloading-helpers@2.302.0
+  - @alwaysmeticulous/common@2.301.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.302.0
+
+## 2.301.0
+
+### Minor Changes
+
+- [#10213](https://github.com/alwaysmeticulous/meticulous/pull/10213) [`230db8c`](https://github.com/alwaysmeticulous/meticulous/commit/230db8ce6628ac7728497fe4f10d2e3d25387b5f) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - feat(agent): split custom test-run triggering into `agent upload-build` and `agent trigger-test-run`
+
+  A build can now be registered once (`meticulous agent upload-build`, returning a `deploymentId`) and re-triggered against any base (`meticulous agent trigger-test-run --deploymentId …`), instead of the fused `ci upload-*` custom-trigger flags (now deprecated). Both agent commands wait for the run by default and print only essential output unless `--verbose` is passed; opt out of waiting with `--dontWaitForTestRunToComplete`. Adds the `uploadBuild`/`triggerTestRun` launcher helpers, the `agent*` client methods, and the `getStashCreateSha`/`getUntrackedFiles` git helpers.
+
+  Also removes the `withUncommittedChanges` field from the deployment/test-run API surface (`@alwaysmeticulous/client`, `@alwaysmeticulous/remote-replay-launcher`, `@alwaysmeticulous/api`). It carried no behaviour the diff's presence didn't already convey — whether a run includes uncommitted changes is inferred from the uploaded git diff — so the redundant, foot-gun-prone flag is gone.
+
+### Patch Changes
+
+- Updated dependencies [[`230db8c`](https://github.com/alwaysmeticulous/meticulous/commit/230db8ce6628ac7728497fe4f10d2e3d25387b5f), [`e4715f7`](https://github.com/alwaysmeticulous/meticulous/commit/e4715f72807ffa9e7c6c6e55b922f7b0192bfac2)]:
+  - @alwaysmeticulous/remote-replay-launcher@2.301.0
+  - @alwaysmeticulous/client@2.301.0
+  - @alwaysmeticulous/common@2.301.0
+  - @alwaysmeticulous/api@2.301.0
+  - @alwaysmeticulous/sdk-bundles-api@2.301.0
+  - @alwaysmeticulous/debug-workspace@2.301.0
+  - @alwaysmeticulous/downloading-helpers@2.301.0
+  - @alwaysmeticulous/record@2.301.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.301.0
+  - @alwaysmeticulous/sentry@2.301.0
+  - @alwaysmeticulous/tunnels-client@2.301.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+
 ## 2.300.0
 
 ### Patch Changes

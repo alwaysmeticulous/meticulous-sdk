@@ -1,5 +1,49 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.303.0
+
+### Patch Changes
+
+- [#10512](https://github.com/alwaysmeticulous/meticulous/pull/10512) [`76d9a10`](https://github.com/alwaysmeticulous/meticulous/commit/76d9a10b51cb553b3cb438893c2f5b2aaf7877bf) Thanks [@dennysem](https://github.com/dennysem)! - Surface the backend recorder's ioredis capture on `BackendRecorderHandle` as
+  `withMeticulousIORedis`, so apps that load the recorder through the launcher
+  bundle can record their Redis client. It is a wrapper applied where the client is
+  constructed: `const redis = handle.withMeticulousIORedis(new Redis(url))`.
+
+  This is required to capture ioredis in apps bundled by Next.js / Turbopack, where
+  the recorder's require-hook instrumentation can never reach the bundled `ioredis`
+  and patch `Redis.prototype.sendCommand` — the only seam is the app's own code
+  wrapping the client. Unlike Prisma there is no native ioredis extension API, so
+  the wrapper replaces `sendCommand` on the client instance (covering both `Redis`
+  and `Cluster`); it dispatches at command time, so it is safe to apply at
+  module-load time. The field is optional so older recorder bundles still satisfy
+  the type.
+
+## 2.302.0
+
+### Patch Changes
+
+- [#10482](https://github.com/alwaysmeticulous/meticulous/pull/10482) [`9a9c564`](https://github.com/alwaysmeticulous/meticulous/commit/9a9c564a7cf88da3872eb303981409eb178ef44b) Thanks [@dennysem](https://github.com/dennysem)! - Surface the backend recorder's Prisma capture on `BackendRecorderHandle` as
+  `meticulousPrismaExtension`, so apps that load the recorder through the launcher
+  bundle can record their Prisma client. It is the Prisma Client extension object,
+  applied idiomatically with `client.$extends(handle.meticulousPrismaExtension)`.
+
+  This is required to capture Prisma in apps bundled by Next.js / Turbopack, where
+  the recorder's require-hook instrumentation can never reach the bundled Prisma
+  client and `pg` driver — the only seam is the app's own code applying the
+  extension. Apply it first/outermost (before read-replicas and field encryption);
+  applied innermost, read-replicas routes reads to an unwrapped replica client and
+  those reads are never captured. The field is optional so older recorder bundles
+  still satisfy the type.
+
+## 2.301.0
+
+### Patch Changes
+
+- [#10487](https://github.com/alwaysmeticulous/meticulous/pull/10487) [`e4715f7`](https://github.com/alwaysmeticulous/meticulous/commit/e4715f72807ffa9e7c6c6e55b922f7b0192bfac2) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Introduce replay killing errors option
+
+- Updated dependencies [[`230db8c`](https://github.com/alwaysmeticulous/meticulous/commit/230db8ce6628ac7728497fe4f10d2e3d25387b5f)]:
+  - @alwaysmeticulous/api@2.301.0
+
 ## 2.300.0
 
 ### Patch Changes

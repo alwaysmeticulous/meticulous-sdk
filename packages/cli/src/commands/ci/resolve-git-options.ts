@@ -10,7 +10,6 @@ export interface ResolvedGitOptions {
   commitSha: string;
   baseSha: string | undefined;
   gitDiffOutput: string | undefined;
-  withUncommittedChanges: boolean;
 }
 
 /**
@@ -103,7 +102,6 @@ const resolveFromRepoDirectory = async (
     commitSha,
     baseSha,
     gitDiffOutput,
-    withUncommittedChanges: uncommitted,
   };
 };
 
@@ -142,5 +140,5 @@ const resolveFromExplicitArgs = async ({
     logger.info(`Git diff output provided: ${gitDiffOutput.length} chars`);
   }
 
-  return { commitSha, baseSha, gitDiffOutput, withUncommittedChanges: false };
+  return { commitSha, baseSha, gitDiffOutput };
 };

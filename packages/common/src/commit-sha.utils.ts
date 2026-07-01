@@ -186,6 +186,30 @@ export const hasUncommittedChanges = async (options?: {
 };
 
 /**
+ * Returns the untracked (and not git-ignored) files in the working tree.
+ * These cannot be captured by `git stash create` or a `base..head` diff, so
+ * callers that infer a build commit / diff from the working tree should refuse
+ * to proceed while any exist. Returns `[]` outside a git repository.
+ */
+export const getUntrackedFiles = async (options?: {
+  cwd?: string;
+}): Promise<string[]> => {
+  try {
+    const output = await execFilePromise(
+      "git",
+      ["ls-files", "--others", "--exclude-standard"],
+      options?.cwd,
+    );
+    return output
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+  } catch {
+    return [];
+  }
+};
+
+/**
  * Returns the raw `git diff` output between baseSha and either a specific commit or the working tree.
  * - If headSha is provided: `git diff baseSha headSha`
  * - If headSha is omitted: `git diff baseSha` (compares to working tree)
@@ -197,6 +221,22 @@ export const getGitDiff = async (
 ): Promise<string> => {
   const args = headSha ? ["diff", baseSha, headSha] : ["diff", baseSha];
   return execFilePromise("git", args, options?.cwd);
+};
+
+/**
+ * Captures the current index + working tree as a real (unreferenced) commit via
+ * `git stash create`, returning its SHA. Does NOT modify HEAD, the branch, or
+ * the working tree. Returns `undefined` when the tree is clean (stash create
+ * prints nothing). Use to label a build of a dirty working tree with a
+ * content-faithful commit, without forcing the user to commit.
+ */
+export const getStashCreateSha = async (options?: {
+  cwd?: string;
+}): Promise<string | undefined> => {
+  const output = (
+    await execFilePromise("git", ["stash", "create"], options?.cwd)
+  ).trim();
+  return output || undefined;
 };
 
 /**

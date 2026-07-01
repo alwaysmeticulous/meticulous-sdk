@@ -12,6 +12,9 @@ export {
   FileWithCompactRanges,
   TestRunForCommitResponse,
   TestRunJsCoverageResponse,
+  TestRunJsCoverageOptions,
+  TestRunJsCoverageResponseV2,
+  TestRunCoverageFile,
   ReplayJsCoverageResponse,
   CoverageFileDiff,
   ReplayDiffJsCoverageDiffResponse,
@@ -158,6 +161,17 @@ export {
   GetContainerDeploymentResponse,
   getContainerDeployment,
   ContainerEnvVariable,
+  ProjectDeploymentSource,
+  AgentUploadBuildResponse,
+  AgentUploadAssetBuildParams,
+  agentUploadAssetBuild,
+  AgentUploadContainerBuildParams,
+  agentUploadContainerBuild,
+  AgentUploadGitDiffBuildParams,
+  agentUploadGitDiffBuild,
+  AgentTriggerTestRunParams,
+  AgentTriggerTestRunResponse,
+  agentTriggerTestRun,
 } from "./api/project-deployments.api";
 export { GetRegistryAuthResponse, getRegistryAuth } from "./api/registry.api";
 export { isFetchError, maybeEnrichFetchError } from "./errors";

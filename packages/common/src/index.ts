@@ -7,6 +7,8 @@ export {
 export {
   METICULOUS_LOGGER_NAME,
   initLogger,
+  logNotice,
+  logProgress,
   setLogLevel,
 } from "./logger/console-logger";
 export { DebugLogger } from "./logger/debug-logger";
@@ -29,7 +31,9 @@ export {
   getCommitDate,
   getLocalBaseSha,
   hasUncommittedChanges,
+  getUntrackedFiles,
   getGitDiff,
+  getStashCreateSha,
 } from "./commit-sha.utils";
 export {
   executeWithRetry,

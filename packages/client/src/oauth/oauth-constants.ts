@@ -37,7 +37,14 @@ export const getWebappBaseUrl = (): string => {
   const apiUrlFromEnv = process.env["METICULOUS_API_URL"];
 
   if (apiUrlFromEnv && apiUrlFromEnv.includes("localhost")) {
-    return apiUrlFromEnv.replace(/\/api\/?$/, "").replace(":3000", ":3001");
+    // The webapp frontend runs on the port immediately above the backend API
+    // (backend 3000 -> frontend 3001).
+    return apiUrlFromEnv
+      .replace(/\/api\/?$/, "")
+      .replace(
+        /localhost:(\d+)/,
+        (_match, port) => `localhost:${Number(port) + 1}`,
+      );
   }
 
   return DEFAULT_WEBAPP_BASE_URL;

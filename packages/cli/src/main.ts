@@ -88,7 +88,12 @@ export const main = async (): Promise<void> => {
       true,
     )
     .middleware([
-      (argv) => setLogLevel(argv.logLevel),
+      // Explicit --logLevel wins; otherwise --verbose=false (the default for
+      // agent commands) quietens progress logs so only essential output remains.
+      (argv) =>
+        setLogLevel(
+          argv.logLevel ?? (argv.verbose === false ? "warn" : undefined),
+        ),
       (argv) => handleDataDir(argv.dataDir),
       (argv) => setOptions(argv),
     ]).argv;

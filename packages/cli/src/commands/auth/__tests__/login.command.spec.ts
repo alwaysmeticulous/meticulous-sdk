@@ -20,6 +20,7 @@ vi.mock("@alwaysmeticulous/common", () => ({
 const mocks = vi.hoisted(() => ({
   clearStoredProject: vi.fn(),
   createClient: vi.fn(),
+  getStoredProject: vi.fn(),
   isInteractiveContext: vi.fn(),
   performOAuthLogin: vi.fn(),
   selectAndStoreProject: vi.fn(),
@@ -28,6 +29,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@alwaysmeticulous/client", () => ({
   clearStoredProject: mocks.clearStoredProject,
   createClient: mocks.createClient,
+  getStoredProject: mocks.getStoredProject,
   isInteractiveContext: mocks.isInteractiveContext,
   performOAuthLogin: mocks.performOAuthLogin,
 }));
@@ -36,13 +38,16 @@ vi.mock("../../../utils/select-project", () => ({
   selectAndStoreProject: mocks.selectAndStoreProject,
 }));
 
-const runHandler = (args: { project?: string } = {}) =>
+const runHandler = (
+  args: { project?: string; nonInteractive?: boolean } = {},
+) =>
   (loginCommand as { handler: (args: unknown) => Promise<void> }).handler(args);
 
 describe("login command", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createClient.mockReturnValue({});
+    mocks.getStoredProject.mockReturnValue(null);
     mocks.performOAuthLogin.mockResolvedValue({ accessToken: "fresh-jwt" });
     mocks.selectAndStoreProject.mockResolvedValue("Org/App");
   });
@@ -53,6 +58,68 @@ describe("login command", () => {
     await expect(runHandler()).rejects.toBeInstanceOf(CliUserError);
     expect(mocks.performOAuthLogin).not.toHaveBeenCalled();
     expect(mocks.clearStoredProject).not.toHaveBeenCalled();
+  });
+
+  it("with --non-interactive, bypasses the TTY guard and runs headlessly", async () => {
+    mocks.isInteractiveContext.mockReturnValue(false);
+
+    await runHandler({ nonInteractive: true });
+
+    expect(mocks.performOAuthLogin).toHaveBeenCalledWith({
+      openBrowserAutomatically: false,
+    });
+    expect(mocks.selectAndStoreProject).toHaveBeenCalledWith(
+      expect.objectContaining({ allowInteractivePrompt: false }),
+    );
+  });
+
+  it("with --non-interactive on a real TTY, still prints the URL and skips the picker", async () => {
+    mocks.isInteractiveContext.mockReturnValue(true);
+
+    await runHandler({ nonInteractive: true });
+
+    expect(mocks.performOAuthLogin).toHaveBeenCalledWith({
+      openBrowserAutomatically: false,
+    });
+    expect(mocks.selectAndStoreProject).toHaveBeenCalledWith(
+      expect.objectContaining({ allowInteractivePrompt: false }),
+    );
+  });
+
+  it("passes the previously-selected project as a fallback for headless selection", async () => {
+    mocks.isInteractiveContext.mockReturnValue(false);
+    mocks.getStoredProject.mockReturnValue("Org/Previous");
+    mocks.selectAndStoreProject.mockResolvedValue("Org/Previous");
+
+    await runHandler({ nonInteractive: true });
+
+    expect(mocks.selectAndStoreProject).toHaveBeenCalledWith(
+      expect.objectContaining({ fallbackToProject: "Org/Previous" }),
+    );
+  });
+
+  it("propagates the error and skips the hint when no project could be selected", async () => {
+    mocks.isInteractiveContext.mockReturnValue(false);
+    mocks.selectAndStoreProject.mockRejectedValue(
+      new CliUserError("no project selected", 1, "warn"),
+    );
+
+    await expect(runHandler({ nonInteractive: true })).rejects.toBeInstanceOf(
+      CliUserError,
+    );
+    expect(loggerMock.info).not.toHaveBeenCalledWith(
+      expect.stringContaining("auth set-project"),
+    );
+  });
+
+  it("shows the change-project hint when a project was selected", async () => {
+    mocks.isInteractiveContext.mockReturnValue(true);
+
+    await runHandler();
+
+    expect(loggerMock.info).toHaveBeenCalledWith(
+      expect.stringContaining("auth set-project"),
+    );
   });
 
   it("logs in first, then clears the stale project and selects one", async () => {

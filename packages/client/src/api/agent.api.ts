@@ -110,6 +110,59 @@ export interface TestRunJsCoverageResponse {
   files: FileWithCompactRanges[];
 }
 
+/**
+ * The agent test-run js-coverage API contract version this client speaks. Sent
+ * on every request so the backend knows to serve the V2 per-file response
+ * ({@link TestRunJsCoverageResponseV2}); older backends that don't
+ * understand it fall back to the legacy {@link TestRunJsCoverageResponse}, and
+ * pre-versioning clients (which send nothing) still get the legacy shape.
+ *
+ * - v1 (no clientVersion sent): legacy `files: [path, executedRanges][]`,
+ *   including files with no executed coverage.
+ * - v2: per-file objects carrying only the requested columns
+ *   (executed/executable/uncovered ranges, coverage percentage), files with no
+ *   value in any requested column dropped unless `includeAllFiles`, plus
+ *   `prDiffOnly`/`globFilter`. At least one column must be requested.
+ */
+export const TESTRUN_JS_COVERAGE_CLIENT_VERSION = 2;
+
+/** Which columns/rows the V2 test-run coverage response should carry. */
+export interface TestRunJsCoverageOptions {
+  includeExecutedRanges?: boolean;
+  includeExecutableRanges?: boolean;
+  includeUncoveredRanges?: boolean;
+  includeCoveragePercentage?: boolean;
+  /**
+   * Return every file regardless of the requested columns (otherwise a file is
+   * dropped unless a requested column has a value for it).
+   */
+  includeAllFiles?: boolean;
+  /** Scope coverage to the PR diff (coverage.pr.json) instead of the whole run. */
+  prDiffOnly?: boolean;
+  /** Keep only repo file paths matching this gitignore-style glob. */
+  globFilter?: string;
+}
+
+/**
+ * A per-file row in the V2 test-run coverage response. `repoFilePath` is
+ * always present; each other field is included only when the caller opted into
+ * it, in this declaration order. Ranges are repo-relative and normalized.
+ */
+export interface TestRunCoverageFile {
+  repoFilePath: string;
+  executedRanges?: CompactRange[];
+  /** Statically-executable lines unioned with executed lines (executed ⊆ executable). */
+  executableRanges?: CompactRange[];
+  /** executable − executed. */
+  uncoveredRanges?: CompactRange[];
+  /** `100 × |executed| / |executable|`, in 0–100; `null` when no executable lines. */
+  coveragePercentage?: number | null;
+}
+
+export interface TestRunJsCoverageResponseV2 {
+  files: TestRunCoverageFile[];
+}
+
 export interface ReplayJsCoverageResponse {
   /**
    * Executed line ranges for a single replay (whole replay, or one screenshot),
@@ -135,6 +188,14 @@ export interface ReplayDiffJsCoverageDiffResponse {
    */
   base: FileWithCompactRanges[] | null;
   head: FileWithCompactRanges[] | null;
+  /**
+   * Per-file coverage diff, computed over base/head *before* empty rows are
+   * dropped, whereas the returned `base`/`head` arrays drop files with no
+   * executed ranges unless `includeAllFiles`. So a `diff` entry can reference a
+   * file absent from `base`/`head` (e.g. a file executed only on head is
+   * `added` in `diff` but its empty base row is dropped from `base`); don't
+   * assume every `diff.filePath` is present in both arrays.
+   */
   diff: CoverageFileDiff[];
 }
 
@@ -374,14 +435,53 @@ export const getTestRunForCommit = async (
   return data;
 };
 
-// Returns the whole test run's executed line ranges from the precomputed,
-// repo-mapped coverage.json (keyed by repo-relative path).
+// Returns the whole test run's coverage from the precomputed, repo-mapped
+// coverage.json (keyed by repo-relative path). Sends `clientVersion` so the
+// backend serves the V2 per-file response carrying the requested columns
+// (executed/executable/uncovered ranges, coverage percentage), optionally
+// scoped to the PR diff and/or filtered by a glob.
 export const getTestRunJsCoverage = async (
   client: MeticulousClient,
   testRunId: string,
-): Promise<TestRunJsCoverageResponse> => {
+  options?: TestRunJsCoverageOptions,
+): Promise<TestRunJsCoverageResponseV2> => {
+  const params: Record<string, string> = {
+    clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
+  };
+  // The V2 endpoint requires at least one column and 400s otherwise. Preserve
+  // the historical default of executed ranges when the caller opts into no
+  // column explicitly, so a bare `getTestRunJsCoverage(client, testRunId)`
+  // keeps returning executed ranges rather than erroring.
+  const includeExecutedRanges =
+    options?.includeExecutedRanges ||
+    !(
+      options?.includeExecutableRanges ||
+      options?.includeUncoveredRanges ||
+      options?.includeCoveragePercentage
+    );
+  if (includeExecutedRanges) {
+    params.includeExecutedRanges = "true";
+  }
+  if (options?.includeExecutableRanges) {
+    params.includeExecutableRanges = "true";
+  }
+  if (options?.includeUncoveredRanges) {
+    params.includeUncoveredRanges = "true";
+  }
+  if (options?.includeCoveragePercentage) {
+    params.includeCoveragePercentage = "true";
+  }
+  if (options?.includeAllFiles) {
+    params.includeAllFiles = "true";
+  }
+  if (options?.prDiffOnly) {
+    params.prDiffOnly = "true";
+  }
+  if (options?.globFilter != null && options.globFilter !== "") {
+    params.globFilter = options.globFilter;
+  }
   const { data } = await client
-    .get(`agent/test-runs/${testRunId}/js-coverage`)
+    .get(`agent/test-runs/${testRunId}/js-coverage`, { params })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
@@ -399,18 +499,30 @@ export const getTestRunJsCoverage = async (
 export const getReplayJsCoverage = async (
   client: MeticulousClient,
   replayId: string,
+  // Selects *which* coverage to fetch (a single screenshot vs. the whole
+  // replay), so it's a positional argument distinct from the `options` that
+  // shape the response. Omit for the whole replay.
+  screenshotName?: string,
   options?: {
-    screenshotName?: string | undefined;
     testRunId?: string | undefined;
+    globFilter?: string | undefined;
+    // Return every file; by default files with no executed ranges are dropped.
+    includeAllFiles?: boolean | undefined;
   },
 ): Promise<ReplayJsCoverageResponse> => {
   const path =
-    options?.screenshotName != null
-      ? `agent/replays/${replayId}/screenshots/${encodeURIComponent(options.screenshotName)}/js-coverage`
+    screenshotName != null
+      ? `agent/replays/${replayId}/screenshots/${encodeURIComponent(screenshotName)}/js-coverage`
       : `agent/replays/${replayId}/js-coverage`;
   const params: Record<string, string> = {};
   if (options?.testRunId != null) {
     params.testRunId = options.testRunId;
+  }
+  if (options?.globFilter != null && options.globFilter !== "") {
+    params.globFilter = options.globFilter;
+  }
+  if (options?.includeAllFiles) {
+    params.includeAllFiles = "true";
   }
   const { data } = await client.get(path, { params }).catch((error) => {
     throw maybeEnrichFetchError(error);
@@ -418,18 +530,33 @@ export const getReplayJsCoverage = async (
   return data;
 };
 
-// Coverage *diff* for a replay diff (base vs head). Omit screenshotName for the
-// whole-replay diff.
+// Coverage *diff* for a replay diff (base vs head). `globFilter` scopes
+// base/head/diff to matching repo paths; `includeAllFiles` keeps base/head rows
+// with no executed ranges (dropped by default).
 export const getReplayDiffJsCoverage = async (
   client: MeticulousClient,
   replayDiffId: string,
+  // Selects *which* diff to fetch (a single screenshot vs. the whole replay),
+  // so it's a positional argument distinct from the `options` that shape the
+  // response. Omit for the whole-replay diff.
   screenshotName?: string,
+  options?: {
+    globFilter?: string | undefined;
+    includeAllFiles?: boolean | undefined;
+  },
 ): Promise<ReplayDiffJsCoverageDiffResponse> => {
   const path =
     screenshotName != null
       ? `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/js-coverage-diff`
       : `agent/replay-diffs/${replayDiffId}/js-coverage-diff`;
-  const { data } = await client.get(path).catch((error) => {
+  const params: Record<string, string> = {};
+  if (options?.globFilter != null && options.globFilter !== "") {
+    params.globFilter = options.globFilter;
+  }
+  if (options?.includeAllFiles) {
+    params.includeAllFiles = "true";
+  }
+  const { data } = await client.get(path, { params }).catch((error) => {
     throw maybeEnrichFetchError(error);
   });
   return data;

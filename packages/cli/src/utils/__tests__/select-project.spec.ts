@@ -105,4 +105,59 @@ describe("selectAndStoreProject", () => {
       selectAndStoreProject({ client: fakeClient, logger: fakeLogger }),
     ).rejects.toBeInstanceOf(CliUserError);
   });
+
+  it("throws without prompting when several projects exist and prompting is disabled", async () => {
+    mocks.getOAuthProjects.mockResolvedValue([
+      project("OrgA", "App1", "id-1"),
+      project("OrgB", "App2", "id-2"),
+    ]);
+
+    const caught = await selectAndStoreProject({
+      client: fakeClient,
+      logger: fakeLogger,
+      allowInteractivePrompt: false,
+    }).catch((error: unknown) => error);
+
+    expect(caught).toBeInstanceOf(CliUserError);
+    expect((caught as CliUserError).severity).toBe("warn");
+    expect((caught as CliUserError).exitCode).toBe(1);
+    expect(mocks.setStoredProject).not.toHaveBeenCalled();
+  });
+
+  it("keeps the fallback project when it is still accessible and prompting is disabled", async () => {
+    mocks.getOAuthProjects.mockResolvedValue([
+      project("OrgA", "App1", "id-1"),
+      project("OrgB", "App2", "id-2"),
+    ]);
+
+    const result = await selectAndStoreProject({
+      client: fakeClient,
+      logger: fakeLogger,
+      allowInteractivePrompt: false,
+      fallbackToProject: "OrgB/App2",
+    });
+
+    expect(result).toBe("OrgB/App2");
+    expect(mocks.setStoredProject).toHaveBeenCalledWith({
+      project: "OrgB/App2",
+      projectId: "id-2",
+    });
+  });
+
+  it("throws when the fallback project is no longer accessible", async () => {
+    mocks.getOAuthProjects.mockResolvedValue([
+      project("OrgA", "App1", "id-1"),
+      project("OrgB", "App2", "id-2"),
+    ]);
+
+    await expect(
+      selectAndStoreProject({
+        client: fakeClient,
+        logger: fakeLogger,
+        allowInteractivePrompt: false,
+        fallbackToProject: "OrgC/Gone",
+      }),
+    ).rejects.toBeInstanceOf(CliUserError);
+    expect(mocks.setStoredProject).not.toHaveBeenCalled();
+  });
 });

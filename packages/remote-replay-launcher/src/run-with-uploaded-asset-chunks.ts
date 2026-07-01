@@ -19,7 +19,6 @@ export interface RunWithUploadedAssetChunksOptions extends ProjectIdentifier {
   commitSha: string;
   baseSha?: string | undefined;
   gitDiffOutput?: string | undefined;
-  withUncommittedChanges?: boolean | undefined;
   waitForBase: boolean;
   rewrites: AssetUploadMetadata["rewrites"];
   createDeployment?: boolean;
@@ -44,7 +43,6 @@ export const runWithUploadedAssetChunks = async ({
   commitSha,
   baseSha,
   gitDiffOutput,
-  withUncommittedChanges,
   waitForBase,
   rewrites,
   createDeployment = true,
@@ -98,7 +96,6 @@ export const runWithUploadedAssetChunks = async ({
     commitSha,
     ...(baseSha ? { baseSha } : {}),
     ...(gitDiffOutput ? { hasGitDiff: true } : {}),
-    ...(withUncommittedChanges ? { withUncommittedChanges } : {}),
     mustHaveBase: waitForBase,
     ...(projectId ? { projectId } : {}),
   };

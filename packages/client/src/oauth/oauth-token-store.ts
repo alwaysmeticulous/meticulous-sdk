@@ -5,8 +5,8 @@ import {
   unlinkSync,
   writeFileSync,
 } from "fs";
-import { homedir } from "os";
 import { join } from "path";
+import { getMeticulousLocalDataDir } from "@alwaysmeticulous/common";
 
 export interface StoredOAuthTokens {
   accessToken: string;
@@ -30,19 +30,21 @@ interface StoredSelectedProject {
   project: string;
 }
 
-const METICULOUS_DIR = join(homedir(), ".meticulous");
-const TOKEN_FILE_PATH = join(METICULOUS_DIR, "oauth-tokens.json");
-const SELECTED_PROJECT_FILE_PATH = join(
-  METICULOUS_DIR,
-  "selected-project.json",
-);
+// Resolved lazily (not at module load) so it honours `METICULOUS_DIR` / a
+// `--dataDir` override set after import — matching every other consumer of
+// `getMeticulousLocalDataDir`.
+const getMeticulousDir = (): string => getMeticulousLocalDataDir();
+const getTokenFilePath = (): string =>
+  join(getMeticulousDir(), "oauth-tokens.json");
+const getSelectedProjectFilePath = (): string =>
+  join(getMeticulousDir(), "selected-project.json");
 
 export const getStoredOAuthTokens = (): StoredOAuthTokens | null => {
   try {
-    if (!existsSync(TOKEN_FILE_PATH)) {
+    if (!existsSync(getTokenFilePath())) {
       return null;
     }
-    const data = readFileSync(TOKEN_FILE_PATH, "utf-8");
+    const data = readFileSync(getTokenFilePath(), "utf-8");
     return JSON.parse(data) as StoredOAuthTokens;
   } catch {
     return null;
@@ -50,18 +52,18 @@ export const getStoredOAuthTokens = (): StoredOAuthTokens | null => {
 };
 
 export const storeOAuthTokens = (tokens: StoredOAuthTokens): void => {
-  if (!existsSync(METICULOUS_DIR)) {
-    mkdirSync(METICULOUS_DIR, { recursive: true });
+  if (!existsSync(getMeticulousDir())) {
+    mkdirSync(getMeticulousDir(), { recursive: true });
   }
-  writeFileSync(TOKEN_FILE_PATH, JSON.stringify(tokens, null, 2), {
+  writeFileSync(getTokenFilePath(), JSON.stringify(tokens, null, 2), {
     mode: 0o600,
   });
 };
 
 export const clearOAuthTokens = (): void => {
   try {
-    if (existsSync(TOKEN_FILE_PATH)) {
-      unlinkSync(TOKEN_FILE_PATH);
+    if (existsSync(getTokenFilePath())) {
+      unlinkSync(getTokenFilePath());
     }
   } catch {
     // Ignore errors during cleanup
@@ -70,10 +72,10 @@ export const clearOAuthTokens = (): void => {
 
 const getStoredSelectedProject = (): StoredSelectedProject | null => {
   try {
-    if (!existsSync(SELECTED_PROJECT_FILE_PATH)) {
+    if (!existsSync(getSelectedProjectFilePath())) {
       return null;
     }
-    const data = readFileSync(SELECTED_PROJECT_FILE_PATH, "utf-8");
+    const data = readFileSync(getSelectedProjectFilePath(), "utf-8");
     return JSON.parse(data) as StoredSelectedProject;
   } catch {
     return null;
@@ -95,11 +97,11 @@ export const setStoredProject = ({
   project: string;
   projectId: string;
 }): void => {
-  if (!existsSync(METICULOUS_DIR)) {
-    mkdirSync(METICULOUS_DIR, { recursive: true });
+  if (!existsSync(getMeticulousDir())) {
+    mkdirSync(getMeticulousDir(), { recursive: true });
   }
   writeFileSync(
-    SELECTED_PROJECT_FILE_PATH,
+    getSelectedProjectFilePath(),
     JSON.stringify({ project, projectId }, null, 2),
     { mode: 0o600 },
   );
@@ -107,8 +109,8 @@ export const setStoredProject = ({
 
 export const clearStoredProject = (): void => {
   try {
-    if (existsSync(SELECTED_PROJECT_FILE_PATH)) {
-      unlinkSync(SELECTED_PROJECT_FILE_PATH);
+    if (existsSync(getSelectedProjectFilePath())) {
+      unlinkSync(getSelectedProjectFilePath());
     }
   } catch {
     // Ignore errors during cleanup

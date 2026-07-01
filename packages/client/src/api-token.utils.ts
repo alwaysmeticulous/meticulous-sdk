@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from "fs";
-import { homedir } from "os";
 import { join } from "path";
-import { initLogger } from "@alwaysmeticulous/common";
+import {
+  getMeticulousLocalDataDir,
+  initLogger,
+} from "@alwaysmeticulous/common";
 import { getValidAccessToken } from "./oauth/oauth-refresh";
-
-const PERSONAL_CONFIG_FILE_PATH = ".meticulous/config.json";
 
 interface PersonalConfig {
   apiToken?: string;
@@ -14,9 +14,12 @@ export const readFileBasedToken = (): {
   token: string;
   path: string;
 } | null => {
+  // `getMeticulousLocalDataDir()` honours `METICULOUS_DIR` / `--dataDir`,
+  // defaulting to `~/.meticulous`, so the config file follows the same data dir
+  // as the OAuth login.
   const personalConfigFileAbsolutePath = join(
-    homedir(),
-    PERSONAL_CONFIG_FILE_PATH,
+    getMeticulousLocalDataDir(),
+    "config.json",
   );
   if (existsSync(personalConfigFileAbsolutePath)) {
     const config: PersonalConfig = JSON.parse(

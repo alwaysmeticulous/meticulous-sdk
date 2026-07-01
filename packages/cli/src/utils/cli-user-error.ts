@@ -9,12 +9,20 @@
  * happens in one place (the top-level handler) and tests can assert on
  * thrown behavior rather than process-level side effects.
  */
+export type CliUserErrorSeverity = "error" | "warn";
+
 export class CliUserError extends Error {
   readonly exitCode: number;
+  readonly severity: CliUserErrorSeverity;
 
-  constructor(message: string, exitCode = 1) {
+  constructor(
+    message: string,
+    exitCode = 1,
+    severity: CliUserErrorSeverity = "error",
+  ) {
     super(message);
     this.name = "CliUserError";
     this.exitCode = exitCode;
+    this.severity = severity;
   }
 }

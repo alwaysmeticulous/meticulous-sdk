@@ -20,6 +20,8 @@ vi.mock("@alwaysmeticulous/common", () => ({
     warn: vi.fn(),
     error: vi.fn(),
   }),
+  logNotice: vi.fn(),
+  logProgress: vi.fn(),
 }));
 vi.mock("@sentry/node", () => ({
   captureMessage: vi.fn(),

@@ -181,9 +181,6 @@ export interface TestRunCustomTriggerContext {
 
   /** Head commit hash */
   headSha: string;
-
-  /** Whether the test run includes uncommitted changes from the working directory */
-  withUncommittedChanges?: boolean;
 }
 
 export type ReasonPullRequestIsNotAvailable =

@@ -42,12 +42,11 @@ export const wrapHandler = function wrapHandler_<T>(
 
 const reportHandlerError = (error: unknown): number => {
   const logger = initLogger();
-  logger.info("");
 
   // User-facing errors: message already explains what to do, and the
   // failure is expected (no Sentry, no --help tip, no stack).
   if (error instanceof CliUserError) {
-    logger.error(error.message);
+    logger[error.severity](error.message);
     return error.exitCode;
   }
 

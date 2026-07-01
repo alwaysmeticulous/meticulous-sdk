@@ -67,7 +67,6 @@ export interface CompleteAssetUploadParams extends ProjectIdentifier {
   commitSha: string;
   baseSha?: string | undefined;
   hasGitDiff?: boolean | undefined;
-  withUncommittedChanges?: boolean | undefined;
   rewrites: AssetUploadMetadata["rewrites"];
   mustHaveBase: boolean;
   createDeployment?: boolean;
@@ -93,7 +92,6 @@ export interface CompleteContainerUploadParams extends ProjectIdentifier {
   commitSha: string;
   baseSha?: string | undefined;
   hasGitDiff?: boolean | undefined;
-  withUncommittedChanges?: boolean | undefined;
   mustHaveBase: boolean;
   isUserVisible?: boolean;
   skipPreprocessing?: boolean;
@@ -313,7 +311,6 @@ export interface TriggerRunWithUploadedAssetChunksParams extends ProjectIdentifi
   commitSha: string;
   baseSha?: string | undefined;
   hasGitDiff?: boolean | undefined;
-  withUncommittedChanges?: boolean | undefined;
   mustHaveBase: boolean;
   isUserVisible?: boolean;
   skipPreprocessing?: boolean;
@@ -416,5 +413,127 @@ export const getContainerDeployment = async ({
     unknown,
     { data: GetContainerDeploymentResponse }
   >(`project-deployments/container/${deploymentUploadId}`);
+  return data;
+};
+
+// ===========================================================================
+// Agent namespace: split "upload a build" from "trigger a test run".
+// `uploadBuild` registers a reusable deployment without triggering; the
+// returned `deploymentId` is then passed to `triggerTestRun`.
+// ===========================================================================
+
+export type ProjectDeploymentSource = "assetUpload" | "containerUpload";
+
+export interface AgentUploadBuildResponse {
+  deploymentId: string;
+}
+
+export interface AgentUploadAssetBuildParams extends ProjectIdentifier {
+  uploadId: string;
+  commitSha: string;
+  rewrites: AssetUploadMetadata["rewrites"];
+  multipartUploadInfo?: MultiPartUploadInfo;
+  archiveType: DeploymentArchiveType;
+}
+
+export const agentUploadAssetBuild = async ({
+  client,
+  projectId,
+  ...body
+}: AgentUploadAssetBuildParams & {
+  client: MeticulousClient;
+}): Promise<AgentUploadBuildResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: AgentUploadBuildResponse }
+  >("agent/upload-build/asset", body, projectIdQuery(projectId));
+  return data;
+};
+
+export interface AgentUploadContainerBuildParams extends ProjectIdentifier {
+  uploadId: string;
+  commitSha: string;
+  containerPort?: number;
+  containerEnv?: ContainerEnvVariable[];
+  containerHealthCheckEndpoint?: string;
+}
+
+export const agentUploadContainerBuild = async ({
+  client,
+  projectId,
+  ...body
+}: AgentUploadContainerBuildParams & {
+  client: MeticulousClient;
+}): Promise<AgentUploadBuildResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: AgentUploadBuildResponse }
+  >("agent/upload-build/container", body, projectIdQuery(projectId));
+  return data;
+};
+
+export interface AgentUploadGitDiffBuildParams extends ProjectIdentifier {
+  deploymentId: string;
+  /**
+   * The base the diff is against. Namespaces the diff's S3 object so re-triggers
+   * of the same deployment against different bases don't clobber each other.
+   * Must match the `baseSha` later passed to `agentTriggerTestRun`.
+   */
+  baseSha: string;
+  size: number;
+}
+
+export const agentUploadGitDiffBuild = async ({
+  client,
+  projectId,
+  ...body
+}: AgentUploadGitDiffBuildParams & {
+  client: MeticulousClient;
+}): Promise<RequestGitDiffUploadResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestGitDiffUploadResponse }
+  >("agent/upload-build/git-diff", body, projectIdQuery(projectId));
+  return data;
+};
+
+export interface AgentTriggerTestRunParams extends ProjectIdentifier {
+  /**
+   * The deployment to run, as returned by `uploadBuild`. Exactly one of
+   * `deploymentId` or `commitSha` must be provided.
+   */
+  deploymentId?: string;
+  /**
+   * Alternative to `deploymentId`: resolves to the most recent non-ephemeral
+   * deployment already uploaded for this commit in the project.
+   */
+  commitSha?: string;
+  /** Required: an agent (custom-trigger) run is only useful with a base. */
+  baseSha: string;
+  /**
+   * Optional explicit set of sessions to replay. When provided, the run replays
+   * exactly these sessions (for both head and base) instead of the project's
+   * auto-selected golden set.
+   */
+  sessionIds?: string[];
+}
+
+export interface AgentTriggerTestRunResponse {
+  testRun?: TestRun;
+  /** The head commit the run executed against (the deployment's commit). */
+  commitSha?: string;
+}
+
+export const agentTriggerTestRun = async ({
+  client,
+  projectId,
+  ...body
+}: AgentTriggerTestRunParams & {
+  client: MeticulousClient;
+}): Promise<AgentTriggerTestRunResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: AgentTriggerTestRunResponse }
+  >("agent/trigger-test-run", body, projectIdQuery(projectId));
   return data;
 };

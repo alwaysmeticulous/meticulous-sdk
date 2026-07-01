@@ -1,5 +1,61 @@
 # @alwaysmeticulous/remote-replay-launcher
 
+## 2.302.0
+
+### Minor Changes
+
+- [#10524](https://github.com/alwaysmeticulous/meticulous/pull/10524) [`d46e16b`](https://github.com/alwaysmeticulous/meticulous/commit/d46e16b439be7b82baa824ab78475c1bf7631659) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent trigger-test-run` now accepts `--commitSha` as an alternative to
+  `--deploymentId`: it resolves to the most recent non-ephemeral deployment
+  already uploaded for that commit in the project (e.g. by an earlier CI run),
+  so you don't need to look up a `deploymentId` to re-trigger a run — for
+  example to test the coverage impact of `--sessionIds` against a commit that
+  has already gone through Meticulous. Exactly one of `--deploymentId` or
+  `--commitSha` is required. `--commitSha` cannot be combined with a git diff
+  (`--gitDiffOutput`, or one inferred via `--repoDirectory`), since uploading a
+  diff requires an already-known deployment to key it by.
+
+- [#10524](https://github.com/alwaysmeticulous/meticulous/pull/10524) [`d46e16b`](https://github.com/alwaysmeticulous/meticulous/commit/d46e16b439be7b82baa824ab78475c1bf7631659) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add an optional `--sessionIds` argument to `agent trigger-test-run`. When
+  provided (a comma-separated list of session IDs), the run replays exactly those
+  sessions — for both the base and the head — instead of the project's
+  auto-selected ("golden set") sessions. When omitted, behaviour is unchanged.
+  An explicitly-provided list that is empty or contains duplicate session IDs is
+  rejected up front (at the agent endpoint) rather than silently falling back to
+  the golden set or de-duplicating.
+
+  Note: as part of this change, externally-supplied session IDs (the agent
+  `--sessionIds` trigger and the `meticulous.json` `testCases` list consumed by the
+  legacy `addTestRun` endpoint) are now validated to exist and belong to the
+  project before a run is created. A request referencing an unknown, deleted, or
+  cross-project session ID is now rejected with a `400` instead of having that one
+  session silently dropped — so an out-of-date `meticulous.json` session list that
+  previously degraded gracefully will now fail the request until the stale IDs are
+  removed. (Duplicate-session rejection applies only to the agent `--sessionIds`
+  trigger; the legacy path continues to de-duplicate silently.)
+
+### Patch Changes
+
+- Updated dependencies [[`132ce89`](https://github.com/alwaysmeticulous/meticulous/commit/132ce893095bc0eb89abb000ae4982f3fed85355), [`d46e16b`](https://github.com/alwaysmeticulous/meticulous/commit/d46e16b439be7b82baa824ab78475c1bf7631659), [`d46e16b`](https://github.com/alwaysmeticulous/meticulous/commit/d46e16b439be7b82baa824ab78475c1bf7631659), [`41ae1dd`](https://github.com/alwaysmeticulous/meticulous/commit/41ae1dd2a01114677015abfbe905192b46aea471), [`d78f1a9`](https://github.com/alwaysmeticulous/meticulous/commit/d78f1a9f54461825700ffff970ddb0bf77c8da67)]:
+  - @alwaysmeticulous/client@2.302.0
+  - @alwaysmeticulous/common@2.301.0
+
+## 2.301.0
+
+### Minor Changes
+
+- [#10213](https://github.com/alwaysmeticulous/meticulous/pull/10213) [`230db8c`](https://github.com/alwaysmeticulous/meticulous/commit/230db8ce6628ac7728497fe4f10d2e3d25387b5f) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - feat(agent): split custom test-run triggering into `agent upload-build` and `agent trigger-test-run`
+
+  A build can now be registered once (`meticulous agent upload-build`, returning a `deploymentId`) and re-triggered against any base (`meticulous agent trigger-test-run --deploymentId …`), instead of the fused `ci upload-*` custom-trigger flags (now deprecated). Both agent commands wait for the run by default and print only essential output unless `--verbose` is passed; opt out of waiting with `--dontWaitForTestRunToComplete`. Adds the `uploadBuild`/`triggerTestRun` launcher helpers, the `agent*` client methods, and the `getStashCreateSha`/`getUntrackedFiles` git helpers.
+
+  Also removes the `withUncommittedChanges` field from the deployment/test-run API surface (`@alwaysmeticulous/client`, `@alwaysmeticulous/remote-replay-launcher`, `@alwaysmeticulous/api`). It carried no behaviour the diff's presence didn't already convey — whether a run includes uncommitted changes is inferred from the uploaded git diff — so the redundant, foot-gun-prone flag is gone.
+
+### Patch Changes
+
+- Updated dependencies [[`230db8c`](https://github.com/alwaysmeticulous/meticulous/commit/230db8ce6628ac7728497fe4f10d2e3d25387b5f)]:
+  - @alwaysmeticulous/client@2.301.0
+  - @alwaysmeticulous/common@2.301.0
+  - @alwaysmeticulous/api@2.301.0
+  - @alwaysmeticulous/tunnels-client@2.301.0
+
 ## 2.300.0
 
 ### Patch Changes

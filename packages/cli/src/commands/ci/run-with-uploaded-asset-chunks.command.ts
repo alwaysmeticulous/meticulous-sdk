@@ -121,13 +121,12 @@ const handler = async ({
     process.exit(1);
   }
 
-  const { commitSha, baseSha, gitDiffOutput, withUncommittedChanges } =
-    await resolveGitOptions({
-      commitSha: commitSha_,
-      baseSha: baseSha_,
-      gitDiffOutput: gitDiffOutput_,
-      repoDirectory,
-    });
+  const { commitSha, baseSha, gitDiffOutput } = await resolveGitOptions({
+    commitSha: commitSha_,
+    baseSha: baseSha_,
+    gitDiffOutput: gitDiffOutput_,
+    repoDirectory,
+  });
 
   if (baseSha && baseSha === commitSha && !gitDiffOutput) {
     logger.info(
@@ -164,7 +163,6 @@ const handler = async ({
       commitSha,
       ...(baseSha ? { baseSha } : {}),
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
-      ...(withUncommittedChanges ? { withUncommittedChanges } : {}),
       assetReferencesManifest: manifest,
       rewrites: parseRewrites(rewrites),
       waitForBase: waitForBase || waitForTestRunToComplete,

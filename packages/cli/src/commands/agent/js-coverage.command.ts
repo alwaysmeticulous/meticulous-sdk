@@ -1,9 +1,11 @@
 import type {
   MeticulousClient,
   ReplayJsCoverageResponse,
+  TestRunCoverageFile,
+  TestRunJsCoverageOptions,
 } from "@alwaysmeticulous/client";
 import {
-  createClient,
+  createClientWithOAuth,
   getReplayJsCoverage,
   getTestRun,
   getTestRunJsCoverage,
@@ -17,41 +19,93 @@ import { CliUserError } from "../../utils/cli-user-error";
 import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
 import {
   assertTestRunComplete,
+  ensureTestRunFinished,
   isTestRunComplete,
   resolveTestRunForCommitOrThrow,
   tryResolveTestRunForCommit,
 } from "../../utils/resolve-test-run-from-commit";
 
-interface Options {
+export interface Options {
   apiToken?: string | null | undefined;
   replayId: string | undefined;
   testRunId: string | undefined;
   commitSha: string | undefined;
   screenshotName: string | undefined;
+  dontWaitForTestRunToComplete: boolean;
+  includeExecutedRanges: boolean;
+  includeExecutableRanges: boolean;
+  includeUncoveredRanges: boolean;
+  includeCoveragePercentage: boolean;
+  includeAllFiles: boolean;
+  prDiffOnly: boolean;
+  globFilter: string | undefined;
   json: boolean;
 }
 
+// The per-file range/percentage columns, emitted (after `repoFilePath`) in this
+// fixed order. `executableRanges`/`uncoveredRanges`/`coveragePercentage` rely on
+// executable-line data we only have for whole test runs, so they're rejected
+// alongside --replayId.
+type CoverageColumn =
+  | "executedRanges"
+  | "executableRanges"
+  | "uncoveredRanges"
+  | "coveragePercentage";
+
+// Single source of truth mapping each column to the request flag that asks for
+// it, so the printed columns and the request payload can't drift apart.
+const COVERAGE_COLUMN_FLAG: Record<
+  CoverageColumn,
+  | "includeExecutedRanges"
+  | "includeExecutableRanges"
+  | "includeUncoveredRanges"
+  | "includeCoveragePercentage"
+> = {
+  executedRanges: "includeExecutedRanges",
+  executableRanges: "includeExecutableRanges",
+  uncoveredRanges: "includeUncoveredRanges",
+  coveragePercentage: "includeCoveragePercentage",
+};
+
 const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
 
-const handler = async ({
-  apiToken,
-  replayId,
-  testRunId,
-  commitSha,
-  screenshotName,
-  json,
-}: Options): Promise<void> => {
+const handler = async (options: Options): Promise<void> => {
+  const {
+    apiToken,
+    replayId,
+    testRunId,
+    commitSha,
+    screenshotName,
+    dontWaitForTestRunToComplete,
+    globFilter,
+    json,
+  } = options;
   initLogger();
 
   if (screenshotName != null && replayId == null) {
     throw new CliUserError("--screenshotName only applies to --replayId.");
   }
 
+  // --testRunId and --commitSha are two ways to name a run; passing both is
+  // ambiguous on both paths (whole-test-run and --replayId disambiguation).
+  if (testRunId != null && commitSha != null) {
+    throw new CliUserError("Pass either --testRunId or --commitSha, not both.");
+  }
+
+  if (replayId != null) {
+    assertTestRunOnlyFlagsUnsetForReplay(options);
+  }
+
+  const columns = determineColumns(options);
+
   const apiToken_ = await resolveApiTokenWithOAuth({
     apiToken,
     enableOAuthLogin: true,
   });
-  const client = createClient({ apiToken: apiToken_ });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
 
   // --replayId takes precedence: repo file paths are resolved against the run
   // that executed the replay, and a --testRunId / --commitSha passed alongside
@@ -63,49 +117,111 @@ const handler = async ({
       screenshotName,
       testRunId,
       commitSha,
+      globFilter,
+      includeAllFiles: options.includeAllFiles,
       json,
     });
   } else {
-    if (testRunId != null && commitSha != null) {
-      throw new CliUserError(
-        "Pass either --testRunId or --commitSha, not both.",
-      );
-    }
     // Test-run coverage: use --testRunId, else resolve the run from --commitSha
-    // or, when neither is given, from the local checkout's HEAD. Either way the
-    // run must have finished for coverage to exist.
+    // or, when neither is given, from the local checkout's HEAD. Coverage only
+    // exists once the run has finished, so block until it does (default) or, with
+    // --dontWaitForTestRunToComplete, report the in-progress run and stop.
+    let resolvedTestRunId: string;
+    let status;
     if (testRunId != null) {
-      // Coverage only exists once a run has finished with a verdict; guard an
-      // explicitly passed testRunId, mirroring the check for runs resolved from
-      // a commit.
-      const { status } = await getTestRun({ client, testRunId });
-      assertTestRunComplete(testRunId, status, { resultName: "coverage" });
-      await printTestRunCoverage(client, testRunId, json);
+      resolvedTestRunId = testRunId;
+      status = (await getTestRun({ client, testRunId })).status;
     } else {
-      const resolvedTestRunId = await resolveCompletedTestRunIdForCommit(
-        client,
-        apiToken_,
-        commitSha,
-      );
-      await printTestRunCoverage(client, resolvedTestRunId, json);
+      ({ testRunId: resolvedTestRunId, status } =
+        await resolveTestRunForCommitOrThrow(client, apiToken_, commitSha));
     }
+    const finishedStatus = await ensureTestRunFinished(
+      client,
+      resolvedTestRunId,
+      status,
+      { dontWait: dontWaitForTestRunToComplete },
+    );
+    if (finishedStatus == null) {
+      return;
+    }
+    // Reject session-pool bases (Partial); fatal failures already threw.
+    assertTestRunComplete(resolvedTestRunId, finishedStatus, {
+      resultName: "coverage",
+    });
+    await printTestRunCoverage(
+      client,
+      resolvedTestRunId,
+      options,
+      columns,
+      json,
+    );
   }
 };
 
-// Resolves a commit to a test run for coverage. Coverage only exists once a run
-// has finished with a usable verdict, so an unfinished or failed run is
-// reported as not-yet-available rather than queried.
-const resolveCompletedTestRunIdForCommit = async (
+// Executable / uncovered / percentage columns all need executable-line data we
+// only have for whole test runs; --prDiffOnly reads a test-run-only artifact.
+// Reject them for a single replay. (--globFilter and --includeAllFiles apply to
+// replays too.)
+export const assertTestRunOnlyFlagsUnsetForReplay = (
+  options: Options,
+): void => {
+  const testRunOnly = (
+    [
+      ["includeExecutableRanges", options.includeExecutableRanges],
+      ["includeUncoveredRanges", options.includeUncoveredRanges],
+      ["includeCoveragePercentage", options.includeCoveragePercentage],
+      ["prDiffOnly", options.prDiffOnly],
+    ] as const
+  )
+    .filter(([, enabled]) => enabled)
+    .map(([name]) => `--${name}`);
+  if (testRunOnly.length > 0) {
+    throw new CliUserError(
+      `${testRunOnly.join(", ")} only appl${testRunOnly.length === 1 ? "ies" : "y"} to whole-test-run coverage, not --replayId.`,
+    );
+  }
+};
+
+// The columns (after `repoFilePath`) to request and print, in fixed order.
+// Defaults to executed ranges when no column flag is given, so a bare
+// invocation matches the historical output.
+export const determineColumns = (options: Options): CoverageColumn[] => {
+  const includeExecuted =
+    options.includeExecutedRanges ||
+    (!options.includeExecutableRanges &&
+      !options.includeUncoveredRanges &&
+      !options.includeCoveragePercentage);
+  const columns: CoverageColumn[] = [];
+  if (includeExecuted) {
+    columns.push("executedRanges");
+  }
+  if (options.includeExecutableRanges) {
+    columns.push("executableRanges");
+  }
+  if (options.includeUncoveredRanges) {
+    columns.push("uncoveredRanges");
+  }
+  if (options.includeCoveragePercentage) {
+    columns.push("coveragePercentage");
+  }
+  return columns;
+};
+
+// Resolves a commit to a test run id, used only to disambiguate which run a
+// --replayId belongs to. The replay's own coverage exists once that replay has
+// executed, independent of whole-run completion, so we don't require the run to
+// be complete here (unlike the whole-test-run path) — getReplayJsCoverage
+// surfaces an actionable error if the replay itself has no coverage yet.
+const resolveTestRunIdForCommit = async (
   client: MeticulousClient,
   apiToken: string,
   commitSha: string | undefined,
 ): Promise<string> => {
-  const { testRunId, status } = await resolveTestRunForCommitOrThrow(
+  const { testRunId } = await resolveTestRunForCommitOrThrow(
     client,
     apiToken,
     commitSha,
   );
-  assertTestRunComplete(testRunId, status, { resultName: "coverage" });
   return testRunId;
 };
 
@@ -117,12 +233,16 @@ const printReplayCoverage = async (
     screenshotName,
     testRunId,
     commitSha,
+    globFilter,
+    includeAllFiles,
     json,
   }: {
     replayId: string;
     screenshotName: string | undefined;
     testRunId: string | undefined;
     commitSha: string | undefined;
+    globFilter: string | undefined;
+    includeAllFiles: boolean;
     json: boolean;
   },
 ): Promise<void> => {
@@ -131,13 +251,14 @@ const printReplayCoverage = async (
   const effectiveTestRunId =
     testRunId ??
     (commitSha != null
-      ? await resolveCompletedTestRunIdForCommit(client, apiToken, commitSha)
+      ? await resolveTestRunIdForCommit(client, apiToken, commitSha)
       : undefined);
 
   try {
-    const result = await getReplayJsCoverage(client, replayId, {
-      screenshotName,
+    const result = await getReplayJsCoverage(client, replayId, screenshotName, {
       testRunId: effectiveTestRunId,
+      globFilter,
+      includeAllFiles,
     });
     printReplayResult(result, json);
   } catch (error) {
@@ -155,10 +276,16 @@ const printReplayCoverage = async (
       // or failed one has no usable coverage.
       if (fallback != null && isTestRunComplete(fallback.status)) {
         try {
-          const result = await getReplayJsCoverage(client, replayId, {
+          const result = await getReplayJsCoverage(
+            client,
+            replayId,
             screenshotName,
-            testRunId: fallback.testRunId,
-          });
+            {
+              testRunId: fallback.testRunId,
+              globFilter,
+              includeAllFiles,
+            },
+          );
           // Only announce the fallback once it has actually worked, so a doomed
           // retry doesn't leave a misleading "retrying against run X" line.
           log(
@@ -201,25 +328,67 @@ const printReplayResult = (
 const printTestRunCoverage = async (
   client: MeticulousClient,
   testRunId: string,
+  options: Options,
+  columns: CoverageColumn[],
   json: boolean,
 ): Promise<void> => {
-  const result = await getTestRunJsCoverage(client, testRunId);
+  // Send the resolved columns as explicit flags (the default-to-executed rule
+  // lives here in `determineColumns`, not the backend), so the backend never
+  // has to guess which columns a flagless request wants. Derive the flags from
+  // the same `columns` array the headers/formatting use, so they stay in sync.
+  const requestOptions: TestRunJsCoverageOptions = {
+    includeAllFiles: options.includeAllFiles,
+    prDiffOnly: options.prDiffOnly,
+    ...(options.globFilter != null ? { globFilter: options.globFilter } : {}),
+  };
+  for (const column of columns) {
+    requestOptions[COVERAGE_COLUMN_FLAG[column]] = true;
+  }
+  const result = await getTestRunJsCoverage(client, testRunId, requestOptions);
 
   if (json) {
     console.log(JSON.stringify(result, null, 2));
     return;
   }
 
-  console.log(["repoFilePath", "executedRanges"].join("\t"));
-  // Test-run coverage is the precomputed repo-mapped coverage, keyed by repo paths.
-  for (const [filePath, ranges] of result.files) {
-    console.log([filePath, formatCoverageRanges(ranges)].join("\t"));
+  // Test-run coverage is the precomputed repo-mapped coverage, keyed by repo
+  // paths. Emit `repoFilePath` then the requested columns in fixed order.
+  console.log(["repoFilePath", ...columns].join("\t"));
+  for (const file of result.files) {
+    const fields = [
+      file.repoFilePath,
+      ...columns.map((column) => formatCoverageColumn(file, column)),
+    ];
+    console.log(fields.join("\t"));
   }
 
-  log(`${result.files.length} file(s) with coverage`);
+  log(`${result.files.length} file(s)`);
 };
 
-const isAmbiguousTestRunError = (error: unknown): boolean =>
+const formatCoverageColumn = (
+  file: TestRunCoverageFile,
+  column: CoverageColumn,
+): string => {
+  switch (column) {
+    case "executedRanges":
+      return formatCoverageRanges(file.executedRanges ?? []);
+    case "executableRanges":
+      return formatCoverageRanges(file.executableRanges ?? []);
+    case "uncoveredRanges":
+      return formatCoverageRanges(file.uncoveredRanges ?? []);
+    case "coveragePercentage":
+      return file.coveragePercentage == null
+        ? "n/a"
+        : file.coveragePercentage.toFixed(1);
+    default: {
+      // Exhaustiveness guard: a new CoverageColumn must be handled above.
+      const exhaustive: never = column;
+      throw new Error(`Unhandled coverage column: ${String(exhaustive)}`);
+    }
+  }
+};
+
+export const isAmbiguousTestRunError = (error: unknown): boolean =>
   isFetchError(error) &&
   (error.response?.data as { reason?: string } | undefined)?.reason ===
     "ambiguous-test-run";
@@ -249,6 +418,53 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         'Screenshot name (e.g. "after-event-5" or "end-state"), for use with --replayId. Omit for the whole replay.',
+    },
+    dontWaitForTestRunToComplete: {
+      boolean: true,
+      default: false,
+      description:
+        "For whole-test-run coverage, return immediately instead of the default of blocking until the run finishes; an unfinished run is then reported as not complete.",
+    },
+    includeExecutedRanges: {
+      boolean: true,
+      default: false,
+      description:
+        "Include the executed line ranges column. This is the default column when no other --include* range/percentage flag is given.",
+    },
+    includeExecutableRanges: {
+      boolean: true,
+      default: false,
+      description:
+        "Include the executable line ranges column (lines that could be executed). Whole-test-run coverage only.",
+    },
+    includeUncoveredRanges: {
+      boolean: true,
+      default: false,
+      description:
+        "Include the uncovered line ranges column (executable minus executed). Whole-test-run coverage only.",
+    },
+    includeCoveragePercentage: {
+      boolean: true,
+      default: false,
+      description:
+        "Include the coverage percentage column (0–100; executed / executable lines per file). Whole-test-run coverage only.",
+    },
+    includeAllFiles: {
+      boolean: true,
+      default: false,
+      description:
+        "Return every file, regardless of the requested columns. By default a file is dropped unless at least one requested column has a value for it (e.g. with only executed ranges, files with no executed lines are dropped). Works for both replay and whole-test-run coverage.",
+    },
+    prDiffOnly: {
+      boolean: true,
+      default: false,
+      description:
+        "Return only coverage for files changed in the PR diff (from coverage.pr.json). Whole-test-run coverage only.",
+    },
+    globFilter: {
+      string: true,
+      description:
+        'Keep only repo file paths matching this gitignore-style glob, e.g. "src/components/**".',
     },
     json: {
       boolean: true,

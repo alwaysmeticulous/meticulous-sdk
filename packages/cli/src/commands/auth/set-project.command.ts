@@ -1,5 +1,6 @@
 import {
   createClient,
+  isInteractiveContext,
   isOAuthJwt,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
@@ -22,7 +23,8 @@ export const setProjectCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "Project to select in 'organization/project' format (e.g. 'MyOrg/My App'). " +
-        "When provided, skips the interactive picker.",
+        "When provided, skips the interactive picker. Required in non-interactive " +
+        "environments (no TTY), where the interactive picker is unavailable.",
     },
   },
   handler: wrapHandler(async ({ project }: Options) => {
@@ -47,6 +49,11 @@ export const setProjectCommand: CommandModule<unknown, Options> = {
     }
 
     const client = createClient({ apiToken });
-    await selectAndStoreProject({ client, logger, project });
+    await selectAndStoreProject({
+      client,
+      logger,
+      project,
+      allowInteractivePrompt: isInteractiveContext(),
+    });
   }),
 };

@@ -16,7 +16,11 @@ import {
 import type { StoredOAuthTokens } from "./oauth-token-store";
 import { storeOAuthTokens } from "./oauth-token-store";
 
-export const performOAuthLogin = async (): Promise<StoredOAuthTokens> => {
+export const performOAuthLogin = async ({
+  openBrowserAutomatically = true,
+}: {
+  openBrowserAutomatically?: boolean;
+} = {}): Promise<StoredOAuthTokens> => {
   const logger = initLogger();
 
   const codeVerifier = generateCodeVerifier();
@@ -32,9 +36,17 @@ export const performOAuthLogin = async (): Promise<StoredOAuthTokens> => {
     redirectUri,
   });
 
-  logger.info("Opening browser for authentication...");
-  logger.info(`If the browser does not open, visit: ${authUrl}`);
-  openBrowser(authUrl);
+  if (openBrowserAutomatically) {
+    logger.info("Opening browser for authentication...");
+    logger.info(`If the browser does not open, visit: ${authUrl}`);
+    openBrowser(authUrl);
+  } else {
+    logger.info(
+      "To authenticate, open this URL in a browser on this machine " +
+        "(login completes via a local callback on 127.0.0.1, so a browser " +
+        `on another machine cannot finish it):\n${authUrl}`,
+    );
+  }
 
   const { code, state: returnedState } = await callbackServer.waitForCallback();
 

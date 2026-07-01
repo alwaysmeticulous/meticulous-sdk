@@ -1,30 +1,32 @@
 import {
-  createClient,
+  createClientWithOAuth,
   getTestRunForCommit,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
-import { getCommitSha, initLogger } from "@alwaysmeticulous/common";
+import { getCommitSha, logNotice, logProgress } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
-import { isTestRunComplete } from "../../utils/resolve-test-run-from-commit";
+import {
+  awaitTestRunCompletion,
+  isTestRunInProgress,
+  logResolvedCommitSha,
+} from "../../utils/resolve-test-run-from-commit";
 
 interface Options {
   apiToken?: string | null | undefined;
   commitSha: string | undefined;
+  dontWaitForTestRunToComplete: boolean;
   json: boolean;
 }
-
-const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
 
 const handler = async ({
   apiToken,
   commitSha,
+  dontWaitForTestRunToComplete,
   json,
 }: Options): Promise<void> => {
-  initLogger();
-
   // Default to the current checkout's HEAD so the command can be run with no
   // arguments to auto-infer the test run for the working tree.
   const resolvedCommitSha = await getCommitSha(commitSha);
@@ -33,6 +35,10 @@ const handler = async ({
       "Could not determine a commit SHA. Pass --commitSha or run inside a git repository.",
     );
   }
+  // The lookup is by commit, so warn when the local tree is dirty (the run is
+  // resolved for HEAD, not the uncommitted changes), matching trigger-test-run /
+  // test-run-diffs.
+  await logResolvedCommitSha(commitSha, resolvedCommitSha);
 
   const apiToken_ = await resolveApiTokenWithOAuth({
     apiToken,
@@ -41,27 +47,50 @@ const handler = async ({
   // Project-scoped tokens pin the project (resolves to `{}`); OAuth tokens use
   // the project chosen via `meticulous auth set-project`.
   const { projectId } = resolveProjectIdentifier(apiToken_);
-  const client = createClient({ apiToken: apiToken_ });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
 
   const result = await getTestRunForCommit(client, resolvedCommitSha, {
     projectId,
   });
 
-  if (json) {
-    console.log(JSON.stringify(result, null, 2));
+  if (result.testRunId == null) {
+    if (json) {
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+    logNotice(`No test run found for commit ${resolvedCommitSha}`);
     return;
   }
 
-  if (result.testRunId == null) {
-    log(`No test run found for commit ${resolvedCommitSha}`);
+  // Block until the run finishes (default) so the reported run is a finished
+  // verdict; with --dontWaitForTestRunToComplete, return the current (possibly
+  // in-progress) run immediately. throwOnFailure is false: this command just
+  // resolves an id, so a failed run's id is still reported.
+  let status = result.status;
+  if (
+    !dontWaitForTestRunToComplete &&
+    status != null &&
+    isTestRunInProgress(status)
+  ) {
+    status = await awaitTestRunCompletion(client, result.testRunId, {
+      throwOnFailure: false,
+    });
+  }
+
+  if (json) {
+    console.log(JSON.stringify({ ...result, status }, null, 2));
     return;
   }
+  logProgress(`testRunId: ${result.testRunId}`);
   console.log(result.testRunId);
-  if (result.status != null && !isTestRunComplete(result.status)) {
-    // Surface in-progress/Partial/failed runs so the caller knows the run isn't
-    // a finished verdict yet. Commands that consume the results (test-run-diffs,
-    // js-coverage) each have their own --waitForTestRunToComplete to block on it.
-    log(`Test run is not complete (status: ${result.status}).`);
+  if (status != null && isTestRunInProgress(status)) {
+    // Reached only with --dontWaitForTestRunToComplete on an unfinished run.
+    logNotice(
+      `Test run ${result.testRunId} is not complete (status: ${status}).`,
+    );
   }
 };
 
@@ -75,6 +104,12 @@ export const testRunForCommitCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "Commit SHA to look up. Defaults to the current git HEAD when omitted.",
+    },
+    dontWaitForTestRunToComplete: {
+      boolean: true,
+      default: false,
+      description:
+        "Return the latest run immediately instead of the default of blocking until it finishes; an unfinished run is then reported as not complete.",
     },
     json: {
       boolean: true,
