@@ -131,6 +131,7 @@ export const generateDebugWorkspace = async (
   const claudeDir = join(workspaceDir, ".claude");
   mkdirSync(claudeDir, { recursive: true });
 
+  redactCookiesAndHeaders(debugContext, workspaceDir);
   generateFilteredLogs(workspaceDir);
   generateLogDiffs(debugContext, workspaceDir);
   generateDiffSummaries(workspaceDir);
@@ -438,12 +439,331 @@ export const detectSnapshotAssets = (workspaceDir: string): boolean => {
 };
 
 // ---------------------------------------------------------------------------
+// Cookie, header & storage redaction
+// ---------------------------------------------------------------------------
+
+const REDACTED_VALUE_MARKER = "<redacted>";
+
+// Array-valued keys whose entries are `{ name, value }` or `{ key, value }`
+// pairs (or, in the case of `cookies.json`, richer cookie objects) where
+// only `value` holds sensitive data, regardless of what object contains
+// them.
+const NAME_VALUE_ARRAY_KEYS = new Set<string>([
+  "headers",
+  "cookies",
+  // Flat shape used by `applicationStorageDataOverride` inside
+  // `launchBrowserAndReplayParams.json` (see `ApplicationStorage`).
+  "localStorageEntries",
+  "sessionStorageEntries",
+  // Fixed/override authentication values baked into
+  // `replayExecutionOptions` inside `launchBrowserAndReplayParams.json` --
+  // these carry the project's configured authentication credentials (e.g.
+  // fixed auth cookies/storage entries) in plaintext, same shape as
+  // `cookies` / `*StorageEntries` above (see `ReplayExecutionOptions`).
+  "extraCookies",
+  "extraLocalStorageEntries",
+  "extraSessionStorageEntries",
+  // Flat HAR-style header arrays used by `NetworkRequestSnapshotData` (custom
+  // check network snapshots) instead of nesting under a `request`/`response`
+  // object with a `headers` key.
+  "requestHeaders",
+  "responseHeaders",
+]);
+
+// Scalar (non-array) fields that hold a secret token directly, rather than a
+// name/value pair. `session.recordingToken` (camelCase, on the `session:
+// RecordedSession` embedded in `launchBrowserAndReplayParams.json`) and
+// `recording_token` (snake_case, on session `data.json`) both hold the
+// project's recording token in plaintext.
+const SENSITIVE_SCALAR_KEYS = new Set<string>([
+  "recordingToken",
+  "recording_token",
+]);
+
+// `randomEvents.localStorage.state` / `randomEvents.sessionStorage.state` on
+// session `data.json` nest their `{ key, value }` entries one level deeper
+// than `localStorageEntries` / `sessionStorageEntries` above, so a `state`
+// array is only redacted when its containing object was reached via one of
+// these keys.
+const STORAGE_STATE_CONTAINER_KEYS = new Set<string>([
+  "localStorage",
+  "sessionStorage",
+]);
+
+// Backend span attributes (see `HttpSpanAttributes`) store raw header values
+// as `http.request.header.<name>` / `http.response.header.<name>` arrays of
+// strings, rather than `{ name, value }` pairs.
+const HTTP_HEADER_ATTRIBUTE_KEY_RE = /^http\.(?:request|response)\.header\./;
+
+// `replayExecutionOptions.customRequestHeaders` (see `InjectableRequestHeader`)
+// carries the project's configured custom request headers, which can embed a
+// plaintext secret value one level deeper than the other name/value shapes:
+// `{ name, value: { type: "static", value: "<secret>" }, requestTargets }`.
+const NESTED_STATIC_VALUE_ARRAY_KEYS = new Set<string>([
+  "customRequestHeaders",
+]);
+
+const isRedactableArrayKey = (
+  key: string | undefined,
+  containerKey: string | undefined,
+): boolean => {
+  if (!key) {
+    return false;
+  }
+  if (NAME_VALUE_ARRAY_KEYS.has(key)) {
+    return true;
+  }
+  return (
+    key === "state" &&
+    containerKey != null &&
+    STORAGE_STATE_CONTAINER_KEYS.has(containerKey)
+  );
+};
+
+// Recursively redacts cookie, header, storage, and secret-token *values*
+// anywhere in a parsed JSON value, while preserving their names/keys (and
+// array lengths) so an agent can still see which cookies/headers/storage
+// entries were present and how many values a given header had. `key` is the
+// property name `value` was reached through (if any) and `containerKey` is
+// the key of the object that held that property one level up -- both are
+// only used to decide whether an array should be treated as redactable.
+// Handles:
+//   - HAR-style `headers: [{ name, value }, ...]` arrays, wherever they occur
+//     (e.g. inside `pollyHAR` entries' `request`/`response` objects).
+//   - `cookies: [{ name, value, domain, ... }, ...]` arrays, e.g. on session
+//     `data.json`, and `replayExecutionOptions.extraCookies`.
+//   - `randomEvents.localStorage.state` / `randomEvents.sessionStorage.state`,
+//     the flat `localStorageEntries` / `sessionStorageEntries` arrays, and
+//     `replayExecutionOptions.extraLocalStorageEntries` /
+//     `extraSessionStorageEntries` -- all arrays of `{ key, value }` entries.
+//   - `replayExecutionOptions.customRequestHeaders`, whose entries nest their
+//     secret value one level deeper (`{ name, value: { type, value } }`).
+//   - Backend span `http.request.header.*` / `http.response.header.*`
+//     attributes.
+//   - Scalar secret tokens such as `session.recordingToken` / the session
+//     `data.json` `recording_token` field.
+// Exported for testing.
+export const redactCookiesAndHeadersInJson = (
+  value: unknown,
+  key?: string,
+  containerKey?: string,
+): unknown => {
+  if (Array.isArray(value)) {
+    if (key && NESTED_STATIC_VALUE_ARRAY_KEYS.has(key)) {
+      return value.map(redactNestedStaticValueEntry);
+    }
+    if (isRedactableArrayKey(key, containerKey)) {
+      return value.map(redactNameValueEntryValue);
+    }
+    return value.map((item) => redactCookiesAndHeadersInJson(item));
+  }
+  if (value !== null && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [childKey, childValue] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      if (
+        SENSITIVE_SCALAR_KEYS.has(childKey) &&
+        typeof childValue === "string"
+      ) {
+        result[childKey] = REDACTED_VALUE_MARKER;
+      } else if (
+        HTTP_HEADER_ATTRIBUTE_KEY_RE.test(childKey) &&
+        Array.isArray(childValue)
+      ) {
+        result[childKey] = childValue.map(() => REDACTED_VALUE_MARKER);
+      } else {
+        result[childKey] = redactCookiesAndHeadersInJson(
+          childValue,
+          childKey,
+          key,
+        );
+      }
+    }
+    return result;
+  }
+  return value;
+};
+
+const redactNameValueEntryValue = (item: unknown): unknown => {
+  if (item !== null && typeof item === "object" && "value" in item) {
+    return {
+      ...(item as Record<string, unknown>),
+      value: REDACTED_VALUE_MARKER,
+    };
+  }
+  return redactCookiesAndHeadersInJson(item);
+};
+
+const redactNestedStaticValueEntry = (item: unknown): unknown => {
+  if (
+    item !== null &&
+    typeof item === "object" &&
+    "value" in item &&
+    (item as Record<string, unknown>).value !== null &&
+    typeof (item as Record<string, unknown>).value === "object" &&
+    "value" in ((item as Record<string, unknown>).value as object)
+  ) {
+    const itemRecord = item as Record<string, unknown>;
+    return {
+      ...itemRecord,
+      value: { ...(itemRecord.value as object), value: REDACTED_VALUE_MARKER },
+    };
+  }
+  return redactCookiesAndHeadersInJson(item);
+};
+
+// Redacts a JSON file in place. `topLevelKey` lets callers tell the redactor
+// that the *root* of the file (not just a nested property) should be treated
+// as a redactable array -- needed for `cookies.json`, which is uploaded as a
+// bare `Cookie[]` rather than `{ cookies: [...] }`.
+const redactCookiesAndHeadersInFile = (
+  filePath: string,
+  topLevelKey?: string,
+): boolean => {
+  if (!existsSync(filePath)) {
+    return false;
+  }
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(filePath, "utf8"));
+    const redacted = redactCookiesAndHeadersInJson(parsed, topLevelKey);
+    writeFileSync(filePath, JSON.stringify(redacted, null, 2));
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `  Warning: Could not redact cookies/headers/storage in ${filePath}: ${message}`,
+    );
+    return false;
+  }
+};
+
+// Redacts an NDJSON file (one JSON value per line) in place, running
+// `redactCookiesAndHeadersInJson` over each line independently. Used for
+// `timeline.ndjson`, which -- unlike `timeline.json` -- is sometimes already
+// present in the downloaded replay archive rather than generated fresh from
+// the (by-then-redacted) `timeline.json`.
+const redactCookiesAndHeadersInNdjsonFile = (filePath: string): boolean => {
+  if (!existsSync(filePath)) {
+    return false;
+  }
+  try {
+    const raw = readFileSync(filePath, "utf8");
+    const redactedLines = raw.split("\n").map((line) => {
+      if (line.trim() === "") {
+        return line;
+      }
+      return JSON.stringify(redactCookiesAndHeadersInJson(JSON.parse(line)));
+    });
+    writeFileSync(filePath, redactedLines.join("\n"));
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `  Warning: Could not redact cookies/headers/storage in ${filePath}: ${message}`,
+    );
+    return false;
+  }
+};
+
+// Redacts cookie, header, and local/session storage values from the raw
+// JSON files placed into the workspace, before any other step reads or
+// diffs them. This runs first so that downstream steps (e.g.
+// `generateParamsDiffs`, `generateSessionSummaries`, `generateDebugDerivedFiles`)
+// never see or propagate the real values.
+// Exported for testing.
+export const redactCookiesAndHeaders = (
+  debugContext: DebugContext,
+  workspaceDir: string,
+): void => {
+  let count = 0;
+
+  for (const subDir of ["head", "base", "other"]) {
+    const subDirPath = join(
+      workspaceDir,
+      DEBUG_DATA_DIRECTORY,
+      "replays",
+      subDir,
+    );
+    if (!existsSync(subDirPath)) {
+      continue;
+    }
+    for (const replayId of readdirSync(subDirPath)) {
+      const replayDir = join(subDirPath, replayId);
+      if (
+        redactCookiesAndHeadersInFile(
+          join(replayDir, "cookies.json"),
+          "cookies",
+        )
+      ) {
+        count++;
+      }
+      if (
+        redactCookiesAndHeadersInFile(
+          join(replayDir, "launchBrowserAndReplayParams.json"),
+        )
+      ) {
+        count++;
+      }
+      // `timeline.json`'s network-request entries (`pollyReplay`,
+      // `passedThroughNetworkRequest`, etc.) embed full HAR `headers` arrays,
+      // including `Cookie`/`Authorization` values, for every request/response
+      // in the replay. Redact it before `generateDebugDerivedFiles` derives
+      // `timeline.ndjson` / `events-index` / `network-log` from it.
+      if (redactCookiesAndHeadersInFile(join(replayDir, "timeline.json"))) {
+        count++;
+      }
+      // Usually generated fresh from (already-redacted) `timeline.json`, but
+      // redact in place too in case it was already present in the downloaded
+      // archive.
+      if (
+        redactCookiesAndHeadersInNdjsonFile(join(replayDir, "timeline.ndjson"))
+      ) {
+        count++;
+      }
+      // Feature-flagged custom-check network snapshot data, carrying the same
+      // HAR-style `requestHeaders`/`responseHeaders` in plaintext.
+      if (
+        redactCookiesAndHeadersInFile(
+          join(replayDir, "custom-checks-snapshots", "network-requests.json"),
+        )
+      ) {
+        count++;
+      }
+    }
+  }
+
+  for (const sessionId of debugContext.sessionIds) {
+    const dataPath = join(
+      workspaceDir,
+      DEBUG_DATA_DIRECTORY,
+      "sessions",
+      sessionId,
+      "data.json",
+    );
+    if (redactCookiesAndHeadersInFile(dataPath)) {
+      count++;
+    }
+  }
+
+  if (count > 0) {
+    console.log(
+      chalk.green(
+        `  Redacted cookie, header, and storage values in ${count} file(s)`,
+      ),
+    );
+  }
+};
+
+// ---------------------------------------------------------------------------
 // Log filtering and diffs
 // ---------------------------------------------------------------------------
 
-const generateFilteredLogs = (workspaceDir: string): void => {
+// Exported for testing.
+export const generateFilteredLogs = (workspaceDir: string): void => {
   const replaySubDirs = ["head", "base", "other"];
-  let count = 0;
+  let filteredCount = 0;
+  let redactedCount = 0;
 
   for (const subDir of replaySubDirs) {
     const subDirPath = join(
@@ -457,23 +777,169 @@ const generateFilteredLogs = (workspaceDir: string): void => {
     }
 
     for (const replayId of readdirSync(subDirPath)) {
-      const logPath = join(subDirPath, replayId, "logs.deterministic.txt");
+      const replayDir = join(subDirPath, replayId);
+
+      // `logs.concise.txt` has no filtered counterpart, so redact credential
+      // values directly on it (in place) rather than leaving them in plaintext.
+      if (redactLogCredentialsInFile(join(replayDir, "logs.concise.txt"))) {
+        redactedCount++;
+      }
+
+      // `logs.ndjson` is the raw source `logs.concise.txt` / `logs.deterministic.txt`
+      // are rendered from, and is also read directly by `generateDebugDerivedFiles`
+      // (for `logs-index` / `vt-progression`) -- redact it too so none of those
+      // downstream artifacts leak credentials that only this raw file still held.
+      if (redactLogCredentialsInNdjsonFile(join(replayDir, "logs.ndjson"))) {
+        redactedCount++;
+      }
+
+      const logPath = join(replayDir, "logs.deterministic.txt");
       if (!existsSync(logPath)) {
         continue;
       }
 
       const raw = readFileSync(logPath, "utf8");
-      const filtered = filterLogLines(raw);
+      const credentialsRedacted = redactLogCredentials(raw);
+      if (credentialsRedacted !== raw) {
+        writeFileSync(logPath, credentialsRedacted);
+        redactedCount++;
+      }
+
+      const filtered = filterLogLines(credentialsRedacted);
       writeFileSync(
-        join(subDirPath, replayId, "logs.deterministic.filtered.txt"),
+        join(replayDir, "logs.deterministic.filtered.txt"),
         filtered,
       );
-      count++;
+      filteredCount++;
     }
   }
 
-  if (count > 0) {
-    console.log(chalk.green(`  Generated ${count} filtered log file(s)`));
+  if (filteredCount > 0) {
+    console.log(
+      chalk.green(`  Generated ${filteredCount} filtered log file(s)`),
+    );
+  }
+  if (redactedCount > 0) {
+    console.log(
+      chalk.green(
+        `  Redacted credential values in ${redactedCount} log file(s)`,
+      ),
+    );
+  }
+};
+
+// Header/cookie names whose values are treated as credentials in replay logs:
+// unlike `LOG_NOISE_PATTERNS` below (general noise, only stripped from the
+// `.filtered.txt` copy), matches here are redacted on the raw log file too,
+// since a leaked session cookie or bearer token is a real credential rather
+// than just diff noise.
+const CREDENTIAL_HEADER_NAMES =
+  "Authorization|Proxy-Authorization|Cookie|Set-Cookie|X-Api-Key|X-Auth-Token|X-Csrf-Token";
+
+// Best-effort patterns for credential-bearing header/cookie values dumped
+// verbatim into replay logs (e.g. from network-stubbing or header-injection
+// debug output). Run against the *entire* log file content (not line-by-line)
+// so JSON/object dumps pretty-printed across multiple lines are still caught.
+// Since logs are free-text (not structured JSON like the files handled by
+// `redactCookiesAndHeadersInJson`), this cannot be exhaustive.
+const LOG_CREDENTIAL_REPLACEMENTS: Array<{
+  pattern: RegExp;
+  replacement: string;
+}> = [
+  {
+    // Plain `Header-Name: <value>` dumps -- redact the rest of the line
+    // after the colon, preserving the header name.
+    pattern: new RegExp(
+      `\\b(${CREDENTIAL_HEADER_NAMES})(\\s*:\\s*)\\S.*`,
+      "gi",
+    ),
+    replacement: `$1$2${REDACTED_VALUE_MARKER}`,
+  },
+  {
+    // `{ name: 'Cookie', value: 'secret' }` / `{"name":"Cookie","value":"secret"}`
+    // (HAR-style header/cookie entries), whether logged via `util.inspect`
+    // (unquoted keys, single-quoted strings) or `JSON.stringify`.
+    pattern: new RegExp(
+      `(['"]?name['"]?\\s*:\\s*['"]?(?:${CREDENTIAL_HEADER_NAMES})['"]?[\\s\\S]{0,80}?['"]?value['"]?\\s*:\\s*(['"]))[^'"\n]*\\2`,
+      "gi",
+    ),
+    replacement: `$1${REDACTED_VALUE_MARKER}$2`,
+  },
+  {
+    // Raw bearer/basic auth tokens, wherever they appear (e.g. in error
+    // messages or stack traces, not just header dumps).
+    pattern: /\bBearer\s+[A-Za-z0-9\-._~+/]+=*/g,
+    replacement: `Bearer ${REDACTED_VALUE_MARKER}`,
+  },
+  {
+    pattern: /\bBasic\s+[A-Za-z0-9+/]+=*/g,
+    replacement: `Basic ${REDACTED_VALUE_MARKER}`,
+  },
+];
+
+// Exported for testing.
+export const redactLogCredentials = (raw: string): string => {
+  let result = raw;
+  for (const { pattern, replacement } of LOG_CREDENTIAL_REPLACEMENTS) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+};
+
+const redactLogCredentialsInFile = (filePath: string): boolean => {
+  if (!existsSync(filePath)) {
+    return false;
+  }
+  const raw = readFileSync(filePath, "utf8");
+  const redacted = redactLogCredentials(raw);
+  if (redacted === raw) {
+    return false;
+  }
+  writeFileSync(filePath, redacted);
+  return true;
+};
+
+// Redacts credential values from the `message` field of each entry in a
+// `logs.ndjson`-style file (one JSON object per line), leaving unaffected
+// lines byte-for-byte identical.
+const redactLogCredentialsInNdjsonFile = (filePath: string): boolean => {
+  if (!existsSync(filePath)) {
+    return false;
+  }
+  try {
+    const raw = readFileSync(filePath, "utf8");
+    let changed = false;
+    const redactedLines = raw.split("\n").map((line) => {
+      if (line.trim() === "") {
+        return line;
+      }
+      let entry: Record<string, unknown>;
+      try {
+        entry = JSON.parse(line);
+      } catch {
+        return line;
+      }
+      if (typeof entry.message !== "string") {
+        return line;
+      }
+      const redactedMessage = redactLogCredentials(entry.message);
+      if (redactedMessage === entry.message) {
+        return line;
+      }
+      changed = true;
+      return JSON.stringify({ ...entry, message: redactedMessage });
+    });
+    if (!changed) {
+      return false;
+    }
+    writeFileSync(filePath, redactedLines.join("\n"));
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `  Warning: Could not redact credentials in ${filePath}: ${message}`,
+    );
+    return false;
   }
 };
 

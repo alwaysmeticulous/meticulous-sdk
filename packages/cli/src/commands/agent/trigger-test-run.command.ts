@@ -99,8 +99,9 @@ const handler = async ({
     );
   }
 
-  // A test run is only useful with a base to compare against, and the backend
-  // refuses to create a baseless run, so require a base up front.
+  // A --baseSha value is always required up front, even though it may end up
+  // unused for comparison below (a same-SHA re-run with pinned --sessionIds
+  // runs head-only with no base).
   if (!baseSha) {
     throw new CliUserError(
       "A base is required: pass --baseSha, or --repoDirectory to infer it from the merge-base with the origin default branch.",
@@ -115,8 +116,18 @@ const handler = async ({
   // this early too, without a network round trip to resolve the deployment
   // first (gitDiffOutput is already guaranteed absent when commitSha is used,
   // per the check above).
+  // An explicit --sessionIds list is exempted: a same-SHA re-run with pinned
+  // sessions is a deliberate "check these sessions against the current code"
+  // request (e.g. coverage impact), not a missing base, so it's allowed to
+  // proceed and run head-only, with no base comparison.
   const effectiveHead = head ?? commitSha;
-  if (effectiveHead && baseSha === effectiveHead && !gitDiffOutput) {
+  const hasPinnedSessionIds = sessionIds != null && sessionIds.length > 0;
+  if (
+    effectiveHead &&
+    baseSha === effectiveHead &&
+    !gitDiffOutput &&
+    !hasPinnedSessionIds
+  ) {
     logNotice(
       "Base SHA equals head SHA and there are no changes to test — nothing to do.",
     );
@@ -135,7 +146,7 @@ const handler = async ({
   if (dryRun) {
     logNotice(
       `Dry run: would trigger a test run for ${deploymentDescriptor} (base: ${baseSha})` +
-        (sessionIds && sessionIds.length > 0
+        (hasPinnedSessionIds
           ? ` for ${sessionIds.length} explicitly-specified session(s)`
           : ""),
     );
@@ -160,7 +171,7 @@ const handler = async ({
       ...(deploymentId ? { deploymentId } : { commitSha }),
       baseSha,
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
-      ...(sessionIds && sessionIds.length > 0 ? { sessionIds } : {}),
+      ...(hasPinnedSessionIds ? { sessionIds } : {}),
       ...projectIdentifier,
     });
     testRunId = testRun?.id ?? null;
@@ -252,8 +263,9 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
     sessionIds: {
       string: true,
       description:
-        "Comma-separated list of session IDs to replay (for both base and head), instead of the project's auto-selected sessions. " +
-        "When omitted, the project's auto-selected ('golden set') sessions are used.",
+        "Comma-separated list of session IDs to replay, instead of the project's auto-selected sessions. Replayed on the base too, unless the run ends up head-only (see below). " +
+        "When omitted, the project's auto-selected ('golden set') sessions are used. " +
+        "When non-empty and --baseSha equals the head commit with no diff, the run proceeds head-only (no base run or comparison) instead of failing with 'nothing to do'.",
     },
     dontWaitForTestRunToComplete: {
       boolean: true,

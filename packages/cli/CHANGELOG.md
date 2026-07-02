@@ -1,5 +1,25 @@
 # @alwaysmeticulous/cli
 
+## 2.303.1
+
+### Patch Changes
+
+- [#10583](https://github.com/alwaysmeticulous/meticulous/pull/10583) [`70489b8`](https://github.com/alwaysmeticulous/meticulous/commit/70489b84ddf961478be50302817644b10c6db527) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent trigger-test-run` no longer refuses to run when `--baseSha`
+  equals the head commit (e.g. running locally on the default branch with no
+  new commits) if `--sessionIds` is also passed. Such a request is treated as a
+  deliberate "check these specific sessions against the current code" run and
+  proceeds head-only, with no base comparison, instead of failing with "Base SHA
+  equals head SHA and there are no changes to test — nothing to do."
+- Updated dependencies [[`5ae77f3`](https://github.com/alwaysmeticulous/meticulous/commit/5ae77f305b7cbd59174f7e5e73c454ece794099f), [`849c5bc`](https://github.com/alwaysmeticulous/meticulous/commit/849c5bc94d20ee80bf96d4f411c670212ad58982)]:
+  - @alwaysmeticulous/client@2.303.1
+  - @alwaysmeticulous/debug-workspace@2.303.1
+  - @alwaysmeticulous/sdk-bundles-api@2.303.1
+  - @alwaysmeticulous/downloading-helpers@2.303.1
+  - @alwaysmeticulous/remote-replay-launcher@2.303.1
+  - @alwaysmeticulous/common@2.301.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.303.1
+
 ## 2.303.0
 
 ### Minor Changes

@@ -1,5 +1,16 @@
 # @alwaysmeticulous/debug-workspace
 
+## 2.303.1
+
+### Patch Changes
+
+- [#10597](https://github.com/alwaysmeticulous/meticulous/pull/10597) [`849c5bc`](https://github.com/alwaysmeticulous/meticulous/commit/849c5bc94d20ee80bf96d4f411c670212ad58982) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Agent workspace setup now redacts more sensitive values
+
+- Updated dependencies [[`5ae77f3`](https://github.com/alwaysmeticulous/meticulous/commit/5ae77f305b7cbd59174f7e5e73c454ece794099f)]:
+  - @alwaysmeticulous/client@2.303.1
+  - @alwaysmeticulous/downloading-helpers@2.303.1
+  - @alwaysmeticulous/common@2.301.0
+
 ## 2.302.0
 
 ### Patch Changes

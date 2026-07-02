@@ -50,14 +50,19 @@ Each replay directory (`debug-data/replays/<role>/<replayId>/`) contains:
 
 - `logs.deterministic.txt` -- Deterministic logs with non-deterministic data stripped. Best for
   diffing between replays. Can be very large (check `fileMetadata` in `context.json` for sizes).
+  Credential-looking values (`Cookie`/`Authorization`/etc. header dumps, `Bearer`/`Basic` tokens)
+  are always redacted, even in this "raw" file; other noise (tunnel URLs, S3 tokens, PostHog
+  payloads) is left as-is here and only stripped in the filtered copy below.
 - `logs.deterministic.filtered.txt` -- **Start here for single-replay investigation.**
   Noise-stripped version of the deterministic logs: tunnel URLs, S3 tokens, PostHog payloads,
   build hashes, and other non-deterministic patterns are replaced with placeholders. Prefer this
   over the raw version unless you need unmodified output.
 - `logs.concise.txt` -- Full logs with both virtual and real timestamps, and trace IDs.
+  Credential-looking values are redacted the same way as in `logs.deterministic.txt`.
 - `timeline.json` -- Detailed timeline of all replay events (user interactions, network requests,
   DOM mutations, etc.). Can be 1-2MB; prefer `debug-data/events-index/` or
-  `debug-data/timeline-summaries/` for compact overviews.
+  `debug-data/timeline-summaries/` for compact overviews. Cookie/header values on network request
+  entries are redacted.
 - `timeline.ndjson` -- Same data as `timeline.json` but one JSON object per line (NDJSON format).
   Greppable with standard tools: `grep '"screenshot"' timeline.ndjson` to find screenshots,
   `grep '"pollyReplay"' timeline.ndjson` for network stubs.

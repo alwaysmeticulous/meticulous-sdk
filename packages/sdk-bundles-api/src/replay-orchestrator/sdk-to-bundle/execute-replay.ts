@@ -346,6 +346,14 @@ export interface StorageEntryOverride extends StorageEntry {
    * If false or omitted the entry will be overridden if it already exists in the session.
    */
   ignoreIfEntryAlreadyExists?: true;
+
+  /**
+   * If true, marks this entry's value as sensitive. Sensitive values are not
+   * returned by the GraphQL API (they are redacted) and cannot be viewed or
+   * edited in the webapp UI, though they can still be deleted. Does not
+   * affect replay behavior - the real value is still used during replay.
+   */
+  isSensitive?: boolean;
 }
 
 export interface VercelExecutionSettings {

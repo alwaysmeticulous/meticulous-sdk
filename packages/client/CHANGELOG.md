@@ -1,5 +1,14 @@
 # @alwaysmeticulous/client
 
+## 2.303.1
+
+### Patch Changes
+
+- [#10577](https://github.com/alwaysmeticulous/meticulous/pull/10577) [`5ae77f3`](https://github.com/alwaysmeticulous/meticulous/commit/5ae77f305b7cbd59174f7e5e73c454ece794099f) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add the concept of sensitive cookies/headers
+
+- Updated dependencies []:
+  - @alwaysmeticulous/common@2.301.0
+
 ## 2.302.0
 
 ### Minor Changes

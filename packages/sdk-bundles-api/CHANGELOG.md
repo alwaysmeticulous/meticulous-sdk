@@ -1,5 +1,11 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.303.1
+
+### Patch Changes
+
+- [#10597](https://github.com/alwaysmeticulous/meticulous/pull/10597) [`849c5bc`](https://github.com/alwaysmeticulous/meticulous/commit/849c5bc94d20ee80bf96d4f411c670212ad58982) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Agent workspace setup now redacts more sensitive values
+
 ## 2.303.0
 
 ### Patch Changes
