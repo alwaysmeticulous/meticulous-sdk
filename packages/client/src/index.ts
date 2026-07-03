@@ -168,6 +168,7 @@ export {
   AgentUploadContainerBuildParams,
   agentUploadContainerBuild,
   AgentUploadGitDiffBuildParams,
+  AgentUploadGitDiffBuildResponse,
   agentUploadGitDiffBuild,
   AgentTriggerTestRunParams,
   AgentTriggerTestRunResponse,

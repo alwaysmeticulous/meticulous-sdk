@@ -128,19 +128,19 @@ export const TESTRUN_JS_COVERAGE_CLIENT_VERSION = 2;
 
 /** Which columns/rows the V2 test-run coverage response should carry. */
 export interface TestRunJsCoverageOptions {
-  includeExecutedRanges?: boolean;
-  includeExecutableRanges?: boolean;
-  includeUncoveredRanges?: boolean;
-  includeCoveragePercentage?: boolean;
   /**
    * Return every file regardless of the requested columns (otherwise a file is
    * dropped unless a requested column has a value for it).
    */
   includeAllFiles?: boolean;
-  /** Scope coverage to the PR diff (coverage.pr.json) instead of the whole run. */
-  prDiffOnly?: boolean;
   /** Keep only repo file paths matching this gitignore-style glob. */
   globFilter?: string;
+  includeExecutedRanges?: boolean;
+  includeExecutableRanges?: boolean;
+  includeUncoveredRanges?: boolean;
+  includeCoveragePercentage?: boolean;
+  /** Scope coverage to the PR diff (coverage.pr.json) instead of the whole run. */
+  prDiffOnly?: boolean;
 }
 
 /**
@@ -459,6 +459,12 @@ export const getTestRunJsCoverage = async (
       options?.includeUncoveredRanges ||
       options?.includeCoveragePercentage
     );
+  if (options?.includeAllFiles) {
+    params.includeAllFiles = "true";
+  }
+  if (options?.globFilter != null && options.globFilter !== "") {
+    params.globFilter = options.globFilter;
+  }
   if (includeExecutedRanges) {
     params.includeExecutedRanges = "true";
   }
@@ -471,14 +477,8 @@ export const getTestRunJsCoverage = async (
   if (options?.includeCoveragePercentage) {
     params.includeCoveragePercentage = "true";
   }
-  if (options?.includeAllFiles) {
-    params.includeAllFiles = "true";
-  }
   if (options?.prDiffOnly) {
     params.prDiffOnly = "true";
-  }
-  if (options?.globFilter != null && options.globFilter !== "") {
-    params.globFilter = options.globFilter;
   }
   const { data } = await client
     .get(`agent/test-runs/${testRunId}/js-coverage`, { params })
@@ -505,9 +505,9 @@ export const getReplayJsCoverage = async (
   screenshotName?: string,
   options?: {
     testRunId?: string | undefined;
-    globFilter?: string | undefined;
     // Return every file; by default files with no executed ranges are dropped.
     includeAllFiles?: boolean | undefined;
+    globFilter?: string | undefined;
   },
 ): Promise<ReplayJsCoverageResponse> => {
   const path =
@@ -518,11 +518,11 @@ export const getReplayJsCoverage = async (
   if (options?.testRunId != null) {
     params.testRunId = options.testRunId;
   }
-  if (options?.globFilter != null && options.globFilter !== "") {
-    params.globFilter = options.globFilter;
-  }
   if (options?.includeAllFiles) {
     params.includeAllFiles = "true";
+  }
+  if (options?.globFilter != null && options.globFilter !== "") {
+    params.globFilter = options.globFilter;
   }
   const { data } = await client.get(path, { params }).catch((error) => {
     throw maybeEnrichFetchError(error);
@@ -541,8 +541,8 @@ export const getReplayDiffJsCoverage = async (
   // response. Omit for the whole-replay diff.
   screenshotName?: string,
   options?: {
-    globFilter?: string | undefined;
     includeAllFiles?: boolean | undefined;
+    globFilter?: string | undefined;
   },
 ): Promise<ReplayDiffJsCoverageDiffResponse> => {
   const path =
@@ -550,11 +550,11 @@ export const getReplayDiffJsCoverage = async (
       ? `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/js-coverage-diff`
       : `agent/replay-diffs/${replayDiffId}/js-coverage-diff`;
   const params: Record<string, string> = {};
-  if (options?.globFilter != null && options.globFilter !== "") {
-    params.globFilter = options.globFilter;
-  }
   if (options?.includeAllFiles) {
     params.includeAllFiles = "true";
+  }
+  if (options?.globFilter != null && options.globFilter !== "") {
+    params.globFilter = options.globFilter;
   }
   const { data } = await client.get(path, { params }).catch((error) => {
     throw maybeEnrichFetchError(error);

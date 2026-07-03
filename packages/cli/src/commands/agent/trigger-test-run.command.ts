@@ -25,12 +25,59 @@ interface Options {
   commitSha?: string | undefined;
   baseSha?: string | undefined;
   gitDiffOutput?: string | undefined;
-  repoDirectory?: string | undefined;
   sessionIds?: string | undefined;
   dontWaitForTestRunToComplete: boolean;
   json: boolean;
   dryRun?: boolean;
 }
+
+/**
+ * Whether the "nothing to test" short-circuit should fire: base equals head
+ * with no diff to attach. Requires `commitSha` (--commitSha mode, explicit or
+ * inferred): in --deploymentId mode `effectiveHead` is only a local proxy for
+ * the deployment's actual commit, so an empty local diff doesn't prove
+ * there's nothing to test there (the backend may already have a diff
+ * uploaded separately for that deployment and base). Also skipped for a
+ * pinned --sessionIds re-run, which deliberately proceeds head-only.
+ */
+export const shouldSkipAsNothingToTest = ({
+  commitSha,
+  effectiveHead,
+  baseSha,
+  gitDiffOutput,
+  hasPinnedSessionIds,
+}: {
+  commitSha: string | undefined;
+  effectiveHead: string | undefined;
+  baseSha: string;
+  gitDiffOutput: string | undefined;
+  hasPinnedSessionIds: boolean;
+}): boolean =>
+  Boolean(commitSha) &&
+  Boolean(effectiveHead) &&
+  baseSha === effectiveHead &&
+  !gitDiffOutput &&
+  !hasPinnedSessionIds;
+
+/**
+ * Whether to warn that the diff computed pre-trigger may not match what the
+ * deployment actually executed. Skipped for ephemeral heads (a `git stash
+ * create` SHA differs between invocations for identical content, so the
+ * comparison would be a false positive) or when either commit is unknown.
+ */
+export const shouldWarnOfHeadDrift = ({
+  headIsEphemeral,
+  head,
+  headCommitSha,
+}: {
+  headIsEphemeral: boolean;
+  head: string | undefined;
+  headCommitSha: string | null;
+}): boolean =>
+  !headIsEphemeral &&
+  Boolean(head) &&
+  Boolean(headCommitSha) &&
+  head !== headCommitSha;
 
 const handler = async ({
   apiToken,
@@ -38,7 +85,6 @@ const handler = async ({
   commitSha: commitSha_,
   baseSha: baseSha_,
   gitDiffOutput: gitDiffOutput_,
-  repoDirectory,
   sessionIds: sessionIds_,
   dontWaitForTestRunToComplete,
   json,
@@ -54,7 +100,7 @@ const handler = async ({
   // assumption a deployment was already uploaded for it elsewhere (e.g. by CI).
   let commitSha = commitSha_;
   if (!deploymentId && !commitSha) {
-    commitSha = await resolveHeadCommitShaForLookup({ repoDirectory });
+    commitSha = await resolveHeadCommitShaForLookup();
   }
   // Session IDs never contain commas (they are `<ISO timestamp>_<nanoid>` with
   // optional `_p`/`_sl`/`_mut` suffixes), so a comma split is unambiguous.
@@ -82,51 +128,40 @@ const handler = async ({
       `--sessionIds contains duplicate session ID(s): ${duplicates.join(", ")}`,
     );
   }
+  // Every custom trigger gets a git diff (used by Relevant Session Execution),
+  // computed against `commitSha` when we have one (--commitSha mode, explicit
+  // or inferred above) or freshly resolved from local HEAD otherwise
+  // (--deploymentId mode).
   const { baseSha, gitDiffOutput, head, headIsEphemeral } =
     await resolveComparisonOptions({
       baseSha: baseSha_,
       gitDiffOutput: gitDiffOutput_,
-      repoDirectory,
+      commitSha,
     });
-  // A git diff must be uploaded to a specific deployment before the trigger
-  // call, so --commitSha (resolved to a deployment server-side, at trigger
-  // time) can't be combined with one — whether passed explicitly via
-  // --gitDiffOutput or inferred from --repoDirectory / the local repo.
-  if (gitDiffOutput && !deploymentId) {
-    throw new CliUserError(
-      "A git diff requires an explicit --deploymentId (from 'agent upload-build'); it cannot be combined with --commitSha. " +
-        "Pass --baseSha instead of --repoDirectory (or without any repo-inference flags) to avoid inferring a diff.",
-    );
-  }
-
-  // A --baseSha value is always required up front, even though it may end up
-  // unused for comparison below (a same-SHA re-run with pinned --sessionIds
-  // runs head-only with no base).
+  // A test run is only useful with a base to compare against, and the backend
+  // refuses to create a baseless run, so require a base up front — even
+  // though it may end up unused for comparison below (a same-SHA re-run with
+  // pinned --sessionIds runs head-only with no base).
   if (!baseSha) {
     throw new CliUserError(
-      "A base is required: pass --baseSha, or --repoDirectory to infer it from the merge-base with the origin default branch.",
+      "A base is required: pass --baseSha, or run from a local git checkout so it can be inferred from the merge-base with the origin default branch.",
     );
   }
 
   // When the head is the base itself and there's no diff (e.g. running on the
   // default branch with no new commits), there is nothing to test — report it
-  // clearly instead of letting the backend reject with a 422. `head` is only
-  // known here when inferred from a local repo (--repoDirectory); `commitSha`
-  // is an explicit alternative source of the head commit that lets us catch
-  // this early too, without a network round trip to resolve the deployment
-  // first (gitDiffOutput is already guaranteed absent when commitSha is used,
-  // per the check above).
-  // An explicit --sessionIds list is exempted: a same-SHA re-run with pinned
-  // sessions is a deliberate "check these sessions against the current code"
-  // request (e.g. coverage impact), not a missing base, so it's allowed to
-  // proceed and run head-only, with no base comparison.
+  // clearly instead of letting the backend reject with a 422 (see
+  // shouldSkipAsNothingToTest for the exemptions).
   const effectiveHead = head ?? commitSha;
   const hasPinnedSessionIds = sessionIds != null && sessionIds.length > 0;
   if (
-    effectiveHead &&
-    baseSha === effectiveHead &&
-    !gitDiffOutput &&
-    !hasPinnedSessionIds
+    shouldSkipAsNothingToTest({
+      commitSha,
+      effectiveHead,
+      baseSha,
+      gitDiffOutput,
+      hasPinnedSessionIds,
+    })
   ) {
     logNotice(
       "Base SHA equals head SHA and there are no changes to test — nothing to do.",
@@ -179,10 +214,9 @@ const handler = async ({
     // The diff was computed against `head`, but the run executes the
     // deployment's commit. If they differ (e.g. the working tree changed
     // between 'upload-build' and 'trigger-test-run'), the diff may not match
-    // the build that actually ran. Skipped for dirty trees: `head` is then an
-    // ephemeral stash SHA that differs between invocations for identical
-    // content, so the comparison would be a false positive.
-    if (!headIsEphemeral && head && headCommitSha && head !== headCommitSha) {
+    // the build that actually ran (see shouldWarnOfHeadDrift for the
+    // ephemeral-head exemption).
+    if (shouldWarnOfHeadDrift({ headIsEphemeral, head, headCommitSha })) {
       logNotice(
         `Warning: git diff was computed against ${head}, but the deployment runs ${headCommitSha}. ` +
           `The diff may not match the build under test — re-run 'agent upload-build' for the current tree if this is unexpected.`,
@@ -241,24 +275,21 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
       description:
         "Alternative to --deploymentId: finds the most recent deployment already uploaded for this commit in the project " +
         "(e.g. by an earlier CI run). Useful for re-running against a commit that has already gone through Meticulous, " +
-        "e.g. to test the coverage impact of --sessionIds. Cannot be combined with a git diff (--gitDiffOutput, or inferred via --repoDirectory). " +
+        "e.g. to test the coverage impact of --sessionIds. A git diff against --baseSha is computed for this commit " +
+        "(git history must have it locally) unless you pass --gitDiffOutput yourself. " +
         "When both this and --deploymentId are omitted, defaults to the local repo's HEAD commit (requires a clean working tree).",
     },
     baseSha: {
       string: true,
       description:
-        "The base commit SHA to compare against. Cannot be combined with --repoDirectory. " +
-        "If omitted (and no --repoDirectory), it is inferred from the local repo (the current directory).",
+        "The base commit SHA to compare against. If omitted, it's inferred from the local repo (the current directory) as the merge-base " +
+        "with the origin default branch. Every trigger gets a git diff against this base (used by Relevant Session Execution) — " +
+        "against --commitSha when using it, or the local repo's head commit with --deploymentId — unless you pass --gitDiffOutput yourself.",
     },
     gitDiffOutput: {
       string: true,
       description:
-        "Raw git diff output between the base and the deployment's commit. Requires --baseSha. Cannot be combined with --repoDirectory.",
-    },
-    repoDirectory: {
-      string: true,
-      description:
-        "Path to a git repository. Infers --baseSha (merge-base with the origin default branch) and --gitDiffOutput (base..head). Cannot be combined with --baseSha or --gitDiffOutput. Defaults to the current directory when no comparison inputs are given.",
+        "Raw git diff output between the base and the head commit (the deployment's commit, or --commitSha). Requires --baseSha.",
     },
     sessionIds: {
       string: true,

@@ -70,7 +70,8 @@ const resolveOAuthToken = async (): Promise<string> => {
     throw new CliUserError(
       "`meticulous auth list-projects` lists the projects your user account " +
         "can access, which requires an OAuth login. Run it from an " +
-        "interactive terminal to log in via the browser. (A project-scoped " +
+        "interactive terminal to log in via the browser, or first run " +
+        "`meticulous auth login --non-interactive`. (A project-scoped " +
         "METICULOUS_API_TOKEN or ~/.meticulous/config.json token cannot " +
         "enumerate projects.)",
     );

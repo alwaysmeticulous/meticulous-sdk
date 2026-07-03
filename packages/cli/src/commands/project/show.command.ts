@@ -1,5 +1,5 @@
 import {
-  createClient,
+  createClientWithOAuth,
   getProject,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
@@ -27,7 +27,10 @@ export const showCommand: CommandModule<unknown, Options> = {
       enableOAuthLogin: true,
     });
     const { projectId } = resolveProjectIdentifier(apiToken_);
-    const client = createClient({ apiToken: apiToken_ });
+    const client = await createClientWithOAuth({
+      apiToken,
+      enableOAuthLogin: true,
+    });
     const project = await getProject(client, projectId);
     if (!project) {
       logger.error(

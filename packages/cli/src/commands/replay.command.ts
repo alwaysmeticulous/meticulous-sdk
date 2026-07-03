@@ -2,11 +2,7 @@ import type {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
-import {
-  getAuthToken,
-  isInteractiveContext,
-  performOAuthLogin,
-} from "@alwaysmeticulous/client";
+import { resolveApiTokenWithOAuth } from "@alwaysmeticulous/client";
 import { defer, initLogger } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
 import type {
@@ -124,6 +120,13 @@ const handler = async ({
     }
   }
 
+  if (dryRun) {
+    initLogger().info(
+      `Dry run: would replay session ${sessionId}${appUrl ? ` against ${appUrl}` : ""}`,
+    );
+    return;
+  }
+
   let networkDebuggingOptions: NetworkDebuggingOptions | undefined = undefined;
 
   if (
@@ -181,22 +184,10 @@ const handler = async ({
       }
     : { enabled: false };
 
-  const isInteractive = isInteractiveContext();
-
-  let finalToken: string | undefined;
-  if (isInteractive) {
-    const resolvedToken = await getAuthToken(apiToken);
-    finalToken = resolvedToken ?? (await performOAuthLogin()).accessToken;
-  } else {
-    finalToken = apiToken ?? undefined;
-  }
-
-  if (dryRun) {
-    initLogger().info(
-      `Dry run: would replay session ${sessionId}${appUrl ? ` against ${appUrl}` : ""}`,
-    );
-    return;
-  }
+  const finalToken = await resolveApiTokenWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
 
   const getOnBeforeUserEventCallback =
     defer<

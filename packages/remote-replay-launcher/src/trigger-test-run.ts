@@ -18,9 +18,10 @@ export interface TriggerTestRunOptions extends ProjectIdentifier {
   deploymentId?: string | undefined;
   /**
    * Alternative to `deploymentId`: resolves to the most recent non-ephemeral
-   * deployment already uploaded for this commit in the project. Cannot be
-   * combined with `gitDiffOutput`, since uploading a diff requires an
-   * already-known deployment to key it by.
+   * deployment already uploaded for this commit in the project. Can be
+   * combined with `gitDiffOutput`: the diff upload resolves `commitSha` to a
+   * deployment first, and that resolved id is then reused for the trigger
+   * call too, so both requests target the same deployment row.
    */
   commitSha?: string | undefined;
   /** Required: an agent (custom-trigger) run is only useful with a base. */
@@ -42,6 +43,24 @@ export interface TriggerTestRunResult {
 }
 
 /**
+ * Builds the `{ deploymentId }` or `{ commitSha }` param to spread into a
+ * request body — exactly one of the two is ever sent, since the backend
+ * treats both-or-neither as a client error.
+ */
+const identifierParams = (
+  deploymentId: string | undefined,
+  commitSha: string | undefined,
+): { deploymentId: string } | { commitSha: string } => {
+  if (deploymentId) {
+    return { deploymentId };
+  }
+  if (commitSha) {
+    return { commitSha };
+  }
+  throw new Error("Provide either deploymentId or commitSha.");
+};
+
+/**
  * Triggers a test run against a previously-uploaded deployment, uploading the
  * git diff (keyed by the deployment) first when provided.
  *
@@ -59,42 +78,45 @@ export const triggerTestRun = async ({
   sessionIds,
   projectId,
 }: TriggerTestRunOptions): Promise<TriggerTestRunResult> => {
+  if (Boolean(deploymentId) === Boolean(commitSha)) {
+    throw new Error(
+      "Exactly one of deploymentId or commitSha must be provided.",
+    );
+  }
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {
     throw new Error(
       "You must provide an API token by using the --apiToken parameter",
     );
   }
-  if (gitDiffOutput && !deploymentId) {
-    // Uploading a diff requires an already-known deploymentId to key it by
-    // (see agentUploadGitDiffBuild); a commitSha is only resolved to a
-    // deployment server-side, at trigger time.
-    throw new Error(
-      "gitDiffOutput requires an explicit deploymentId (from `uploadBuild`); it cannot be combined with commitSha.",
-    );
-  }
   const client = createClient({ apiToken });
   const projectIdentifier = projectId ? { projectId } : {};
 
-  if (gitDiffOutput && deploymentId) {
+  // Pins the deployment the diff was attached to, so the trigger call below
+  // reuses that exact row instead of re-resolving `commitSha` a second time —
+  // closing the race window where a newer deployment for that commit could be
+  // uploaded between the two calls.
+  let resolvedDeploymentId = deploymentId;
+  if (gitDiffOutput) {
     const buffer = Buffer.from(gitDiffOutput, "utf-8");
     logProgress(`Uploading git diff (${buffer.length} bytes)...`);
-    const { uploadUrl } = await agentUploadGitDiffBuild({
-      client,
-      deploymentId,
-      baseSha,
-      size: buffer.length,
-      ...projectIdentifier,
-    });
+    const { uploadUrl, deploymentId: uploadedDeploymentId } =
+      await agentUploadGitDiffBuild({
+        client,
+        ...identifierParams(deploymentId, commitSha),
+        baseSha,
+        size: buffer.length,
+        ...projectIdentifier,
+      });
     await uploadBufferToSignedUrl(uploadUrl, buffer, {
       contentType: "text/plain",
     });
+    resolvedDeploymentId = uploadedDeploymentId;
   }
 
   const result = await agentTriggerTestRun({
     client,
-    ...(deploymentId ? { deploymentId } : {}),
-    ...(commitSha ? { commitSha } : {}),
+    ...identifierParams(resolvedDeploymentId, commitSha),
     baseSha,
     // Forward the list whenever it's present (even if empty) rather than
     // silently dropping an empty one: "provided" means "pin exactly these", so

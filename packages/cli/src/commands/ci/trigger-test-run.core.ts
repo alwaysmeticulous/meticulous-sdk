@@ -1,5 +1,5 @@
 import {
-  createClient,
+  createClientWithOAuth,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
@@ -116,7 +116,10 @@ export const triggerTestRun = async (
     return { testRunId, status: null };
   }
 
-  const client = createClient({ apiToken: apiToken_ });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
   const status = await awaitTestRunCompletion(client, testRunId);
   return { testRunId, status };
 };

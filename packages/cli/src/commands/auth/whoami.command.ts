@@ -1,5 +1,6 @@
 import {
   createClient,
+  createClientWithOAuth,
   getProject,
   getStoredProject,
   getWhoami,
@@ -41,7 +42,10 @@ export const whoamiCommand: CommandModule = {
       return;
     }
 
-    const client = createClient({ apiToken });
+    const client = await createClientWithOAuth({
+      apiToken: null,
+      enableOAuthLogin: true,
+    });
 
     try {
       const { email, firstName, lastName, isAdmin, organizations } =

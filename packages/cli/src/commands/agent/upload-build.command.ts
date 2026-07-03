@@ -20,7 +20,6 @@ import { detectUploadMode } from "../../command-utils/detect-upload-mode";
 interface Options {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
-  repoDirectory?: string | undefined;
   appDirectory?: string | undefined;
   appZip?: string | undefined;
   rewrites?: string;
@@ -35,7 +34,6 @@ interface Options {
 const handler = async ({
   apiToken,
   commitSha: commitSha_,
-  repoDirectory,
   appDirectory,
   appZip,
   rewrites,
@@ -49,7 +47,6 @@ const handler = async ({
   const mode = detectUploadMode({ localImageTag, appDirectory, appZip });
   const { commitSha, source: commitShaSource } = await resolveBuildCommitSha({
     commitSha: commitSha_,
-    repoDirectory,
   });
 
   if (dryRun) {
@@ -132,12 +129,7 @@ export const uploadBuildCommand: CommandModule<unknown, Options> = {
     commitSha: {
       ...OPTIONS.commitSha,
       description:
-        "The commit the build is of. Defaults to the current git HEAD (or an ephemeral commit when the tree is dirty). Cannot be combined with --repoDirectory.",
-    },
-    repoDirectory: {
-      string: true,
-      description:
-        "Path to a git repository, used to infer --commitSha from HEAD (or an ephemeral commit when dirty). Defaults to the current directory when --commitSha is not given. Cannot be combined with --commitSha.",
+        "The commit the build is of. Defaults to the current git HEAD (or an ephemeral commit when the tree is dirty).",
     },
     appDirectory: {
       string: true,

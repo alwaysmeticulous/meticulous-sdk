@@ -473,7 +473,16 @@ export const agentUploadContainerBuild = async ({
 };
 
 export interface AgentUploadGitDiffBuildParams extends ProjectIdentifier {
-  deploymentId: string;
+  /**
+   * The deployment to attach the diff to, as returned by `uploadBuild`.
+   * Exactly one of `deploymentId` or `commitSha` must be provided.
+   */
+  deploymentId?: string;
+  /**
+   * Alternative to `deploymentId`: resolves to the most recent non-ephemeral
+   * deployment already uploaded for this commit in the project.
+   */
+  commitSha?: string;
   /**
    * The base the diff is against. Namespaces the diff's S3 object so re-triggers
    * of the same deployment against different bases don't clobber each other.
@@ -483,16 +492,26 @@ export interface AgentUploadGitDiffBuildParams extends ProjectIdentifier {
   size: number;
 }
 
+export interface AgentUploadGitDiffBuildResponse extends RequestGitDiffUploadResponse {
+  /**
+   * The deployment the diff was attached to — the resolved id when the
+   * request identified the deployment via `commitSha`. Callers should pin the
+   * subsequent `agentTriggerTestRun` call to this id rather than re-passing
+   * `commitSha`, so both requests target the same deployment row.
+   */
+  deploymentId: string;
+}
+
 export const agentUploadGitDiffBuild = async ({
   client,
   projectId,
   ...body
 }: AgentUploadGitDiffBuildParams & {
   client: MeticulousClient;
-}): Promise<RequestGitDiffUploadResponse> => {
+}): Promise<AgentUploadGitDiffBuildResponse> => {
   const { data } = await client.post<
     typeof body,
-    { data: RequestGitDiffUploadResponse }
+    { data: AgentUploadGitDiffBuildResponse }
   >("agent/upload-build/git-diff", body, projectIdQuery(projectId));
   return data;
 };

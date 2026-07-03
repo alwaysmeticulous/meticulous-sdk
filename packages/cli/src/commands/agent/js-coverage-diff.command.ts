@@ -11,8 +11,8 @@ interface Options {
   apiToken?: string | null | undefined;
   replayDiffId: string;
   screenshotName: string | undefined;
-  globFilter: string | undefined;
   includeAllFiles: boolean;
+  globFilter: string | undefined;
   json: boolean;
 }
 
@@ -22,8 +22,8 @@ const handler = async ({
   apiToken,
   replayDiffId,
   screenshotName,
-  globFilter,
   includeAllFiles,
+  globFilter,
   json,
 }: Options): Promise<void> => {
   initLogger();
@@ -37,8 +37,8 @@ const handler = async ({
     replayDiffId,
     screenshotName,
     {
-      globFilter,
       includeAllFiles,
+      globFilter,
     },
   );
 
@@ -93,16 +93,16 @@ export const jsCoverageDiffCommand: CommandModule<unknown, Options> = {
       description:
         'Screenshot name (e.g. "after-event-5" or "end-state"). Omit for the whole-replay diff.',
     },
-    globFilter: {
-      string: true,
-      description:
-        'Keep only repo file paths matching this gitignore-style glob, e.g. "src/components/**". Scopes base, head, and the diff.',
-    },
     includeAllFiles: {
       boolean: true,
       default: false,
       description:
         "Include base/head rows with no executed ranges (dropped by default).",
+    },
+    globFilter: {
+      string: true,
+      description:
+        'Keep only repo file paths matching this gitignore-style glob, e.g. "src/components/**". Scopes base, head, and the diff.',
     },
     json: {
       boolean: true,

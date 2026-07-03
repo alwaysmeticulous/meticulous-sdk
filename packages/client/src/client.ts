@@ -278,7 +278,8 @@ export const resolveApiTokenWithOAuth = async (
   if (!apiToken) {
     const message = isInteractive
       ? "No authentication found. Use --apiToken, set METICULOUS_API_TOKEN, or log in via browser."
-      : "No authentication found. Set METICULOUS_API_TOKEN or pass --apiToken.";
+      : "Not logged in. Run `meticulous auth login --non-interactive` (add " +
+        "--project <org>/<project> to also select a project).";
     logger.error(message);
     return process.exit(1);
   }

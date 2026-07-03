@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import type { ProjectAssetChunkReference } from "@alwaysmeticulous/client";
 import {
-  createClient,
+  createClientWithOAuth,
   getTestRun,
   IN_PROGRESS_TEST_RUN_STATUS,
   resolveApiTokenWithOAuth,
@@ -153,7 +153,10 @@ const handler = async ({
   });
 
   const projectIdentifier = resolveProjectIdentifier(apiToken_);
-  const client = createClient({ apiToken: apiToken_ });
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
 
   let testRunId: string;
 

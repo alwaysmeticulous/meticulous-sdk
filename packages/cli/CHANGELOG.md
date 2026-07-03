@@ -1,5 +1,30 @@
 # @alwaysmeticulous/cli
 
+## 2.304.0
+
+### Minor Changes
+
+- [#10586](https://github.com/alwaysmeticulous/meticulous/pull/10586) [`879b04e`](https://github.com/alwaysmeticulous/meticulous/commit/879b04eac5966890f2b0d6f2aabf1ae139782f8d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent trigger-test-run` can now attach a git diff (`--gitDiffOutput`, or one inferred via `--repoDirectory`) when identifying the build by `--commitSha` instead of `--deploymentId`. The diff upload resolves the commit to a deployment server-side, and that resolved deployment is then reused for the trigger call, so both requests target the same deployment row.
+
+- [#10609](https://github.com/alwaysmeticulous/meticulous/pull/10609) [`d22a9f3`](https://github.com/alwaysmeticulous/meticulous/commit/d22a9f3845ebe3a1a121d4839aa4facc4348db9d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - **Breaking:** removed `--repoDirectory` from `agent trigger-test-run` and `agent upload-build`. It only ever overrode the working directory used for local git inference — equivalent to running the command from that directory instead — and existed as a holdover from the `ci` trigger commands, which agents don't need since they can simply run the command from the directory they care about. Git context (base commit, diff, HEAD) is now always inferred from the current directory; pass `--baseSha` / `--gitDiffOutput` / `--commitSha` explicitly if you need to override it, or run the command from the directory itself.
+
+### Patch Changes
+
+- [#10618](https://github.com/alwaysmeticulous/meticulous/pull/10618) [`ae26bff`](https://github.com/alwaysmeticulous/meticulous/commit/ae26bff26f73209ff0ea4fca2b014d094be344d6) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Reordered the `agent js-coverage` / `agent js-coverage-diff` flags (and the corresponding `TestRunJsCoverageOptions` / `getReplayJsCoverage` / `getReplayDiffJsCoverage` option fields) so `--includeAllFiles` and `--globFilter` are grouped together ahead of the column-selection flags (`--includeExecutedRanges`, `--includeExecutableRanges`, `--includeUncoveredRanges`, `--includeCoveragePercentage`, `--prDiffOnly`), consistently across the CLI `--help` output and the client's TypeScript option types. No behavior change — request/response shapes and defaults are unchanged.
+
+- [#10618](https://github.com/alwaysmeticulous/meticulous/pull/10618) [`ae26bff`](https://github.com/alwaysmeticulous/meticulous/commit/ae26bff26f73209ff0ea4fca2b014d094be344d6) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Fixed two gaps in `agent trigger-test-run`'s git diff inference left by `--commitSha` support ([#10586](https://github.com/alwaysmeticulous/meticulous/issues/10586)): a `--commitSha=<sha>` trigger now computes its diff against `<sha>` instead of local HEAD (previously the diff could mismatch the commit the run actually executed), and an explicit `--baseSha` (in both `--commitSha` and `--deploymentId` modes) now infers and attaches a diff instead of attaching none — so every custom trigger carries a diff for Relevant Session Execution unless `--gitDiffOutput` is passed explicitly. Also: the "nothing to test" short-circuit no longer fires for `--deploymentId` triggers (an empty locally-inferred diff there doesn't prove the backend has nothing to run), and a failure computing the diff (e.g. `--commitSha` not present in local git history) now raises a clear error instead of a raw git failure.
+
+- [#10607](https://github.com/alwaysmeticulous/meticulous/pull/10607) [`950002e`](https://github.com/alwaysmeticulous/meticulous/commit/950002e88fa27063fb1cb3d631052cbfd6dbd8bb) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Point non-interactive auth error messages at `meticulous auth login --non-interactive`. `meticulous replay` now resolves its token via the same shared, full auth-chain check as other commands (previously it only checked `--apiToken` in non-interactive mode, ignoring `METICULOUS_API_TOKEN`/stored OAuth/config-file tokens), and skips auth entirely for `--dryRun`.
+
+- [#10601](https://github.com/alwaysmeticulous/meticulous/pull/10601) [`b476745`](https://github.com/alwaysmeticulous/meticulous/commit/b4767459038d4e8374f9eecb7e0233f678ca2658) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Refresh the OAuth access token during OAuth-authenticated CLI commands. Commands that resolved an OAuth token and then baked it into the client via `createClient` would start returning `403 Forbidden` once the short-lived access token expired part-way through the command (e.g. `record session` notifications, container/asset uploads, debug sessions). They now build the client via `createClientWithOAuth`, which refreshes the token per request via the stored refresh token — matching the other OAuth-authenticated commands. Static/project API tokens are unaffected (they are still used as-is). Affects `record session`, `record login`, `agent test-run-diffs`, `agent js-coverage`, `agent test-run-for-commit`, `ci upload-container`, `ci upload-assets`, `ci run-with-uploaded-asset-chunks`, `debug`, `local relevant-sessions`, `project show`, `auth set-project`, and the OAuth path of `auth whoami`.
+
+- Updated dependencies [[`879b04e`](https://github.com/alwaysmeticulous/meticulous/commit/879b04eac5966890f2b0d6f2aabf1ae139782f8d), [`ae26bff`](https://github.com/alwaysmeticulous/meticulous/commit/ae26bff26f73209ff0ea4fca2b014d094be344d6), [`950002e`](https://github.com/alwaysmeticulous/meticulous/commit/950002e88fa27063fb1cb3d631052cbfd6dbd8bb)]:
+  - @alwaysmeticulous/client@2.304.0
+  - @alwaysmeticulous/remote-replay-launcher@2.304.0
+  - @alwaysmeticulous/debug-workspace@2.304.0
+  - @alwaysmeticulous/downloading-helpers@2.304.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.304.0
+
 ## 2.303.1
 
 ### Patch Changes

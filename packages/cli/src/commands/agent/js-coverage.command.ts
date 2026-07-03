@@ -27,18 +27,18 @@ import {
 
 export interface Options {
   apiToken?: string | null | undefined;
-  replayId: string | undefined;
   testRunId: string | undefined;
   commitSha: string | undefined;
-  screenshotName: string | undefined;
   dontWaitForTestRunToComplete: boolean;
+  replayId: string | undefined;
+  screenshotName: string | undefined;
+  includeAllFiles: boolean;
+  globFilter: string | undefined;
   includeExecutedRanges: boolean;
   includeExecutableRanges: boolean;
   includeUncoveredRanges: boolean;
   includeCoveragePercentage: boolean;
-  includeAllFiles: boolean;
   prDiffOnly: boolean;
-  globFilter: string | undefined;
   json: boolean;
 }
 
@@ -72,11 +72,11 @@ const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
 const handler = async (options: Options): Promise<void> => {
   const {
     apiToken,
-    replayId,
     testRunId,
     commitSha,
-    screenshotName,
     dontWaitForTestRunToComplete,
+    replayId,
+    screenshotName,
     globFilter,
     json,
   } = options;
@@ -113,12 +113,12 @@ const handler = async (options: Options): Promise<void> => {
   // selecting test-run coverage.
   if (replayId != null) {
     await printReplayCoverage(client, apiToken_, {
-      replayId,
-      screenshotName,
       testRunId,
       commitSha,
-      globFilter,
+      replayId,
+      screenshotName,
       includeAllFiles: options.includeAllFiles,
+      globFilter,
       json,
     });
   } else {
@@ -229,20 +229,20 @@ const printReplayCoverage = async (
   client: MeticulousClient,
   apiToken: string,
   {
-    replayId,
-    screenshotName,
     testRunId,
     commitSha,
-    globFilter,
+    replayId,
+    screenshotName,
     includeAllFiles,
+    globFilter,
     json,
   }: {
-    replayId: string;
-    screenshotName: string | undefined;
     testRunId: string | undefined;
     commitSha: string | undefined;
-    globFilter: string | undefined;
+    replayId: string;
+    screenshotName: string | undefined;
     includeAllFiles: boolean;
+    globFilter: string | undefined;
     json: boolean;
   },
 ): Promise<void> => {
@@ -257,8 +257,8 @@ const printReplayCoverage = async (
   try {
     const result = await getReplayJsCoverage(client, replayId, screenshotName, {
       testRunId: effectiveTestRunId,
-      globFilter,
       includeAllFiles,
+      globFilter,
     });
     printReplayResult(result, json);
   } catch (error) {
@@ -282,8 +282,8 @@ const printReplayCoverage = async (
             screenshotName,
             {
               testRunId: fallback.testRunId,
-              globFilter,
               includeAllFiles,
+              globFilter,
             },
           );
           // Only announce the fallback once it has actually worked, so a doomed
@@ -338,12 +338,12 @@ const printTestRunCoverage = async (
   // the same `columns` array the headers/formatting use, so they stay in sync.
   const requestOptions: TestRunJsCoverageOptions = {
     includeAllFiles: options.includeAllFiles,
-    prDiffOnly: options.prDiffOnly,
     ...(options.globFilter != null ? { globFilter: options.globFilter } : {}),
   };
   for (const column of columns) {
     requestOptions[COVERAGE_COLUMN_FLAG[column]] = true;
   }
+  requestOptions.prDiffOnly = options.prDiffOnly;
   const result = await getTestRunJsCoverage(client, testRunId, requestOptions);
 
   if (json) {
@@ -399,11 +399,6 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
     "Get JS coverage for a single replay or a whole test run (use js-coverage-diff for base vs head)",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },
-    replayId: {
-      string: true,
-      description:
-        "The replay ID. Pass the base or head replay to get each side's coverage. Repo file paths are resolved against the run that executed the replay; --testRunId / --commitSha may be combined to disambiguate when the replay was the head of more than one run.",
-    },
     testRunId: {
       string: true,
       description:
@@ -414,16 +409,32 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       description:
         "A commit SHA, used as an alternative to --testRunId: the latest test run for the commit is resolved and used. For whole-test-run coverage, defaults to the local git HEAD when neither --testRunId nor --commitSha is given.",
     },
-    screenshotName: {
-      string: true,
-      description:
-        'Screenshot name (e.g. "after-event-5" or "end-state"), for use with --replayId. Omit for the whole replay.',
-    },
     dontWaitForTestRunToComplete: {
       boolean: true,
       default: false,
       description:
         "For whole-test-run coverage, return immediately instead of the default of blocking until the run finishes; an unfinished run is then reported as not complete.",
+    },
+    replayId: {
+      string: true,
+      description:
+        "The replay ID. Pass the base or head replay to get each side's coverage. Repo file paths are resolved against the run that executed the replay; --testRunId / --commitSha may be combined to disambiguate when the replay was the head of more than one run.",
+    },
+    screenshotName: {
+      string: true,
+      description:
+        'Screenshot name (e.g. "after-event-5" or "end-state"), for use with --replayId. Omit for the whole replay.',
+    },
+    includeAllFiles: {
+      boolean: true,
+      default: false,
+      description:
+        "Return every file, regardless of the requested columns. By default a file is dropped unless at least one requested column has a value for it (e.g. with only executed ranges, files with no executed lines are dropped). Works for both replay and whole-test-run coverage.",
+    },
+    globFilter: {
+      string: true,
+      description:
+        'Keep only repo file paths matching this gitignore-style glob, e.g. "src/components/**".',
     },
     includeExecutedRanges: {
       boolean: true,
@@ -449,22 +460,11 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       description:
         "Include the coverage percentage column (0–100; executed / executable lines per file). Whole-test-run coverage only.",
     },
-    includeAllFiles: {
-      boolean: true,
-      default: false,
-      description:
-        "Return every file, regardless of the requested columns. By default a file is dropped unless at least one requested column has a value for it (e.g. with only executed ranges, files with no executed lines are dropped). Works for both replay and whole-test-run coverage.",
-    },
     prDiffOnly: {
       boolean: true,
       default: false,
       description:
         "Return only coverage for files changed in the PR diff (from coverage.pr.json). Whole-test-run coverage only.",
-    },
-    globFilter: {
-      string: true,
-      description:
-        'Keep only repo file paths matching this gitignore-style glob, e.g. "src/components/**".',
     },
     json: {
       boolean: true,

@@ -84,8 +84,10 @@ describe("agent project-deployment client helpers", () => {
   });
 
   describe("agentUploadGitDiffBuild", () => {
-    it("posts to the git-diff endpoint and returns the upload url", async () => {
-      client.post.mockResolvedValue({ data: { uploadUrl: "https://signed" } });
+    it("posts to the git-diff endpoint and returns the upload url and resolved deploymentId", async () => {
+      client.post.mockResolvedValue({
+        data: { uploadUrl: "https://signed", deploymentId: "dep-1" },
+      });
 
       const result = await agentUploadGitDiffBuild({
         client: asClient(),
@@ -99,7 +101,33 @@ describe("agent project-deployment client helpers", () => {
         { deploymentId: "dep-1", baseSha: "base-1", size: 123 },
         undefined,
       ]);
-      expect(result).toEqual({ uploadUrl: "https://signed" });
+      expect(result).toEqual({
+        uploadUrl: "https://signed",
+        deploymentId: "dep-1",
+      });
+    });
+
+    it("posts commitSha instead of deploymentId when identifying the deployment by commit", async () => {
+      client.post.mockResolvedValue({
+        data: { uploadUrl: "https://signed", deploymentId: "dep-resolved" },
+      });
+
+      const result = await agentUploadGitDiffBuild({
+        client: asClient(),
+        commitSha: "sha-1",
+        baseSha: "base-1",
+        size: 123,
+      });
+
+      expect(lastCall()).toEqual([
+        "agent/upload-build/git-diff",
+        { commitSha: "sha-1", baseSha: "base-1", size: 123 },
+        undefined,
+      ]);
+      expect(result).toEqual({
+        uploadUrl: "https://signed",
+        deploymentId: "dep-resolved",
+      });
     });
   });
 

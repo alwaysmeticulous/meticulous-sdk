@@ -1,6 +1,6 @@
 import { join } from "path";
 import {
-  createClient,
+  createClientWithOAuth,
   getProject,
   getRecordingCommandId,
   postSessionIdNotification,
@@ -67,7 +67,13 @@ const handler = async ({
     enableOAuthLogin: true,
   });
   const { projectId } = resolveProjectIdentifier(apiToken_);
-  const client = createClient({ apiToken: apiToken_ });
+  // Use the OAuth-aware client so the short-lived access token is refreshed per
+  // request via the stored refresh token — recording sessions outlive the ~5min
+  // access-token lifetime, and a baked-in token starts returning 403s otherwise.
+  const client = await createClientWithOAuth({
+    apiToken,
+    enableOAuthLogin: true,
+  });
   const project = await getProject(client, projectId);
   if (!project) {
     logger.error("Could not retrieve project data. Is the API token correct?");

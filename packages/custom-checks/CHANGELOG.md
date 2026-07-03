@@ -1,5 +1,13 @@
 # @alwaysmeticulous/custom-checks
 
+## 2.304.0
+
+### Patch Changes
+
+- Updated dependencies [[`879b04e`](https://github.com/alwaysmeticulous/meticulous/commit/879b04eac5966890f2b0d6f2aabf1ae139782f8d), [`ae26bff`](https://github.com/alwaysmeticulous/meticulous/commit/ae26bff26f73209ff0ea4fca2b014d094be344d6), [`950002e`](https://github.com/alwaysmeticulous/meticulous/commit/950002e88fa27063fb1cb3d631052cbfd6dbd8bb)]:
+  - @alwaysmeticulous/client@2.304.0
+  - @alwaysmeticulous/downloading-helpers@2.304.0
+
 ## 2.303.1
 
 ### Patch Changes

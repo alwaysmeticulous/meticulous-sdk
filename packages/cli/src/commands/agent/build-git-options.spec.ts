@@ -41,10 +41,7 @@ beforeEach(() => {
 
 describe("resolveBuildCommitSha", () => {
   test("returns the explicit commit SHA without touching git", async () => {
-    const result = await resolveBuildCommitSha({
-      commitSha: "abc123",
-      repoDirectory: undefined,
-    });
+    const result = await resolveBuildCommitSha({ commitSha: "abc123" });
 
     expect(result.commitSha).toBe("abc123");
     expect(result.source).toBe("provided");
@@ -56,10 +53,7 @@ describe("resolveBuildCommitSha", () => {
     vi.mocked(hasUncommittedChanges).mockResolvedValue(false);
     vi.mocked(getCommitSha).mockResolvedValue("headsha");
 
-    const result = await resolveBuildCommitSha({
-      commitSha: undefined,
-      repoDirectory: undefined,
-    });
+    const result = await resolveBuildCommitSha({ commitSha: undefined });
 
     expect(result.commitSha).toBe("headsha");
     expect(result.source).toBe("local");
@@ -70,10 +64,7 @@ describe("resolveBuildCommitSha", () => {
     vi.mocked(hasUncommittedChanges).mockResolvedValue(true);
     vi.mocked(getStashCreateSha).mockResolvedValue("stashsha");
 
-    const result = await resolveBuildCommitSha({
-      commitSha: undefined,
-      repoDirectory: undefined,
-    });
+    const result = await resolveBuildCommitSha({ commitSha: undefined });
 
     expect(result.commitSha).toBe("stashsha");
     expect(result.source).toBe("local-ephemeral");
@@ -88,15 +79,9 @@ describe("resolveBuildCommitSha", () => {
     // Must not silently register the build against clean HEAD (which would omit
     // the uncommitted changes) — fail fast instead.
     await expect(
-      resolveBuildCommitSha({ commitSha: undefined, repoDirectory: undefined }),
+      resolveBuildCommitSha({ commitSha: undefined }),
     ).rejects.toThrow(CliUserError);
     expect(getCommitSha).not.toHaveBeenCalled();
-  });
-
-  test("throws when both --commitSha and --repoDirectory are given", async () => {
-    await expect(
-      resolveBuildCommitSha({ commitSha: "abc123", repoDirectory: "/repo" }),
-    ).rejects.toThrow(CliUserError);
   });
 
   test("throws when no commit can be determined", async () => {
@@ -104,7 +89,7 @@ describe("resolveBuildCommitSha", () => {
     vi.mocked(getCommitSha).mockResolvedValue("");
 
     await expect(
-      resolveBuildCommitSha({ commitSha: undefined, repoDirectory: undefined }),
+      resolveBuildCommitSha({ commitSha: undefined }),
     ).rejects.toThrow(CliUserError);
   });
 
@@ -112,17 +97,14 @@ describe("resolveBuildCommitSha", () => {
     vi.mocked(getUntrackedFiles).mockResolvedValue(["new-file.ts"]);
 
     await expect(
-      resolveBuildCommitSha({ commitSha: undefined, repoDirectory: undefined }),
+      resolveBuildCommitSha({ commitSha: undefined }),
     ).rejects.toThrow(CliUserError);
   });
 
   test("does not check untracked files when an explicit commitSha is given", async () => {
     vi.mocked(getUntrackedFiles).mockResolvedValue(["new-file.ts"]);
 
-    const result = await resolveBuildCommitSha({
-      commitSha: "abc123",
-      repoDirectory: undefined,
-    });
+    const result = await resolveBuildCommitSha({ commitSha: "abc123" });
 
     expect(result.commitSha).toBe("abc123");
     expect(result.source).toBe("provided");
@@ -135,30 +117,16 @@ describe("resolveHeadCommitShaForLookup", () => {
     vi.mocked(hasUncommittedChanges).mockResolvedValue(false);
     vi.mocked(getCommitSha).mockResolvedValue("headsha");
 
-    const result = await resolveHeadCommitShaForLookup({
-      repoDirectory: undefined,
-    });
+    const result = await resolveHeadCommitShaForLookup();
 
     expect(result).toBe("headsha");
     expect(getCommitSha).toHaveBeenCalledWith(undefined, { cwd: "." });
   });
 
-  test("uses --repoDirectory as the cwd when given", async () => {
-    vi.mocked(hasUncommittedChanges).mockResolvedValue(false);
-    vi.mocked(getCommitSha).mockResolvedValue("headsha");
-
-    await resolveHeadCommitShaForLookup({ repoDirectory: "/repo" });
-
-    expect(hasUncommittedChanges).toHaveBeenCalledWith({ cwd: "/repo" });
-    expect(getCommitSha).toHaveBeenCalledWith(undefined, { cwd: "/repo" });
-  });
-
   test("throws on a dirty working tree instead of falling back to an ephemeral commit", async () => {
     vi.mocked(hasUncommittedChanges).mockResolvedValue(true);
 
-    await expect(
-      resolveHeadCommitShaForLookup({ repoDirectory: undefined }),
-    ).rejects.toThrow(CliUserError);
+    await expect(resolveHeadCommitShaForLookup()).rejects.toThrow(CliUserError);
     expect(getStashCreateSha).not.toHaveBeenCalled();
     expect(getCommitSha).not.toHaveBeenCalled();
   });
@@ -167,38 +135,26 @@ describe("resolveHeadCommitShaForLookup", () => {
     vi.mocked(hasUncommittedChanges).mockResolvedValue(false);
     vi.mocked(getCommitSha).mockResolvedValue("");
 
-    await expect(
-      resolveHeadCommitShaForLookup({ repoDirectory: undefined }),
-    ).rejects.toThrow(CliUserError);
+    await expect(resolveHeadCommitShaForLookup()).rejects.toThrow(CliUserError);
   });
 });
 
 describe("resolveComparisonOptions", () => {
-  test("throws when --repoDirectory is combined with --baseSha", async () => {
-    await expect(
-      resolveComparisonOptions({
-        baseSha: "base",
-        gitDiffOutput: undefined,
-        repoDirectory: "/repo",
-      }),
-    ).rejects.toThrow(CliUserError);
-  });
-
   test("throws when --gitDiffOutput is given without --baseSha", async () => {
     await expect(
       resolveComparisonOptions({
         baseSha: undefined,
         gitDiffOutput: "diff",
-        repoDirectory: undefined,
+        commitSha: undefined,
       }),
     ).rejects.toThrow(CliUserError);
   });
 
-  test("passes through explicit base/diff and leaves head undefined", async () => {
+  test("passes through an explicit diff as-is, regardless of commitSha", async () => {
     const result = await resolveComparisonOptions({
       baseSha: "base",
       gitDiffOutput: "diff",
-      repoDirectory: undefined,
+      commitSha: "sha-1",
     });
 
     expect(result).toEqual({
@@ -208,32 +164,31 @@ describe("resolveComparisonOptions", () => {
       headIsEphemeral: false,
     });
     expect(getLocalBaseSha).not.toHaveBeenCalled();
+    expect(getGitDiff).not.toHaveBeenCalled();
   });
 
-  test("infers base, head and diff from a clean repo", async () => {
-    vi.mocked(getLocalBaseSha).mockResolvedValue("basesha");
+  test("--deploymentId mode: infers a diff against local HEAD when --baseSha is given (no commitSha)", async () => {
     vi.mocked(hasUncommittedChanges).mockResolvedValue(false);
     vi.mocked(getCommitSha).mockResolvedValue("headsha");
     vi.mocked(getGitDiff).mockResolvedValue("the-diff");
 
     const result = await resolveComparisonOptions({
-      baseSha: undefined,
+      baseSha: "base",
       gitDiffOutput: undefined,
-      repoDirectory: "/repo",
+      commitSha: undefined,
     });
 
     expect(result).toEqual({
-      baseSha: "basesha",
+      baseSha: "base",
       gitDiffOutput: "the-diff",
       head: "headsha",
       headIsEphemeral: false,
     });
-    expect(getGitDiff).toHaveBeenCalledWith("basesha", "headsha", {
-      cwd: "/repo",
-    });
+    expect(getLocalBaseSha).not.toHaveBeenCalled();
+    expect(getGitDiff).toHaveBeenCalledWith("base", "headsha", { cwd: "." });
   });
 
-  test("infers from the local repo (cwd) when no comparison inputs are given", async () => {
+  test("--deploymentId mode: infers base, head and diff from a clean local repo when nothing is given", async () => {
     vi.mocked(getLocalBaseSha).mockResolvedValue("basesha");
     vi.mocked(hasUncommittedChanges).mockResolvedValue(false);
     vi.mocked(getCommitSha).mockResolvedValue("headsha");
@@ -242,7 +197,7 @@ describe("resolveComparisonOptions", () => {
     const result = await resolveComparisonOptions({
       baseSha: undefined,
       gitDiffOutput: undefined,
-      repoDirectory: undefined,
+      commitSha: undefined,
     });
 
     expect(result).toEqual({
@@ -254,7 +209,7 @@ describe("resolveComparisonOptions", () => {
     expect(getGitDiff).toHaveBeenCalledWith("basesha", "headsha", { cwd: "." });
   });
 
-  test("uses a stash-create commit as head for a dirty repo", async () => {
+  test("--deploymentId mode: uses a stash-create commit as head for a dirty repo", async () => {
     vi.mocked(getLocalBaseSha).mockResolvedValue("basesha");
     vi.mocked(hasUncommittedChanges).mockResolvedValue(true);
     vi.mocked(getStashCreateSha).mockResolvedValue("stashsha");
@@ -263,24 +218,24 @@ describe("resolveComparisonOptions", () => {
     const result = await resolveComparisonOptions({
       baseSha: undefined,
       gitDiffOutput: undefined,
-      repoDirectory: "/repo",
+      commitSha: undefined,
     });
 
     expect(result.head).toBe("stashsha");
     expect(result.headIsEphemeral).toBe(true);
     expect(getGitDiff).toHaveBeenCalledWith("basesha", "stashsha", {
-      cwd: "/repo",
+      cwd: ".",
     });
   });
 
-  test("throws when untracked files are present", async () => {
+  test("--deploymentId mode: throws when untracked files are present", async () => {
     vi.mocked(getUntrackedFiles).mockResolvedValue(["new-file.ts"]);
 
     await expect(
       resolveComparisonOptions({
         baseSha: undefined,
         gitDiffOutput: undefined,
-        repoDirectory: "/repo",
+        commitSha: undefined,
       }),
     ).rejects.toThrow(CliUserError);
   });
@@ -292,7 +247,88 @@ describe("resolveComparisonOptions", () => {
       resolveComparisonOptions({
         baseSha: undefined,
         gitDiffOutput: undefined,
-        repoDirectory: "/repo",
+        commitSha: undefined,
+      }),
+    ).rejects.toThrow(CliUserError);
+  });
+
+  test("--commitSha mode: diffs against the given commitSha instead of local HEAD when --baseSha is given", async () => {
+    vi.mocked(getGitDiff).mockResolvedValue("the-diff");
+
+    const result = await resolveComparisonOptions({
+      baseSha: "base",
+      gitDiffOutput: undefined,
+      commitSha: "sha-1",
+    });
+
+    // This is the fix: a diff is inferred here even though commitSha (not
+    // deploymentId) is in play — against the given commitSha, not local HEAD.
+    expect(result).toEqual({
+      baseSha: "base",
+      gitDiffOutput: "the-diff",
+      head: "sha-1",
+      headIsEphemeral: false,
+    });
+    expect(getLocalBaseSha).not.toHaveBeenCalled();
+    expect(getGitDiff).toHaveBeenCalledWith("base", "sha-1", { cwd: "." });
+    // The commit is already resolved — no local HEAD/dirty-tree resolution.
+    expect(hasUncommittedChanges).not.toHaveBeenCalled();
+    expect(getCommitSha).not.toHaveBeenCalled();
+    expect(getStashCreateSha).not.toHaveBeenCalled();
+  });
+
+  test("--commitSha mode: infers base from the local repo and diffs against the given commitSha when --baseSha is omitted", async () => {
+    vi.mocked(getLocalBaseSha).mockResolvedValue("basesha");
+    vi.mocked(getGitDiff).mockResolvedValue("the-diff");
+
+    // This is the regression this fix addresses: previously, `--commitSha`
+    // without `--baseSha` (explicit or the local-HEAD-inferred bare
+    // invocation) always failed, because a diff was inferred unconditionally
+    // and then rejected downstream for lacking a deploymentId to attach to.
+    const result = await resolveComparisonOptions({
+      baseSha: undefined,
+      gitDiffOutput: undefined,
+      commitSha: "sha-1",
+    });
+
+    expect(result).toEqual({
+      baseSha: "basesha",
+      gitDiffOutput: "the-diff",
+      head: "sha-1",
+      headIsEphemeral: false,
+    });
+    expect(getGitDiff).toHaveBeenCalledWith("basesha", "sha-1", { cwd: "." });
+  });
+
+  test("--commitSha mode: does not check untracked files or the working tree", async () => {
+    vi.mocked(getLocalBaseSha).mockResolvedValue("basesha");
+    vi.mocked(getUntrackedFiles).mockResolvedValue(["new-file.ts"]);
+    vi.mocked(getGitDiff).mockResolvedValue("the-diff");
+
+    // Untracked/uncommitted local changes are irrelevant to a diff between two
+    // already-resolved commits, unlike --deploymentId mode where head is
+    // resolved fresh from the live working tree.
+    await resolveComparisonOptions({
+      baseSha: undefined,
+      gitDiffOutput: undefined,
+      commitSha: "sha-1",
+    });
+
+    expect(getUntrackedFiles).not.toHaveBeenCalled();
+    expect(hasUncommittedChanges).not.toHaveBeenCalled();
+  });
+
+  test("wraps a getGitDiff failure (e.g. commitSha not in local history) in a CliUserError", async () => {
+    vi.mocked(getLocalBaseSha).mockResolvedValue("basesha");
+    vi.mocked(getGitDiff).mockRejectedValue(
+      new Error("fatal: bad object sha-1"),
+    );
+
+    await expect(
+      resolveComparisonOptions({
+        baseSha: undefined,
+        gitDiffOutput: undefined,
+        commitSha: "sha-1",
       }),
     ).rejects.toThrow(CliUserError);
   });

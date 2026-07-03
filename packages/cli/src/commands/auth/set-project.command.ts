@@ -1,5 +1,5 @@
 import {
-  createClient,
+  createClientWithOAuth,
   isInteractiveContext,
   isOAuthJwt,
   resolveApiTokenWithOAuth,
@@ -48,7 +48,10 @@ export const setProjectCommand: CommandModule<unknown, Options> = {
       );
     }
 
-    const client = createClient({ apiToken });
+    const client = await createClientWithOAuth({
+      apiToken: null,
+      enableOAuthLogin: true,
+    });
     await selectAndStoreProject({
       client,
       logger,

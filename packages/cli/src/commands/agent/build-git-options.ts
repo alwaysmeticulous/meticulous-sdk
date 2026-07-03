@@ -39,8 +39,7 @@ const assertNoUntrackedFiles = async (options?: {
  * commit must identify a real commit so the deployment's `commitSha` (and the
  * test run's `execution_sha`) faithfully describe what ran:
  * - explicit `--commitSha` wins;
- * - otherwise the HEAD of the git repo at `--repoDirectory`, defaulting to the
- *   local repo (the current directory) when neither flag is given;
+ * - otherwise the HEAD of the local repo (the current directory);
  * - a dirty working tree is captured as an ephemeral `git stash create` commit
  *   (a real, unreferenced commit; HEAD/branch untouched) with a stderr warning.
  */
@@ -59,30 +58,16 @@ export interface ResolvedBuildCommitSha {
 
 export const resolveBuildCommitSha = async ({
   commitSha,
-  repoDirectory,
 }: {
   commitSha: string | undefined;
-  repoDirectory: string | undefined;
 }): Promise<ResolvedBuildCommitSha> => {
-  if (commitSha && repoDirectory) {
-    throw new CliUserError(
-      "--commitSha and --repoDirectory are mutually exclusive. Pass --commitSha " +
-        "to use an explicit commit, or --repoDirectory to infer it from a git repository.",
-    );
-  }
-
   if (commitSha) {
     logProgress(`commitSha: ${commitSha}`);
     return { commitSha, source: "provided" };
   }
 
-  // No --repoDirectory means "use the local repo" (the current directory).
-  const gitOpts = { cwd: repoDirectory ?? "." };
-  logProgress(
-    repoDirectory
-      ? `Using repo directory: ${repoDirectory}`
-      : "Using local repo directory",
-  );
+  const gitOpts = { cwd: "." };
+  logProgress("Using local repo directory");
 
   await assertNoUntrackedFiles(gitOpts);
 
@@ -125,12 +110,8 @@ export const resolveBuildCommitSha = async ({
  * could ever have been uploaded for an ephemeral, unreachable commit, so
  * inferring one here would only ever fail the lookup.
  */
-export const resolveHeadCommitShaForLookup = async ({
-  repoDirectory,
-}: {
-  repoDirectory: string | undefined;
-}): Promise<string> => {
-  const gitOpts = { cwd: repoDirectory ?? "." };
+export const resolveHeadCommitShaForLookup = async (): Promise<string> => {
+  const gitOpts = { cwd: "." };
 
   if (await hasUncommittedChanges(gitOpts)) {
     throw new CliUserError(
@@ -153,9 +134,10 @@ export interface ResolvedComparison {
   baseSha: string | undefined;
   gitDiffOutput: string | undefined;
   /**
-   * The head commit the diff was computed against. Only known when inferred from
-   * `--repoDirectory`; undefined when the caller passed an opaque `--gitDiffOutput`.
-   * Used to warn if it diverges from the deployment the run actually executes.
+   * The head commit the diff was computed against. Only known when inferred
+   * from the local repo; undefined when the caller passed an opaque
+   * `--gitDiffOutput`. Used to warn if it diverges from the deployment the run
+   * actually executes.
    */
   head: string | undefined;
   /**
@@ -168,83 +150,107 @@ export interface ResolvedComparison {
 
 /**
  * Resolves the comparison inputs (base + git diff) for `agent trigger-test-run`.
- * Either pass them explicitly (`--baseSha`, optionally `--gitDiffOutput`), pass
- * `--repoDirectory`, or pass nothing at all — when no comparison inputs are
- * given we infer from the local repo (the current directory), the same way
- * `--repoDirectory .` would. Inference yields:
- * - `baseSha` from the merge-base with the origin default branch;
- * - `gitDiffOutput` as `git diff base..head`, where head is the repo HEAD (or a
- *   `git stash create` commit when the tree is dirty, so the diff is always
- *   between two real commits — no working-tree special case).
+ * A diff is always computed unless the caller passes an explicit
+ * `--gitDiffOutput` (trusted as-is, requiring `--baseSha`). The diff's head is
+ * `commitSha` when given — the resolved `--commitSha`, explicit or inferred
+ * from local HEAD for a bare invocation (see `resolveHeadCommitShaForLookup`)
+ * — otherwise (`--deploymentId` mode) it's freshly resolved from the local
+ * repo's HEAD (or a `git stash create` commit when the tree is dirty, so the
+ * diff is always between two real commits — no working-tree special case).
+ * The base is `--baseSha` if given, else the merge-base with the origin
+ * default branch — this runs whether `commitSha` was given or not, so pinning
+ * a custom base still gets a diff.
  */
 export const resolveComparisonOptions = async ({
   baseSha,
   gitDiffOutput,
-  repoDirectory,
+  commitSha,
 }: {
   baseSha: string | undefined;
   gitDiffOutput: string | undefined;
-  repoDirectory: string | undefined;
+  /**
+   * The commit to diff against, when it's already resolved (`--commitSha`
+   * mode, explicit or inferred from local HEAD). Undefined means
+   * `--deploymentId` mode: the diff's head is resolved fresh from local HEAD
+   * here instead (and may be an ephemeral stash commit for a dirty tree).
+   */
+  commitSha: string | undefined;
 }): Promise<ResolvedComparison> => {
-  if (repoDirectory && (baseSha || gitDiffOutput)) {
-    throw new CliUserError(
-      "--repoDirectory cannot be combined with --baseSha or --gitDiffOutput. " +
-        "When --repoDirectory is provided, both are inferred automatically.",
-    );
-  }
   if (gitDiffOutput && !baseSha) {
     throw new CliUserError("--gitDiffOutput requires --baseSha.");
   }
 
-  // With no explicit comparison inputs, fall back to inferring from the local
-  // repo (the current directory).
-  const effectiveRepoDirectory =
-    repoDirectory ?? (!baseSha && !gitDiffOutput ? "." : undefined);
-
-  if (!effectiveRepoDirectory) {
-    return {
-      baseSha: baseSha || undefined,
-      gitDiffOutput: gitDiffOutput || undefined,
-      head: undefined,
-      headIsEphemeral: false,
-    };
+  // An explicit diff is trusted as-is — the caller already computed exactly
+  // what they want, so local git isn't touched at all.
+  if (gitDiffOutput) {
+    return { baseSha, gitDiffOutput, head: undefined, headIsEphemeral: false };
   }
 
-  const gitOpts = { cwd: effectiveRepoDirectory };
-  await assertNoUntrackedFiles(gitOpts);
-  const resolvedBase = (await getLocalBaseSha(gitOpts)) || undefined;
+  const gitOpts = { cwd: "." };
+
+  // Untracked files can't be captured by `git stash create` or a `base..head`
+  // diff, so this only matters when we're about to resolve HEAD from the live
+  // working tree (`--deploymentId` mode) — a pre-resolved `commitSha` is
+  // already a real commit, independent of the working tree's current state.
+  if (!commitSha) {
+    await assertNoUntrackedFiles(gitOpts);
+  }
+
+  const resolvedBase =
+    baseSha ?? ((await getLocalBaseSha(gitOpts)) || undefined);
   if (!resolvedBase) {
     throw new CliUserError(
-      `Could not determine a base SHA from the git repository at '${effectiveRepoDirectory}'. ` +
+      "Could not determine a base SHA from the local git repository. " +
         "Ensure it has an 'origin/main' or 'origin/master' remote branch, or pass --baseSha explicitly.",
     );
   }
+  logProgress(
+    baseSha
+      ? `baseSha: ${resolvedBase}`
+      : `Base SHA inferred from merge-base: ${resolvedBase}`,
+  );
 
-  const dirty = await hasUncommittedChanges(gitOpts);
-  const head = dirty
-    ? await getStashCreateSha(gitOpts)
-    : await getCommitSha(undefined, gitOpts);
-  if (!head) {
+  let head: string;
+  let headIsEphemeral = false;
+  if (commitSha) {
+    head = commitSha;
+  } else {
+    const dirty = await hasUncommittedChanges(gitOpts);
+    const resolvedHead = dirty
+      ? await getStashCreateSha(gitOpts)
+      : await getCommitSha(undefined, gitOpts);
+    if (!resolvedHead) {
+      throw new CliUserError(
+        "Could not determine head commit from the local git repository.",
+      );
+    }
+    if (dirty) {
+      // Always surface this (not just under --verbose): the diff is computed
+      // against an ephemeral stash commit rather than HEAD.
+      logNotice(
+        `commitSha (local, ephemeral due to dirty working tree): ${resolvedHead}`,
+      );
+    }
+    head = resolvedHead;
+    headIsEphemeral = dirty;
+  }
+
+  let diff: string;
+  try {
+    diff = await getGitDiff(resolvedBase, head, gitOpts);
+  } catch (error) {
     throw new CliUserError(
-      `Could not determine head commit from the git repository at '${effectiveRepoDirectory}'.`,
+      `Could not compute a git diff between ${resolvedBase} and ${head}: ${
+        error instanceof Error ? error.message : String(error)
+      }. Ensure both commits exist in your local git history (e.g. \`git fetch\`), or pass --gitDiffOutput yourself.`,
     );
   }
-  if (dirty) {
-    // Always surface this (not just under --verbose): the diff is computed
-    // against an ephemeral stash commit rather than HEAD.
-    logNotice(
-      `commitSha (local, ephemeral due to dirty working tree): ${head}`,
-    );
-  }
-
-  const diff = await getGitDiff(resolvedBase, head, gitOpts);
-  logProgress(`Base SHA inferred from merge-base: ${resolvedBase}`);
   logProgress(`Git diff computed: ${diff.length} chars`);
 
   return {
     baseSha: resolvedBase,
     gitDiffOutput: diff,
     head,
-    headIsEphemeral: dirty,
+    headIsEphemeral,
   };
 };

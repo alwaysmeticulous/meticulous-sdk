@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   resolveApiTokenWithOAuth: vi.fn(),
   isOAuthJwt: vi.fn(),
   createClient: vi.fn(),
+  createClientWithOAuth: vi.fn(),
   getWhoami: vi.fn(),
   getStoredProject: vi.fn(),
   getProject: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock("@alwaysmeticulous/client", () => ({
   resolveApiTokenWithOAuth: mocks.resolveApiTokenWithOAuth,
   isOAuthJwt: mocks.isOAuthJwt,
   createClient: mocks.createClient,
+  createClientWithOAuth: mocks.createClientWithOAuth,
   getWhoami: mocks.getWhoami,
   getStoredProject: mocks.getStoredProject,
   getProject: mocks.getProject,
@@ -60,6 +62,7 @@ describe("whoami command", () => {
     vi.clearAllMocks();
     delete process.env["METICULOUS_API_TOKEN"];
     mocks.createClient.mockReturnValue({});
+    mocks.createClientWithOAuth.mockResolvedValue({});
     mocks.getWhoami.mockResolvedValue(FAKE_WHOAMI);
     mocks.getStoredProject.mockReturnValue(null);
     mocks.getProject.mockResolvedValue(null);
@@ -84,6 +87,9 @@ describe("whoami command", () => {
 
       expect(mocks.getWhoami).toHaveBeenCalled();
       expect(mocks.getProject).not.toHaveBeenCalled();
+      // OAuth path uses the refreshing client, not the static one.
+      expect(mocks.createClientWithOAuth).toHaveBeenCalledTimes(1);
+      expect(mocks.createClient).not.toHaveBeenCalled();
       const logged = loggedText();
       expect(logged).toContain("Authenticated via: OAuth");
       expect(logged).toContain("alice@example.com");
@@ -130,6 +136,9 @@ describe("whoami command", () => {
       await runHandler();
 
       expect(mocks.getWhoami).not.toHaveBeenCalled();
+      // Project-token path stays on the static client (never expires).
+      expect(mocks.createClient).toHaveBeenCalled();
+      expect(mocks.createClientWithOAuth).not.toHaveBeenCalled();
       expect(loggedText()).toContain(
         "project API token (METICULOUS_API_TOKEN environment variable)",
       );

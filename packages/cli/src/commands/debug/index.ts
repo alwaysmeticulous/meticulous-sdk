@@ -1,6 +1,6 @@
 import type { AgentFeature } from "@alwaysmeticulous/client";
 import {
-  createClient,
+  createClientWithOAuth,
   resolveApiTokenWithOAuth,
   trackAgentFeatureUsage,
 } from "@alwaysmeticulous/client";
@@ -42,7 +42,10 @@ const runPipeline = async (opts: {
     apiToken: opts.apiToken,
     enableOAuthLogin: true,
   });
-  const client = createClient({ apiToken });
+  const client = await createClientWithOAuth({
+    apiToken: opts.apiToken,
+    enableOAuthLogin: true,
+  });
 
   // Fire-and-forget: don't block the pipeline on telemetry
   void trackAgentFeatureUsage({
