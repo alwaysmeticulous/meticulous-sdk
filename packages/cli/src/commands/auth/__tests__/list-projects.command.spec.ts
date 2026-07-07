@@ -13,16 +13,18 @@ const loggerMock = {
   debug: vi.fn(),
 };
 
-vi.mock("@alwaysmeticulous/common", () => ({
-  initLogger: () => loggerMock,
-}));
-
 const mocks = vi.hoisted(() => ({
   getValidAccessToken: vi.fn(),
   isInteractiveContext: vi.fn(),
   performOAuthLogin: vi.fn(),
   createClient: vi.fn(),
   fetchAccessibleProjects: vi.fn(),
+  logNotice: vi.fn(),
+}));
+
+vi.mock("@alwaysmeticulous/common", () => ({
+  initLogger: () => loggerMock,
+  logNotice: mocks.logNotice,
 }));
 
 vi.mock("@alwaysmeticulous/client", () => ({
@@ -48,19 +50,19 @@ const project = (org: string, name: string, id: string) => ({
 });
 
 describe("list-projects command", () => {
-  let stdout: ReturnType<typeof vi.spyOn>;
+  let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createClient.mockReturnValue({});
-    stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterEach(() => {
-    stdout.mockRestore();
+    logSpy.mockRestore();
   });
 
-  const stdoutText = () => stdout.mock.calls.flat().join("");
+  const stdoutText = () => logSpy.mock.calls.flat().join("\n");
 
   describe("with a stored OAuth login", () => {
     beforeEach(() => {
@@ -76,7 +78,7 @@ describe("list-projects command", () => {
       await runHandler();
 
       expect(mocks.performOAuthLogin).not.toHaveBeenCalled();
-      expect(stdoutText()).toBe("OrgA/App1\nOrgB/App2\n");
+      expect(stdoutText()).toBe("OrgA/App1\nOrgB/App2");
     });
 
     it("writes a JSON array with --json", async () => {
@@ -98,7 +100,20 @@ describe("list-projects command", () => {
       await runHandler();
 
       expect(stdoutText()).toBe("");
-      expect(loggerMock.info.mock.calls.flat().join("\n")).toContain(
+      expect(mocks.logNotice.mock.calls.flat().join("\n")).toContain(
+        "No projects are accessible",
+      );
+    });
+
+    it("writes an empty JSON array (not a message) on stdout with --json when there are none", async () => {
+      mocks.fetchAccessibleProjects.mockResolvedValue([]);
+
+      await runHandler({ json: true });
+
+      // stdout stays valid, parseable JSON even with no result...
+      expect(JSON.parse(stdoutText())).toEqual([]);
+      // ...and the human notice goes to stderr, not stdout.
+      expect(mocks.logNotice.mock.calls.flat().join("\n")).toContain(
         "No projects are accessible",
       );
     });
@@ -129,7 +144,7 @@ describe("list-projects command", () => {
       expect(mocks.createClient).toHaveBeenCalledWith({
         apiToken: "fresh-jwt",
       });
-      expect(stdoutText()).toBe("OrgA/App1\n");
+      expect(stdoutText()).toBe("OrgA/App1");
     });
   });
 });

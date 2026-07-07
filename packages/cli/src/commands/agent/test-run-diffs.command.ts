@@ -7,6 +7,7 @@ import {
 } from "@alwaysmeticulous/client";
 import { logNotice, logProgress } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
@@ -16,6 +17,7 @@ import {
 } from "../../utils/resolve-test-run-from-commit";
 import {
   buildDiffsSummaryHeader,
+  buildDiffsSummaryJson,
   flattenDiffRows,
   formatDiffRow,
   resolveIncludeAllDiffs,
@@ -31,6 +33,7 @@ interface Options {
   includeAllDiffs: boolean;
   includeMatches: boolean;
   orderByReplayDiffs: boolean;
+  json: boolean;
 }
 
 const sleep = (ms: number): Promise<void> =>
@@ -49,6 +52,7 @@ const handler = async ({
   includeAllDiffs,
   includeMatches,
   orderByReplayDiffs,
+  json,
 }: Options): Promise<void> => {
   if (testRunId != null && commitSha != null) {
     throw new CliUserError("Pass either --testRunId or --commitSha, not both.");
@@ -80,6 +84,19 @@ const handler = async ({
     status = run.status;
   }
 
+  // --includeMatches implies --includeAllDiffs (matches are never part of the
+  // selected subset, so they only make sense alongside the full set). Use the
+  // effective value for both the request and the isSelected column. Computed
+  // up-front so the header can be emitted even on the in-progress short-circuit.
+  const allDiffs = resolveIncludeAllDiffs({ includeAllDiffs, includeMatches });
+
+  const columns = {
+    orderByReplayDiffs,
+    includeDomDiffIds,
+    includeAllDiffs: allDiffs,
+    includeReplayIds,
+  };
+
   // Diffs are only meaningful once the run has finished with a verdict
   // (Success/Failure). Block until it finishes (default) or, with
   // --dontWaitForTestRunToComplete, report the in-progress run and stop.
@@ -90,6 +107,14 @@ const handler = async ({
     { dontWait: dontWaitForTestRunToComplete },
   );
   if (finishedStatus == null) {
+    // Keep stdout's shape stable: an unfinished run has no diffs yet, so emit the
+    // empty JSON array / a header-only TSV (matching a finished run with zero
+    // diffs) rather than nothing — the notice went to stderr.
+    if (json) {
+      console.log("[]");
+    } else {
+      console.log(buildDiffsSummaryHeader(columns).join("\t"));
+    }
     return;
   }
 
@@ -102,11 +127,6 @@ const handler = async ({
   const t0 = performance.now();
 
   logProgress(`Fetching diffs summary for test run ${resolvedTestRunId}...`);
-
-  // --includeMatches implies --includeAllDiffs (matches are never part of the
-  // selected subset, so they only make sense alongside the full set). Use the
-  // effective value for both the request and the isSelected column.
-  const allDiffs = resolveIncludeAllDiffs({ includeAllDiffs, includeMatches });
 
   const diffsSummaryOptions = {
     includeReplayIds,
@@ -152,33 +172,30 @@ const handler = async ({
   }
 
   const data = response.data ?? [];
+  // The backend sets `index` to the priority rank by default, or the
+  // within-replay position (with `total`) when orderByReplayDiffs is set.
+  const rows = flattenDiffRows(data, orderByReplayDiffs);
 
+  if (json) {
+    printJson(buildDiffsSummaryJson(data, columns));
+  } else {
+    // Always emit the TSV header so a zero-diff run is a header with no rows (the
+    // same shape as the in-progress short-circuit above), never empty stdout.
+    console.log(buildDiffsSummaryHeader(columns).join("\t"));
+    for (const row of rows) {
+      console.log(formatDiffRow(row, columns).join("\t"));
+    }
+  }
+
+  // Summaries on stderr regardless of --json (which only changes stdout).
   if (data.length === 0) {
     logNotice(`Test run ${resolvedTestRunId} does not have diffs.`);
     return;
   }
 
-  // The backend sets `index` to the priority rank by default, or the
-  // within-replay position (with `total`) when orderByReplayDiffs is set.
-  const rows = flattenDiffRows(data, orderByReplayDiffs);
-  const columns = {
-    orderByReplayDiffs,
-    includeDomDiffIds,
-    includeAllDiffs: allDiffs,
-    includeReplayIds,
-  };
-
-  console.log(buildDiffsSummaryHeader(columns).join("\t"));
-
-  let totalDiffScreenshots = 0;
-
-  for (const row of rows) {
-    if (row.screenshot.userVisibleOutcome === "difference") {
-      totalDiffScreenshots++;
-    }
-    console.log(formatDiffRow(row, columns).join("\t"));
-  }
-
+  const totalDiffScreenshots = rows.filter(
+    (row) => row.screenshot.userVisibleOutcome === "difference",
+  ).length;
   const tEnd = performance.now();
   logNotice(
     `${data.length} replay diff(s), ${totalDiffScreenshots} screenshot diff(s), total ${((tEnd - t0) / 1000).toFixed(1)}s`,
@@ -187,7 +204,8 @@ const handler = async ({
 
 export const testRunDiffsCommand: CommandModule<unknown, Options> = {
   command: "test-run-diffs",
-  describe: "List replay diffs for a test run with summary",
+  describe:
+    "List replay diffs for a test run. Outputs TSV, one row per screenshot: replayDiffId, screenshotName, outcome, mismatch (plus optional columns depending on flags), or the same data with --json (nested by replay diff under --orderByReplayDiffs).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },
     testRunId: {

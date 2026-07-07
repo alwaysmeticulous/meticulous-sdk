@@ -27,6 +27,11 @@ export const OPTIONS = {
   commitSha: {
     string: true,
   },
+  dryRun: {
+    boolean: true,
+    default: false,
+    description: "Print what the command would do without making any changes",
+  },
   headless: {
     // Note: when running in CI we default to headless (see DEFAULT_EXECUTION_OPTIONS), but for local runs via the CLI we use headed mode by default
     boolean: true,

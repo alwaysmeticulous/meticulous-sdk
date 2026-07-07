@@ -1,4 +1,5 @@
 import type {
+  CompactRange,
   MeticulousClient,
   ReplayJsCoverageResponse,
   TestRunCoverageFile,
@@ -12,8 +13,9 @@ import {
   isFetchError,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
@@ -66,8 +68,6 @@ const COVERAGE_COLUMN_FLAG: Record<
   uncoveredRanges: "includeUncoveredRanges",
   coveragePercentage: "includeCoveragePercentage",
 };
-
-const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
 
 const handler = async (options: Options): Promise<void> => {
   const {
@@ -142,6 +142,14 @@ const handler = async (options: Options): Promise<void> => {
       { dontWait: dontWaitForTestRunToComplete },
     );
     if (finishedStatus == null) {
+      // Keep stdout's shape stable: an unfinished run has no coverage yet, so
+      // emit the empty JSON array / a header-only TSV (matching a finished run
+      // with zero files) rather than nothing — the notice went to stderr.
+      if (json) {
+        console.log("[]");
+      } else {
+        console.log(["repoFilePath", ...columns].join("\t"));
+      }
       return;
     }
     // Reject session-pool bases (Partial); fatal failures already threw.
@@ -288,7 +296,7 @@ const printReplayCoverage = async (
           );
           // Only announce the fallback once it has actually worked, so a doomed
           // retry doesn't leave a misleading "retrying against run X" line.
-          log(
+          logNotice(
             `Replay is the head of multiple test runs; resolved coverage against test run ${fallback.testRunId} from the local commit.`,
           );
           printReplayResult(result, json);
@@ -309,20 +317,25 @@ const printReplayResult = (
   result: ReplayJsCoverageResponse,
   json: boolean,
 ): void => {
-  if (json) {
-    console.log(JSON.stringify(result, null, 2));
-    return;
-  }
-
-  console.log(["repoFilePath", "executedRanges"].join("\t"));
   // Replay coverage is keyed by repo path (source-map paths that don't resolve
   // are dropped), matching the test-run shape.
   const files = result.files ?? [];
-  for (const [filePath, ranges] of files) {
-    console.log([filePath, formatCoverageRanges(ranges)].join("\t"));
+  if (json) {
+    printJson(
+      files.map(([repoFilePath, executedRanges]) => ({
+        repoFilePath,
+        executedRanges,
+      })),
+    );
+  } else {
+    console.log(["repoFilePath", "executedRanges"].join("\t"));
+    for (const [filePath, ranges] of files) {
+      console.log([filePath, formatCoverageRanges(ranges)].join("\t"));
+    }
   }
 
-  log(`${files.length} file(s) with coverage`);
+  // Summary on stderr regardless of --json (which only changes stdout).
+  logNotice(`${files.length} file(s) with coverage`);
 };
 
 const printTestRunCoverage = async (
@@ -347,45 +360,79 @@ const printTestRunCoverage = async (
   const result = await getTestRunJsCoverage(client, testRunId, requestOptions);
 
   if (json) {
-    console.log(JSON.stringify(result, null, 2));
-    return;
+    printJson(result.files.map((file) => coverageFileToJson(file, columns)));
+  } else {
+    // Test-run coverage is the precomputed repo-mapped coverage, keyed by repo
+    // paths. Emit `repoFilePath` then the requested columns in fixed order.
+    console.log(["repoFilePath", ...columns].join("\t"));
+    for (const file of result.files) {
+      const fields = [
+        file.repoFilePath,
+        ...columns.map((column) => formatCoverageColumn(file, column)),
+      ];
+      console.log(fields.join("\t"));
+    }
   }
 
-  // Test-run coverage is the precomputed repo-mapped coverage, keyed by repo
-  // paths. Emit `repoFilePath` then the requested columns in fixed order.
-  console.log(["repoFilePath", ...columns].join("\t"));
-  for (const file of result.files) {
-    const fields = [
-      file.repoFilePath,
-      ...columns.map((column) => formatCoverageColumn(file, column)),
-    ];
-    console.log(fields.join("\t"));
-  }
-
-  log(`${result.files.length} file(s)`);
+  // Summary on stderr regardless of --json (which only changes stdout).
+  logNotice(`${result.files.length} file(s)`);
 };
 
+// The JSON equivalent of a TSV row: `repoFilePath` plus the requested columns,
+// with structured values (raw ranges / numeric percentage) rather than the
+// TSV-formatted strings.
+export const coverageFileToJson = (
+  file: TestRunCoverageFile,
+  columns: CoverageColumn[],
+): Record<string, unknown> => {
+  const row: Record<string, unknown> = { repoFilePath: file.repoFilePath };
+  for (const column of columns) {
+    row[column] = coverageColumnValue(file, column);
+  }
+  return row;
+};
+
+export const coverageColumnValue = (
+  file: TestRunCoverageFile,
+  column: CoverageColumn,
+): CompactRange[] | number | null => {
+  switch (column) {
+    case "executedRanges":
+      return file.executedRanges ?? [];
+    case "executableRanges":
+      return file.executableRanges ?? [];
+    case "uncoveredRanges":
+      return file.uncoveredRanges ?? [];
+    case "coveragePercentage":
+      return file.coveragePercentage ?? null;
+    default:
+      return assertNever(column);
+  }
+};
+
+// The TSV rendering of a column: the same structured value as the JSON output,
+// formatted as a string (ranges joined, percentage to 1dp, absent percentage as
+// "n/a"). Delegating to `coverageColumnValue` keeps a single switch over the
+// column union.
 const formatCoverageColumn = (
   file: TestRunCoverageFile,
   column: CoverageColumn,
 ): string => {
-  switch (column) {
-    case "executedRanges":
-      return formatCoverageRanges(file.executedRanges ?? []);
-    case "executableRanges":
-      return formatCoverageRanges(file.executableRanges ?? []);
-    case "uncoveredRanges":
-      return formatCoverageRanges(file.uncoveredRanges ?? []);
-    case "coveragePercentage":
-      return file.coveragePercentage == null
-        ? "n/a"
-        : file.coveragePercentage.toFixed(1);
-    default: {
-      // Exhaustiveness guard: a new CoverageColumn must be handled above.
-      const exhaustive: never = column;
-      throw new Error(`Unhandled coverage column: ${String(exhaustive)}`);
-    }
+  const value = coverageColumnValue(file, column);
+  if (typeof value === "number") {
+    return value.toFixed(1);
   }
+  if (value == null) {
+    return "n/a";
+  }
+  return formatCoverageRanges(value);
+};
+
+// Exhaustiveness guard for the CoverageColumn switch in `coverageColumnValue`.
+// Local to this package since the public CLI can't depend on the internal
+// common-utils helper.
+const assertNever = (value: never): never => {
+  throw new Error(`Unhandled coverage column: ${String(value)}`);
 };
 
 export const isAmbiguousTestRunError = (error: unknown): boolean =>
@@ -396,7 +443,7 @@ export const isAmbiguousTestRunError = (error: unknown): boolean =>
 export const jsCoverageCommand: CommandModule<unknown, Options> = {
   command: "js-coverage",
   describe:
-    "Get JS coverage for a single replay or a whole test run (use js-coverage-diff for base vs head)",
+    "Get JS coverage for a whole test run or a single replay. Outputs TSV, one row per repo file: repoFilePath plus the requested coverage columns (or JSON with --json).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },
     testRunId: {
@@ -465,11 +512,6 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       default: false,
       description:
         "Return only coverage for files changed in the PR diff (from coverage.pr.json). Whole-test-run coverage only.",
-    },
-    json: {
-      boolean: true,
-      description: "Output the raw coverage response as JSON",
-      default: false,
     },
   },
   handler: wrapHandler(handler),

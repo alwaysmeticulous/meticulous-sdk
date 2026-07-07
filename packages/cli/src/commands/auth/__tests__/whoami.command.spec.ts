@@ -1,4 +1,12 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { whoamiCommand } from "../whoami.command";
 
 // Make wrapHandler a passthrough so handler errors propagate directly to tests
@@ -14,10 +22,6 @@ const loggerMock = {
   debug: vi.fn(),
 };
 
-vi.mock("@alwaysmeticulous/common", () => ({
-  initLogger: () => loggerMock,
-}));
-
 const mocks = vi.hoisted(() => ({
   resolveApiTokenWithOAuth: vi.fn(),
   isOAuthJwt: vi.fn(),
@@ -26,6 +30,12 @@ const mocks = vi.hoisted(() => ({
   getWhoami: vi.fn(),
   getStoredProject: vi.fn(),
   getProject: vi.fn(),
+  logNotice: vi.fn(),
+}));
+
+vi.mock("@alwaysmeticulous/common", () => ({
+  initLogger: () => loggerMock,
+  logNotice: mocks.logNotice,
 }));
 
 vi.mock("@alwaysmeticulous/client", () => ({
@@ -42,10 +52,15 @@ vi.mock("../../../utils/handle-auth-failure", () => ({
   handleAuthFailure: vi.fn().mockReturnValue(false),
 }));
 
-const runHandler = () =>
-  (whoamiCommand as { handler: (args: unknown) => Promise<void> }).handler({});
+const runHandler = (args: { json?: boolean } = {}) =>
+  (whoamiCommand as { handler: (args: unknown) => Promise<void> }).handler({
+    json: false,
+    ...args,
+  });
 
-const loggedText = () => loggerMock.info.mock.calls.flat().join("\n");
+let logSpy: ReturnType<typeof vi.spyOn>;
+const stdoutText = () => logSpy.mock.calls.flat().join("\n");
+const noticeText = () => mocks.logNotice.mock.calls.flat().join("\n");
 
 const FAKE_WHOAMI = {
   email: "alice@example.com",
@@ -66,6 +81,11 @@ describe("whoami command", () => {
     mocks.getWhoami.mockResolvedValue(FAKE_WHOAMI);
     mocks.getStoredProject.mockReturnValue(null);
     mocks.getProject.mockResolvedValue(null);
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
   });
 
   afterAll(() => {
@@ -90,13 +110,13 @@ describe("whoami command", () => {
       // OAuth path uses the refreshing client, not the static one.
       expect(mocks.createClientWithOAuth).toHaveBeenCalledTimes(1);
       expect(mocks.createClient).not.toHaveBeenCalled();
-      const logged = loggedText();
-      expect(logged).toContain("Authenticated via: OAuth");
-      expect(logged).toContain("alice@example.com");
-      expect(logged).toContain("Alice Smith");
+      const out = stdoutText();
+      expect(out).toContain("Authenticated via: OAuth");
+      expect(out).toContain("alice@example.com");
+      expect(out).toContain("Alice Smith");
     });
 
-    it("logs organizations with their role", async () => {
+    it("prints organizations with their role", async () => {
       mocks.getWhoami.mockResolvedValue({
         ...FAKE_WHOAMI,
         organizations: [{ id: "org-1", name: "Acme", role: "owner" }],
@@ -104,23 +124,43 @@ describe("whoami command", () => {
 
       await runHandler();
 
-      expect(loggedText()).toContain("Acme (owner)");
+      expect(stdoutText()).toContain("Acme (owner)");
     });
 
-    it("logs the selected project when one is stored", async () => {
+    it("prints the selected project when one is stored", async () => {
       mocks.getStoredProject.mockReturnValue("Acme/my-project");
 
       await runHandler();
 
-      expect(loggedText()).toContain("Acme/my-project");
+      expect(stdoutText()).toContain("Acme/my-project");
     });
 
-    it("prompts to set a project when none is selected", async () => {
+    it("prompts (on stderr) to set a project when none is selected", async () => {
       mocks.getStoredProject.mockReturnValue(null);
 
       await runHandler();
 
-      expect(loggedText()).toContain("auth set-project");
+      expect(noticeText()).toContain("auth set-project");
+    });
+
+    it("emits structured JSON with --json", async () => {
+      mocks.getStoredProject.mockReturnValue("Acme/my-project");
+      mocks.getWhoami.mockResolvedValue({
+        ...FAKE_WHOAMI,
+        organizations: [{ id: "org-1", name: "Acme", role: "owner" }],
+      });
+
+      await runHandler({ json: true });
+
+      expect(JSON.parse(stdoutText())).toEqual({
+        authenticatedVia: "oauth",
+        email: "alice@example.com",
+        firstName: "Alice",
+        lastName: "Smith",
+        isAdmin: false,
+        organizations: [{ name: "Acme", role: "owner" }],
+        selectedProject: "Acme/my-project",
+      });
     });
   });
 
@@ -139,7 +179,7 @@ describe("whoami command", () => {
       // Project-token path stays on the static client (never expires).
       expect(mocks.createClient).toHaveBeenCalled();
       expect(mocks.createClientWithOAuth).not.toHaveBeenCalled();
-      expect(loggedText()).toContain(
+      expect(stdoutText()).toContain(
         "project API token (METICULOUS_API_TOKEN environment variable)",
       );
     });
@@ -147,7 +187,7 @@ describe("whoami command", () => {
     it("reports the config file as the source when the env var is unset", async () => {
       await runHandler();
 
-      expect(loggedText()).toContain(
+      expect(stdoutText()).toContain(
         "project API token (~/.meticulous/config.json)",
       );
     });
@@ -161,14 +201,30 @@ describe("whoami command", () => {
 
       await runHandler();
 
-      expect(loggedText()).toContain("Pinned project: Org/App");
+      expect(stdoutText()).toContain("Pinned project: Org/App");
     });
 
     it("swallows token-info failures without failing whoami", async () => {
       mocks.getProject.mockRejectedValue(new Error("boom"));
 
       await expect(runHandler()).resolves.toBeUndefined();
-      expect(loggedText()).toContain("scoped to a single project");
+      expect(noticeText()).toContain("scoped to a single project");
+    });
+
+    it("emits structured JSON with --json", async () => {
+      mocks.getProject.mockResolvedValue({
+        id: "p1",
+        name: "App",
+        organization: { id: "o1", name: "Org" },
+      });
+
+      await runHandler({ json: true });
+
+      expect(JSON.parse(stdoutText())).toEqual({
+        authenticatedVia: "project-api-token",
+        tokenSource: "~/.meticulous/config.json",
+        pinnedProject: "Org/App",
+      });
     });
   });
 });

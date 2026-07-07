@@ -28,7 +28,7 @@ export const setProjectCommand: CommandModule<unknown, Options> = {
     },
   },
   handler: wrapHandler(async ({ project }: Options) => {
-    const logger = initLogger();
+    initLogger();
 
     const apiToken = await resolveApiTokenWithOAuth({
       apiToken: null,
@@ -54,7 +54,6 @@ export const setProjectCommand: CommandModule<unknown, Options> = {
     });
     await selectAndStoreProject({
       client,
-      logger,
       project,
       allowInteractivePrompt: isInteractiveContext(),
     });

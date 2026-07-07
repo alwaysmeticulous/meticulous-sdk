@@ -1,5 +1,19 @@
 # @alwaysmeticulous/client
 
+## 2.305.0
+
+### Patch Changes
+
+- [#10535](https://github.com/alwaysmeticulous/meticulous/pull/10535) [`ec6ab46`](https://github.com/alwaysmeticulous/meticulous/commit/ec6ab46b9685d8cb10dbb7bfac7442897a2caa57) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `RequestedProjectAssetChunkReference` so chunked-asset-upload manifests may
+  include `{ name, versionLookup: "latest-in-history" }` entries alongside
+  concrete `{ name, versionId }` references. The server resolves lookups from
+  ancestor test runs during deployment processing. Chunk path overlaps are
+  computed once, over the fully-resolved manifest, and returned from the trigger
+  response, so collisions involving resolved `versionLookup` entries are surfaced
+  rather than silently dropped.
+- Updated dependencies []:
+  - @alwaysmeticulous/common@2.301.0
+
 ## 2.304.0
 
 ### Minor Changes

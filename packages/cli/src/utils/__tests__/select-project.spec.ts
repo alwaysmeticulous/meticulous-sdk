@@ -1,4 +1,3 @@
-import type { Logger } from "loglevel";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CliUserError } from "../cli-user-error";
 import { selectAndStoreProject } from "../select-project";
@@ -13,13 +12,16 @@ vi.mock("@alwaysmeticulous/client", () => ({
   setStoredProject: mocks.setStoredProject,
 }));
 
+vi.mock("@alwaysmeticulous/common", () => ({
+  logNotice: vi.fn(),
+}));
+
 const project = (org: string, name: string, id: string) => ({
   id,
   name,
   organization: { id: `${org}-id`, name: org },
 });
 
-const fakeLogger = { info: vi.fn() } as unknown as Logger;
 const fakeClient = {} as never;
 
 describe("selectAndStoreProject", () => {
@@ -35,7 +37,6 @@ describe("selectAndStoreProject", () => {
 
     const result = await selectAndStoreProject({
       client: fakeClient,
-      logger: fakeLogger,
       project: "OrgB/App2",
     });
 
@@ -51,7 +52,6 @@ describe("selectAndStoreProject", () => {
 
     const result = await selectAndStoreProject({
       client: fakeClient,
-      logger: fakeLogger,
       project: "  OrgA/App1  ",
     });
 
@@ -64,7 +64,6 @@ describe("selectAndStoreProject", () => {
     await expect(
       selectAndStoreProject({
         client: fakeClient,
-        logger: fakeLogger,
         project: "orga/app1",
       }),
     ).rejects.toBeInstanceOf(CliUserError);
@@ -77,7 +76,6 @@ describe("selectAndStoreProject", () => {
     await expect(
       selectAndStoreProject({
         client: fakeClient,
-        logger: fakeLogger,
         project: "OrgA/Missing",
       }),
     ).rejects.toThrow(/Available projects/);
@@ -88,7 +86,6 @@ describe("selectAndStoreProject", () => {
 
     const result = await selectAndStoreProject({
       client: fakeClient,
-      logger: fakeLogger,
     });
 
     expect(result).toBe("OrgA/App1");
@@ -102,7 +99,7 @@ describe("selectAndStoreProject", () => {
     mocks.getOAuthProjects.mockResolvedValue([]);
 
     await expect(
-      selectAndStoreProject({ client: fakeClient, logger: fakeLogger }),
+      selectAndStoreProject({ client: fakeClient }),
     ).rejects.toBeInstanceOf(CliUserError);
   });
 
@@ -114,7 +111,6 @@ describe("selectAndStoreProject", () => {
 
     const caught = await selectAndStoreProject({
       client: fakeClient,
-      logger: fakeLogger,
       allowInteractivePrompt: false,
     }).catch((error: unknown) => error);
 
@@ -132,7 +128,6 @@ describe("selectAndStoreProject", () => {
 
     const result = await selectAndStoreProject({
       client: fakeClient,
-      logger: fakeLogger,
       allowInteractivePrompt: false,
       fallbackToProject: "OrgB/App2",
     });
@@ -153,7 +148,6 @@ describe("selectAndStoreProject", () => {
     await expect(
       selectAndStoreProject({
         client: fakeClient,
-        logger: fakeLogger,
         allowInteractivePrompt: false,
         fallbackToProject: "OrgC/Gone",
       }),

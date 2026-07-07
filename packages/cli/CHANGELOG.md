@@ -1,5 +1,31 @@
 # @alwaysmeticulous/cli
 
+## 2.305.0
+
+### Minor Changes
+
+- [#10662](https://github.com/alwaysmeticulous/meticulous/pull/10662) [`7fb0f6c`](https://github.com/alwaysmeticulous/meticulous/commit/7fb0f6cfb11cfee7a93ad7ac4732ec9080be0432) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Make the CLI's output more consistent and machine-readable, especially for `agent` and `auth` commands.
+  - **`agent` commands** now share a `--json` flag (in addition to `--verbose`): without `--verbose` each command prints only its actual output value or table on stdout (TSV, or a JSON array/object with `--json`), and all progress/notices go to stderr. `js-coverage`/`js-coverage-diff` `--json` now emits the projected rows (the same data as the TSV) rather than the raw backend response. Command descriptions now state what each command outputs.
+  - **`auth` commands**: `whoami` and `list-projects` support `--json`; every `auth` command now prints only its actual output on stdout, with confirmations/hints on stderr.
+  - **`--dryRun`** is now a per-command option, defined only on the commands that act on it, instead of a flag accepted on every command. It has been removed from `auth logout`. Because the CLI parses strictly, passing `--dryRun` to a command that does not declare it (e.g. `auth logout`, `download`, `record`) is now a hard error rather than a silently-ignored no-op.
+  - For the `agent` test-run commands, the TSV (non-`--json`) output now always starts with a header row — including when the run is still in progress (with `--dontWaitForTestRunToComplete`) or has zero diffs/files — so stdout is never empty, matching the `[]` emitted with `--json`.
+  - **`--rawJson` is renamed to `--jsonArgs`** (`--rawJson` still works as a deprecated alias).
+  - Global flags (`--logLevel`, `--dataDir`, `--jsonArgs`, `--help`, `--version`) now render in a "Global Options:" section at the bottom of each command's `--help`, below the command's own options.
+  - **`meticulous schema`** now covers the `agent` command tree, resolves command aliases (e.g. `schema replay`), reports deprecated options, and stays in sync with the real global options.
+  - `meticulous debug --help` no longer shows a spurious `<command>` positional.
+
+### Patch Changes
+
+- Updated dependencies [[`f52aa9e`](https://github.com/alwaysmeticulous/meticulous/commit/f52aa9e6ff8d3f523a177f47f69e2039b268190b), [`ec6ab46`](https://github.com/alwaysmeticulous/meticulous/commit/ec6ab46b9685d8cb10dbb7bfac7442897a2caa57)]:
+  - @alwaysmeticulous/sdk-bundles-api@2.305.0
+  - @alwaysmeticulous/client@2.305.0
+  - @alwaysmeticulous/remote-replay-launcher@2.305.0
+  - @alwaysmeticulous/common@2.301.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.305.0
+  - @alwaysmeticulous/debug-workspace@2.305.0
+  - @alwaysmeticulous/downloading-helpers@2.305.0
+
 ## 2.304.0
 
 ### Minor Changes

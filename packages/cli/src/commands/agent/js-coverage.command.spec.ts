@@ -1,7 +1,10 @@
+import type { TestRunCoverageFile } from "@alwaysmeticulous/client";
 import { describe, expect, it } from "vitest";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
   assertTestRunOnlyFlagsUnsetForReplay,
+  coverageColumnValue,
+  coverageFileToJson,
   determineColumns,
   isAmbiguousTestRunError,
   type Options,
@@ -102,6 +105,76 @@ describe("assertTestRunOnlyFlagsUnsetForReplay", () => {
         }),
       ),
     ).not.toThrow();
+  });
+});
+
+describe("coverageColumnValue", () => {
+  const file: TestRunCoverageFile = {
+    repoFilePath: "src/a.ts",
+    executedRanges: [[1, 2]],
+    executableRanges: [[1, 5]],
+    uncoveredRanges: [[3, 5]],
+    coveragePercentage: 40,
+  };
+
+  it("returns the raw ranges for each range column", () => {
+    expect(coverageColumnValue(file, "executedRanges")).toEqual([[1, 2]]);
+    expect(coverageColumnValue(file, "executableRanges")).toEqual([[1, 5]]);
+    expect(coverageColumnValue(file, "uncoveredRanges")).toEqual([[3, 5]]);
+  });
+
+  it("returns the numeric percentage (not the TSV-formatted string)", () => {
+    expect(coverageColumnValue(file, "coveragePercentage")).toBe(40);
+  });
+
+  it("falls back to [] for a missing range column", () => {
+    expect(
+      coverageColumnValue({ repoFilePath: "src/b.ts" }, "executedRanges"),
+    ).toEqual([]);
+  });
+
+  it("returns null for a null/absent coveragePercentage", () => {
+    expect(
+      coverageColumnValue(
+        { repoFilePath: "src/b.ts", coveragePercentage: null },
+        "coveragePercentage",
+      ),
+    ).toBeNull();
+    expect(
+      coverageColumnValue({ repoFilePath: "src/b.ts" }, "coveragePercentage"),
+    ).toBeNull();
+  });
+});
+
+describe("coverageFileToJson", () => {
+  it("builds repoFilePath plus the requested columns, in structured form", () => {
+    const file: TestRunCoverageFile = {
+      repoFilePath: "src/a.ts",
+      executedRanges: [[1, 2]],
+      coveragePercentage: 40,
+    };
+    expect(
+      coverageFileToJson(file, ["executedRanges", "coveragePercentage"]),
+    ).toEqual({
+      repoFilePath: "src/a.ts",
+      executedRanges: [[1, 2]],
+      coveragePercentage: 40,
+    });
+  });
+
+  it("keeps a null coveragePercentage as null (rather than the 'n/a' TSV string)", () => {
+    expect(
+      coverageFileToJson(
+        { repoFilePath: "src/b.ts", coveragePercentage: null },
+        ["coveragePercentage"],
+      ),
+    ).toEqual({ repoFilePath: "src/b.ts", coveragePercentage: null });
+  });
+
+  it("emits only repoFilePath when no columns are requested", () => {
+    expect(coverageFileToJson({ repoFilePath: "src/c.ts" }, [])).toEqual({
+      repoFilePath: "src/c.ts",
+    });
   });
 });
 

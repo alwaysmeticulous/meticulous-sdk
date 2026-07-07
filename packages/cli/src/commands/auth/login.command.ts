@@ -5,7 +5,7 @@ import {
   isInteractiveContext,
   performOAuthLogin,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
@@ -39,7 +39,7 @@ export const loginCommand: CommandModule<unknown, Options> = {
     },
   },
   handler: wrapHandler(async ({ project, nonInteractive = false }: Options) => {
-    const logger = initLogger();
+    initLogger();
 
     // Treat an explicit `--non-interactive` as authoritative; otherwise fall
     // back to detecting whether we're attached to a real terminal.
@@ -82,13 +82,12 @@ export const loginCommand: CommandModule<unknown, Options> = {
     // rather than leaving nothing selected.
     await selectAndStoreProject({
       client,
-      logger,
       project,
       allowInteractivePrompt: interactive,
       fallbackToProject: previousProject ?? undefined,
     });
 
-    logger.info(
+    logNotice(
       "You can change the selected project at any time with `meticulous auth set-project`.",
     );
   }),

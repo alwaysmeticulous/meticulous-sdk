@@ -10,12 +10,14 @@ import {
 } from "@alwaysmeticulous/common";
 import { downloadFile } from "@alwaysmeticulous/downloading-helpers";
 import type { CommandModule } from "yargs";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
   replayDiffId: string;
   screenshotName: string;
+  json: boolean;
 }
 
 const AGENT_IMAGES_SUBDIR = "agent-images";
@@ -62,6 +64,7 @@ const handler = async ({
   apiToken,
   replayDiffId,
   screenshotName,
+  json,
 }: Options): Promise<void> => {
   initLogger();
   const client = await createClientWithOAuth({
@@ -74,8 +77,6 @@ const handler = async ({
   const dir = getAgentImagesDir();
   await mkdir(dir, { recursive: true });
   await cleanupOldImages(dir);
-
-  console.log(`outcome: ${urls.outcome}`);
 
   const downloads: Array<{ label: string; url: string }> = [];
   if (urls.screenshot) {
@@ -94,11 +95,26 @@ const handler = async ({
   const timestamp = Date.now();
   const prefix = `${timestamp}_${replayDiffId}_${screenshotName}`;
 
+  // Print the outcome up-front (non-JSON) so it's visible even if a download
+  // below fails; the JSON path emits it as part of the single object instead.
+  if (!json) {
+    console.log(`outcome: ${urls.outcome}`);
+  }
+
   const results = await Promise.all(
     downloads.map(({ label, url }) =>
       downloadImage(dir, `${prefix}_${label}.png`, url),
     ),
   );
+
+  if (json) {
+    const output: Record<string, string> = { outcome: urls.outcome };
+    for (let i = 0; i < downloads.length; i++) {
+      output[downloads[i].label] = results[i];
+    }
+    printJson(output);
+    return;
+  }
 
   for (let i = 0; i < downloads.length; i++) {
     console.log(`${downloads[i].label}: ${results[i]}`);
@@ -108,7 +124,7 @@ const handler = async ({
 export const imageFilesCommand: CommandModule<unknown, Options> = {
   command: "image-files",
   describe:
-    "Download screenshot images for a replay diff screenshot to local files under ~/.meticulous/agent-images",
+    "Download screenshot images for a replay diff screenshot to local files under ~/.meticulous/agent-images. Outputs an outcome line then a 'label: filepath' line per downloaded image (or JSON with --json).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },
     replayDiffId: {

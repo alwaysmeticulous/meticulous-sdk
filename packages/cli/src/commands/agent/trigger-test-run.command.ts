@@ -6,6 +6,7 @@ import { logNotice, logProgress } from "@alwaysmeticulous/common";
 import { triggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
 import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
@@ -169,7 +170,7 @@ const handler = async ({
     // Keep stdout machine-readable: emit the empty result so `--json` callers
     // that JSON.parse(stdout) don't crash on an empty short-circuit.
     if (json) {
-      console.log(JSON.stringify({ testRunId: null, status: null }, null, 2));
+      printJson({ testRunId: null, status: null });
     }
     return;
   }
@@ -186,7 +187,7 @@ const handler = async ({
           : ""),
     );
     if (json) {
-      console.log(JSON.stringify({ testRunId: null, status: null }, null, 2));
+      printJson({ testRunId: null, status: null });
     }
     return;
   }
@@ -250,7 +251,7 @@ const handler = async ({
   }
 
   if (json) {
-    console.log(JSON.stringify({ testRunId, status }, null, 2));
+    printJson({ testRunId, status });
     return;
   }
   if (testRunId) {
@@ -261,7 +262,7 @@ const handler = async ({
 export const triggerTestRunCommand: CommandModule<unknown, Options> = {
   command: "trigger-test-run",
   describe:
-    "Trigger a test run against a deployment created by 'agent upload-build'",
+    "Trigger a test run against a deployment created by 'agent upload-build'. Outputs the testRunId (or JSON with --json).",
   builder: {
     apiToken: OPTIONS.apiToken,
     deploymentId: {
@@ -304,11 +305,6 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
       description:
         "Return as soon as the run is triggered, instead of the default of blocking until it finishes. " +
         "The base test run is set up by the backend in parallel with the head, so there is no separate base-wait step.",
-    },
-    json: {
-      boolean: true,
-      default: false,
-      description: "Output the result ({ testRunId, status }) as JSON.",
     },
     dryRun: {
       boolean: true,

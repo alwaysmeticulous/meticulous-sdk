@@ -4,8 +4,9 @@ import {
   isInteractiveContext,
   performOAuthLogin,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { fetchAccessibleProjects } from "../../utils/select-project";
@@ -22,12 +23,13 @@ export const listProjectsCommand: CommandModule<unknown, Options> = {
       boolean: true,
       description:
         "Output projects as a JSON array of {id, name, organization: {name}} " +
-        "instead of one 'organization/project' slug per line.",
+        "on stdout (an empty array when there are none) instead of one " +
+        "'organization/project' slug per line. Notices still go to stderr.",
       default: false,
     },
   },
   handler: wrapHandler(async ({ json }: Options) => {
-    const logger = initLogger();
+    initLogger();
 
     // Enumerating the user's projects is an OAuth-only operation: a
     // project-scoped API token (env var or legacy config) is bound to a single
@@ -40,22 +42,22 @@ export const listProjectsCommand: CommandModule<unknown, Options> = {
     const projects = await fetchAccessibleProjects(client);
 
     if (json) {
-      const payload = projects.map((p) => ({
-        id: p.id,
-        name: p.name,
-        organization: { name: p.organization.name },
-      }));
-      process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
-      return;
+      printJson(
+        projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          organization: { name: p.organization.name },
+        })),
+      );
+    } else {
+      for (const p of projects) {
+        console.log(`${p.organization.name}/${p.name}`);
+      }
     }
 
+    // Guidance on stderr regardless of --json (which only changes stdout).
     if (projects.length === 0) {
-      logger.info("No projects are accessible to your account.");
-      return;
-    }
-
-    for (const p of projects) {
-      process.stdout.write(`${p.organization.name}/${p.name}\n`);
+      logNotice("No projects are accessible to your account.");
     }
   }),
 };

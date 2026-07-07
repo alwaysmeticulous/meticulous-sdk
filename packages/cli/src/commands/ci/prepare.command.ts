@@ -145,6 +145,7 @@ export const ciPrepareCommand: CommandModule<unknown, Options> = {
     "Prepare for Meticulous tests. If necessary, triggers the generation of a test run on the base commit.",
   builder: {
     apiToken: { ...OPTIONS.apiToken },
+    dryRun: OPTIONS.dryRun,
     headCommit: {
       string: true,
       description:

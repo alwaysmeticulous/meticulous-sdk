@@ -282,6 +282,7 @@ export const replayCommand: CommandModule<unknown, Options> = {
   builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
+    dryRun: OPTIONS.dryRun,
     sessionId: {
       string: true,
       demandOption: true,

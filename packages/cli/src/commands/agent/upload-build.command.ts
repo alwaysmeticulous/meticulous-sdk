@@ -8,6 +8,7 @@ import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { parseContainerEnv } from "../../command-utils/parse-container-env";
 import { parseRewrites } from "../../command-utils/parse-rewrites";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import {
   isOutOfDateClientError,
@@ -61,13 +62,7 @@ const handler = async ({
     // registered) so `--json` callers that JSON.parse(stdout) don't crash on an
     // empty short-circuit, mirroring `trigger-test-run`'s dry-run output.
     if (json) {
-      console.log(
-        JSON.stringify(
-          { deploymentId: null, commitSha, commitShaSource },
-          null,
-          2,
-        ),
-      );
+      printJson({ deploymentId: null, commitSha, commitShaSource });
     }
     return;
   }
@@ -102,13 +97,11 @@ const handler = async ({
   if (json) {
     // The endpoint returns only the deploymentId; commitSha (and how it was
     // resolved) is echoed from here for convenience.
-    console.log(
-      JSON.stringify(
-        { deploymentId: result.deploymentId, commitSha, commitShaSource },
-        null,
-        2,
-      ),
-    );
+    printJson({
+      deploymentId: result.deploymentId,
+      commitSha,
+      commitShaSource,
+    });
     return;
   }
   // The bare deploymentId is always printed (stdout) so it can be captured or
@@ -123,7 +116,7 @@ const handler = async ({
 export const uploadBuildCommand: CommandModule<unknown, Options> = {
   command: "upload-build",
   describe:
-    "Upload a build (static assets or a Docker container) and register a reusable deployment, without triggering a test run",
+    "Upload a build (static assets or a Docker container) and register a reusable deployment, without triggering a test run. Outputs the deploymentId (or JSON with --json).",
   builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: {
@@ -168,11 +161,6 @@ export const uploadBuildCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "The endpoint path to use for health checks on the container, e.g. '/health' (container upload mode).",
-    },
-    json: {
-      boolean: true,
-      default: false,
-      description: "Output the result ({ deploymentId, commitSha }) as JSON.",
     },
     dryRun: {
       boolean: true,

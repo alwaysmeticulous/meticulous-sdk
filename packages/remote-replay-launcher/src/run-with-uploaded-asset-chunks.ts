@@ -2,7 +2,7 @@ import type { AssetUploadMetadata, TestRun } from "@alwaysmeticulous/api";
 import type {
   ChunkPathOverlap,
   createClient,
-  ProjectAssetChunkReference,
+  RequestedProjectAssetChunkReference,
   ProjectIdentifier,
 } from "@alwaysmeticulous/client";
 import {
@@ -22,7 +22,7 @@ export interface RunWithUploadedAssetChunksOptions extends ProjectIdentifier {
   waitForBase: boolean;
   rewrites: AssetUploadMetadata["rewrites"];
   createDeployment?: boolean;
-  assetReferencesManifest: ProjectAssetChunkReference[];
+  assetReferencesManifest: RequestedProjectAssetChunkReference[];
 }
 
 export interface RunWithUploadedAssetChunksResult {
@@ -64,17 +64,18 @@ export const runWithUploadedAssetChunks = async ({
       ...(projectId ? { projectId } : {}),
     });
 
-  // Overlaps are computed on the phase-1 response only; they describe the
-  // manifest itself, which doesn't change when triggering the run.
-  const overlapsResult =
-    overlaps && overlaps.length > 0
-      ? { overlaps, ...(overlapsTruncated ? { overlapsTruncated: true } : {}) }
-      : {};
-
   // Dry run (createDeployment: false) creates no deployment, so there is no
-  // diff to upload and no run to trigger — just surface the overlaps.
+  // diff to upload and no run to trigger — just surface the upload endpoint's
+  // best-effort (concrete-only) overlap preview.
   if (createDeployment === false || !sourceDeploymentId) {
-    return { testRun: null, ...overlapsResult };
+    const dryRunOverlaps =
+      overlaps && overlaps.length > 0
+        ? {
+            overlaps,
+            ...(overlapsTruncated ? { overlapsTruncated: true } : {}),
+          }
+        : {};
+    return { testRun: null, ...dryRunOverlaps };
   }
 
   // Upload the git diff to S3, keyed by the deployment id, so the replay can
@@ -101,16 +102,35 @@ export const runWithUploadedAssetChunks = async ({
   };
 
   const initialResult = await triggerRunWithUploadedAssetChunks(args);
-  const { testRun, baseNotFound, message } = await pollWhileBaseNotFound({
+  const {
+    testRun,
+    baseNotFound,
+    message,
+    overlaps: triggerOverlaps,
+    overlapsTruncated: triggerOverlapsTruncated,
+  } = await pollWhileBaseNotFound({
     initialResult: {
       testRun: initialResult?.testRun ?? null,
       baseNotFound: initialResult?.baseNotFound,
       message: initialResult?.message,
+      overlaps: initialResult?.overlaps,
+      overlapsTruncated: initialResult?.overlapsTruncated,
     },
     retryFn: () => triggerRunWithUploadedAssetChunks(args),
     fallbackFn: () =>
       triggerRunWithUploadedAssetChunks({ ...args, mustHaveBase: false }),
   });
+
+  // The trigger computes overlaps over the fully resolved manifest and is the
+  // single authoritative source for a real run — an omitted/empty result means
+  // no collisions (the concrete-only phase-1 preview is used only for dry runs).
+  const resolvedOverlaps =
+    triggerOverlaps && triggerOverlaps.length > 0
+      ? {
+          overlaps: triggerOverlaps,
+          ...(triggerOverlapsTruncated ? { overlapsTruncated: true } : {}),
+        }
+      : {};
 
   Sentry.captureMessage("Test run triggered against uploaded asset chunks", {
     level: "debug",
@@ -128,6 +148,6 @@ export const runWithUploadedAssetChunks = async ({
   return {
     testRun: testRun ?? null,
     ...(message ? { message } : {}),
-    ...overlapsResult,
+    ...resolvedOverlaps,
   };
 };

@@ -176,6 +176,7 @@ export const ciRunLocalCommand: CommandModule<unknown, Options> = {
   builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
+    dryRun: OPTIONS.dryRun,
     baseCommitSha: {
       string: true,
       description:
@@ -201,11 +202,12 @@ export const ciRunLocalCommand: CommandModule<unknown, Options> = {
       number: true,
       description:
         "Number of tasks to run in parallel (defaults to two per CPU)",
-      coerce: (value: number | null | undefined) => {
-        if (typeof value === "number" && value <= 0) {
+      coerce: (value: number | number[] | null | undefined) => {
+        const resolved = Array.isArray(value) ? value.at(-1) : value;
+        if (typeof resolved === "number" && resolved <= 0) {
           return null;
         }
-        return value;
+        return resolved ?? null;
       },
     },
     maxRetriesOnFailure: {

@@ -2,8 +2,8 @@ import type {
   AssetUploadMetadata,
   DeploymentArchiveType,
   DownloadDeploymentResponse,
+  TestRun,
 } from "@alwaysmeticulous/api";
-import { type TestRun } from "@alwaysmeticulous/api";
 import type { MeticulousClient } from "../types/client.types";
 
 /**
@@ -286,11 +286,25 @@ export interface ProjectAssetChunkReference {
   versionId: string;
 }
 
+export type ProjectAssetChunkVersionLookup = "latest-in-history";
+
+/**
+ * A chunk reference as *requested* on the trigger path: either an already
+ * concrete {@link ProjectAssetChunkReference}, or a `versionLookup` the server
+ * resolves to a concrete version before storing.
+ */
+export type RequestedProjectAssetChunkReference =
+  | ProjectAssetChunkReference
+  | {
+      name: string;
+      versionLookup: ProjectAssetChunkVersionLookup;
+    };
+
 export interface CreateRunWithUploadedAssetChunksParams extends ProjectIdentifier {
   commitSha: string;
   isUserVisible?: boolean;
   createDeployment?: boolean;
-  assetReferencesManifest: ProjectAssetChunkReference[];
+  assetReferencesManifest: RequestedProjectAssetChunkReference[];
   rewrites?: AssetUploadMetadata["rewrites"];
 }
 

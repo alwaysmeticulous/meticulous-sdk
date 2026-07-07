@@ -1,4 +1,5 @@
 import type { TestRun } from "@alwaysmeticulous/api";
+import type { ChunkPathOverlap } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
@@ -8,6 +9,8 @@ type PollResult = {
   testRun?: TestRun | null;
   baseNotFound?: boolean | undefined;
   message?: string | undefined;
+  overlaps?: ChunkPathOverlap[] | undefined;
+  overlapsTruncated?: boolean | undefined;
 };
 
 /**
@@ -28,6 +31,10 @@ export const pollWhileBaseNotFound = async ({
   let testRun = initialResult.testRun ?? null;
   let baseNotFound = initialResult.baseNotFound;
   let message = initialResult.message;
+  // Track overlaps from whichever attempt ultimately resolves the manifest;
+  // they aren't known on a baseNotFound response but arrive once it succeeds.
+  let overlaps = initialResult.overlaps;
+  let overlapsTruncated = initialResult.overlapsTruncated;
 
   if (!testRun && baseNotFound) {
     const startTime = Date.now();
@@ -58,6 +65,8 @@ export const pollWhileBaseNotFound = async ({
       testRun = retryResult.testRun ?? null;
       baseNotFound = retryResult.baseNotFound;
       message = retryResult.message;
+      overlaps = retryResult.overlaps;
+      overlapsTruncated = retryResult.overlapsTruncated;
     }
 
     if (baseNotFound && !testRun) {
@@ -65,9 +74,11 @@ export const pollWhileBaseNotFound = async ({
       const fallbackResult = await fallbackFn();
       testRun = fallbackResult.testRun ?? null;
       message = fallbackResult.message;
-      baseNotFound = false;
+      overlaps = fallbackResult.overlaps;
+      overlapsTruncated = fallbackResult.overlapsTruncated;
+      baseNotFound = fallbackResult.baseNotFound ?? false;
     }
   }
 
-  return { testRun, baseNotFound, message };
+  return { testRun, baseNotFound, message, overlaps, overlapsTruncated };
 };

@@ -3,30 +3,19 @@ import {
   clearStoredProject,
   readFileBasedToken,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type { Logger } from "loglevel";
 import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
-interface Options {
-  dryRun?: boolean;
-}
-
-export const logoutCommand: CommandModule<unknown, Options> = {
+export const logoutCommand: CommandModule = {
   command: "logout",
   describe: "Clear stored OAuth tokens and selected project",
-  builder: {},
-  handler: wrapHandler(({ dryRun }) => {
+  handler: wrapHandler(() => {
     const logger = initLogger();
-    if (dryRun) {
-      logger.info(
-        "Dry run: would clear stored OAuth tokens and selected project",
-      );
-      return Promise.resolve();
-    }
     clearOAuthTokens();
     clearStoredProject();
-    logger.info("Logged out successfully.");
+    logNotice("Logged out successfully.");
 
     warnAboutRemainingCredentials(logger);
     return Promise.resolve();

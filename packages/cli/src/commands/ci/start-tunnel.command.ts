@@ -7,6 +7,7 @@ import {
 import type { IncomingRequestEvent } from "@alwaysmeticulous/tunnels-client";
 import { localtunnel } from "@alwaysmeticulous/tunnels-client";
 import type { CommandModule } from "yargs";
+import { OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {
@@ -108,6 +109,7 @@ export const ciStartTunnelCommand: CommandModule<unknown, Options> = {
       string: true,
       description: "Meticulous API token",
     },
+    dryRun: OPTIONS.dryRun,
     port: {
       alias: "p",
       describe: "Internal HTTP server port",

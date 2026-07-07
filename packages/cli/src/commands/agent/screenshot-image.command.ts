@@ -4,18 +4,21 @@ import {
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
   replayDiffId: string;
   screenshotName: string;
+  json: boolean;
 }
 
 const handler = async ({
   apiToken,
   replayDiffId,
   screenshotName,
+  json,
 }: Options): Promise<void> => {
   initLogger();
   const client = await createClientWithOAuth({
@@ -24,6 +27,11 @@ const handler = async ({
   });
 
   const urls = await getScreenshotUrls(client, replayDiffId, screenshotName);
+
+  if (json) {
+    printJson(urls);
+    return;
+  }
 
   console.log(`outcome: ${urls.outcome}`);
   if (urls.screenshot) {
@@ -42,7 +50,8 @@ const handler = async ({
 
 export const imageUrlsCommand: CommandModule<unknown, Options> = {
   command: "image-urls",
-  describe: "Get screenshot image URLs for a replay diff screenshot",
+  describe:
+    "Get screenshot image URLs for a replay diff screenshot. Outputs an outcome line then screenshot/before/after/diffImage URL lines (or JSON with --json).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },
     replayDiffId: {

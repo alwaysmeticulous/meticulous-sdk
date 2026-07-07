@@ -14,6 +14,7 @@ const loggerMock = {
 
 vi.mock("@alwaysmeticulous/common", () => ({
   initLogger: () => loggerMock,
+  logNotice: vi.fn(),
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -28,10 +29,8 @@ vi.mock("@alwaysmeticulous/client", () => ({
   readFileBasedToken: mocks.readFileBasedToken,
 }));
 
-const runHandler = (args: { dryRun?: boolean } = {}) =>
-  (logoutCommand as { handler: (args: unknown) => Promise<void> }).handler(
-    args,
-  );
+const runHandler = () =>
+  (logoutCommand as { handler: (args: unknown) => Promise<void> }).handler({});
 
 const warnedText = () => loggerMock.warn.mock.calls.flat().join("\n");
 
@@ -58,13 +57,6 @@ describe("logout command", () => {
     expect(mocks.clearOAuthTokens).toHaveBeenCalled();
     expect(mocks.clearStoredProject).toHaveBeenCalled();
     expect(warnedText()).toBe("");
-  });
-
-  it("does not clear anything on a dry run", async () => {
-    await runHandler({ dryRun: true });
-
-    expect(mocks.clearOAuthTokens).not.toHaveBeenCalled();
-    expect(mocks.clearStoredProject).not.toHaveBeenCalled();
   });
 
   it("warns when METICULOUS_API_TOKEN is still set", async () => {

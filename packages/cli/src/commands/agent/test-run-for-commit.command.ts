@@ -5,6 +5,7 @@ import {
 } from "@alwaysmeticulous/client";
 import { getCommitSha, logNotice, logProgress } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
@@ -58,9 +59,9 @@ const handler = async ({
 
   if (result.testRunId == null) {
     if (json) {
-      console.log(JSON.stringify(result, null, 2));
-      return;
+      printJson(result);
     }
+    // Guidance on stderr regardless of --json (which only changes stdout).
     logNotice(`No test run found for commit ${resolvedCommitSha}`);
     return;
   }
@@ -81,13 +82,14 @@ const handler = async ({
   }
 
   if (json) {
-    console.log(JSON.stringify({ ...result, status }, null, 2));
-    return;
+    printJson({ ...result, status });
+  } else {
+    logProgress(`testRunId: ${result.testRunId}`);
+    console.log(result.testRunId);
   }
-  logProgress(`testRunId: ${result.testRunId}`);
-  console.log(result.testRunId);
   if (status != null && isTestRunInProgress(status)) {
     // Reached only with --dontWaitForTestRunToComplete on an unfinished run.
+    // Guidance on stderr regardless of --json (which only changes stdout).
     logNotice(
       `Test run ${result.testRunId} is not complete (status: ${status}).`,
     );
@@ -97,7 +99,7 @@ const handler = async ({
 export const testRunForCommitCommand: CommandModule<unknown, Options> = {
   command: "test-run-for-commit",
   describe:
-    "Look up the latest test run for a commit (defaults to the current git HEAD)",
+    "Look up the latest test run for a commit (defaults to the current git HEAD). Outputs the testRunId (or JSON with --json).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },
     commitSha: {
@@ -110,11 +112,6 @@ export const testRunForCommitCommand: CommandModule<unknown, Options> = {
       default: false,
       description:
         "Return the latest run immediately instead of the default of blocking until it finishes; an unfinished run is then reported as not complete.",
-    },
-    json: {
-      boolean: true,
-      description: "Output the raw response as JSON",
-      default: false,
     },
   },
   handler: wrapHandler(handler),

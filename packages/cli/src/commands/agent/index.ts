@@ -12,7 +12,8 @@ import { uploadBuildCommand } from "./upload-build.command";
 
 export const agentCommand: CommandModule = {
   command: "agent",
-  describe: "Agent commands for triggering and analysing test runs",
+  describe:
+    "Agent commands for retrieving data from and interacting with Meticulous",
   builder: (yargs) =>
     yargs
       .command(uploadBuildCommand)
@@ -29,7 +30,15 @@ export const agentCommand: CommandModule = {
         boolean: true,
         default: false,
         description:
-          "Print progress logs. Defaults to false for agent commands — without it only essential output (e.g. the deploymentId) is printed.",
+          "Print additional logs like progress updates. Without it, only the actual output value or table is printed.",
+      })
+      .option("json", {
+        boolean: true,
+        default: false,
+        description:
+          "Output the result as JSON. Only stdout is affected — progress and " +
+          "notices still go to stderr — and stdout is always valid JSON, " +
+          "including an empty array/object when there is no result.",
       })
       .demandCommand()
       .help(),

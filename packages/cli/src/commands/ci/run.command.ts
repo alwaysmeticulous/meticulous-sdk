@@ -376,6 +376,7 @@ export const ciRunCommand: CommandModule<unknown, Options> = {
   builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
+    dryRun: OPTIONS.dryRun,
     appUrl: {
       demandOption: true,
       string: true,

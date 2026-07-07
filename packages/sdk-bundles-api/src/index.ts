@@ -69,4 +69,8 @@ export {
 } from "./window-api/public-window-api";
 export { MeticulousPrivateApi } from "./window-api/private-window-api";
 export { BackendRecorderConfig } from "./backend-recorder/sdk-to-bundle/init-backend-recorder";
-export { BackendRecorderHandle } from "./backend-recorder/bundle-to-sdk/init-backend-recorder";
+export {
+  BackendRecorderHandle,
+  MeticulousPrismaExtension,
+  MeticulousIORedisWrapper,
+} from "./backend-recorder/bundle-to-sdk/init-backend-recorder";

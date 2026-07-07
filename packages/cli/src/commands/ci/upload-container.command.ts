@@ -22,6 +22,7 @@ interface Options {
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
+  dryRun?: boolean | undefined;
 }
 
 const handler = async (options: Options): Promise<void> => {
@@ -37,6 +38,7 @@ export const ciUploadContainerCommand: CommandModule<unknown, Options> = {
   builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
+    dryRun: OPTIONS.dryRun,
     baseSha: {
       string: true,
       deprecated: true,

@@ -13,10 +13,6 @@ const loggerMock = {
   debug: vi.fn(),
 };
 
-vi.mock("@alwaysmeticulous/common", () => ({
-  initLogger: () => loggerMock,
-}));
-
 const mocks = vi.hoisted(() => ({
   clearStoredProject: vi.fn(),
   createClient: vi.fn(),
@@ -24,6 +20,12 @@ const mocks = vi.hoisted(() => ({
   isInteractiveContext: vi.fn(),
   performOAuthLogin: vi.fn(),
   selectAndStoreProject: vi.fn(),
+  logNotice: vi.fn(),
+}));
+
+vi.mock("@alwaysmeticulous/common", () => ({
+  initLogger: () => loggerMock,
+  logNotice: mocks.logNotice,
 }));
 
 vi.mock("@alwaysmeticulous/client", () => ({
@@ -107,7 +109,7 @@ describe("login command", () => {
     await expect(runHandler({ nonInteractive: true })).rejects.toBeInstanceOf(
       CliUserError,
     );
-    expect(loggerMock.info).not.toHaveBeenCalledWith(
+    expect(mocks.logNotice).not.toHaveBeenCalledWith(
       expect.stringContaining("auth set-project"),
     );
   });
@@ -117,7 +119,7 @@ describe("login command", () => {
 
     await runHandler();
 
-    expect(loggerMock.info).toHaveBeenCalledWith(
+    expect(mocks.logNotice).toHaveBeenCalledWith(
       expect.stringContaining("auth set-project"),
     );
   });

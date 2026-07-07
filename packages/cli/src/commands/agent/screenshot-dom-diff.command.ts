@@ -2,9 +2,11 @@ import {
   createClientWithOAuth,
   getScreenshotDomDiff,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { CliUserError } from "../../utils/cli-user-error";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -12,6 +14,7 @@ interface Options {
   screenshotName: string;
   index: number | undefined;
   context: string | undefined;
+  json: boolean;
 }
 
 const handler = async ({
@@ -20,6 +23,7 @@ const handler = async ({
   screenshotName,
   index,
   context,
+  json,
 }: Options): Promise<void> => {
   initLogger();
   const client = await createClientWithOAuth({
@@ -35,31 +39,41 @@ const handler = async ({
     context,
   );
 
-  if (result.diffs.length === 0) {
-    if (result.totalDiffs === 0) {
-      console.log("No differences found");
-    } else {
-      console.error(
-        `Index ${index} out of range (${result.totalDiffs} diff(s) available)`,
-      );
-      process.exit(1);
-    }
-    return;
+  // An out-of-range --index is a user error regardless of output format.
+  if (result.diffs.length === 0 && result.totalDiffs > 0) {
+    throw new CliUserError(
+      `Index ${index} out of range (${result.totalDiffs} diff(s) available)`,
+    );
   }
 
-  if (index != null) {
-    console.log(result.diffs[0].content);
-  } else {
-    for (const diff of result.diffs) {
-      console.log(`[diff ${diff.index}]`);
-      console.log(diff.content);
+  if (json) {
+    printJson(
+      result.diffs.map((diff) => ({
+        index: diff.index,
+        content: diff.content,
+      })),
+    );
+  } else if (result.diffs.length > 0) {
+    if (index != null) {
+      console.log(result.diffs[0].content);
+    } else {
+      for (const diff of result.diffs) {
+        console.log(`[diff ${diff.index}]`);
+        console.log(diff.content);
+      }
     }
+  }
+
+  // Guidance on stderr regardless of --json (which only changes stdout).
+  if (result.diffs.length === 0) {
+    logNotice("No differences found");
   }
 };
 
 export const domDiffCommand: CommandModule<unknown, Options> = {
   command: "dom-diff",
-  describe: "Get screenshot DOM diff for a replay diff screenshot",
+  describe:
+    "Get the DOM diff for a replay diff screenshot. Outputs unified-diff-style text, one hunk per change (or JSON with --json).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },
     replayDiffId: {

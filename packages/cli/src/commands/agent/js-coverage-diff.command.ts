@@ -2,8 +2,9 @@ import {
   createClientWithOAuth,
   getReplayDiffJsCoverage,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
 
@@ -15,8 +16,6 @@ interface Options {
   globFilter: string | undefined;
   json: boolean;
 }
-
-const log = (...args: unknown[]) => process.stderr.write(args.join(" ") + "\n");
 
 const handler = async ({
   apiToken,
@@ -42,35 +41,35 @@ const handler = async ({
     },
   );
 
+  const added = result.diff.filter((d) => d.status === "added").length;
+  const removed = result.diff.filter((d) => d.status === "removed").length;
+  const modified = result.diff.filter((d) => d.status === "modified").length;
+
   if (json) {
-    console.log(JSON.stringify(result, null, 2));
-    return;
-  }
-
-  const header = ["repoFilePath", "status", "baseRanges", "headRanges"];
-  console.log(header.join("\t"));
-
-  let added = 0;
-  let removed = 0;
-  let modified = 0;
-  for (const d of result.diff) {
-    if (d.status === "added") {
-      added++;
-    } else if (d.status === "removed") {
-      removed++;
-    } else if (d.status === "modified") {
-      modified++;
+    printJson(
+      result.diff.map((d) => ({
+        repoFilePath: d.filePath,
+        status: d.status,
+        baseRanges: d.baseRanges,
+        headRanges: d.headRanges,
+      })),
+    );
+  } else {
+    const header = ["repoFilePath", "status", "baseRanges", "headRanges"];
+    console.log(header.join("\t"));
+    for (const d of result.diff) {
+      const fields = [
+        d.filePath,
+        d.status,
+        formatCoverageRanges(d.baseRanges),
+        formatCoverageRanges(d.headRanges),
+      ];
+      console.log(fields.join("\t"));
     }
-    const fields = [
-      d.filePath,
-      d.status,
-      formatCoverageRanges(d.baseRanges),
-      formatCoverageRanges(d.headRanges),
-    ];
-    console.log(fields.join("\t"));
   }
 
-  log(
+  // Summary on stderr regardless of --json (which only changes stdout).
+  logNotice(
     `${result.diff.length} file(s) with coverage changes ` +
       `(${added} added, ${removed} removed, ${modified} modified); ` +
       `base ${result.base?.length ?? 0} file(s), head ${result.head?.length ?? 0} file(s)`,
@@ -80,7 +79,7 @@ const handler = async ({
 export const jsCoverageDiffCommand: CommandModule<unknown, Options> = {
   command: "js-coverage-diff",
   describe:
-    "Get the JS coverage diff (base vs head) for a replay diff, for a single screenshot or the whole replay",
+    "Get the JS coverage diff for a replay diff. Outputs TSV, one row per changed file: repoFilePath, status, baseRanges, headRanges (or JSON with --json).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },
     replayDiffId: {
@@ -103,11 +102,6 @@ export const jsCoverageDiffCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         'Keep only repo file paths matching this gitignore-style glob, e.g. "src/components/**". Scopes base, head, and the diff.',
-    },
-    json: {
-      boolean: true,
-      description: "Output the raw coverage response as JSON",
-      default: false,
     },
   },
   handler: wrapHandler(handler),

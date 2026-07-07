@@ -5,6 +5,7 @@ import type {
 import { describe, expect, test } from "vitest";
 import {
   buildDiffsSummaryHeader,
+  buildDiffsSummaryJson,
   type DiffsSummaryColumns,
   flattenDiffRows,
   formatDiffRow,
@@ -221,5 +222,159 @@ describe("formatDiffRow", () => {
       "",
       "",
     ]);
+  });
+});
+
+describe("buildDiffsSummaryJson", () => {
+  const data: DiffsSummaryReplayDiff[] = [
+    replayDiff({
+      replayDiffId: "rd-1",
+      baseReplayId: "base-1",
+      headReplayId: "head-1",
+      screenshots: [
+        screenshot({
+          screenshotName: "a",
+          index: 2,
+          total: 2,
+          mismatchFraction: 0.5,
+          domDiffIds: "d1",
+          isSelected: true,
+        }),
+        screenshot({
+          screenshotName: "b",
+          index: 0,
+          total: 2,
+          mismatchFraction: null,
+          isSelected: false,
+        }),
+      ],
+    }),
+    replayDiff({
+      replayDiffId: "rd-2",
+      screenshots: [screenshot({ screenshotName: "c", index: 1 })],
+    }),
+  ];
+
+  test("flat: one object per screenshot in priority order, base columns only", () => {
+    expect(buildDiffsSummaryJson(data, NO_COLUMNS)).toEqual([
+      {
+        replayDiffId: "rd-1",
+        screenshotName: "b",
+        outcome: "different",
+        mismatch: null,
+      },
+      {
+        replayDiffId: "rd-2",
+        screenshotName: "c",
+        outcome: "different",
+        mismatch: 0.1,
+      },
+      {
+        replayDiffId: "rd-1",
+        screenshotName: "a",
+        outcome: "different",
+        mismatch: 0.5,
+      },
+    ]);
+  });
+
+  test("flat: gated columns are appended without index/total", () => {
+    expect(
+      buildDiffsSummaryJson(data, {
+        orderByReplayDiffs: false,
+        includeDomDiffIds: true,
+        includeAllDiffs: true,
+        includeReplayIds: true,
+      })[0],
+    ).toEqual({
+      replayDiffId: "rd-1",
+      screenshotName: "b",
+      outcome: "different",
+      mismatch: null,
+      domDiffIds: null,
+      isSelected: false,
+      baseReplayId: "base-1",
+      headReplayId: "head-1",
+    });
+  });
+
+  test("nested: one level per replay diff with screenshots grouped underneath", () => {
+    expect(
+      buildDiffsSummaryJson(data, {
+        orderByReplayDiffs: true,
+        includeDomDiffIds: true,
+        includeAllDiffs: true,
+        includeReplayIds: true,
+      }),
+    ).toEqual([
+      {
+        replayDiffId: "rd-1",
+        baseReplayId: "base-1",
+        headReplayId: "head-1",
+        screenshots: [
+          {
+            screenshotName: "a",
+            index: 2,
+            total: 2,
+            outcome: "different",
+            mismatch: 0.5,
+            domDiffIds: "d1",
+            isSelected: true,
+          },
+          {
+            screenshotName: "b",
+            index: 0,
+            total: 2,
+            outcome: "different",
+            mismatch: null,
+            domDiffIds: null,
+            isSelected: false,
+          },
+        ],
+      },
+      {
+        replayDiffId: "rd-2",
+        baseReplayId: null,
+        headReplayId: null,
+        screenshots: [
+          {
+            screenshotName: "c",
+            index: 1,
+            total: null,
+            outcome: "different",
+            mismatch: 0.1,
+            domDiffIds: null,
+            isSelected: false,
+          },
+        ],
+      },
+    ]);
+  });
+
+  test("nested: base columns include index/total but omit gated columns", () => {
+    expect(
+      buildDiffsSummaryJson(data, {
+        ...NO_COLUMNS,
+        orderByReplayDiffs: true,
+      })[0],
+    ).toEqual({
+      replayDiffId: "rd-1",
+      screenshots: [
+        {
+          screenshotName: "a",
+          index: 2,
+          total: 2,
+          outcome: "different",
+          mismatch: 0.5,
+        },
+        {
+          screenshotName: "b",
+          index: 0,
+          total: 2,
+          outcome: "different",
+          mismatch: null,
+        },
+      ],
+    });
   });
 });

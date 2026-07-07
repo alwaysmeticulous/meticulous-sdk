@@ -75,6 +75,62 @@ export const buildDiffsSummaryHeader = (
   return fields;
 };
 
+/**
+ * Builds the JSON equivalent of the TSV, gated by the same columns. By default
+ * it's a flat array (one object per screenshot, in the same priority order as
+ * the TSV). With orderByReplayDiffs it nests one level — an array of replay
+ * diffs, each with its screenshots grouped underneath (index/total then apply).
+ */
+export const buildDiffsSummaryJson = (
+  data: DiffsSummaryReplayDiff[],
+  columns: DiffsSummaryColumns,
+): unknown[] => {
+  if (columns.orderByReplayDiffs) {
+    return data.map((replayDiff) => ({
+      replayDiffId: replayDiff.replayDiffId,
+      ...(columns.includeReplayIds
+        ? {
+            baseReplayId: replayDiff.baseReplayId ?? null,
+            headReplayId: replayDiff.headReplayId ?? null,
+          }
+        : {}),
+      screenshots: replayDiff.screenshots.map((screenshot) =>
+        screenshotToJson(screenshot, columns),
+      ),
+    }));
+  }
+  return flattenDiffRows(data, columns.orderByReplayDiffs).map(
+    ({ replayDiff, screenshot }) => ({
+      replayDiffId: replayDiff.replayDiffId,
+      ...screenshotToJson(screenshot, columns),
+      ...(columns.includeReplayIds
+        ? {
+            baseReplayId: replayDiff.baseReplayId ?? null,
+            headReplayId: replayDiff.headReplayId ?? null,
+          }
+        : {}),
+    }),
+  );
+};
+
+const screenshotToJson = (
+  screenshot: DiffsSummaryScreenshot,
+  columns: DiffsSummaryColumns,
+): Record<string, unknown> => ({
+  screenshotName: screenshot.screenshotName,
+  ...(columns.orderByReplayDiffs
+    ? { index: screenshot.index, total: screenshot.total ?? null }
+    : {}),
+  outcome: screenshot.outcome,
+  mismatch: screenshot.mismatchFraction ?? null,
+  ...(columns.includeDomDiffIds
+    ? { domDiffIds: screenshot.domDiffIds ?? null }
+    : {}),
+  ...(columns.includeAllDiffs
+    ? { isSelected: screenshot.isSelected ?? false }
+    : {}),
+});
+
 /** Formats a single row's fields, gated by the same columns as the header. */
 export const formatDiffRow = (
   { replayDiff, screenshot }: DiffRow,

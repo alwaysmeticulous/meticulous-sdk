@@ -1,7 +1,7 @@
 import { getOAuthProjects, setStoredProject } from "@alwaysmeticulous/client";
 import type { MeticulousClient, OAuthProject } from "@alwaysmeticulous/client";
+import { logNotice } from "@alwaysmeticulous/common";
 import inquirer from "inquirer";
-import type log from "loglevel";
 import { CliUserError } from "./cli-user-error";
 import { handleAuthFailure } from "./handle-auth-failure";
 
@@ -38,13 +38,11 @@ export const fetchAccessibleProjects = async (
  */
 export const selectAndStoreProject = async ({
   client,
-  logger,
   project,
   allowInteractivePrompt = true,
   fallbackToProject,
 }: {
   client: MeticulousClient;
-  logger: log.Logger;
   project?: string | undefined;
   allowInteractivePrompt?: boolean;
   fallbackToProject?: string | undefined;
@@ -90,7 +88,7 @@ export const selectAndStoreProject = async ({
     if (fallback) {
       const fallbackSlug = `${fallback.organization.name}/${fallback.name}`;
       setStoredProject({ project: fallbackSlug, projectId: fallback.id });
-      logger.info(`Kept previously selected project: ${fallbackSlug}`);
+      logNotice(`Kept previously selected project: ${fallbackSlug}`);
       return fallbackSlug;
     }
     throw new CliUserError(
@@ -104,7 +102,7 @@ export const selectAndStoreProject = async ({
 
   const projectSlug = `${selected.organization.name}/${selected.name}`;
   setStoredProject({ project: projectSlug, projectId: selected.id });
-  logger.info(`Selected project: ${projectSlug}`);
+  logNotice(`Selected project: ${projectSlug}`);
   return projectSlug;
 };
 

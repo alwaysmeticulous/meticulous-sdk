@@ -1,5 +1,14 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.305.0
+
+### Patch Changes
+
+- [#10707](https://github.com/alwaysmeticulous/meticulous/pull/10707) [`f52aa9e`](https://github.com/alwaysmeticulous/meticulous/commit/f52aa9e6ff8d3f523a177f47f69e2039b268190b) Thanks [@dennysem](https://github.com/dennysem)! - Re-export the `MeticulousPrismaExtension` and `MeticulousIORedisWrapper` types
+  from the package root. They were declared in the backend-recorder module but not
+  surfaced by the barrel, so consumers could not import them from
+  `@alwaysmeticulous/sdk-bundles-api`.
+
 ## 2.303.1
 
 ### Patch Changes

@@ -19,6 +19,7 @@ interface Options {
   rewrites?: string;
   waitForBase: boolean;
   waitForTestRunToComplete: boolean;
+  dryRun?: boolean | undefined;
 }
 
 const handler = async (options: Options): Promise<void> => {
@@ -34,6 +35,7 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
   builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
+    dryRun: OPTIONS.dryRun,
     baseSha: {
       string: true,
       deprecated: true,

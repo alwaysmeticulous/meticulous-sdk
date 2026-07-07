@@ -71,18 +71,18 @@ const runPipeline = async (opts: {
 const replayDiffCommand: CommandModule<any, any> = {
   command: "replay-diff <replayDiffId>",
   describe: "Debug a specific replay diff",
-  builder: (yargs) =>
-    yargs
-      .positional("replayDiffId", {
-        type: "string",
-        demandOption: true,
-        description: "The replay diff ID to debug",
-      })
-      .option("sessionId", {
-        string: true,
-        description: "Override the session ID for this replay diff",
-      })
-      .option(SHARED_OPTIONS),
+  builder: {
+    replayDiffId: {
+      type: "string",
+      demandOption: true,
+      description: "The replay diff ID to debug",
+    },
+    sessionId: {
+      string: true,
+      description: "Override the session ID for this replay diff",
+    },
+    ...SHARED_OPTIONS,
+  },
   handler: wrapHandler(async (args) => {
     await runPipeline({
       apiToken: args.apiToken,
@@ -98,22 +98,22 @@ const replayDiffCommand: CommandModule<any, any> = {
 const replayCommand: CommandModule<any, any> = {
   command: "replay <replayId>",
   describe: "Debug a replay, optionally comparing against a base replay",
-  builder: (yargs) =>
-    yargs
-      .positional("replayId", {
-        type: "string",
-        demandOption: true,
-        description: "The replay ID to debug (head replay)",
-      })
-      .option("baseReplayId", {
-        string: true,
-        description: "Base replay ID to compare against",
-      })
-      .option("sessionId", {
-        string: true,
-        description: "Override the session ID",
-      })
-      .option(SHARED_OPTIONS),
+  builder: {
+    replayId: {
+      type: "string",
+      demandOption: true,
+      description: "The replay ID to debug (head replay)",
+    },
+    baseReplayId: {
+      string: true,
+      description: "Base replay ID to compare against",
+    },
+    sessionId: {
+      string: true,
+      description: "Override the session ID",
+    },
+    ...SHARED_OPTIONS,
+  },
   handler: wrapHandler(async (args) => {
     const replayIds = [args.replayId];
     if (args.baseReplayId) {
@@ -133,13 +133,14 @@ const replayCommand: CommandModule<any, any> = {
 const cleanCommand: CommandModule<any, any> = {
   command: "clean",
   describe: "Clean up debug workspaces",
-  builder: (yargs) =>
-    yargs.option("all", {
+  builder: {
+    all: {
       boolean: true,
       description:
         "Delete all workspaces without prompting (useful for non-interactive environments)",
       default: false,
-    }),
+    },
+  },
   handler: wrapHandler(async (args) => {
     await cleanWorkspaces({
       all: args.all,
@@ -149,9 +150,8 @@ const cleanCommand: CommandModule<any, any> = {
 };
 
 export const debugCommand: CommandModule = {
-  command: "debug <command>",
-  describe:
-    "Set up a debug workspace for investigating Meticulous replay diffs and replays",
+  command: "debug",
+  describe: "Set up a debug workspace",
   builder: (yargs) =>
     yargs
       .command(replayDiffCommand)
