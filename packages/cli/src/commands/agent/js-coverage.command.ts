@@ -41,6 +41,8 @@ export interface Options {
   includeUncoveredRanges: boolean;
   includeCoveragePercentage: boolean;
   prDiffOnly: boolean;
+  headPlusTestRunIds: string | undefined;
+  testRunIds: string | undefined;
   json: boolean;
 }
 
@@ -78,6 +80,8 @@ const handler = async (options: Options): Promise<void> => {
     replayId,
     screenshotName,
     globFilter,
+    headPlusTestRunIds,
+    testRunIds,
     json,
   } = options;
   initLogger();
@@ -90,6 +94,26 @@ const handler = async (options: Options): Promise<void> => {
   // ambiguous on both paths (whole-test-run and --replayId disambiguation).
   if (testRunId != null && commitSha != null) {
     throw new CliUserError("Pass either --testRunId or --commitSha, not both.");
+  }
+
+  // With an explicit --testRunId already in hand, combining it with
+  // --headPlusTestRunIds is redundant — --testRunIds covers exactly that case
+  // (primary + extras in one ordered list).
+  if (testRunId != null && headPlusTestRunIds != null) {
+    throw new CliUserError(
+      "--headPlusTestRunIds cannot be combined with --testRunId; use --testRunIds instead.",
+    );
+  }
+
+  // --testRunIds replaces run resolution entirely (the first ID is the
+  // primary), so it can't be combined with the other ways of naming one.
+  if (
+    testRunIds != null &&
+    (testRunId != null || commitSha != null || headPlusTestRunIds != null)
+  ) {
+    throw new CliUserError(
+      "--testRunIds cannot be combined with --testRunId, --commitSha, or --headPlusTestRunIds.",
+    );
   }
 
   if (replayId != null) {
@@ -122,26 +146,31 @@ const handler = async (options: Options): Promise<void> => {
       json,
     });
   } else {
-    // Test-run coverage: use --testRunId, else resolve the run from --commitSha
-    // or, when neither is given, from the local checkout's HEAD. Coverage only
-    // exists once the run has finished, so block until it does (default) or, with
+    // Test-run coverage: --testRunIds names the primary (its first ID) and the
+    // extras to union in directly; otherwise resolve a single primary from
+    // --testRunId, else --commitSha, else the local checkout's HEAD, and take
+    // extras (if any) from --headPlusTestRunIds. Coverage only exists once the
+    // run has finished, so block until it does (default) or, with
     // --dontWaitForTestRunToComplete, report the in-progress run and stop.
     let resolvedTestRunId: string;
     let status;
-    if (testRunId != null) {
+    let rawUnionIds: string[];
+    if (testRunIds != null) {
+      const ids = parseTestRunIds(testRunIds);
+      resolvedTestRunId = ids[0];
+      rawUnionIds = ids.slice(1);
+      status = (await getTestRun({ client, testRunId: resolvedTestRunId }))
+        .status;
+    } else if (testRunId != null) {
       resolvedTestRunId = testRunId;
       status = (await getTestRun({ client, testRunId })).status;
+      rawUnionIds = [];
     } else {
       ({ testRunId: resolvedTestRunId, status } =
         await resolveTestRunForCommitOrThrow(client, apiToken_, commitSha));
+      rawUnionIds = parseHeadPlusTestRunIds(headPlusTestRunIds);
     }
-    const finishedStatus = await ensureTestRunFinished(
-      client,
-      resolvedTestRunId,
-      status,
-      { dontWait: dontWaitForTestRunToComplete },
-    );
-    if (finishedStatus == null) {
+    const printEmptyResult = (): void => {
       // Keep stdout's shape stable: an unfinished run has no coverage yet, so
       // emit the empty JSON array / a header-only TSV (matching a finished run
       // with zero files) rather than nothing — the notice went to stderr.
@@ -150,18 +179,56 @@ const handler = async (options: Options): Promise<void> => {
       } else {
         console.log(["repoFilePath", ...columns].join("\t"));
       }
+    };
+
+    const finishedStatus = await ensureTestRunFinished(
+      client,
+      resolvedTestRunId,
+      status,
+      { dontWait: dontWaitForTestRunToComplete },
+    );
+    if (finishedStatus == null) {
+      printEmptyResult();
       return;
     }
     // Reject session-pool bases (Partial); fatal failures already threw.
     assertTestRunComplete(resolvedTestRunId, finishedStatus, {
       resultName: "coverage",
     });
+
+    // The extra runs (from --headPlusTestRunIds or the tail of --testRunIds)
+    // don't change how the primary run above was resolved — they just add more
+    // coverage to union in. Each extra run needs the same "finished" guarantee
+    // as the primary.
+    const unionTestRunIds = rawUnionIds.filter(
+      (id) => id !== resolvedTestRunId,
+    );
+    for (const unionTestRunId of unionTestRunIds) {
+      const unionStatus = (
+        await getTestRun({ client, testRunId: unionTestRunId })
+      ).status;
+      const unionFinishedStatus = await ensureTestRunFinished(
+        client,
+        unionTestRunId,
+        unionStatus,
+        { dontWait: dontWaitForTestRunToComplete },
+      );
+      if (unionFinishedStatus == null) {
+        printEmptyResult();
+        return;
+      }
+      assertTestRunComplete(unionTestRunId, unionFinishedStatus, {
+        resultName: "coverage",
+      });
+    }
+
     await printTestRunCoverage(
       client,
       resolvedTestRunId,
       options,
       columns,
       json,
+      unionTestRunIds,
     );
   }
 };
@@ -179,6 +246,8 @@ export const assertTestRunOnlyFlagsUnsetForReplay = (
       ["includeUncoveredRanges", options.includeUncoveredRanges],
       ["includeCoveragePercentage", options.includeCoveragePercentage],
       ["prDiffOnly", options.prDiffOnly],
+      ["headPlusTestRunIds", options.headPlusTestRunIds != null],
+      ["testRunIds", options.testRunIds != null],
     ] as const
   )
     .filter(([, enabled]) => enabled)
@@ -213,6 +282,47 @@ export const determineColumns = (options: Options): CoverageColumn[] => {
     columns.push("coveragePercentage");
   }
   return columns;
+};
+
+// Comma-separated additional test run IDs to union in, alongside the resolved
+// primary run. Rejects an explicitly-provided-but-empty list (e.g.
+// --headPlusTestRunIds "" or --headPlusTestRunIds ",,,") rather than silently
+// ignoring it, and silently dedupes (unlike --sessionIds's trigger semantics,
+// a duplicate in a read-only combine request isn't a meaningful mistake).
+export const parseHeadPlusTestRunIds = (raw: string | undefined): string[] => {
+  if (raw == null) {
+    return [];
+  }
+  const ids = raw
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+  if (ids.length === 0) {
+    throw new CliUserError(
+      "--headPlusTestRunIds was provided but contains no test run IDs.",
+    );
+  }
+  return [...new Set(ids)];
+};
+
+// Comma-separated test run IDs where the first names the primary whole-run to
+// query and the rest are unioned in exactly like --headPlusTestRunIds. An
+// alternative entry point for callers that already have an ordered list of
+// run IDs on hand, rather than resolving a primary via --testRunId/--commitSha
+// first — mutually exclusive with both of those and with
+// --headPlusTestRunIds (see the handler), since it replaces run resolution
+// entirely.
+export const parseTestRunIds = (raw: string): string[] => {
+  const ids = raw
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+  if (ids.length === 0) {
+    throw new CliUserError(
+      "--testRunIds was provided but contains no test run IDs.",
+    );
+  }
+  return ids;
 };
 
 // Resolves a commit to a test run id, used only to disambiguate which run a
@@ -344,6 +454,7 @@ const printTestRunCoverage = async (
   options: Options,
   columns: CoverageColumn[],
   json: boolean,
+  unionTestRunIds: string[],
 ): Promise<void> => {
   // Send the resolved columns as explicit flags (the default-to-executed rule
   // lives here in `determineColumns`, not the backend), so the backend never
@@ -352,6 +463,7 @@ const printTestRunCoverage = async (
   const requestOptions: TestRunJsCoverageOptions = {
     includeAllFiles: options.includeAllFiles,
     ...(options.globFilter != null ? { globFilter: options.globFilter } : {}),
+    ...(unionTestRunIds.length > 0 ? { unionTestRunIds } : {}),
   };
   for (const column of columns) {
     requestOptions[COVERAGE_COLUMN_FLAG[column]] = true;
@@ -449,7 +561,8 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
     testRunId: {
       string: true,
       description:
-        "The test run ID. On its own, returns coverage for the whole test run. Combined with --replayId, the replay must belong to this run (head or base); if it was this run's head, paths resolve against this run, otherwise against the replay's own execution run.",
+        "The test run ID. On its own, returns coverage for the whole test run. Combined with --replayId, the replay must belong to this run (head or base); if it was this run's head, paths resolve against this run, otherwise against the replay's own execution run. " +
+        "Cannot be combined with --headPlusTestRunIds — use --testRunIds to combine multiple explicit run IDs.",
     },
     commitSha: {
       string: true,
@@ -512,6 +625,19 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       default: false,
       description:
         "Return only coverage for files changed in the PR diff (from coverage.pr.json). Whole-test-run coverage only.",
+    },
+    headPlusTestRunIds: {
+      string: true,
+      description:
+        "Comma-separated additional test run IDs to union with the run resolved via --commitSha, or the local git HEAD by default (cannot be combined with --testRunId — use --testRunIds instead when you already have an explicit primary ID). " +
+        "Useful for combining a project's normal coverage with the coverage of a few extra test runs. All runs must be finished, belong to the same project, and have executed the exact same commit as the run resolved above " +
+        "(a PR's merge commit is recomputed whenever its base branch moves, so a run triggered against a since-advanced base is rejected). Whole-test-run coverage only.",
+    },
+    testRunIds: {
+      string: true,
+      description:
+        "Comma-separated test run IDs: the first is the primary run coverage is returned for, the rest are unioned in exactly like --headPlusTestRunIds. An alternative to --testRunId/--commitSha for callers that already have an ordered list of run IDs on hand. " +
+        "Cannot be combined with --testRunId, --commitSha, or --headPlusTestRunIds. Same constraints as --headPlusTestRunIds apply to the additional IDs (same project, same commit as the primary). Whole-test-run coverage only.",
     },
   },
   handler: wrapHandler(handler),

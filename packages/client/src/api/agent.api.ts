@@ -51,11 +51,32 @@ export interface DiffsSummaryOptions {
    * position and `total` is included. Otherwise `index` is the priority rank.
    */
   orderByReplayDiffs?: boolean;
+  /**
+   * Request a fresh computation when the previous attempt failed. A normal poll
+   * returns `status: "failed"` without restarting; pass this to start a clean
+   * run over the failed one. Off by default. A no-op if no computation has ever
+   * been triggered for this test run — that case already starts one regardless.
+   */
+  retrigger?: boolean;
 }
 
+/** The terminal Temporal workflow status that produced a `failed` response. */
+export type DiffsSummaryFailureReason =
+  | "FAILED"
+  | "TIMED_OUT"
+  | "TERMINATED"
+  | "CANCELLED";
+
 export interface DiffsSummaryResponse {
-  status: "pending" | "processing" | "complete";
+  /**
+   * `pending` / `processing` — poll again; `complete` — `data` is populated;
+   * `failed` — the last computation failed and left no result (poll again with
+   * `retrigger` to try a fresh run).
+   */
+  status: "pending" | "processing" | "complete" | "failed";
   data?: DiffsSummaryReplayDiff[];
+  /** Present only when `status` is `failed`. */
+  reason?: DiffsSummaryFailureReason;
 }
 
 /**
@@ -141,6 +162,12 @@ export interface TestRunJsCoverageOptions {
   includeCoveragePercentage?: boolean;
   /** Scope coverage to the PR diff (coverage.pr.json) instead of the whole run. */
   prDiffOnly?: boolean;
+  /**
+   * Additional test run IDs whose coverage is unioned with `testRunId`'s —
+   * e.g. to show a run's normal coverage plus the coverage of a few extra
+   * runs. Must belong to the same project as `testRunId`.
+   */
+  unionTestRunIds?: string[];
 }
 
 /**
@@ -381,6 +408,9 @@ export const getTestRunDiffsSummary = async (
   if (options?.orderByReplayDiffs) {
     params.orderByReplayDiffs = "true";
   }
+  if (options?.retrigger) {
+    params.retrigger = "true";
+  }
   const { data } = await client
     .get(`agent/test-runs/${testRunId}/diffs-summary`, { params })
     .catch((error) => {
@@ -479,6 +509,9 @@ export const getTestRunJsCoverage = async (
   }
   if (options?.prDiffOnly) {
     params.prDiffOnly = "true";
+  }
+  if (options?.unionTestRunIds != null && options.unionTestRunIds.length > 0) {
+    params.unionTestRunIds = options.unionTestRunIds.join(",");
   }
   const { data } = await client
     .get(`agent/test-runs/${testRunId}/js-coverage`, { params })

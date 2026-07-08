@@ -1,4 +1,5 @@
 import { readFile } from "fs/promises";
+import type { SessionFilter } from "@alwaysmeticulous/api";
 import type { ProjectAssetChunkReference } from "@alwaysmeticulous/client";
 import {
   createClientWithOAuth,
@@ -22,6 +23,7 @@ import {
   hasGitContextForTestRunWait,
   resolveGitOptions,
 } from "./resolve-git-options";
+import { readSessionFilterFile } from "./session-filter.utils";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -33,6 +35,7 @@ interface Options {
   repoDirectory?: string | undefined;
   assetReferencesManifest: string;
   rewrites?: string;
+  sessionFilter?: string | undefined;
   waitForBase: boolean;
   waitForTestRunToComplete: boolean;
 }
@@ -96,6 +99,18 @@ const readAssetReferencesManifest = async (
   return parsed as ProjectAssetChunkReference[];
 };
 
+const readSessionFilter = async (
+  sessionFilterPath: string,
+): Promise<SessionFilter> => {
+  const logger = initLogger();
+  const result = await readSessionFilterFile(sessionFilterPath);
+  if (!result.valid) {
+    logger.error(result.error);
+    process.exit(1);
+  }
+  return result.filter;
+};
+
 const handler = async ({
   apiToken,
   commitSha: commitSha_,
@@ -104,6 +119,7 @@ const handler = async ({
   repoDirectory,
   assetReferencesManifest: manifestPath,
   rewrites,
+  sessionFilter: sessionFilterPath,
   waitForBase,
   waitForTestRunToComplete,
 }: Options): Promise<void> => {
@@ -138,6 +154,12 @@ const handler = async ({
 
   const manifest = await readAssetReferencesManifest(manifestPath);
 
+  // Validated ahead of the trigger so a bad regex fails fast in the CLI
+  // rather than after chunk resolution on the server.
+  const sessionFilter = sessionFilterPath
+    ? await readSessionFilter(sessionFilterPath)
+    : undefined;
+
   logger.info(
     `Triggering test run for commit ${commitSha} against ${manifest.length} uploaded asset chunk(s)`,
   );
@@ -169,6 +191,7 @@ const handler = async ({
       assetReferencesManifest: manifest,
       rewrites: parseRewrites(rewrites),
       waitForBase: waitForBase || waitForTestRunToComplete,
+      ...(sessionFilter ? { sessionFilter } : {}),
       ...projectIdentifier,
     });
     if (result.overlaps && result.overlaps.length > 0) {
@@ -264,6 +287,16 @@ export const ciRunWithUploadedAssetChunksCommand: CommandModule<
       description:
         "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array." +
         ' Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule \'{ source: "**", destination: "/index.html" }\'.',
+    },
+    sessionFilter: {
+      string: true,
+      description:
+        "Path to a JSON file restricting which sessions the test run replays, e.g." +
+        ' \'{ "session-start-url-matches-any-regex": ["my-path/", "your-path/two/"] }\'.' +
+        " This is an advanced option: Meticulous automatically chooses sessions to execute." +
+        " sessionFilter allows additional filtering on top of that." +
+        " We recommend checking with a Meticulous engineer before using it." +
+        " See https://app.meticulous.ai/docs/how-to/filter-sessions-by-start-url.",
     },
     waitForBase: {
       boolean: true,

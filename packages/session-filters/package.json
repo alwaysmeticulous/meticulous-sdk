@@ -1,7 +1,7 @@
 {
-  "name": "@alwaysmeticulous/downloading-helpers",
+  "name": "@alwaysmeticulous/session-filters",
   "version": "2.306.0",
-  "description": "Helper utilities for downloading files & scripts required to execute replays",
+  "description": "Validation and matching for Meticulous session filters, shared between the CLI and the Meticulous backend",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,29 +14,15 @@
     "dev": "tsc --build tsconfig.json --watch",
     "format": "prettier --write src",
     "lint": "oxlint --type-aware src",
-    "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "oxlint --type-aware src --fix",
     "depcheck": "depcheck --ignore-patterns=dist",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "dependencies": {
     "@alwaysmeticulous/api": "workspace:*",
-    "@alwaysmeticulous/client": "workspace:*",
-    "@alwaysmeticulous/common": "workspace:*",
-    "axios": "^1.15.1",
-    "axios-retry": "^4.5.0",
-    "cli-progress": "^3.12.0",
-    "extract-zip": "^2.0.1",
-    "fast-zlib": "^2.0.1",
-    "luxon": "^3.2.1",
-    "p-limit": "^3.1.0",
-    "proper-lockfile": "^4.1.2",
-    "tar": "^7.5.8"
+    "re2": "1.24.0"
   },
   "devDependencies": {
-    "@types/cli-progress": "^3.11.6",
-    "@types/luxon": "^3.2.0",
-    "@types/proper-lockfile": "^4.1.2",
     "vitest": "catalog:"
   },
   "author": {
@@ -51,7 +37,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
-    "directory": "packages/cli"
+    "directory": "packages/session-filters"
   },
   "bugs": {
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"

@@ -142,6 +142,21 @@ const handler = async ({
     diffsSummaryOptions,
   );
 
+  // A cold start finding the last computation already `failed` retriggers
+  // once, up front — before the poll deadline below is computed, so the fresh
+  // run always gets the full timeout. This is a one-shot decision made only
+  // here, not inside the poll loop: once we're polling, a `failed` result is
+  // reported and the command exits, it never retriggers again.
+  if (response.status === "failed") {
+    logProgress(
+      `Diffs computation failed for test run ${resolvedTestRunId}; retriggering...`,
+    );
+    response = await getTestRunDiffsSummary(client, resolvedTestRunId, {
+      ...diffsSummaryOptions,
+      retrigger: true,
+    });
+  }
+
   // Poll until complete (or give up after the timeout, rather than forever).
   // A single line when we start waiting — no per-poll output.
   const summaryDeadline = performance.now() + SUMMARY_POLL_TIMEOUT_MS;
@@ -150,7 +165,20 @@ const handler = async ({
       `Waiting for diff results for test run ${resolvedTestRunId}...`,
     );
   }
-  while (response.status === "pending" || response.status === "processing") {
+  while (response.status !== "complete") {
+    if (response.status === "failed") {
+      const reasonSuffix =
+        response.reason != null ? ` (${response.reason})` : "";
+      logNotice(
+        `Diffs summary computation failed${reasonSuffix} for test run ${resolvedTestRunId}. ` +
+          `Something may have gone wrong — try again later.`,
+      );
+      process.exit(1);
+    }
+    if (response.status !== "pending" && response.status !== "processing") {
+      logNotice(`Error: unexpected status "${String(response.status)}"`);
+      process.exit(1);
+    }
     if (performance.now() >= summaryDeadline) {
       logNotice(
         `Diffs summary for test run ${resolvedTestRunId} did not complete within 10 minutes ` +
@@ -164,11 +192,6 @@ const handler = async ({
       resolvedTestRunId,
       diffsSummaryOptions,
     );
-  }
-
-  if (response.status !== "complete") {
-    logNotice(`Error: unexpected status "${response.status}"`);
-    process.exit(1);
   }
 
   const data = response.data ?? [];

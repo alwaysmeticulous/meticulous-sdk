@@ -2,6 +2,7 @@ import type {
   AssetUploadMetadata,
   DeploymentArchiveType,
   DownloadDeploymentResponse,
+  SessionFilter,
   TestRun,
 } from "@alwaysmeticulous/api";
 import type { MeticulousClient } from "../types/client.types";
@@ -328,6 +329,11 @@ export interface TriggerRunWithUploadedAssetChunksParams extends ProjectIdentifi
   mustHaveBase: boolean;
   isUserVisible?: boolean;
   skipPreprocessing?: boolean;
+  /**
+   * When set, the run only replays the sessions matching the filter (applied
+   * to both the head run and any base run created to compare against).
+   */
+  sessionFilter?: SessionFilter | undefined;
 }
 
 export const createRunWithUploadedAssetChunks = async ({

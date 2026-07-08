@@ -7,6 +7,8 @@ import {
   coverageFileToJson,
   determineColumns,
   isAmbiguousTestRunError,
+  parseHeadPlusTestRunIds,
+  parseTestRunIds,
   type Options,
 } from "./js-coverage.command";
 
@@ -24,6 +26,8 @@ const baseOptions = (overrides: Partial<Options> = {}): Options => ({
   includeAllFiles: false,
   prDiffOnly: false,
   globFilter: undefined,
+  headPlusTestRunIds: undefined,
+  testRunIds: undefined,
   json: false,
   ...overrides,
 });
@@ -105,6 +109,68 @@ describe("assertTestRunOnlyFlagsUnsetForReplay", () => {
         }),
       ),
     ).not.toThrow();
+  });
+
+  it("rejects --headPlusTestRunIds", () => {
+    expect(() =>
+      assertTestRunOnlyFlagsUnsetForReplay(
+        baseOptions({ headPlusTestRunIds: "tr-2,tr-3" }),
+      ),
+    ).toThrow(/--headPlusTestRunIds only appl/);
+  });
+
+  it("rejects --testRunIds", () => {
+    expect(() =>
+      assertTestRunOnlyFlagsUnsetForReplay(
+        baseOptions({ testRunIds: "tr-1,tr-2,tr-3" }),
+      ),
+    ).toThrow(/--testRunIds only appl/);
+  });
+});
+
+describe("parseHeadPlusTestRunIds", () => {
+  it("returns an empty list when omitted", () => {
+    expect(parseHeadPlusTestRunIds(undefined)).toEqual([]);
+  });
+
+  it("splits and trims a comma-separated list", () => {
+    expect(parseHeadPlusTestRunIds("tr-2, tr-3 ,tr-4")).toEqual([
+      "tr-2",
+      "tr-3",
+      "tr-4",
+    ]);
+  });
+
+  it("dedupes repeated IDs", () => {
+    expect(parseHeadPlusTestRunIds("tr-2,tr-3,tr-2")).toEqual(["tr-2", "tr-3"]);
+  });
+
+  it("rejects an explicitly-empty list", () => {
+    expect(() => parseHeadPlusTestRunIds("")).toThrow(CliUserError);
+    expect(() => parseHeadPlusTestRunIds(",,,")).toThrow(CliUserError);
+  });
+});
+
+describe("parseTestRunIds", () => {
+  it("returns a single-element list for one ID", () => {
+    expect(parseTestRunIds("tr-1")).toEqual(["tr-1"]);
+  });
+
+  it("splits and trims a comma-separated list, keeping the first as primary", () => {
+    expect(parseTestRunIds("tr-1, tr-2 ,tr-3")).toEqual([
+      "tr-1",
+      "tr-2",
+      "tr-3",
+    ]);
+  });
+
+  it("does not dedupe (unlike parseHeadPlusTestRunIds) — the first ID's position matters", () => {
+    expect(parseTestRunIds("tr-1,tr-2,tr-1")).toEqual(["tr-1", "tr-2", "tr-1"]);
+  });
+
+  it("rejects an explicitly-empty list", () => {
+    expect(() => parseTestRunIds("")).toThrow(CliUserError);
+    expect(() => parseTestRunIds(",,,")).toThrow(CliUserError);
   });
 });
 

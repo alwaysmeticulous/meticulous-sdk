@@ -1,5 +1,24 @@
 # @alwaysmeticulous/client
 
+## 2.306.0
+
+### Minor Changes
+
+- [#10696](https://github.com/alwaysmeticulous/meticulous/pull/10696) [`c9dfd16`](https://github.com/alwaysmeticulous/meticulous/commit/c9dfd16bf6114470782e73362989fe9c97c2698f) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent test-run-diffs` now surfaces failed diffs-summary computations instead of polling forever. The diffs-summary endpoint returns a new `failed` status (with a `reason`) when the previous computation ended in a terminal-failure state (rather than silently restarting and reporting `pending`), and accepts a `retrigger` flag to start a fresh run over a failed one. The CLI retriggers once, up front, if the computation is already `failed` when the command starts; once it's polling, a `failed` result is reported immediately and the command exits, rather than looping until the timeout.
+
+- [#10727](https://github.com/alwaysmeticulous/meticulous/pull/10727) [`7c90bbd`](https://github.com/alwaysmeticulous/meticulous/commit/7c90bbddf757fae6a4d3d0c514b4ef79214cb4dd) Thanks [@phreppo](https://github.com/phreppo)! - Add a `--sessionFilter` option to `ci run-with-uploaded-asset-chunks` that restricts the triggered test run to sessions whose start URL matches at least one of the provided RE2 regexes.
+
+- [#10702](https://github.com/alwaysmeticulous/meticulous/pull/10702) [`d493a2a`](https://github.com/alwaysmeticulous/meticulous/commit/d493a2a6fe7e931f09b32e8dbfe4b191aa103cab) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent js-coverage` now supports combining coverage from multiple test runs.
+  - New `--headPlusTestRunIds` CLI flag: a comma-separated list of additional test run IDs to union with the run resolved by `--commitSha` (or the local git HEAD by default). Useful for seeing a project's normal coverage plus the coverage of a few extra runs, without running one combined test run. Cannot be combined with `--testRunId`.
+  - New `--testRunIds` CLI flag: a comma-separated list of test run IDs where the first is the primary run and the rest are unioned in, for callers that already have an ordered list of run IDs on hand rather than a single run to resolve. Cannot be combined with `--testRunId`, `--commitSha`, or `--headPlusTestRunIds`.
+  - The backend `GET agent/test-runs/:testRunId/js-coverage` endpoint gained a matching `unionTestRunIds` query param (comma-separated), and `@alwaysmeticulous/client`'s `getTestRunJsCoverage` gained a matching `unionTestRunIds` option. All listed test runs must belong to the same project and have executed the exact same commit as the primary.
+
+### Patch Changes
+
+- Updated dependencies [[`7c90bbd`](https://github.com/alwaysmeticulous/meticulous/commit/7c90bbddf757fae6a4d3d0c514b4ef79214cb4dd)]:
+  - @alwaysmeticulous/api@2.306.0
+  - @alwaysmeticulous/common@2.301.0
+
 ## 2.305.0
 
 ### Patch Changes

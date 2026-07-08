@@ -3,6 +3,8 @@ import type { MeticulousClient } from "../../types/client.types";
 import {
   DIFFS_SUMMARY_CLIENT_VERSION,
   getTestRunDiffsSummary,
+  getTestRunJsCoverage,
+  TESTRUN_JS_COVERAGE_CLIENT_VERSION,
 } from "../agent.api";
 
 describe("getTestRunDiffsSummary", () => {
@@ -65,6 +67,73 @@ describe("getTestRunDiffsSummary", () => {
     expect(paramsFromLastCall()).toEqual({
       clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
       includeDomDiffIds: "true",
+    });
+  });
+
+  it("maps retrigger: true to the retrigger param", async () => {
+    await getTestRunDiffsSummary(asClient(), "tr-1", { retrigger: true });
+
+    expect(paramsFromLastCall()).toEqual({
+      clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
+      retrigger: "true",
+    });
+  });
+
+  it("omits the retrigger param when unset", async () => {
+    await getTestRunDiffsSummary(asClient(), "tr-1", { retrigger: false });
+
+    expect(paramsFromLastCall()).toEqual({
+      clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
+    });
+  });
+});
+
+describe("getTestRunJsCoverage", () => {
+  let client: { get: Mock };
+  const asClient = (): MeticulousClient =>
+    client as unknown as MeticulousClient;
+
+  const paramsFromLastCall = (): Record<string, string> =>
+    client.get.mock.calls[0][1].params;
+
+  beforeEach(() => {
+    client = {
+      get: vi.fn().mockResolvedValue({ data: { files: [] } }),
+    };
+  });
+
+  it("omits unionTestRunIds when not given", async () => {
+    await getTestRunJsCoverage(asClient(), "tr-1");
+
+    expect(client.get).toHaveBeenCalledWith(
+      "agent/test-runs/tr-1/js-coverage",
+      {
+        params: {
+          clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
+          includeExecutedRanges: "true",
+        },
+      },
+    );
+  });
+
+  it("forwards unionTestRunIds as a comma-joined list", async () => {
+    await getTestRunJsCoverage(asClient(), "tr-1", {
+      unionTestRunIds: ["tr-2", "tr-3"],
+    });
+
+    expect(paramsFromLastCall()).toEqual({
+      clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
+      includeExecutedRanges: "true",
+      unionTestRunIds: "tr-2,tr-3",
+    });
+  });
+
+  it("omits unionTestRunIds when given an empty list", async () => {
+    await getTestRunJsCoverage(asClient(), "tr-1", { unionTestRunIds: [] });
+
+    expect(paramsFromLastCall()).toEqual({
+      clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
+      includeExecutedRanges: "true",
     });
   });
 });

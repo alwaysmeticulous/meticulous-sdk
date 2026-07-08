@@ -46,6 +46,10 @@ export {
   WaitedForExistingWorkflowRun,
 } from "./replay/test-run-debug-context.types";
 export { TestRunChunkStatus } from "./replay/test-run-chunk.types";
+export {
+  SessionFilter,
+  SessionStartUrlMatchesAnyRegexFilter,
+} from "./replay/session-filter.types";
 export * from "./sdk-bundle-api/sdk-to-bundle/test-run-environment";
 export { ReplayableEvent } from "./sdk-bundle-api/bidirectional/replayable-event";
 export {

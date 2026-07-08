@@ -1,4 +1,8 @@
-import type { AssetUploadMetadata, TestRun } from "@alwaysmeticulous/api";
+import type {
+  AssetUploadMetadata,
+  SessionFilter,
+  TestRun,
+} from "@alwaysmeticulous/api";
 import type {
   ChunkPathOverlap,
   createClient,
@@ -23,6 +27,11 @@ export interface RunWithUploadedAssetChunksOptions extends ProjectIdentifier {
   rewrites: AssetUploadMetadata["rewrites"];
   createDeployment?: boolean;
   assetReferencesManifest: RequestedProjectAssetChunkReference[];
+  /**
+   * When set, the run only replays the sessions matching the filter (applied
+   * to both the head run and any base run created to compare against).
+   */
+  sessionFilter?: SessionFilter | undefined;
 }
 
 export interface RunWithUploadedAssetChunksResult {
@@ -47,6 +56,7 @@ export const runWithUploadedAssetChunks = async ({
   rewrites,
   createDeployment = true,
   assetReferencesManifest,
+  sessionFilter,
   projectId,
 }: RunWithUploadedAssetChunksOptions): Promise<RunWithUploadedAssetChunksResult> => {
   const logger = initLogger();
@@ -98,6 +108,7 @@ export const runWithUploadedAssetChunks = async ({
     ...(baseSha ? { baseSha } : {}),
     ...(gitDiffOutput ? { hasGitDiff: true } : {}),
     mustHaveBase: waitForBase,
+    ...(sessionFilter ? { sessionFilter } : {}),
     ...(projectId ? { projectId } : {}),
   };
 
