@@ -9,6 +9,7 @@ import {
   type DiffsSummaryColumns,
   flattenDiffRows,
   formatDiffRow,
+  formatDiffsSummaryCounts,
 } from "./test-run-diffs.utils";
 
 const screenshot = (
@@ -33,6 +34,15 @@ const NO_COLUMNS: DiffsSummaryColumns = {
   includeDomDiffIds: false,
   includeAllDiffs: false,
   includeReplayIds: false,
+  includeReviewDecisions: false,
+};
+
+const ALL_COLUMNS: DiffsSummaryColumns = {
+  orderByReplayDiffs: true,
+  includeDomDiffIds: true,
+  includeAllDiffs: true,
+  includeReplayIds: true,
+  includeReviewDecisions: false,
 };
 
 describe("flattenDiffRows", () => {
@@ -60,6 +70,28 @@ describe("flattenDiffRows", () => {
   });
 });
 
+describe("formatDiffsSummaryCounts", () => {
+  test("emits key\\tvalue lines for every count", () => {
+    expect(
+      formatDiffsSummaryCounts({
+        numReplays: 5,
+        numDiffs: 3,
+        numApproved: 1,
+        numIgnored: 0,
+        numRejected: 1,
+        numUnreviewed: 1,
+      }),
+    ).toEqual([
+      "numReplays\t5",
+      "numDiffs\t3",
+      "numApproved\t1",
+      "numIgnored\t0",
+      "numRejected\t1",
+      "numUnreviewed\t1",
+    ]);
+  });
+});
+
 describe("buildDiffsSummaryHeader", () => {
   test("emits the base columns (including index) by default", () => {
     expect(buildDiffsSummaryHeader(NO_COLUMNS)).toEqual([
@@ -72,13 +104,22 @@ describe("buildDiffsSummaryHeader", () => {
   });
 
   test("gates the optional columns independently", () => {
+    expect(buildDiffsSummaryHeader(ALL_COLUMNS)).toEqual([
+      "replayDiffId",
+      "screenshotName",
+      "index",
+      "outcome",
+      "mismatch",
+      "domDiffIds",
+      "isSelected",
+      "baseReplayId",
+      "headReplayId",
+    ]);
+  });
+
+  test("places the decision column after isSelected and before the replay IDs", () => {
     expect(
-      buildDiffsSummaryHeader({
-        orderByReplayDiffs: true,
-        includeDomDiffIds: true,
-        includeAllDiffs: true,
-        includeReplayIds: true,
-      }),
+      buildDiffsSummaryHeader({ ...ALL_COLUMNS, includeReviewDecisions: true }),
     ).toEqual([
       "replayDiffId",
       "screenshotName",
@@ -87,6 +128,7 @@ describe("buildDiffsSummaryHeader", () => {
       "mismatch",
       "domDiffIds",
       "isSelected",
+      "decision",
       "baseReplayId",
       "headReplayId",
     ]);
@@ -135,14 +177,7 @@ describe("formatDiffRow", () => {
   });
 
   test("includes the gated columns in header order when enabled", () => {
-    expect(
-      formatDiffRow(row, {
-        orderByReplayDiffs: true,
-        includeDomDiffIds: true,
-        includeAllDiffs: true,
-        includeReplayIds: true,
-      }),
-    ).toEqual([
+    expect(formatDiffRow(row, ALL_COLUMNS)).toEqual([
       "rd-1",
       "home",
       3,
@@ -160,14 +195,41 @@ describe("formatDiffRow", () => {
       replayDiff: replayDiff({ replayDiffId: "rd-1" }),
       screenshot: screenshot({ screenshotName: "home", index: 1 }),
     };
-    expect(
-      formatDiffRow(sparse, {
-        orderByReplayDiffs: true,
-        includeDomDiffIds: true,
-        includeAllDiffs: true,
-        includeReplayIds: true,
+    expect(formatDiffRow(sparse, ALL_COLUMNS)).toEqual([
+      "rd-1",
+      "home",
+      1,
+      "different",
+      "0.10000",
+      "",
+      "false",
+      "",
+      "",
+    ]);
+  });
+
+  test("appends the decision column when includeReviewDecisions is set", () => {
+    const reviewed = {
+      replayDiff: replayDiff({ replayDiffId: "rd-1" }),
+      screenshot: screenshot({
+        screenshotName: "home",
+        index: 1,
+        decision: "accepted",
       }),
-    ).toEqual(["rd-1", "home", 1, "different", "0.10000", "", "false", "", ""]);
+    };
+    expect(
+      formatDiffRow(reviewed, { ...NO_COLUMNS, includeReviewDecisions: true }),
+    ).toEqual(["rd-1", "home", 1, "different", "0.10000", "accepted"]);
+  });
+
+  test("renders a missing decision as an empty string", () => {
+    const sparse = {
+      replayDiff: replayDiff({ replayDiffId: "rd-1" }),
+      screenshot: screenshot({ screenshotName: "home", index: 1 }),
+    };
+    expect(
+      formatDiffRow(sparse, { ...NO_COLUMNS, includeReviewDecisions: true }),
+    ).toEqual(["rd-1", "home", 1, "different", "0.10000", ""]);
   });
 });
 
@@ -228,10 +290,8 @@ describe("buildDiffsSummaryJson", () => {
   test("flat: gated columns are appended after the base columns", () => {
     expect(
       buildDiffsSummaryJson(data, {
+        ...ALL_COLUMNS,
         orderByReplayDiffs: false,
-        includeDomDiffIds: true,
-        includeAllDiffs: true,
-        includeReplayIds: true,
       })[0],
     ).toEqual({
       replayDiffId: "rd-1",
@@ -247,14 +307,7 @@ describe("buildDiffsSummaryJson", () => {
   });
 
   test("nested: one level per replay diff with screenshots grouped underneath", () => {
-    expect(
-      buildDiffsSummaryJson(data, {
-        orderByReplayDiffs: true,
-        includeDomDiffIds: true,
-        includeAllDiffs: true,
-        includeReplayIds: true,
-      }),
-    ).toEqual([
+    expect(buildDiffsSummaryJson(data, ALL_COLUMNS)).toEqual([
       {
         replayDiffId: "rd-1",
         baseReplayId: "base-1",
@@ -319,5 +372,31 @@ describe("buildDiffsSummaryJson", () => {
         },
       ],
     });
+  });
+
+  test("flat: includes the decision when includeReviewDecisions is set", () => {
+    const reviewed = [
+      replayDiff({
+        replayDiffId: "rd-1",
+        screenshots: [
+          screenshot({ screenshotName: "a", index: 0, decision: "rejected" }),
+        ],
+      }),
+    ];
+    expect(
+      buildDiffsSummaryJson(reviewed, {
+        ...NO_COLUMNS,
+        includeReviewDecisions: true,
+      }),
+    ).toEqual([
+      {
+        replayDiffId: "rd-1",
+        screenshotName: "a",
+        index: 0,
+        outcome: "different",
+        mismatch: 0.1,
+        decision: "rejected",
+      },
+    ]);
   });
 });

@@ -1,5 +1,11 @@
 # @alwaysmeticulous/session-filters
 
+## 2.308.0
+
+### Patch Changes
+
+- [#10945](https://github.com/alwaysmeticulous/meticulous/pull/10945) [`74afc3c`](https://github.com/alwaysmeticulous/meticulous/commit/74afc3c5c455c2a88e61e60be9ff9a11766a0ce8) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Load the native `re2` module lazily in `@alwaysmeticulous/session-filters`. Previously `re2` was imported at module load time, so it was required as soon as the CLI started (via the session-filter code path). In environments that skip native build scripts on install — e.g. `pnpm dlx` / `pnpx` under pnpm's strict build-script policy — the `re2.node` binary is never built, so the CLI crashed on startup with `Cannot find module './build/Release/re2.node'`. `re2` is now only required when a session filter is actually validated or compiled, so the CLI runs normally when session filters are not used.
+
 ## 2.307.0
 
 ### Patch Changes

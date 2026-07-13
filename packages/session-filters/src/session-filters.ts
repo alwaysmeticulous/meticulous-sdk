@@ -1,5 +1,27 @@
 import type { SessionFilter } from "@alwaysmeticulous/api";
-import RE2 from "re2";
+import type RE2 from "re2";
+
+/**
+ * `re2` is a native addon (bindings to Google's RE2 engine) whose compiled
+ * `re2.node` binary is produced by an install/build script. It is loaded lazily
+ * so that merely importing this module — which happens transitively at CLI
+ * startup — never requires the native binary unless a session filter is
+ * actually validated or compiled. This keeps the CLI runnable in environments
+ * that skip native build scripts on install (e.g. `pnpm dlx` / `pnpx` under
+ * pnpm's strict build-script policy), which would otherwise crash the entire
+ * CLI on startup with "Cannot find module './build/Release/re2.node'".
+ */
+type RE2Constructor = new (pattern: string) => RE2;
+
+let cachedRE2: RE2Constructor | undefined;
+
+const getRE2 = (): RE2Constructor => {
+  if (cachedRE2 === undefined) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cachedRE2 = require("re2") as RE2Constructor;
+  }
+  return cachedRE2;
+};
 
 export const MAX_SESSION_FILTER_REGEXES = 100;
 export const MAX_SESSION_FILTER_REGEX_LENGTH = 1_000;
@@ -75,7 +97,8 @@ export const validateSessionFilter = (
       };
     }
     try {
-      new RE2(regex);
+      const RE2Ctor = getRE2();
+      new RE2Ctor(regex);
     } catch (error) {
       return {
         valid: false,
@@ -103,7 +126,8 @@ export const validateSessionFilter = (
 export const compileSessionFilter = (
   filter: SessionFilter,
 ): ((sessionStartUrl: string) => boolean) => {
-  const compiledRegexes = filter.regexes.map((regex) => new RE2(regex));
+  const RE2Ctor = getRE2();
+  const compiledRegexes = filter.regexes.map((regex) => new RE2Ctor(regex));
   return (sessionStartUrl: string) =>
     compiledRegexes.some((regex) => regex.test(sessionStartUrl));
 };

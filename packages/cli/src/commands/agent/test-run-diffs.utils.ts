@@ -1,4 +1,5 @@
 import type {
+  DiffsSummaryCountsResponse,
   DiffsSummaryReplayDiff,
   DiffsSummaryScreenshot,
 } from "@alwaysmeticulous/client";
@@ -22,7 +23,21 @@ export interface DiffsSummaryColumns {
   includeAllDiffs: boolean;
   /** Add the base/head replay ID columns. */
   includeReplayIds: boolean;
+  /** Add the `decision` column (the PR review decision per diff). */
+  includeReviewDecisions: boolean;
 }
+
+/** `key\tvalue` lines for the `--counts` output in the default (non-JSON) mode. */
+export const formatDiffsSummaryCounts = (
+  counts: DiffsSummaryCountsResponse,
+): string[] => [
+  `numReplays\t${counts.numReplays}`,
+  `numDiffs\t${counts.numDiffs}`,
+  `numApproved\t${counts.numApproved}`,
+  `numIgnored\t${counts.numIgnored}`,
+  `numRejected\t${counts.numRejected}`,
+  `numUnreviewed\t${counts.numUnreviewed}`,
+];
 
 const fmtMismatch = (v: number | null): string =>
   v != null ? v.toFixed(5) : "";
@@ -54,6 +69,7 @@ export const buildDiffsSummaryHeader = (
   ];
   if (columns.includeDomDiffIds) fields.push("domDiffIds");
   if (columns.includeAllDiffs) fields.push("isSelected");
+  if (columns.includeReviewDecisions) fields.push("decision");
   if (columns.includeReplayIds) fields.push("baseReplayId", "headReplayId");
   return fields;
 };
@@ -108,6 +124,9 @@ const screenshotToJson = (
   ...(columns.includeAllDiffs
     ? { isSelected: screenshot.isSelected ?? false }
     : {}),
+  ...(columns.includeReviewDecisions
+    ? { decision: screenshot.decision ?? null }
+    : {}),
 });
 
 /** Formats a single row's fields, gated by the same columns as the header. */
@@ -124,6 +143,7 @@ export const formatDiffRow = (
   if (columns.includeDomDiffIds) fields.push(screenshot.domDiffIds ?? "");
   if (columns.includeAllDiffs)
     fields.push(String(screenshot.isSelected ?? false));
+  if (columns.includeReviewDecisions) fields.push(screenshot.decision ?? "");
   if (columns.includeReplayIds)
     fields.push(replayDiff.baseReplayId ?? "", replayDiff.headReplayId ?? "");
   return fields;

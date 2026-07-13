@@ -1,5 +1,13 @@
 # @alwaysmeticulous/client
 
+## 2.308.0
+
+### Minor Changes
+
+- [#10900](https://github.com/alwaysmeticulous/meticulous/pull/10900) [`2df15a2`](https://github.com/alwaysmeticulous/meticulous/commit/2df15a295f6cce4e60754bba7ca4efc2c9dcaa37) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent test-run-diffs --counts` now reports aggregate totals from a dedicated, server-side counts endpoint (`getTestRunDiffsSummaryCounts`) instead of counting the fetched list client-side — so it returns just the numbers rather than transferring the full diffs list. The counts are: `numReplays` (executed replay comparisons), `numDiffs` (deduplicated user-visible differences), and the decision breakdown `numApproved` / `numIgnored` / `numRejected` / `numUnreviewed` (which sum to `numDiffs`). Computed live server-side (replay diffs + `diff_decisions`), so no diffs-summary computation/poll is needed.
+
+- [#10900](https://github.com/alwaysmeticulous/meticulous/pull/10900) [`2df15a2`](https://github.com/alwaysmeticulous/meticulous/commit/2df15a295f6cce4e60754bba7ca4efc2c9dcaa37) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent test-run-diffs` can now surface PR review decisions. `--includeReviewDecisions` adds a `decision` column/field per diff (`accepted` / `rejected` / `ignored` / `unreviewed`; `unreviewed` when undecided or the run has no PR), resolved against the test run's PR at request time. `--onlyUnreviewed` returns just the differences still awaiting review — across every difference, not only the selected representative subset (it implies `--includeAllDiffs`, so each row carries the `isSelected` column to tell selected from unselected differences). For a count of what's left to review without listing them, use `--counts`, whose `numUnreviewed` (part of the decision breakdown) gives that number. Both are opt-in query params, so no diffs-summary contract version bump.
+
 ## 2.307.0
 
 ### Minor Changes

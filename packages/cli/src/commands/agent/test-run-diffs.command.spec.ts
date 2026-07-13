@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CliUserError } from "../../utils/cli-user-error";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
 
 // Make wrapHandler a passthrough so handler errors propagate directly to tests
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   resolveApiTokenWithOAuth: vi.fn(),
   getTestRun: vi.fn(),
   getTestRunDiffsSummary: vi.fn(),
+  getTestRunDiffsSummaryCounts: vi.fn(),
   ensureTestRunFinished: vi.fn(),
   assertTestRunComplete: vi.fn(),
   resolveTestRunForCommitOrThrow: vi.fn(),
@@ -24,6 +26,7 @@ vi.mock("@alwaysmeticulous/client", () => ({
   resolveApiTokenWithOAuth: mocks.resolveApiTokenWithOAuth,
   getTestRun: mocks.getTestRun,
   getTestRunDiffsSummary: mocks.getTestRunDiffsSummary,
+  getTestRunDiffsSummaryCounts: mocks.getTestRunDiffsSummaryCounts,
 }));
 
 vi.mock("@alwaysmeticulous/common", () => ({
@@ -43,7 +46,7 @@ class ProcessExitError extends Error {
   }
 }
 
-const runHandler = () =>
+const runHandler = (overrides: Record<string, unknown> = {}) =>
   (
     testRunDiffsCommand as {
       handler: (args: unknown) => Promise<void>;
@@ -57,7 +60,11 @@ const runHandler = () =>
     includeDomDiffIds: false,
     includeAllDiffs: false,
     orderByReplayDiffs: false,
+    includeReviewDecisions: false,
+    onlyUnreviewed: false,
+    counts: false,
     json: false,
+    ...overrides,
   });
 
 let logSpy: ReturnType<typeof vi.spyOn>;
@@ -191,4 +198,115 @@ describe("test-run-diffs command polling", () => {
     const stdout = logSpy.mock.calls.flat().join("\n");
     expect(stdout.split("\n")[0]).toContain("replayDiffId");
   });
+
+  it("treats --onlyUnreviewed as implying --includeAllDiffs (isSelected column + backend flag)", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [],
+    });
+
+    await runHandler({ onlyUnreviewed: true });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    // The request carries includeAllDiffs so the backend returns isSelected.
+    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledWith(
+      expect.anything(),
+      "tr-1",
+      expect.objectContaining({ includeAllDiffs: true, onlyUnreviewed: true }),
+    );
+    // ...and the TSV header includes the isSelected column.
+    const stdout = logSpy.mock.calls.flat().join("\n");
+    expect(stdout.split("\n")[0].split("\t")).toContain("isSelected");
+  });
+
+  it("prints the counts from the dedicated endpoint (no summary poll) with --counts", async () => {
+    mocks.getTestRunDiffsSummaryCounts.mockResolvedValue({
+      numReplays: 5,
+      numDiffs: 2,
+      numApproved: 1,
+      numIgnored: 0,
+      numRejected: 0,
+      numUnreviewed: 1,
+    });
+
+    await runHandler({ counts: true });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    // Counts come from the dedicated endpoint; the diffs-summary list isn't fetched.
+    expect(mocks.getTestRunDiffsSummaryCounts).toHaveBeenCalledWith(
+      expect.anything(),
+      "tr-1",
+    );
+    expect(mocks.getTestRunDiffsSummary).not.toHaveBeenCalled();
+    const stdout = logSpy.mock.calls.flat().join("\n");
+    expect(stdout).toBe(
+      [
+        "numReplays\t5",
+        "numDiffs\t2",
+        "numApproved\t1",
+        "numIgnored\t0",
+        "numRejected\t0",
+        "numUnreviewed\t1",
+      ].join("\n"),
+    );
+  });
+
+  it("prints the counts as JSON with --counts --json (still compatible)", async () => {
+    mocks.getTestRunDiffsSummaryCounts.mockResolvedValue({
+      numReplays: 5,
+      numDiffs: 2,
+      numApproved: 1,
+      numIgnored: 0,
+      numRejected: 0,
+      numUnreviewed: 1,
+    });
+
+    await runHandler({ counts: true, json: true });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    const stdout = logSpy.mock.calls.flat().join("\n");
+    expect(JSON.parse(stdout)).toEqual({
+      numReplays: 5,
+      numDiffs: 2,
+      numApproved: 1,
+      numIgnored: 0,
+      numRejected: 0,
+      numUnreviewed: 1,
+    });
+  });
+
+  it("emits nothing for --counts on an in-progress run reported without waiting", async () => {
+    // ensureTestRunFinished returns null (and logs the in-progress notice to
+    // stderr) when the run is unfinished and --dontWaitForTestRunToComplete.
+    mocks.ensureTestRunFinished.mockResolvedValue(null);
+
+    await runHandler({ counts: true, dontWaitForTestRunToComplete: true });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    // No live counts to report — emit nothing rather than a misleading row of
+    // zeros. The counts endpoint isn't hit either.
+    expect(mocks.getTestRunDiffsSummaryCounts).not.toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "includeReplayIds",
+    "includeDomDiffIds",
+    "includeAllDiffs",
+    "orderByReplayDiffs",
+    "includeReviewDecisions",
+    "onlyUnreviewed",
+  ])(
+    "rejects --counts combined with --%s before any network call",
+    async (flag) => {
+      await expect(runHandler({ counts: true, [flag]: true })).rejects.toThrow(
+        CliUserError,
+      );
+
+      // Rejected up front: neither the run nor either diffs endpoint is touched.
+      expect(mocks.createClientWithOAuth).not.toHaveBeenCalled();
+      expect(mocks.getTestRunDiffsSummaryCounts).not.toHaveBeenCalled();
+      expect(mocks.getTestRunDiffsSummary).not.toHaveBeenCalled();
+    },
+  );
 });

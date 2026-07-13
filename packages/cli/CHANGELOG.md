@@ -1,5 +1,25 @@
 # @alwaysmeticulous/cli
 
+## 2.308.0
+
+### Minor Changes
+
+- [#10900](https://github.com/alwaysmeticulous/meticulous/pull/10900) [`2df15a2`](https://github.com/alwaysmeticulous/meticulous/commit/2df15a295f6cce4e60754bba7ca4efc2c9dcaa37) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent test-run-diffs --counts` now reports aggregate totals from a dedicated, server-side counts endpoint (`getTestRunDiffsSummaryCounts`) instead of counting the fetched list client-side — so it returns just the numbers rather than transferring the full diffs list. The counts are: `numReplays` (executed replay comparisons), `numDiffs` (deduplicated user-visible differences), and the decision breakdown `numApproved` / `numIgnored` / `numRejected` / `numUnreviewed` (which sum to `numDiffs`). Computed live server-side (replay diffs + `diff_decisions`), so no diffs-summary computation/poll is needed.
+
+- [#10900](https://github.com/alwaysmeticulous/meticulous/pull/10900) [`2df15a2`](https://github.com/alwaysmeticulous/meticulous/commit/2df15a295f6cce4e60754bba7ca4efc2c9dcaa37) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent test-run-diffs` can now surface PR review decisions. `--includeReviewDecisions` adds a `decision` column/field per diff (`accepted` / `rejected` / `ignored` / `unreviewed`; `unreviewed` when undecided or the run has no PR), resolved against the test run's PR at request time. `--onlyUnreviewed` returns just the differences still awaiting review — across every difference, not only the selected representative subset (it implies `--includeAllDiffs`, so each row carries the `isSelected` column to tell selected from unselected differences). For a count of what's left to review without listing them, use `--counts`, whose `numUnreviewed` (part of the decision breakdown) gives that number. Both are opt-in query params, so no diffs-summary contract version bump.
+
+### Patch Changes
+
+- [#10945](https://github.com/alwaysmeticulous/meticulous/pull/10945) [`74afc3c`](https://github.com/alwaysmeticulous/meticulous/commit/74afc3c5c455c2a88e61e60be9ff9a11766a0ce8) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Load the native `re2` module lazily in `@alwaysmeticulous/session-filters`. Previously `re2` was imported at module load time, so it was required as soon as the CLI started (via the session-filter code path). In environments that skip native build scripts on install — e.g. `pnpm dlx` / `pnpx` under pnpm's strict build-script policy — the `re2.node` binary is never built, so the CLI crashed on startup with `Cannot find module './build/Release/re2.node'`. `re2` is now only required when a session filter is actually validated or compiled, so the CLI runs normally when session filters are not used.
+
+- Updated dependencies [[`2df15a2`](https://github.com/alwaysmeticulous/meticulous/commit/2df15a295f6cce4e60754bba7ca4efc2c9dcaa37), [`2df15a2`](https://github.com/alwaysmeticulous/meticulous/commit/2df15a295f6cce4e60754bba7ca4efc2c9dcaa37), [`74afc3c`](https://github.com/alwaysmeticulous/meticulous/commit/74afc3c5c455c2a88e61e60be9ff9a11766a0ce8)]:
+  - @alwaysmeticulous/client@2.308.0
+  - @alwaysmeticulous/session-filters@2.308.0
+  - @alwaysmeticulous/debug-workspace@2.308.0
+  - @alwaysmeticulous/downloading-helpers@2.308.0
+  - @alwaysmeticulous/remote-replay-launcher@2.308.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.308.0
+
 ## 2.307.0
 
 ### Minor Changes

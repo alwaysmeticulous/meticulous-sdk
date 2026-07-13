@@ -3,6 +3,7 @@ import type { MeticulousClient } from "../../types/client.types";
 import {
   DIFFS_SUMMARY_CLIENT_VERSION,
   getTestRunDiffsSummary,
+  getTestRunDiffsSummaryCounts,
   getTestRunJsCoverage,
   TESTRUN_JS_COVERAGE_CLIENT_VERSION,
 } from "../agent.api";
@@ -46,6 +47,8 @@ describe("getTestRunDiffsSummary", () => {
       includeDomDiffIds: true,
       includeAllDiffs: true,
       orderByReplayDiffs: true,
+      includeReviewDecisions: true,
+      onlyUnreviewed: true,
     });
 
     expect(paramsFromLastCall()).toEqual({
@@ -54,6 +57,8 @@ describe("getTestRunDiffsSummary", () => {
       includeDomDiffIds: "true",
       includeAllDiffs: "true",
       orderByReplayDiffs: "true",
+      includeReviewDecisions: "true",
+      onlyUnreviewed: "true",
     });
   });
 
@@ -83,6 +88,28 @@ describe("getTestRunDiffsSummary", () => {
     expect(paramsFromLastCall()).toEqual({
       clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
     });
+  });
+});
+
+describe("getTestRunDiffsSummaryCounts", () => {
+  it("GETs the counts endpoint and returns the data", async () => {
+    const counts = {
+      numReplays: 5,
+      numDiffs: 2,
+      numApproved: 1,
+      numIgnored: 0,
+      numRejected: 0,
+      numUnreviewed: 1,
+    };
+    const client = { get: vi.fn().mockResolvedValue({ data: counts }) };
+    const result = await getTestRunDiffsSummaryCounts(
+      client as unknown as MeticulousClient,
+      "tr-1",
+    );
+    expect(client.get).toHaveBeenCalledWith(
+      "agent/test-runs/tr-1/diffs-summary/counts",
+    );
+    expect(result).toEqual(counts);
   });
 });
 

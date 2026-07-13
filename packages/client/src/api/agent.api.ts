@@ -6,6 +6,16 @@ import type { MeticulousClient } from "../types/client.types";
 // Diffs Summary types
 // ---------------------------------------------------------------------------
 
+/**
+ * The review decision recorded for a difference on its PR. `unreviewed` means no
+ * decision (or no PR); `accepted`/`rejected`/`ignored` are the explicit verdicts.
+ */
+export type DiffDecisionState =
+  | "accepted"
+  | "rejected"
+  | "ignored"
+  | "unreviewed";
+
 export interface DiffsSummaryScreenshot {
   screenshotName: string;
   /**
@@ -25,6 +35,11 @@ export interface DiffsSummaryScreenshot {
    * already contains only selected screenshots.
    */
   isSelected?: boolean;
+  /**
+   * The review decision for this difference on its PR. Present only when
+   * `includeReviewDecisions` is set. `unreviewed` when there's no decision or no PR.
+   */
+  decision?: DiffDecisionState;
 }
 
 export interface DiffsSummaryReplayDiff {
@@ -49,12 +64,40 @@ export interface DiffsSummaryOptions {
    */
   orderByReplayDiffs?: boolean;
   /**
+   * Include the `decision` field (the PR review decision) on each screenshot.
+   * Default false. Resolved against the test run's PR at request time.
+   */
+  includeReviewDecisions?: boolean;
+  /**
+   * Return only the differences still awaiting review (decision `unreviewed`),
+   * across every difference rather than just the selected representative subset —
+   * i.e. everything a reviewer still has to act on. Default false.
+   */
+  onlyUnreviewed?: boolean;
+  /**
    * Request a fresh computation when the previous attempt failed. A normal poll
    * returns `status: "failed"` without restarting; pass this to start a clean
    * run over the failed one. Off by default. A no-op if no computation has ever
    * been triggered for this test run — that case already starts one regardless.
    */
   retrigger?: boolean;
+}
+
+/**
+ * Aggregate counts for a test run's diffs, computed live from the backend (no
+ * diffs-summary computation needed). The decision buckets partition the
+ * deduplicated differences: `numApproved + numIgnored + numRejected +
+ * numUnreviewed === numDiffs`.
+ */
+export interface DiffsSummaryCountsResponse {
+  /** Executed replay comparisons (excludes RSE-skipped / carried-forward and hidden). */
+  numReplays: number;
+  /** Deduplicated user-visible differences (one per `effectiveDiffHash`). */
+  numDiffs: number;
+  numApproved: number;
+  numIgnored: number;
+  numRejected: number;
+  numUnreviewed: number;
 }
 
 /** The terminal Temporal workflow status that produced a `failed` response. */
@@ -402,11 +445,32 @@ export const getTestRunDiffsSummary = async (
   if (options?.orderByReplayDiffs) {
     params.orderByReplayDiffs = "true";
   }
+  if (options?.includeReviewDecisions) {
+    params.includeReviewDecisions = "true";
+  }
+  if (options?.onlyUnreviewed) {
+    params.onlyUnreviewed = "true";
+  }
   if (options?.retrigger) {
     params.retrigger = "true";
   }
   const { data } = await client
     .get(`agent/test-runs/${testRunId}/diffs-summary`, { params })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+// Aggregate diff counts (replays, deduplicated differences, decision breakdown)
+// for a test run. Computed live server-side, so unlike the diffs-summary it needs
+// no polling and returns just the numbers rather than the full list.
+export const getTestRunDiffsSummaryCounts = async (
+  client: MeticulousClient,
+  testRunId: string,
+): Promise<DiffsSummaryCountsResponse> => {
+  const { data } = await client
+    .get(`agent/test-runs/${testRunId}/diffs-summary/counts`)
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
