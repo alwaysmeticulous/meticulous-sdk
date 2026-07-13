@@ -18,5 +18,6 @@ export interface DebugContext {
   testRunStatus: string | undefined;
   screenshot: string | undefined;
   meticulousSha: string | undefined;
+  baseMeticulousSha: string | undefined;
   executionSha: string | undefined;
 }

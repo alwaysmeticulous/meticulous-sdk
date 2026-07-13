@@ -71,7 +71,7 @@ const handler = async ({
     apiToken,
     enableOAuthLogin: true,
   });
-  const projectIdentifier = resolveProjectIdentifier(apiToken_);
+  const projectIdentifier = await resolveProjectIdentifier(apiToken_);
 
   let result;
   try {

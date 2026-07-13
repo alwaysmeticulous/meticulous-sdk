@@ -50,7 +50,7 @@ const handler = async ({
     enableOAuthLogin: true,
   });
 
-  const projectIdentifier = resolveProjectIdentifier(apiToken_);
+  const projectIdentifier = await resolveProjectIdentifier(apiToken_);
 
   try {
     await uploadAssetChunk({

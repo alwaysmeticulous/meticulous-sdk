@@ -56,7 +56,6 @@ const runHandler = () =>
     includeReplayIds: false,
     includeDomDiffIds: false,
     includeAllDiffs: false,
-    includeMatches: false,
     orderByReplayDiffs: false,
     json: false,
   });

@@ -1,18 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CliUserError } from "../cli-user-error";
 import {
-  getProjectIdForOAuthCaller,
   resolveProjectIdentifier,
+  resolvePinnedProjectSlug,
 } from "../resolve-project-identifier";
 
 const mocks = vi.hoisted(() => ({
-  getStoredProjectId: vi.fn(),
+  resolveDefaultProjectId: vi.fn(),
   isOAuthJwt: vi.fn(),
+  createClient: vi.fn(),
+  getProject: vi.fn(),
 }));
 
 vi.mock("@alwaysmeticulous/client", () => ({
-  getStoredProjectId: mocks.getStoredProjectId,
+  resolveDefaultProjectId: mocks.resolveDefaultProjectId,
   isOAuthJwt: mocks.isOAuthJwt,
+  createClient: mocks.createClient,
+  getProject: mocks.getProject,
+}));
+
+vi.mock("@alwaysmeticulous/common", () => ({
+  initLogger: vi.fn(),
 }));
 
 describe("resolveProjectIdentifier", () => {
@@ -20,30 +28,27 @@ describe("resolveProjectIdentifier", () => {
     vi.clearAllMocks();
   });
 
-  it("returns an empty identifier for project-scoped API tokens", () => {
+  it("returns an empty identifier for project-scoped API tokens", async () => {
     mocks.isOAuthJwt.mockReturnValue(false);
 
-    expect(resolveProjectIdentifier("prat-abc")).toEqual({});
-    expect(mocks.getStoredProjectId).not.toHaveBeenCalled();
+    expect(await resolveProjectIdentifier("prat-abc")).toEqual({});
+    expect(mocks.resolveDefaultProjectId).not.toHaveBeenCalled();
   });
 
-  it("returns the stored project id for OAuth tokens", () => {
+  it("returns the default project id for OAuth tokens", async () => {
     mocks.isOAuthJwt.mockReturnValue(true);
-    mocks.getStoredProjectId.mockReturnValue("proj-123");
+    mocks.resolveDefaultProjectId.mockResolvedValue("proj-123");
 
-    expect(resolveProjectIdentifier("jwt")).toEqual({ projectId: "proj-123" });
+    expect(await resolveProjectIdentifier("jwt")).toEqual({
+      projectId: "proj-123",
+    });
   });
 
-  it("throws a CliUserError when an OAuth caller has no project selected", () => {
+  it("throws a CliUserError when an OAuth caller has no default project", async () => {
     mocks.isOAuthJwt.mockReturnValue(true);
-    mocks.getStoredProjectId.mockReturnValue(null);
+    mocks.resolveDefaultProjectId.mockResolvedValue(null);
 
-    let caught: unknown;
-    try {
-      resolveProjectIdentifier("jwt");
-    } catch (error) {
-      caught = error;
-    }
+    const caught = await resolveProjectIdentifier("jwt").catch((e) => e);
 
     expect(caught).toBeInstanceOf(CliUserError);
     expect((caught as CliUserError).message).toContain("auth set-project");
@@ -51,29 +56,30 @@ describe("resolveProjectIdentifier", () => {
   });
 });
 
-describe("getProjectIdForOAuthCaller", () => {
+describe("resolvePinnedProjectSlug", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.createClient.mockReturnValue({});
   });
 
-  it("returns undefined for project-scoped API tokens", () => {
-    mocks.isOAuthJwt.mockReturnValue(false);
+  it("returns the organization/name slug for the token's bound project", async () => {
+    mocks.getProject.mockResolvedValue({
+      name: "My App",
+      organization: { name: "Acme" },
+    });
 
-    expect(getProjectIdForOAuthCaller("prat-abc")).toBeUndefined();
-    expect(mocks.getStoredProjectId).not.toHaveBeenCalled();
+    expect(await resolvePinnedProjectSlug("prat-abc")).toBe("Acme/My App");
   });
 
-  it("returns undefined when an OAuth caller has no project selected", () => {
-    mocks.isOAuthJwt.mockReturnValue(true);
-    mocks.getStoredProjectId.mockReturnValue(null);
+  it("returns null when the project can't be resolved", async () => {
+    mocks.getProject.mockResolvedValue(null);
 
-    expect(getProjectIdForOAuthCaller("jwt")).toBeUndefined();
+    expect(await resolvePinnedProjectSlug("prat-abc")).toBeNull();
   });
 
-  it("returns the stored project id when one is selected", () => {
-    mocks.isOAuthJwt.mockReturnValue(true);
-    mocks.getStoredProjectId.mockReturnValue("proj-123");
+  it("swallows errors and returns null", async () => {
+    mocks.getProject.mockRejectedValue(new Error("network error"));
 
-    expect(getProjectIdForOAuthCaller("jwt")).toBe("proj-123");
+    expect(await resolvePinnedProjectSlug("prat-abc")).toBeNull();
   });
 });

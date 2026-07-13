@@ -1,5 +1,36 @@
 # @alwaysmeticulous/cli
 
+## 2.307.0
+
+### Minor Changes
+
+- [#10679](https://github.com/alwaysmeticulous/meticulous/pull/10679) [`73b0b40`](https://github.com/alwaysmeticulous/meticulous/commit/73b0b401960bdd2e5f7b87aa3ac8d8f05f6f156e) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent test-run-diffs` now reports differences only, aligned with the shared difference classifier. The `--includeMatches` flag is removed (matching screenshots, known flakes, and screenshots downstream of a divergence are no longer part of the summary), and the `total` column is dropped. The `index` column is now always emitted as a global rank: a flat priority rank by default, or a replayDiff-grouped rank under `--orderByReplayDiffs`. `agent image-urls`, `agent image-files`, and `agent dom-diff` continue to work for any replay diff + `screenshotName` (including screenshots with no diff) when you need to inspect a screenshot that isn't in the summary.
+
+- [#10853](https://github.com/alwaysmeticulous/meticulous/pull/10853) [`09610cb`](https://github.com/alwaysmeticulous/meticulous/commit/09610cb51b85bc763123b537917a19e04d09aa10) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous auth set-project` now persists the selected project as a per-user setting on the backend, instead of in a local file — so it's consistent across machines and visible to the hosted MCP server, which has no access to local files. A new `meticulous auth get-project` prints the resolved project for scripting. `meticulous auth login` selects a project after logging in: an explicit `--project` (or, interactively, the picker) is persisted, a sole accessible project is auto-selected, and an existing default is respected as-is — so a returning `--non-interactive` login succeeds instead of failing for lack of a picker. `--project` on both `set-project` and `login` accepts a bare id, an `organization/name` slug, or a unique bare name (resolved server-side), not just the full slug. `meticulous auth logout` leaves the backend setting untouched (it's account state, not machine state). On the first OAuth-authenticated command after upgrading, any existing local `selected-project.json` is migrated to the backend setting once and then removed. The default can be changed but not cleared from the UI/CLI (the choice is always _which_ project, never none).
+
+  `@alwaysmeticulous/client` gains `getOAuthDefaultProject`, `setOAuthDefaultProject`, and `resolveDefaultProjectId`; it no longer exports `getStoredProjectId`, `getStoredProject`, `setStoredProject`, or `clearStoredProject` (the removed local-file-backed project storage).
+
+  `meticulous agent test-run-for-commit`, `test-run-diffs`, `js-coverage`, and `trigger-test-run` gain a `--project` flag: a one-off override for that call only (resolved flexibly — id, `organization/name` slug, or a unique bare name among your accessible projects), which never changes the stored default. When omitted, these commands now rely entirely on the backend's own project resolution (the token's project, or the stored default) rather than pre-resolving one locally.
+
+### Patch Changes
+
+- [#10848](https://github.com/alwaysmeticulous/meticulous/pull/10848) [`de3bfd0`](https://github.com/alwaysmeticulous/meticulous/commit/de3bfd04adebad975d0771cf14afe58241409993) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Clarify the `screenshotName` help text for the `agent image-urls`, `agent image-files`, and `agent dom-diff` commands: names must be copied verbatim from the `screenshotName` column of `agent test-run-diffs` for that replay diff, and `auxiliary-<eventNumber>-<sequenceNumber>-<reason>` is now documented alongside `after-event-<n>` and `end-state`.
+
+- [#10816](https://github.com/alwaysmeticulous/meticulous/pull/10816) [`16c6c2d`](https://github.com/alwaysmeticulous/meticulous/commit/16c6c2dc6252c3ebad566a384e06372ef206edfc) Thanks [@alexivanov](https://github.com/alexivanov)! - Sort accessible projects alphabetically (case-insensitive, by `organization/project` slug) in `meticulous auth set-project` and `meticulous auth list-projects` so the interactive picker, listing output, and "Available projects" error listings present projects in a predictable order regardless of API response order.
+
+- Updated dependencies [[`73b0b40`](https://github.com/alwaysmeticulous/meticulous/commit/73b0b401960bdd2e5f7b87aa3ac8d8f05f6f156e), [`de3bfd0`](https://github.com/alwaysmeticulous/meticulous/commit/de3bfd04adebad975d0771cf14afe58241409993), [`6ff100c`](https://github.com/alwaysmeticulous/meticulous/commit/6ff100c685b4c6524171062664ee836d687c6ff8), [`09610cb`](https://github.com/alwaysmeticulous/meticulous/commit/09610cb51b85bc763123b537917a19e04d09aa10), [`55d7f95`](https://github.com/alwaysmeticulous/meticulous/commit/55d7f95265d434d2d01eae40589e7307f9110492), [`6944922`](https://github.com/alwaysmeticulous/meticulous/commit/6944922494b099622db8dfbe12f93ce8cf755a9b), [`6944922`](https://github.com/alwaysmeticulous/meticulous/commit/6944922494b099622db8dfbe12f93ce8cf755a9b)]:
+  - @alwaysmeticulous/client@2.307.0
+  - @alwaysmeticulous/debug-workspace@2.307.0
+  - @alwaysmeticulous/remote-replay-launcher@2.307.0
+  - @alwaysmeticulous/api@2.307.0
+  - @alwaysmeticulous/sdk-bundles-api@2.307.0
+  - @alwaysmeticulous/downloading-helpers@2.307.0
+  - @alwaysmeticulous/common@2.301.0
+  - @alwaysmeticulous/record@2.307.0
+  - @alwaysmeticulous/session-filters@2.307.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.307.0
+
 ## 2.306.0
 
 ### Minor Changes

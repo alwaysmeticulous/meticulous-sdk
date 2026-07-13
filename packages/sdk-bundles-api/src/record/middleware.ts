@@ -6,6 +6,8 @@ import type {
   ExpiringImage,
   WebSocketConnectionData,
   EventSourceConnectionData,
+  StreamingFetchResponseData,
+  StreamingXhrResponseData,
 } from "@alwaysmeticulous/api";
 
 /**
@@ -176,6 +178,60 @@ export interface RecorderMiddleware {
   transformEventSourceConnectionData?: (
     entry: Omit<EventSourceConnectionData, "id">,
   ) => Omit<EventSourceConnectionData, "id"> | null;
+
+  /**
+   * Transforms streaming fetch response data (responses consumed progressively via the
+   * ReadableStream API, e.g. ConnectRPC/gRPC-web server-streaming) before it is sent to
+   * Meticulous's servers.
+   *
+   * Note that the chunk data is base64-encoded binary. A single chunk may end mid-way
+   * through a multi-byte character or message frame, so decode with care if transforming
+   * chunk contents.
+   *
+   * Returning null will cause the data to be dropped from the payload.
+   *
+   * Note: if your middleware defines {@link transformNetworkRequest} or
+   * {@link transformNetworkResponse} but not this transform, then streaming fetch
+   * response data will be dropped entirely, to avoid recording data that your
+   * middleware would otherwise have redacted.
+   *
+   * Please note that the chunks of a single streaming response may be split across
+   * multiple payloads.
+   *
+   * Note: we pass the StreamingFetchResponseData to your middleware without the id and
+   * harEntryOrder fields, and re-add them after you return the transformed data.
+   *
+   * See JSDoc for {@link RecorderMiddleware} before implementing.
+   */
+  transformStreamingFetchResponseData?: (
+    entry: Omit<StreamingFetchResponseData, "id" | "harEntryOrder">,
+  ) => Omit<StreamingFetchResponseData, "id" | "harEntryOrder"> | null;
+
+  /**
+   * Transforms streaming XHR response data (long-lived XHR responses consumed progressively
+   * via `responseText`, e.g. SSE-over-XHR) before it is sent to Meticulous's servers.
+   *
+   * Note that the chunk data is base64-encoded UTF-8 text. A single chunk may end mid-way
+   * through a multi-byte character, so decode with care if transforming chunk contents.
+   *
+   * Returning null will cause the data to be dropped from the payload.
+   *
+   * Note: if your middleware defines {@link transformNetworkRequest} or
+   * {@link transformNetworkResponse} but not this transform, then streaming XHR
+   * response data will be dropped entirely, to avoid recording data that your
+   * middleware would otherwise have redacted.
+   *
+   * Please note that the chunks of a single streaming response may be split across
+   * multiple payloads.
+   *
+   * Note: we pass the StreamingXhrResponseData to your middleware without the id and
+   * harEntryOrder fields, and re-add them after you return the transformed data.
+   *
+   * See JSDoc for {@link RecorderMiddleware} before implementing.
+   */
+  transformStreamingXhrResponseData?: (
+    entry: Omit<StreamingXhrResponseData, "id" | "harEntryOrder">,
+  ) => Omit<StreamingXhrResponseData, "id" | "harEntryOrder"> | null;
 
   /**
    * Defaults to true. Set to false if transformNetworkRequest only transforms the headers and not the URL or body of the request,

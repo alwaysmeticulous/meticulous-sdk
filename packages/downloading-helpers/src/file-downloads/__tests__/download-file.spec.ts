@@ -51,16 +51,42 @@ vi.mock("fs/promises", async () => {
   };
 });
 
+const listenOnEphemeralPort = (
+  server: http.Server,
+): Promise<{ url: string; close: () => Promise<void> }> =>
+  new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (address == null || typeof address === "string") {
+        reject(new Error("Expected server to bind to a TCP port"));
+        return;
+      }
+      resolve({
+        url: `http://127.0.0.1:${address.port}`,
+        close: () =>
+          new Promise((closeResolve, closeReject) => {
+            server.close((error) => {
+              if (error) {
+                closeReject(error);
+                return;
+              }
+              closeResolve();
+            });
+          }),
+      });
+    });
+  });
+
 describe("downloadFile", () => {
   it("downloads a file from a URL", async () => {
-    const server = http.createServer((req, res) => {
+    const server = http.createServer((_req, res) => {
       res.end("Hello World");
     });
+    const { url, close } = await listenOnEphemeralPort(server);
 
     try {
-      server.listen(1234);
-
-      await downloadFile("http://localhost:1234", "file.txt", {
+      await downloadFile(url, "file.txt", {
         firstDataTimeoutInMs: 1000,
         downloadCompleteTimeoutInMs: 1000,
       });
@@ -69,7 +95,7 @@ describe("downloadFile", () => {
       const fileContents = await readFile("file.txt", "utf8");
       expect(fileContents).toBe("Hello World");
     } finally {
-      server.close();
+      await close();
       if (existsSync("file.txt")) {
         await rm("file.txt");
       }
@@ -77,17 +103,16 @@ describe("downloadFile", () => {
   });
 
   it("times out on a too slow file download", async () => {
-    const server = http.createServer((req, res) => {
+    const server = http.createServer((_req, res) => {
       res.write("Helloooooo");
       setTimeout(() => {
         res.end("...  ... World.");
       }, 1000);
     });
+    const { url, close } = await listenOnEphemeralPort(server);
 
     try {
-      server.listen(1234);
-
-      await downloadFile("http://localhost:1234", "file.txt", {
+      await downloadFile(url, "file.txt", {
         firstDataTimeoutInMs: 1000,
         downloadCompleteTimeoutInMs: 1,
         maxDownloadContentRetries: 0,
@@ -98,7 +123,7 @@ describe("downloadFile", () => {
     } catch (e) {
       expect((e as Error).message).toEqual("Download timed out after 1ms");
     } finally {
-      server.close();
+      await close();
 
       if (existsSync("file.txt")) {
         await rm("file.txt");
@@ -110,7 +135,7 @@ describe("downloadFile", () => {
 
   it("retries downloading content on file", async () => {
     let attempt = 0;
-    const server = http.createServer((req, res) => {
+    const server = http.createServer((_req, res) => {
       res.write("Hello");
       if (attempt === 1) {
         res.end(" World");
@@ -121,11 +146,10 @@ describe("downloadFile", () => {
         res.end("...  ... World.");
       }, 1000);
     });
+    const { url, close } = await listenOnEphemeralPort(server);
 
     try {
-      server.listen(1234);
-
-      await downloadFile("http://localhost:1234", "file.txt", {
+      await downloadFile(url, "file.txt", {
         firstDataTimeoutInMs: 1000,
         downloadCompleteTimeoutInMs: 20,
         maxDownloadContentRetries: 1,
@@ -136,7 +160,7 @@ describe("downloadFile", () => {
       const fileContents = await readFile("file.txt", "utf8");
       expect(fileContents).toBe("Hello World");
     } finally {
-      server.close();
+      await close();
       if (existsSync("file.txt")) {
         await rm("file.txt");
       }

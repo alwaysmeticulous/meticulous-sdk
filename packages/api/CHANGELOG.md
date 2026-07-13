@@ -1,5 +1,15 @@
 # @alwaysmeticulous/api
 
+## 2.307.0
+
+### Minor Changes
+
+- [#10897](https://github.com/alwaysmeticulous/meticulous/pull/10897) [`6944922`](https://github.com/alwaysmeticulous/meticulous/commit/6944922494b099622db8dfbe12f93ce8cf755a9b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add optional `responseStartOffsetMs` to `StreamingFetchResponseData` and `StreamingXhrResponseData`, recording the time between the request being sent and the response headers being received. Replay uses this to deliver streamed chunks at the recorded time instead of anchoring them to the HAR entry time (which for streaming responses reflects the streaming detection timeout, ~5s after the response actually started).
+
+### Patch Changes
+
+- [#10666](https://github.com/alwaysmeticulous/meticulous/pull/10666) [`55d7f95`](https://github.com/alwaysmeticulous/meticulous/commit/55d7f95265d434d2d01eae40589e7307f9110492) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Re-export `ScreenshotDiffResultFlake` from the package index, so consumers no longer need to import it via the internal `/dist` path.
+
 ## 2.306.0
 
 ### Minor Changes

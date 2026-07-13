@@ -1,5 +1,20 @@
 # @alwaysmeticulous/debug-workspace
 
+## 2.307.0
+
+### Minor Changes
+
+- [#10672](https://github.com/alwaysmeticulous/meticulous/pull/10672) [`6ff100c`](https://github.com/alwaysmeticulous/meticulous/commit/6ff100c685b4c6524171062664ee836d687c6ff8) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - Surface whether a replay's build was made from an unclean (dirty) git working tree into the debug workspace context. Builds recorded as `<sha>-unclean` are now parsed via a new exported `parseMeticulousSha` helper, `DebugContext` carries the base replay's `baseMeticulousSha`, and `context.json` exposes `meticulousBuildUnclean` / `baseMeticulousBuildUnclean` (with the bare, checkout-ready `meticulousSha` / `baseMeticulousSha`) so an investigating agent can treat an unclean build as a clue when a diff or flake has no other explanation.
+
+### Patch Changes
+
+- [#10848](https://github.com/alwaysmeticulous/meticulous/pull/10848) [`de3bfd0`](https://github.com/alwaysmeticulous/meticulous/commit/de3bfd04adebad975d0771cf14afe58241409993) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Support auxiliary screenshots when generating the debug workspace. `screenshotIdentifierToBaseName` and `screenshotIdentifierToBackendName` previously returned `null` for `auxiliary` identifiers, so auxiliary screenshots were skipped at two layers when fetching DOM diffs (`skipped-unsupported`). They now derive the on-disk basename (`screenshot-auxiliary-<event>-<seq>-<reason>`, matching `getScreenshotFilename`) and the backend name (`auxiliary-<eventNumber>-<sequenceNumber>-<reason>`, matching the backend `getScreenshotName`).
+
+- Updated dependencies [[`73b0b40`](https://github.com/alwaysmeticulous/meticulous/commit/73b0b401960bdd2e5f7b87aa3ac8d8f05f6f156e), [`09610cb`](https://github.com/alwaysmeticulous/meticulous/commit/09610cb51b85bc763123b537917a19e04d09aa10)]:
+  - @alwaysmeticulous/client@2.307.0
+  - @alwaysmeticulous/downloading-helpers@2.307.0
+  - @alwaysmeticulous/common@2.301.0
+
 ## 2.306.0
 
 ### Patch Changes

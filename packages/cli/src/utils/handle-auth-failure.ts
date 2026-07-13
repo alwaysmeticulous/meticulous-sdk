@@ -50,7 +50,7 @@ export const handleAuthFailure = (error: unknown): false => {
   );
 };
 
-const extractServerMessage = (data: unknown): string | null => {
+export const extractServerMessage = (data: unknown): string | null => {
   if (!data) {
     return null;
   }

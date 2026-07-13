@@ -1,5 +1,18 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.307.0
+
+### Minor Changes
+
+- [#10897](https://github.com/alwaysmeticulous/meticulous/pull/10897) [`6944922`](https://github.com/alwaysmeticulous/meticulous/commit/6944922494b099622db8dfbe12f93ce8cf755a9b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `transformStreamingFetchResponseData` and `transformStreamingXhrResponseData` to `RecorderMiddleware`, allowing recorder middleware to redact or drop streaming fetch and streaming XHR response data before it is uploaded.
+
+  If a middleware defines `transformNetworkRequest` or `transformNetworkResponse` but not the corresponding streaming transform, streaming response data is dropped entirely rather than recorded unredacted.
+
+### Patch Changes
+
+- Updated dependencies [[`55d7f95`](https://github.com/alwaysmeticulous/meticulous/commit/55d7f95265d434d2d01eae40589e7307f9110492), [`6944922`](https://github.com/alwaysmeticulous/meticulous/commit/6944922494b099622db8dfbe12f93ce8cf755a9b)]:
+  - @alwaysmeticulous/api@2.307.0
+
 ## 2.306.0
 
 ### Patch Changes

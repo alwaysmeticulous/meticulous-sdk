@@ -11,7 +11,6 @@ import {
   getTestRun,
   getTestRunJsCoverage,
   isFetchError,
-  resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
@@ -44,6 +43,7 @@ export interface Options {
   headPlusTestRunIds: string | undefined;
   testRunIds: string | undefined;
   json: boolean;
+  project?: string | undefined;
 }
 
 // The per-file range/percentage columns, emitted (after `repoFilePath`) in this
@@ -83,6 +83,7 @@ const handler = async (options: Options): Promise<void> => {
     headPlusTestRunIds,
     testRunIds,
     json,
+    project,
   } = options;
   initLogger();
 
@@ -122,10 +123,6 @@ const handler = async (options: Options): Promise<void> => {
 
   const columns = determineColumns(options);
 
-  const apiToken_ = await resolveApiTokenWithOAuth({
-    apiToken,
-    enableOAuthLogin: true,
-  });
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,
@@ -136,7 +133,7 @@ const handler = async (options: Options): Promise<void> => {
   // it acts as a membership gate / disambiguator (see below) rather than
   // selecting test-run coverage.
   if (replayId != null) {
-    await printReplayCoverage(client, apiToken_, {
+    await printReplayCoverage(client, project, {
       testRunId,
       commitSha,
       replayId,
@@ -167,7 +164,7 @@ const handler = async (options: Options): Promise<void> => {
       rawUnionIds = [];
     } else {
       ({ testRunId: resolvedTestRunId, status } =
-        await resolveTestRunForCommitOrThrow(client, apiToken_, commitSha));
+        await resolveTestRunForCommitOrThrow(client, commitSha, project));
       rawUnionIds = parseHeadPlusTestRunIds(headPlusTestRunIds);
     }
     const printEmptyResult = (): void => {
@@ -332,20 +329,20 @@ export const parseTestRunIds = (raw: string): string[] => {
 // surfaces an actionable error if the replay itself has no coverage yet.
 const resolveTestRunIdForCommit = async (
   client: MeticulousClient,
-  apiToken: string,
   commitSha: string | undefined,
+  project: string | undefined,
 ): Promise<string> => {
   const { testRunId } = await resolveTestRunForCommitOrThrow(
     client,
-    apiToken,
     commitSha,
+    project,
   );
   return testRunId;
 };
 
 const printReplayCoverage = async (
   client: MeticulousClient,
-  apiToken: string,
+  project: string | undefined,
   {
     testRunId,
     commitSha,
@@ -369,7 +366,7 @@ const printReplayCoverage = async (
   const effectiveTestRunId =
     testRunId ??
     (commitSha != null
-      ? await resolveTestRunIdForCommit(client, apiToken, commitSha)
+      ? await resolveTestRunIdForCommit(client, commitSha, project)
       : undefined);
 
   try {
@@ -387,8 +384,8 @@ const printReplayCoverage = async (
     if (effectiveTestRunId == null && isAmbiguousTestRunError(error)) {
       const fallback = await tryResolveTestRunForCommit(
         client,
-        apiToken,
         undefined,
+        project,
       );
       // Only retry against a run that finished with a verdict — an unfinished
       // or failed one has no usable coverage.
@@ -638,6 +635,12 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       description:
         "Comma-separated test run IDs: the first is the primary run coverage is returned for, the rest are unioned in exactly like --headPlusTestRunIds. An alternative to --testRunId/--commitSha for callers that already have an ordered list of run IDs on hand. " +
         "Cannot be combined with --testRunId, --commitSha, or --headPlusTestRunIds. Same constraints as --headPlusTestRunIds apply to the additional IDs (same project, same commit as the primary). Whole-test-run coverage only.",
+    },
+    project: {
+      string: true,
+      description:
+        "Project to resolve --commitSha against (id, 'organization/name', or a bare name unique among your accessible projects). Cannot be combined with --testRunId/--testRunIds (the run already determines the project). One-off override for this call only; when omitted, uses the token's project or the default set via `auth set-project`.",
+      conflicts: ["testRunId", "testRunIds"],
     },
   },
   handler: wrapHandler(handler),

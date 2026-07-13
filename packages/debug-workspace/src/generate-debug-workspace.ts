@@ -23,6 +23,7 @@ import type { DebugContext } from "./debug.types";
 import { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
 import { fetchDomDiffs, type DomDiffMap } from "./fetch-dom-diffs";
 import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
+import { parseMeticulousSha } from "./meticulous-sha";
 import { screenshotIdentifierToFilename } from "./screenshot-identifier";
 
 interface TimelineEntry {
@@ -2623,6 +2624,9 @@ const defaultWriteContextJson = (
     }
   }
 
+  const headBuild = parseMeticulousSha(debugContext.meticulousSha);
+  const baseBuild = parseMeticulousSha(debugContext.baseMeticulousSha);
+
   const context = {
     createdAt: new Date().toISOString(),
     orgProject: debugContext.orgAndProject,
@@ -2630,6 +2634,10 @@ const defaultWriteContextJson = (
     testRunStatus: debugContext.testRunStatus,
     commitSha: debugContext.commitSha,
     baseCommitSha: debugContext.baseCommitSha,
+    meticulousSha: headBuild.sha,
+    meticulousBuildUnclean: headBuild.wasUnclean,
+    baseMeticulousSha: baseBuild.sha,
+    baseMeticulousBuildUnclean: baseBuild.wasUnclean,
     screenshot: debugContext.screenshot,
     replayDiffs: debugContext.replayDiffs.map((d) => ({
       id: d.id,

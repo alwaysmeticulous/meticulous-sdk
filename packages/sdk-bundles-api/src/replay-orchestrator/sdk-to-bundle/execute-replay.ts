@@ -113,6 +113,21 @@ export interface ReplayAndStoreResultsOptions {
    * If present, contains the result of the pre-navigation step.
    */
   preNavigationResult?: PreNavigationResult;
+
+  /**
+   * A `replays` row (and `replayCommandId`) already reserved for this
+   * session by an earlier bulk call (e.g. once per test-run chunk, before
+   * any of the chunk's sessions started running). When present, the replay
+   * skips its own `POST /replays/start` call (uses `replayCommandId`
+   * directly) and passes `preAssignedReplay.replayId` through to `POST
+   * /replays` as an idempotency key rather than letting the server mint a
+   * fresh id — turning that create into a cheap lookup against the
+   * already-inserted row instead of a new, contended INSERT.
+   */
+  preAssignedReplay?: {
+    replayId: string;
+    replayCommandId: string;
+  };
 }
 
 export interface PreNavigationResult {

@@ -1,5 +1,5 @@
 import type { TestRun } from "@alwaysmeticulous/api";
-import type { ProjectIdentifier } from "@alwaysmeticulous/client";
+import type { AgentProjectOverride } from "@alwaysmeticulous/client";
 import {
   agentTriggerTestRun,
   agentUploadGitDiffBuild,
@@ -9,7 +9,7 @@ import {
 import { logProgress } from "@alwaysmeticulous/common";
 import { uploadBufferToSignedUrl } from "./asset-upload-utils";
 
-export interface TriggerTestRunOptions extends ProjectIdentifier {
+export interface TriggerTestRunOptions extends AgentProjectOverride {
   apiToken: string | null | undefined;
   /**
    * The deployment to test, as returned by `uploadBuild`. Exactly one of
@@ -76,7 +76,7 @@ export const triggerTestRun = async ({
   baseSha,
   gitDiffOutput,
   sessionIds,
-  projectId,
+  project,
 }: TriggerTestRunOptions): Promise<TriggerTestRunResult> => {
   if (Boolean(deploymentId) === Boolean(commitSha)) {
     throw new Error(
@@ -90,7 +90,7 @@ export const triggerTestRun = async ({
     );
   }
   const client = createClient({ apiToken });
-  const projectIdentifier = projectId ? { projectId } : {};
+  const projectOverride = project ? { project } : {};
 
   // Pins the deployment the diff was attached to, so the trigger call below
   // reuses that exact row instead of re-resolving `commitSha` a second time —
@@ -106,7 +106,7 @@ export const triggerTestRun = async ({
         ...identifierParams(deploymentId, commitSha),
         baseSha,
         size: buffer.length,
-        ...projectIdentifier,
+        ...projectOverride,
       });
     await uploadBufferToSignedUrl(uploadUrl, buffer, {
       contentType: "text/plain",
@@ -122,7 +122,7 @@ export const triggerTestRun = async ({
     // silently dropping an empty one: "provided" means "pin exactly these", so
     // an empty list is a caller mistake the backend rejects with a clear 400.
     ...(sessionIds != null ? { sessionIds } : {}),
-    ...projectIdentifier,
+    ...projectOverride,
   });
 
   const testRun = result.testRun ?? null;

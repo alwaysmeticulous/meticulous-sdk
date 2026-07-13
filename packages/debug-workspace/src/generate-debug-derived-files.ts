@@ -382,7 +382,8 @@ const getKindSpecificDetail = (entry: TimelineEntry): string => {
       return `${event}${url ? ` url=${url}` : ""}`;
     }
 
-    case "streamingFetch": {
+    case "streamingFetch":
+    case "streamingXhr": {
       const event = data.event ?? "?";
       const url = data.url ? truncate(String(data.url), 80) : "";
       const method = data.method ?? "";

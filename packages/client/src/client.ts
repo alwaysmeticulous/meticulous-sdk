@@ -6,14 +6,11 @@ import {
 } from "@alwaysmeticulous/common";
 import type log from "loglevel";
 import type { RequestInit } from "undici";
-import { getOAuthProjects } from "./api/oauth.api";
 import { getApiToken, getAuthToken } from "./api-token.utils";
 import { performOAuthLogin } from "./oauth/oauth-login";
-import {
-  getStoredOAuthTokens,
-  getStoredProjectId,
-  setStoredProject,
-} from "./oauth/oauth-token-store";
+import { getStoredOAuthTokens } from "./oauth/oauth-token-store";
+import { isOAuthJwt } from "./oauth/oauth-utils";
+import { migrateLegacySelectedProjectIfPresent } from "./oauth/legacy-project-migration";
 import type {
   MeticulousClient,
   RequestConfig,
@@ -229,6 +226,17 @@ export const buildClient = (
       }
       return makeRequestWithToken<T>(url, requestOptions, config) as Promise<R>;
     },
+
+    delete: <T = any, R = Response<T>>(
+      url: string,
+      config?: RequestConfig<any>,
+    ): Promise<R> => {
+      return makeRequestWithToken<T>(
+        url,
+        { method: "DELETE" },
+        config,
+      ) as Promise<R>;
+    },
   };
 };
 
@@ -272,7 +280,6 @@ export const resolveApiTokenWithOAuth = async (
   if (!apiToken && isInteractive) {
     const tokens = await performOAuthLogin();
     apiToken = tokens.accessToken;
-    await maybeAutoSelectProject(apiToken, logger, options.appInfo);
   }
 
   if (!apiToken) {
@@ -284,35 +291,22 @@ export const resolveApiTokenWithOAuth = async (
     return process.exit(1);
   }
 
-  return apiToken;
-};
+  // Best-effort, one-time upgrade of the pre-backend local
+  // `selected-project.json` into the backend-persisted default. This is the
+  // shared OAuth token-init path (used by `createClientWithOAuth` and directly
+  // by `upload-build`), so every OAuth-authenticated command triggers the
+  // migration — not just the few that still resolve the default client-side.
+  // Gated on an OAuth token and the file's presence, so it's an instant no-op
+  // once migrated.
+  if (isOAuthJwt(apiToken)) {
+    await migrateLegacySelectedProjectIfPresent(
+      apiToken,
+      logger,
+      options.appInfo,
+    );
+  }
 
-/**
- * After a fresh OAuth login, if the user has access to exactly one project
- * and none has been stored yet, picks it automatically. Best-effort: any
- * failure (network, missing backend endpoint, etc.) is logged at debug and
- * swallowed — the user can always run `meticulous auth set-project` later.
- */
-const maybeAutoSelectProject = async (
-  apiToken: string,
-  logger: log.Logger,
-  appInfo?: string,
-): Promise<void> => {
-  if (getStoredProjectId()) {
-    return;
-  }
-  try {
-    const client = buildClient(apiToken, logger, appInfo);
-    const projects = await getOAuthProjects(client);
-    if (projects.length === 1) {
-      const only = projects[0];
-      const projectSlug = `${only.organization.name}/${only.name}`;
-      setStoredProject({ project: projectSlug, projectId: only.id });
-      logger.info(`Selected project: ${projectSlug}`);
-    }
-  } catch (error) {
-    logger.debug(`Skipping auto-project selection after login: ${error}`);
-  }
+  return apiToken;
 };
 
 export const createClientWithOAuth = async (

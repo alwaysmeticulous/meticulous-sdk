@@ -2,6 +2,7 @@ import type { ReplayableEvent } from "../bidirectional/replayable-event";
 import type { EventSourceConnectionData } from "./event-source-data";
 import type { HarLog, HarResponse } from "./har-log";
 import type { StreamingFetchResponseData } from "./streaming-fetch-data";
+import type { StreamingXhrResponseData } from "./streaming-xhr-data";
 import type { WebSocketConnectionData } from "./websocket-data";
 
 export interface SessionData {
@@ -58,6 +59,11 @@ export interface SessionData {
    * Only present on recordings since ~Feb 2026.
    */
   streamingFetchData?: StreamingFetchResponseData[];
+
+  /**
+   * Only present on recordings since ~Jul 2026.
+   */
+  streamingXhrData?: StreamingXhrResponseData[];
 
   cookies: Cookie[];
   urlHistory: UrlHistoryEvent[];

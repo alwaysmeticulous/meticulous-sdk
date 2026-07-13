@@ -39,6 +39,10 @@ export {
   OAuthProject,
   OAuthProjectsResponse,
   getOAuthProjects,
+  OAuthDefaultProjectResponse,
+  getOAuthDefaultProject,
+  setOAuthDefaultProject,
+  clearOAuthDefaultProject,
 } from "./api/oauth.api";
 export {
   GetRepoUrlOptions,
@@ -105,12 +109,10 @@ export { performOAuthLogin } from "./oauth/oauth-login";
 export { getValidAccessToken } from "./oauth/oauth-refresh";
 export {
   clearOAuthTokens,
-  clearStoredProject,
   getStoredOAuthTokens,
-  getStoredProject,
-  getStoredProjectId,
-  setStoredProject,
 } from "./oauth/oauth-token-store";
+export { resolveDefaultProjectId } from "./oauth/default-project";
+export { migrateLegacySelectedProjectIfPresent } from "./oauth/legacy-project-migration";
 export { getJwtClaims, isJwtExpired, isOAuthJwt } from "./oauth/oauth-utils";
 export type { MeticulousClient } from "./types/client.types";
 export { getProxyAgent } from "./utils/get-proxy-agent";
@@ -126,6 +128,7 @@ export {
 } from "./utils/retry-transient-upload-errors";
 export {
   ProjectIdentifier,
+  AgentProjectOverride,
   RequestAssetUploadParams,
   RequestAssetUploadResponse,
   requestAssetUpload,

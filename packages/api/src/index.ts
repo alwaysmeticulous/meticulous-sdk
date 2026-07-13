@@ -7,6 +7,7 @@ export {
   ScreenshotDiffResult,
   ScreenshotDiffResultCompared,
   ScreenshotDiffResultDifferentSize,
+  ScreenshotDiffResultFlake,
   ScreenshotDiffResultMissingBase,
   ScreenshotDiffResultMissingBaseAndHead,
   ScreenshotDiffResultMissingHead,
@@ -98,6 +99,10 @@ export {
   StreamingFetchChunk,
   StreamingFetchResponseData,
 } from "./sdk-bundle-api/sdk-to-bundle/streaming-fetch-data";
+export {
+  StreamingXhrChunk,
+  StreamingXhrResponseData,
+} from "./sdk-bundle-api/sdk-to-bundle/streaming-xhr-data";
 export { Replay } from "./replay/replay.types";
 export {
   ScreenshotAssertionsOptions,

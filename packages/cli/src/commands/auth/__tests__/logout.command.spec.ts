@@ -19,13 +19,11 @@ vi.mock("@alwaysmeticulous/common", () => ({
 
 const mocks = vi.hoisted(() => ({
   clearOAuthTokens: vi.fn(),
-  clearStoredProject: vi.fn(),
   readFileBasedToken: vi.fn(),
 }));
 
 vi.mock("@alwaysmeticulous/client", () => ({
   clearOAuthTokens: mocks.clearOAuthTokens,
-  clearStoredProject: mocks.clearStoredProject,
   readFileBasedToken: mocks.readFileBasedToken,
 }));
 
@@ -51,11 +49,10 @@ describe("logout command", () => {
     }
   });
 
-  it("clears OAuth tokens and the selected project", async () => {
+  it("clears OAuth tokens", async () => {
     await runHandler();
 
     expect(mocks.clearOAuthTokens).toHaveBeenCalled();
-    expect(mocks.clearStoredProject).toHaveBeenCalled();
     expect(warnedText()).toBe("");
   });
 

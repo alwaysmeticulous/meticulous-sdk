@@ -16,16 +16,16 @@ export const agentCommand: CommandModule = {
     "Agent commands for retrieving data from and interacting with Meticulous",
   builder: (yargs) =>
     yargs
-      .command(uploadBuildCommand)
-      .command(triggerTestRunCommand)
-      .command(testRunDiffsCommand)
-      .command(domDiffCommand)
       .command(testRunForCommitCommand)
-      .command(jsCoverageCommand)
-      .command(jsCoverageDiffCommand)
+      .command(testRunDiffsCommand)
       .command(imageFilesCommand)
       .command(imageUrlsCommand)
+      .command(domDiffCommand)
       .command(timelineDiffCommand)
+      .command(jsCoverageCommand)
+      .command(jsCoverageDiffCommand)
+      .command(uploadBuildCommand)
+      .command(triggerTestRunCommand)
       .option("verbose", {
         boolean: true,
         default: false,

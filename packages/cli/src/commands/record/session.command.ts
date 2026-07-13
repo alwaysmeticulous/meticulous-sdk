@@ -66,7 +66,7 @@ const handler = async ({
     apiToken,
     enableOAuthLogin: true,
   });
-  const { projectId } = resolveProjectIdentifier(apiToken_);
+  const { projectId } = await resolveProjectIdentifier(apiToken_);
   // Use the OAuth-aware client so the short-lived access token is refreshed per
   // request via the stored refresh token — recording sessions outlive the ~5min
   // access-token lifetime, and a baked-in token starts returning 403s otherwise.

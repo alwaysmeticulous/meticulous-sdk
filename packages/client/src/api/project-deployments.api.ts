@@ -131,6 +131,52 @@ const projectIdQuery = (
 ): { params: { projectId: string } } | undefined =>
   projectId ? { params: { projectId } } : undefined;
 
+/**
+ * Identifies (or overrides) a project for OAuth callers of the `agent/*`
+ * namespace. Unlike {@link ProjectIdentifier}, `project` is resolved flexibly
+ * server-side — a bare id, an `"organization/name"` slug, or a bare name that
+ * uniquely identifies one of the caller's accessible projects (see
+ * `ProjectService.resolveForUserByIdentifier`) — and falls back to the
+ * caller's stored default project when omitted, so it's rarely needed.
+ * Omitted entirely when authenticating with a project-scoped API token (the
+ * token already pins the project).
+ */
+export interface AgentProjectOverride {
+  project?: string | undefined;
+  /**
+   * These methods used to accept `projectId`; it's now `project` (resolved
+   * flexibly server-side). Typed as `never` so TypeScript callers passing the
+   * old field get a compile error rather than silently falling back to the
+   * default project; JS callers are caught at runtime by `rejectLegacyProjectId`.
+   */
+  projectId?: never;
+}
+
+/**
+ * Fails loudly if a caller passes the removed `projectId` field. Silently
+ * ignoring it would fall back to the stored default project — potentially the
+ * wrong project — which is exactly the surprise we want to avoid.
+ */
+const rejectLegacyProjectId = (body: object): void => {
+  if ("projectId" in body) {
+    throw new Error(
+      "`projectId` is not supported by the agent SDK methods — pass `project` " +
+        "instead (a project id, `organization/name` slug, or unique project " +
+        "name), or omit it to use your default project.",
+    );
+  }
+};
+
+/**
+ * Builds a `RequestConfig` that puts `project` (if present) into the query
+ * string. Every `agent/*` endpoint reads it from `@Query("project")` on the
+ * backend, not from the body.
+ */
+const projectQuery = (
+  project: string | undefined,
+): { params: { project: string } } | undefined =>
+  project ? { params: { project } } : undefined;
+
 export const requestAssetUpload = async ({
   client,
   projectId,
@@ -448,7 +494,7 @@ export interface AgentUploadBuildResponse {
   deploymentId: string;
 }
 
-export interface AgentUploadAssetBuildParams extends ProjectIdentifier {
+export interface AgentUploadAssetBuildParams extends AgentProjectOverride {
   uploadId: string;
   commitSha: string;
   rewrites: AssetUploadMetadata["rewrites"];
@@ -458,19 +504,20 @@ export interface AgentUploadAssetBuildParams extends ProjectIdentifier {
 
 export const agentUploadAssetBuild = async ({
   client,
-  projectId,
+  project,
   ...body
 }: AgentUploadAssetBuildParams & {
   client: MeticulousClient;
 }): Promise<AgentUploadBuildResponse> => {
+  rejectLegacyProjectId(body);
   const { data } = await client.post<
     typeof body,
     { data: AgentUploadBuildResponse }
-  >("agent/upload-build/asset", body, projectIdQuery(projectId));
+  >("agent/upload-build/asset", body, projectQuery(project));
   return data;
 };
 
-export interface AgentUploadContainerBuildParams extends ProjectIdentifier {
+export interface AgentUploadContainerBuildParams extends AgentProjectOverride {
   uploadId: string;
   commitSha: string;
   containerPort?: number;
@@ -480,19 +527,20 @@ export interface AgentUploadContainerBuildParams extends ProjectIdentifier {
 
 export const agentUploadContainerBuild = async ({
   client,
-  projectId,
+  project,
   ...body
 }: AgentUploadContainerBuildParams & {
   client: MeticulousClient;
 }): Promise<AgentUploadBuildResponse> => {
+  rejectLegacyProjectId(body);
   const { data } = await client.post<
     typeof body,
     { data: AgentUploadBuildResponse }
-  >("agent/upload-build/container", body, projectIdQuery(projectId));
+  >("agent/upload-build/container", body, projectQuery(project));
   return data;
 };
 
-export interface AgentUploadGitDiffBuildParams extends ProjectIdentifier {
+export interface AgentUploadGitDiffBuildParams extends AgentProjectOverride {
   /**
    * The deployment to attach the diff to, as returned by `uploadBuild`.
    * Exactly one of `deploymentId` or `commitSha` must be provided.
@@ -524,19 +572,20 @@ export interface AgentUploadGitDiffBuildResponse extends RequestGitDiffUploadRes
 
 export const agentUploadGitDiffBuild = async ({
   client,
-  projectId,
+  project,
   ...body
 }: AgentUploadGitDiffBuildParams & {
   client: MeticulousClient;
 }): Promise<AgentUploadGitDiffBuildResponse> => {
+  rejectLegacyProjectId(body);
   const { data } = await client.post<
     typeof body,
     { data: AgentUploadGitDiffBuildResponse }
-  >("agent/upload-build/git-diff", body, projectIdQuery(projectId));
+  >("agent/upload-build/git-diff", body, projectQuery(project));
   return data;
 };
 
-export interface AgentTriggerTestRunParams extends ProjectIdentifier {
+export interface AgentTriggerTestRunParams extends AgentProjectOverride {
   /**
    * The deployment to run, as returned by `uploadBuild`. Exactly one of
    * `deploymentId` or `commitSha` must be provided.
@@ -565,14 +614,15 @@ export interface AgentTriggerTestRunResponse {
 
 export const agentTriggerTestRun = async ({
   client,
-  projectId,
+  project,
   ...body
 }: AgentTriggerTestRunParams & {
   client: MeticulousClient;
 }): Promise<AgentTriggerTestRunResponse> => {
+  rejectLegacyProjectId(body);
   const { data } = await client.post<
     typeof body,
     { data: AgentTriggerTestRunResponse }
-  >("agent/trigger-test-run", body, projectIdQuery(projectId));
+  >("agent/trigger-test-run", body, projectQuery(project));
   return data;
 };

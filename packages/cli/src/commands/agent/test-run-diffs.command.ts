@@ -3,7 +3,6 @@ import {
   createClientWithOAuth,
   getTestRun,
   getTestRunDiffsSummary,
-  resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { logNotice, logProgress } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
@@ -20,7 +19,6 @@ import {
   buildDiffsSummaryJson,
   flattenDiffRows,
   formatDiffRow,
-  resolveIncludeAllDiffs,
 } from "./test-run-diffs.utils";
 
 interface Options {
@@ -31,9 +29,9 @@ interface Options {
   includeReplayIds: boolean;
   includeDomDiffIds: boolean;
   includeAllDiffs: boolean;
-  includeMatches: boolean;
   orderByReplayDiffs: boolean;
   json: boolean;
+  project?: string | undefined;
 }
 
 const sleep = (ms: number): Promise<void> =>
@@ -50,18 +48,14 @@ const handler = async ({
   includeReplayIds,
   includeDomDiffIds,
   includeAllDiffs,
-  includeMatches,
   orderByReplayDiffs,
   json,
+  project,
 }: Options): Promise<void> => {
   if (testRunId != null && commitSha != null) {
     throw new CliUserError("Pass either --testRunId or --commitSha, not both.");
   }
 
-  const apiToken_ = await resolveApiTokenWithOAuth({
-    apiToken,
-    enableOAuthLogin: true,
-  });
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,
@@ -77,23 +71,17 @@ const handler = async ({
   } else {
     const run = await resolveTestRunForCommitOrThrow(
       client,
-      apiToken_,
       commitSha,
+      project,
     );
     resolvedTestRunId = run.testRunId;
     status = run.status;
   }
 
-  // --includeMatches implies --includeAllDiffs (matches are never part of the
-  // selected subset, so they only make sense alongside the full set). Use the
-  // effective value for both the request and the isSelected column. Computed
-  // up-front so the header can be emitted even on the in-progress short-circuit.
-  const allDiffs = resolveIncludeAllDiffs({ includeAllDiffs, includeMatches });
-
   const columns = {
     orderByReplayDiffs,
     includeDomDiffIds,
-    includeAllDiffs: allDiffs,
+    includeAllDiffs,
     includeReplayIds,
   };
 
@@ -131,8 +119,7 @@ const handler = async ({
   const diffsSummaryOptions = {
     includeReplayIds,
     includeDomDiffIds,
-    includeAllDiffs: allDiffs,
-    includeMatches,
+    includeAllDiffs,
     orderByReplayDiffs,
   };
 
@@ -195,9 +182,9 @@ const handler = async ({
   }
 
   const data = response.data ?? [];
-  // The backend sets `index` to the priority rank by default, or the
-  // within-replay position (with `total`) when orderByReplayDiffs is set.
-  const rows = flattenDiffRows(data, orderByReplayDiffs);
+  // The backend sets `index` to a global rank — a flat priority rank by default,
+  // or a replayDiff-grouped rank under orderByReplayDiffs; rows sort by it.
+  const rows = flattenDiffRows(data);
 
   if (json) {
     printJson(buildDiffsSummaryJson(data, columns));
@@ -228,7 +215,7 @@ const handler = async ({
 export const testRunDiffsCommand: CommandModule<unknown, Options> = {
   command: "test-run-diffs",
   describe:
-    "List replay diffs for a test run. Outputs TSV, one row per screenshot: replayDiffId, screenshotName, outcome, mismatch (plus optional columns depending on flags), or the same data with --json (nested by replay diff under --orderByReplayDiffs).",
+    "List replay diffs for a test run. Outputs TSV, one row per screenshot diff: replayDiffId, screenshotName, index, outcome, mismatch (plus optional columns depending on flags), or the same data with --json (nested by replay diff under --orderByReplayDiffs).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token" },
     testRunId: {
@@ -264,17 +251,17 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
         "Return every diff instead of only the selected representative subset; adds an isSelected column",
       default: false,
     },
-    includeMatches: {
-      boolean: true,
-      description:
-        "Include matching screenshots (matches, known flakes), not just differences. Implies --includeAllDiffs.",
-      default: false,
-    },
     orderByReplayDiffs: {
       boolean: true,
       description:
-        "Order rows by replay diff then event index (instead of by selection priority) and include the index/total columns",
+        "With --json, group screenshots by replay diff instead of a flat list; the index is then a replayDiff-grouped rank rather than a flat priority rank",
       default: false,
+    },
+    project: {
+      string: true,
+      description:
+        "Project to resolve --commitSha against (id, 'organization/name', or a bare name unique among your accessible projects). Cannot be combined with --testRunId (the run already determines the project). One-off override for this call only; when omitted, uses the token's project or the default set via `auth set-project`.",
+      conflicts: "testRunId",
     },
   },
   handler: wrapHandler(handler),

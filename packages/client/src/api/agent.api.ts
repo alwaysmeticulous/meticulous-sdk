@@ -9,12 +9,11 @@ import type { MeticulousClient } from "../types/client.types";
 export interface DiffsSummaryScreenshot {
   screenshotName: string;
   /**
-   * By default the global priority rank (selection importance). With
-   * `orderByReplayDiffs`, the screenshot's position within its replay diff.
+   * Global 1-based rank across all differences. By default the selection-priority
+   * order; with `orderByReplayDiffs` it's re-sequenced so a replay diff's
+   * differences are consecutive.
    */
   index: number;
-  /** Total screenshots in the replay diff. Present only with `orderByReplayDiffs`. */
-  total?: number;
   outcome: string;
   userVisibleOutcome: string;
   mismatchFraction: number | null;
@@ -44,11 +43,9 @@ export interface DiffsSummaryOptions {
    * When true, `isSelected` marks which screenshots are in the selected subset.
    */
   includeAllDiffs?: boolean;
-  /** Include matching screenshots (matches, known flakes), not just differences. */
-  includeMatches?: boolean;
   /**
-   * Order by replay diff then event index: `index` becomes the within-replay
-   * position and `total` is included. Otherwise `index` is the priority rank.
+   * Assign the global `index` in replay-diff-grouped order (a replay diff's
+   * differences get consecutive indices) instead of priority order.
    */
   orderByReplayDiffs?: boolean;
   /**
@@ -368,17 +365,17 @@ export type AgentFeature = "debug-replay-diff" | "debug-replay";
 export const trackAgentFeatureUsage = async ({
   client,
   feature,
-  projectId,
+  project,
 }: {
   client: MeticulousClient;
   feature: AgentFeature;
-  projectId: string | undefined;
+  project: string | undefined;
 }): Promise<void> => {
   await client
     .post(
       "agent/telemetry",
       { feature },
-      projectId ? { params: { projectId } } : undefined,
+      project ? { params: { project } } : undefined,
     )
     .catch(() => {
       // Telemetry is best-effort — never fail the command
@@ -401,9 +398,6 @@ export const getTestRunDiffsSummary = async (
   }
   if (options?.includeAllDiffs) {
     params.includeAllDiffs = "true";
-  }
-  if (options?.includeMatches) {
-    params.includeMatches = "true";
   }
   if (options?.orderByReplayDiffs) {
     params.orderByReplayDiffs = "true";
@@ -446,16 +440,18 @@ export const getScreenshotDomDiff = async (
 
 // Resolves the latest test run for a commit so the current checkout can be
 // mapped to a test run (e.g. before requesting js-coverage). Returns
-// `{ testRunId: null }` when the project has no matching run. The project comes
-// from the token; OAuth user tokens must pass `projectId`.
+// `{ testRunId: null }` when the project has no matching run. The project
+// comes from the token; OAuth user tokens may pass `project` to override
+// which project this call targets, falling back to the caller's stored
+// default project when omitted.
 export const getTestRunForCommit = async (
   client: MeticulousClient,
   commitSha: string,
-  options?: { projectId?: string | undefined },
+  options?: { project?: string | undefined },
 ): Promise<TestRunForCommitResponse> => {
   const params: Record<string, string> = { commitSha };
-  if (options?.projectId != null) {
-    params.projectId = options.projectId;
+  if (options?.project != null) {
+    params.project = options.project;
   }
   const { data } = await client
     .get("agent/test-runs", { params })

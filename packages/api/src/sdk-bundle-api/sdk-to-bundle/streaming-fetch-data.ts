@@ -25,4 +25,15 @@ export interface StreamingFetchResponseData {
   chunks: StreamingFetchChunk[];
   /** Whether the stream completed normally (true) or was aborted/errored (false) */
   completed: boolean;
+  /**
+   * Milliseconds between the request being sent and the response headers being
+   * received. Chunk offsetMs values are relative to this moment, so replay uses
+   * it to start delivering chunks at the recorded time. The HAR entry's own
+   * timing can't be used for this: for a streaming response it reflects the
+   * streaming detection timeout, not when the response started.
+   *
+   * Only present on recordings since ~Jul 2026; replay of older recordings
+   * falls back to the HAR entry timing.
+   */
+  responseStartOffsetMs?: number;
 }

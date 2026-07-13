@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   createClientWithOAuth: vi.fn(),
   getWhoami: vi.fn(),
-  getStoredProject: vi.fn(),
+  getOAuthDefaultProject: vi.fn(),
   getProject: vi.fn(),
   logNotice: vi.fn(),
 }));
@@ -44,7 +44,7 @@ vi.mock("@alwaysmeticulous/client", () => ({
   createClient: mocks.createClient,
   createClientWithOAuth: mocks.createClientWithOAuth,
   getWhoami: mocks.getWhoami,
-  getStoredProject: mocks.getStoredProject,
+  getOAuthDefaultProject: mocks.getOAuthDefaultProject,
   getProject: mocks.getProject,
 }));
 
@@ -79,7 +79,7 @@ describe("whoami command", () => {
     mocks.createClient.mockReturnValue({});
     mocks.createClientWithOAuth.mockResolvedValue({});
     mocks.getWhoami.mockResolvedValue(FAKE_WHOAMI);
-    mocks.getStoredProject.mockReturnValue(null);
+    mocks.getOAuthDefaultProject.mockResolvedValue({ projectId: null });
     mocks.getProject.mockResolvedValue(null);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
@@ -128,7 +128,11 @@ describe("whoami command", () => {
     });
 
     it("prints the selected project when one is stored", async () => {
-      mocks.getStoredProject.mockReturnValue("Acme/my-project");
+      mocks.getOAuthDefaultProject.mockResolvedValue({
+        projectId: "proj-1",
+        name: "my-project",
+        organization: { id: "org-1", name: "Acme" },
+      });
 
       await runHandler();
 
@@ -136,7 +140,7 @@ describe("whoami command", () => {
     });
 
     it("prompts (on stderr) to set a project when none is selected", async () => {
-      mocks.getStoredProject.mockReturnValue(null);
+      mocks.getOAuthDefaultProject.mockResolvedValue({ projectId: null });
 
       await runHandler();
 
@@ -144,7 +148,11 @@ describe("whoami command", () => {
     });
 
     it("emits structured JSON with --json", async () => {
-      mocks.getStoredProject.mockReturnValue("Acme/my-project");
+      mocks.getOAuthDefaultProject.mockResolvedValue({
+        projectId: "proj-1",
+        name: "my-project",
+        organization: { id: "org-1", name: "Acme" },
+      });
       mocks.getWhoami.mockResolvedValue({
         ...FAKE_WHOAMI,
         organizations: [{ id: "org-1", name: "Acme", role: "owner" }],

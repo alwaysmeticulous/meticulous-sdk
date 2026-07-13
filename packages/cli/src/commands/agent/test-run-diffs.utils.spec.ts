@@ -9,7 +9,6 @@ import {
   type DiffsSummaryColumns,
   flattenDiffRows,
   formatDiffRow,
-  resolveIncludeAllDiffs,
 } from "./test-run-diffs.utils";
 
 const screenshot = (
@@ -36,26 +35,6 @@ const NO_COLUMNS: DiffsSummaryColumns = {
   includeReplayIds: false,
 };
 
-describe("resolveIncludeAllDiffs", () => {
-  test("is false when neither flag is set", () => {
-    expect(
-      resolveIncludeAllDiffs({ includeAllDiffs: false, includeMatches: false }),
-    ).toBe(false);
-  });
-
-  test("--includeAllDiffs alone enables it", () => {
-    expect(
-      resolveIncludeAllDiffs({ includeAllDiffs: true, includeMatches: false }),
-    ).toBe(true);
-  });
-
-  test("--includeMatches implies --includeAllDiffs", () => {
-    expect(
-      resolveIncludeAllDiffs({ includeAllDiffs: false, includeMatches: true }),
-    ).toBe(true);
-  });
-});
-
 describe("flattenDiffRows", () => {
   const data: DiffsSummaryReplayDiff[] = [
     replayDiff({
@@ -71,43 +50,22 @@ describe("flattenDiffRows", () => {
     }),
   ];
 
-  test("sorts by priority index across replay diffs by default", () => {
-    const rows = flattenDiffRows(data, false);
+  test("sorts by the global index across replay diffs", () => {
+    const rows = flattenDiffRows(data);
     expect(rows.map((r) => r.screenshot.screenshotName)).toEqual([
       "b",
       "c",
       "a",
-    ]);
-  });
-
-  test("preserves replay-diff grouping order with orderByReplayDiffs", () => {
-    const rows = flattenDiffRows(data, true);
-    expect(rows.map((r) => r.screenshot.screenshotName)).toEqual([
-      "a",
-      "b",
-      "c",
     ]);
   });
 });
 
 describe("buildDiffsSummaryHeader", () => {
-  test("emits only the base columns by default", () => {
+  test("emits the base columns (including index) by default", () => {
     expect(buildDiffsSummaryHeader(NO_COLUMNS)).toEqual([
       "replayDiffId",
       "screenshotName",
-      "outcome",
-      "mismatch",
-    ]);
-  });
-
-  test("adds index/total only with orderByReplayDiffs", () => {
-    expect(
-      buildDiffsSummaryHeader({ ...NO_COLUMNS, orderByReplayDiffs: true }),
-    ).toEqual([
-      "replayDiffId",
-      "screenshotName",
       "index",
-      "total",
       "outcome",
       "mismatch",
     ]);
@@ -125,7 +83,6 @@ describe("buildDiffsSummaryHeader", () => {
       "replayDiffId",
       "screenshotName",
       "index",
-      "total",
       "outcome",
       "mismatch",
       "domDiffIds",
@@ -146,7 +103,6 @@ describe("formatDiffRow", () => {
     screenshot: screenshot({
       screenshotName: "home",
       index: 3,
-      total: 7,
       outcome: "different",
       mismatchFraction: 0.12345678,
       domDiffIds: "d1,d2",
@@ -158,6 +114,7 @@ describe("formatDiffRow", () => {
     expect(formatDiffRow(row, NO_COLUMNS)).toEqual([
       "rd-1",
       "home",
+      3,
       "different",
       "0.12346",
     ]);
@@ -171,6 +128,7 @@ describe("formatDiffRow", () => {
     expect(formatDiffRow(withNull, NO_COLUMNS)).toEqual([
       "rd-1",
       "home",
+      3,
       "different",
       "",
     ]);
@@ -188,7 +146,6 @@ describe("formatDiffRow", () => {
       "rd-1",
       "home",
       3,
-      7,
       "different",
       "0.12346",
       "d1,d2",
@@ -210,18 +167,7 @@ describe("formatDiffRow", () => {
         includeAllDiffs: true,
         includeReplayIds: true,
       }),
-    ).toEqual([
-      "rd-1",
-      "home",
-      1,
-      "",
-      "different",
-      "0.10000",
-      "",
-      "false",
-      "",
-      "",
-    ]);
+    ).toEqual(["rd-1", "home", 1, "different", "0.10000", "", "false", "", ""]);
   });
 });
 
@@ -235,7 +181,6 @@ describe("buildDiffsSummaryJson", () => {
         screenshot({
           screenshotName: "a",
           index: 2,
-          total: 2,
           mismatchFraction: 0.5,
           domDiffIds: "d1",
           isSelected: true,
@@ -243,7 +188,6 @@ describe("buildDiffsSummaryJson", () => {
         screenshot({
           screenshotName: "b",
           index: 0,
-          total: 2,
           mismatchFraction: null,
           isSelected: false,
         }),
@@ -255,30 +199,33 @@ describe("buildDiffsSummaryJson", () => {
     }),
   ];
 
-  test("flat: one object per screenshot in priority order, base columns only", () => {
+  test("flat: one object per screenshot in index order, base columns only", () => {
     expect(buildDiffsSummaryJson(data, NO_COLUMNS)).toEqual([
       {
         replayDiffId: "rd-1",
         screenshotName: "b",
+        index: 0,
         outcome: "different",
         mismatch: null,
       },
       {
         replayDiffId: "rd-2",
         screenshotName: "c",
+        index: 1,
         outcome: "different",
         mismatch: 0.1,
       },
       {
         replayDiffId: "rd-1",
         screenshotName: "a",
+        index: 2,
         outcome: "different",
         mismatch: 0.5,
       },
     ]);
   });
 
-  test("flat: gated columns are appended without index/total", () => {
+  test("flat: gated columns are appended after the base columns", () => {
     expect(
       buildDiffsSummaryJson(data, {
         orderByReplayDiffs: false,
@@ -289,6 +236,7 @@ describe("buildDiffsSummaryJson", () => {
     ).toEqual({
       replayDiffId: "rd-1",
       screenshotName: "b",
+      index: 0,
       outcome: "different",
       mismatch: null,
       domDiffIds: null,
@@ -315,7 +263,6 @@ describe("buildDiffsSummaryJson", () => {
           {
             screenshotName: "a",
             index: 2,
-            total: 2,
             outcome: "different",
             mismatch: 0.5,
             domDiffIds: "d1",
@@ -324,7 +271,6 @@ describe("buildDiffsSummaryJson", () => {
           {
             screenshotName: "b",
             index: 0,
-            total: 2,
             outcome: "different",
             mismatch: null,
             domDiffIds: null,
@@ -340,7 +286,6 @@ describe("buildDiffsSummaryJson", () => {
           {
             screenshotName: "c",
             index: 1,
-            total: null,
             outcome: "different",
             mismatch: 0.1,
             domDiffIds: null,
@@ -351,7 +296,7 @@ describe("buildDiffsSummaryJson", () => {
     ]);
   });
 
-  test("nested: base columns include index/total but omit gated columns", () => {
+  test("nested: base columns only when gated columns are off", () => {
     expect(
       buildDiffsSummaryJson(data, {
         ...NO_COLUMNS,
@@ -363,14 +308,12 @@ describe("buildDiffsSummaryJson", () => {
         {
           screenshotName: "a",
           index: 2,
-          total: 2,
           outcome: "different",
           mismatch: 0.5,
         },
         {
           screenshotName: "b",
           index: 0,
-          total: 2,
           outcome: "different",
           mismatch: null,
         },

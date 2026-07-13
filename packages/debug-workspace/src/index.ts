@@ -1,5 +1,10 @@
 export type { DebugContext, ReplayDiffInfo } from "./debug.types";
 export {
+  parseMeticulousSha,
+  UNCLEAN_SHA_SUFFIX,
+  type ParsedMeticulousSha,
+} from "./meticulous-sha";
+export {
   DEBUG_DATA_DIRECTORY,
   DEBUG_SESSIONS_DIR_NAME,
   getDebugSessionsDir,

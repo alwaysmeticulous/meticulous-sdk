@@ -24,8 +24,6 @@ vi.mock("../api-token.utils", () => ({
 
 vi.mock("../oauth/oauth-token-store", () => ({
   getStoredOAuthTokens: mocks.getStoredOAuthTokens,
-  getStoredProjectId: vi.fn().mockReturnValue("project-id"),
-  setStoredProject: vi.fn(),
 }));
 
 const okResponse = () => ({

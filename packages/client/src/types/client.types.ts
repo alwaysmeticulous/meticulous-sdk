@@ -30,4 +30,9 @@ export interface MeticulousClient {
     data?: T,
     config?: RequestConfig<any>,
   ): Promise<R>;
+
+  delete<T = any, R = Response<T>>(
+    url: string,
+    config?: RequestConfig<any>,
+  ): Promise<R>;
 }

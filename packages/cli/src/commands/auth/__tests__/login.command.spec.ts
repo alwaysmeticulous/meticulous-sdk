@@ -14,12 +14,10 @@ const loggerMock = {
 };
 
 const mocks = vi.hoisted(() => ({
-  clearStoredProject: vi.fn(),
   createClient: vi.fn(),
-  getStoredProject: vi.fn(),
   isInteractiveContext: vi.fn(),
   performOAuthLogin: vi.fn(),
-  selectAndStoreProject: vi.fn(),
+  selectProjectOnLogin: vi.fn(),
   logNotice: vi.fn(),
 }));
 
@@ -29,15 +27,13 @@ vi.mock("@alwaysmeticulous/common", () => ({
 }));
 
 vi.mock("@alwaysmeticulous/client", () => ({
-  clearStoredProject: mocks.clearStoredProject,
   createClient: mocks.createClient,
-  getStoredProject: mocks.getStoredProject,
   isInteractiveContext: mocks.isInteractiveContext,
   performOAuthLogin: mocks.performOAuthLogin,
 }));
 
 vi.mock("../../../utils/select-project", () => ({
-  selectAndStoreProject: mocks.selectAndStoreProject,
+  selectProjectOnLogin: mocks.selectProjectOnLogin,
 }));
 
 const runHandler = (
@@ -49,9 +45,8 @@ describe("login command", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createClient.mockReturnValue({});
-    mocks.getStoredProject.mockReturnValue(null);
     mocks.performOAuthLogin.mockResolvedValue({ accessToken: "fresh-jwt" });
-    mocks.selectAndStoreProject.mockResolvedValue("Org/App");
+    mocks.selectProjectOnLogin.mockResolvedValue(undefined);
   });
 
   it("throws a CliUserError in a non-interactive context and does not log in", async () => {
@@ -59,7 +54,6 @@ describe("login command", () => {
 
     await expect(runHandler()).rejects.toBeInstanceOf(CliUserError);
     expect(mocks.performOAuthLogin).not.toHaveBeenCalled();
-    expect(mocks.clearStoredProject).not.toHaveBeenCalled();
   });
 
   it("with --non-interactive, bypasses the TTY guard and runs headlessly", async () => {
@@ -70,8 +64,8 @@ describe("login command", () => {
     expect(mocks.performOAuthLogin).toHaveBeenCalledWith({
       openBrowserAutomatically: false,
     });
-    expect(mocks.selectAndStoreProject).toHaveBeenCalledWith(
-      expect.objectContaining({ allowInteractivePrompt: false }),
+    expect(mocks.selectProjectOnLogin).toHaveBeenCalledWith(
+      expect.objectContaining({ interactive: false }),
     );
   });
 
@@ -83,26 +77,14 @@ describe("login command", () => {
     expect(mocks.performOAuthLogin).toHaveBeenCalledWith({
       openBrowserAutomatically: false,
     });
-    expect(mocks.selectAndStoreProject).toHaveBeenCalledWith(
-      expect.objectContaining({ allowInteractivePrompt: false }),
-    );
-  });
-
-  it("passes the previously-selected project as a fallback for headless selection", async () => {
-    mocks.isInteractiveContext.mockReturnValue(false);
-    mocks.getStoredProject.mockReturnValue("Org/Previous");
-    mocks.selectAndStoreProject.mockResolvedValue("Org/Previous");
-
-    await runHandler({ nonInteractive: true });
-
-    expect(mocks.selectAndStoreProject).toHaveBeenCalledWith(
-      expect.objectContaining({ fallbackToProject: "Org/Previous" }),
+    expect(mocks.selectProjectOnLogin).toHaveBeenCalledWith(
+      expect.objectContaining({ interactive: false }),
     );
   });
 
   it("propagates the error and skips the hint when no project could be selected", async () => {
     mocks.isInteractiveContext.mockReturnValue(false);
-    mocks.selectAndStoreProject.mockRejectedValue(
+    mocks.selectProjectOnLogin.mockRejectedValue(
       new CliUserError("no project selected", 1, "warn"),
     );
 
@@ -114,7 +96,7 @@ describe("login command", () => {
     );
   });
 
-  it("shows the change-project hint when a project was selected", async () => {
+  it("shows the change-project hint when selection succeeds", async () => {
     mocks.isInteractiveContext.mockReturnValue(true);
 
     await runHandler();
@@ -124,18 +106,14 @@ describe("login command", () => {
     );
   });
 
-  it("logs in first, then clears the stale project and selects one", async () => {
+  it("logs in, then builds a client from the fresh token and selects a project", async () => {
     mocks.isInteractiveContext.mockReturnValue(true);
 
     await runHandler();
 
-    // The stale project is cleared only after a successful login, never before.
-    expect(mocks.performOAuthLogin.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.clearStoredProject.mock.invocationCallOrder[0],
-    );
     expect(mocks.createClient).toHaveBeenCalledWith({ apiToken: "fresh-jwt" });
-    expect(mocks.selectAndStoreProject).toHaveBeenCalledWith(
-      expect.objectContaining({ project: undefined }),
+    expect(mocks.selectProjectOnLogin).toHaveBeenCalledWith(
+      expect.objectContaining({ project: undefined, interactive: true }),
     );
   });
 
@@ -144,8 +122,7 @@ describe("login command", () => {
     mocks.performOAuthLogin.mockRejectedValue(new Error("login cancelled"));
 
     await expect(runHandler()).rejects.toThrow("login cancelled");
-    expect(mocks.clearStoredProject).not.toHaveBeenCalled();
-    expect(mocks.selectAndStoreProject).not.toHaveBeenCalled();
+    expect(mocks.selectProjectOnLogin).not.toHaveBeenCalled();
   });
 
   it("passes an explicit --project through to selection", async () => {
@@ -153,7 +130,7 @@ describe("login command", () => {
 
     await runHandler({ project: "Org/App" });
 
-    expect(mocks.selectAndStoreProject).toHaveBeenCalledWith(
+    expect(mocks.selectProjectOnLogin).toHaveBeenCalledWith(
       expect.objectContaining({ project: "Org/App" }),
     );
   });

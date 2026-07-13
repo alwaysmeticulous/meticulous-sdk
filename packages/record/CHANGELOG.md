@@ -1,5 +1,13 @@
 # @alwaysmeticulous/record
 
+## 2.307.0
+
+### Patch Changes
+
+- Updated dependencies [[`55d7f95`](https://github.com/alwaysmeticulous/meticulous/commit/55d7f95265d434d2d01eae40589e7307f9110492), [`6944922`](https://github.com/alwaysmeticulous/meticulous/commit/6944922494b099622db8dfbe12f93ce8cf755a9b)]:
+  - @alwaysmeticulous/api@2.307.0
+  - @alwaysmeticulous/common@2.301.0
+
 ## 2.306.0
 
 ### Patch Changes

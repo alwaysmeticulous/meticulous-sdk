@@ -61,7 +61,8 @@ export const imageUrlsCommand: CommandModule<unknown, Options> = {
     },
     screenshotName: {
       string: true,
-      description: 'Screenshot name (e.g. "after-event-5" or "end-state")',
+      description:
+        'Screenshot name, exactly as listed in the screenshotName column of `agent test-run-diffs` for this replay diff (e.g. "after-event-5", "end-state", or "auxiliary-291-0-exit_animation")',
       demandOption: true,
     },
   },

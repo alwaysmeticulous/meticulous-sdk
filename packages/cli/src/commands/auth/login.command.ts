@@ -1,7 +1,5 @@
 import {
-  clearStoredProject,
   createClient,
-  getStoredProject,
   isInteractiveContext,
   performOAuthLogin,
 } from "@alwaysmeticulous/client";
@@ -9,7 +7,7 @@ import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
-import { selectAndStoreProject } from "../../utils/select-project";
+import { selectProjectOnLogin } from "../../utils/select-project";
 
 interface Options {
   project?: string;
@@ -56,36 +54,20 @@ export const loginCommand: CommandModule<unknown, Options> = {
 
     // Force a fresh browser login. Don't clear anything beforehand: if the flow
     // is cancelled, times out, or token exchange fails, the existing session
-    // and selected project must survive. A successful login overwrites the
+    // and default project must survive. A successful login overwrites the
     // stored OAuth tokens anyway.
     const tokens = await performOAuthLogin({
       openBrowserAutomatically: interactive,
     });
 
-    // Logged in fresh (possibly as a different account), so drop any
-    // previously-selected project before re-selecting — keeping it would leave
-    // a stale selection the new user may not be able to access if the selection
-    // step below is interrupted. Remember it first so we can restore it below
-    // when it's still valid and selection would otherwise pick nothing.
-    const previousProject = getStoredProject();
-    clearStoredProject();
-
     const client = createClient({ apiToken: tokens.accessToken });
 
-    // Pick a project for the freshly logged-in user: an explicit `--project`
-    // wins, otherwise auto-select when there is only one. Only prompt when
-    // running interactively — a non-interactive login must not block on the
-    // interactive picker. When the picker is skipped, fall back to the
-    // previously-selected project if it's still accessible.
-    // Resolves a project or throws: a non-interactive login with several
-    // accessible projects and no `--project`/fallback fails with guidance
-    // rather than leaving nothing selected.
-    await selectAndStoreProject({
-      client,
-      project,
-      allowInteractivePrompt: interactive,
-      fallbackToProject: previousProject ?? undefined,
-    });
+    // Pick a project for the freshly logged-in user. An explicit `--project`
+    // is persisted; an existing server-side default is respected as-is; a sole
+    // accessible project is auto-selected and persisted; and a multi-project
+    // account with no default is prompted interactively (or, when headless,
+    // pointed at `auth set-project`). See `selectProjectOnLogin`.
+    await selectProjectOnLogin({ client, project, interactive });
 
     logNotice(
       "You can change the selected project at any time with `meticulous auth set-project`.",

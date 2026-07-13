@@ -1,8 +1,6 @@
 import {
-  createClient,
   createClientWithOAuth,
-  getProject,
-  getStoredProject,
+  getOAuthDefaultProject,
   getWhoami,
   isOAuthJwt,
   resolveApiTokenWithOAuth,
@@ -12,6 +10,8 @@ import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { handleAuthFailure } from "../../utils/handle-auth-failure";
+import { resolvePinnedProjectSlug } from "../../utils/resolve-project-identifier";
+import { formatProjectSlug } from "../../utils/select-project";
 
 interface Options {
   json: boolean;
@@ -45,7 +45,7 @@ export const whoamiCommand: CommandModule<unknown, Options> = {
       const tokenSource = process.env["METICULOUS_API_TOKEN"]
         ? "METICULOUS_API_TOKEN environment variable"
         : "~/.meticulous/config.json";
-      const pinnedProject = await resolvePinnedProject(apiToken);
+      const pinnedProject = await resolvePinnedProjectSlug(apiToken);
 
       if (json) {
         printJson({
@@ -77,7 +77,10 @@ export const whoamiCommand: CommandModule<unknown, Options> = {
     try {
       const { email, firstName, lastName, isAdmin, organizations } =
         await getWhoami(client);
-      const selectedProject = getStoredProject();
+      const defaultProject = await getOAuthDefaultProject(client);
+      const selectedProject = defaultProject.projectId
+        ? formatProjectSlug(defaultProject)
+        : null;
 
       if (json) {
         printJson({
@@ -112,7 +115,7 @@ export const whoamiCommand: CommandModule<unknown, Options> = {
       // still surfaces.
       if (!selectedProject) {
         logNotice(
-          "No project selected. Run `meticulous auth set-project` to choose one.",
+          "No default project set. Run `meticulous auth set-project` to choose one.",
         );
       }
     } catch (error) {
@@ -120,23 +123,4 @@ export const whoamiCommand: CommandModule<unknown, Options> = {
       throw error;
     }
   }),
-};
-
-/**
- * Resolves the single project a project-scoped API token is bound to, via the
- * `token-info` endpoint. Best-effort: any failure (network, older backend
- * without the endpoint, etc.) resolves to `null` so `whoami` never fails just
- * because it could not name the pinned project.
- */
-const resolvePinnedProject = async (
-  apiToken: string,
-): Promise<string | null> => {
-  try {
-    const client = createClient({ apiToken });
-    const project = await getProject(client);
-    return project ? `${project.organization.name}/${project.name}` : null;
-  } catch {
-    // Ignore — the project name is informational only.
-    return null;
-  }
 };

@@ -1,8 +1,4 @@
-import {
-  clearOAuthTokens,
-  clearStoredProject,
-  readFileBasedToken,
-} from "@alwaysmeticulous/client";
+import { clearOAuthTokens, readFileBasedToken } from "@alwaysmeticulous/client";
 import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type { Logger } from "loglevel";
 import type { CommandModule } from "yargs";
@@ -10,11 +6,13 @@ import { wrapHandler } from "../../command-utils/sentry.utils";
 
 export const logoutCommand: CommandModule = {
   command: "logout",
-  describe: "Clear stored OAuth tokens and selected project",
+  describe: "Clear stored OAuth tokens",
   handler: wrapHandler(() => {
     const logger = initLogger();
     clearOAuthTokens();
-    clearStoredProject();
+    // The default project is a server-side, per-user setting (not local
+    // machine state), so logging out here deliberately leaves it — it's
+    // still there the next time this account logs back in, anywhere.
     logNotice("Logged out successfully.");
 
     warnAboutRemainingCredentials(logger);

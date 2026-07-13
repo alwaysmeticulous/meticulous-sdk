@@ -13,7 +13,6 @@ import {
   logProgress,
 } from "@alwaysmeticulous/common";
 import { CliUserError } from "./cli-user-error";
-import { resolveProjectIdentifier } from "./resolve-project-identifier";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -120,13 +119,17 @@ export const assertTestRunComplete = (
  * explicit `commitSha`, or the local checkout's HEAD when omitted), throwing a
  * `CliUserError` when the commit can't be determined or no run matches it.
  *
+ * `project` is a one-off override (resolved flexibly server-side); when
+ * omitted, project-scoped tokens use their own project and OAuth tokens fall
+ * back to the caller's stored default (`meticulous auth set-project`).
+ *
  * Logs the resolved commit (see {@link logResolvedCommitSha}) and the test run
  * id (under `--verbose`).
  */
 export const resolveTestRunForCommitOrThrow = async (
   client: MeticulousClient,
-  apiToken: string,
   commitSha: string | undefined,
+  project?: string,
 ): Promise<ResolvedTestRun> => {
   const sha = await getCommitSha(commitSha);
   if (!sha) {
@@ -136,9 +139,8 @@ export const resolveTestRunForCommitOrThrow = async (
   }
   await logResolvedCommitSha(commitSha, sha);
 
-  const { projectId } = resolveProjectIdentifier(apiToken);
   const { testRunId, status } = await getTestRunForCommit(client, sha, {
-    projectId,
+    project,
   });
   if (testRunId == null || status == null) {
     throw new CliUserError(`No test run found for commit ${sha}.`);
@@ -154,17 +156,16 @@ export const resolveTestRunForCommitOrThrow = async (
  */
 export const tryResolveTestRunForCommit = async (
   client: MeticulousClient,
-  apiToken: string,
   commitSha: string | undefined,
+  project?: string,
 ): Promise<ResolvedTestRun | null> => {
   try {
     const sha = await getCommitSha(commitSha);
     if (!sha) {
       return null;
     }
-    const { projectId } = resolveProjectIdentifier(apiToken);
     const { testRunId, status } = await getTestRunForCommit(client, sha, {
-      projectId,
+      project,
     });
     return testRunId != null && status != null ? { testRunId, status } : null;
   } catch (error) {

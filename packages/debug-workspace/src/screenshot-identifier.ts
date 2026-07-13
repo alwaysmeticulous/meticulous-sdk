@@ -3,6 +3,11 @@ export interface ScreenshotIdentifier {
   eventNumber?: number;
   logicVersion?: number | null;
   variant?: string | null;
+
+  // Auxiliary-only fields.
+  sequenceNumber?: number;
+  reason?: string;
+  endState?: boolean;
 }
 
 /**
@@ -27,6 +32,20 @@ export const screenshotIdentifierToBaseName = (
       : `screenshot-after-event-${eventIndexStr}-v${identifier.logicVersion}${variantPortion}`;
   }
 
+  if (
+    identifier.type === "auxiliary" &&
+    identifier.eventNumber != null &&
+    identifier.sequenceNumber != null &&
+    identifier.reason != null
+  ) {
+    const eventIndexStr = identifier.eventNumber.toString().padStart(5, "0");
+    const sequenceStr = identifier.sequenceNumber.toString().padStart(5, "0");
+    const endStatePortion = identifier.endState ? "end-" : "";
+    const versionPortion =
+      identifier.logicVersion == null ? "" : `-v${identifier.logicVersion}`;
+    return `screenshot-auxiliary-${eventIndexStr}-${endStatePortion}${sequenceStr}-${identifier.reason}${versionPortion}${variantPortion}`;
+  }
+
   return null;
 };
 
@@ -40,8 +59,9 @@ export const screenshotIdentifierToFilename = (
 /**
  * Name accepted by the backend's replay-diff screenshot endpoints — differs
  * from the on-disk basename: no zero-padding, no `logicVersion` suffix, and
- * `end-state` instead of `final-state`. Returns `null` for redacted variants
- * (backend naming unverified) and unknown types.
+ * `end-state` instead of `final-state`. Must match the backend's
+ * `getScreenshotName`. Returns `null` for redacted variants (backend naming
+ * unverified) and unknown types.
  */
 export const screenshotIdentifierToBackendName = (
   identifier: ScreenshotIdentifier,
@@ -54,6 +74,14 @@ export const screenshotIdentifierToBackendName = (
   }
   if (identifier.type === "after-event" && identifier.eventNumber != null) {
     return `after-event-${identifier.eventNumber}`;
+  }
+  if (
+    identifier.type === "auxiliary" &&
+    identifier.eventNumber != null &&
+    identifier.sequenceNumber != null &&
+    identifier.reason != null
+  ) {
+    return `auxiliary-${identifier.eventNumber}-${identifier.sequenceNumber}-${identifier.reason}`;
   }
   return null;
 };

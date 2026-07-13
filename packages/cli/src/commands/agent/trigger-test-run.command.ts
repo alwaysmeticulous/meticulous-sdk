@@ -13,7 +13,6 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
-import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 import { awaitTestRunCompletion } from "../../utils/resolve-test-run-from-commit";
 import {
   resolveComparisonOptions,
@@ -30,6 +29,7 @@ interface Options {
   dontWaitForTestRunToComplete: boolean;
   json: boolean;
   dryRun?: boolean;
+  project?: string | undefined;
 }
 
 /**
@@ -90,6 +90,7 @@ const handler = async ({
   dontWaitForTestRunToComplete,
   json,
   dryRun,
+  project,
 }: Options): Promise<void> => {
   if (deploymentId && commitSha_) {
     throw new CliUserError(
@@ -196,7 +197,6 @@ const handler = async ({
     apiToken,
     enableOAuthLogin: true,
   });
-  const projectIdentifier = resolveProjectIdentifier(apiToken_);
 
   logProgress(`Triggering test run for ${deploymentDescriptor}...`);
 
@@ -208,7 +208,7 @@ const handler = async ({
       baseSha,
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
       ...(hasPinnedSessionIds ? { sessionIds } : {}),
-      ...projectIdentifier,
+      ...(project ? { project } : {}),
     });
     testRunId = testRun?.id ?? null;
 
@@ -311,6 +311,11 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
       default: false,
       description:
         "Print what would be triggered, without triggering a test run.",
+    },
+    project: {
+      string: true,
+      description:
+        "Project to trigger against (id, 'organization/name', or a bare name unique among your accessible projects). One-off override for this call only; when omitted, uses the token's project or the default set via `auth set-project`.",
     },
   },
   handler: wrapHandler(handler),

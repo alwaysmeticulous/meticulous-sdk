@@ -49,7 +49,7 @@ const handler = async ({
     apiToken: apiToken ?? null,
     enableOAuthLogin: true,
   });
-  const { projectId } = resolveProjectIdentifier(apiToken_);
+  const { projectId } = await resolveProjectIdentifier(apiToken_);
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,

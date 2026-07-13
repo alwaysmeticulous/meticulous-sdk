@@ -29,6 +29,7 @@ const baseDebugContext = (
   testRunStatus: undefined,
   screenshot: undefined,
   meticulousSha: undefined,
+  baseMeticulousSha: undefined,
   executionSha: undefined,
   ...overrides,
 });

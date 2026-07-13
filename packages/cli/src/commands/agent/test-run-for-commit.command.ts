@@ -1,14 +1,12 @@
 import {
   createClientWithOAuth,
   getTestRunForCommit,
-  resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { getCommitSha, logNotice, logProgress } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
-import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 import {
   awaitTestRunCompletion,
   isTestRunInProgress,
@@ -20,6 +18,7 @@ interface Options {
   commitSha: string | undefined;
   dontWaitForTestRunToComplete: boolean;
   json: boolean;
+  project?: string | undefined;
 }
 
 const handler = async ({
@@ -27,6 +26,7 @@ const handler = async ({
   commitSha,
   dontWaitForTestRunToComplete,
   json,
+  project,
 }: Options): Promise<void> => {
   // Default to the current checkout's HEAD so the command can be run with no
   // arguments to auto-infer the test run for the working tree.
@@ -41,20 +41,16 @@ const handler = async ({
   // test-run-diffs.
   await logResolvedCommitSha(commitSha, resolvedCommitSha);
 
-  const apiToken_ = await resolveApiTokenWithOAuth({
-    apiToken,
-    enableOAuthLogin: true,
-  });
-  // Project-scoped tokens pin the project (resolves to `{}`); OAuth tokens use
-  // the project chosen via `meticulous auth set-project`.
-  const { projectId } = resolveProjectIdentifier(apiToken_);
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,
   });
 
+  // `project` is a one-off override (resolved flexibly server-side); when
+  // omitted, project-scoped tokens use their own project and OAuth tokens
+  // fall back to the caller's stored default (`meticulous auth set-project`).
   const result = await getTestRunForCommit(client, resolvedCommitSha, {
-    projectId,
+    project,
   });
 
   if (result.testRunId == null) {
@@ -112,6 +108,11 @@ export const testRunForCommitCommand: CommandModule<unknown, Options> = {
       default: false,
       description:
         "Return the latest run immediately instead of the default of blocking until it finishes; an unfinished run is then reported as not complete.",
+    },
+    project: {
+      string: true,
+      description:
+        "Project to look up (id, 'organization/name', or a bare name unique among your accessible projects). One-off override for this call only; when omitted, uses the token's project or the default set via `auth set-project`.",
     },
   },
   handler: wrapHandler(handler),

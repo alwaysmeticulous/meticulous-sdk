@@ -1,9 +1,9 @@
 import type { CommandModule } from "yargs";
+import { getProjectCommand } from "./get-project.command";
 import { listProjectsCommand } from "./list-projects.command";
 import { loginCommand } from "./login.command";
 import { logoutCommand } from "./logout.command";
 import { setProjectCommand } from "./set-project.command";
-import { unsetProjectCommand } from "./unset-project.command";
 import { whoamiCommand } from "./whoami.command";
 
 export const authCommand: CommandModule = {
@@ -14,8 +14,8 @@ export const authCommand: CommandModule = {
       .command(loginCommand)
       .command(whoamiCommand)
       .command(logoutCommand)
+      .command(getProjectCommand)
       .command(setProjectCommand)
-      .command(unsetProjectCommand)
       .command(listProjectsCommand)
       .demandCommand()
       .help(),

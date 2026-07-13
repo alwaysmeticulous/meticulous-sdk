@@ -43,10 +43,10 @@ describe("agent project-deployment client helpers", () => {
       expect(result).toEqual({ deploymentId: "dep-1" });
     });
 
-    it("passes projectId through as a query param for OAuth callers", async () => {
+    it("passes project through as a query param for OAuth callers", async () => {
       await agentUploadAssetBuild({
         client: asClient(),
-        projectId: "proj-1",
+        project: "proj-1",
         uploadId: "upload-1",
         commitSha: "sha-1",
         rewrites: [],
@@ -61,7 +61,7 @@ describe("agent project-deployment client helpers", () => {
           rewrites: [],
           archiveType: "tar.d",
         },
-        { params: { projectId: "proj-1" } },
+        { params: { project: "proj-1" } },
       );
     });
   });

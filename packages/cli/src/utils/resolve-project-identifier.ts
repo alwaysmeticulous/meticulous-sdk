@@ -1,4 +1,10 @@
-import { getStoredProjectId, isOAuthJwt } from "@alwaysmeticulous/client";
+import { initLogger } from "@alwaysmeticulous/common";
+import {
+  createClient,
+  getProject,
+  isOAuthJwt,
+  resolveDefaultProjectId,
+} from "@alwaysmeticulous/client";
 import { CliUserError } from "./cli-user-error";
 
 /**
@@ -6,24 +12,30 @@ import { CliUserError } from "./cli-user-error";
  * resolved API token.
  *
  * - OAuth tokens are user-scoped (not project-scoped), so they require a
- *   stored project id (set via `meticulous auth set-project`).
+ *   default project — set via `meticulous auth set-project` or the web app's
+ *   user settings, resolved from the backend (not a local file: it needs to
+ *   be consistent across machines and visible to the hosted MCP server).
  * - Project-scoped API tokens already pin the project, so no extra
  *   identifier is needed.
  *
- * Throws `CliUserError` when an OAuth caller has no project selected. The
+ * Throws `CliUserError` when an OAuth caller has no default project. The
  * top-level `wrapHandler` catches it and exits non-zero with the message.
  */
-export const resolveProjectIdentifier = (
+export const resolveProjectIdentifier = async (
   apiToken: string,
-): { projectId?: string } => {
+): Promise<{ projectId?: string }> => {
   if (!isOAuthJwt(apiToken)) {
     return {};
   }
 
-  const projectId = getStoredProjectId();
+  const logger = initLogger();
+  // The legacy `selected-project.json` migration runs in the shared OAuth
+  // token-init path (`resolveApiTokenWithOAuth`), so by the time we resolve the
+  // default here it has already been migrated if it was present.
+  const projectId = await resolveDefaultProjectId(apiToken, logger);
   if (!projectId) {
     throw new CliUserError(
-      "No project selected. Run `meticulous auth set-project` to choose " +
+      "No default project set. Run `meticulous auth set-project` to choose " +
         "one before running OAuth-authenticated commands.",
     );
   }
@@ -31,17 +43,20 @@ export const resolveProjectIdentifier = (
 };
 
 /**
- * Best-effort lookup of the stored projectId for OAuth callers. Returns
- * `undefined` for project-scoped API tokens (the token already pins the
- * project) and for OAuth tokens with no stored project. Use this for calls
- * where the project context is useful but not strictly required — e.g. agent
- * telemetry — and a missing project should not abort the command.
+ * Resolves the single project a project-scoped API token is bound to, via the
+ * `token-info` endpoint, as an `"organization/name"` slug. Best-effort: any
+ * failure (network, older backend without the endpoint, etc.) resolves to
+ * `null` rather than throwing — used for informational display (`whoami`,
+ * `get-project`), where a missing project name shouldn't fail the command.
  */
-export const getProjectIdForOAuthCaller = (
+export const resolvePinnedProjectSlug = async (
   apiToken: string,
-): string | undefined => {
-  if (!isOAuthJwt(apiToken)) {
-    return undefined;
+): Promise<string | null> => {
+  try {
+    const client = createClient({ apiToken });
+    const project = await getProject(client);
+    return project ? `${project.organization.name}/${project.name}` : null;
+  } catch {
+    return null;
   }
-  return getStoredProjectId() ?? undefined;
 };

@@ -45,7 +45,6 @@ describe("getTestRunDiffsSummary", () => {
       includeReplayIds: true,
       includeDomDiffIds: true,
       includeAllDiffs: true,
-      includeMatches: true,
       orderByReplayDiffs: true,
     });
 
@@ -54,7 +53,6 @@ describe("getTestRunDiffsSummary", () => {
       includeReplayIds: "true",
       includeDomDiffIds: "true",
       includeAllDiffs: "true",
-      includeMatches: "true",
       orderByReplayDiffs: "true",
     });
   });

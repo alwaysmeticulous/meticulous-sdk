@@ -91,7 +91,7 @@ export const triggerTestRun = async (
     apiToken,
     enableOAuthLogin: true,
   });
-  const projectIdentifier = resolveProjectIdentifier(apiToken_);
+  const projectIdentifier = await resolveProjectIdentifier(apiToken_);
 
   const testRunId =
     mode === "container"

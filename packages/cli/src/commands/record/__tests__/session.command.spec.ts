@@ -66,7 +66,9 @@ describe("record session command", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.resolveApiTokenWithOAuth.mockResolvedValue("oauth-token");
-    mocks.resolveProjectIdentifier.mockReturnValue({ projectId: "project-id" });
+    mocks.resolveProjectIdentifier.mockResolvedValue({
+      projectId: "project-id",
+    });
     mocks.createClientWithOAuth.mockResolvedValue({});
     mocks.getProject.mockResolvedValue({
       recordingToken: "recording-token",

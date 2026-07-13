@@ -102,7 +102,9 @@ const uploadContainerBuild = async ({
     ...(containerHealthCheckEndpoint != null
       ? { containerHealthCheckEndpoint }
       : {}),
-    ...(projectId ? { projectId } : {}),
+    // `agentUploadContainerBuild` (agent namespace) takes the flexible
+    // `project` override, unlike the project-deployment calls above.
+    ...(projectId ? { project: projectId } : {}),
   });
 };
 
@@ -162,6 +164,8 @@ const uploadAssetBuild = async ({
     rewrites: rewrites ?? [],
     archiveType,
     ...(multipartUploadInfo ? { multipartUploadInfo } : {}),
-    ...(projectId ? { projectId } : {}),
+    // `agentUploadAssetBuild` (agent namespace) takes the flexible `project`
+    // override, unlike the project-deployment calls above.
+    ...(projectId ? { project: projectId } : {}),
   });
 };
