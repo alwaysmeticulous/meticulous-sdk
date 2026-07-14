@@ -19,9 +19,9 @@ export type ParseSessionFilterResult =
  * ```
  *
  * A session is replayed if its start URL matches at least one of the regexes.
- * Regexes use the RE2 syntax (https://github.com/google/re2/wiki/Syntax) and
- * are validated here, ahead of triggering the run, with the same engine the
- * backend matches with.
+ * Regexes use the RE2 syntax (https://github.com/google/re2/wiki/Syntax). The
+ * backend validates regex syntax at the API boundary and returns a clear error
+ * if compilation fails — the CLI performs only structural validation here.
  */
 export const parseSessionFilterFileContents = (
   contents: string,

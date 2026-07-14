@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/session-filters",
-  "version": "2.308.0",
+  "version": "2.309.0",
   "description": "Validation and matching for Meticulous session filters, shared between the CLI and the Meticulous backend",
   "license": "ISC",
   "main": "dist/index.js",
@@ -19,8 +19,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@alwaysmeticulous/api": "workspace:*",
-    "re2": "1.24.0"
+    "@alwaysmeticulous/api": "workspace:*"
   },
   "devDependencies": {
     "vitest": "catalog:"

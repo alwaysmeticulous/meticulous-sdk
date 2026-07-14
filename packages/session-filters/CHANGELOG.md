@@ -1,5 +1,11 @@
 # @alwaysmeticulous/session-filters
 
+## 2.309.0
+
+### Minor Changes
+
+- [#10951](https://github.com/alwaysmeticulous/meticulous/pull/10951) [`13c087b`](https://github.com/alwaysmeticulous/meticulous/commit/13c087b6b3f1610526826a70526ff6b7e0a15b8a) Thanks [@phreppo](https://github.com/phreppo)! - Remove the native `re2` dependency from `@alwaysmeticulous/session-filters`, including the exported `compileSessionFilter` function (breaking change for any direct consumers of that export). Session filter regexes are no longer compiled client-side — the backend already validates regex syntax with RE2 at the API boundary and returns a clear error if compilation fails, so client-side compilation was redundant and required bundling/building the native `re2` module. The CLI and backend now only perform structural validation (e.g. length, count) client-side.
+
 ## 2.308.0
 
 ### Patch Changes

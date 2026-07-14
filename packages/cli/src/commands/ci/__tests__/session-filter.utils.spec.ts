@@ -62,14 +62,16 @@ describe("parseSessionFilterFileContents", () => {
     expect(result.valid).toBe(false);
   });
 
-  it("rejects regexes that do not compile", () => {
+  it("does not reject regexes that fail to compile — that's left to the backend", () => {
     const result = parseSessionFilterFileContents(
       JSON.stringify({ "session-start-url-matches-any-regex": ["(unclosed"] }),
     );
-    expect(result).toMatchObject({ valid: false });
-    if (result.valid) {
-      throw new Error("expected invalid");
-    }
-    expect(result.error).toContain("does not compile");
+    expect(result).toEqual({
+      valid: true,
+      filter: {
+        type: "session-start-url-matches-any-regex",
+        regexes: ["(unclosed"],
+      },
+    });
   });
 });

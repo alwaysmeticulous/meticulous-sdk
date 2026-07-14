@@ -1,27 +1,4 @@
 import type { SessionFilter } from "@alwaysmeticulous/api";
-import type RE2 from "re2";
-
-/**
- * `re2` is a native addon (bindings to Google's RE2 engine) whose compiled
- * `re2.node` binary is produced by an install/build script. It is loaded lazily
- * so that merely importing this module — which happens transitively at CLI
- * startup — never requires the native binary unless a session filter is
- * actually validated or compiled. This keeps the CLI runnable in environments
- * that skip native build scripts on install (e.g. `pnpm dlx` / `pnpx` under
- * pnpm's strict build-script policy), which would otherwise crash the entire
- * CLI on startup with "Cannot find module './build/Release/re2.node'".
- */
-type RE2Constructor = new (pattern: string) => RE2;
-
-let cachedRE2: RE2Constructor | undefined;
-
-const getRE2 = (): RE2Constructor => {
-  if (cachedRE2 === undefined) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    cachedRE2 = require("re2") as RE2Constructor;
-  }
-  return cachedRE2;
-};
 
 export const MAX_SESSION_FILTER_REGEXES = 100;
 export const MAX_SESSION_FILTER_REGEX_LENGTH = 1_000;
@@ -31,14 +8,11 @@ export type SessionFilterValidationResult =
   | { valid: false; error: string };
 
 /**
- * Validates an untrusted value as a {@link SessionFilter}, including checking
- * that every regex compiles with the same engine used for matching (Google's
- * RE2 — linear-time, no backreferences or lookaround; see
- * https://github.com/google/re2/wiki/Syntax).
+ * Validates an untrusted value as a {@link SessionFilter}, including structural
+ * validation of the filter object and basic constraints (length, count).
  *
- * Shared by the CLI (to reject bad filters before triggering a run) and the
- * backend (to reject bad filters at the API boundary), so validation semantics
- * cannot drift between the two.
+ * Does NOT validate that regexes compile — regexes must use RE2 syntax, which
+ * is validated by the backend at the API boundary.
  */
 export const validateSessionFilter = (
   value: unknown,
@@ -96,17 +70,6 @@ export const validateSessionFilter = (
         error: `Session filter regexes must be at most ${MAX_SESSION_FILTER_REGEX_LENGTH} characters long (got one of length ${regex.length}).`,
       };
     }
-    try {
-      const RE2Ctor = getRE2();
-      new RE2Ctor(regex);
-    } catch (error) {
-      return {
-        valid: false,
-        error: `Session filter regex ${JSON.stringify(regex)} does not compile: ${
-          error instanceof Error ? error.message : String(error)
-        }. Regexes use the RE2 syntax (https://github.com/google/re2/wiki/Syntax).`,
-      };
-    }
   }
 
   return {
@@ -116,18 +79,4 @@ export const validateSessionFilter = (
       regexes: regexes as string[],
     },
   };
-};
-
-/**
- * Compiles a {@link SessionFilter} into a predicate over a session's start
- * URL. Throws if any regex does not compile — call
- * {@link validateSessionFilter} first at the system boundary.
- */
-export const compileSessionFilter = (
-  filter: SessionFilter,
-): ((sessionStartUrl: string) => boolean) => {
-  const RE2Ctor = getRE2();
-  const compiledRegexes = filter.regexes.map((regex) => new RE2Ctor(regex));
-  return (sessionStartUrl: string) =>
-    compiledRegexes.some((regex) => regex.test(sessionStartUrl));
 };
