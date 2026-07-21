@@ -1,12 +1,13 @@
 import type {
-  CompactRange,
   MeticulousClient,
+  ProjectJsCoverageOptions,
+  ProjectJsCoverageResponse,
   ReplayJsCoverageResponse,
-  TestRunCoverageFile,
   TestRunJsCoverageOptions,
 } from "@alwaysmeticulous/client";
 import {
   createClientWithOAuth,
+  getProjectJsCoverage,
   getReplayJsCoverage,
   getTestRun,
   getTestRunJsCoverage,
@@ -25,67 +26,58 @@ import {
   resolveTestRunForCommitOrThrow,
   tryResolveTestRunForCommit,
 } from "../../utils/resolve-test-run-from-commit";
+import {
+  COVERAGE_COLUMN_FLAG,
+  coverageColumnValue,
+  coverageFileToJson,
+  determineColumns,
+  formatCoverageColumn,
+  type CoverageColumn,
+} from "./coverage-columns.util";
+
+// Re-exported for callers/tests that historically imported these helpers from
+// this command module.
+export { coverageColumnValue, coverageFileToJson, determineColumns };
 
 export interface Options {
   apiToken?: string | null | undefined;
   testRunId: string | undefined;
   commitSha: string | undefined;
-  dontWaitForTestRunToComplete: boolean;
+  latestForProject: boolean;
+  project?: string | undefined;
   replayId: string | undefined;
   screenshotName: string | undefined;
+  headPlusTestRunIds: string | undefined;
+  testRunIds: string | undefined;
   includeAllFiles: boolean;
   globFilter: string | undefined;
+  prDiffOnly: boolean;
   includeExecutedRanges: boolean;
   includeExecutableRanges: boolean;
   includeUncoveredRanges: boolean;
   includeCoveragePercentage: boolean;
-  prDiffOnly: boolean;
-  headPlusTestRunIds: string | undefined;
-  testRunIds: string | undefined;
+  dontWaitForTestRunToComplete: boolean;
   json: boolean;
-  project?: string | undefined;
 }
-
-// The per-file range/percentage columns, emitted (after `repoFilePath`) in this
-// fixed order. `executableRanges`/`uncoveredRanges`/`coveragePercentage` rely on
-// executable-line data we only have for whole test runs, so they're rejected
-// alongside --replayId.
-type CoverageColumn =
-  | "executedRanges"
-  | "executableRanges"
-  | "uncoveredRanges"
-  | "coveragePercentage";
-
-// Single source of truth mapping each column to the request flag that asks for
-// it, so the printed columns and the request payload can't drift apart.
-const COVERAGE_COLUMN_FLAG: Record<
-  CoverageColumn,
-  | "includeExecutedRanges"
-  | "includeExecutableRanges"
-  | "includeUncoveredRanges"
-  | "includeCoveragePercentage"
-> = {
-  executedRanges: "includeExecutedRanges",
-  executableRanges: "includeExecutableRanges",
-  uncoveredRanges: "includeUncoveredRanges",
-  coveragePercentage: "includeCoveragePercentage",
-};
 
 const handler = async (options: Options): Promise<void> => {
   const {
     apiToken,
     testRunId,
     commitSha,
-    dontWaitForTestRunToComplete,
+    latestForProject,
+    project,
     replayId,
     screenshotName,
-    globFilter,
     headPlusTestRunIds,
     testRunIds,
+    globFilter,
+    dontWaitForTestRunToComplete,
     json,
-    project,
   } = options;
   initLogger();
+
+  assertLatestForProjectCompatible(options);
 
   if (screenshotName != null && replayId == null) {
     throw new CliUserError("--screenshotName only applies to --replayId.");
@@ -128,6 +120,14 @@ const handler = async (options: Options): Promise<void> => {
     enableOAuthLogin: true,
   });
 
+  if (latestForProject) {
+    const result = await getProjectJsCoverage(
+      client,
+      buildProjectCoverageRequestOptions(options, columns),
+    );
+    printProjectCoverage(result, columns, json);
+    return;
+  }
   // --replayId takes precedence: repo file paths are resolved against the run
   // that executed the replay, and a --testRunId / --commitSha passed alongside
   // it acts as a membership gate / disambiguator (see below) rather than
@@ -230,6 +230,31 @@ const handler = async (options: Options): Promise<void> => {
   }
 };
 
+export const assertLatestForProjectCompatible = (options: Options): void => {
+  if (!options.latestForProject) {
+    return;
+  }
+  const incompatible = (
+    [
+      ["testRunId", options.testRunId != null],
+      ["commitSha", options.commitSha != null],
+      ["replayId", options.replayId != null],
+      ["screenshotName", options.screenshotName != null],
+      ["headPlusTestRunIds", options.headPlusTestRunIds != null],
+      ["testRunIds", options.testRunIds != null],
+      ["prDiffOnly", options.prDiffOnly],
+      ["dontWaitForTestRunToComplete", options.dontWaitForTestRunToComplete],
+    ] as const
+  )
+    .filter(([, enabled]) => enabled)
+    .map(([name]) => `--${name}`);
+  if (incompatible.length > 0) {
+    throw new CliUserError(
+      `--latestForProject cannot be combined with ${incompatible.join(", ")}.`,
+    );
+  }
+};
+
 // Executable / uncovered / percentage columns all need executable-line data we
 // only have for whole test runs; --prDiffOnly reads a test-run-only artifact.
 // Reject them for a single replay. (--globFilter and --includeAllFiles apply to
@@ -254,31 +279,6 @@ export const assertTestRunOnlyFlagsUnsetForReplay = (
       `${testRunOnly.join(", ")} only appl${testRunOnly.length === 1 ? "ies" : "y"} to whole-test-run coverage, not --replayId.`,
     );
   }
-};
-
-// The columns (after `repoFilePath`) to request and print, in fixed order.
-// Defaults to executed ranges when no column flag is given, so a bare
-// invocation matches the historical output.
-export const determineColumns = (options: Options): CoverageColumn[] => {
-  const includeExecuted =
-    options.includeExecutedRanges ||
-    (!options.includeExecutableRanges &&
-      !options.includeUncoveredRanges &&
-      !options.includeCoveragePercentage);
-  const columns: CoverageColumn[] = [];
-  if (includeExecuted) {
-    columns.push("executedRanges");
-  }
-  if (options.includeExecutableRanges) {
-    columns.push("executableRanges");
-  }
-  if (options.includeUncoveredRanges) {
-    columns.push("uncoveredRanges");
-  }
-  if (options.includeCoveragePercentage) {
-    columns.push("coveragePercentage");
-  }
-  return columns;
 };
 
 // Comma-separated additional test run IDs to union in, alongside the resolved
@@ -445,6 +445,56 @@ const printReplayResult = (
   logNotice(`${files.length} file(s) with coverage`);
 };
 
+export const buildProjectCoverageRequestOptions = (
+  options: Options,
+  columns: CoverageColumn[],
+): ProjectJsCoverageOptions => {
+  const requestOptions: ProjectJsCoverageOptions = {
+    includeAllFiles: options.includeAllFiles,
+    ...(options.project != null ? { project: options.project } : {}),
+    ...(options.globFilter != null ? { globFilter: options.globFilter } : {}),
+  };
+  for (const column of columns) {
+    requestOptions[COVERAGE_COLUMN_FLAG[column]] = true;
+  }
+  return requestOptions;
+};
+
+export const printProjectCoverage = (
+  result: ProjectJsCoverageResponse,
+  columns: CoverageColumn[],
+  json: boolean,
+): void => {
+  printCoverageFiles(result.files, columns, json);
+  if (result.testRunId == null) {
+    logNotice(
+      "No successful test run with coverage found for this project; returning empty coverage.",
+    );
+    return;
+  }
+  logNotice(`Resolved project coverage to test run ${result.testRunId}`);
+  logNotice(`${result.files.length} file(s)`);
+};
+
+const printCoverageFiles = (
+  files: ProjectJsCoverageResponse["files"],
+  columns: CoverageColumn[],
+  json: boolean,
+): void => {
+  if (json) {
+    printJson(files.map((file) => coverageFileToJson(file, columns)));
+  } else {
+    console.log(["repoFilePath", ...columns].join("\t"));
+    for (const file of files) {
+      const fields = [
+        file.repoFilePath,
+        ...columns.map((column) => formatCoverageColumn(file, column)),
+      ];
+      console.log(fields.join("\t"));
+    }
+  }
+};
+
 const printTestRunCoverage = async (
   client: MeticulousClient,
   testRunId: string,
@@ -468,80 +518,10 @@ const printTestRunCoverage = async (
   requestOptions.prDiffOnly = options.prDiffOnly;
   const result = await getTestRunJsCoverage(client, testRunId, requestOptions);
 
-  if (json) {
-    printJson(result.files.map((file) => coverageFileToJson(file, columns)));
-  } else {
-    // Test-run coverage is the precomputed repo-mapped coverage, keyed by repo
-    // paths. Emit `repoFilePath` then the requested columns in fixed order.
-    console.log(["repoFilePath", ...columns].join("\t"));
-    for (const file of result.files) {
-      const fields = [
-        file.repoFilePath,
-        ...columns.map((column) => formatCoverageColumn(file, column)),
-      ];
-      console.log(fields.join("\t"));
-    }
-  }
+  printCoverageFiles(result.files, columns, json);
 
   // Summary on stderr regardless of --json (which only changes stdout).
   logNotice(`${result.files.length} file(s)`);
-};
-
-// The JSON equivalent of a TSV row: `repoFilePath` plus the requested columns,
-// with structured values (raw ranges / numeric percentage) rather than the
-// TSV-formatted strings.
-export const coverageFileToJson = (
-  file: TestRunCoverageFile,
-  columns: CoverageColumn[],
-): Record<string, unknown> => {
-  const row: Record<string, unknown> = { repoFilePath: file.repoFilePath };
-  for (const column of columns) {
-    row[column] = coverageColumnValue(file, column);
-  }
-  return row;
-};
-
-export const coverageColumnValue = (
-  file: TestRunCoverageFile,
-  column: CoverageColumn,
-): CompactRange[] | number | null => {
-  switch (column) {
-    case "executedRanges":
-      return file.executedRanges ?? [];
-    case "executableRanges":
-      return file.executableRanges ?? [];
-    case "uncoveredRanges":
-      return file.uncoveredRanges ?? [];
-    case "coveragePercentage":
-      return file.coveragePercentage ?? null;
-    default:
-      return assertNever(column);
-  }
-};
-
-// The TSV rendering of a column: the same structured value as the JSON output,
-// formatted as a string (ranges joined, percentage to 1dp, absent percentage as
-// "n/a"). Delegating to `coverageColumnValue` keeps a single switch over the
-// column union.
-const formatCoverageColumn = (
-  file: TestRunCoverageFile,
-  column: CoverageColumn,
-): string => {
-  const value = coverageColumnValue(file, column);
-  if (typeof value === "number") {
-    return value.toFixed(1);
-  }
-  if (value == null) {
-    return "n/a";
-  }
-  return formatCoverageRanges(value);
-};
-
-// Exhaustiveness guard for the CoverageColumn switch in `coverageColumnValue`.
-// Local to this package since the public CLI can't depend on the internal
-// common-utils helper.
-const assertNever = (value: never): never => {
-  throw new Error(`Unhandled coverage column: ${String(value)}`);
 };
 
 export const isAmbiguousTestRunError = (error: unknown): boolean =>
@@ -552,7 +532,7 @@ export const isAmbiguousTestRunError = (error: unknown): boolean =>
 export const jsCoverageCommand: CommandModule<unknown, Options> = {
   command: "js-coverage",
   describe:
-    "Get the list of per-file JavaScript coverage for a whole test run or a single replay (or a single screenshot of it). Outputs a TSV table with columns repoFilePath plus the requested additional columns (default if none: executedRanges).",
+    "Get the list of per-file JavaScript coverage for a whole test run, a project's preferred latest successful test run, or a single replay (or a single screenshot of it). Outputs a TSV table with columns repoFilePath plus the requested additional columns (default if none: executedRanges).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     testRunId: {
@@ -566,10 +546,22 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       description:
         "A commit SHA, used as an alternative to --testRunId: looks up the latest test run for the commit. For whole-test-run coverage, defaults to the current git HEAD when neither --testRunId nor --commitSha is given.",
     },
+    latestForProject: {
+      boolean: true,
+      default: false,
+      description:
+        "Return coverage from the project's preferred latest successful test run (the same run used by the webapp's project coverage view). Uses --project when provided, otherwise the token's project or the OAuth user's default project. Cannot be combined with an explicit run/commit/replay, --prDiffOnly, run unions, or --dontWaitForTestRunToComplete.",
+      // No yargs-level `conflicts` here: yargs treats a conflicting option as
+      // "present" once it has a value, including its default — since
+      // prDiffOnly/dontWaitForTestRunToComplete also default to false, that
+      // would make every invocation (even a bare `js-coverage`) conflict with
+      // itself. assertLatestForProjectCompatible below checks actual values
+      // instead and covers every one of these flags.
+    },
     project: {
       string: true,
       description:
-        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project.",
+        "The project to use for --latestForProject or commit lookup (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the token's project or the OAuth user's configured default project.",
       conflicts: ["testRunId", "testRunIds"],
     },
     replayId: {

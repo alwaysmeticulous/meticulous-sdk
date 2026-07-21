@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.312.0
+
+### Minor Changes
+
+- [#11193](https://github.com/alwaysmeticulous/meticulous/pull/11193) [`2b3c422`](https://github.com/alwaysmeticulous/meticulous/commit/2b3c422c47804ec7adfa79b4375c6bda7887c73c) Thanks [@phreppo](https://github.com/phreppo)! - Add `coverageScreenshotReplaysByFilePr` to `TestRunDataLocations`: the PR-scoped `coverage-screenshots-by-file.pr.json.gz` artifact, filtered to PR-edited files, so PR coverage surfaces can avoid downloading the full codebase-sized screenshots-by-file artifact.
+
 ## 2.310.0
 
 ### Minor Changes

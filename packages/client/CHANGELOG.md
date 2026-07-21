@@ -1,5 +1,19 @@
 # @alwaysmeticulous/client
 
+## 2.312.0
+
+### Minor Changes
+
+- [#11137](https://github.com/alwaysmeticulous/meticulous/pull/11137) [`a45a77f`](https://github.com/alwaysmeticulous/meticulous/commit/a45a77f8157baa074cea216cdb9c620066750187) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - Add `--latestForProject` to `meticulous agent js-coverage`. It resolves the project's preferred latest successful test run—the same run used by the webapp's project coverage view—and returns that run's whole-run coverage with the existing coverage columns and filters. `--project` optionally overrides an OAuth user's configured default project; project API tokens derive the project from the token. The client exposes the same operation as `getProjectJsCoverage`.
+
+### Patch Changes
+
+- [#11196](https://github.com/alwaysmeticulous/meticulous/pull/11196) [`d1ba630`](https://github.com/alwaysmeticulous/meticulous/commit/d1ba63009cdcb1227f9bdfe03af27a87ca7f819b) Thanks [@sesajad](https://github.com/sesajad)! - Add `getAgenticFileChanges` (posts to `agentic-session-generation/repo/file-changes`), returning a single changed file's unified diff (raw patch text) so the agent can see exactly what a file changed and the worker can compute edit-coverage from it. Also add an optional `coverage` field (edit-coverage: covered vs executable edited lines, per-file residual ranges) to `ReportAgenticRunResultParams` so an agentic run can report how much of the PR's changed code its generated sessions exercised.
+
+- Updated dependencies [[`2b3c422`](https://github.com/alwaysmeticulous/meticulous/commit/2b3c422c47804ec7adfa79b4375c6bda7887c73c)]:
+  - @alwaysmeticulous/api@2.312.0
+  - @alwaysmeticulous/common@2.310.0
+
 ## 2.311.0
 
 ### Minor Changes

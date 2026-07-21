@@ -1,5 +1,26 @@
 # @alwaysmeticulous/cli
 
+## 2.312.0
+
+### Minor Changes
+
+- [#11137](https://github.com/alwaysmeticulous/meticulous/pull/11137) [`a45a77f`](https://github.com/alwaysmeticulous/meticulous/commit/a45a77f8157baa074cea216cdb9c620066750187) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - Add `--latestForProject` to `meticulous agent js-coverage`. It resolves the project's preferred latest successful test run—the same run used by the webapp's project coverage view—and returns that run's whole-run coverage with the existing coverage columns and filters. `--project` optionally overrides an OAuth user's configured default project; project API tokens derive the project from the token. The client exposes the same operation as `getProjectJsCoverage`.
+
+### Patch Changes
+
+- Updated dependencies [[`d1ba630`](https://github.com/alwaysmeticulous/meticulous/commit/d1ba63009cdcb1227f9bdfe03af27a87ca7f819b), [`a45a77f`](https://github.com/alwaysmeticulous/meticulous/commit/a45a77f8157baa074cea216cdb9c620066750187), [`2b3c422`](https://github.com/alwaysmeticulous/meticulous/commit/2b3c422c47804ec7adfa79b4375c6bda7887c73c)]:
+  - @alwaysmeticulous/client@2.312.0
+  - @alwaysmeticulous/api@2.312.0
+  - @alwaysmeticulous/debug-workspace@2.312.0
+  - @alwaysmeticulous/downloading-helpers@2.312.0
+  - @alwaysmeticulous/remote-replay-launcher@2.312.0
+  - @alwaysmeticulous/common@2.310.0
+  - @alwaysmeticulous/record@2.312.0
+  - @alwaysmeticulous/sdk-bundles-api@2.312.0
+  - @alwaysmeticulous/session-filters@2.312.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.312.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+
 ## 2.311.0
 
 ### Minor Changes

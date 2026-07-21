@@ -230,6 +230,56 @@ export interface TestRunJsCoverageResponseV2 {
   files: TestRunCoverageFile[];
 }
 
+/**
+ * Whether `executedRanges` should be requested/printed when the caller didn't
+ * explicitly ask for it — true unless another column flag was explicitly set,
+ * preserving the historical default of executed ranges for a bare invocation.
+ * Shared by {@link getTestRunJsCoverage}, {@link getProjectJsCoverage}, and the
+ * CLI's `determineColumns` (`public_packages/cli/src/commands/agent/coverage-columns.util.ts`).
+ */
+export const shouldDefaultToExecutedRanges = (
+  columnFlags: Pick<
+    TestRunJsCoverageOptions,
+    | "includeExecutedRanges"
+    | "includeExecutableRanges"
+    | "includeUncoveredRanges"
+    | "includeCoveragePercentage"
+  >,
+): boolean =>
+  columnFlags.includeExecutedRanges ||
+  !(
+    columnFlags.includeExecutableRanges ||
+    columnFlags.includeUncoveredRanges ||
+    columnFlags.includeCoveragePercentage
+  );
+
+/**
+ * Which columns/rows the project coverage response should carry. A subset of
+ * {@link TestRunJsCoverageOptions}: there is no `prDiffOnly` (a project has no
+ * PR) and no `unionTestRunIds` (the run is resolved server-side). OAuth users
+ * may pass `project` to override their configured default project; project API
+ * tokens derive the project from the token.
+ */
+export interface ProjectJsCoverageOptions {
+  project?: string;
+  includeAllFiles?: boolean;
+  globFilter?: string;
+  includeExecutedRanges?: boolean;
+  includeExecutableRanges?: boolean;
+  includeUncoveredRanges?: boolean;
+  includeCoveragePercentage?: boolean;
+}
+
+export interface ProjectJsCoverageResponse {
+  /**
+   * The test run the project's coverage was resolved to (the project's latest
+   * successful run — the same one the webapp's project coverage view uses), or
+   * `null` when the project has no such run. `files` is empty when `null`.
+   */
+  testRunId: string | null;
+  files: TestRunCoverageFile[];
+}
+
 export interface ReplayJsCoverageResponse {
   /**
    * Executed line ranges for a single replay (whole replay, or one screenshot),
@@ -540,17 +590,10 @@ export const getTestRunJsCoverage = async (
   const params: Record<string, string> = {
     clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
   };
-  // The V2 endpoint requires at least one column and 400s otherwise. Preserve
-  // the historical default of executed ranges when the caller opts into no
-  // column explicitly, so a bare `getTestRunJsCoverage(client, testRunId)`
+  // The V2 endpoint requires at least one column and 400s otherwise; default
+  // to executed ranges so a bare `getTestRunJsCoverage(client, testRunId)`
   // keeps returning executed ranges rather than erroring.
-  const includeExecutedRanges =
-    options?.includeExecutedRanges ||
-    !(
-      options?.includeExecutableRanges ||
-      options?.includeUncoveredRanges ||
-      options?.includeCoveragePercentage
-    );
+  const includeExecutedRanges = shouldDefaultToExecutedRanges(options ?? {});
   if (options?.includeAllFiles) {
     params.includeAllFiles = "true";
   }
@@ -577,6 +620,50 @@ export const getTestRunJsCoverage = async (
   }
   const { data } = await client
     .get(`agent/test-runs/${testRunId}/js-coverage`, { params })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+// Returns whole-project coverage: the backend resolves the project's latest
+// successful test run (the same run the webapp's "View coverage & snapshots"
+// uses) and serves its whole-run coverage. The response echoes the resolved
+// `testRunId` (null when the project has no such run). Mirrors
+// getTestRunJsCoverage's per-file V2 columns, minus prDiffOnly/union. The
+// project comes from the token; OAuth user tokens may pass `project` to
+// override their configured default project.
+export const getProjectJsCoverage = async (
+  client: MeticulousClient,
+  options?: ProjectJsCoverageOptions,
+): Promise<ProjectJsCoverageResponse> => {
+  const params: Record<string, string> = {
+    clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
+  };
+  const includeExecutedRanges = shouldDefaultToExecutedRanges(options ?? {});
+  if (options?.project != null && options.project !== "") {
+    params.project = options.project;
+  }
+  if (options?.includeAllFiles) {
+    params.includeAllFiles = "true";
+  }
+  if (options?.globFilter != null && options.globFilter !== "") {
+    params.globFilter = options.globFilter;
+  }
+  if (includeExecutedRanges) {
+    params.includeExecutedRanges = "true";
+  }
+  if (options?.includeExecutableRanges) {
+    params.includeExecutableRanges = "true";
+  }
+  if (options?.includeUncoveredRanges) {
+    params.includeUncoveredRanges = "true";
+  }
+  if (options?.includeCoveragePercentage) {
+    params.includeCoveragePercentage = "true";
+  }
+  const { data } = await client
+    .get("agent/projects/js-coverage", { params })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });

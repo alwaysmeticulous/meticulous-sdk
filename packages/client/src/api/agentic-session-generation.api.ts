@@ -81,12 +81,40 @@ export interface AgenticRunResultCase {
   notes?: string;
 }
 
+export interface AgenticRunCoverageFile {
+  /** Repo-relative post-edit path. */
+  path: string;
+  /** Edited lines the coverage tool could observe (the per-file denominator). */
+  executableEditedLines: number;
+  /** Observable edited lines that the run covered. */
+  coveredLines: number;
+  /** Observable edited lines still uncovered, as inclusive [start, end] ranges. */
+  residualUncoveredRanges: Array<[number, number]>;
+}
+
+/**
+ * Edit-coverage for the run: how much of the PR's changed code the produced
+ * sessions exercised. Omitted entirely when coverage could not be measured
+ * (e.g. the app under test served no source maps).
+ */
+export interface AgenticRunCoverage {
+  /** coveredLines / executableEditedLines, in [0, 1]. */
+  fraction: number;
+  coveredLines: number;
+  executableEditedLines: number;
+  files: AgenticRunCoverageFile[];
+  /** Edited files with no coverage data at all (unmappable / not loaded). */
+  unobservedFiles: string[];
+}
+
 export interface ReportAgenticRunResultParams extends ProjectIdentifier {
   /** Every session produced across the run (the union of all cases' sessions). */
   sessionIds: string[];
   cases: AgenticRunResultCase[];
   appUrl: string;
   commitSha: string;
+  /** Edit-coverage for the run; omitted when coverage could not be measured. */
+  coverage?: AgenticRunCoverage;
 }
 
 export interface ReportAgenticRunResultResponse {
@@ -232,6 +260,45 @@ export const searchAgenticRepoCode = async ({
     typeof body,
     { data: SearchAgenticRepoCodeResponse }
   >("agentic-session-generation/repo/search", body, projectIdQuery(projectId));
+  return data;
+};
+
+export interface GetAgenticFileChangesParams
+  extends ProjectIdentifier, AgenticRepoLeaseRef {
+  commitSha: string;
+  /** Repo-relative path of the file whose changes to return. */
+  path: string;
+}
+
+export interface GetAgenticFileChangesResponse {
+  /**
+   * The file's unified diff (base..head) as raw patch text, or `null` when no
+   * PR/diff is available or source access is disabled. Empty string when the
+   * file is unchanged.
+   */
+  diff: string | null;
+}
+
+/**
+ * Returns how a single file changed in the PR under test (unified-diff hunks).
+ * The worker uses this to compute edit-coverage; the agent uses it to see what
+ * changed in a file it is about to exercise.
+ */
+export const getAgenticFileChanges = async ({
+  client,
+  projectId,
+  ...body
+}: GetAgenticFileChangesParams & {
+  client: MeticulousClient;
+}): Promise<GetAgenticFileChangesResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: GetAgenticFileChangesResponse }
+  >(
+    "agentic-session-generation/repo/file-changes",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 

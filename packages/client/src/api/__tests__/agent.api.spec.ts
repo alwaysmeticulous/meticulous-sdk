@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import type { MeticulousClient } from "../../types/client.types";
 import {
   DIFFS_SUMMARY_CLIENT_VERSION,
+  getProjectJsCoverage,
   getTestRunDiffsSummary,
   getTestRunDiffsSummaryCounts,
   getTestRunJsCoverage,
@@ -239,6 +240,62 @@ describe("getTestRunJsCoverage", () => {
     expect(paramsFromLastCall()).toEqual({
       clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
       includeExecutedRanges: "true",
+    });
+  });
+});
+
+describe("getProjectJsCoverage", () => {
+  let client: { get: Mock };
+  const asClient = (): MeticulousClient =>
+    client as unknown as MeticulousClient;
+
+  const paramsFromLastCall = (): Record<string, string> =>
+    client.get.mock.calls[0][1].params;
+
+  beforeEach(() => {
+    client = {
+      get: vi
+        .fn()
+        .mockResolvedValue({ data: { testRunId: "tr-1", files: [] } }),
+    };
+  });
+
+  it("hits the project endpoint and defaults to executed ranges", async () => {
+    await getProjectJsCoverage(asClient());
+
+    expect(client.get).toHaveBeenCalledWith("agent/projects/js-coverage", {
+      params: {
+        clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
+        includeExecutedRanges: "true",
+      },
+    });
+  });
+
+  it("forwards the project override, glob and only the requested columns", async () => {
+    await getProjectJsCoverage(asClient(), {
+      project: "org/project",
+      globFilter: "src/**",
+      includeCoveragePercentage: true,
+    });
+
+    expect(paramsFromLastCall()).toEqual({
+      clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
+      project: "org/project",
+      globFilter: "src/**",
+      includeCoveragePercentage: "true",
+    });
+  });
+
+  it("returns the resolved testRunId and files", async () => {
+    client.get.mockResolvedValue({
+      data: { testRunId: "tr-9", files: [{ repoFilePath: "a.ts" }] },
+    });
+
+    const result = await getProjectJsCoverage(asClient());
+
+    expect(result).toEqual({
+      testRunId: "tr-9",
+      files: [{ repoFilePath: "a.ts" }],
     });
   });
 });

@@ -1,19 +1,28 @@
-import type { TestRunCoverageFile } from "@alwaysmeticulous/client";
-import { describe, expect, it } from "vitest";
+import type {
+  ProjectJsCoverageResponse,
+  TestRunCoverageFile,
+} from "@alwaysmeticulous/client";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import yargs, { type Options as YargsOptions } from "yargs";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
   assertTestRunOnlyFlagsUnsetForReplay,
+  assertLatestForProjectCompatible,
+  buildProjectCoverageRequestOptions,
   coverageColumnValue,
   coverageFileToJson,
   determineColumns,
   isAmbiguousTestRunError,
+  jsCoverageCommand,
   parseHeadPlusTestRunIds,
   parseTestRunIds,
+  printProjectCoverage,
   type Options,
 } from "./js-coverage.command";
 
 const baseOptions = (overrides: Partial<Options> = {}): Options => ({
   apiToken: undefined,
+  latestForProject: false,
   replayId: undefined,
   testRunId: undefined,
   commitSha: undefined,
@@ -29,7 +38,80 @@ const baseOptions = (overrides: Partial<Options> = {}): Options => ({
   headPlusTestRunIds: undefined,
   testRunIds: undefined,
   json: false,
+  project: undefined,
   ...overrides,
+});
+
+describe("--latestForProject", () => {
+  it("allows project selection and coverage output options", () => {
+    expect(() =>
+      assertLatestForProjectCompatible(
+        baseOptions({
+          latestForProject: true,
+          project: "org/project",
+          includeCoveragePercentage: true,
+          globFilter: "src/**",
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it("rejects explicit run selection and test-run-only modifiers", () => {
+    expect(() =>
+      assertLatestForProjectCompatible(
+        baseOptions({
+          latestForProject: true,
+          testRunId: "tr-1",
+          prDiffOnly: true,
+        }),
+      ),
+    ).toThrow(/--testRunId, --prDiffOnly/);
+  });
+
+  it("builds a project request with the default executed-ranges column", () => {
+    const options = baseOptions({
+      latestForProject: true,
+      project: "org/project",
+    });
+    expect(
+      buildProjectCoverageRequestOptions(options, determineColumns(options)),
+    ).toEqual({
+      includeAllFiles: false,
+      project: "org/project",
+      includeExecutedRanges: true,
+    });
+  });
+
+  // Regression test for a real bug: yargs' `conflicts` treats an option as
+  // "present" once it has a value, including its default. latestForProject,
+  // prDiffOnly, and dontWaitForTestRunToComplete all default to false, so a
+  // yargs-level `conflicts` between them would reject every invocation —
+  // including a bare `js-coverage` with no flags at all — before the handler
+  // (and assertLatestForProjectCompatible) ever runs. Parse through the real
+  // yargs builder (unlike the other tests above, which call
+  // assertLatestForProjectCompatible directly) so this class of bug can't
+  // silently come back.
+  it("does not reject a bare invocation at the yargs parsing layer", () => {
+    expect(() =>
+      yargs([])
+        .options(jsCoverageCommand.builder as Record<string, YargsOptions>)
+        .fail((msg) => {
+          throw new Error(msg);
+        })
+        .parse(),
+    ).not.toThrow();
+  });
+
+  it("does not reject an explicit --testRunId at the yargs parsing layer", () => {
+    expect(() =>
+      yargs(["--testRunId", "tr-1"])
+        .options(jsCoverageCommand.builder as Record<string, YargsOptions>)
+        .fail((msg) => {
+          throw new Error(msg);
+        })
+        .parse(),
+    ).not.toThrow();
+  });
 });
 
 describe("determineColumns", () => {
@@ -241,6 +323,49 @@ describe("coverageFileToJson", () => {
     expect(coverageFileToJson({ repoFilePath: "src/c.ts" }, [])).toEqual({
       repoFilePath: "src/c.ts",
     });
+  });
+});
+
+describe("printProjectCoverage", () => {
+  let logged: string[] = [];
+  const spy = vi.spyOn(console, "log").mockImplementation((line: string) => {
+    logged.push(line);
+  });
+
+  afterEach(() => {
+    logged = [];
+    spy.mockClear();
+  });
+
+  it("prints the same coverage rows as explicit test-run mode", () => {
+    const result: ProjectJsCoverageResponse = {
+      testRunId: "tr-9",
+      files: [
+        {
+          repoFilePath: "src/a.ts",
+          executedRanges: [[1, 2]],
+          coveragePercentage: 40,
+        },
+      ],
+    };
+    printProjectCoverage(
+      result,
+      ["executedRanges", "coveragePercentage"],
+      false,
+    );
+    expect(logged).toEqual([
+      "repoFilePath\texecutedRanges\tcoveragePercentage",
+      "src/a.ts\t1-2\t40.0",
+    ]);
+  });
+
+  it("prints an empty JSON list when no run can be resolved", () => {
+    printProjectCoverage(
+      { testRunId: null, files: [] },
+      ["executedRanges"],
+      true,
+    );
+    expect(JSON.parse(logged.join("\n"))).toEqual([]);
   });
 });
 

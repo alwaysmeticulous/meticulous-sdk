@@ -10,6 +10,7 @@ const TEST_RUN_DATA_FILE_TYPES = [
   "coverageReplaysByFileUnmapped",
   "coverageReplaysByFileUnmappedWithRanges",
   "coverageScreenshotReplaysByFile",
+  "coverageScreenshotReplaysByFilePr",
   "coverageScreenshotReplaysByFileUnmapped",
   "coverageByReplayPr",
   "diversityByReplay",
