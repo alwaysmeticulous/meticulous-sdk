@@ -1,4 +1,5 @@
 import type { CommandModule } from "yargs";
+import { ciGenerateSessionsCommand } from "./generate-sessions.command";
 import { ciPrepareCommand } from "./prepare.command";
 import { ciRunLocalCommand } from "./run-local.command";
 import { ciRunWithUploadedAssetChunksCommand } from "./run-with-uploaded-asset-chunks.command";
@@ -21,6 +22,7 @@ export const ciCommand: CommandModule = {
       .command(ciUploadAssetChunkCommand)
       .command(ciRunWithUploadedAssetChunksCommand)
       .command(ciUploadContainerCommand)
+      .command(ciGenerateSessionsCommand)
       .demandCommand()
       .help(),
   handler: () => {

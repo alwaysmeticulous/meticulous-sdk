@@ -33,36 +33,33 @@ const handler = async ({
     return;
   }
 
-  console.log(`outcome: ${urls.outcome}`);
-  if (urls.screenshot) {
-    console.log(`screenshot: ${urls.screenshot}`);
-  }
+  console.log(`outcome:\t${urls.outcome}`);
   if (urls.before) {
-    console.log(`before: ${urls.before}`);
+    console.log(`before:\t${urls.before}`);
   }
   if (urls.after) {
-    console.log(`after: ${urls.after}`);
+    console.log(`after:\t${urls.after}`);
   }
   if (urls.diffImage) {
-    console.log(`diffImage: ${urls.diffImage}`);
+    console.log(`diffImage:\t${urls.diffImage}`);
   }
 };
 
 export const imageUrlsCommand: CommandModule<unknown, Options> = {
   command: "image-urls",
   describe:
-    "Get screenshot image URLs for a replay diff screenshot. Outputs an outcome line then screenshot/before/after/diffImage URL lines (or JSON with --json).",
+    "Get the signed URLs for the images of a screenshot diff. Outputs a line with the outcome (diff, no-diff, etc) and a line with the URL per image (before/after/diffImage).",
   builder: {
-    apiToken: { string: true, description: "Meticulous API token" },
+    apiToken: { string: true, description: "Meticulous API token." },
     replayDiffId: {
       string: true,
-      description: "The replay diff ID",
+      description: "The replay diff ID.",
       demandOption: true,
     },
     screenshotName: {
       string: true,
       description:
-        'Screenshot name, exactly as listed in the screenshotName column of `agent test-run-diffs` for this replay diff (e.g. "after-event-5", "end-state", or "auxiliary-291-0-exit_animation")',
+        'The screenshot name, as listed in the screenshotName column of `agent test-run-diffs` (e.g. "after-event-5" or "end-state").',
       demandOption: true,
     },
   },

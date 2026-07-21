@@ -162,7 +162,6 @@ describe("fetchDomDiffs", () => {
       fakeClient,
       "diffA",
       "after-event-1",
-      undefined,
       "full",
     );
 

@@ -1,5 +1,45 @@
 # @alwaysmeticulous/client
 
+## 2.311.0
+
+### Minor Changes
+
+- [#11080](https://github.com/alwaysmeticulous/meticulous/pull/11080) [`7803a09`](https://github.com/alwaysmeticulous/meticulous/commit/7803a0993df1757f7cac69813630f16744fe9b91) Thanks [@sesajad](https://github.com/sesajad)! - Add client helpers for the agentic worker to prewarm and hold a durable repo-server lease for its whole run: `acquireAgenticRepoLease`, `getAgenticRepoLeaseStatus`, `heartbeatAgenticRepoLease`, and `releaseAgenticRepoLease`. The three source-read helpers (`getAgenticRepoFile`, `searchAgenticRepoCode`, `listAgenticRepoTree`) now accept an optional lease reference (`runId` / `leaseId` / `podInstanceId`, via the new `AgenticRepoLeaseRef`) so reads borrow the warm pod instead of acquiring a fresh short-lived lease each time; omitting it falls back to the previous per-read behaviour.
+
+- [#11176](https://github.com/alwaysmeticulous/meticulous/pull/11176) [`eeb76d2`](https://github.com/alwaysmeticulous/meticulous/commit/eeb76d2d381179852f572e54f99a0d644dcd3770) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `meticulous auth login --device` (OAuth 2.0 Device Authorization Grant), so users can log in from remote or sandboxed machines — SSH sessions, containers, cloud coding agents — where a browser can't reach the CLI's localhost callback. `--non-interactive` is unchanged and still prints a loopback URL for same-machine completion; use `--device` instead when the browser is on a different machine.
+
+### Patch Changes
+
+- [#11080](https://github.com/alwaysmeticulous/meticulous/pull/11080) [`7803a09`](https://github.com/alwaysmeticulous/meticulous/commit/7803a0993df1757f7cac69813630f16744fe9b91) Thanks [@sesajad](https://github.com/sesajad)! - Add agentic source-read client methods so the agent can inspect the project's code, not just the PR diff: `getAgenticRepoFile` (read a file), `searchAgenticRepoCode` (ripgrep), `listAgenticRepoTree` (browse the tree), and `getAgenticChangedFiles` (list the PR's changed files). Each posts to the matching `agentic-session-generation/repo/*` (or `/changed-files`) endpoint and returns cap-free results served off the project's repo-server mirror.
+
+## 2.310.0
+
+### Minor Changes
+
+- [#11064](https://github.com/alwaysmeticulous/meticulous/pull/11064) [`2e0a336`](https://github.com/alwaysmeticulous/meticulous/commit/2e0a336a9366dc0bb81a3d18e4c577a6a6a4261b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent test-run-diffs`: the `--json` output is now always a flat, index-ordered list (one object per screenshot diff), matching the hosted MCP tool's shape — `--orderByReplayDiffs` now only changes the `index` ordering, not the structure. The `mismatch` column/field is renamed to `mismatchFraction` in both TSV and JSON, and JSON now omits absent optional fields instead of emitting `null`/`false` (TSV still emits empty columns).
+
+  `agent timeline-diff`: the `--json` `diff` field now carries the raw status enum (`identical`/`removed`/`added`/`changed`) instead of a prefix symbol, matching the hosted MCP tool. The TSV `diff` column keeps its compact prefix symbol.
+
+  `agent image-urls` / `image-files`: for `missing-base`/`missing-head` outcomes, the CLI now prints/downloads `after`/`before` respectively instead of the old single `screenshot` line/label — the field now names which side the lone image is. `ScreenshotUrlsResponse.screenshot` is deprecated (still populated with the same value as `after`/`before`, for already-published CLI versions) and will be removed in a future major. Human-mode key-value lines are now `key:\tvalue` (a colon then a tab) instead of `key: value` — matching `agent test-run-diffs --counts`, which changes from a bare `key\tvalue` to the same `key:\tvalue` format.
+
+  `agent dom-diff`: the `--index` option (and the corresponding `getScreenshotDomDiff` client parameter) is removed — it was unused and made the response shape switch between a single hunk and a list depending on whether it was passed. The command/tool always returns the full hunk list now.
+
+  `agent js-coverage-diff`: the `--includeAllFiles` option is removed — the `--json`/TSV rows come only from the base/head diff, which by construction never contains a file with no ranges on either side, so the option never affected them (only the stderr summary's base/head file counts, which are also dropped).
+
+- [#11071](https://github.com/alwaysmeticulous/meticulous/pull/11071) [`7ee1f36`](https://github.com/alwaysmeticulous/meticulous/commit/7ee1f361af4bcc76a3a1da96c216c658cf992594) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `--maxDurationSeconds` to `meticulous agent trigger-test-run` to cap each replay's duration for explicitly pinned `--sessionIds`, overriding the project's configured cap (defaults to 300s/5min; pass `none` for unlimited — useful for newly custom-recorded sessions with unusually long flows). A trimmed session now surfaces as a neutral, informational entry in its replay timeline (it does not count towards session-health warnings or register as a diff/divergence).
+
+### Patch Changes
+
+- [#10444](https://github.com/alwaysmeticulous/meticulous/pull/10444) [`bc65ecf`](https://github.com/alwaysmeticulous/meticulous/commit/bc65ecf98fd34887ed2d76c8cc1f22d5bb7ec882) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Decouple agentic instructions from the deployment: they are now uploaded per-trigger to the pr-test-pilot bucket and correlated to the run by a server-minted `instructionsId` (returned from `requestAgenticInstructionsUpload`), rather than stored under the deployment's `uploadId`. `requestAgenticInstructionsUpload` now posts to `agentic-session-generation/request-instructions-upload` (dropping `uploadId`, returning `{ uploadUrl, instructionsId }`), and `completeAgenticSessionGeneration` posts to `agentic-session-generation/launch` and takes an optional `instructionsId` in place of `hasInstructions`.
+
+- [#10444](https://github.com/alwaysmeticulous/meticulous/pull/10444) [`bc65ecf`](https://github.com/alwaysmeticulous/meticulous/commit/bc65ecf98fd34887ed2d76c8cc1f22d5bb7ec882) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Replace `reportAgenticProducedSessions` with `reportAgenticRunResult`, which reports the agent's whole run result — the cases it exercised (each with a title, steps, outcome, session ids, and optional notes) — rather than only the produced session ids. Adds the `AgenticRunResultCase` / `AgenticRunResultCaseOutcome` types and posts to `agentic-session-generation/result`.
+
+- [#11063](https://github.com/alwaysmeticulous/meticulous/pull/11063) [`c500bb7`](https://github.com/alwaysmeticulous/meticulous/commit/c500bb70a38d0d019727e30f7613a6305a0c01ca) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `meticulous agent sessions` to list a project's most recently created sessions (newest first) — useful for finding the id of a session you just recorded. Default columns: `id`, `createdAt` (the stored row timestamp and the ordering basis), `recordedAt` (for a non-original session, the root session's recording time; otherwise the same as `createdAt`), `recordedBy`, `status` (`original`, `patched`, `sliced`, or `mutated`). Opt into `startUrl` with `--includeStartUrl` and `abandonedReason` with `--includeAbandonedReason`. Filter with `--createdSince`/`--createdUntil` (row timestamp), `--recordedSince`/`--recordedUntil` (root recording time), `--recordedBy` (recording identity), `--excludeSyntheticSessions` (also drops the `status` column), and `--visitedUrlFilter` (a glob where only `*` is a wildcard, matched against visited URLs and the startUrl). `--limit` defaults to 100 (max 1000) and always applies; `--offset` pages through further. `--json` outputs a bare array (matching the new hosted MCP tool, `get_sessions`).
+
+- Updated dependencies [[`b22d975`](https://github.com/alwaysmeticulous/meticulous/commit/b22d9752538e6efdbfe74a14c002e61764c9fb0e), [`0d35d4d`](https://github.com/alwaysmeticulous/meticulous/commit/0d35d4d136ea4b0d5a7c0395189203e5831b6081)]:
+  - @alwaysmeticulous/api@2.310.0
+  - @alwaysmeticulous/common@2.310.0
+
 ## 2.308.0
 
 ### Minor Changes

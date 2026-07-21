@@ -121,6 +121,44 @@ describe("triggerTestRun", () => {
     expect(agentTriggerTestRun).not.toHaveBeenCalled();
   });
 
+  it("forwards maxDurationSeconds to the trigger call when provided", async () => {
+    await triggerTestRun({
+      apiToken: "token",
+      commitSha: "sha-1",
+      baseSha: "base-1",
+      maxDurationSeconds: 120,
+    });
+
+    expect(agentTriggerTestRun).toHaveBeenCalledWith(
+      expect.objectContaining({ maxDurationSeconds: 120 }),
+    );
+  });
+
+  it("forwards an explicit null maxDurationSeconds (unlimited) to the trigger call", async () => {
+    await triggerTestRun({
+      apiToken: "token",
+      commitSha: "sha-1",
+      baseSha: "base-1",
+      maxDurationSeconds: null,
+    });
+
+    expect(agentTriggerTestRun).toHaveBeenCalledWith(
+      expect.objectContaining({ maxDurationSeconds: null }),
+    );
+  });
+
+  it("omits maxDurationSeconds from the trigger call when not provided", async () => {
+    await triggerTestRun({
+      apiToken: "token",
+      commitSha: "sha-1",
+      baseSha: "base-1",
+    });
+
+    expect(agentTriggerTestRun).toHaveBeenCalledWith(
+      expect.not.objectContaining({ maxDurationSeconds: expect.anything() }),
+    );
+  });
+
   it("rejects when both deploymentId and commitSha are provided", async () => {
     await expect(
       triggerTestRun({

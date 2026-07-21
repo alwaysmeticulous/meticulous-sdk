@@ -1,5 +1,11 @@
 # @alwaysmeticulous/common
 
+## 2.310.0
+
+### Patch Changes
+
+- [#11163](https://github.com/alwaysmeticulous/meticulous/pull/11163) [`0d35d4d`](https://github.com/alwaysmeticulous/meticulous/commit/0d35d4d136ea4b0d5a7c0395189203e5831b6081) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Retry transient OpenSSL handshake errors (`ERR_SSL_PACKET_LENGTH_TOO_LONG`, `ERR_SSL_WRONG_VERSION_NUMBER`) in the shared HTTP retry helper, so clients recover from brief TLS/proxy glitches instead of failing on the first attempt.
+
 ## 2.301.0
 
 ### Minor Changes

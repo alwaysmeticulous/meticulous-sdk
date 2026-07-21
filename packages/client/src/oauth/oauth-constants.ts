@@ -8,11 +8,16 @@ export const OAUTH_SCOPES = "openid email profile offline_access";
 
 const WELL_KNOWN_PATH = "/.well-known/openid-configuration";
 
-let cachedTokenEndpoint: string | null = null;
+interface OidcConfiguration {
+  token_endpoint: string;
+  device_authorization_endpoint?: string;
+}
 
-export const getTokenEndpoint = async (): Promise<string> => {
-  if (cachedTokenEndpoint) {
-    return cachedTokenEndpoint;
+let cachedOidcConfiguration: OidcConfiguration | null = null;
+
+const getOidcConfiguration = async (): Promise<OidcConfiguration> => {
+  if (cachedOidcConfiguration) {
+    return cachedOidcConfiguration;
   }
 
   const response = await fetch(`${KEYCLOAK_ISSUER_URL}${WELL_KNOWN_PATH}`);
@@ -22,13 +27,30 @@ export const getTokenEndpoint = async (): Promise<string> => {
     );
   }
 
-  const config = (await response.json()) as { token_endpoint: string };
+  const config = (await response.json()) as OidcConfiguration;
   if (!config.token_endpoint) {
     throw new Error("OpenID configuration missing token_endpoint");
   }
 
-  cachedTokenEndpoint = config.token_endpoint;
-  return cachedTokenEndpoint;
+  cachedOidcConfiguration = config;
+  return cachedOidcConfiguration;
+};
+
+export const getTokenEndpoint = async (): Promise<string> => {
+  const config = await getOidcConfiguration();
+  return config.token_endpoint;
+};
+
+export const getDeviceAuthorizationEndpoint = async (): Promise<string> => {
+  const config = await getOidcConfiguration();
+  if (!config.device_authorization_endpoint) {
+    throw new Error(
+      "OpenID configuration missing device_authorization_endpoint. " +
+        "The OAuth 2.0 Device Authorization Grant is not enabled for the " +
+        `meticulous-cli client on this realm (${KEYCLOAK_ISSUER_URL}).`,
+    );
+  }
+  return config.device_authorization_endpoint;
 };
 
 const DEFAULT_WEBAPP_BASE_URL = "https://app.meticulous.ai";

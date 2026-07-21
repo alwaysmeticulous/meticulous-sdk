@@ -1,5 +1,6 @@
 import type { AssetUploadMetadata } from "@alwaysmeticulous/api";
 import { CliUserError } from "../utils/cli-user-error";
+import { warnIfRewriteSourcesLookLikeRegexes } from "./warn-regex-rewrites";
 
 /**
  * Parses the `--rewrites` CLI flag's JSON string into the structured array
@@ -41,5 +42,7 @@ export const parseRewrites = (
     );
   }
 
-  return parsedRewrites as AssetUploadMetadata["rewrites"];
+  const rewrites = parsedRewrites as AssetUploadMetadata["rewrites"];
+  warnIfRewriteSourcesLookLikeRegexes(rewrites);
+  return rewrites;
 };

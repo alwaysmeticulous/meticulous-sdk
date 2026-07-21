@@ -272,9 +272,15 @@ export interface ReplayDiffJsCoverageDiffResponse {
 
 export interface ScreenshotUrlsResponse {
   outcome: string;
-  screenshot?: string;
   before?: string;
   after?: string;
+  /**
+   * @deprecated Superseded by `before`/`after`. Still populated (mirroring
+   * whichever of `before`/`after` is set) for `missing-base`/`missing-head`
+   * outcomes only, so already-published CLI versions reading this field keep
+   * working. New consumers should use `before`/`after` instead.
+   */
+  screenshot?: string;
   diffImage?: string;
 }
 
@@ -481,13 +487,9 @@ export const getScreenshotDomDiff = async (
   client: MeticulousClient,
   replayDiffId: string,
   screenshotName: string,
-  index?: number,
   context?: string,
 ): Promise<ScreenshotDomDiffResponse> => {
   const params: Record<string, string> = {};
-  if (index != null) {
-    params.index = String(index);
-  }
   if (context != null) {
     params.context = context;
   }
@@ -688,6 +690,138 @@ export const getStructuredSessionData = async (
 ): Promise<StructuredSessionDataResponse> => {
   const { data } = await client
     .get(`agent/sessions/${sessionId}/structured-data`)
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+/**
+ * How a session's row came to exist, derived from its id suffix. Mirrors
+ * webapp-backend's `AgentSessionStatus` (agent.types.ts) — kept as a literal
+ * union here rather than imported, since `public_packages` can't depend on
+ * webapp-backend.
+ */
+export type SessionStatus = "original" | "patched" | "sliced" | "mutated";
+
+/**
+ * Why the recorder gave up on a session before it finished normally. Mirrors
+ * `SessionAbandonmentReasonEnum` in `packages/session-payload-api` (a private
+ * package `public_packages` can't depend on) — keep the two in sync.
+ */
+export type SessionAbandonmentReason =
+  | "payload_size"
+  | "max_uploads"
+  | "max_session_time"
+  | "user_requested"
+  | "error_creating_payload"
+  | "superseded_by_native_recorder";
+
+/** One row of the recent-sessions listing. */
+export interface SessionListItem {
+  id: string;
+  /**
+   * When this session entry was created, as an ISO-8601 string — the stored
+   * row timestamp and the basis of the newest-first ordering. Equal to
+   * `recordedAt` for an original session; for a non-original session it's
+   * when that row itself was produced, so it can be later than `recordedAt`.
+   */
+  createdAt: string;
+  /**
+   * When the session was originally recorded, as an ISO-8601 string. For a
+   * non-original session (patched, sliced, or mutated) this is the root
+   * session's recording time; otherwise it equals `createdAt`.
+   */
+  recordedAt: string;
+  /**
+   * The identity that recorded the session (email, falling back to a user
+   * id). Omitted if neither was set.
+   */
+  recordedBy?: string;
+  /**
+   * How this session's row came to exist. Omitted when
+   * `excludeSyntheticSessions` is set (every row is then `original`).
+   */
+  status?: SessionStatus;
+  /** The session's start URL. Included only when `includeStartUrl` is set. */
+  startUrl?: string;
+  /**
+   * The reason the recorder gave up on the session before it finished normally
+   * (meaning the recording is incomplete). Included only when
+   * `includeAbandonedReason` is set, and then only for abandoned sessions.
+   */
+  abandonedReason?: SessionAbandonmentReason;
+}
+
+export interface SessionsResponse {
+  /** The project's most recently recorded sessions, newest first. */
+  sessions: SessionListItem[];
+}
+
+// Lists the project's most recently created sessions, newest first.
+// Project/test-run API tokens determine the project; OAuth user tokens may
+// pass `project` to override which project this call targets, falling back to
+// the caller's stored default project when omitted.
+//
+// `limit` is always applied (server-side default 100, max 1000), so a response
+// never exceeds `limit` rows regardless of the filters; `offset` may page
+// arbitrarily far (offset + limit is not capped).
+export const getSessions = async (
+  client: MeticulousClient,
+  options?: {
+    project?: string | undefined;
+    createdSince?: string | undefined;
+    createdUntil?: string | undefined;
+    recordedSince?: string | undefined;
+    recordedUntil?: string | undefined;
+    recordedBy?: string | undefined;
+    excludeSyntheticSessions?: boolean | undefined;
+    visitedUrlFilter?: string | undefined;
+    includeStartUrl?: boolean | undefined;
+    includeAbandonedReason?: boolean | undefined;
+    limit?: number | undefined;
+    offset?: number | undefined;
+  },
+): Promise<SessionsResponse> => {
+  const params: Record<string, string> = {};
+  if (options?.project != null) {
+    params.project = options.project;
+  }
+  if (options?.createdSince != null) {
+    params.createdSince = options.createdSince;
+  }
+  if (options?.createdUntil != null) {
+    params.createdUntil = options.createdUntil;
+  }
+  if (options?.recordedSince != null) {
+    params.recordedSince = options.recordedSince;
+  }
+  if (options?.recordedUntil != null) {
+    params.recordedUntil = options.recordedUntil;
+  }
+  if (options?.recordedBy != null) {
+    params.recordedBy = options.recordedBy;
+  }
+  if (options?.excludeSyntheticSessions) {
+    params.excludeSyntheticSessions = "true";
+  }
+  if (options?.visitedUrlFilter != null) {
+    params.visitedUrlFilter = options.visitedUrlFilter;
+  }
+  if (options?.includeStartUrl) {
+    params.includeStartUrl = "true";
+  }
+  if (options?.includeAbandonedReason) {
+    params.includeAbandonedReason = "true";
+  }
+  if (options?.limit != null) {
+    params.limit = String(options.limit);
+  }
+  if (options?.offset != null) {
+    params.offset = String(options.offset);
+  }
+  const { data } = await client
+    .get("agent/sessions", { params })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });

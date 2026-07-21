@@ -130,7 +130,6 @@ const handler = async ({
   const includeAllDiffsResolved = includeAllDiffs || onlyUnreviewed;
 
   const columns = {
-    orderByReplayDiffs,
     includeDomDiffIds,
     includeAllDiffs: includeAllDiffsResolved,
     includeReplayIds,
@@ -253,7 +252,7 @@ const handler = async ({
   const rows = flattenDiffRows(data);
 
   if (json) {
-    printJson(buildDiffsSummaryJson(data, columns));
+    printJson(buildDiffsSummaryJson(data));
   } else {
     // Always emit the TSV header so a zero-diff run is a header with no rows (the
     // same shape as the in-progress short-circuit above), never empty stdout.
@@ -281,18 +280,60 @@ const handler = async ({
 export const testRunDiffsCommand: CommandModule<unknown, Options> = {
   command: "test-run-diffs",
   describe:
-    "List replay diffs for a test run. Outputs TSV, one row per screenshot diff: replayDiffId, screenshotName, index, outcome, mismatch (plus optional columns depending on flags), or the same data with --json (nested by replay diff under --orderByReplayDiffs). Pass --counts to print just the totals instead of the list.",
+    "Get the list of screenshot diffs for a given test run (by default a selected subset of representative diffs in priority order). Outputs a TSV table with columns replayDiffId, screenshotName, index, outcome, mismatchFraction plus the requested additional columns. Pass --counts to print just the totals instead of the list.",
   builder: {
-    apiToken: { string: true, description: "Meticulous API token" },
+    apiToken: { string: true, description: "Meticulous API token." },
     testRunId: {
       string: true,
       description:
-        "The test run ID. When omitted, the run is resolved from --commitSha, or from the local git HEAD when that is also omitted.",
+        "The test run ID. When omitted, the run is looked up from --commitSha, or from the current git HEAD when that is also omitted.",
     },
     commitSha: {
       string: true,
       description:
-        "A commit SHA, used as an alternative to --testRunId: the latest test run for the commit is resolved and used. Defaults to the local git HEAD when neither --testRunId nor --commitSha is given.",
+        "A commit SHA, used as an alternative to --testRunId: looks up the latest test run for the commit. Defaults to the current git HEAD when neither --testRunId nor --commitSha is given.",
+    },
+    project: {
+      string: true,
+      description:
+        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project.",
+      conflicts: "testRunId",
+    },
+    includeAllDiffs: {
+      boolean: true,
+      description:
+        "Output all screenshot diffs instead of only the selected representative subset; adds an isSelected column.",
+      default: false,
+    },
+    onlyUnreviewed: {
+      boolean: true,
+      description:
+        "Output only screenshot diffs still awaiting review (decision unreviewed), across every difference rather than just the selected subset — i.e. everything left to review. Implies --includeAllDiffs, so the isSelected column is included to tell selected from unselected differences.",
+      default: false,
+    },
+    includeReplayIds: {
+      boolean: true,
+      description:
+        "Add baseReplayId and headReplayId columns with each diff's base and head replay IDs.",
+      default: false,
+    },
+    includeReviewDecisions: {
+      boolean: true,
+      description:
+        "Add a decision column with the PR review decision per diff (accepted/rejected/ignored/unreviewed; unreviewed when undecided or no PR).",
+      default: false,
+    },
+    includeDomDiffIds: {
+      boolean: true,
+      description:
+        "Add a domDiffIds column with a comma-separated list of diff IDs, where each ID represents a distinct structural DOM change. This is used to determine the selected set and its priority order.",
+      default: false,
+    },
+    orderByReplayDiffs: {
+      boolean: true,
+      description:
+        "Order the list by replay diff (a replay diff's differences get consecutive index values) instead of the default global priority order.",
+      default: false,
     },
     dontWaitForTestRunToComplete: {
       boolean: true,
@@ -300,51 +341,10 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
       description:
         "By default, if the test run is still in progress the command blocks until it finishes before fetching diffs. Pass this to instead report the in-progress run and exit immediately.",
     },
-    includeReplayIds: {
-      boolean: true,
-      description: "Include base and head replay IDs per replay diff",
-      default: false,
-    },
-    includeReviewDecisions: {
-      boolean: true,
-      description:
-        "Add a decision column with the PR review decision per diff (accepted/rejected/ignored/unreviewed; unreviewed when undecided or no PR)",
-      default: false,
-    },
-    includeDomDiffIds: {
-      boolean: true,
-      description:
-        "Add a domDiffIds column grouping screenshots by structural DOM change",
-      default: false,
-    },
-    includeAllDiffs: {
-      boolean: true,
-      description:
-        "Return every diff instead of only the selected representative subset; adds an isSelected column",
-      default: false,
-    },
-    onlyUnreviewed: {
-      boolean: true,
-      description:
-        "Return only diffs still awaiting review (decision unreviewed), across every difference rather than just the selected subset — i.e. everything left to review. Implies --includeAllDiffs, so the isSelected column is included to tell selected from unselected differences.",
-      default: false,
-    },
-    orderByReplayDiffs: {
-      boolean: true,
-      description:
-        "With --json, group screenshots by replay diff instead of a flat list; the index is then a replayDiff-grouped rank rather than a flat priority rank",
-      default: false,
-    },
-    project: {
-      string: true,
-      description:
-        "Project to resolve --commitSha against (id, 'organization/name', or a bare name unique among your accessible projects). Cannot be combined with --testRunId (the run already determines the project). One-off override for this call only; when omitted, uses the token's project or the default set via `auth set-project`.",
-      conflicts: "testRunId",
-    },
     counts: {
       boolean: true,
       description:
-        "Print only aggregate totals (num replays, num diffs, and the review-decision breakdown) instead of the per-diff list. Cannot be combined with the list/filter flags (--includeReplayIds, --includeDomDiffIds, --includeAllDiffs, --orderByReplayDiffs, --includeReviewDecisions, --onlyUnreviewed); may be combined with --json.",
+        "Get the aggregate diff counts for a given test run instead of the per-diff list: number of replays, number of differences, and the PR review-decision breakdown (approved/ignored/rejected/unreviewed). Cannot be combined with the list/filter flags, only with --json.",
       default: false,
     },
   },

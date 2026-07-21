@@ -37,6 +37,10 @@ const RETRYABLE_NETWORK_ERROR_CODES = new Set([
   "UND_ERR_CONNECT_TIMEOUT",
   "UND_ERR_HEADERS_TIMEOUT",
   "UND_ERR_SOCKET",
+  // OpenSSL handshake glitches (e.g. LB/proxy briefly returning non-TLS bytes).
+  // Seen in CI as TypeError: fetch failed -> ERR_SSL_PACKET_LENGTH_TOO_LONG.
+  "ERR_SSL_PACKET_LENGTH_TOO_LONG",
+  "ERR_SSL_WRONG_VERSION_NUMBER",
 ]);
 
 export const defaultShouldRetry = (error: any): boolean => {

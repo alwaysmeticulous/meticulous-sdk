@@ -10,6 +10,11 @@ export {
   TriggerTestRunResult,
 } from "./trigger-test-run";
 export {
+  generateSessions,
+  GenerateSessionsOptions,
+  GenerateSessionsResult,
+} from "./generate-sessions";
+export {
   uploadAssetChunk,
   UploadAssetChunkOptions,
 } from "./upload-asset-chunk";

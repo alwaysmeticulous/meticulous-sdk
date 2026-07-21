@@ -32,6 +32,11 @@ export {
   getReplayDiffJsCoverage,
   getScreenshotUrls,
   getTimelineDiff,
+  getSessions,
+  SessionsResponse,
+  SessionListItem,
+  SessionStatus,
+  SessionAbandonmentReason,
   trackAgentFeatureUsage,
 } from "./api/agent.api";
 export * from "./api/github-cloud-replay.api";
@@ -109,6 +114,7 @@ export {
   resolveApiTokenWithOAuth,
 } from "./client";
 export { performOAuthLogin } from "./oauth/oauth-login";
+export { performDeviceLogin } from "./oauth/oauth-device-login";
 export { getValidAccessToken } from "./oauth/oauth-refresh";
 export {
   clearOAuthTokens,
@@ -182,6 +188,47 @@ export {
   AgentTriggerTestRunResponse,
   agentTriggerTestRun,
 } from "./api/project-deployments.api";
+export {
+  RequestAgenticInstructionsUploadParams,
+  RequestAgenticInstructionsUploadResponse,
+  requestAgenticInstructionsUpload,
+  CompleteAgenticSessionGenerationParams,
+  CompleteAgenticSessionGenerationResponse,
+  completeAgenticSessionGeneration,
+  AgenticRunResultCaseOutcome,
+  AgenticRunResultCase,
+  ReportAgenticRunResultParams,
+  ReportAgenticRunResultResponse,
+  reportAgenticRunResult,
+  GetAgenticChangedFilesParams,
+  GetAgenticChangedFilesResponse,
+  AgenticChangedFile,
+  getAgenticChangedFiles,
+  GetAgenticRepoFileParams,
+  GetAgenticRepoFileResponse,
+  getAgenticRepoFile,
+  SearchAgenticRepoCodeParams,
+  SearchAgenticRepoCodeResponse,
+  AgenticRepoSearchMatch,
+  searchAgenticRepoCode,
+  ListAgenticRepoTreeParams,
+  ListAgenticRepoTreeResponse,
+  AgenticRepoTreeEntry,
+  listAgenticRepoTree,
+  AgenticRepoLeaseRef,
+  AcquireAgenticRepoLeaseParams,
+  AcquireAgenticRepoLeaseResponse,
+  acquireAgenticRepoLease,
+  GetAgenticRepoLeaseStatusParams,
+  AgenticRepoLeaseStatusResponse,
+  getAgenticRepoLeaseStatus,
+  HeartbeatAgenticRepoLeaseParams,
+  HeartbeatAgenticRepoLeaseResponse,
+  heartbeatAgenticRepoLease,
+  ReleaseAgenticRepoLeaseParams,
+  ReleaseAgenticRepoLeaseResponse,
+  releaseAgenticRepoLease,
+} from "./api/agentic-session-generation.api";
 export { GetRegistryAuthResponse, getRegistryAuth } from "./api/registry.api";
 export { isFetchError, maybeEnrichFetchError } from "./errors";
 export {

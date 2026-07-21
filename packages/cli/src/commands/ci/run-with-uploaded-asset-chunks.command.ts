@@ -1,6 +1,6 @@
 import { readFile } from "fs/promises";
 import type { SessionFilter } from "@alwaysmeticulous/api";
-import type { ProjectAssetChunkReference } from "@alwaysmeticulous/client";
+import type { RequestedProjectAssetChunkReference } from "@alwaysmeticulous/client";
 import {
   createClientWithOAuth,
   getTestRun,
@@ -23,6 +23,10 @@ import {
   hasGitContextForTestRunWait,
   resolveGitOptions,
 } from "./resolve-git-options";
+import {
+  manifestHasVersionLookupEntries,
+  validateAssetReferencesManifest,
+} from "./run-with-uploaded-asset-chunks.utils";
 import { readSessionFilterFile } from "./session-filter.utils";
 
 const POLL_INTERVAL_MS = 10_000;
@@ -42,7 +46,7 @@ interface Options {
 
 const readAssetReferencesManifest = async (
   manifestPath: string,
-): Promise<ProjectAssetChunkReference[]> => {
+): Promise<RequestedProjectAssetChunkReference[]> => {
   const logger = initLogger();
   let raw: string;
   try {
@@ -68,35 +72,13 @@ const readAssetReferencesManifest = async (
     process.exit(1);
   }
 
-  if (!Array.isArray(parsed)) {
-    logger.error(
-      `--assetReferencesManifest must be a JSON array of { name, versionId } objects.`,
-    );
+  const result = validateAssetReferencesManifest(parsed);
+  if ("errorMessage" in result) {
+    logger.error(result.errorMessage);
     process.exit(1);
   }
 
-  if (parsed.length === 0) {
-    logger.error(`--assetReferencesManifest must not be empty.`);
-    process.exit(1);
-  }
-
-  const isValid = parsed.every(
-    (item) =>
-      typeof item === "object" &&
-      item !== null &&
-      typeof (item as { name?: unknown }).name === "string" &&
-      typeof (item as { versionId?: unknown }).versionId === "string" &&
-      (item as { name: string }).name.length > 0 &&
-      (item as { versionId: string }).versionId.length > 0,
-  );
-  if (!isValid) {
-    logger.error(
-      `--assetReferencesManifest entries must each be { name: string, versionId: string } with non-empty values.`,
-    );
-    process.exit(1);
-  }
-
-  return parsed as ProjectAssetChunkReference[];
+  return result.manifest;
 };
 
 const readSessionFilter = async (
@@ -154,6 +136,23 @@ const handler = async ({
 
   const manifest = await readAssetReferencesManifest(manifestPath);
 
+  if (manifestHasVersionLookupEntries(manifest)) {
+    if (!baseSha) {
+      logger.info(
+        "The manifest contains versionLookup entries and no --baseSha was provided; " +
+          "the backend will resolve them against the base test run it selects for this run, " +
+          "and the run will fail if it cannot determine a base. " +
+          "Pass --baseSha (or --repoDirectory, which infers it) to set the base explicitly.",
+      );
+    }
+    if (!waitForBase && !waitForTestRunToComplete) {
+      logger.warn(
+        "The manifest contains versionLookup entries, which can only be resolved once a base test run exists. " +
+          "--waitForBase=false cannot fall back to running without a base for such manifests; the trigger will fail if the base test run never appears.",
+      );
+    }
+  }
+
   // Validated ahead of the trigger so a bad regex fails fast in the CLI
   // rather than after chunk resolution on the server.
   const sessionFilter = sessionFilterPath
@@ -196,16 +195,21 @@ const handler = async ({
     });
     if (result.overlaps && result.overlaps.length > 0) {
       logger.warn(
-        `${result.overlaps.length} file path(s) appear in multiple chunks. Later chunks in the manifest override earlier ones.`,
+        `WARNING: ${result.overlaps.length} file path(s) appear in multiple chunks (computed over the fully resolved manifest, ` +
+          `including any versionLookup entries resolved to concrete versions). ` +
+          `Chunks later in the manifest win: the test run serves the later chunk's copy of each colliding path.`,
       );
       for (const overlap of result.overlaps) {
         logger.warn(
-          `  - ${overlap.path}: ${overlap.lowerChunk.name}@${overlap.lowerChunk.versionId} → ${overlap.upperChunk.name}@${overlap.upperChunk.versionId}`,
+          `  - ${overlap.path}: served from ${overlap.upperChunk.name}@${overlap.upperChunk.versionId} (overriding ${overlap.lowerChunk.name}@${overlap.lowerChunk.versionId})`,
         );
       }
       if (result.overlapsTruncated) {
         logger.warn(`  ... and more overlapping paths (not shown).`);
       }
+      logger.warn(
+        `If this is unintentional, adjust your chunking scheme so no two chunks produce the same final path.`,
+      );
     }
 
     if (!result.testRun) {
@@ -278,7 +282,9 @@ export const ciRunWithUploadedAssetChunksCommand: CommandModule<
       string: true,
       demandOption: true,
       description:
-        "Path to a JSON file containing a list of { name, versionId } references to previously uploaded asset chunks (see `ci upload-asset-chunk`). " +
+        "Path to a JSON file containing a list of references to previously uploaded asset chunks (see `ci upload-asset-chunk`). " +
+        'Each entry is either { name, versionId } (an explicit chunk version) or { name, versionLookup: "latest-in-history" } ' +
+        "(resolves the version of an unchanged chunk from the base test run's history; the base is inferred automatically, or pass --baseSha to override it). " +
         "Chunked analog of --appDirectory / --appZip on `ci upload-assets`.",
     },
     rewrites: {

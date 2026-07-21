@@ -30,7 +30,6 @@ const replayDiff = (
 });
 
 const NO_COLUMNS: DiffsSummaryColumns = {
-  orderByReplayDiffs: false,
   includeDomDiffIds: false,
   includeAllDiffs: false,
   includeReplayIds: false,
@@ -38,7 +37,6 @@ const NO_COLUMNS: DiffsSummaryColumns = {
 };
 
 const ALL_COLUMNS: DiffsSummaryColumns = {
-  orderByReplayDiffs: true,
   includeDomDiffIds: true,
   includeAllDiffs: true,
   includeReplayIds: true,
@@ -71,7 +69,7 @@ describe("flattenDiffRows", () => {
 });
 
 describe("formatDiffsSummaryCounts", () => {
-  test("emits key\\tvalue lines for every count", () => {
+  test("emits key:\\tvalue lines for every count", () => {
     expect(
       formatDiffsSummaryCounts({
         numReplays: 5,
@@ -82,12 +80,12 @@ describe("formatDiffsSummaryCounts", () => {
         numUnreviewed: 1,
       }),
     ).toEqual([
-      "numReplays\t5",
-      "numDiffs\t3",
-      "numApproved\t1",
-      "numIgnored\t0",
-      "numRejected\t1",
-      "numUnreviewed\t1",
+      "numReplays:\t5",
+      "numDiffs:\t3",
+      "numApproved:\t1",
+      "numIgnored:\t0",
+      "numRejected:\t1",
+      "numUnreviewed:\t1",
     ]);
   });
 });
@@ -99,7 +97,7 @@ describe("buildDiffsSummaryHeader", () => {
       "screenshotName",
       "index",
       "outcome",
-      "mismatch",
+      "mismatchFraction",
     ]);
   });
 
@@ -109,7 +107,7 @@ describe("buildDiffsSummaryHeader", () => {
       "screenshotName",
       "index",
       "outcome",
-      "mismatch",
+      "mismatchFraction",
       "domDiffIds",
       "isSelected",
       "baseReplayId",
@@ -125,7 +123,7 @@ describe("buildDiffsSummaryHeader", () => {
       "screenshotName",
       "index",
       "outcome",
-      "mismatch",
+      "mismatchFraction",
       "domDiffIds",
       "isSelected",
       "decision",
@@ -261,140 +259,73 @@ describe("buildDiffsSummaryJson", () => {
     }),
   ];
 
-  test("flat: one object per screenshot in index order, base columns only", () => {
-    expect(buildDiffsSummaryJson(data, NO_COLUMNS)).toEqual([
+  test("flat list, one object per screenshot in index order", () => {
+    expect(buildDiffsSummaryJson(data)).toEqual([
       {
         replayDiffId: "rd-1",
         screenshotName: "b",
         index: 0,
         outcome: "different",
-        mismatch: null,
+        // mismatchFraction omitted (null); isSelected kept (false is a value)
+        isSelected: false,
+        baseReplayId: "base-1",
+        headReplayId: "head-1",
       },
       {
         replayDiffId: "rd-2",
         screenshotName: "c",
         index: 1,
         outcome: "different",
-        mismatch: 0.1,
+        mismatchFraction: 0.1,
       },
       {
         replayDiffId: "rd-1",
         screenshotName: "a",
         index: 2,
         outcome: "different",
-        mismatch: 0.5,
-      },
-    ]);
-  });
-
-  test("flat: gated columns are appended after the base columns", () => {
-    expect(
-      buildDiffsSummaryJson(data, {
-        ...ALL_COLUMNS,
-        orderByReplayDiffs: false,
-      })[0],
-    ).toEqual({
-      replayDiffId: "rd-1",
-      screenshotName: "b",
-      index: 0,
-      outcome: "different",
-      mismatch: null,
-      domDiffIds: null,
-      isSelected: false,
-      baseReplayId: "base-1",
-      headReplayId: "head-1",
-    });
-  });
-
-  test("nested: one level per replay diff with screenshots grouped underneath", () => {
-    expect(buildDiffsSummaryJson(data, ALL_COLUMNS)).toEqual([
-      {
-        replayDiffId: "rd-1",
+        mismatchFraction: 0.5,
+        domDiffIds: "d1",
+        isSelected: true,
         baseReplayId: "base-1",
         headReplayId: "head-1",
-        screenshots: [
-          {
-            screenshotName: "a",
-            index: 2,
-            outcome: "different",
-            mismatch: 0.5,
-            domDiffIds: "d1",
-            isSelected: true,
-          },
-          {
-            screenshotName: "b",
-            index: 0,
-            outcome: "different",
-            mismatch: null,
-            domDiffIds: null,
-            isSelected: false,
-          },
-        ],
-      },
-      {
-        replayDiffId: "rd-2",
-        baseReplayId: null,
-        headReplayId: null,
-        screenshots: [
-          {
-            screenshotName: "c",
-            index: 1,
-            outcome: "different",
-            mismatch: 0.1,
-            domDiffIds: null,
-            isSelected: false,
-          },
-        ],
       },
     ]);
   });
 
-  test("nested: base columns only when gated columns are off", () => {
-    expect(
-      buildDiffsSummaryJson(data, {
-        ...NO_COLUMNS,
-        orderByReplayDiffs: true,
-      })[0],
-    ).toEqual({
-      replayDiffId: "rd-1",
-      screenshots: [
-        {
-          screenshotName: "a",
-          index: 2,
-          outcome: "different",
-          mismatch: 0.5,
-        },
-        {
-          screenshotName: "b",
-          index: 0,
-          outcome: "different",
-          mismatch: null,
-        },
-      ],
-    });
-  });
-
-  test("flat: includes the decision when includeReviewDecisions is set", () => {
-    const reviewed = [
+  test("omits absent optional fields rather than emitting null", () => {
+    const [entry] = buildDiffsSummaryJson([
       replayDiff({
         replayDiffId: "rd-1",
         screenshots: [
-          screenshot({ screenshotName: "a", index: 0, decision: "rejected" }),
+          screenshot({ screenshotName: "a", index: 0, mismatchFraction: null }),
         ],
       }),
-    ];
+    ]);
+    expect(entry).toEqual({
+      replayDiffId: "rd-1",
+      screenshotName: "a",
+      index: 0,
+      outcome: "different",
+    });
+  });
+
+  test("includes the decision when present", () => {
     expect(
-      buildDiffsSummaryJson(reviewed, {
-        ...NO_COLUMNS,
-        includeReviewDecisions: true,
-      }),
+      buildDiffsSummaryJson([
+        replayDiff({
+          replayDiffId: "rd-1",
+          screenshots: [
+            screenshot({ screenshotName: "a", index: 0, decision: "rejected" }),
+          ],
+        }),
+      ]),
     ).toEqual([
       {
         replayDiffId: "rd-1",
         screenshotName: "a",
         index: 0,
         outcome: "different",
-        mismatch: 0.1,
+        mismatchFraction: 0.1,
         decision: "rejected",
       },
     ]);

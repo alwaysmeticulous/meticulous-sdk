@@ -94,6 +94,12 @@ export interface GenerateDebugWorkspaceOptions {
    */
   skipDefaultClaudeFiles?: boolean | undefined;
   /**
+   * When true, skip prettier formatting of snapshotted JS/CSS assets.
+   * Used by the agent-cloud-worker cloud path where assets are not downloaded
+   * and formatting would otherwise add needless latency if any remain cached.
+   */
+  skipPrettifySnapshotAssets?: boolean | undefined;
+  /**
    * Whether the workspace is being prepared for the local `meticulous debug`
    * CLI or for a non-CLI runner like the agent-cloud-worker. Defaults to
    * `false`; the local CLI passes `true` explicitly. When `false`, CLI-specific
@@ -162,7 +168,9 @@ export const generateDebugWorkspace = async (
   generateAssetsDiff(debugContext, workspaceDir);
   generateTimelineSummaries(workspaceDir);
   generateSessionSummaries(debugContext, workspaceDir);
-  await prettifySnapshotAssets(workspaceDir);
+  if (!options.skipPrettifySnapshotAssets) {
+    await prettifySnapshotAssets(workspaceDir);
+  }
   extractScreenshotDomFiles(workspaceDir);
   const domDiffMap = await fetchDomDiffs({
     client,

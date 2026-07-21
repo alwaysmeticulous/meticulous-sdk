@@ -13,6 +13,7 @@ import {
   getApiToken,
   requestAssetUpload,
   requestGitDiffUpload,
+  requestAgenticInstructionsUpload,
   createClient,
   completeAssetUpload,
   getProxyAgent,
@@ -358,6 +359,33 @@ export const uploadGitDiffToS3 = async ({
   });
 
   logger.info("Git diff uploaded to S3 successfully");
+};
+
+export const uploadAgenticInstructionsToS3 = async ({
+  client,
+  instructions,
+  projectId,
+}: ProjectIdentifier & {
+  client: ReturnType<typeof createClient>;
+  instructions: string;
+}): Promise<string> => {
+  const logger = initLogger();
+  const buffer = Buffer.from(instructions, "utf-8");
+
+  logger.info(`Uploading agent instructions to S3 (${buffer.length} bytes)...`);
+
+  const { uploadUrl, instructionsId } = await requestAgenticInstructionsUpload({
+    client,
+    size: buffer.length,
+    ...(projectId ? { projectId } : {}),
+  });
+
+  await uploadBufferToSignedUrl(uploadUrl, buffer, {
+    contentType: "text/markdown",
+  });
+
+  logger.info("Agent instructions uploaded to S3 successfully");
+  return instructionsId;
 };
 
 /**

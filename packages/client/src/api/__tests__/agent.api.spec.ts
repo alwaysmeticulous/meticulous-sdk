@@ -5,6 +5,7 @@ import {
   getTestRunDiffsSummary,
   getTestRunDiffsSummaryCounts,
   getTestRunJsCoverage,
+  getSessions,
   TESTRUN_JS_COVERAGE_CLIENT_VERSION,
 } from "../agent.api";
 
@@ -88,6 +89,85 @@ describe("getTestRunDiffsSummary", () => {
     expect(paramsFromLastCall()).toEqual({
       clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
     });
+  });
+});
+
+describe("getSessions", () => {
+  let client: { get: Mock };
+  const asClient = (): MeticulousClient =>
+    client as unknown as MeticulousClient;
+
+  beforeEach(() => {
+    client = {
+      get: vi.fn().mockResolvedValue({ data: { sessions: [] } }),
+    };
+  });
+
+  it("sends no params when called with no options", async () => {
+    await getSessions(asClient());
+
+    expect(client.get).toHaveBeenCalledWith("agent/sessions", { params: {} });
+  });
+
+  it("maps project, filters, limit, and offset to query params", async () => {
+    await getSessions(asClient(), {
+      project: "my-org/my-proj",
+      createdSince: "2026-06-01",
+      createdUntil: "2026-06-10",
+      recordedSince: "2026-07-01",
+      recordedUntil: "2026-07-10",
+      recordedBy: "a@b.com",
+      excludeSyntheticSessions: true,
+      visitedUrlFilter: "*/checkout*",
+      includeStartUrl: true,
+      includeAbandonedReason: true,
+      limit: 25,
+      offset: 50,
+    });
+
+    expect(client.get).toHaveBeenCalledWith("agent/sessions", {
+      params: {
+        project: "my-org/my-proj",
+        createdSince: "2026-06-01",
+        createdUntil: "2026-06-10",
+        recordedSince: "2026-07-01",
+        recordedUntil: "2026-07-10",
+        recordedBy: "a@b.com",
+        excludeSyntheticSessions: "true",
+        visitedUrlFilter: "*/checkout*",
+        includeStartUrl: "true",
+        includeAbandonedReason: "true",
+        limit: "25",
+        offset: "50",
+      },
+    });
+  });
+
+  it("omits boolean flags when false", async () => {
+    await getSessions(asClient(), {
+      excludeSyntheticSessions: false,
+      includeStartUrl: false,
+      includeAbandonedReason: false,
+    });
+
+    expect(client.get).toHaveBeenCalledWith("agent/sessions", { params: {} });
+  });
+
+  it("returns the response data", async () => {
+    const sessions = [
+      {
+        id: "session-1",
+        createdAt: "2026-07-16T00:00:00.000Z",
+        recordedAt: "2026-07-16T00:00:00.000Z",
+        status: "original" as const,
+        recordedBy: "a@b.com",
+      },
+    ];
+    client.get.mockResolvedValue({ data: { sessions } });
+
+    const result = await getSessions(asClient());
+
+    expect(result).toEqual({ sessions });
   });
 });
 

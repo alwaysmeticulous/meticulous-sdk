@@ -12,11 +12,6 @@ export interface DiffRow {
 
 /** Which optional columns the TSV output includes. */
 export interface DiffsSummaryColumns {
-  /**
-   * Group the JSON output by replay diff (screenshots nested underneath) instead
-   * of a flat list. Either way the global `index` gives the ordering.
-   */
-  orderByReplayDiffs: boolean;
   /** Add the domDiffIds column. */
   includeDomDiffIds: boolean;
   /** Return every diff, not just the selected subset; adds the isSelected column. */
@@ -31,12 +26,12 @@ export interface DiffsSummaryColumns {
 export const formatDiffsSummaryCounts = (
   counts: DiffsSummaryCountsResponse,
 ): string[] => [
-  `numReplays\t${counts.numReplays}`,
-  `numDiffs\t${counts.numDiffs}`,
-  `numApproved\t${counts.numApproved}`,
-  `numIgnored\t${counts.numIgnored}`,
-  `numRejected\t${counts.numRejected}`,
-  `numUnreviewed\t${counts.numUnreviewed}`,
+  `numReplays:\t${counts.numReplays}`,
+  `numDiffs:\t${counts.numDiffs}`,
+  `numApproved:\t${counts.numApproved}`,
+  `numIgnored:\t${counts.numIgnored}`,
+  `numRejected:\t${counts.numRejected}`,
+  `numUnreviewed:\t${counts.numUnreviewed}`,
 ];
 
 const fmtMismatch = (v: number | null): string =>
@@ -65,7 +60,7 @@ export const buildDiffsSummaryHeader = (
     "screenshotName",
     "index",
     "outcome",
-    "mismatch",
+    "mismatchFraction",
   ];
   if (columns.includeDomDiffIds) fields.push("domDiffIds");
   if (columns.includeAllDiffs) fields.push("isSelected");
@@ -75,58 +70,41 @@ export const buildDiffsSummaryHeader = (
 };
 
 /**
- * Builds the JSON equivalent of the TSV, gated by the same columns. By default
- * it's a flat array (one object per screenshot, in global `index` order). With
- * orderByReplayDiffs it nests one level — an array of replay diffs, each with its
- * screenshots grouped underneath.
+ * Builds the JSON equivalent of the TSV: a flat array, one object per screenshot
+ * in global `index` order (matching the MCP tool's shape). Optional fields are
+ * omitted when absent rather than emitted as null; `orderByReplayDiffs` only
+ * affects the `index` ordering, not the structure.
  */
 export const buildDiffsSummaryJson = (
   data: DiffsSummaryReplayDiff[],
-  columns: DiffsSummaryColumns,
-): unknown[] => {
-  if (columns.orderByReplayDiffs) {
-    return data.map((replayDiff) => ({
-      replayDiffId: replayDiff.replayDiffId,
-      ...(columns.includeReplayIds
-        ? {
-            baseReplayId: replayDiff.baseReplayId ?? null,
-            headReplayId: replayDiff.headReplayId ?? null,
-          }
-        : {}),
-      screenshots: replayDiff.screenshots.map((screenshot) =>
-        screenshotToJson(screenshot, columns),
-      ),
-    }));
-  }
-  return flattenDiffRows(data).map(({ replayDiff, screenshot }) => ({
+): unknown[] =>
+  flattenDiffRows(data).map(({ replayDiff, screenshot }) => ({
     replayDiffId: replayDiff.replayDiffId,
-    ...screenshotToJson(screenshot, columns),
-    ...(columns.includeReplayIds
-      ? {
-          baseReplayId: replayDiff.baseReplayId ?? null,
-          headReplayId: replayDiff.headReplayId ?? null,
-        }
+    ...screenshotToJson(screenshot),
+    ...(replayDiff.baseReplayId != null
+      ? { baseReplayId: replayDiff.baseReplayId }
+      : {}),
+    ...(replayDiff.headReplayId != null
+      ? { headReplayId: replayDiff.headReplayId }
       : {}),
   }));
-};
 
 const screenshotToJson = (
   screenshot: DiffsSummaryScreenshot,
-  columns: DiffsSummaryColumns,
 ): Record<string, unknown> => ({
   screenshotName: screenshot.screenshotName,
   index: screenshot.index,
   outcome: screenshot.outcome,
-  mismatch: screenshot.mismatchFraction ?? null,
-  ...(columns.includeDomDiffIds
-    ? { domDiffIds: screenshot.domDiffIds ?? null }
+  ...(screenshot.mismatchFraction != null
+    ? { mismatchFraction: screenshot.mismatchFraction }
     : {}),
-  ...(columns.includeAllDiffs
-    ? { isSelected: screenshot.isSelected ?? false }
+  ...(screenshot.domDiffIds != null
+    ? { domDiffIds: screenshot.domDiffIds }
     : {}),
-  ...(columns.includeReviewDecisions
-    ? { decision: screenshot.decision ?? null }
+  ...(screenshot.isSelected != null
+    ? { isSelected: screenshot.isSelected }
     : {}),
+  ...(screenshot.decision != null ? { decision: screenshot.decision } : {}),
 });
 
 /** Formats a single row's fields, gated by the same columns as the header. */

@@ -95,24 +95,24 @@ const handler = async ({
 export const testRunForCommitCommand: CommandModule<unknown, Options> = {
   command: "test-run-for-commit",
   describe:
-    "Look up the latest test run for a commit (defaults to the current git HEAD). Outputs the testRunId (or JSON with --json).",
+    "Look up the latest test run for a given commit (defaults to the current git HEAD). Outputs the testRunId.",
   builder: {
-    apiToken: { string: true, description: "Meticulous API token" },
+    apiToken: { string: true, description: "Meticulous API token." },
     commitSha: {
       string: true,
       description:
-        "Commit SHA to look up. Defaults to the current git HEAD when omitted.",
+        "The commit to look up. Defaults to the current git HEAD when omitted.",
+    },
+    project: {
+      string: true,
+      description:
+        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project.",
     },
     dontWaitForTestRunToComplete: {
       boolean: true,
       default: false,
       description:
         "Return the latest run immediately instead of the default of blocking until it finishes; an unfinished run is then reported as not complete.",
-    },
-    project: {
-      string: true,
-      description:
-        "Project to look up (id, 'organization/name', or a bare name unique among your accessible projects). One-off override for this call only; when omitted, uses the token's project or the default set via `auth set-project`.",
     },
   },
   handler: wrapHandler(handler),

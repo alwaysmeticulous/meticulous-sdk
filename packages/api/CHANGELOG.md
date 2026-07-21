@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.310.0
+
+### Minor Changes
+
+- [#11104](https://github.com/alwaysmeticulous/meticulous/pull/11104) [`b22d975`](https://github.com/alwaysmeticulous/meticulous/commit/b22d9752538e6efdbfe74a14c002e61764c9fb0e) Thanks [@phreppo](https://github.com/phreppo)! - Add optional `coverageReplaysByFilePr` location to `TestRunDataLocations` for the new PR-scoped `coverage-replays-by-file.pr.json.gz` test run artifact.
+
 ## 2.307.0
 
 ### Minor Changes

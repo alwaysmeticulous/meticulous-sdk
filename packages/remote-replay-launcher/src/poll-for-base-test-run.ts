@@ -21,10 +21,18 @@ export const pollWhileBaseNotFound = async ({
   initialResult,
   retryFn,
   fallbackFn,
+  fallbackLogMessage = "Base test run not found, proceeding without it.",
 }: {
   initialResult: PollResult;
   retryFn: () => Promise<PollResult>;
   fallbackFn: () => Promise<PollResult>;
+  /**
+   * Logged just before `fallbackFn` runs. Callers whose fallback does not
+   * actually proceed without a base (e.g. versionLookup manifests, which fail
+   * instead) should override this so the log doesn't misreport a hard failure
+   * as a successful degraded path.
+   */
+  fallbackLogMessage?: string;
 }): Promise<PollResult> => {
   const logger = initLogger();
 
@@ -70,7 +78,7 @@ export const pollWhileBaseNotFound = async ({
     }
 
     if (baseNotFound && !testRun) {
-      logger.info("Base test run not found, proceeding without it.");
+      logger.info(fallbackLogMessage);
       const fallbackResult = await fallbackFn();
       testRun = fallbackResult.testRun ?? null;
       message = fallbackResult.message;

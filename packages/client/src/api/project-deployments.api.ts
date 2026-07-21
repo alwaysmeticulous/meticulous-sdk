@@ -126,7 +126,7 @@ export interface ContainerEnvVariable {
  * string. Every project-deployment endpoint reads `projectId` from
  * `@Query("projectId")` on the backend, not from the body.
  */
-const projectIdQuery = (
+export const projectIdQuery = (
   projectId: string | undefined,
 ): { params: { projectId: string } } | undefined =>
   projectId ? { params: { projectId } } : undefined;
@@ -604,6 +604,17 @@ export interface AgentTriggerTestRunParams extends AgentProjectOverride {
    * auto-selected golden set.
    */
   sessionIds?: string[];
+  /**
+   * Caps each session replay at this many seconds; sessions longer than the
+   * cap are trimmed. Only applied when `sessionIds` is also set — the backend
+   * rejects it otherwise. Intended for newly custom-recorded sessions: the cap
+   * is applied to both the head run and any fresh base run created to compare
+   * against, but a pre-existing base run reused for the comparison keeps
+   * whatever cap it originally ran under. Defaults to 300 seconds (5 minutes)
+   * when omitted; pass `null` for unlimited. Wins over any project-configured
+   * cap.
+   */
+  maxDurationSeconds?: number | null;
 }
 
 export interface AgentTriggerTestRunResponse {

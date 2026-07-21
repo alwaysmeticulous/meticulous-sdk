@@ -28,6 +28,12 @@ export interface DownloadDebugDataOptions {
   debugContext: DebugContext;
   workspaceDir: string;
   maxConcurrentDownloads?: number | undefined;
+  /**
+   * When true, do not download `snapshottedAssets` at all (hard exclude).
+   * Used by the agent-cloud-worker path where assets only feed optional
+   * prettier enrichment. Local CLI keeps the default best-effort download.
+   */
+  skipSnapshottedAssets?: boolean | undefined;
   additionalDownloads?:
     | ((
         debugContext: DebugContext,
@@ -47,7 +53,13 @@ export const downloadDebugData = async (
   mkdirSync(debugDataDir, { recursive: true });
 
   await Promise.all([
-    downloadReplays(client, debugContext, debugDataDir, maxConcurrency),
+    downloadReplays(
+      client,
+      debugContext,
+      debugDataDir,
+      maxConcurrency,
+      options.skipSnapshottedAssets === true,
+    ),
     downloadSessionData(client, debugContext, debugDataDir, maxConcurrency),
     downloadReplayDiffs(client, debugContext, debugDataDir, maxConcurrency),
     downloadTestRunMetadata(client, debugContext, debugDataDir),
@@ -62,6 +74,7 @@ const downloadReplays = async (
   debugContext: DebugContext,
   debugDataDir: string,
   maxConcurrency: number,
+  skipSnapshottedAssets: boolean,
 ): Promise<void> => {
   const headReplayIds = new Set(
     debugContext.replayDiffs.map((d) => d.headReplayId),
@@ -74,6 +87,16 @@ const downloadReplays = async (
     chalk.cyan(`  Downloading ${debugContext.replayIds.length} replays...`),
   );
 
+  const excludeFileTypes = skipSnapshottedAssets
+    ? new Set<ReplayFileType>([
+        ...DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES,
+        "snapshottedAssets",
+      ])
+    : DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES;
+  const bestEffortFileTypes = skipSnapshottedAssets
+    ? new Set<BestEffortFileType>()
+    : DEBUG_WORKSPACE_BEST_EFFORT_FILE_TYPES;
+
   const limit = pLimit(maxConcurrency);
   const results = await Promise.all(
     debugContext.replayIds.map((replayId) =>
@@ -84,8 +107,8 @@ const downloadReplays = async (
           "everything",
           true,
           {
-            excludeFileTypes: DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES,
-            bestEffortFileTypes: DEBUG_WORKSPACE_BEST_EFFORT_FILE_TYPES,
+            excludeFileTypes,
+            bestEffortFileTypes,
           },
         );
         await ensureReplayLogTextFiles(cachedPath);

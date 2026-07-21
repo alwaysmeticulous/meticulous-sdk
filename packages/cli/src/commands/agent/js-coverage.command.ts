@@ -552,9 +552,9 @@ export const isAmbiguousTestRunError = (error: unknown): boolean =>
 export const jsCoverageCommand: CommandModule<unknown, Options> = {
   command: "js-coverage",
   describe:
-    "Get JS coverage for a whole test run or a single replay. Outputs TSV, one row per repo file: repoFilePath plus the requested coverage columns (or JSON with --json).",
+    "Get the list of per-file JavaScript coverage for a whole test run or a single replay (or a single screenshot of it). Outputs a TSV table with columns repoFilePath plus the requested additional columns (default if none: executedRanges).",
   builder: {
-    apiToken: { string: true, description: "Meticulous API token" },
+    apiToken: { string: true, description: "Meticulous API token." },
     testRunId: {
       string: true,
       description:
@@ -564,13 +564,13 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
     commitSha: {
       string: true,
       description:
-        "A commit SHA, used as an alternative to --testRunId: the latest test run for the commit is resolved and used. For whole-test-run coverage, defaults to the local git HEAD when neither --testRunId nor --commitSha is given.",
+        "A commit SHA, used as an alternative to --testRunId: looks up the latest test run for the commit. For whole-test-run coverage, defaults to the current git HEAD when neither --testRunId nor --commitSha is given.",
     },
-    dontWaitForTestRunToComplete: {
-      boolean: true,
-      default: false,
+    project: {
+      string: true,
       description:
-        "For whole-test-run coverage, return immediately instead of the default of blocking until the run finishes; an unfinished run is then reported as not complete.",
+        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project.",
+      conflicts: ["testRunId", "testRunIds"],
     },
     replayId: {
       string: true,
@@ -580,54 +580,13 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
     screenshotName: {
       string: true,
       description:
-        'Screenshot name (e.g. "after-event-5" or "end-state"), for use with --replayId. Omit for the whole replay.',
-    },
-    includeAllFiles: {
-      boolean: true,
-      default: false,
-      description:
-        "Return every file, regardless of the requested columns. By default a file is dropped unless at least one requested column has a value for it (e.g. with only executed ranges, files with no executed lines are dropped). Works for both replay and whole-test-run coverage.",
-    },
-    globFilter: {
-      string: true,
-      description:
-        'Keep only repo file paths matching this gitignore-style glob, e.g. "src/components/**".',
-    },
-    includeExecutedRanges: {
-      boolean: true,
-      default: false,
-      description:
-        "Include the executed line ranges column. This is the default column when no other --include* range/percentage flag is given.",
-    },
-    includeExecutableRanges: {
-      boolean: true,
-      default: false,
-      description:
-        "Include the executable line ranges column (lines that could be executed). Whole-test-run coverage only.",
-    },
-    includeUncoveredRanges: {
-      boolean: true,
-      default: false,
-      description:
-        "Include the uncovered line ranges column (executable minus executed). Whole-test-run coverage only.",
-    },
-    includeCoveragePercentage: {
-      boolean: true,
-      default: false,
-      description:
-        "Include the coverage percentage column (0–100; executed / executable lines per file). Whole-test-run coverage only.",
-    },
-    prDiffOnly: {
-      boolean: true,
-      default: false,
-      description:
-        "Return only coverage for files changed in the PR diff (from coverage.pr.json). Whole-test-run coverage only.",
+        "Restrict coverage to this screenshot, which is only the coverage recorded since the preceding screenshot (for use with --replayId; omit for the whole replay).",
     },
     headPlusTestRunIds: {
       string: true,
       description:
-        "Comma-separated additional test run IDs to union with the run resolved via --commitSha, or the local git HEAD by default (cannot be combined with --testRunId — use --testRunIds instead when you already have an explicit primary ID). " +
-        "Useful for combining a project's normal coverage with the coverage of a few extra test runs. All runs must be finished, belong to the same project, and have executed the exact same commit as the run resolved above " +
+        "Comma-separated additional test run IDs to union with the run resolved via --commitSha, or the current git HEAD by default (cannot be combined with --testRunId — use --testRunIds instead when you already have an explicit primary ID). " +
+        "Useful for checking combined coverage of the base (resolved from --commitSha or the current git HEAD) with additional custom-session test runs, each covering a subset of sessions. All runs must be finished, belong to the same project, and have executed the exact same commit as the run resolved above " +
         "(a PR's merge commit is recomputed whenever its base branch moves, so a run triggered against a since-advanced base is rejected). Whole-test-run coverage only.",
     },
     testRunIds: {
@@ -636,11 +595,52 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
         "Comma-separated test run IDs: the first is the primary run coverage is returned for, the rest are unioned in exactly like --headPlusTestRunIds. An alternative to --testRunId/--commitSha for callers that already have an ordered list of run IDs on hand. " +
         "Cannot be combined with --testRunId, --commitSha, or --headPlusTestRunIds. Same constraints as --headPlusTestRunIds apply to the additional IDs (same project, same commit as the primary). Whole-test-run coverage only.",
     },
-    project: {
+    includeAllFiles: {
+      boolean: true,
+      default: false,
+      description:
+        "Output all files, including those with no value in the requested columns (dropped by default). Works for both replay and whole-test-run coverage.",
+    },
+    globFilter: {
       string: true,
       description:
-        "Project to resolve --commitSha against (id, 'organization/name', or a bare name unique among your accessible projects). Cannot be combined with --testRunId/--testRunIds (the run already determines the project). One-off override for this call only; when omitted, uses the token's project or the default set via `auth set-project`.",
-      conflicts: ["testRunId", "testRunIds"],
+        "Output only files whose repo path matches this gitignore-style glob (e.g. src/components/**).",
+    },
+    prDiffOnly: {
+      boolean: true,
+      default: false,
+      description:
+        "Output only files changed in the PR diff (from coverage.pr.json). Whole-test-run coverage only.",
+    },
+    includeExecutedRanges: {
+      boolean: true,
+      default: false,
+      description:
+        "Add an executedRanges column with the executed line ranges (default if none of the columns are requested).",
+    },
+    includeExecutableRanges: {
+      boolean: true,
+      default: false,
+      description:
+        "Add an executableRanges column with the executable line ranges. Whole-test-run coverage only.",
+    },
+    includeUncoveredRanges: {
+      boolean: true,
+      default: false,
+      description:
+        "Add an uncoveredRanges column with the uncovered line ranges (executable minus executed). Whole-test-run coverage only.",
+    },
+    includeCoveragePercentage: {
+      boolean: true,
+      default: false,
+      description:
+        "Add a coveragePercentage column with the per-file coverage percentage (0–100). Whole-test-run coverage only.",
+    },
+    dontWaitForTestRunToComplete: {
+      boolean: true,
+      default: false,
+      description:
+        "For whole-test-run coverage, return immediately instead of the default of blocking until the run finishes; an unfinished run is then reported as not complete.",
     },
   },
   handler: wrapHandler(handler),

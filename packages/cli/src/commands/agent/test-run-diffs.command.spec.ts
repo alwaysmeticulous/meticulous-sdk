@@ -241,12 +241,12 @@ describe("test-run-diffs command polling", () => {
     const stdout = logSpy.mock.calls.flat().join("\n");
     expect(stdout).toBe(
       [
-        "numReplays\t5",
-        "numDiffs\t2",
-        "numApproved\t1",
-        "numIgnored\t0",
-        "numRejected\t0",
-        "numUnreviewed\t1",
+        "numReplays:\t5",
+        "numDiffs:\t2",
+        "numApproved:\t1",
+        "numIgnored:\t0",
+        "numRejected:\t0",
+        "numUnreviewed:\t1",
       ].join("\n"),
     );
   });

@@ -1,5 +1,12 @@
 # @alwaysmeticulous/tunnels-client
 
+## 2.310.0
+
+### Patch Changes
+
+- Updated dependencies [[`0d35d4d`](https://github.com/alwaysmeticulous/meticulous/commit/0d35d4d136ea4b0d5a7c0395189203e5831b6081)]:
+  - @alwaysmeticulous/common@2.310.0
+
 ## 2.301.0
 
 ### Patch Changes

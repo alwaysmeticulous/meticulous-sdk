@@ -4,6 +4,7 @@ import { jsCoverageCommand } from "./js-coverage.command";
 import { domDiffCommand } from "./screenshot-dom-diff.command";
 import { imageFilesCommand } from "./screenshot-image-files.command";
 import { imageUrlsCommand } from "./screenshot-image.command";
+import { sessionsCommand } from "./sessions.command";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
 import { testRunForCommitCommand } from "./test-run-for-commit.command";
 import { timelineDiffCommand } from "./timeline.command";
@@ -13,7 +14,7 @@ import { uploadBuildCommand } from "./upload-build.command";
 export const agentCommand: CommandModule = {
   command: "agent",
   describe:
-    "Agent commands for retrieving data from and interacting with Meticulous",
+    "Agent commands for retrieving data from and interacting with Meticulous.",
   builder: (yargs) =>
     yargs
       .command(testRunForCommitCommand)
@@ -26,6 +27,7 @@ export const agentCommand: CommandModule = {
       .command(jsCoverageDiffCommand)
       .command(uploadBuildCommand)
       .command(triggerTestRunCommand)
+      .command(sessionsCommand)
       .option("verbose", {
         boolean: true,
         default: false,

@@ -59,25 +59,25 @@ describe("timeline-diff command", () => {
     logSpy.mockRestore();
   });
 
-  it("emits JSON using '=' for identical entries and the mapped fields", async () => {
+  it("emits JSON carrying the status enum in `diff` and the mapped fields", async () => {
     await runHandler({ json: true });
 
     expect(JSON.parse(stdoutText())).toEqual([
-      { diff: "=", timeMs: 0, event: "click", description: "a" },
-      { diff: "!", timeMs: 10, event: "nav", description: "b" },
-      { diff: "+", timeMs: 20, event: "type", description: "c" },
-      { diff: "-", timeMs: 30, event: "scroll", description: "d" },
+      { diff: "identical", timeMs: 0, event: "click", description: "a" },
+      { diff: "changed", timeMs: 10, event: "nav", description: "b" },
+      { diff: "added", timeMs: 20, event: "type", description: "c" },
+      { diff: "removed", timeMs: 30, event: "scroll", description: "d" },
     ]);
   });
 
-  it("emits a TSV header and one row per entry, using a space for identical", async () => {
+  it("emits a TSV header and one row per entry, using the compact prefix symbol", async () => {
     await runHandler({ json: false });
 
     const lines = stdoutText().split("\n");
     expect(lines[0]).toBe(
       ["diff", "timeMs", "event", "description"].join("\t"),
     );
-    // Identical rows keep a space prefix in the TSV (unlike the JSON "=").
+    // The TSV `diff` column keeps a compact prefix symbol (unlike the JSON enum).
     expect(lines[1]).toBe([" ", 0, "click", "a"].join("\t"));
     expect(lines[2]).toBe(["!", 10, "nav", "b"].join("\t"));
   });

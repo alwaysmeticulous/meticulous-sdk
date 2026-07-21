@@ -79,9 +79,6 @@ const handler = async ({
   await cleanupOldImages(dir);
 
   const downloads: Array<{ label: string; url: string }> = [];
-  if (urls.screenshot) {
-    downloads.push({ label: "screenshot", url: urls.screenshot });
-  }
   if (urls.before) {
     downloads.push({ label: "before", url: urls.before });
   }
@@ -98,7 +95,7 @@ const handler = async ({
   // Print the outcome up-front (non-JSON) so it's visible even if a download
   // below fails; the JSON path emits it as part of the single object instead.
   if (!json) {
-    console.log(`outcome: ${urls.outcome}`);
+    console.log(`outcome:\t${urls.outcome}`);
   }
 
   const results = await Promise.all(
@@ -117,25 +114,25 @@ const handler = async ({
   }
 
   for (let i = 0; i < downloads.length; i++) {
-    console.log(`${downloads[i].label}: ${results[i]}`);
+    console.log(`${downloads[i].label}:\t${results[i]}`);
   }
 };
 
 export const imageFilesCommand: CommandModule<unknown, Options> = {
   command: "image-files",
   describe:
-    "Download screenshot images for a replay diff screenshot to local files under ~/.meticulous/agent-images. Outputs an outcome line then a 'label: filepath' line per downloaded image (or JSON with --json).",
+    "Download the images of a screenshot diff to local files under ~/.meticulous/agent-images. Outputs a line with the outcome (diff, no-diff, etc) and a line with the file path per downloaded image (before/after/diffImage).",
   builder: {
-    apiToken: { string: true, description: "Meticulous API token" },
+    apiToken: { string: true, description: "Meticulous API token." },
     replayDiffId: {
       string: true,
-      description: "The replay diff ID",
+      description: "The replay diff ID.",
       demandOption: true,
     },
     screenshotName: {
       string: true,
       description:
-        'Screenshot name, exactly as listed in the screenshotName column of `agent test-run-diffs` for this replay diff (e.g. "after-event-5", "end-state", or "auxiliary-291-0-exit_animation")',
+        'The screenshot name, as listed in the screenshotName column of `agent test-run-diffs` (e.g. "after-event-5" or "end-state").',
       demandOption: true,
     },
   },

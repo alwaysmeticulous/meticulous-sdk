@@ -26,6 +26,7 @@ interface Options {
   baseSha?: string | undefined;
   gitDiffOutput?: string | undefined;
   sessionIds?: string | undefined;
+  maxDurationSeconds?: string | undefined;
   dontWaitForTestRunToComplete: boolean;
   json: boolean;
   dryRun?: boolean;
@@ -80,6 +81,47 @@ export const shouldWarnOfHeadDrift = ({
   Boolean(headCommitSha) &&
   head !== headCommitSha;
 
+/**
+ * Parses the raw `--maxDurationSeconds` value into what's sent to the API:
+ * `undefined` when omitted (use the platform default, currently 300s/5min),
+ * `null` for the explicit "unlimited" sentinel ('none'), or a positive integer
+ * number of seconds otherwise. Bounds (beyond positivity) are enforced
+ * server-side, so a value outside them still round-trips to a clear backend
+ * error rather than being silently clamped here.
+ */
+export const parseMaxDurationSecondsArg = (
+  raw: string | undefined,
+): number | null | undefined => {
+  if (raw == null) {
+    return undefined;
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === "none") {
+    return null;
+  }
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new CliUserError(
+      `--maxDurationSeconds must be a positive integer number of seconds, or 'none' for unlimited. Got: "${raw}"`,
+    );
+  }
+  return parsed;
+};
+
+/**
+ * --maxDurationSeconds only makes sense for explicitly pinned sessions: the
+ * auto-selected golden set is already curated to fit under the default cap,
+ * so overriding it there would be a silent, project-wide behavior change
+ * rather than a deliberate choice about specific sessions.
+ */
+export const shouldRejectMaxDurationWithoutSessionIds = ({
+  maxDurationSeconds,
+  hasPinnedSessionIds,
+}: {
+  maxDurationSeconds: number | null | undefined;
+  hasPinnedSessionIds: boolean;
+}): boolean => maxDurationSeconds !== undefined && !hasPinnedSessionIds;
+
 const handler = async ({
   apiToken,
   deploymentId,
@@ -87,6 +129,7 @@ const handler = async ({
   baseSha: baseSha_,
   gitDiffOutput: gitDiffOutput_,
   sessionIds: sessionIds_,
+  maxDurationSeconds: maxDurationSeconds_,
   dontWaitForTestRunToComplete,
   json,
   dryRun,
@@ -156,6 +199,17 @@ const handler = async ({
   // shouldSkipAsNothingToTest for the exemptions).
   const effectiveHead = head ?? commitSha;
   const hasPinnedSessionIds = sessionIds != null && sessionIds.length > 0;
+  const maxDurationSeconds = parseMaxDurationSecondsArg(maxDurationSeconds_);
+  if (
+    shouldRejectMaxDurationWithoutSessionIds({
+      maxDurationSeconds,
+      hasPinnedSessionIds,
+    })
+  ) {
+    throw new CliUserError(
+      "--maxDurationSeconds requires --sessionIds — it only applies to explicitly pinned sessions, not the project's auto-selected golden set.",
+    );
+  }
   if (
     shouldSkipAsNothingToTest({
       commitSha,
@@ -208,6 +262,7 @@ const handler = async ({
       baseSha,
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
       ...(hasPinnedSessionIds ? { sessionIds } : {}),
+      ...(maxDurationSeconds !== undefined ? { maxDurationSeconds } : {}),
       ...(project ? { project } : {}),
     });
     testRunId = testRun?.id ?? null;
@@ -297,7 +352,18 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
       description:
         "Comma-separated list of session IDs to replay, instead of the project's auto-selected sessions. Replayed on the base too, unless the run ends up head-only (see below). " +
         "When omitted, the project's auto-selected ('golden set') sessions are used. " +
-        "When non-empty and --baseSha equals the head commit with no diff, the run proceeds head-only (no base run or comparison) instead of failing with 'nothing to do'.",
+        "When non-empty and --baseSha equals the head commit with no diff, the run proceeds head-only (no base run or comparison) instead of failing with 'nothing to do'. " +
+        "If these sessions were newly custom-recorded (e.g. deliberately long flows), pair this with --maxDurationSeconds — the default 300s (5 minute) cap may cut them short.",
+    },
+    maxDurationSeconds: {
+      string: true,
+      description:
+        "Cap each session replay at this many seconds; sessions longer than the cap are trimmed (surfaced as a flakiness warning in the " +
+        "replay's timeline, viewable in the webapp). Requires --sessionIds — it only applies to those explicitly pinned sessions, not the project's " +
+        "auto-selected golden set. Intended for newly custom-recorded sessions: the cap is applied to both the head run and any fresh base run created " +
+        "to compare against, but a pre-existing base run reused for the comparison keeps whatever cap it originally ran under. Defaults to 300 seconds " +
+        "(5 minutes) when omitted, matching the platform default. If your pinned sessions were custom-recorded with unusually long durations, pass " +
+        "'none' for unlimited. Overrides any project-configured cap.",
     },
     dontWaitForTestRunToComplete: {
       boolean: true,
@@ -315,7 +381,7 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
     project: {
       string: true,
       description:
-        "Project to trigger against (id, 'organization/name', or a bare name unique among your accessible projects). One-off override for this call only; when omitted, uses the token's project or the default set via `auth set-project`.",
+        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project.",
     },
   },
   handler: wrapHandler(handler),

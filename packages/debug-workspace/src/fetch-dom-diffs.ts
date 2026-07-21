@@ -341,7 +341,6 @@ const resolveScreenshot = async (args: {
         client,
         pair.replayDiffId,
         backendName,
-        undefined,
         "full",
       );
       const fullBody = fullResponse.diffs.map((d) => d.content).join("\n\n");

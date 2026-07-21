@@ -12,7 +12,6 @@ interface Options {
   apiToken?: string | null | undefined;
   replayDiffId: string;
   screenshotName: string | undefined;
-  includeAllFiles: boolean;
   globFilter: string | undefined;
   json: boolean;
 }
@@ -21,7 +20,6 @@ const handler = async ({
   apiToken,
   replayDiffId,
   screenshotName,
-  includeAllFiles,
   globFilter,
   json,
 }: Options): Promise<void> => {
@@ -36,7 +34,6 @@ const handler = async ({
     replayDiffId,
     screenshotName,
     {
-      includeAllFiles,
       globFilter,
     },
   );
@@ -71,37 +68,30 @@ const handler = async ({
   // Summary on stderr regardless of --json (which only changes stdout).
   logNotice(
     `${result.diff.length} file(s) with coverage changes ` +
-      `(${added} added, ${removed} removed, ${modified} modified); ` +
-      `base ${result.base?.length ?? 0} file(s), head ${result.head?.length ?? 0} file(s)`,
+      `(${added} added, ${removed} removed, ${modified} modified)`,
   );
 };
 
 export const jsCoverageDiffCommand: CommandModule<unknown, Options> = {
   command: "js-coverage-diff",
   describe:
-    "Get the JS coverage diff for a replay diff. Outputs TSV, one row per changed file: repoFilePath, status, baseRanges, headRanges (or JSON with --json).",
+    "Get the list of per-file JavaScript coverage diffs for a given replay diff (or a single screenshot of it). Outputs a TSV table with columns repoFilePath, status, baseRanges, headRanges.",
   builder: {
-    apiToken: { string: true, description: "Meticulous API token" },
+    apiToken: { string: true, description: "Meticulous API token." },
     replayDiffId: {
       string: true,
-      description: "The replay diff ID",
+      description: "The replay diff ID.",
       demandOption: true,
     },
     screenshotName: {
       string: true,
       description:
-        'Screenshot name (e.g. "after-event-5" or "end-state"). Omit for the whole-replay diff.',
-    },
-    includeAllFiles: {
-      boolean: true,
-      default: false,
-      description:
-        "Include base/head rows with no executed ranges (dropped by default).",
+        "Restrict coverage to this screenshot, which is only the coverage recorded since the preceding screenshot (omit for the whole-replay diff).",
     },
     globFilter: {
       string: true,
       description:
-        'Keep only repo file paths matching this gitignore-style glob, e.g. "src/components/**". Scopes base, head, and the diff.',
+        "Output only files whose repo path matches this gitignore-style glob (e.g. src/components/**).",
     },
   },
   handler: wrapHandler(handler),

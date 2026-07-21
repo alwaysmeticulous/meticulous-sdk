@@ -13,18 +13,13 @@ interface Options {
   json: boolean;
 }
 
+// TSV-only compact marker per status. The JSON output (and the MCP tool) carry
+// the raw status enum in the `diff` attribute instead of this symbol.
 const STATUS_PREFIX: Record<string, string> = {
   identical: " ",
   removed: "-",
   added: "+",
   changed: "!",
-};
-
-// The JSON `diff` field mirrors STATUS_PREFIX but uses "=" for identical, where
-// the TSV keeps a space.
-const STATUS_SYMBOL: Record<string, string> = {
-  ...STATUS_PREFIX,
-  identical: "=",
 };
 
 const handler = async ({
@@ -43,7 +38,7 @@ const handler = async ({
   if (json) {
     printJson(
       entries.map((entry) => ({
-        diff: STATUS_SYMBOL[entry.status] ?? entry.status,
+        diff: entry.status,
         timeMs: entry.timeMs,
         event: entry.eventKind,
         description: entry.description,
@@ -69,12 +64,12 @@ const handler = async ({
 export const timelineDiffCommand: CommandModule<unknown, Options> = {
   command: "timeline-diff",
   describe:
-    "Get the timeline diff for a replay diff. Outputs TSV, one row per timeline entry: diff, timeMs, event, description (or JSON with --json).",
+    "Get the list of timeline event diffs for a given replay diff. Outputs a TSV table with columns diff, timeMs, event, description.",
   builder: {
-    apiToken: { string: true, description: "Meticulous API token" },
+    apiToken: { string: true, description: "Meticulous API token." },
     replayDiffId: {
       string: true,
-      description: "The replay diff ID",
+      description: "The replay diff ID.",
       demandOption: true,
     },
   },

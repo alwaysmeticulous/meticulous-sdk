@@ -34,6 +34,14 @@ export interface TriggerTestRunOptions extends AgentProjectOverride {
    * auto-selected golden set.
    */
   sessionIds?: string[] | undefined;
+  /**
+   * Caps each session replay at this many seconds; sessions longer than the
+   * cap are silently trimmed. Only applied when `sessionIds` is also set —
+   * the backend rejects it otherwise. Defaults to 300 seconds (5 minutes)
+   * when omitted; pass `null` for unlimited. Wins over any project-configured
+   * cap.
+   */
+  maxDurationSeconds?: number | null | undefined;
 }
 
 export interface TriggerTestRunResult {
@@ -76,6 +84,7 @@ export const triggerTestRun = async ({
   baseSha,
   gitDiffOutput,
   sessionIds,
+  maxDurationSeconds,
   project,
 }: TriggerTestRunOptions): Promise<TriggerTestRunResult> => {
   if (Boolean(deploymentId) === Boolean(commitSha)) {
@@ -122,6 +131,7 @@ export const triggerTestRun = async ({
     // silently dropping an empty one: "provided" means "pin exactly these", so
     // an empty list is a caller mistake the backend rejects with a clear 400.
     ...(sessionIds != null ? { sessionIds } : {}),
+    ...(maxDurationSeconds !== undefined ? { maxDurationSeconds } : {}),
     ...projectOverride,
   });
 

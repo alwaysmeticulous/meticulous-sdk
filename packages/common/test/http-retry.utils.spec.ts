@@ -61,6 +61,22 @@ describe("defaultShouldRetry", () => {
     expect(defaultShouldRetry(error)).toBe(true);
   });
 
+  it("retries transient OpenSSL handshake errors from undici fetch", () => {
+    const packetLengthError = new TypeError("fetch failed");
+    (packetLengthError as TypeError & { cause?: unknown }).cause = {
+      library: "SSL routines",
+      reason: "packet length too long",
+      code: "ERR_SSL_PACKET_LENGTH_TOO_LONG",
+    };
+    expect(defaultShouldRetry(packetLengthError)).toBe(true);
+
+    const wrongVersionError = new TypeError("fetch failed");
+    (wrongVersionError as TypeError & { cause?: unknown }).cause = {
+      code: "ERR_SSL_WRONG_VERSION_NUMBER",
+    };
+    expect(defaultShouldRetry(wrongVersionError)).toBe(true);
+  });
+
   it("retries abort errors (internal per-request timeouts from makeSingleRequest)", () => {
     expect(defaultShouldRetry({ name: "AbortError" })).toBe(true);
   });

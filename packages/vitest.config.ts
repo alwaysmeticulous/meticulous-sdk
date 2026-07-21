@@ -3,7 +3,13 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.spec.ts", "src/**/*.spec.tsx"],
+    include: [
+      "src/**/*.spec.ts",
+      "src/**/*.spec.tsx",
+      // @alwaysmeticulous/common keeps specs under test/ rather than src/
+      "test/**/*.spec.ts",
+      "test/**/*.spec.tsx",
+    ],
     exclude: ["dist", "node_modules"],
   },
 });

@@ -112,6 +112,19 @@ export const runWithUploadedAssetChunks = async ({
     ...(projectId ? { projectId } : {}),
   };
 
+  const manifestHasVersionLookups = assetReferencesManifest.some(
+    (ref) => "versionLookup" in ref,
+  );
+  const fallbackFn = manifestHasVersionLookups
+    ? () =>
+        Promise.resolve({
+          testRun: null,
+          baseNotFound: true,
+          message:
+            "Timed out waiting for a base test run to appear for the base commit. This manifest contains versionLookup entries, which resolve chunk versions from the base commit's test run — that run only needs to exist (an in-progress run is fine), not to finish. If the base run is being created in parallel it may just be slightly behind, so retrying often succeeds. If it keeps failing, check that a chunked-asset Meticulous run is actually triggered for the base commit (and, if you passed --baseSha, that it points at the right commit).",
+        })
+    : () => triggerRunWithUploadedAssetChunks({ ...args, mustHaveBase: false });
+
   const initialResult = await triggerRunWithUploadedAssetChunks(args);
   const {
     testRun,
@@ -128,8 +141,13 @@ export const runWithUploadedAssetChunks = async ({
       overlapsTruncated: initialResult?.overlapsTruncated,
     },
     retryFn: () => triggerRunWithUploadedAssetChunks(args),
-    fallbackFn: () =>
-      triggerRunWithUploadedAssetChunks({ ...args, mustHaveBase: false }),
+    fallbackFn,
+    ...(manifestHasVersionLookups
+      ? {
+          fallbackLogMessage:
+            "Timed out waiting for a base test run. Not proceeding without a base because this manifest uses versionLookup entries, which require one.",
+        }
+      : {}),
   });
 
   // The trigger computes overlaps over the fully resolved manifest and is the

@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   isInteractiveContext: vi.fn(),
   performOAuthLogin: vi.fn(),
+  performDeviceLogin: vi.fn(),
   selectProjectOnLogin: vi.fn(),
   logNotice: vi.fn(),
 }));
@@ -30,6 +31,7 @@ vi.mock("@alwaysmeticulous/client", () => ({
   createClient: mocks.createClient,
   isInteractiveContext: mocks.isInteractiveContext,
   performOAuthLogin: mocks.performOAuthLogin,
+  performDeviceLogin: mocks.performDeviceLogin,
 }));
 
 vi.mock("../../../utils/select-project", () => ({
@@ -37,7 +39,7 @@ vi.mock("../../../utils/select-project", () => ({
 }));
 
 const runHandler = (
-  args: { project?: string; nonInteractive?: boolean } = {},
+  args: { project?: string; nonInteractive?: boolean; device?: boolean } = {},
 ) =>
   (loginCommand as { handler: (args: unknown) => Promise<void> }).handler(args);
 
@@ -46,6 +48,7 @@ describe("login command", () => {
     vi.clearAllMocks();
     mocks.createClient.mockReturnValue({});
     mocks.performOAuthLogin.mockResolvedValue({ accessToken: "fresh-jwt" });
+    mocks.performDeviceLogin.mockResolvedValue({ accessToken: "fresh-jwt" });
     mocks.selectProjectOnLogin.mockResolvedValue(undefined);
   });
 
@@ -54,9 +57,10 @@ describe("login command", () => {
 
     await expect(runHandler()).rejects.toBeInstanceOf(CliUserError);
     expect(mocks.performOAuthLogin).not.toHaveBeenCalled();
+    expect(mocks.performDeviceLogin).not.toHaveBeenCalled();
   });
 
-  it("with --non-interactive, bypasses the TTY guard and runs headlessly", async () => {
+  it("with --non-interactive, bypasses the TTY guard and runs headlessly via the loopback flow", async () => {
     mocks.isInteractiveContext.mockReturnValue(false);
 
     await runHandler({ nonInteractive: true });
@@ -64,12 +68,13 @@ describe("login command", () => {
     expect(mocks.performOAuthLogin).toHaveBeenCalledWith({
       openBrowserAutomatically: false,
     });
+    expect(mocks.performDeviceLogin).not.toHaveBeenCalled();
     expect(mocks.selectProjectOnLogin).toHaveBeenCalledWith(
       expect.objectContaining({ interactive: false }),
     );
   });
 
-  it("with --non-interactive on a real TTY, still prints the URL and skips the picker", async () => {
+  it("with --non-interactive on a real TTY, still prints the URL via the loopback flow and skips the picker", async () => {
     mocks.isInteractiveContext.mockReturnValue(true);
 
     await runHandler({ nonInteractive: true });
@@ -77,6 +82,31 @@ describe("login command", () => {
     expect(mocks.performOAuthLogin).toHaveBeenCalledWith({
       openBrowserAutomatically: false,
     });
+    expect(mocks.performDeviceLogin).not.toHaveBeenCalled();
+    expect(mocks.selectProjectOnLogin).toHaveBeenCalledWith(
+      expect.objectContaining({ interactive: false }),
+    );
+  });
+
+  it("with --device on a TTY, uses the device flow but keeps the interactive picker", async () => {
+    mocks.isInteractiveContext.mockReturnValue(true);
+
+    await runHandler({ device: true });
+
+    expect(mocks.performDeviceLogin).toHaveBeenCalledWith();
+    expect(mocks.performOAuthLogin).not.toHaveBeenCalled();
+    expect(mocks.selectProjectOnLogin).toHaveBeenCalledWith(
+      expect.objectContaining({ interactive: true }),
+    );
+  });
+
+  it("with --device and no TTY, bypasses the guard and uses the device flow", async () => {
+    mocks.isInteractiveContext.mockReturnValue(false);
+
+    await runHandler({ device: true });
+
+    expect(mocks.performDeviceLogin).toHaveBeenCalledWith();
+    expect(mocks.performOAuthLogin).not.toHaveBeenCalled();
     expect(mocks.selectProjectOnLogin).toHaveBeenCalledWith(
       expect.objectContaining({ interactive: false }),
     );
@@ -106,11 +136,15 @@ describe("login command", () => {
     );
   });
 
-  it("logs in, then builds a client from the fresh token and selects a project", async () => {
+  it("with no flags on a TTY, logs in via the loopback flow, then builds a client from the fresh token and selects a project", async () => {
     mocks.isInteractiveContext.mockReturnValue(true);
 
     await runHandler();
 
+    expect(mocks.performOAuthLogin).toHaveBeenCalledWith({
+      openBrowserAutomatically: true,
+    });
+    expect(mocks.performDeviceLogin).not.toHaveBeenCalled();
     expect(mocks.createClient).toHaveBeenCalledWith({ apiToken: "fresh-jwt" });
     expect(mocks.selectProjectOnLogin).toHaveBeenCalledWith(
       expect.objectContaining({ project: undefined, interactive: true }),
