@@ -1,5 +1,11 @@
 # @alwaysmeticulous/client
 
+## 2.314.0
+
+### Minor Changes
+
+- [#11328](https://github.com/alwaysmeticulous/meticulous/pull/11328) [`21b5979`](https://github.com/alwaysmeticulous/meticulous/commit/21b59793a2e0819f70062b544879abae43b023c9) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `meticulous agent submit-feedback` (and the `submitAgentFeedback` client function) so AI coding agents can submit free-form feedback about Meticulous — whether it helped catch or debug a problem, what was confusing, and what information would have made their task easier — optionally tagged with an outcome, test run, skill, and agent name/model.
+
 ## 2.313.1
 
 ### Patch Changes

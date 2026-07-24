@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/downloading-helpers",
-  "version": "2.313.1",
+  "version": "2.314.0",
   "description": "Helper utilities for downloading files & scripts required to execute replays",
   "license": "ISC",
   "main": "dist/index.js",

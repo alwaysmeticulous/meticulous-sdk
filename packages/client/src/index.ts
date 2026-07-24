@@ -1,5 +1,7 @@
 export {
   AgentFeature,
+  AgentFeedbackOutcome,
+  AgentFeedbackResponse,
   StructuredSessionDataResponse,
   StructuredSessionSummary,
   DiffsSummaryOptions,
@@ -41,6 +43,7 @@ export {
   SessionListItem,
   SessionStatus,
   SessionAbandonmentReason,
+  submitAgentFeedback,
   trackAgentFeatureUsage,
 } from "./api/agent.api";
 export * from "./api/github-cloud-replay.api";

@@ -1,5 +1,12 @@
 # @alwaysmeticulous/backend-recorder-launcher
 
+## 2.314.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @alwaysmeticulous/downloading-helpers@2.314.0
+
 ## 2.313.1
 
 ### Patch Changes

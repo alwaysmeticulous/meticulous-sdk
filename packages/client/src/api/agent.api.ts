@@ -458,6 +458,16 @@ export interface StructuredSessionDataResponse {
 export type AgentFeature = "debug-replay-diff" | "debug-replay";
 
 // ---------------------------------------------------------------------------
+// Feedback types
+// ---------------------------------------------------------------------------
+
+export type AgentFeedbackOutcome = "helped" | "neutral" | "hindered";
+
+export interface AgentFeedbackResponse {
+  feedbackId: string;
+}
+
+// ---------------------------------------------------------------------------
 // API methods
 // ---------------------------------------------------------------------------
 
@@ -479,6 +489,48 @@ export const trackAgentFeatureUsage = async ({
     .catch(() => {
       // Telemetry is best-effort — never fail the command
     });
+};
+
+/**
+ * Submit free-form feedback about Meticulous to the Meticulous team. Unlike
+ * telemetry, errors propagate to the caller instead of being swallowed.
+ */
+export const submitAgentFeedback = async ({
+  client,
+  message,
+  outcome,
+  testRunId,
+  skill,
+  agentName,
+  agentModel,
+  project,
+}: {
+  client: MeticulousClient;
+  message: string;
+  outcome?: AgentFeedbackOutcome | undefined;
+  testRunId?: string | undefined;
+  skill?: string | undefined;
+  agentName?: string | undefined;
+  agentModel?: string | undefined;
+  project?: string | undefined;
+}): Promise<AgentFeedbackResponse> => {
+  const { data } = await client
+    .post(
+      "agent/feedback",
+      {
+        message,
+        ...(outcome != null ? { outcome } : {}),
+        ...(testRunId != null ? { testRunId } : {}),
+        ...(skill != null ? { skill } : {}),
+        ...(agentName != null ? { agentName } : {}),
+        ...(agentModel != null ? { agentModel } : {}),
+      },
+      project ? { params: { project } } : undefined,
+    )
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
 };
 
 export const getTestRunDiffsSummary = async (

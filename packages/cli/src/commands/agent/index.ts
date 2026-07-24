@@ -5,6 +5,7 @@ import { domDiffCommand } from "./screenshot-dom-diff.command";
 import { imageFilesCommand } from "./screenshot-image-files.command";
 import { imageUrlsCommand } from "./screenshot-image.command";
 import { sessionsCommand } from "./sessions.command";
+import { submitFeedbackCommand } from "./submit-feedback.command";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
 import { testRunForCommitCommand } from "./test-run-for-commit.command";
 import { timelineDiffCommand } from "./timeline.command";
@@ -28,6 +29,7 @@ export const agentCommand: CommandModule = {
       .command(uploadBuildCommand)
       .command(triggerTestRunCommand)
       .command(sessionsCommand)
+      .command(submitFeedbackCommand)
       .option("verbose", {
         boolean: true,
         default: false,
