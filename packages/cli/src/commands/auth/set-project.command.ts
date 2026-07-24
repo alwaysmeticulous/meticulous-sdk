@@ -37,7 +37,7 @@ export const setProjectCommand: CommandModule<unknown, Options> = {
 
     // Project-scoped API tokens (env var or legacy config) already pin a
     // project, so `set-project` has nothing to do.
-    if (!isOAuthJwt(apiToken)) {
+    if (apiToken && !isOAuthJwt(apiToken)) {
       throw new CliUserError(
         "An API token (env var or legacy config) is already in use; it " +
           "is bound to a single project, so `auth set-project` does not " +

@@ -2,11 +2,13 @@ import {
   initLogger,
   executeWithRetry,
   defaultShouldRetry,
+  logProgress,
   meticulousFetch,
 } from "@alwaysmeticulous/common";
 import type log from "loglevel";
 import type { RequestInit } from "undici";
 import { getApiToken, getAuthToken } from "./api-token.utils";
+import { maybeEnrichMissingAuthFetchError } from "./errors";
 import { performOAuthLogin } from "./oauth/oauth-login";
 import { getStoredOAuthTokens } from "./oauth/oauth-token-store";
 import { isOAuthJwt } from "./oauth/oauth-utils";
@@ -157,9 +159,11 @@ export const makeRequest = async <T>(
 /**
  * The token to authenticate requests with. A plain string is used as-is for the
  * client's lifetime; a provider function is invoked on every request so the
- * token can be refreshed (e.g. short-lived OAuth access tokens).
+ * token can be refreshed (e.g. short-lived OAuth access tokens). `null` means
+ * the request is sent without an Authorization header (some environments
+ * inject auth themselves).
  */
-type TokenProvider = string | (() => Promise<string>);
+type TokenProvider = string | null | (() => Promise<string | null>);
 
 // Exported for unit testing; not re-exported from the package index.
 export const buildClient = (
@@ -175,18 +179,25 @@ export const buildClient = (
     options: RequestInit = {},
     config?: RequestConfig<any>,
   ): Promise<Response<T>> => {
-    const headers = {
-      authorization: await getToken(),
+    const resolvedToken = await getToken();
+    const headers: Record<string, string> = {
       "user-agent": userAgent,
     };
+    if (resolvedToken) {
+      headers.authorization = resolvedToken;
+    }
 
-    return makeRequest<T>({
-      url,
-      headers,
-      options,
-      config: config || {},
-      logger,
-    });
+    try {
+      return await makeRequest<T>({
+        url,
+        headers,
+        options,
+        config: config || {},
+        logger,
+      });
+    } catch (error) {
+      throw maybeEnrichMissingAuthFetchError(error, Boolean(resolvedToken));
+    }
   };
 
   return {
@@ -247,10 +258,11 @@ export const createClient: (options: ClientOptions) => MeticulousClient = ({
   const logger = initLogger();
   const apiToken = getApiToken(apiToken_);
   if (!apiToken) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
+    // logProgress writes to stderr (keeping stdout machine-readable) and is
+    // visible at default verbosity — unlike logger.debug, which is hidden by
+    // default — so users get a hint that requests are going out
+    // unauthenticated before one fails.
+    logProgress("No API token found; proceeding with unauthenticated requests");
   }
 
   return buildClient(apiToken, logger, appInfo);
@@ -264,13 +276,15 @@ export const isInteractiveContext = (): boolean =>
  * stored OAuth → legacy config file), and falls back to an interactive browser
  * OAuth login when nothing is stored and the process is attached to a TTY.
  *
- * Exits the process with code 1 if no token can be obtained. Use this anywhere
- * a CLI command needs an API token — either to build a client (see
- * `createClientWithOAuth`) or to pass directly to a launcher.
+ * Returns `null` if no token can be obtained (instead of exiting). Callers
+ * should proceed with unauthenticated requests — some environments inject auth
+ * into outbound traffic. Use this anywhere a CLI command needs an API token —
+ * either to build a client (see `createClientWithOAuth`) or to pass directly
+ * to a launcher.
  */
 export const resolveApiTokenWithOAuth = async (
   options: ClientOptions & { enableOAuthLogin?: boolean },
-): Promise<string> => {
+): Promise<string | null> => {
   const logger = initLogger();
 
   let apiToken = await getAuthToken(options.apiToken);
@@ -283,12 +297,9 @@ export const resolveApiTokenWithOAuth = async (
   }
 
   if (!apiToken) {
-    const message = isInteractive
-      ? "No authentication found. Use --apiToken, set METICULOUS_API_TOKEN, or log in via browser."
-      : "Not logged in. Run `meticulous auth login --non-interactive` (add " +
-        "--project <org>/<project> to also select a project).";
-    logger.error(message);
-    return process.exit(1);
+    // See the matching logProgress in createClient for why not logger.debug.
+    logProgress("No API token found; proceeding with unauthenticated requests");
+    return null;
   }
 
   // Best-effort, one-time upgrade of the pre-backend local
@@ -330,7 +341,7 @@ export const createClientWithOAuth = async (
   // initial access token.
   const usingOAuth = !options.apiToken && getStoredOAuthTokens() != null;
 
-  const token: string | (() => Promise<string>) = usingOAuth
+  const token: string | null | (() => Promise<string | null>) = usingOAuth
     ? async () => (await getAuthToken(options.apiToken)) ?? apiToken
     : apiToken;
 

@@ -1,8 +1,10 @@
 import {
   clearOAuthTokens,
   getStoredOAuthTokens,
+  isAuthFailureStatus,
   isFetchError,
   isJwtExpired,
+  MISSING_AUTH_GUIDANCE,
 } from "@alwaysmeticulous/client";
 import { CliUserError } from "./cli-user-error";
 
@@ -11,6 +13,8 @@ import { CliUserError } from "./cli-user-error";
  *
  * - When the stored access token is genuinely past its `exp`, clears
  *   stored tokens so the next command kicks off a fresh OAuth login.
+ * - When no OAuth tokens are stored, surfaces guidance that auth is
+ *   probably missing (token / login / env injection).
  * - Otherwise (e.g. issuer/audience mismatch against the configured
  *   backend), keeps the tokens and surfaces the backend's actual
  *   rejection message plus a pointer to `meticulous auth logout`.
@@ -27,7 +31,7 @@ export const handleAuthFailure = (error: unknown): false => {
     return false;
   }
   const status = error.response?.status;
-  if (status !== 401 && status !== 403) {
+  if (!isAuthFailureStatus(status)) {
     return false;
   }
 
@@ -44,6 +48,13 @@ export const handleAuthFailure = (error: unknown): false => {
 
   const serverMessage = extractServerMessage(error.response?.data);
   const detail = serverMessage ? `: ${serverMessage}` : ".";
+
+  if (!stored) {
+    throw new CliUserError(
+      `Authentication failed (HTTP ${status})${detail}\n${MISSING_AUTH_GUIDANCE}`,
+    );
+  }
+
   throw new CliUserError(
     `Authentication failed (HTTP ${status})${detail}\n` +
       "If the token is stale, run `meticulous auth logout` and re-run the command.",

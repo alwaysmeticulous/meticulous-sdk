@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/downloading-helpers",
-  "version": "2.312.0",
+  "version": "2.313.1",
   "description": "Helper utilities for downloading files & scripts required to execute replays",
   "license": "ISC",
   "main": "dist/index.js",
@@ -23,7 +23,7 @@
     "@alwaysmeticulous/api": "workspace:*",
     "@alwaysmeticulous/client": "workspace:*",
     "@alwaysmeticulous/common": "workspace:*",
-    "axios": "^1.15.1",
+    "axios": "^1.18.1",
     "axios-retry": "^4.5.0",
     "cli-progress": "^3.12.0",
     "extract-zip": "^2.0.1",
@@ -31,7 +31,7 @@
     "luxon": "^3.2.1",
     "p-limit": "^3.1.0",
     "proper-lockfile": "^4.1.2",
-    "tar": "^7.5.8"
+    "tar": "^7.5.19"
   },
   "devDependencies": {
     "@types/cli-progress": "^3.11.6",

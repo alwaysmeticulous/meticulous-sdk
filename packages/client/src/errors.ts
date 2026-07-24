@@ -19,11 +19,55 @@ export const isFetchError = (error: any): error is FetchError => {
   return error && typeof error === "object" && error.response;
 };
 
+export const isAuthFailureStatus = (status: number | undefined): boolean =>
+  status === 401 || status === 403;
+
+/**
+ * Guidance shown when a request fails with 401/403 and the CLI/client did not
+ * attach an Authorization header. Environments may still inject auth into
+ * outbound requests; this message covers both "token missing" and "injection
+ * failed / invalid".
+ */
+export const MISSING_AUTH_GUIDANCE =
+  "An API token is probably missing or invalid. Set METICULOUS_API_TOKEN, " +
+  "pass --apiToken, or run `meticulous auth login`.";
+
 export const maybeEnrichFetchError = <T = unknown>(error: T): T => {
   if (isFetchError(error)) {
+    // buildClient may already have applied missing-auth guidance via
+    // maybeEnrichMissingAuthFetchError. Rebuilding from the response body
+    // would discard that guidance, so leave those errors alone.
+    if (error.message.includes(MISSING_AUTH_GUIDANCE)) {
+      return error;
+    }
     return enrichFetchError(error) as T;
   }
   return error;
+};
+
+/**
+ * When a request was made without an Authorization header and the server
+ * responded 401/403, rewrite the error message with missing-auth guidance.
+ * Returns the original error unchanged otherwise.
+ */
+export const maybeEnrichMissingAuthFetchError = <T = unknown>(
+  error: T,
+  hadAuthorizationHeader: boolean,
+): T => {
+  if (hadAuthorizationHeader || !isFetchError(error)) {
+    return error;
+  }
+  if (!isAuthFailureStatus(error.response?.status)) {
+    return error;
+  }
+
+  const status = error.response?.status;
+  const newError = new Error(
+    `Authentication failed (HTTP ${status}). ${MISSING_AUTH_GUIDANCE}`,
+  ) as FetchError;
+  newError.response = error.response;
+  newError.config = error.config;
+  return newError as T;
 };
 
 const enrichFetchError = (error: FetchError) => {

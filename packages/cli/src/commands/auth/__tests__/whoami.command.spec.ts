@@ -172,6 +172,58 @@ describe("whoami command", () => {
     });
   });
 
+  describe("no local token (request-time injected auth)", () => {
+    beforeEach(() => {
+      mocks.resolveApiTokenWithOAuth.mockResolvedValue(null);
+    });
+
+    it("reports injected credentials when the probe resolves a project", async () => {
+      mocks.getProject.mockResolvedValue({
+        id: "p1",
+        name: "App",
+        organization: { id: "o1", name: "Org" },
+      });
+
+      await runHandler();
+
+      // The OAuth-only whoami endpoint would reject the injected project
+      // token — the probe must be the only round-trip.
+      expect(mocks.getWhoami).not.toHaveBeenCalled();
+      expect(mocks.createClientWithOAuth).not.toHaveBeenCalled();
+      const out = stdoutText();
+      expect(out).toContain("credentials injected at request time");
+      expect(out).toContain("Pinned project: Org/App");
+    });
+
+    it("emits structured JSON with --json", async () => {
+      mocks.getProject.mockResolvedValue({
+        id: "p1",
+        name: "App",
+        organization: { id: "o1", name: "Org" },
+      });
+
+      await runHandler({ json: true });
+
+      expect(JSON.parse(stdoutText())).toEqual({
+        authenticatedVia: "injected-credentials",
+        pinnedProject: "Org/App",
+      });
+    });
+
+    it("errors with not-logged-in guidance when the probe request fails", async () => {
+      mocks.getProject.mockRejectedValue(new Error("HTTP 403"));
+
+      await expect(runHandler()).rejects.toThrow(/Not logged in/);
+      expect(mocks.getWhoami).not.toHaveBeenCalled();
+    });
+
+    it("errors when the probe resolves no project", async () => {
+      mocks.getProject.mockResolvedValue(null);
+
+      await expect(runHandler()).rejects.toThrow(/Not logged in/);
+    });
+  });
+
   describe("project API token", () => {
     beforeEach(() => {
       mocks.resolveApiTokenWithOAuth.mockResolvedValue("project-token");

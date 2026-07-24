@@ -63,12 +63,6 @@ export const pushContainerImage = async ({
   projectId?: string | undefined;
 }): Promise<PushContainerImageResult> => {
   const apiToken = getApiToken(apiToken_);
-  if (!apiToken) {
-    throw new Error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-  }
-
   const client = createClient({ apiToken });
 
   const projectIdentifier = projectId ? { projectId } : {};

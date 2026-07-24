@@ -1,10 +1,12 @@
 import { readFile } from "fs/promises";
 import type {
+  AgenticAssetsBackend,
   ContainerEnvVariable,
   ProjectIdentifier,
 } from "@alwaysmeticulous/client";
 import {
   completeAgenticSessionGeneration,
+  agentUploadAssetBuild,
   createClient,
   getApiToken,
   getRegistryAuth,
@@ -12,7 +14,12 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import type Docker from "dockerode";
-import { uploadAgenticInstructionsToS3 } from "./asset-upload-utils";
+import {
+  uploadAgenticInstructionsToS3,
+  uploadAssetBytesFromDirectory,
+} from "./asset-upload-utils";
+import { UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
+import { resolve } from "path";
 import {
   getDockerClient,
   getImageInfo,
@@ -23,13 +30,16 @@ import {
 
 export interface GenerateSessionsOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
-  localImageTag: string;
+  localImageTag?: string | undefined;
+  assetsDirectory?: string | undefined;
+  assetsUploadId?: string | undefined;
   commitSha: string;
   /** Path to a markdown file with instructions for the agent (login details, accounts, etc). */
   instructionsFile?: string | undefined;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
+  backend?: AgenticAssetsBackend | undefined;
 }
 
 export interface GenerateSessionsResult {
@@ -47,68 +57,65 @@ export interface GenerateSessionsResult {
 export const generateSessions = async ({
   apiToken: apiToken_,
   localImageTag,
+  assetsDirectory,
+  assetsUploadId: existingAssetsUploadId,
   commitSha,
   instructionsFile,
   containerPort,
   containerEnv,
   containerHealthCheckEndpoint,
+  backend,
   projectId,
 }: GenerateSessionsOptions): Promise<GenerateSessionsResult> => {
   const logger = initLogger();
 
   const apiToken = getApiToken(apiToken_);
-  if (!apiToken) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
-  }
-
   const client = createClient({ apiToken });
   const projectIdentifier = projectId ? { projectId } : {};
 
-  const docker = getDockerClient();
-
-  logger.info("Verifying Docker connection...");
-  await verifyDockerConnection(docker);
-  logger.info("Docker connection verified");
-
-  logger.info(`Verifying local Docker image: ${localImageTag}`);
-  const imageInfo = await getImageInfo(docker, localImageTag);
-  if (!imageInfo) {
+  const targetCount = [
+    localImageTag,
+    assetsDirectory,
+    existingAssetsUploadId,
+  ].filter(Boolean).length;
+  if (targetCount !== 1) {
     throw new Error(
-      `Docker image '${localImageTag}' not found locally. Please build the image first.`,
+      "Provide exactly one of localImageTag, assetsDirectory, or assetsUploadId.",
     );
   }
-  logger.info(`Found Docker image: ${localImageTag}`);
+  if (backend && localImageTag) {
+    throw new Error("backend is only supported with uploaded assets.");
+  }
 
-  logger.info("Getting registry credentials...");
-  const registryAuth = await getRegistryAuth({
-    client,
-    ...projectIdentifier,
-  });
-
-  const {
-    uploadId,
-    imageReference,
-    registryUrl,
-    robotAccountName,
-    robotAccountSecret,
-  } = registryAuth;
-
-  logger.info(`Upload ID: ${uploadId}`);
-  logger.info(`Image reference: ${imageReference}`);
-
-  await tagImage(docker, localImageTag, imageReference);
-
-  logger.info(`Pushing image to registry: ${imageReference}`);
-  const authconfig: Docker.AuthConfig = {
-    username: robotAccountName,
-    password: robotAccountSecret,
-    serveraddress: registryUrl,
-  };
-  await pushImage(docker, imageReference, authconfig);
-  logger.info(`Successfully pushed image ${imageReference}`);
+  let uploadId: string;
+  let imageReference: string | undefined;
+  if (localImageTag) {
+    const uploadedContainer = await uploadContainer({
+      client,
+      localImageTag,
+      projectIdentifier,
+    });
+    uploadId = uploadedContainer.uploadId;
+    imageReference = uploadedContainer.imageReference;
+  } else if (assetsDirectory) {
+    const uploadedAssets = await uploadAssetBytesFromDirectory({
+      client,
+      folderPath: resolve(assetsDirectory),
+      ...projectIdentifier,
+    });
+    await agentUploadAssetBuild({
+      client,
+      uploadId: uploadedAssets.uploadId,
+      commitSha,
+      rewrites: [],
+      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+      multipartUploadInfo: uploadedAssets.multipartUploadInfo,
+      ...(projectId ? { project: projectId } : {}),
+    });
+    uploadId = uploadedAssets.uploadId;
+  } else {
+    uploadId = existingAssetsUploadId!;
+  }
 
   let instructionsId: string | undefined;
   if (instructionsFile) {
@@ -125,12 +132,21 @@ export const generateSessions = async ({
   logger.info("Launching agentic session generation workflow...");
   const result = await completeAgenticSessionGeneration({
     client,
-    uploadId,
     commitSha,
     ...(instructionsId ? { instructionsId } : {}),
-    containerPort,
-    containerEnv,
-    containerHealthCheckEndpoint,
+    appTarget: localImageTag
+      ? {
+          type: "container",
+          uploadId,
+          containerPort,
+          containerEnv,
+          containerHealthCheckEndpoint,
+        }
+      : {
+          type: "assets",
+          assetsUploadId: uploadId,
+          ...(backend ? { backend } : {}),
+        },
     ...projectIdentifier,
   });
 
@@ -140,7 +156,7 @@ export const generateSessions = async ({
       uploadId,
       commitSha,
       workflowRunId: result.workflowRunId,
-      imageReference,
+      ...(imageReference ? { imageReference } : {}),
     },
   });
 
@@ -155,4 +171,46 @@ export const generateSessions = async ({
     workflowRunId: result.workflowRunId ?? null,
     ...(result.message ? { message: result.message } : {}),
   };
+};
+
+const uploadContainer = async ({
+  client,
+  localImageTag,
+  projectIdentifier,
+}: {
+  client: ReturnType<typeof createClient>;
+  localImageTag: string;
+  projectIdentifier: ProjectIdentifier;
+}): Promise<{ uploadId: string; imageReference: string }> => {
+  const logger = initLogger();
+  const docker = getDockerClient();
+
+  logger.info("Verifying Docker connection...");
+  await verifyDockerConnection(docker);
+  const imageInfo = await getImageInfo(docker, localImageTag);
+  if (!imageInfo) {
+    throw new Error(
+      `Docker image '${localImageTag}' not found locally. Please build the image first.`,
+    );
+  }
+
+  const registryAuth = await getRegistryAuth({
+    client,
+    ...projectIdentifier,
+  });
+  const {
+    uploadId,
+    imageReference,
+    registryUrl,
+    robotAccountName,
+    robotAccountSecret,
+  } = registryAuth;
+  await tagImage(docker, localImageTag, imageReference);
+  const authconfig: Docker.AuthConfig = {
+    username: robotAccountName,
+    password: robotAccountSecret,
+    serveraddress: registryUrl,
+  };
+  await pushImage(docker, imageReference, authconfig);
+  return { uploadId, imageReference };
 };

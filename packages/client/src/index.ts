@@ -198,6 +198,10 @@ export {
   requestAgenticInstructionsUpload,
   CompleteAgenticSessionGenerationParams,
   CompleteAgenticSessionGenerationResponse,
+  AgenticAppTarget,
+  AgenticAssetsAppTarget,
+  AgenticAssetsBackend,
+  AgenticContainerAppTarget,
   completeAgenticSessionGeneration,
   AgenticRunResultCaseOutcome,
   AgenticRunResultCase,
@@ -238,8 +242,34 @@ export {
   ReleaseAgenticRepoLeaseResponse,
   releaseAgenticRepoLease,
 } from "./api/agentic-session-generation.api";
+export {
+  getDiscoveryRepoFile,
+  searchDiscoveryRepoCode,
+  listDiscoveryRepoTree,
+  acquireDiscoveryRepoLease,
+  getDiscoveryRepoLeaseStatus,
+  heartbeatDiscoveryRepoLease,
+  releaseDiscoveryRepoLease,
+} from "./api/session-transform-discovery.api";
+export {
+  CatalogMaintenanceWorkflowStatusResponse,
+  GetCatalogMaintenanceWorkflowStatusParams,
+  LaunchCatalogMaintenanceParams,
+  LaunchCatalogMaintenanceResponse,
+  RequestCatalogMaintenanceProposalUploadParams,
+  RequestCatalogMaintenanceProposalUploadResponse,
+  getCatalogMaintenanceWorkflowStatus,
+  launchCatalogMaintenance,
+  requestCatalogMaintenanceProposalUpload,
+} from "./api/catalog-maintenance.api";
 export { GetRegistryAuthResponse, getRegistryAuth } from "./api/registry.api";
-export { isFetchError, maybeEnrichFetchError } from "./errors";
+export {
+  isAuthFailureStatus,
+  isFetchError,
+  maybeEnrichFetchError,
+  maybeEnrichMissingAuthFetchError,
+  MISSING_AUTH_GUIDANCE,
+} from "./errors";
 export {
   EditedFileWithLines,
   GetRelevantSessionsParams,

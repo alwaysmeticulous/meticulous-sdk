@@ -35,7 +35,7 @@ const okResponse = () => ({
   text: () => "",
 });
 
-const authHeaderOfCall = (callIndex: number): string => {
+const authHeaderOfCall = (callIndex: number): string | undefined => {
   const init = mocks.meticulousFetch.mock.calls[callIndex]?.[1] as {
     headers: Record<string, string>;
   };
@@ -88,5 +88,19 @@ describe("createClientWithOAuth token provider", () => {
     expect(mocks.getAuthToken).toHaveBeenCalledTimes(1);
     expect(authHeaderOfCall(0)).toBe("flag-token");
     expect(authHeaderOfCall(1)).toBe("flag-token");
+  });
+
+  it("builds an unauthenticated client when no token can be resolved", async () => {
+    mocks.getStoredOAuthTokens.mockReturnValue(null);
+    mocks.getAuthToken.mockResolvedValue(null);
+
+    const client = await createClientWithOAuth({
+      apiToken: null,
+      enableOAuthLogin: false,
+    });
+
+    await client.get("a");
+
+    expect(authHeaderOfCall(0)).toBeUndefined();
   });
 });

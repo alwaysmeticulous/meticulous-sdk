@@ -9,6 +9,7 @@ import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { CliUserError } from "../../utils/cli-user-error";
 import { handleAuthFailure } from "../../utils/handle-auth-failure";
 import { resolvePinnedProjectSlug } from "../../utils/resolve-project-identifier";
 import { formatProjectSlug } from "../../utils/select-project";
@@ -37,6 +38,32 @@ export const whoamiCommand: CommandModule<unknown, Options> = {
       apiToken: null,
       enableOAuthLogin: true,
     });
+
+    // No local token: some environments inject credentials into outbound
+    // requests instead. The injected credential is a project API token, which
+    // the OAuth-only `/oauth/whoami` endpoint would reject — so probe the
+    // token-metadata endpoint (which accepts project tokens, and swallows
+    // failures into `null`) rather than falling through to the OAuth path.
+    if (!apiToken) {
+      const pinnedProject = await resolvePinnedProjectSlug(null);
+      if (!pinnedProject) {
+        throw new CliUserError(
+          "Not logged in. Run `meticulous auth login`, or set " +
+            "METICULOUS_API_TOKEN. In terminals without a browser, use " +
+            "`meticulous auth login --non-interactive`.",
+        );
+      }
+      if (json) {
+        printJson({
+          authenticatedVia: "injected-credentials",
+          pinnedProject,
+        });
+      } else {
+        console.log("Authenticated via: credentials injected at request time");
+        console.log(`Pinned project: ${pinnedProject}`);
+      }
+      return;
+    }
 
     // A project-scoped API token (env var or legacy config) cannot be used
     // against the OAuth-only `/oauth/whoami` endpoint — it would 403. Report

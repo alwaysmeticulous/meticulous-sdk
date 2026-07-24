@@ -19,9 +19,12 @@ export const getRecordedSession = async (
 export const getRecordedSessionData = async (
   client: MeticulousClient,
   sessionId: string,
+  fields?: Array<keyof SessionData>,
 ): Promise<SessionData> => {
   const { data } = await client
-    .get(`sessions/${sessionId}/data`)
+    .get(`sessions/${sessionId}/data`, {
+      ...(fields?.length ? { params: { fields: fields.join(",") } } : {}),
+    })
     .catch((error) => {
       if (isFetchError(error) && error.response?.status === 404) {
         return { data: null };

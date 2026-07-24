@@ -34,12 +34,6 @@ const handler = async (argv: Options): Promise<void> => {
   const logger = initLogger();
 
   const apiToken = getApiToken(argv.apiToken);
-  if (!apiToken) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
-  }
 
   if (argv.dryRun) {
     logger.info(

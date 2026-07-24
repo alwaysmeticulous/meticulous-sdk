@@ -1,5 +1,25 @@
 # @alwaysmeticulous/client
 
+## 2.313.1
+
+### Patch Changes
+
+- [#11314](https://github.com/alwaysmeticulous/meticulous/pull/11314) [`47f4c67`](https://github.com/alwaysmeticulous/meticulous/commit/47f4c6784db1ef66a2a11a8806549909d38c227d) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Allow the CLI and client to proceed without an API token, omitting the Authorization header so environments that inject auth can work. On 401/403 responses when no token was sent, surface guidance that authentication is probably missing.
+
+## 2.313.0
+
+### Minor Changes
+
+- [#11208](https://github.com/alwaysmeticulous/meticulous/pull/11208) [`3eaa104`](https://github.com/alwaysmeticulous/meticulous/commit/3eaa10473902958c66bc903bb98c3ad35bd10f6b) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add an uploaded-assets mode to agentic PR-time testing. The new `meticulous ci agent-test` command accepts exactly one of `--localImageTag`, `--assetsDir`, or `--assetsUploadId`, plus an optional `--backendUrl` pointing at a customer staging backend (credentials are read from `METICULOUS_STAGING_USERNAME` / `METICULOUS_STAGING_PASSWORD`, proxied path prefixes from `--backendProxyPaths`, default `/api`). With assets targets the agent worker serves the uploaded frontend itself and either reverse-proxies API calls to the staging backend or stubs them from recorded sessions when no backend is given. The client gains the `AgenticAppTarget` discriminated union (`container` / `assets`) and `AgenticAssetsBackend` types, and `remote-replay-launcher`'s `generateSessions` can now upload an assets directory (or reuse an existing upload) instead of a container image.
+
+### Patch Changes
+
+- [#11249](https://github.com/alwaysmeticulous/meticulous/pull/11249) [`b72db94`](https://github.com/alwaysmeticulous/meticulous/commit/b72db94c764ca46ee0bd2d71fe5b4c2e9a0ef05f) Thanks [@sesajad](https://github.com/sesajad)! - `GetAgenticChangedFilesResponse` now includes `baseSha`, the resolved PR base commit sha (already computed server-side to diff `changed-files`), so a caller that only has the head commit sha can call `getRelevantSessions`.
+
+- [#11224](https://github.com/alwaysmeticulous/meticulous/pull/11224) [`474ad7e`](https://github.com/alwaysmeticulous/meticulous/commit/474ad7eaa1d2a4c072305af9e6ae8b419dd19046) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `catalog-maintenance/*` API functions for the per-project session-mutation catalog-maintenance worker: `launchCatalogMaintenance` (submit a worker run), `getCatalogMaintenanceWorkflowStatus`, and `requestCatalogMaintenanceProposalUpload` (mint a size-pinned presigned PUT for the worker's proposal). All endpoints are project-API-token gated on the catalog-maintenance project setting.
+
+- [#11224](https://github.com/alwaysmeticulous/meticulous/pull/11224) [`474ad7e`](https://github.com/alwaysmeticulous/meticulous/commit/474ad7eaa1d2a4c072305af9e6ae8b419dd19046) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `session-transform-discovery/*` repo access API functions (`getDiscoveryRepoFile`, `searchDiscoveryRepoCode`, `listDiscoveryRepoTree`, and the `acquireDiscoveryRepoLease`/`getDiscoveryRepoLeaseStatus`/`heartbeatDiscoveryRepoLease`/`releaseDiscoveryRepoLease` lease lifecycle). Same request/response shapes as the agentic session-generation repo surface, served under a separate endpoint gated on the session-mutation catalog-maintenance project setting.
+
 ## 2.312.0
 
 ### Minor Changes

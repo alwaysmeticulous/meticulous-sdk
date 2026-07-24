@@ -1,5 +1,11 @@
 # @alwaysmeticulous/tunnels-client
 
+## 2.313.1
+
+### Patch Changes
+
+- [#11314](https://github.com/alwaysmeticulous/meticulous/pull/11314) [`47f4c67`](https://github.com/alwaysmeticulous/meticulous/commit/47f4c6784db1ef66a2a11a8806549909d38c227d) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Allow the CLI and client to proceed without an API token, omitting the Authorization header so environments that inject auth can work. On 401/403 responses when no token was sent, surface guidance that authentication is probably missing.
+
 ## 2.310.0
 
 ### Patch Changes

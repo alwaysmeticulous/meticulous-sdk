@@ -1,3 +1,5 @@
+import type * as Client from "@alwaysmeticulous/client";
+import { MISSING_AUTH_GUIDANCE } from "@alwaysmeticulous/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CliUserError } from "../cli-user-error";
 import { handleAuthFailure } from "../handle-auth-failure";
@@ -8,15 +10,15 @@ const mocks = vi.hoisted(() => ({
   isJwtExpired: vi.fn(),
 }));
 
-vi.mock("@alwaysmeticulous/client", () => ({
-  clearOAuthTokens: mocks.clearOAuthTokens,
-  getStoredOAuthTokens: mocks.getStoredOAuthTokens,
-  // Use a real shape-check for fetch errors so the unit test stays close
-  // to production behavior.
-  isFetchError: (error: unknown): boolean =>
-    !!error && typeof error === "object" && "response" in error,
-  isJwtExpired: mocks.isJwtExpired,
-}));
+vi.mock("@alwaysmeticulous/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof Client>();
+  return {
+    ...actual,
+    clearOAuthTokens: mocks.clearOAuthTokens,
+    getStoredOAuthTokens: mocks.getStoredOAuthTokens,
+    isJwtExpired: mocks.isJwtExpired,
+  };
+});
 
 const makeFetchError = (status: number, data: unknown = null) =>
   Object.assign(new Error(`HTTP ${status}`), {
@@ -75,13 +77,20 @@ describe("handleAuthFailure", () => {
     expect(mocks.clearOAuthTokens).not.toHaveBeenCalled();
   });
 
-  it("throws with status when the response body has no message", () => {
+  it("throws missing-auth guidance when no OAuth tokens are stored", () => {
     mocks.getStoredOAuthTokens.mockReturnValue(null);
     mocks.isJwtExpired.mockReturnValue(false);
 
-    expect(() => handleAuthFailure(makeFetchError(401, null))).toThrow(
-      /HTTP 401/,
-    );
+    let caught: unknown;
+    try {
+      handleAuthFailure(makeFetchError(401, null));
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(CliUserError);
+    expect((caught as CliUserError).message).toContain("HTTP 401");
+    expect((caught as CliUserError).message).toContain(MISSING_AUTH_GUIDANCE);
   });
 
   it("accepts a plain-string response body as the server message", () => {
@@ -95,5 +104,6 @@ describe("handleAuthFailure", () => {
       caught = error;
     }
     expect((caught as CliUserError).message).toContain("Token revoked");
+    expect((caught as CliUserError).message).toContain(MISSING_AUTH_GUIDANCE);
   });
 });

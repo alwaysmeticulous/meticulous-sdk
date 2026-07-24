@@ -77,13 +77,6 @@ export const uploadAssets = async (
   }
 
   const apiToken = getApiToken(apiToken_);
-  if (!apiToken) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
-  }
-
   const client = createClient({ apiToken });
 
   return uploadAssetsStreaming({
@@ -432,13 +425,6 @@ export const uploadAssetsFromZip = async ({
   const logger = initLogger();
 
   const apiToken = getApiToken(apiToken_);
-  if (!apiToken) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
-  }
-
   const client = createClient({ apiToken });
 
   const projectIdentifier = projectId ? { projectId } : {};

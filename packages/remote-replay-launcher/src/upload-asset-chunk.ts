@@ -68,12 +68,6 @@ export const uploadAssetChunk = async ({
   }
 
   const apiToken = getApiToken(apiToken_);
-  if (!apiToken) {
-    throw new Error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-  }
-
   const client = createClient({ apiToken });
 
   const tempDir = await mkdtemp(join(tmpdir(), "asset-chunk-"));

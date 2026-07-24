@@ -26,12 +26,24 @@ const okResponse = () => ({
   text: () => "",
 });
 
-const authHeaderOfCall = (callIndex: number): string => {
+const authHeaderOfCall = (callIndex: number): string | undefined => {
   const init = meticulousFetch.mock.calls[callIndex]?.[1] as {
     headers: Record<string, string>;
   };
   return init.headers.authorization;
 };
+
+const unauthorizedResponse = () => ({
+  ok: false,
+  status: 401,
+  statusText: "Unauthorized",
+  headers: {
+    forEach: () => {},
+    get: () => "application/json",
+  },
+  json: () => ({ message: "Unauthorized" }),
+  text: () => "",
+});
 
 describe("buildClient token resolution", () => {
   beforeEach(() => {
@@ -65,5 +77,40 @@ describe("buildClient token resolution", () => {
     expect(authHeaderOfCall(0)).toBe("token-1");
     expect(authHeaderOfCall(1)).toBe("token-2");
     expect(authHeaderOfCall(2)).toBe("token-3");
+  });
+
+  it("omits the Authorization header when no token is available", async () => {
+    const client = buildClient(null, { debug: () => {} } as never);
+
+    await client.get("a");
+
+    expect(authHeaderOfCall(0)).toBeUndefined();
+  });
+
+  it("surfaces missing-auth guidance on 401 when no token was sent", async () => {
+    meticulousFetch.mockResolvedValue(unauthorizedResponse());
+    const client = buildClient(null, { debug: () => {} } as never);
+
+    await expect(client.get("a")).rejects.toThrow(
+      /An API token is probably missing or invalid/,
+    );
+  });
+
+  it("does not rewrite 401 errors when a token was sent", async () => {
+    meticulousFetch.mockResolvedValue(unauthorizedResponse());
+    const client = buildClient("token-abc", { debug: () => {} } as never);
+
+    let caught: unknown;
+    try {
+      await client.get("a");
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toMatch(/HTTP 401/);
+    expect((caught as Error).message).not.toMatch(
+      /An API token is probably missing or invalid/,
+    );
   });
 });

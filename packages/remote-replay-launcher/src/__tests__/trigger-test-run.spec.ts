@@ -100,15 +100,15 @@ describe("triggerTestRun", () => {
     );
   });
 
-  it("still requires an API token", async () => {
-    vi.mocked(createClient);
-    await expect(
-      triggerTestRun({
-        apiToken: null,
-        commitSha: "sha-1",
-        baseSha: "base-1",
-      }),
-    ).rejects.toThrow(/API token/);
+  it("proceeds without an API token so environment-injected auth can work", async () => {
+    await triggerTestRun({
+      apiToken: null,
+      commitSha: "sha-1",
+      baseSha: "base-1",
+    });
+
+    expect(createClient).toHaveBeenCalledWith({ apiToken: null });
+    expect(agentTriggerTestRun).toHaveBeenCalled();
   });
 
   it("rejects when neither deploymentId nor commitSha is provided", async () => {

@@ -1,5 +1,21 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 2.313.1
+
+### Patch Changes
+
+- Updated dependencies [[`47f4c67`](https://github.com/alwaysmeticulous/meticulous/commit/47f4c6784db1ef66a2a11a8806549909d38c227d)]:
+  - @alwaysmeticulous/client@2.313.1
+
+## 2.313.0
+
+### Patch Changes
+
+- [#11270](https://github.com/alwaysmeticulous/meticulous/pull/11270) [`021af14`](https://github.com/alwaysmeticulous/meticulous/commit/021af14acacf4e34df568ac1058bc61b21611a7c) Thanks [@datadog-official](https://github.com/apps/datadog-official)! - Raise the minimum Axios version to 1.18.1 to include the latest security fixes.
+
+- Updated dependencies [[`b72db94`](https://github.com/alwaysmeticulous/meticulous/commit/b72db94c764ca46ee0bd2d71fe5b4c2e9a0ef05f), [`3eaa104`](https://github.com/alwaysmeticulous/meticulous/commit/3eaa10473902958c66bc903bb98c3ad35bd10f6b), [`474ad7e`](https://github.com/alwaysmeticulous/meticulous/commit/474ad7eaa1d2a4c072305af9e6ae8b419dd19046), [`474ad7e`](https://github.com/alwaysmeticulous/meticulous/commit/474ad7eaa1d2a4c072305af9e6ae8b419dd19046)]:
+  - @alwaysmeticulous/client@2.313.0
+
 ## 2.312.0
 
 ### Patch Changes

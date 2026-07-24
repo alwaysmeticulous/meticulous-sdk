@@ -15,13 +15,43 @@ export interface RequestAgenticInstructionsUploadResponse {
   instructionsId: string;
 }
 
-export interface CompleteAgenticSessionGenerationParams extends ProjectIdentifier {
+export interface AgenticContainerAppTarget {
+  type: "container";
   uploadId: string;
+  containerPort?: number | undefined;
+  containerEnv?: ContainerEnvVariable[] | undefined;
+  containerHealthCheckEndpoint?: string | undefined;
+}
+
+export interface AgenticAssetsBackend {
+  url: string;
+  username?: string | undefined;
+  password?: string | undefined;
+  proxyPaths?: string[] | undefined;
+}
+
+export interface AgenticAssetsAppTarget {
+  type: "assets";
+  assetsUploadId: string;
+  backend?: AgenticAssetsBackend | undefined;
+}
+
+export type AgenticAppTarget =
+  | AgenticContainerAppTarget
+  | AgenticAssetsAppTarget;
+
+export interface CompleteAgenticSessionGenerationParams extends ProjectIdentifier {
   commitSha: string;
   /** Server-minted id of instructions uploaded for this trigger, if any. */
   instructionsId?: string;
+  appTarget?: AgenticAppTarget | undefined;
+  /** @deprecated Use appTarget.type = "container". */
+  uploadId?: string | undefined;
+  /** @deprecated Use appTarget.type = "container". */
   containerPort?: number | undefined;
+  /** @deprecated Use appTarget.type = "container". */
   containerEnv?: ContainerEnvVariable[] | undefined;
+  /** @deprecated Use appTarget.type = "container". */
   containerHealthCheckEndpoint?: string | undefined;
 }
 
@@ -56,11 +86,38 @@ export const completeAgenticSessionGeneration = async ({
 }: CompleteAgenticSessionGenerationParams & {
   client: MeticulousClient;
 }): Promise<CompleteAgenticSessionGenerationResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: CompleteAgenticSessionGenerationResponse }
-  >("agentic-session-generation/launch", body, projectIdQuery(projectId));
-  return data;
+  try {
+    const { data } = await client.post<
+      typeof body,
+      { data: CompleteAgenticSessionGenerationResponse }
+    >("agentic-session-generation/launch", body, projectIdQuery(projectId));
+    return data;
+  } catch (error) {
+    redactLaunchCredentials(error, body.appTarget);
+    throw error;
+  }
+};
+
+const redactLaunchCredentials = (
+  error: unknown,
+  appTarget: AgenticAppTarget | undefined,
+): void => {
+  const password =
+    appTarget?.type === "assets" ? appTarget.backend?.password : undefined;
+  if (!password || typeof error !== "object" || error === null) {
+    return;
+  }
+  const config = (error as { config?: { data?: unknown } }).config;
+  if (typeof config?.data === "string") {
+    config.data = config.data.split(password).join("[REDACTED]");
+  } else if (typeof config?.data === "object" && config.data !== null) {
+    const target = config.data as {
+      appTarget?: { backend?: { password?: string } };
+    };
+    if (target.appTarget?.backend?.password) {
+      target.appTarget.backend.password = "[REDACTED]";
+    }
+  }
 };
 
 export type AgenticRunResultCaseOutcome = "pass" | "fail" | "blocked";
@@ -148,6 +205,13 @@ export interface AgenticChangedFile {
 export interface GetAgenticChangedFilesResponse {
   /** `null` when no PR/diff is available or source access is disabled. */
   files: AgenticChangedFile[] | null;
+  /**
+   * The resolved PR base sha, or `null` under the same conditions `files` is
+   * `null`. Lets a caller that only has the head commit sha (e.g. the agentic
+   * session generation worker) call `getRelevantSessions`, which requires a
+   * `baseCommitSha`.
+   */
+  baseSha: string | null;
 }
 
 /**

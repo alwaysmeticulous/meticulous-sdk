@@ -1,12 +1,17 @@
 import { EventEmitter } from "events";
-import cluster, { Worker } from "node:cluster";
+import type { Worker } from "node:cluster";
+import cluster from "node:cluster";
 import { cpus } from "node:os";
 import path from "path";
 import { meticulousFetch } from "@alwaysmeticulous/common";
-import { Logger } from "loglevel";
-import TypedEmitter from "typed-emitter";
-import { IncomingRequestEvent, LocalTunnelOptions, TunnelInfo } from "../types";
-import { WorkerInitOptions } from "./tunnel-worker.entrypoint";
+import type { Logger } from "loglevel";
+import type TypedEmitter from "typed-emitter";
+import type {
+  IncomingRequestEvent,
+  LocalTunnelOptions,
+  TunnelInfo,
+} from "../types";
+import type { WorkerInitOptions } from "./tunnel-worker.entrypoint";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
 
@@ -140,16 +145,29 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
     const uri = `${baseUriWithDomain}?${urlSearchParams.toString()}`;
 
     const getUrl = () => {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (opt.apiToken) {
+        headers.Authorization = opt.apiToken;
+      }
+
       meticulousFetch(uri, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: opt.apiToken,
-        },
+        headers,
       })
         .then(async (res) => {
           const body = await res.json();
           this.logger.debug("got tunnel information", body);
+          if (res.status === 401 || res.status === 403) {
+            return cb(
+              new Error(
+                `Authentication failed (HTTP ${res.status}). An API token is ` +
+                  "probably missing or invalid. Set METICULOUS_API_TOKEN, " +
+                  "pass --apiToken, or run `meticulous auth login`.",
+              ),
+            );
+          }
           if (res.status !== 200) {
             const err = new Error(
               (body &&
@@ -166,7 +184,13 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
         })
         .catch((err) => {
           if (err.message?.includes("Unauthorized")) {
-            return cb(new Error("Unauthorized. Please check your API token"));
+            return cb(
+              new Error(
+                "Authentication failed. An API token is probably missing or " +
+                  "invalid. Set METICULOUS_API_TOKEN, pass --apiToken, or run " +
+                  "`meticulous auth login`.",
+              ),
+            );
           }
 
           this.logger.error(`tunnel server offline: ${err.message}, retry 1s`);

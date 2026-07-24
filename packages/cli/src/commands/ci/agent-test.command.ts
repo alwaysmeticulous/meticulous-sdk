@@ -17,7 +17,11 @@ interface Options {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
   repoDirectory?: string | undefined;
-  localImageTag: string;
+  localImageTag?: string | undefined;
+  assetsDir?: string | undefined;
+  assetsUploadId?: string | undefined;
+  backendUrl?: string | undefined;
+  backendProxyPaths?: string[] | undefined;
   instructionsFile?: string | undefined;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
@@ -30,6 +34,10 @@ const handler = async ({
   commitSha: commitSha_,
   repoDirectory,
   localImageTag,
+  assetsDir,
+  assetsUploadId,
+  backendUrl,
+  backendProxyPaths,
   instructionsFile,
   containerPort,
   containerEnv,
@@ -44,21 +52,29 @@ const handler = async ({
     gitDiffOutput: undefined,
     repoDirectory,
   });
+  const targets = [localImageTag, assetsDir, assetsUploadId].filter(Boolean);
+  if (targets.length !== 1) {
+    throw new Error(
+      "Provide exactly one of --localImageTag, --assetsDir, or --assetsUploadId.",
+    );
+  }
 
+  const target =
+    localImageTag ?? assetsDir ?? `uploaded assets ${assetsUploadId ?? ""}`;
   logger.info(
-    `Generating sessions with image ${localImageTag} for commit ${commitSha}`,
+    `Launching agentic PR testing with ${target} for commit ${commitSha}`,
   );
 
   if (dryRun) {
     logger.info(
-      `Dry run: would push container image "${localImageTag}" and launch agentic session generation for commit ${commitSha}`,
+      `Dry run: would prepare "${target}" and launch agentic session generation for commit ${commitSha}`,
     );
     return;
   }
 
   Sentry.captureMessage("Received generate sessions request", {
     level: "debug",
-    extra: { commitSha, localImageTag },
+    extra: { commitSha, localImageTag, assetsDir, assetsUploadId, backendUrl },
   });
 
   const apiToken_ = await resolveApiTokenWithOAuth({
@@ -72,11 +88,23 @@ const handler = async ({
     await generateSessions({
       apiToken: apiToken_,
       localImageTag,
+      assetsDirectory: assetsDir,
+      assetsUploadId,
       commitSha,
       ...(instructionsFile ? { instructionsFile } : {}),
       containerPort,
       containerEnv,
       containerHealthCheckEndpoint,
+      ...(backendUrl
+        ? {
+            backend: {
+              url: backendUrl,
+              username: process.env["METICULOUS_STAGING_USERNAME"],
+              password: process.env["METICULOUS_STAGING_PASSWORD"],
+              proxyPaths: backendProxyPaths,
+            },
+          }
+        : {}),
       ...projectIdentifier,
     });
   } catch (error) {
@@ -88,11 +116,11 @@ const handler = async ({
   }
 };
 
-export const ciGenerateSessionsCommand: CommandModule<unknown, Options> = {
-  command: "generate-sessions",
+export const ciAgentTestCommand: CommandModule<unknown, Options> = {
+  command: "agent-test",
   describe:
-    "Upload a Docker container and an instructions file to Meticulous and " +
-    "launch an agent that generates additional sessions to test on the PR",
+    "Upload a container or static frontend assets to Meticulous and " +
+    "launch an agent that explores and tests the PR, generating additional sessions",
   builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
@@ -103,10 +131,30 @@ export const ciGenerateSessionsCommand: CommandModule<unknown, Options> = {
         "Cannot be combined with --commitSha.",
     },
     localImageTag: {
-      demandOption: true,
       string: true,
       description:
         "The local Docker image tag of the app under test (e.g., 'myapp:latest' or image SHA)",
+    },
+    assetsDir: {
+      string: true,
+      description:
+        "A directory of built frontend assets to upload and serve to the agent.",
+    },
+    assetsUploadId: {
+      string: true,
+      description: "An existing uploaded-assets upload ID to serve.",
+    },
+    backendUrl: {
+      string: true,
+      description:
+        "HTTPS staging backend URL. Credentials are read from METICULOUS_STAGING_USERNAME and METICULOUS_STAGING_PASSWORD.",
+    },
+    backendProxyPaths: {
+      array: true,
+      string: true,
+      default: ["/api"],
+      description:
+        "Same-origin path prefixes to reverse proxy to the staging backend.",
     },
     instructionsFile: {
       string: true,
@@ -134,6 +182,10 @@ export const ciGenerateSessionsCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "The endpoint path to use for health checks on the container (e.g., '/health').",
+    },
+    dryRun: {
+      boolean: true,
+      description: "Validate the options and exit without launching a run.",
     },
   },
   handler: wrapHandler(handler),

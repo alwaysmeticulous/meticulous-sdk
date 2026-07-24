@@ -31,7 +31,7 @@ export const getProjectCommand: CommandModule = {
       enableOAuthLogin: true,
     });
 
-    if (!isOAuthJwt(apiToken)) {
+    if (apiToken && !isOAuthJwt(apiToken)) {
       const pinned = await resolvePinnedProjectSlug(apiToken);
       if (!pinned) {
         throw new CliUserError(

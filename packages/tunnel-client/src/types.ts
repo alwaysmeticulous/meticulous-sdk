@@ -25,7 +25,11 @@ export interface TunnelInfo {
 
 export interface LocalTunnelOptions {
   logger: Logger;
-  apiToken: string;
+  /**
+   * Optional. When omitted/null, the tunnel open request is sent without an
+   * Authorization header (some environments inject auth themselves).
+   */
+  apiToken: string | null | undefined;
   port: number;
   subdomain?: string;
   host?: string;

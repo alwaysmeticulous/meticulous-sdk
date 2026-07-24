@@ -22,9 +22,9 @@ import { CliUserError } from "./cli-user-error";
  * top-level `wrapHandler` catches it and exits non-zero with the message.
  */
 export const resolveProjectIdentifier = async (
-  apiToken: string,
+  apiToken: string | null,
 ): Promise<{ projectId?: string }> => {
-  if (!isOAuthJwt(apiToken)) {
+  if (!apiToken || !isOAuthJwt(apiToken)) {
     return {};
   }
 
@@ -48,9 +48,14 @@ export const resolveProjectIdentifier = async (
  * failure (network, older backend without the endpoint, etc.) resolves to
  * `null` rather than throwing — used for informational display (`whoami`,
  * `get-project`), where a missing project name shouldn't fail the command.
+ *
+ * A `null` token sends the request without an Authorization header, which
+ * doubles as a probe for environments that inject credentials into outbound
+ * requests: it resolves to the pinned project when injection is working and
+ * `null` otherwise.
  */
 export const resolvePinnedProjectSlug = async (
-  apiToken: string,
+  apiToken: string | null,
 ): Promise<string | null> => {
   try {
     const client = createClient({ apiToken });

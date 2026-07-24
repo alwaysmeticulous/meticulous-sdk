@@ -28,7 +28,7 @@ export const prepareForMeticulousTests = async ({
   triggerScript,
   logger,
 }: {
-  apiToken: string;
+  apiToken: string | null;
   headCommit: string;
   triggerScript: string;
   logger: log.Logger;
@@ -109,12 +109,6 @@ const handler = async ({
   const logger = initLogger();
 
   const apiToken_ = getApiToken(apiToken);
-  if (!apiToken_) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
-  }
 
   const headCommit_ = await getCommitSha(headCommit);
   if (!headCommit_) {

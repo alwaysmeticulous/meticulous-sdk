@@ -101,12 +101,6 @@ const handler = async ({
   }
 
   const apiToken_ = getApiToken(apiToken);
-  if (!apiToken_) {
-    logger.error(
-      "You must provide an API token by using the --apiToken parameter",
-    );
-    process.exit(1);
-  }
 
   // If we have a script to trigger a run, this signals that the user is not sure whether the base test run is available.
   // In this case, we trigger the preparation for meticulous tests.

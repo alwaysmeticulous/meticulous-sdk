@@ -126,7 +126,7 @@ export const triggerTestRun = async (
 
 interface UploadParams {
   options: TriggerTestRunOptions;
-  apiToken: string;
+  apiToken: string | null;
   commitSha: string;
   baseSha: string | undefined;
   gitDiffOutput: string | undefined;
