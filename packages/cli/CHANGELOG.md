@@ -1,5 +1,22 @@
 # @alwaysmeticulous/cli
 
+## 2.317.0
+
+### Minor Changes
+
+- [#11536](https://github.com/alwaysmeticulous/meticulous/pull/11536) [`d9529f2`](https://github.com/alwaysmeticulous/meticulous/commit/d9529f22ff910760c52117668cf27c653a7abe73) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add a `--containerEnv name=value` flag to `meticulous simulate` for injecting extra environment variables into the app container when replaying against an `uploaded-container://` app URL. These are appended after the env vars registered with the container upload and the backend replay env vars, so they override both.
+
+## 2.316.1
+
+### Patch Changes
+
+- Updated dependencies [[`4fa92e5`](https://github.com/alwaysmeticulous/meticulous/commit/4fa92e5017b750814239ecf2d10443b9dfd560ba), [`ee12bbe`](https://github.com/alwaysmeticulous/meticulous/commit/ee12bbea3fa268e30ac6bf6d335fbef694ee3287)]:
+  - @alwaysmeticulous/client@2.316.1
+  - @alwaysmeticulous/debug-workspace@2.316.1
+  - @alwaysmeticulous/downloading-helpers@2.316.1
+  - @alwaysmeticulous/remote-replay-launcher@2.316.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.316.1
+
 ## 2.316.0
 
 ### Minor Changes

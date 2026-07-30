@@ -123,6 +123,8 @@ const redactLaunchCredentials = (
 
 export type AgenticRunResultCaseOutcome = "pass" | "fail" | "blocked";
 
+export type AgenticRunResultCaseTag = "happy-path" | "edge-case" | "regression";
+
 export type AgenticRunStepKind =
   | "navigate"
   | "click"
@@ -153,6 +155,10 @@ export interface AgenticRunResultStep {
 export interface AgenticRunResultCase {
   /** Short human-readable name of the flow, e.g. "Sign up with email". */
   title: string;
+  /** The kind of flow this case exercises. */
+  tag?: AgenticRunResultCaseTag;
+  /** Short human-readable name shared by closely related cases. */
+  group?: string;
   /** The steps the agent took, in order. */
   steps: AgenticRunResultStep[];
   outcome: AgenticRunResultCaseOutcome;
@@ -329,6 +335,45 @@ export const requestAgenticArtifactUploads = async ({
     body,
     projectIdQuery(projectId),
   );
+  return data;
+};
+
+export interface GetAgenticRunCoverageParams extends ProjectIdentifier {
+  /** The agentic run id the backend minted at launch. */
+  agenticRunId: string;
+}
+
+export interface GetAgenticRunCoverageResponse {
+  /**
+   * The run's edit-coverage, read out of its result blob. `null` when the run has
+   * no result yet or measured no coverage at all (e.g. the app under test served
+   * no source maps) — distinct from a measured-but-empty `perFile`, which must
+   * not be read as "the agent covered nothing".
+   */
+  coverage: AgenticRunCoverage | null;
+}
+
+/**
+ * Reads one agentic run's edit-coverage. The counterpart to
+ * `GET /api/agent/test-runs/:id/js-coverage` for the normal test run, so the two
+ * can be compared over a shared denominator without either caller touching S3.
+ *
+ * Gated on source-code access like the other coverage reads: per-file ranges name
+ * the project's changed source paths.
+ */
+export const getAgenticRunCoverage = async ({
+  client,
+  projectId,
+  agenticRunId,
+}: GetAgenticRunCoverageParams & {
+  client: MeticulousClient;
+}): Promise<GetAgenticRunCoverageResponse> => {
+  const { data } = await client.get<
+    unknown,
+    { data: GetAgenticRunCoverageResponse }
+  >(`agentic-session-generation/runs/${agenticRunId}/js-coverage`, {
+    params: projectId ? { projectId } : {},
+  });
   return data;
 };
 

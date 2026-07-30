@@ -2,6 +2,7 @@ import type {
   ScreenshotDiffOptions,
   StoryboardOptions,
 } from "@alwaysmeticulous/api";
+import type { ContainerEnvVariable } from "@alwaysmeticulous/client";
 import { resolveApiTokenWithOAuth } from "@alwaysmeticulous/client";
 import { defer, initLogger } from "@alwaysmeticulous/common";
 import { replayAndStoreResults } from "@alwaysmeticulous/replay-orchestrator-launcher";
@@ -20,6 +21,7 @@ import {
   OPTIONS,
   SCREENSHOT_DIFF_OPTIONS,
 } from "../command-utils/common-options";
+import { parseContainerEnv } from "../command-utils/parse-container-env";
 import { wrapHandler } from "../command-utils/sentry.utils";
 import {
   isOutOfDateClientError,
@@ -49,6 +51,7 @@ interface Options
   networkDebuggingTransformationFns: string[] | undefined;
   networkDebuggingRequestTypes: string[] | undefined;
   networkDebuggingWebsocketUrlRegexes: string[] | undefined;
+  containerEnv?: ContainerEnvVariable[] | undefined;
   dryRun?: boolean;
 }
 
@@ -86,6 +89,7 @@ const handler = async ({
   networkDebuggingWebsocketUrlRegexes,
   enableCssCoverage,
   enablePerScreenshotCoverage,
+  containerEnv,
   dryRun,
 }: Options): Promise<void> => {
   if (!takeSnapshots && storyboard) {
@@ -162,6 +166,7 @@ const handler = async ({
     enableCssCoverage: enableCssCoverage ?? false,
     enablePerScreenshotCoverage: enablePerScreenshotCoverage ?? false,
     ...(networkDebuggingOptions ? { networkDebuggingOptions } : {}),
+    ...(containerEnv?.length ? { uploadedContainerEnv: containerEnv } : {}),
   };
   const generatedByOption: GeneratedBy = { type: "replayCommand" };
   const storyboardOptions: StoryboardOptions = storyboard
@@ -346,6 +351,12 @@ export const replayCommand: CommandModule<unknown, Options> = {
       type: "array",
       string: true,
       description: "Regexes to match websocket URLs against for debug logging",
+    },
+    containerEnv: {
+      array: true,
+      coerce: parseContainerEnv,
+      description:
+        "Extra environment variables to set in the app container when replaying against an uploaded-container:// app URL (repeatable, name=value). These override env vars registered with the container upload.",
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,

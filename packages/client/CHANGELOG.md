@@ -1,5 +1,13 @@
 # @alwaysmeticulous/client
 
+## 2.316.1
+
+### Patch Changes
+
+- [#11535](https://github.com/alwaysmeticulous/meticulous/pull/11535) [`4fa92e5`](https://github.com/alwaysmeticulous/meticulous/commit/4fa92e5017b750814239ecf2d10443b9dfd560ba) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add test type and feature group metadata to agentic run result cases.
+
+- [#11430](https://github.com/alwaysmeticulous/meticulous/pull/11430) [`ee12bbe`](https://github.com/alwaysmeticulous/meticulous/commit/ee12bbea3fa268e30ac6bf6d335fbef694ee3287) Thanks [@sesajad](https://github.com/sesajad)! - Add `getAgenticRunCoverage`, which reads one agentic session generation run's edit-coverage (the executable and covered edited line ranges per file). The counterpart to `getTestRunJsCoverage` for the normal test run, so both sides of a PR's edited-line coverage can be read as data and compared over a shared denominator.
+
 ## 2.316.0
 
 ### Minor Changes

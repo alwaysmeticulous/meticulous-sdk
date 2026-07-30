@@ -4,8 +4,8 @@ import { CliUserError } from "../utils/cli-user-error";
 /**
  * Parses repeated `--containerEnv name=value` CLI flags into the structured
  * array the API expects. Throws a `CliUserError` on malformed input (reported
- * cleanly by the top-level `wrapHandler`). Shared by `agent upload-build` and
- * the deprecated `ci upload-container`.
+ * cleanly by the top-level `wrapHandler`). Shared by `agent upload-build`,
+ * `simulate`, and the deprecated `ci upload-container`.
  */
 export const parseContainerEnv = (value: string[]): ContainerEnvVariable[] =>
   value.map((v) => {
