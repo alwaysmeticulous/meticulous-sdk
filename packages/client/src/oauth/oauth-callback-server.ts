@@ -13,7 +13,7 @@ const SUCCESS_HTML = `<!DOCTYPE html>
   <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 24px;">
     <img src="https://app.meticulous.ai/meticulous_logo.svg" alt="Meticulous" width="48" height="51" />
     <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="24" cy="24" r="24" fill="#1AC590"/>
+      <circle cx="24" cy="24" r="24" fill="#22c55e"/>
       <path d="M14 24.5L21 31.5L34 18.5" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     <h2 style="margin: 0; font-size: 24px; font-weight: 600;">Authentication successful</h2>

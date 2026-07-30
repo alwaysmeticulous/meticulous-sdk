@@ -45,6 +45,18 @@ const unauthorizedResponse = () => ({
   text: () => "",
 });
 
+const forbiddenResponse = () => ({
+  ok: false,
+  status: 403,
+  statusText: "Forbidden",
+  headers: {
+    forEach: () => {},
+    get: () => "application/json",
+  },
+  json: () => ({ message: "Forbidden" }),
+  text: () => "",
+});
+
 describe("buildClient token resolution", () => {
   beforeEach(() => {
     meticulousFetch.mockReset();
@@ -111,6 +123,33 @@ describe("buildClient token resolution", () => {
     expect((caught as Error).message).toMatch(/HTTP 401/);
     expect((caught as Error).message).not.toMatch(
       /An API token is probably missing or invalid/,
+    );
+  });
+
+  it("surfaces wrong-credential-type guidance on 403 when no token was sent", async () => {
+    meticulousFetch.mockResolvedValue(forbiddenResponse());
+    const client = buildClient(null, { debug: () => {} } as never);
+
+    await expect(client.get("a")).rejects.toThrow(
+      /rejected as the wrong type for this endpoint/,
+    );
+  });
+
+  it("does not rewrite 403 errors when a token was sent", async () => {
+    meticulousFetch.mockResolvedValue(forbiddenResponse());
+    const client = buildClient("token-abc", { debug: () => {} } as never);
+
+    let caught: unknown;
+    try {
+      await client.get("a");
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toMatch(/HTTP 403/);
+    expect((caught as Error).message).not.toMatch(
+      /rejected as the wrong type for this endpoint/,
     );
   });
 });

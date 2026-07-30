@@ -14,6 +14,7 @@ import { CliUserError } from "../../utils/cli-user-error";
 import {
   assertTestRunComplete,
   ensureTestRunFinished,
+  isTestRunPartial,
   resolveTestRunForCommitOrThrow,
 } from "../../utils/resolve-test-run-from-commit";
 import {
@@ -162,8 +163,15 @@ const handler = async ({
     return;
   }
 
-  // Reject session-pool bases (Partial, which never finish on their own and
-  // aren't tied to a change); fatal failures already threw while waiting.
+  // A base run (Partial) exists to be compared against, not to be a change of
+  // its own, so it has no diffs to list — and it never finishes on its own, so
+  // waiting for it wouldn't help either.
+  if (isTestRunPartial(finishedStatus)) {
+    throw new CliUserError(
+      `Test run ${resolvedTestRunId} is a base run other test runs compare against and consequently has no changes/diffs.`,
+    );
+  }
+  // Fatal failures already threw while waiting.
   assertTestRunComplete(resolvedTestRunId, finishedStatus, {
     resultName: "diffs",
   });
@@ -296,7 +304,7 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     project: {
       string: true,
       description:
-        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project.",
+        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project. Cannot be combined with --testRunId, which already determines the project.",
       conflicts: "testRunId",
     },
     includeAllDiffs: {

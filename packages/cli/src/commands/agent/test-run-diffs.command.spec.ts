@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   getTestRunDiffsSummaryCounts: vi.fn(),
   ensureTestRunFinished: vi.fn(),
   assertTestRunComplete: vi.fn(),
+  isTestRunPartial: vi.fn(),
   resolveTestRunForCommitOrThrow: vi.fn(),
   logNotice: vi.fn(),
   logProgress: vi.fn(),
@@ -37,6 +38,7 @@ vi.mock("@alwaysmeticulous/common", () => ({
 vi.mock("../../utils/resolve-test-run-from-commit", () => ({
   ensureTestRunFinished: mocks.ensureTestRunFinished,
   assertTestRunComplete: mocks.assertTestRunComplete,
+  isTestRunPartial: mocks.isTestRunPartial,
   resolveTestRunForCommitOrThrow: mocks.resolveTestRunForCommitOrThrow,
 }));
 
@@ -78,6 +80,7 @@ describe("test-run-diffs command polling", () => {
     mocks.getTestRun.mockResolvedValue({ status: "Success" });
     mocks.ensureTestRunFinished.mockResolvedValue("Success");
     mocks.assertTestRunComplete.mockReturnValue(undefined);
+    mocks.isTestRunPartial.mockReturnValue(false);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
       throw new ProcessExitError(code);
@@ -309,4 +312,21 @@ describe("test-run-diffs command polling", () => {
       expect(mocks.getTestRunDiffsSummary).not.toHaveBeenCalled();
     },
   );
+
+  // A base run exists to be compared against, so it has no diffs of its own —
+  // rejected here rather than in the shared resolver, whose other caller
+  // (coverage) accepts base runs.
+  it("rejects a base run with a 'no changes/diffs' error", async () => {
+    mocks.ensureTestRunFinished.mockResolvedValue("Partial");
+    mocks.isTestRunPartial.mockReturnValue(true);
+
+    await expect(runHandler()).rejects.toThrow(
+      /is a base run other test runs compare against and consequently has no changes\/diffs/,
+    );
+
+    // Rejected before any diffs are fetched, and without consulting the
+    // verdict-only assertion.
+    expect(mocks.getTestRunDiffsSummary).not.toHaveBeenCalled();
+    expect(mocks.assertTestRunComplete).not.toHaveBeenCalled();
+  });
 });

@@ -22,8 +22,8 @@ import { projectIdQuery } from "./project-deployments.api";
  * catalog-maintenance job. Same request/response shapes as the agentic
  * session-generation repo surface (the backend delegates to the same
  * service) but served under `session-transform-discovery/*`, which is gated
- * on the `autoMaintainSessionMutationCatalog` project setting instead of
- * the agentic feature flag.
+ * on the project being monitored, paying, or in pilot instead of the
+ * agentic feature flag.
  */
 
 export const getDiscoveryRepoFile = async ({

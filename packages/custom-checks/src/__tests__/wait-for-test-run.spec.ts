@@ -12,6 +12,7 @@ import {
   fetchEffectiveTestRunOrFallback,
   findTestRunForCustomChecks,
   resolveEffectiveTestRunId,
+  waitForBaseTestRunCompletion,
   type WaitClock,
 } from "../wait-for-test-run";
 
@@ -27,6 +28,7 @@ vi.mock("@alwaysmeticulous/client", async (importOriginal) => {
 
 const ORIGINAL = "test-run-A";
 const MERGED = "test-run-C";
+const BASE = "test-run-BASE";
 const TIMEOUT_MS = 100;
 const POLL_MS = 10;
 
@@ -55,6 +57,25 @@ const phase = (clock: WaitClock) => ({
 
 const testRunFixture = (id: string): TestRun =>
   ({ id, status: "Success" }) as TestRun;
+
+// `configData.arguments` is deliberately not part of the public TestRun type
+// (the SDK reads it from the raw configData at runtime), hence the two-step
+// cast.
+const testRunWithBaseFixture = (id: string, baseTestRunId: string): TestRun =>
+  ({
+    id,
+    status: "Success",
+    configData: { arguments: { baseTestRunId } },
+  }) as unknown as TestRun;
+
+const inProgressTestRunFixture = (id: string): TestRun =>
+  ({ id, status: "Running" }) as TestRun;
+
+const fetchErrorWithStatus = (status: number): Error =>
+  Object.assign(new Error(`request failed with status code ${status}`), {
+    isAxiosError: true,
+    response: { status },
+  });
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -158,6 +179,95 @@ describe("fetchEffectiveTestRunOrFallback", () => {
   });
 });
 
+describe("waitForBaseTestRunCompletion", () => {
+  it("returns immediately when the run has no base test run", async () => {
+    const clock = makeClock();
+    await waitForBaseTestRunCompletion(phase(clock), testRunFixture(ORIGINAL));
+
+    expect(getTestRun).not.toHaveBeenCalled();
+    expect(clock.sleep).not.toHaveBeenCalled();
+  });
+
+  it("returns without sleeping when the base run is already terminal", async () => {
+    (getTestRun as Mock).mockResolvedValue(testRunFixture(BASE));
+
+    const clock = makeClock();
+    await waitForBaseTestRunCompletion(
+      phase(clock),
+      testRunWithBaseFixture(ORIGINAL, BASE),
+    );
+
+    expect(getTestRun).toHaveBeenCalledWith({
+      client: expect.anything(),
+      testRunId: BASE,
+    });
+    expect(clock.sleep).not.toHaveBeenCalled();
+  });
+
+  it("polls while the base run is still executing, then returns once it completes", async () => {
+    (getTestRun as Mock)
+      .mockResolvedValueOnce(inProgressTestRunFixture(BASE))
+      .mockResolvedValueOnce(inProgressTestRunFixture(BASE))
+      .mockResolvedValue(testRunFixture(BASE));
+
+    await waitForBaseTestRunCompletion(
+      phase(makeClock()),
+      testRunWithBaseFixture(ORIGINAL, BASE),
+    );
+
+    expect(getTestRun).toHaveBeenCalledTimes(3);
+  });
+
+  it("proceeds with a warning if the base run never completes before the timeout", async () => {
+    (getTestRun as Mock).mockResolvedValue(inProgressTestRunFixture(BASE));
+
+    // Must resolve (not throw): the head run has already completed.
+    await expect(
+      waitForBaseTestRunCompletion(
+        phase(makeClock()),
+        testRunWithBaseFixture(ORIGINAL, BASE),
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it("proceeds immediately when the base run is not readable (403/404)", async () => {
+    (getTestRun as Mock).mockRejectedValue(fetchErrorWithStatus(404));
+
+    const clock = makeClock();
+    await waitForBaseTestRunCompletion(
+      phase(clock),
+      testRunWithBaseFixture(ORIGINAL, BASE),
+    );
+
+    expect(getTestRun).toHaveBeenCalledTimes(1);
+    expect(clock.sleep).not.toHaveBeenCalled();
+  });
+
+  it("retries transient errors and then succeeds", async () => {
+    (getTestRun as Mock)
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValue(testRunFixture(BASE));
+
+    await waitForBaseTestRunCompletion(
+      phase(makeClock()),
+      testRunWithBaseFixture(ORIGINAL, BASE),
+    );
+
+    expect(getTestRun).toHaveBeenCalledTimes(2);
+  });
+
+  it("proceeds with a warning if transient errors persist past the timeout", async () => {
+    (getTestRun as Mock).mockRejectedValue(new Error("persistent"));
+
+    await expect(
+      waitForBaseTestRunCompletion(
+        phase(makeClock()),
+        testRunWithBaseFixture(ORIGINAL, BASE),
+      ),
+    ).resolves.toBeUndefined();
+  });
+});
+
 describe("findTestRunForCustomChecks", () => {
   const client = {} as MeticulousClient;
 
@@ -205,6 +315,36 @@ describe("findTestRunForCustomChecks", () => {
       client,
       testRunId: MERGED,
     });
+  });
+
+  it("waits for the resolved run's base test run before returning", async () => {
+    // Head run (terminal, with a base) → base run (already terminal).
+    (getTestRun as Mock)
+      .mockResolvedValueOnce(testRunWithBaseFixture(ORIGINAL, BASE))
+      .mockResolvedValueOnce(testRunFixture(BASE));
+    (getTestRunNetworkPatchingResult as Mock).mockResolvedValue({
+      effectiveTestRunId: ORIGINAL,
+      isNetworkPatchingInProgress: false,
+    });
+
+    const result = await findTestRunForCustomChecks({
+      client,
+      testRunId: ORIGINAL,
+    });
+
+    expect(result.testRunId).toBe(ORIGINAL);
+    expect(getTestRun).toHaveBeenCalledTimes(2);
+    expect(getTestRun).toHaveBeenLastCalledWith({
+      client,
+      testRunId: BASE,
+    });
+    // The run must be registered as expecting checks BEFORE the (potentially
+    // long) base-run wait, so the UI shows the pending Checks tab while the
+    // wait is in flight.
+    const markOrder = (markTestRunExpectsCustomChecks as Mock).mock
+      .invocationCallOrder[0];
+    const baseFetchOrder = (getTestRun as Mock).mock.invocationCallOrder[1];
+    expect(markOrder).toBeLessThan(baseFetchOrder);
   });
 
   it("does not fail the wait if registering the expectation throws", async () => {

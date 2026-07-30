@@ -87,10 +87,14 @@ export const isTestRunPartial = (status: TestRunStatus): boolean =>
 
 /**
  * Asserts a resolved run has finished with a usable verdict (Success/Failure),
- * for commands that need finished results and can't wait for them (e.g.
- * coverage). Throws a `CliUserError` otherwise, distinguishing fatal failures
- * (`Aborted`/`ExecutionError`) and session-pool bases (`Partial`, which never
- * finish on their own) from runs that simply aren't finished yet (in-progress).
+ * distinguishing a fatal failure (`Aborted`/`ExecutionError`) from a run that
+ * simply isn't finished yet.
+ *
+ * `Partial` base runs are deliberately not special-cased here: whether one is
+ * usable depends on what's being fetched (they have no diffs, but they do have
+ * coverage), so each command decides its own policy — and its own wording —
+ * before calling this. A `Partial` run that reaches here is reported as not
+ * complete, which is true but unhelpful, so intercept it first.
  */
 export const assertTestRunComplete = (
   testRunId: string,
@@ -100,11 +104,6 @@ export const assertTestRunComplete = (
   if (isTestRunFailed(status)) {
     throw new CliUserError(
       `Test run ${testRunId} finished unsuccessfully (status: ${status}).`,
-    );
-  }
-  if (isTestRunPartial(status)) {
-    throw new CliUserError(
-      `Test run ${testRunId} is a session-pool base run (status: Partial), not a test run for a specific change, so it has no complete ${resultName} available.`,
     );
   }
   if (!isTestRunComplete(status)) {

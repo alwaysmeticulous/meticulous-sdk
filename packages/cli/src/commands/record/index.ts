@@ -1,4 +1,5 @@
 import type { CommandModule } from "yargs";
+import { recordBackendCommand } from "./backend.command";
 import { recordLoginCommand } from "./login.command";
 import { recordSessionCommand } from "./session.command";
 
@@ -9,6 +10,7 @@ export const recordCommand: CommandModule = {
     yargs
       .command(recordSessionCommand)
       .command(recordLoginCommand)
+      .command(recordBackendCommand)
       .demandCommand()
       .help(),
   handler: () => {

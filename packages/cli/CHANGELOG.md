@@ -1,5 +1,55 @@
 # @alwaysmeticulous/cli
 
+## 2.316.0
+
+### Minor Changes
+
+- [#11448](https://github.com/alwaysmeticulous/meticulous/pull/11448) [`061d6fb`](https://github.com/alwaysmeticulous/meticulous/commit/061d6fb0038caa690245acbbbe66248fe9386bef) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Allow container-based agentic PR tests to use recorded-session network mocks.
+
+### Patch Changes
+
+- [#11479](https://github.com/alwaysmeticulous/meticulous/pull/11479) [`10f5702`](https://github.com/alwaysmeticulous/meticulous/commit/10f5702462ab33e1050fa064eee4f383ec06ac84) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent js-coverage --testRunId` now returns coverage for base test runs (status `Partial`) instead of rejecting them. A base run executes its sessions on demand so it never reaches a verdict, but it does record coverage as those sessions replay — the backend has always served it, so the CLI was refusing data the equivalent MCP tool returned. The command notes on stderr that the coverage reflects the sessions replayed so far and grows over time. `agent test-run-diffs` still rejects base runs, now saying plainly that such a run has no changes/diffs.
+
+  Two further base-run cases now get an explanation rather than a bare failure: `--prDiffOnly` is rejected up front (a base run has no PR, so its PR-scoped coverage is empty by construction), and a base run whose sessions have not been replayed yet reports that instead of surfacing the backend's "coverage artifact not found" as an unexpected error.
+
+  The `--project` option on `agent js-coverage` and `agent test-run-diffs` now documents that it cannot be combined with `--testRunId`/`--testRunIds` — already enforced, but previously undocumented.
+
+- [#11500](https://github.com/alwaysmeticulous/meticulous/pull/11500) [`6ba0dd6`](https://github.com/alwaysmeticulous/meticulous/commit/6ba0dd62bc7cba90c344e80b6167a2c1c3ee9e56) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `@alwaysmeticulous/client` gains `declareClientAppInfo(appInfo)`, which labels the `User-Agent` of every client the process subsequently creates — including clients built deep inside dependencies, which is why it goes through the environment rather than the `appInfo` option. An identity already present in the environment wins, so an outer consumer that labelled the process (e.g. a GitHub Action that then invokes the CLI) keeps its attribution.
+
+  The CLI now calls it at the start of `main`, so requests made by a CLI command are labelled `cli`. This makes CLI traffic distinguishable from direct use of the client as a library: a process that declares nothing sends the bare client `User-Agent`, which is therefore the signature of code that imported the package and called it directly. Nothing changes for consumers that already set `appInfo` or `METICULOUS_CLIENT_USER_AGENT_SUFFIX`.
+
+- [#11449](https://github.com/alwaysmeticulous/meticulous/pull/11449) [`777bfaf`](https://github.com/alwaysmeticulous/meticulous/commit/777bfaf0c3c169a367b3bba7244973023a2908f3) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `meticulous crawl` now resolves auth the same way as other commands (explicit `--apiToken` → OAuth login → `METICULOUS_API_TOKEN` → legacy config file), so it honors `meticulous auth set-project` and prompts for a browser login when no credentials are stored, instead of silently recording into whatever project a legacy config-file token points at. Also fixes `--maxNumSessions` closing the browser before the manual-login prompt: the cap is now only enforced once crawling actually starts, and sessions recorded while logging in no longer count towards it.
+
+- Updated dependencies [[`b20dc05`](https://github.com/alwaysmeticulous/meticulous/commit/b20dc05866f60875b8589e4e8ac7837c07da542c), [`80151d6`](https://github.com/alwaysmeticulous/meticulous/commit/80151d63704a7acae0c157d112cb39825c1ce287), [`6ba0dd6`](https://github.com/alwaysmeticulous/meticulous/commit/6ba0dd62bc7cba90c344e80b6167a2c1c3ee9e56), [`777bfaf`](https://github.com/alwaysmeticulous/meticulous/commit/777bfaf0c3c169a367b3bba7244973023a2908f3), [`061d6fb`](https://github.com/alwaysmeticulous/meticulous/commit/061d6fb0038caa690245acbbbe66248fe9386bef)]:
+  - @alwaysmeticulous/client@2.316.0
+  - @alwaysmeticulous/sdk-bundles-api@2.316.0
+  - @alwaysmeticulous/remote-replay-launcher@2.316.0
+  - @alwaysmeticulous/debug-workspace@2.316.0
+  - @alwaysmeticulous/downloading-helpers@2.316.0
+  - @alwaysmeticulous/common@2.310.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.316.0
+
+## 2.315.0
+
+### Minor Changes
+
+- [#11388](https://github.com/alwaysmeticulous/meticulous/pull/11388) [`5931dfd`](https://github.com/alwaysmeticulous/meticulous/commit/5931dfd6fd798e1a45cf5f507005e71e9018396f) Thanks [@claude](https://github.com/apps/claude)! - Add a customer-facing `meticulous crawl` command. It crawls your app from a given start URL in a local headed browser — pausing first so you can manually log in — records the visited pages as sessions, and then creates a test run from them. Auth uses your project API token; the sessions and test run are always scoped to that project.
+
+- [#11317](https://github.com/alwaysmeticulous/meticulous/pull/11317) [`f92d563`](https://github.com/alwaysmeticulous/meticulous/commit/f92d5637fbaf6ca1941394185db539f80c9d2aaf) Thanks [@alexivanov](https://github.com/alexivanov)! - Add backend session recording for Cloudflare Workers (workerd) apps during local development. The new `@alwaysmeticulous/backend-recorder-workerd` package provides a `withMeticulous` handler wrapper that captures inbound requests and outgoing `fetch` calls, and the new `meticulous record backend` CLI command starts the Meticulous recorder sidecar and wraps your dev command (e.g. `meticulous record backend -- npx wrangler dev`).
+
+### Patch Changes
+
+- Updated dependencies [[`62f456b`](https://github.com/alwaysmeticulous/meticulous/commit/62f456b0587d1fbed430e532b25bfabd7e2a4c93), [`e021d1c`](https://github.com/alwaysmeticulous/meticulous/commit/e021d1c4d587c629f1d67a5deb85bb6243608505), [`95053ea`](https://github.com/alwaysmeticulous/meticulous/commit/95053ea5c096a25076452e32ac9e8b07f8ce3fe7), [`5931dfd`](https://github.com/alwaysmeticulous/meticulous/commit/5931dfd6fd798e1a45cf5f507005e71e9018396f), [`f3c5e3b`](https://github.com/alwaysmeticulous/meticulous/commit/f3c5e3b77edd8cd1cf9de3c1e28c308a86247a45)]:
+  - @alwaysmeticulous/client@2.315.0
+  - @alwaysmeticulous/sdk-bundles-api@2.315.0
+  - @alwaysmeticulous/debug-workspace@2.315.0
+  - @alwaysmeticulous/downloading-helpers@2.315.0
+  - @alwaysmeticulous/remote-replay-launcher@2.315.0
+  - @alwaysmeticulous/common@2.310.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.315.0
+
 ## 2.314.0
 
 ### Minor Changes

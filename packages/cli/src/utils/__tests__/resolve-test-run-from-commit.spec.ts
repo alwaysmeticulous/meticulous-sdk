@@ -74,12 +74,15 @@ describe("assertTestRunComplete", () => {
     );
   });
 
-  test("throws 'session-pool base run' for Partial", () => {
+  // Deliberately not special-cased here: whether a base run is usable depends
+  // on what's being fetched, so each command intercepts Partial with its own
+  // policy and wording first (test-run-diffs rejects, js-coverage accepts).
+  test("does not special-case Partial", () => {
     expect(() => assertTestRunComplete("tr-1", "Partial")).toThrow(
       CliUserError,
     );
     expect(() => assertTestRunComplete("tr-1", "Partial")).toThrow(
-      /session-pool base run/,
+      /is not complete \(status: Partial\)/,
     );
   });
 

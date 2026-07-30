@@ -7,6 +7,7 @@ import {
   getTestRun,
   getTestRunNetworkPatchingResult,
   IN_PROGRESS_TEST_RUN_STATUS,
+  isFetchError,
   markTestRunExpectsCustomChecks,
   type MeticulousClient,
 } from "@alwaysmeticulous/client";
@@ -127,15 +128,22 @@ export type FindTestRunForCustomChecksOptions =
  *  3. Registers that the returned run expects custom check results, so the UI
  *     shows the "Checks" tab while your checks are in flight (and doesn't time
  *     out waiting). This is why it must be called before you run the checks.
+ *  4. Waits for the effective run's **base** test run to reach a terminal
+ *     status too. Custom check snapshots are compared against the base run's,
+ *     and the base run (typically the branch-point commit's run) can still be
+ *     executing when the head run finishes: fetching snapshots at that point
+ *     observes a partial — often empty — base side, and every check silently
+ *     compares 0 sessions and records a vacuous verdict that can never be
+ *     corrected (results are reported exactly once).
  *
  * If you are NOT going to report results for this run — e.g. a dry run that just
  * tests your custom check script — set `skipRegisteringExpectedCustomChecks:
  * true` so the run doesn't show a "waiting for checks" tab that never resolves.
  *
- * Resilient to runs where no patching happens, and to patching that never
- * finishes (bounded by the timeout, after which the best-known effective test
- * run is returned rather than throwing). Throws only if the run doesn't reach a
- * terminal status within the timeout.
+ * Resilient to runs where no patching happens, to patching that never finishes,
+ * and to a base run that never finishes (each bounded by the timeout, after
+ * which the best-known state is used rather than throwing). Throws only if the
+ * head run doesn't reach a terminal status within the timeout.
  */
 export const findTestRunForCustomChecks = async ({
   client,
@@ -180,12 +188,13 @@ export const findTestRunForCustomChecks = async ({
 
   // Now that we've resolved the run the user will actually see (the merged run
   // when network patching applied, otherwise the original), register that it
-  // expects custom check results — before the caller goes on to download
-  // snapshots and compute the checks — so the UI shows the "Checks" tab while
-  // they're in flight. Reporting against the same run id is the backstop that
-  // marks it if this best-effort call doesn't land. Skipped for local
-  // experimentation, so fetching a real run's snapshots doesn't make it show a
-  // "waiting for checks" tab.
+  // expects custom check results — before the (potentially long) base-run wait
+  // below and before the caller goes on to download snapshots and compute the
+  // checks — so the UI shows the "Checks" tab / pending status while they're in
+  // flight rather than only once the base run finishes. Reporting against the
+  // same run id is the backstop that marks it if this best-effort call doesn't
+  // land. Skipped for local experimentation, so fetching a real run's snapshots
+  // doesn't make it show a "waiting for checks" tab.
   if (skipRegisteringExpectedCustomChecks) {
     phase.logger.info(
       `Not registering that test run ${result.testRunId} expects custom check results (skipRegisteringExpectedCustomChecks is set).`,
@@ -193,6 +202,11 @@ export const findTestRunForCustomChecks = async ({
   } else {
     await markExpectsCustomChecksBestEffort(phase, result.testRunId);
   }
+
+  // Phase 4: wait for the effective run's base test run to complete, so the
+  // snapshots the caller is about to download cover the full base side rather
+  // than whatever had uploaded so far.
+  await waitForBaseTestRunCompletion(phase, result.testRun);
 
   return result;
 };
@@ -360,6 +374,133 @@ export const fetchEffectiveTestRunOrFallback = async (
       await clock.sleep(pollIntervalMs);
     }
   }
+};
+
+/**
+ * Waits for the effective test run's **base** test run to reach a terminal
+ * status, so the custom check snapshots downloaded next cover the complete base
+ * side.
+ *
+ * Snapshot files are uploaded by each replay as it finishes, and the backend
+ * lists a run's files from the replays recorded in its results — which keep
+ * accumulating while the run executes. The head run's completion says nothing
+ * about the base run (often the branch-point commit's run, executing in
+ * parallel), so without this wait a check computed right after the head run
+ * finishes can observe a partial or empty base side, silently compare 0
+ * sessions, and permanently record a vacuous verdict (results are reported
+ * exactly once).
+ *
+ * Never throws — the head run has already completed, so this must not introduce
+ * a new failure mode:
+ *  - No base test run configured → nothing to wait for (downloading snapshots
+ *    will fail with the existing "no base test run" error).
+ *  - Base run unreadable (deleted, or a token scoped to the head run only) →
+ *    proceed immediately with a warning.
+ *  - Transient errors → retry until the timeout, then proceed with a warning.
+ *  - Base run still executing at the timeout → proceed with a warning
+ *    (bounded staleness beats never reporting).
+ */
+export const waitForBaseTestRunCompletion = async (
+  {
+    client,
+    pollIntervalMs,
+    timeoutMs,
+    startTime,
+    logger,
+    clock,
+  }: WaitPhaseOptions,
+  effectiveTestRun: TestRun,
+): Promise<void> => {
+  const baseTestRunId = getBaseTestRunId(effectiveTestRun);
+  if (baseTestRunId == null || baseTestRunId === effectiveTestRun.id) {
+    return;
+  }
+
+  let lastLoggedElapsedMs = 0;
+  let sawInProgress = false;
+  for (;;) {
+    let baseTestRun: TestRun;
+    try {
+      baseTestRun = await getTestRun({ client, testRunId: baseTestRunId });
+    } catch (error) {
+      // A base run we're not allowed to read (or that no longer exists) will
+      // never look complete from here: proceed rather than stalling the wait.
+      if (
+        isFetchError(error) &&
+        (error.response?.status === 403 || error.response?.status === 404)
+      ) {
+        logger.warn(
+          `Could not read base test run ${baseTestRunId}; computing custom checks without waiting for it. ${error}`,
+        );
+        return;
+      }
+      if (clock.now() - startTime > timeoutMs) {
+        logger.warn(
+          `Giving up waiting for base test run ${baseTestRunId} after a transient error; its snapshots may still be uploading, so comparisons may be incomplete. ${error}`,
+        );
+        return;
+      }
+      await clock.sleep(pollIntervalMs);
+      continue;
+    }
+
+    if (!IN_PROGRESS_TEST_RUN_STATUS.includes(baseTestRun.status)) {
+      if (sawInProgress) {
+        logger.info(
+          `Base test run ${baseTestRunId} completed (status: ${baseTestRun.status}); custom check snapshots are ready to compare.`,
+        );
+      }
+      return;
+    }
+    sawInProgress = true;
+
+    const elapsedMs = clock.now() - startTime;
+    if (elapsedMs > timeoutMs) {
+      logger.warn(
+        `Timed out after ${Math.round(
+          timeoutMs / 1000,
+        )}s waiting for base test run ${baseTestRunId} to complete (current status: ${baseTestRun.status}); its snapshots may still be uploading, so comparisons may be incomplete.`,
+      );
+      return;
+    }
+
+    if (shouldLogProgress(lastLoggedElapsedMs, elapsedMs)) {
+      logger.info(
+        `Waiting for base test run ${baseTestRunId} to complete (current status: ${baseTestRun.status}) so its custom check snapshots are all uploaded before the checks compute. Time elapsed: ${Math.round(
+          elapsedMs / 1000,
+        )}s`,
+      );
+      lastLoggedElapsedMs = elapsedMs;
+    }
+
+    await clock.sleep(pollIntervalMs);
+  }
+};
+
+/**
+ * The base test run id the effective run was scheduled against, read from the
+ * run's raw `configData`. The public `TestRun` type deliberately types
+ * `configData` only partially — this field is an internal scheduling detail
+ * rather than public API surface — so it is read untyped and validated at
+ * runtime. It is the same field the backend's snapshot listing resolves the
+ * base run from, so waiting on this run is guaranteed to match what the
+ * snapshots are later compared against. Missing or malformed → `null` (no base
+ * to wait for).
+ */
+const getBaseTestRunId = (testRun: TestRun): string | null => {
+  const configData: unknown = testRun.configData;
+  if (configData == null || typeof configData !== "object") {
+    return null;
+  }
+  const testRunArguments = (configData as { arguments?: unknown }).arguments;
+  if (testRunArguments == null || typeof testRunArguments !== "object") {
+    return null;
+  }
+  const baseTestRunId = (testRunArguments as { baseTestRunId?: unknown })
+    .baseTestRunId;
+  return typeof baseTestRunId === "string" && baseTestRunId.length > 0
+    ? baseTestRunId
+    : null;
 };
 
 /**

@@ -50,10 +50,13 @@ export const performDeviceLogin = async (): Promise<StoredOAuthTokens> => {
     user_code: authorization.user_code,
     issuer: KEYCLOAK_ISSUER_URL,
   });
+  // The URL goes on its own line: it is often relayed (copied out of a
+  // terminal, or passed from a sandboxed agent to a human) and trailing text
+  // or line wrapping tends to truncate it.
   logger.info(
-    `On any device, open: ${webappBaseUrl}/cli-device-login?${cliLoginParams.toString()} ` +
-      `and confirm the code: ${authorization.user_code}`,
+    `On any device, open the URL below and confirm the code ${authorization.user_code}:`,
   );
+  logger.info(`${webappBaseUrl}/cli-device-login?${cliLoginParams.toString()}`);
   logger.info(
     authorization.verification_uri_complete
       ? `If that doesn't work, open ${authorization.verification_uri_complete}`

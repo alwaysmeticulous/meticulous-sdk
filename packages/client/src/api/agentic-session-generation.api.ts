@@ -18,6 +18,7 @@ export interface RequestAgenticInstructionsUploadResponse {
 export interface AgenticContainerAppTarget {
   type: "container";
   uploadId: string;
+  enableLocalMocks?: boolean | undefined;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
@@ -122,6 +123,29 @@ const redactLaunchCredentials = (
 
 export type AgenticRunResultCaseOutcome = "pass" | "fail" | "blocked";
 
+export type AgenticRunStepKind =
+  | "navigate"
+  | "click"
+  | "input"
+  | "assert"
+  | "other";
+
+/** A single step the agent took while running a case. */
+export interface AgenticRunResultStep {
+  /** What the step did, e.g. "Click the 'Schedule for later' switch". */
+  description: string;
+  kind?: AgenticRunStepKind;
+  /** Extra detail, e.g. the selector used or the exact text asserted. */
+  detail?: string;
+  /**
+   * Workdir-relative artifact path of a screenshot taken at this step (as
+   * returned by the test facade's `page.screenshot`), e.g.
+   * "artifacts/run-3/booked.png". Resolvable to a download URL via the run's
+   * `artifactDownloadUrls` GraphQL field once the worker has uploaded it.
+   */
+  screenshotPath?: string;
+}
+
 /**
  * A single user flow the agent exercised, with its outcome and the sessions it
  * recorded while running it. One agentic run produces many of these.
@@ -130,41 +154,66 @@ export interface AgenticRunResultCase {
   /** Short human-readable name of the flow, e.g. "Sign up with email". */
   title: string;
   /** The steps the agent took, in order. */
-  steps: string[];
+  steps: AgenticRunResultStep[];
   outcome: AgenticRunResultCaseOutcome;
   /** Sessions recorded while running this case. */
   sessionIds: string[];
+  /** Why this case was worth testing, e.g. which changed code it targets. */
+  rationale?: string;
   /** Free-form notes, e.g. what failed or why the case was blocked. */
   notes?: string;
+}
+
+/** Coarse metadata about how the agentic run itself executed. */
+export interface AgenticRunMetadata {
+  /** ISO timestamp the worker started the run. */
+  startedAt?: string;
+  /** ISO timestamp the worker finished driving and reported. */
+  finishedAt?: string;
+  /** The model the agent ran on. */
+  model?: string;
+  /** Number of runTest invocations across the run. */
+  iterations?: number;
 }
 
 export interface AgenticRunCoverageFile {
   /** Repo-relative post-edit path. */
   path: string;
-  /** Edited lines the coverage tool could observe (the per-file denominator). */
-  executableEditedLines: number;
-  /** Observable edited lines that the run covered. */
-  coveredLines: number;
-  /** Observable edited lines still uncovered, as inclusive [start, end] ranges. */
-  residualUncoveredRanges: Array<[number, number]>;
+  /**
+   * Edited lines the coverage tool could observe (this file's denominator), as
+   * inclusive [start, end] line ranges.
+   */
+  executableEditedRanges: Array<[number, number]>;
+  /**
+   * Executable-edited lines the run covered (a subset of
+   * `executableEditedRanges`), as inclusive [start, end] line ranges.
+   */
+  coveredEditedRanges: Array<[number, number]>;
 }
 
 /**
  * Edit-coverage for the run: how much of the PR's changed code the produced
  * sessions exercised. Omitted entirely when coverage could not be measured
  * (e.g. the app under test served no source maps).
+ *
+ * The canonical, non-redundant coverage shape (structurally the `EditCoverage`
+ * produced by `@alwaysmeticulous/coverage-utils`): only the executable and
+ * covered edited ranges are carried per file; aggregate counts, the fraction,
+ * and residual-uncovered ranges are all DERIVED by consumers, never stored.
  */
 export interface AgenticRunCoverage {
-  /** coveredLines / executableEditedLines, in [0, 1]. */
-  fraction: number;
-  coveredLines: number;
-  executableEditedLines: number;
-  files: AgenticRunCoverageFile[];
+  perFile: AgenticRunCoverageFile[];
   /** Edited files with no coverage data at all (unmappable / not loaded). */
   unobservedFiles: string[];
 }
 
 export interface ReportAgenticRunResultParams extends ProjectIdentifier {
+  /**
+   * The agentic run id the backend minted at launch and passed to the worker,
+   * echoed back so the backend updates the exact run record. Optional: a worker
+   * that doesn't have it falls back to matching by project + commit server-side.
+   */
+  agenticRunId?: string;
   /** Every session produced across the run (the union of all cases' sessions). */
   sessionIds: string[];
   cases: AgenticRunResultCase[];
@@ -172,10 +221,19 @@ export interface ReportAgenticRunResultParams extends ProjectIdentifier {
   commitSha: string;
   /** Edit-coverage for the run; omitted when coverage could not be measured. */
   coverage?: AgenticRunCoverage;
+  /** How the run itself executed (timing, model, iterations), when known. */
+  runMetadata?: AgenticRunMetadata;
 }
 
 export interface ReportAgenticRunResultResponse {
   message?: string;
+  /**
+   * Whether the backend actually stored the result on a run record. False when
+   * the report could not be correlated to a run or the run already had a
+   * terminal result (the response is still a 200 so terminal reports never
+   * fail the worker).
+   */
+  recorded?: boolean;
 }
 
 export const reportAgenticRunResult = async ({
@@ -189,6 +247,88 @@ export const reportAgenticRunResult = async ({
     typeof body,
     { data: ReportAgenticRunResultResponse }
   >("agentic-session-generation/result", body, projectIdQuery(projectId));
+  return data;
+};
+
+export interface IsAgenticRunCancelledParams extends ProjectIdentifier {
+  /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
+  agenticRunId: string;
+}
+
+export interface IsAgenticRunCancelledResponse {
+  /**
+   * `true` once the run has been cancelled (e.g. superseded by a newer run for
+   * the same PR).
+   */
+  cancelled: boolean;
+}
+
+/**
+ * Returns whether the run has been cancelled — a point-in-time query the worker
+ * polls throughout its run. On the first `true` the worker aborts its agent and
+ * exits without reporting a result; the run's terminal `cancelled` status was
+ * already set by whoever requested the cancellation.
+ */
+export const isAgenticRunCancelled = async ({
+  client,
+  projectId,
+  agenticRunId,
+}: IsAgenticRunCancelledParams & {
+  client: MeticulousClient;
+}): Promise<IsAgenticRunCancelledResponse> => {
+  const { data } = await client.get<
+    unknown,
+    { data: IsAgenticRunCancelledResponse }
+  >("agentic-session-generation/run-cancelled", {
+    params: {
+      ...(projectId ? { projectId } : {}),
+      agenticRunId,
+    },
+  });
+  return data;
+};
+
+export interface AgenticArtifactUploadFile {
+  /**
+   * Workdir-relative artifact path, e.g. "artifacts/run-3/booked.png". Must
+   * stay inside the artifacts directory (no ".." segments).
+   */
+  path: string;
+  /** File size in bytes. */
+  size: number;
+}
+
+export interface RequestAgenticArtifactUploadsParams extends ProjectIdentifier {
+  /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
+  agenticRunId: string;
+  files: AgenticArtifactUploadFile[];
+}
+
+export interface RequestAgenticArtifactUploadsResponse {
+  uploads: Array<{ path: string; uploadUrl: string }>;
+}
+
+/**
+ * Requests presigned upload URLs for run artifacts (the screenshots the agent
+ * took while driving), stored next to the run's result blob. The worker calls
+ * this just before reporting the result, so the report's `screenshotPath`
+ * references resolve for readers.
+ */
+export const requestAgenticArtifactUploads = async ({
+  client,
+  projectId,
+  ...body
+}: RequestAgenticArtifactUploadsParams & {
+  client: MeticulousClient;
+}): Promise<RequestAgenticArtifactUploadsResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestAgenticArtifactUploadsResponse }
+  >(
+    "agentic-session-generation/request-artifact-uploads",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 

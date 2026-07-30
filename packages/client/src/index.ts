@@ -71,6 +71,7 @@ export {
   RequestSourceCodeUploadUrlResponse,
   requestSourceCodeUploadUrl,
 } from "./api/project.api";
+export { CrawlerTestRun, createCrawlerTestRun } from "./api/crawler.api";
 export {
   ReplayV3UploadLocations,
   GetReplayV3DownloadUrlsOptions,
@@ -116,6 +117,7 @@ export {
   ClientOptions,
   createClient,
   createClientWithOAuth,
+  declareClientAppInfo,
   isInteractiveContext,
   makeRequest,
   resolveApiTokenWithOAuth,
@@ -208,11 +210,18 @@ export {
   completeAgenticSessionGeneration,
   AgenticRunResultCaseOutcome,
   AgenticRunResultCase,
+  AgenticRunResultStep,
+  AgenticRunStepKind,
+  AgenticRunMetadata,
   AgenticRunCoverage,
   AgenticRunCoverageFile,
   ReportAgenticRunResultParams,
   ReportAgenticRunResultResponse,
   reportAgenticRunResult,
+  AgenticArtifactUploadFile,
+  RequestAgenticArtifactUploadsParams,
+  RequestAgenticArtifactUploadsResponse,
+  requestAgenticArtifactUploads,
   GetAgenticChangedFilesParams,
   GetAgenticChangedFilesResponse,
   AgenticChangedFile,
@@ -244,6 +253,9 @@ export {
   ReleaseAgenticRepoLeaseParams,
   ReleaseAgenticRepoLeaseResponse,
   releaseAgenticRepoLease,
+  IsAgenticRunCancelledParams,
+  IsAgenticRunCancelledResponse,
+  isAgenticRunCancelled,
 } from "./api/agentic-session-generation.api";
 export {
   getDiscoveryRepoFile,

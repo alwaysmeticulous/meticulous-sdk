@@ -1,5 +1,17 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.316.0
+
+### Patch Changes
+
+- [#11449](https://github.com/alwaysmeticulous/meticulous/pull/11449) [`777bfaf`](https://github.com/alwaysmeticulous/meticulous/commit/777bfaf0c3c169a367b3bba7244973023a2908f3) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `meticulous crawl` now resolves auth the same way as other commands (explicit `--apiToken` → OAuth login → `METICULOUS_API_TOKEN` → legacy config file), so it honors `meticulous auth set-project` and prompts for a browser login when no credentials are stored, instead of silently recording into whatever project a legacy config-file token points at. Also fixes `--maxNumSessions` closing the browser before the manual-login prompt: the cap is now only enforced once crawling actually starts, and sessions recorded while logging in no longer count towards it.
+
+## 2.315.0
+
+### Minor Changes
+
+- [#11388](https://github.com/alwaysmeticulous/meticulous/pull/11388) [`5931dfd`](https://github.com/alwaysmeticulous/meticulous/commit/5931dfd6fd798e1a45cf5f507005e71e9018396f) Thanks [@claude](https://github.com/apps/claude)! - Add a customer-facing `meticulous crawl` command. It crawls your app from a given start URL in a local headed browser — pausing first so you can manually log in — records the visited pages as sessions, and then creates a test run from them. Auth uses your project API token; the sessions and test run are always scoped to that project.
+
 ## 2.312.0
 
 ### Patch Changes

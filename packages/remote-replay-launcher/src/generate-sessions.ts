@@ -36,6 +36,7 @@ export interface GenerateSessionsOptions extends ProjectIdentifier {
   commitSha: string;
   /** Path to a markdown file with instructions for the agent (login details, accounts, etc). */
   instructionsFile?: string | undefined;
+  enableLocalMocks?: boolean | undefined;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
@@ -61,6 +62,7 @@ export const generateSessions = async ({
   assetsUploadId: existingAssetsUploadId,
   commitSha,
   instructionsFile,
+  enableLocalMocks,
   containerPort,
   containerEnv,
   containerHealthCheckEndpoint,
@@ -138,6 +140,7 @@ export const generateSessions = async ({
       ? {
           type: "container",
           uploadId,
+          enableLocalMocks,
           containerPort,
           containerEnv,
           containerHealthCheckEndpoint,

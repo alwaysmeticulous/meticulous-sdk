@@ -6,19 +6,33 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import yargs, { type Options as YargsOptions } from "yargs";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
-  assertTestRunOnlyFlagsUnsetForReplay,
   assertLatestForProjectCompatible,
+  assertPrDiffOnlyCompatible,
+  assertTestRunCoverageAvailable,
+  assertTestRunOnlyFlagsUnsetForReplay,
   buildProjectCoverageRequestOptions,
+  canServeCoverage,
   coverageColumnValue,
   coverageFileToJson,
   determineColumns,
   isAmbiguousTestRunError,
   jsCoverageCommand,
+  logBaseRunCoverageNotice,
   parseHeadPlusTestRunIds,
   parseTestRunIds,
   printProjectCoverage,
   type Options,
 } from "./js-coverage.command";
+
+const mocks = vi.hoisted(() => ({
+  logNotice: vi.fn(),
+  initLogger: vi.fn(),
+}));
+
+vi.mock("@alwaysmeticulous/common", () => ({
+  logNotice: mocks.logNotice,
+  initLogger: mocks.initLogger,
+}));
 
 const baseOptions = (overrides: Partial<Options> = {}): Options => ({
   apiToken: undefined,
@@ -40,6 +54,132 @@ const baseOptions = (overrides: Partial<Options> = {}): Options => ({
   json: false,
   project: undefined,
   ...overrides,
+});
+
+describe("canServeCoverage", () => {
+  it.each(["Success", "Failure"] as const)("accepts %s", (status) => {
+    expect(canServeCoverage(status)).toBe(true);
+  });
+
+  // Base runs are the common case for a default-branch checkout, and they do
+  // have coverage — the --replayId disambiguation fallback relies on this.
+  it("accepts a Partial base run", () => {
+    expect(canServeCoverage("Partial")).toBe(true);
+  });
+
+  it.each([
+    "Scheduled",
+    "PreProcessing",
+    "Running",
+    "PostProcessing",
+    "Aborted",
+    "ExecutionError",
+  ] as const)("rejects %s", (status) => {
+    expect(canServeCoverage(status)).toBe(false);
+  });
+});
+
+describe("assertTestRunCoverageAvailable", () => {
+  it.each(["Success", "Failure"] as const)(
+    "does not throw for %s",
+    (status) => {
+      expect(() =>
+        assertTestRunCoverageAvailable("tr-1", status),
+      ).not.toThrow();
+    },
+  );
+
+  // Coverage is recorded per replay as sessions execute, so a base run that has
+  // replayed anything has coverage even though it never reaches a verdict.
+  it("accepts Partial rather than throwing", () => {
+    expect(() =>
+      assertTestRunCoverageAvailable("tr-1", "Partial"),
+    ).not.toThrow();
+  });
+
+  // Throw-only: the base-run caveat rides with the results (see
+  // logBaseRunCoverageNotice), so a run with nothing recorded yet isn't first
+  // told its coverage "grows over time" and then handed an error.
+  it.each(["Success", "Failure", "Partial"] as const)(
+    "emits no notice for %s",
+    (status) => {
+      mocks.logNotice.mockClear();
+      assertTestRunCoverageAvailable("tr-1", status);
+      expect(mocks.logNotice).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["Aborted", "ExecutionError"] as const)(
+    "still throws for %s",
+    (status) => {
+      expect(() => assertTestRunCoverageAvailable("tr-1", status)).toThrow(
+        /finished unsuccessfully/,
+      );
+    },
+  );
+
+  it("still throws for an in-progress run", () => {
+    expect(() => assertTestRunCoverageAvailable("tr-1", "Running")).toThrow(
+      /coverage not yet available/,
+    );
+  });
+});
+
+describe("logBaseRunCoverageNotice", () => {
+  // Presenting a base run's moving total as a fixed one is the thing this
+  // guards against, so the notice is pinned rather than left droppable.
+  it("explains each base run involved", () => {
+    mocks.logNotice.mockClear();
+    logBaseRunCoverageNotice(["tr-1", "tr-2"]);
+    expect(mocks.logNotice).toHaveBeenCalledTimes(2);
+    expect(mocks.logNotice.mock.calls[0][0]).toMatch(
+      /tr-1 is a base run .*grows over time/,
+    );
+    expect(mocks.logNotice.mock.calls[1][0]).toMatch(/tr-2 is a base run/);
+  });
+
+  it("says nothing when no base run is involved", () => {
+    mocks.logNotice.mockClear();
+    logBaseRunCoverageNotice([]);
+    expect(mocks.logNotice).not.toHaveBeenCalled();
+  });
+});
+
+describe("assertPrDiffOnlyCompatible", () => {
+  // A base run has no PR, so coverage.pr.json is written empty for it —
+  // scoping to it would read as "nothing covered" rather than "not applicable".
+  it("rejects --prDiffOnly for a base run", () => {
+    expect(() =>
+      assertPrDiffOnlyCompatible(
+        "tr-1",
+        "Partial",
+        baseOptions({ prDiffOnly: true }),
+      ),
+    ).toThrow(/has no PR diff to scope coverage to/);
+  });
+
+  it.each(["Success", "Failure"] as const)(
+    "allows --prDiffOnly for %s",
+    (status) => {
+      expect(() =>
+        assertPrDiffOnlyCompatible(
+          "tr-1",
+          status,
+          baseOptions({ prDiffOnly: true }),
+        ),
+      ).not.toThrow();
+    },
+  );
+
+  it("ignores a base run when --prDiffOnly is unset", () => {
+    expect(() =>
+      assertPrDiffOnlyCompatible(
+        "tr-1",
+        "Partial",
+        baseOptions({ prDiffOnly: false }),
+      ),
+    ).not.toThrow();
+  });
 });
 
 describe("--latestForProject", () => {

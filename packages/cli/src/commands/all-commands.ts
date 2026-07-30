@@ -2,6 +2,7 @@ import type { CommandModule, Options as YargsOptions } from "yargs";
 import { agentCommand } from "./agent/index";
 import { authCommand } from "./auth/index";
 import { ciCommand } from "./ci/index";
+import { crawlCommand } from "./crawl.command";
 import { debugCommand } from "./debug/index";
 import { downloadCommand } from "./download/index";
 import { localCommand } from "./local";
@@ -23,6 +24,7 @@ export const CLI_COMMANDS: CommandModule<unknown, any>[] = [
   agentCommand,
   authCommand,
   ciCommand,
+  crawlCommand,
   debugCommand,
   downloadCommand,
   localCommand,

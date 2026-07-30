@@ -6,6 +6,7 @@ import {
   setLogLevel,
   setMeticulousLocalDataDir,
 } from "@alwaysmeticulous/common";
+import { declareClientAppInfo } from "@alwaysmeticulous/client";
 import { initSentry } from "@alwaysmeticulous/sentry";
 import yargs from "yargs";
 import { parseJsonArgs } from "./command-utils/json-args";
@@ -23,6 +24,9 @@ const handleDataDir = (dataDir: string | null | undefined): void => {
 };
 
 export const main = async (): Promise<void> => {
+  // Before any client is created, so requests from a CLI command are
+  // distinguishable from direct use of @alwaysmeticulous/client as a library.
+  declareClientAppInfo("cli");
   initLogger();
   const packageJsonPath = normalize(join(__dirname, "../package.json"));
   const meticulousVersion = await getMeticulousVersion(packageJsonPath);

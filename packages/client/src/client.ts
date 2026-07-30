@@ -45,6 +45,29 @@ export const buildUserAgent = (appInfo?: string): string => {
   return suffix ? `${USER_AGENT} ${suffix}` : USER_AGENT;
 };
 
+/**
+ * Declares which entry point this process is, for the `User-Agent` of every
+ * client it creates — including clients built deep inside dependencies, which is
+ * why this goes through the environment rather than the `appInfo` option.
+ *
+ * Call it once at process start, before any client is created. Its purpose is to
+ * make an entry point distinguishable from *direct library use*: a process that
+ * never declares anything reports the bare client `User-Agent`, which is
+ * therefore the signature of code that imported this package and called it
+ * directly.
+ *
+ * An identity already present in the environment wins, so an outer consumer that
+ * labelled the process (e.g. a GitHub Action that then invokes the CLI) keeps
+ * its attribution rather than having it overwritten by the inner entry point.
+ */
+export const declareClientAppInfo = (appInfo: string): void => {
+  // Treats a blank value as absent: an empty env var would otherwise suppress
+  // the label entirely, since `buildUserAgent` discards a blank suffix.
+  if (!process.env[USER_AGENT_SUFFIX_ENV_VAR]?.trim()) {
+    process.env[USER_AGENT_SUFFIX_ENV_VAR] = appInfo;
+  }
+};
+
 export interface ClientOptions {
   apiToken: string | null | undefined;
 

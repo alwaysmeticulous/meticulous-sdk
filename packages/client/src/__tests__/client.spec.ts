@@ -1,26 +1,26 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { buildUserAgent } from "../client";
+import { buildUserAgent, declareClientAppInfo } from "../client";
 import { VERSION } from "../version";
 
 const ENV_VAR = "METICULOUS_CLIENT_USER_AGENT_SUFFIX";
 const BASE = `@alwaysmeticulous/client/${VERSION}`;
 
-describe("buildUserAgent", () => {
-  let originalSuffix: string | undefined;
+let originalSuffix: string | undefined;
 
-  beforeEach(() => {
-    originalSuffix = process.env[ENV_VAR];
+beforeEach(() => {
+  originalSuffix = process.env[ENV_VAR];
+  delete process.env[ENV_VAR];
+});
+
+afterEach(() => {
+  if (originalSuffix === undefined) {
     delete process.env[ENV_VAR];
-  });
+  } else {
+    process.env[ENV_VAR] = originalSuffix;
+  }
+});
 
-  afterEach(() => {
-    if (originalSuffix === undefined) {
-      delete process.env[ENV_VAR];
-    } else {
-      process.env[ENV_VAR] = originalSuffix;
-    }
-  });
-
+describe("buildUserAgent", () => {
   it("returns the base user-agent when nothing is provided", () => {
     expect(buildUserAgent()).toBe(BASE);
   });
@@ -53,5 +53,37 @@ describe("buildUserAgent", () => {
     );
     process.env[ENV_VAR] = "   ";
     expect(buildUserAgent()).toBe(BASE);
+  });
+});
+
+describe("declareClientAppInfo", () => {
+  it("labels every subsequently built user-agent", () => {
+    declareClientAppInfo("cli");
+    expect(buildUserAgent()).toBe(`${BASE} cli`);
+  });
+
+  it("leaves an identity already in the environment untouched", () => {
+    // An outer consumer that labelled the process (e.g. a GitHub Action
+    // invoking the CLI) keeps its attribution.
+    process.env[ENV_VAR] = "report-diffs-action/cloud-compute@v1";
+    declareClientAppInfo("cli");
+    expect(buildUserAgent()).toBe(
+      `${BASE} report-diffs-action/cloud-compute@v1`,
+    );
+  });
+
+  it("treats a blank environment value as absent", () => {
+    // A blank suffix is discarded by buildUserAgent, so leaving it in place
+    // would suppress the label entirely.
+    process.env[ENV_VAR] = "   ";
+    declareClientAppInfo("agent-cloud-worker");
+    expect(buildUserAgent()).toBe(`${BASE} agent-cloud-worker`);
+  });
+
+  it("does not override an explicit appInfo option", () => {
+    declareClientAppInfo("cli");
+    expect(buildUserAgent("my-app/custom-checks")).toBe(
+      `${BASE} my-app/custom-checks`,
+    );
   });
 });

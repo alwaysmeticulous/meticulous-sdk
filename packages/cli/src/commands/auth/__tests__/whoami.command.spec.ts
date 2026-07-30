@@ -287,4 +287,53 @@ describe("whoami command", () => {
       });
     });
   });
+
+  describe("no local credentials (empty token)", () => {
+    beforeEach(() => {
+      mocks.resolveApiTokenWithOAuth.mockResolvedValue(null);
+    });
+
+    it("reports injected credentials when a pinned project resolves", async () => {
+      mocks.getProject.mockResolvedValue({
+        id: "p1",
+        name: "App",
+        organization: { id: "o1", name: "Org" },
+      });
+
+      await runHandler();
+
+      expect(mocks.getWhoami).not.toHaveBeenCalled();
+      const out = stdoutText();
+      expect(out).toContain("credentials injected at request time");
+      expect(out).toContain("Pinned project: Org/App");
+    });
+
+    it("emits structured JSON for injected credentials with --json", async () => {
+      mocks.getProject.mockResolvedValue({
+        id: "p1",
+        name: "App",
+        organization: { id: "o1", name: "Org" },
+      });
+
+      await runHandler({ json: true });
+
+      expect(JSON.parse(stdoutText())).toEqual({
+        authenticatedVia: "injected-credentials",
+        pinnedProject: "Org/App",
+      });
+    });
+
+    it("reports not logged in when nothing is injected", async () => {
+      mocks.getProject.mockResolvedValue(null);
+
+      await expect(runHandler()).rejects.toThrow(/Not logged in/);
+    });
+
+    it("prints nothing to stdout before throwing not-logged-in with --json", async () => {
+      mocks.getProject.mockResolvedValue(null);
+
+      await expect(runHandler({ json: true })).rejects.toThrow(/Not logged in/);
+      expect(stdoutText()).toBe("");
+    });
+  });
 });

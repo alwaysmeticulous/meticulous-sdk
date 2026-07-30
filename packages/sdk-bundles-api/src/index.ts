@@ -68,6 +68,10 @@ export {
   OnReplayCompletionListenerOptions,
 } from "./window-api/public-window-api";
 export { MeticulousPrivateApi } from "./window-api/private-window-api";
+export {
+  RunCrawlOptions,
+  RunCrawlResult,
+} from "./crawler/sdk-to-bundle/run-crawl";
 export { BackendRecorderConfig } from "./backend-recorder/sdk-to-bundle/init-backend-recorder";
 export {
   BackendRecorderHandle,

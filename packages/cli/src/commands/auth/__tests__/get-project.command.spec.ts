@@ -81,6 +81,16 @@ describe("get-project command", () => {
     mocks.isOAuthJwt.mockReturnValue(false);
     mocks.getProject.mockResolvedValue(null);
 
-    await expect(runHandler()).rejects.toBeInstanceOf(CliUserError);
+    await expect(runHandler()).rejects.toThrow(
+      "Could not resolve the project this API token is bound to.",
+    );
+  });
+
+  it("falls through to the OAuth path when there is no local token", async () => {
+    mocks.resolveApiTokenWithOAuth.mockResolvedValue(null);
+    mocks.getOAuthDefaultProject.mockResolvedValue({ projectId: null });
+
+    await expect(runHandler()).rejects.toThrow(/No default project set/);
+    expect(mocks.getProject).not.toHaveBeenCalled();
   });
 });

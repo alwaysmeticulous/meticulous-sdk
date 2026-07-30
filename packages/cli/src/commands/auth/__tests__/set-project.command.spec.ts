@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CliUserError } from "../../../utils/cli-user-error";
 import { setProjectCommand } from "../set-project.command";
 
 vi.mock("../../../command-utils/sentry.utils", () => ({
@@ -58,9 +57,22 @@ describe("set-project command", () => {
   it("rejects a project-scoped API token", async () => {
     mocks.isOAuthJwt.mockReturnValue(false);
 
-    await expect(runHandler()).rejects.toBeInstanceOf(CliUserError);
+    await expect(runHandler()).rejects.toThrow(
+      /already in use.*bound to a single project/s,
+    );
     expect(mocks.selectAndStoreProject).not.toHaveBeenCalled();
     expect(mocks.createClientWithOAuth).not.toHaveBeenCalled();
+  });
+
+  it("falls through to the OAuth path when there is no local token", async () => {
+    mocks.resolveApiTokenWithOAuth.mockResolvedValue(null);
+
+    await runHandler({ project: "Org/App" });
+
+    expect(mocks.createClientWithOAuth).toHaveBeenCalled();
+    expect(mocks.selectAndStoreProject).toHaveBeenCalledWith(
+      expect.objectContaining({ project: "Org/App" }),
+    );
   });
 
   it("passes allowInteractivePrompt from the current TTY state", async () => {

@@ -1,0 +1,56 @@
+{
+  "name": "@alwaysmeticulous/backend-recorder-workerd",
+  "version": "2.315.0",
+  "type": "module",
+  "description": "Meticulous backend recorder shim for Cloudflare Workers (workerd). Reports inbound and outbound HTTP capture events to a local Meticulous recorder sidecar during development recording.",
+  "license": "ISC",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "meticulous",
+    "cloudflare",
+    "workers",
+    "workerd",
+    "recorder"
+  ],
+  "scripts": {
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "format": "prettier --write src",
+    "lint": "oxlint --type-aware src",
+    "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
+    "lint:fix": "oxlint --type-aware src --fix",
+    "depcheck": "depcheck --ignore-patterns=dist",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsdown": "^0.21.7",
+    "vitest": "catalog:"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/backend-recorder-workerd"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}

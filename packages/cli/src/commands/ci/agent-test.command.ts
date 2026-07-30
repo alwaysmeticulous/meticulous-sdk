@@ -23,6 +23,7 @@ interface Options {
   backendUrl?: string | undefined;
   backendProxyPaths?: string[] | undefined;
   instructionsFile?: string | undefined;
+  enableLocalMocks?: boolean | undefined;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
@@ -39,6 +40,7 @@ const handler = async ({
   backendUrl,
   backendProxyPaths,
   instructionsFile,
+  enableLocalMocks,
   containerPort,
   containerEnv,
   containerHealthCheckEndpoint,
@@ -58,6 +60,9 @@ const handler = async ({
       "Provide exactly one of --localImageTag, --assetsDir, or --assetsUploadId.",
     );
   }
+  if (enableLocalMocks && backendUrl) {
+    throw new Error("--enableLocalMocks cannot be combined with --backendUrl.");
+  }
 
   const target =
     localImageTag ?? assetsDir ?? `uploaded assets ${assetsUploadId ?? ""}`;
@@ -74,7 +79,14 @@ const handler = async ({
 
   Sentry.captureMessage("Received generate sessions request", {
     level: "debug",
-    extra: { commitSha, localImageTag, assetsDir, assetsUploadId, backendUrl },
+    extra: {
+      commitSha,
+      localImageTag,
+      assetsDir,
+      assetsUploadId,
+      backendUrl,
+      enableLocalMocks,
+    },
   });
 
   const apiToken_ = await resolveApiTokenWithOAuth({
@@ -92,6 +104,7 @@ const handler = async ({
       assetsUploadId,
       commitSha,
       ...(instructionsFile ? { instructionsFile } : {}),
+      enableLocalMocks,
       containerPort,
       containerEnv,
       containerHealthCheckEndpoint,
@@ -160,6 +173,11 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "Path to a markdown file with instructions for the agent (e.g. how to log in, which accounts to use).",
+    },
+    enableLocalMocks: {
+      boolean: true,
+      description:
+        "Mock the container's network traffic from relevant recorded sessions.",
     },
     containerPort: {
       number: true,
