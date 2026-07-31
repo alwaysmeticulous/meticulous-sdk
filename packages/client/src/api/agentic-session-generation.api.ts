@@ -182,6 +182,55 @@ export interface AgenticRunMetadata {
   iterations?: number;
 }
 
+export type AgenticRunTraceEventKind =
+  | "system-prompt"
+  | "user-prompt"
+  | "assistant"
+  | "tool-use"
+  | "tool-result"
+  | "result"
+  | "error";
+
+export interface AgenticRunTraceEvent {
+  timestamp: string;
+  kind: AgenticRunTraceEventKind;
+  text: string;
+  toolName?: string;
+  toolUseId?: string;
+  isError?: boolean;
+}
+
+export interface AgenticRunTraceUsage {
+  status: "success" | "error" | "unknown";
+  stopReason?: string;
+  durationMs: number;
+  numTurns: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
+  totalCostUsd: number;
+}
+
+export interface AgenticRunTrace {
+  events: AgenticRunTraceEvent[];
+  truncated: boolean;
+  /** Terminal status and model usage reported by this SDK query. */
+  usage?: AgenticRunTraceUsage;
+}
+
+export interface AgenticRunCaseTrace extends AgenticRunTrace {
+  caseIndex: number;
+  caseTitle: string;
+}
+
+/** Versioned transcript of the planning agent and each independently-run case agent. */
+export interface AgenticRunTraces {
+  version: 1;
+  planner: AgenticRunTrace;
+  cases: AgenticRunCaseTrace[];
+}
+
 export interface AgenticRunCoverageFile {
   /** Repo-relative post-edit path. */
   path: string;
@@ -229,6 +278,8 @@ export interface ReportAgenticRunResultParams extends ProjectIdentifier {
   coverage?: AgenticRunCoverage;
   /** How the run itself executed (timing, model, iterations), when known. */
   runMetadata?: AgenticRunMetadata;
+  /** Planner and per-case agent transcripts, when captured by the worker. */
+  traces?: AgenticRunTraces;
 }
 
 export interface ReportAgenticRunResultResponse {

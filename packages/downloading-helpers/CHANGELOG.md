@@ -1,5 +1,16 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 2.318.0
+
+### Patch Changes
+
+- [#11520](https://github.com/alwaysmeticulous/meticulous/pull/11520) [`4683ec6`](https://github.com/alwaysmeticulous/meticulous/commit/4683ec6e7d3899395bf5a75e4f742096b212485f) Thanks [@linpengzhang](https://github.com/linpengzhang)! - `streamDownloadAndInflateTar` now resolves to an `InflateTarDownloadStats` object (`compressedBytes`, `inflatedBytes`, `inflateMs`) describing the successful attempt, instead of resolving to `void`. Existing callers that ignore the resolved value are unaffected.
+
+  Inflation runs synchronously on the main thread, so comparing `inflateMs` against the call's wall-clock duration distinguishes a network-bound download from a decompression-bound one. Meticulous uses this to attribute the time each test run chunk spends fetching an uploaded deployment bundle.
+
+- Updated dependencies [[`8e70c70`](https://github.com/alwaysmeticulous/meticulous/commit/8e70c70c295cf5f34374a19b218b0711dd2ad260), [`d9267a0`](https://github.com/alwaysmeticulous/meticulous/commit/d9267a01c67a677f21f1d7e3dcdf4936633d6616)]:
+  - @alwaysmeticulous/client@2.318.0
+
 ## 2.316.1
 
 ### Patch Changes

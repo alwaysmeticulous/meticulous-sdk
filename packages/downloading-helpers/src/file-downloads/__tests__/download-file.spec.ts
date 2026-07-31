@@ -12,6 +12,7 @@ import {
   downloadFile,
   streamDownloadAndExtractTar,
   streamDownloadAndExtractTarGz,
+  streamDownloadAndInflateTar,
 } from "../download-file";
 
 // Module-level toggle for the stall-on-write test below. Vitest can't spy on
@@ -622,6 +623,94 @@ describe("streamDownloadAndExtractTarGz", () => {
       ).rejects.toThrow();
     } finally {
       server.close();
+    }
+  });
+});
+
+describe("streamDownloadAndInflateTar", () => {
+  let sourceDir: string;
+  let outputTarPath: string;
+
+  beforeEach(async () => {
+    const base = join(tmpdir(), `test-inflate-tar-${Date.now()}`);
+    sourceDir = join(base, "source");
+    outputTarPath = join(base, "assets.tar");
+    await mkdir(sourceDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    try {
+      await rm(join(sourceDir, ".."), { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it("reports the wire size, inflated size and time spent decompressing", async () => {
+    // Compressible enough that inflated clearly exceeds compressed, so the
+    // two counters can't be silently reading the same value.
+    await writeFile(join(sourceDir, "big.txt"), "A".repeat(2 * 1024 * 1024));
+    const compressed = await createRawDeflatedTar(sourceDir);
+
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { "Content-Length": compressed.length.toString() });
+      res.end(compressed);
+    });
+    const { url, close } = await listenOnEphemeralPort(server);
+
+    try {
+      const stats = await streamDownloadAndInflateTar(url, outputTarPath);
+
+      expect(stats.compressedBytes).toBe(compressed.length);
+      expect(stats.inflatedBytes).toBe(
+        (await readFile(outputTarPath)).byteLength,
+      );
+      expect(stats.inflatedBytes).toBeGreaterThan(stats.compressedBytes);
+      expect(stats.inflateMs).toBeGreaterThan(0);
+    } finally {
+      await close();
+    }
+  });
+
+  it("counts only the successful attempt when an earlier one fails", async () => {
+    // Large enough that the abandoned attempt below pushes a substantial
+    // number of bytes through inflate before dying, so that counting it would
+    // visibly inflate the totals.
+    await writeFile(join(sourceDir, "big.txt"), "A".repeat(2 * 1024 * 1024));
+    const compressed = await createRawDeflatedTar(sourceDir);
+
+    let requestCount = 0;
+    const server = http.createServer((_req, res) => {
+      requestCount += 1;
+      res.writeHead(200, { "Content-Length": compressed.length.toString() });
+      if (requestCount === 1) {
+        // Half a body, then a dead connection, so inflate really does consume
+        // these bytes before the attempt fails and is retried from scratch.
+        // Destroying from the write callback is what makes that true: a
+        // destroy issued on the same tick as the write discards the buffer
+        // and the client receives nothing.
+        res.write(
+          compressed.subarray(0, Math.floor(compressed.length / 2)),
+          () => res.destroy(),
+        );
+        return;
+      }
+      res.end(compressed);
+    });
+    const { url, close } = await listenOnEphemeralPort(server);
+
+    try {
+      const stats = await streamDownloadAndInflateTar(url, outputTarPath, {
+        retryDelay: 1,
+      });
+
+      expect(requestCount).toBeGreaterThan(1);
+      expect(stats.compressedBytes).toBe(compressed.length);
+      expect(stats.inflatedBytes).toBe(
+        (await readFile(outputTarPath)).byteLength,
+      );
+    } finally {
+      await close();
     }
   });
 });

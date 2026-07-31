@@ -1,5 +1,15 @@
 # @alwaysmeticulous/client
 
+## 2.318.0
+
+### Minor Changes
+
+- [#11553](https://github.com/alwaysmeticulous/meticulous/pull/11553) [`d9267a0`](https://github.com/alwaysmeticulous/meticulous/commit/d9267a01c67a677f21f1d7e3dcdf4936633d6616) Thanks [@claude](https://github.com/apps/claude)! - Add `meticulous ci label-commit` command (and `labelCommit` client API) for attaching labels to commits. The only supported label for now is `not-relevant`, which marks a commit as not affecting the app under test so base test run resolution can skip over it when looking for a test run to compare against.
+
+### Patch Changes
+
+- [#11526](https://github.com/alwaysmeticulous/meticulous/pull/11526) [`8e70c70`](https://github.com/alwaysmeticulous/meticulous/commit/8e70c70c295cf5f34374a19b218b0711dd2ad260) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional `traces` to `AgenticRunResult`, carrying structured planner and per-case agent traces (`AgenticRunTraces`, `AgenticRunTrace`, `AgenticRunTraceEvent`, `AgenticRunTraceUsage`) reported by agentic-session-generation workers.
+
 ## 2.316.1
 
 ### Patch Changes

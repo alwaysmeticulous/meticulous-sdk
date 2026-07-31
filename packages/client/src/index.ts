@@ -107,6 +107,12 @@ export {
   emitTelemetry,
 } from "./api/test-run.api";
 export { GetIsLockedOptions, getIsLocked } from "./api/deployment-lock.api";
+export {
+  COMMIT_LABEL_TYPES,
+  CommitLabelType,
+  labelCommit,
+  LabelCommitResponse,
+} from "./api/commit-label.api";
 export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
 export {
   getApiToken,
@@ -214,6 +220,12 @@ export {
   AgenticRunResultStep,
   AgenticRunStepKind,
   AgenticRunMetadata,
+  AgenticRunTraceEventKind,
+  AgenticRunTraceEvent,
+  AgenticRunTraceUsage,
+  AgenticRunTrace,
+  AgenticRunCaseTrace,
+  AgenticRunTraces,
   AgenticRunCoverage,
   AgenticRunCoverageFile,
   ReportAgenticRunResultParams,

@@ -1,5 +1,6 @@
 import type { CommandModule } from "yargs";
 import { ciAgentTestCommand } from "./agent-test.command";
+import { ciLabelCommitCommand } from "./label-commit.command";
 import { ciPrepareCommand } from "./prepare.command";
 import { ciRunLocalCommand } from "./run-local.command";
 import { ciRunWithUploadedAssetChunksCommand } from "./run-with-uploaded-asset-chunks.command";
@@ -23,6 +24,7 @@ export const ciCommand: CommandModule = {
       .command(ciRunWithUploadedAssetChunksCommand)
       .command(ciUploadContainerCommand)
       .command(ciAgentTestCommand)
+      .command(ciLabelCommitCommand)
       .demandCommand()
       .help(),
   handler: () => {

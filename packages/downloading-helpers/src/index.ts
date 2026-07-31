@@ -31,5 +31,6 @@ export {
   type StreamDownloadAndExtractTarOptions,
   streamDownloadAndInflateTar,
   type StreamDownloadAndInflateTarOptions,
+  type InflateTarDownloadStats,
 } from "./file-downloads/download-file";
 export { getReplayDir } from "./scripts/replays";

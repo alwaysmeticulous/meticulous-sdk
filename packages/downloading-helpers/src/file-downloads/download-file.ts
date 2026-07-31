@@ -388,6 +388,26 @@ export interface StreamDownloadAndInflateTarOptions {
 }
 
 /**
+ * Byte counts and decompression cost for a single
+ * {@link streamDownloadAndInflateTar} call.
+ *
+ * Inflation runs synchronously on the main thread, so comparing `inflateMs`
+ * against the call's total wall time tells you whether a slow download was
+ * decompression-bound (ratio near 1) or network-bound (ratio near 0).
+ *
+ * Counts cover the attempt that succeeded only; a retried attempt starts from
+ * zero.
+ */
+export interface InflateTarDownloadStats {
+  /** Deflated bytes received over the wire. */
+  compressedBytes: number;
+  /** Bytes written to the output `.tar` after inflation. */
+  inflatedBytes: number;
+  /** Cumulative wall time spent inside synchronous inflate calls. */
+  inflateMs: number;
+}
+
+/**
  * Streams a raw-deflated tar blob from a URL, inflates it, and writes the
  * result as a plain `.tar` file at `outputTarFilePath` — without extracting
  * any entries.
@@ -402,12 +422,13 @@ export interface StreamDownloadAndInflateTarOptions {
  * @param fileUrl The URL of the deflated tar blob to download.
  * @param outputTarFilePath Destination path for the inflated `.tar` file.
  * @param opts Timeout and retry configuration.
+ * @returns Byte counts and decompression cost for the successful attempt.
  */
 export const streamDownloadAndInflateTar = async (
   fileUrl: string,
   outputTarFilePath: string,
   opts: StreamDownloadAndInflateTarOptions = {},
-): Promise<void> => {
+): Promise<InflateTarDownloadStats> => {
   const firstDataTimeoutInMs = opts.firstDataTimeoutInMs ?? 60_000;
   const totalTimeoutInMs = opts.totalTimeoutInMs ?? 600_000;
   const maxRetries = opts.maxRetries ?? 3;
@@ -436,16 +457,21 @@ export const streamDownloadAndInflateTar = async (
         signal: abortController.signal,
       });
 
+      const stats: InflateTarDownloadStats = {
+        compressedBytes: 0,
+        inflatedBytes: 0,
+        inflateMs: 0,
+      };
       await pipeline(
         response.data as Readable,
-        createFastInflateRawStream(),
+        createFastInflateRawStream(stats),
         createWriteStream(outputTarFilePath, {
           highWaterMark: STREAMING_HIGH_WATER_MARK,
         }),
         { signal: abortController.signal },
       );
 
-      return;
+      return stats;
     } catch (error) {
       const wasAbortedBeforeCleanup = abortController.signal.aborted;
       const reasonBeforeCleanup = abortController.signal.reason;
@@ -687,8 +713,14 @@ const raceAgainstAbort = <T>(
  *
  * fast-zlib processes chunks synchronously via zlib's _processChunk,
  * avoiding the thread-pool overhead of Node's built-in async zlib streams.
+ *
+ * When `stats` is supplied, byte counts and inflate time are accumulated into
+ * it as the stream runs, letting callers attribute a slow download between the
+ * network and decompression.
  */
-const createFastInflateRawStream = (): Transform => {
+const createFastInflateRawStream = (
+  stats?: InflateTarDownloadStats,
+): Transform => {
   const inflate = new InflateRaw();
   let inflateClosed = false;
   const closeInflateOnce = (): void => {
@@ -702,7 +734,9 @@ const createFastInflateRawStream = (): Transform => {
     highWaterMark: STREAMING_HIGH_WATER_MARK,
     transform(chunk: Buffer, _encoding: BufferEncoding, callback) {
       try {
+        const startedAt = performance.now();
         const result = inflate.process(chunk);
+        recordInflateStats(stats, startedAt, chunk.length, result.length);
         if (result.length > 0) {
           this.push(result);
         }
@@ -713,7 +747,9 @@ const createFastInflateRawStream = (): Transform => {
     },
     flush(callback) {
       try {
+        const startedAt = performance.now();
         const result = inflate.process(Buffer.alloc(0), zlibConstants.Z_FINISH);
+        recordInflateStats(stats, startedAt, 0, result.length);
         if (result.length > 0) {
           this.push(result);
         }
@@ -728,4 +764,18 @@ const createFastInflateRawStream = (): Transform => {
       callback(_err);
     },
   });
+};
+
+const recordInflateStats = (
+  stats: InflateTarDownloadStats | undefined,
+  inflateStartedAt: number,
+  compressedBytes: number,
+  inflatedBytes: number,
+): void => {
+  if (!stats) {
+    return;
+  }
+  stats.inflateMs += performance.now() - inflateStartedAt;
+  stats.compressedBytes += compressedBytes;
+  stats.inflatedBytes += inflatedBytes;
 };

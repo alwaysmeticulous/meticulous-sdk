@@ -1,5 +1,20 @@
 # @alwaysmeticulous/cli
 
+## 2.318.0
+
+### Minor Changes
+
+- [#11553](https://github.com/alwaysmeticulous/meticulous/pull/11553) [`d9267a0`](https://github.com/alwaysmeticulous/meticulous/commit/d9267a01c67a677f21f1d7e3dcdf4936633d6616) Thanks [@claude](https://github.com/apps/claude)! - Add `meticulous ci label-commit` command (and `labelCommit` client API) for attaching labels to commits. The only supported label for now is `not-relevant`, which marks a commit as not affecting the app under test so base test run resolution can skip over it when looking for a test run to compare against.
+
+### Patch Changes
+
+- Updated dependencies [[`8e70c70`](https://github.com/alwaysmeticulous/meticulous/commit/8e70c70c295cf5f34374a19b218b0711dd2ad260), [`d9267a0`](https://github.com/alwaysmeticulous/meticulous/commit/d9267a01c67a677f21f1d7e3dcdf4936633d6616), [`4683ec6`](https://github.com/alwaysmeticulous/meticulous/commit/4683ec6e7d3899395bf5a75e4f742096b212485f)]:
+  - @alwaysmeticulous/client@2.318.0
+  - @alwaysmeticulous/downloading-helpers@2.318.0
+  - @alwaysmeticulous/debug-workspace@2.318.0
+  - @alwaysmeticulous/remote-replay-launcher@2.318.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.318.0
+
 ## 2.317.0
 
 ### Minor Changes
