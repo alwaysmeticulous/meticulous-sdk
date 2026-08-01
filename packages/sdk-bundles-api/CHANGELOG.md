@@ -1,5 +1,14 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.319.0
+
+### Patch Changes
+
+- [#11519](https://github.com/alwaysmeticulous/meticulous/pull/11519) [`ffd6711`](https://github.com/alwaysmeticulous/meticulous/commit/ffd6711945c015a2e357483cfe19f5cd1ff6af9b) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add the optional `baseSessionWaitMs` to `ReplayAndStoreResultsResult`, reporting how long a replay was blocked waiting for its base session to finish after its own work was done. The orchestrator sums it across a test case's attempts to work out whether base waits pushed out a chunk's wall clock, which is what makes them cost compute. Older bundles simply omit it.
+
+- Updated dependencies [[`46fce61`](https://github.com/alwaysmeticulous/meticulous/commit/46fce6165d356e006bd432c16c194034cce4b7c9), [`4bc27fe`](https://github.com/alwaysmeticulous/meticulous/commit/4bc27fed7e2e3b837cb10738dd9e4df5754e3a2b)]:
+  - @alwaysmeticulous/api@2.319.0
+
 ## 2.316.0
 
 ### Patch Changes

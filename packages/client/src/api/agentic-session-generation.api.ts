@@ -125,6 +125,13 @@ export type AgenticRunResultCaseOutcome = "pass" | "fail" | "blocked";
 
 export type AgenticRunResultCaseTag = "happy-path" | "edge-case" | "regression";
 
+/**
+ * Outcome of a single step. A case's outcome is derived from its steps'
+ * outcomes: any failed step fails the case, otherwise any blocked step blocks
+ * it, otherwise it passes.
+ */
+export type AgenticRunStepOutcome = AgenticRunResultCaseOutcome;
+
 export type AgenticRunStepKind =
   | "navigate"
   | "click"
@@ -132,11 +139,27 @@ export type AgenticRunStepKind =
   | "assert"
   | "other";
 
+/**
+ * The region of a step's screenshot the reviewer should focus on, in CSS
+ * pixels relative to the top-left of the (full-page) screenshot. Inferred by
+ * the worker from the bounding box of the element the test last acted on
+ * (clicked, filled, …) before the screenshot was taken — never supplied by the
+ * model.
+ */
+export interface AgenticRunHighlightRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /** A single step the agent took while running a case. */
 export interface AgenticRunResultStep {
   /** What the step did, e.g. "Click the 'Schedule for later' switch". */
   description: string;
   kind?: AgenticRunStepKind;
+  /** How the step went. Absent on blobs from older workers. */
+  outcome?: AgenticRunStepOutcome;
   /** Extra detail, e.g. the selector used or the exact text asserted. */
   detail?: string;
   /**
@@ -146,6 +169,8 @@ export interface AgenticRunResultStep {
    * `artifactDownloadUrls` GraphQL field once the worker has uploaded it.
    */
   screenshotPath?: string;
+  /** Where on the screenshot the acted-on element was, when the worker knows. */
+  highlightRegion?: AgenticRunHighlightRegion;
 }
 
 /**
@@ -166,8 +191,24 @@ export interface AgenticRunResultCase {
   sessionIds: string[];
   /** Why this case was worth testing, e.g. which changed code it targets. */
   rationale?: string;
-  /** Free-form notes, e.g. what failed or why the case was blocked. */
+  /**
+   * @deprecated Legacy workers may have included free-form notes. New workers
+   * report step outcomes instead.
+   */
   notes?: string;
+}
+
+export interface AgenticRunSummaryTakeaway {
+  /** Index into the run's `cases` array. */
+  caseIndex: number;
+  /** Short, agent-written finding grounded in that case's result. */
+  text: string;
+}
+
+/** Versioned, agent-written summary of the completed run. */
+export interface AgenticRunSummary {
+  version: 1;
+  takeaways: AgenticRunSummaryTakeaway[];
 }
 
 /** Coarse metadata about how the agentic run itself executed. */
@@ -280,6 +321,8 @@ export interface ReportAgenticRunResultParams extends ProjectIdentifier {
   runMetadata?: AgenticRunMetadata;
   /** Planner and per-case agent transcripts, when captured by the worker. */
   traces?: AgenticRunTraces;
+  /** Agent-written takeaways grounded in completed cases. */
+  summary?: AgenticRunSummary;
 }
 
 export interface ReportAgenticRunResultResponse {

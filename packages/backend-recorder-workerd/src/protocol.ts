@@ -19,6 +19,25 @@ export const FRONTEND_SESSION_ID_HEADER = "x-meticulous-session-id";
 export const SIDECAR_EVENTS_PATH = "/v1/events";
 
 /**
+ * Replay routes. A sidecar started in record mode answers 404 on both, which the shim
+ * treats as "replay unavailable" and falls back to plain pass-through — so a new shim
+ * keeps working against an older, record-only sidecar.
+ */
+export const SIDECAR_REPLAY_SESSION_PATH = "/v1/replay/session";
+export const SIDECAR_REPLAY_OUTBOUND_FETCH_PATH = "/v1/replay/outbound-fetch";
+
+/**
+ * Header carrying the replay sidecar's origin, injected by the Meticulous replay runner
+ * on requests to the app under test. Workerd cannot see container environment variables,
+ * so an inbound header is the only way per-replay config can reach the shim.
+ *
+ * The shim validates the value before using it and only honours a loopback /
+ * `host.docker.internal` / private-network `http:` origin — see `replay-sidecar-url.ts`.
+ */
+export const REPLAY_SIDECAR_URL_HEADER =
+  "x-meticulous-backend-replay-sidecar-url";
+
+/**
  * The only headers persisted on capture events. Everything else — notably
  * authorization, cookie/set-cookie, and API-key headers — is dropped at
  * capture time, before it ever leaves the worker. Mirrors the Node backend
@@ -73,8 +92,73 @@ export interface OutboundRequestEvent extends BaseRequestEvent {
   responseBody?: CapturedBody;
 }
 
-export type CaptureEvent = InboundRequestEvent | OutboundRequestEvent;
+/**
+ * A `fetch` through a Cloudflare binding — a service binding, an assets binding, or a
+ * Durable Object stub — made while handling an inbound request (becomes a CLIENT span).
+ *
+ * Request/Response-shaped like {@link OutboundRequestEvent}, but a distinct kind because the
+ * call never leaves the isolate and its URL is whatever the caller invented. Keeping the two
+ * apart means a binding call and real egress can never be confused for one another when
+ * these spans are eventually mocked.
+ */
+export interface BindingRequestEvent extends BaseRequestEvent {
+  kind: "binding";
+  /**
+   * The `env` key the binding was found under. Absent when the instance was never seen on
+   * `env` — most commonly a Durable Object stub, which `namespace.get()` produces rather
+   * than being a binding in its own right.
+   */
+  bindingName?: string;
+  requestBody?: CapturedBody;
+  responseBody?: CapturedBody;
+}
+
+export type CaptureEvent =
+  | InboundRequestEvent
+  | OutboundRequestEvent
+  | BindingRequestEvent;
 
 export interface CaptureEventsPayload {
   events: CaptureEvent[];
 }
+
+/**
+ * Answer to `GET {SIDECAR_REPLAY_SESSION_PATH}?sessionId=<id>`: whether the sidecar holds
+ * mocks for a session, and the virtual clock anchor to freeze `Date` at while serving it.
+ */
+export interface ReplaySessionInfoResponse {
+  found: boolean;
+  /**
+   * Epoch ms of the session's last recorded activity. The worker freezes its clock here so
+   * that credentials minted during the recording are already issued but not yet expired.
+   */
+  clockAnchorMs?: number;
+}
+
+/** Lookup for a single outbound `fetch`, sent to {@link SIDECAR_REPLAY_OUTBOUND_FETCH_PATH}. */
+export interface OutboundFetchLookupRequest {
+  frontendSessionId: string;
+  method: string;
+  /** Full URL including query string. */
+  url: string;
+  /**
+   * Request body as captured by `readBodyWithCap`. The sidecar hashes this itself, so the
+   * hash it compares against a recording is derived from byte-identical input on both the
+   * record and replay sides.
+   */
+  requestBody?: CapturedBody;
+}
+
+/**
+ * Either a recorded response to serve, or an instruction to let the real call through.
+ * An unrecognised `outcome` must be treated as `passthrough`, so an older shim keeps
+ * working against a newer sidecar.
+ */
+export type OutboundFetchLookupResponse =
+  | {
+      outcome: "mock";
+      statusCode: number;
+      body: string;
+      headers: Record<string, string>;
+    }
+  | { outcome: "passthrough" };

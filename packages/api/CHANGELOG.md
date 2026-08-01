@@ -1,5 +1,34 @@
 # @alwaysmeticulous/api
 
+## 2.319.0
+
+### Minor Changes
+
+- [#11533](https://github.com/alwaysmeticulous/meticulous/pull/11533) [`4bc27fe`](https://github.com/alwaysmeticulous/meticulous/commit/4bc27fed7e2e3b837cb10738dd9e4df5754e3a2b) Thanks [@dennysem](https://github.com/dennysem)! - Add replay support to the workerd shim. `withMeticulous` now also serves recorded responses
+  to the app's outgoing `fetch` calls instead of letting them reach the real service, and
+  freezes the worker's clock at the recorded session's end so credentials minted during the
+  recording are still valid.
+
+  Replay activates on the `x-meticulous-backend-replay-sidecar-url` header, injected by the
+  Meticulous replay runner — workerd cannot read container environment variables, so per-replay
+  config has to arrive per request. The shim validates the value and only honours a plain
+  `http:` origin on a loopback, docker-gateway or RFC1918 host — link-local is rejected, so a
+  forged header cannot steer replay traffic at a cloud metadata endpoint. Replay takes
+  precedence over recording when both are configured. With neither, the wrapper remains a
+  complete pass-through.
+
+  Calls through a Cloudflare binding (`env.SVC.fetch(...)`) are recorded but not yet replayed:
+  they are captured as their own technology (`workerd-binding`), which the mock store does not
+  serve, so during a replay they reach the real binding. Only `globalThis.fetch` is mocked.
+
+  `@alwaysmeticulous/api` gains `SerializedBackendSpan.clientTechnology` and the
+  `WORKERD_FETCH_CLIENT_TECHNOLOGY` constant, so a replay can tell a workerd recording from a
+  Node one and only start the out-of-process mock store for the former.
+
+### Patch Changes
+
+- [#11566](https://github.com/alwaysmeticulous/meticulous/pull/11566) [`46fce61`](https://github.com/alwaysmeticulous/meticulous/commit/46fce6165d356e006bd432c16c194034cce4b7c9) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add the optional `relevanceReason` to `TestCase`, recording why a session carries the `relevanceToPR` it does (direct coverage, a mark-all MaybeRelevant signal, no coverage, and so on). Relevant Session Execution snapshots it alongside the relevance so the mix of sessions actually replayed can be reported directly rather than derived from the MaybeRelevant sampling percentage. Older test runs simply omit it.
+
 ## 2.312.0
 
 ### Minor Changes

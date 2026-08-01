@@ -31,6 +31,51 @@ export const isPrAuthorRelevance = (
   );
 };
 
+/**
+ * Why a session carries the `relevanceToPR` it does, and therefore why it was
+ * kept for execution or dropped. Snapshotted onto the test case alongside
+ * `relevanceToPR` so that the mix of sessions we actually replay can be
+ * reported directly, rather than re-derived from the MaybeRelevant sampling
+ * percentage.
+ *
+ * Reasons are mutually exclusive: exactly one applies to a given session.
+ *
+ * - `direct_coverage`: the session's coverage-source replay covered an edited
+ *   line (IsRelevant).
+ * - `stylesheet_sibling_coverage`: the session's coverage-source replay covered
+ *   the co-located sibling source file of a changed stylesheet (e.g.
+ *   `foo.component.ts` for `foo.component.scss`) without covering any directly
+ *   edited line (IsRelevant).
+ * - `relevant_side_effect`: a file matching the "relevant" patterns (server
+ *   config, migration, infra) forced every session relevant (IsRelevant).
+ * - `mark_all_maybe_relevant`: a change with no precise line coverage to anchor
+ *   on forced every session to MaybeRelevant.
+ * - `no_coverage_or_not_chosen`: the session was not in the selected covering
+ *   set and no mark-all signal fired (NotRelevant).
+ * - `failed_in_coverage_source`: scheduled in the coverage source but produced
+ *   no diff/result, so it likely failed there (NotRelevant).
+ * - `new_relative_to_coverage_source`: absent from the coverage source
+ *   entirely, so relevance is unknown and we run it (IsRelevant).
+ * - `refinement_blast_radius_union`: promoted by agentic RSE refinement's
+ *   sampled wider-blast-radius union (IsRelevant).
+ * - `pre_annotated`: carried an upstream `relevanceToPR` annotation that takes
+ *   precedence over coverage-derived relevance.
+ * - `rse_skipped_sampling`: relevance never ran, and an operator load-shedding
+ *   override marked the session MaybeRelevant so the standard sampling would
+ *   shed it (MaybeRelevant).
+ */
+export type SessionRelevanceReason =
+  | "direct_coverage"
+  | "stylesheet_sibling_coverage"
+  | "relevant_side_effect"
+  | "mark_all_maybe_relevant"
+  | "no_coverage_or_not_chosen"
+  | "failed_in_coverage_source"
+  | "new_relative_to_coverage_source"
+  | "refinement_blast_radius_union"
+  | "pre_annotated"
+  | "rse_skipped_sampling";
+
 export interface TestCase {
   sessionId: string;
   relevanceToPR?: SessionRelevance;
@@ -42,6 +87,13 @@ export interface TestCase {
    * creation time. Used to prioritize MaybeRelevant sessions when sampling.
    */
   rankPosition?: number;
+
+  /**
+   * Why `relevanceToPR` holds the value it does. Only set by the paths that
+   * derive relevance from coverage; test cases annotated elsewhere (e.g. the
+   * IsPrAuthor family) and runs that predate this field leave it undefined.
+   */
+  relevanceReason?: SessionRelevanceReason;
 }
 
 export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {

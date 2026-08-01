@@ -1,4 +1,5 @@
 import type { CapturedBody } from "./protocol";
+import { redactRequestBody } from "./redact-body";
 
 /** Matches the Node backend recorder's body capture cap (met-http-instrumentation). */
 export const MAX_BODY_CAPTURE_SIZE = 256 * 1024;
@@ -69,4 +70,22 @@ export const readBodyWithCap = async (
 
   text += decoder.decode();
   return { body: text, truncated };
+};
+
+/**
+ * Reads a *request* body, redacting secret-looking fields before it leaves the worker.
+ *
+ * Every request-body capture path goes through here, so record and replay redact
+ * identically and any hash derived from the body still agrees on both sides. Response
+ * bodies deliberately use {@link readBodyWithCap} directly — they are served back to the
+ * app during replay and must stay byte-exact.
+ */
+export const readRequestBodyWithCap = async (
+  stream: ReadableStream<Uint8Array> | null,
+): Promise<CapturedBody | undefined> => {
+  const captured = await readBodyWithCap(stream);
+  if (captured === undefined) {
+    return undefined;
+  }
+  return { ...captured, body: redactRequestBody(captured.body) };
 };

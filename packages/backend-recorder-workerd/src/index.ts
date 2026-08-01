@@ -1,32 +1,50 @@
-import { type RequestCaptureContext, requestCaptureContext } from "./context";
+import { installBindingPatch } from "./binding-patch";
 import {
-  getOriginalFetch,
-  headersToRecord,
-  installFetchPatch,
-} from "./fetch-patch";
+  type RequestCaptureContext,
+  type RequestReplayContext,
+  requestCaptureContext,
+} from "./context";
+import { installFetchPatch } from "./fetch-patch";
 import { warnOnce } from "./log";
+import { getOriginalFetch } from "./original-fetch";
+import { headersToRecord } from "./outbound-capture";
 import {
   FRONTEND_SESSION_ID_HEADER,
   type InboundRequestEvent,
+  REPLAY_SIDECAR_URL_HEADER,
 } from "./protocol";
-import { postCaptureEvents } from "./sidecar-client";
+import { parseReplaySidecarUrl } from "./replay-sidecar-url";
+import { getReplaySessionInfo, postCaptureEvents } from "./sidecar-client";
+import { installVirtualClock } from "./virtual-clock";
 
 export type {
+  BindingRequestEvent,
   CaptureEvent,
   CapturedBody,
   CaptureEventsPayload,
   InboundRequestEvent,
+  OutboundFetchLookupRequest,
+  OutboundFetchLookupResponse,
   OutboundRequestEvent,
+  ReplaySessionInfoResponse,
 } from "./protocol";
 export {
   CAPTURED_HEADERS,
   FRONTEND_SESSION_ID_HEADER,
+  REPLAY_SIDECAR_URL_HEADER,
   SIDECAR_EVENTS_PATH,
   SIDECAR_PROTOCOL_VERSION,
   SIDECAR_PROTOCOL_VERSION_HEADER,
+  SIDECAR_REPLAY_OUTBOUND_FETCH_PATH,
+  SIDECAR_REPLAY_SESSION_PATH,
 } from "./protocol";
-export { MAX_BODY_CAPTURE_SIZE, readBodyWithCap } from "./body-capture";
-export { headersToRecord } from "./fetch-patch";
+export {
+  MAX_BODY_CAPTURE_SIZE,
+  readBodyWithCap,
+  readRequestBodyWithCap,
+} from "./body-capture";
+export { headersToRecord } from "./outbound-capture";
+export { redactRequestBody, STR_REDACTED } from "./redact-body";
 
 /** Structural subset of workerd's ExecutionContext — avoids a @cloudflare/workers-types dependency. */
 export interface MeticulousExecutionContext {
@@ -45,22 +63,41 @@ export interface MeticulousWorkerHandler<Env = never> {
 export interface WithMeticulousOptions {
   /** Overrides the sidecar origin; defaults to the METICULOUS_SIDECAR_URL var/binding. */
   sidecarUrl?: string;
+  /**
+   * Binding names to leave unrecorded, on top of the defaults (`ASSETS`,
+   * `__STATIC_CONTENT`). Use this for a binding whose traffic is high-volume or binary.
+   */
+  skipBindings?: readonly string[];
 }
 
 /**
- * Wraps an ES-module Worker handler so that, when a Meticulous recorder
- * sidecar is configured, inbound requests and outgoing `fetch` calls are
- * reported to it as backend capture events:
+ * Wraps an ES-module Worker handler so Meticulous can record, or replay, the app's HTTP
+ * behaviour:
  *
  *   export default withMeticulous({
  *     async fetch(request, env, ctx) { ... },
  *   });
  *
- * Activation requires a `METICULOUS_SIDECAR_URL` var/binding (e.g. via
- * `.dev.vars` or `wrangler dev --var`) or `options.sidecarUrl`; without one
- * the wrapper is a complete pass-through, so it is safe to keep in deployed
- * code. Requires the `nodejs_als` (or `nodejs_compat`) compatibility flag.
- * A capture failure or unreachable sidecar never affects the app.
+ * **Recording** activates on a `METICULOUS_SIDECAR_URL` var/binding (e.g. via `.dev.vars`
+ * or `wrangler dev --var`) or `options.sidecarUrl`. Inbound requests and outgoing `fetch`
+ * calls are reported to the sidecar as capture events, without affecting the app.
+ *
+ * **Replay** activates on the `x-meticulous-backend-replay-sidecar-url` header, injected by
+ * the Meticulous replay runner on requests to the app under test. Outgoing `fetch` calls are
+ * then served from the recording instead of reaching the real service, and the clock is
+ * frozen at the recorded session's end so recorded credentials are still valid. Workerd
+ * cannot read container environment variables, which is why per-replay config arrives as a
+ * request header; the shim validates it and only honours a loopback / docker-gateway /
+ * private-network `http:` origin.
+ *
+ * Replay takes precedence over recording when both are configured. A stale
+ * `METICULOUS_SIDECAR_URL` baked into an image's `.dev.vars` is far more likely than a
+ * spurious replay header (nothing but the replay runner emits it), and letting the env win
+ * would silently record a replay instead of mocking it.
+ *
+ * With neither configured the wrapper is a complete pass-through, so it is safe to keep in
+ * deployed code. Requires the `nodejs_als` (or `nodejs_compat`) compatibility flag. A
+ * capture failure or unreachable sidecar never affects the app.
  */
 export const withMeticulous = <H extends MeticulousWorkerHandler<never>>(
   handler: H,
@@ -74,10 +111,27 @@ export const withMeticulous = <H extends MeticulousWorkerHandler<never>>(
     const invokeHandler = () => handler.fetch(request, env as never, ctx);
 
     let sidecarUrl: string | undefined;
+    let replayContext: RequestReplayContext | undefined;
     try {
-      sidecarUrl = resolveSidecarUrl(options, env);
-      if (sidecarUrl !== undefined) {
+      replayContext = await resolveReplayContext(request, ctx);
+      sidecarUrl =
+        replayContext === undefined
+          ? resolveSidecarUrl(options, env)
+          : undefined;
+      if (replayContext !== undefined || sidecarUrl !== undefined) {
         installFetchPatch();
+      }
+      if (sidecarUrl !== undefined) {
+        // Lazily, inside the request path, and never at module scope: the package declares
+        // no `sideEffects` and is built with `platform: "neutral"`, so a module-scope side
+        // effect can legitimately be tree-shaken by a customer's bundler. Re-run per
+        // request because `env` is the only handle on the binding instances.
+        //
+        // Record mode only. Binding calls are recorded as their own technology
+        // (`workerd-binding`) and the replay sidecar's store holds only `workerd-fetch`
+        // spans, so there is nothing to serve them from — and patching would only route
+        // them into the capture tee, which POSTs to an events route a replay sidecar 404s.
+        installBindingPatch(env, { skipBindings: options?.skipBindings });
       }
     } catch (error) {
       warnOnce(
@@ -85,8 +139,19 @@ export const withMeticulous = <H extends MeticulousWorkerHandler<never>>(
         "Failed to initialize the Meticulous backend recorder shim — recording disabled.",
         error,
       );
+      replayContext = undefined;
       sidecarUrl = undefined;
     }
+
+    if (replayContext !== undefined) {
+      // Install the clock before any app code runs, so a module that reads Date.now() at
+      // call time (the firebase auth libraries do) sees the session's frozen instant.
+      installVirtualClock();
+      // No inbound reporting in replay mode: there is no exporter behind the replay
+      // sidecar, and the events route 404s there.
+      return requestCaptureContext.run(replayContext, invokeHandler);
+    }
+
     if (sidecarUrl === undefined) {
       return invokeHandler();
     }
@@ -167,6 +232,93 @@ export const withMeticulous = <H extends MeticulousWorkerHandler<never>>(
   return { ...handler, fetch: wrappedFetch } as H;
 };
 
+/**
+ * Whether this request should be replayed, and the context to serve it under.
+ *
+ * Both the session id and a usable sidecar URL must be present: mocks are indexed per
+ * session, so replay without a session id could only miss. The sidecar is consulted once
+ * per (sidecar, session) per isolate to confirm it holds mocks and to learn the clock
+ * anchor — a sidecar that does not recognise the session, or the route, means replay is
+ * unavailable and the request runs normally.
+ */
+const resolveReplayContext = async (
+  request: Request,
+  ctx: MeticulousExecutionContext,
+): Promise<RequestReplayContext | undefined> => {
+  let sidecarUrl: string | undefined;
+  let frontendSessionId: string | undefined;
+  try {
+    sidecarUrl = parseReplaySidecarUrl(
+      request.headers.get(REPLAY_SIDECAR_URL_HEADER),
+    );
+    frontendSessionId =
+      request.headers.get(FRONTEND_SESSION_ID_HEADER) ?? undefined;
+  } catch {
+    return undefined;
+  }
+  if (sidecarUrl === undefined || frontendSessionId === undefined) {
+    return undefined;
+  }
+
+  const info = await getCachedReplaySessionInfo(sidecarUrl, frontendSessionId);
+  if (info === null) {
+    return undefined;
+  }
+
+  return {
+    mode: "replay",
+    requestId: crypto.randomUUID(),
+    frontendSessionId,
+    sidecarUrl,
+    clockAnchorMs: info.clockAnchorMs,
+    waitUntil: buildWaitUntil(ctx),
+  };
+};
+
+// Caches the promise, not the result, so concurrent first requests share one round trip.
+// Bounded so a stream of unrecognised session ids cannot grow it without limit.
+const MAX_CACHED_SESSIONS = 50;
+const replaySessionInfoCache = new Map<
+  string,
+  Promise<{ clockAnchorMs: number | undefined } | null>
+>();
+
+const getCachedReplaySessionInfo = (
+  sidecarUrl: string,
+  frontendSessionId: string,
+): Promise<{ clockAnchorMs: number | undefined } | null> => {
+  const key = `${sidecarUrl} ${frontendSessionId}`;
+  const cached = replaySessionInfoCache.get(key);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const pending = getReplaySessionInfo(
+    getOriginalFetch(),
+    sidecarUrl,
+    frontendSessionId,
+  ).then((result) => {
+    if (result.outcome === "unreachable") {
+      // Only settled answers are worth keeping. Caching a timeout or transport blip would
+      // disable mocking for this session for the life of the isolate, quietly sending every
+      // later outbound call to the real service — the failure this path exists to prevent.
+      // Dropping the entry costs one extra handshake and lets the next request recover.
+      replaySessionInfoCache.delete(key);
+      return null;
+    }
+    return result.outcome === "found"
+      ? { clockAnchorMs: result.clockAnchorMs }
+      : null;
+  });
+  if (replaySessionInfoCache.size >= MAX_CACHED_SESSIONS) {
+    const oldest = replaySessionInfoCache.keys().next();
+    if (!oldest.done) {
+      replaySessionInfoCache.delete(oldest.value);
+    }
+  }
+  replaySessionInfoCache.set(key, pending);
+  return pending;
+};
+
 const resolveSidecarUrl = (
   options: WithMeticulousOptions | undefined,
   env: unknown,
@@ -195,19 +347,24 @@ const buildCaptureContext = (
     frontendSessionId = undefined;
   }
   return {
+    mode: "record",
     requestId: crypto.randomUUID(),
     frontendSessionId,
     sidecarUrl,
-    waitUntil: (promise) => {
-      try {
-        ctx.waitUntil(promise);
-      } catch (error) {
-        warnOnce(
-          "wait-until",
-          "ctx.waitUntil failed — capture events may be lost.",
-          error,
-        );
-      }
-    },
+    waitUntil: buildWaitUntil(ctx),
   };
 };
+
+const buildWaitUntil =
+  (ctx: MeticulousExecutionContext) =>
+  (promise: Promise<unknown>): void => {
+    try {
+      ctx.waitUntil(promise);
+    } catch (error) {
+      warnOnce(
+        "wait-until",
+        "ctx.waitUntil failed — capture events may be lost.",
+        error,
+      );
+    }
+  };

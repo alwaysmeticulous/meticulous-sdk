@@ -427,6 +427,14 @@ export interface HttpSpanAttributes {
   [key: `http.response.header.${string}`]: string[] | undefined;
 }
 
+/**
+ * Outbound spans recorded by the workerd (Cloudflare Workers) `fetch` shim. Mirrors
+ * `CLIENT_TECHNOLOGY_WORKERD_FETCH` in backend-recorder-js, which is the producer — that
+ * package deliberately has no dependency on this one, so the value is written there and
+ * read here.
+ */
+export const WORKERD_FETCH_CLIENT_TECHNOLOGY = "workerd-fetch";
+
 export interface SerializedBackendSpan {
   name: string;
   traceId: string;
@@ -438,4 +446,10 @@ export interface SerializedBackendSpan {
   endTimeMs: number;
   durationMs: number;
   attributes: HttpSpanAttributes;
+  /**
+   * Which client transport recorded this span, e.g. "undici", "prisma",
+   * {@link WORKERD_FETCH_CLIENT_TECHNOLOGY}. Absent on SERVER spans and on legacy/native
+   * `node:http` CLIENT recordings.
+   */
+  clientTechnology?: string;
 }

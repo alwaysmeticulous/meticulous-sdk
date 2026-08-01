@@ -1,5 +1,12 @@
 # @alwaysmeticulous/session-filters
 
+## 2.319.0
+
+### Patch Changes
+
+- Updated dependencies [[`46fce61`](https://github.com/alwaysmeticulous/meticulous/commit/46fce6165d356e006bd432c16c194034cce4b7c9), [`4bc27fe`](https://github.com/alwaysmeticulous/meticulous/commit/4bc27fed7e2e3b837cb10738dd9e4df5754e3a2b)]:
+  - @alwaysmeticulous/api@2.319.0
+
 ## 2.312.0
 
 ### Patch Changes

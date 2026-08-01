@@ -1,5 +1,23 @@
 # @alwaysmeticulous/client
 
+## 2.320.0
+
+### Minor Changes
+
+- [#11597](https://github.com/alwaysmeticulous/meticulous/pull/11597) [`70bac9c`](https://github.com/alwaysmeticulous/meticulous/commit/70bac9c3859ae034b3acccc059323cdc313b1873) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add agent-written summary takeaways to agentic run results.
+
+## 2.319.0
+
+### Minor Changes
+
+- [#11548](https://github.com/alwaysmeticulous/meticulous/pull/11548) [`539f672`](https://github.com/alwaysmeticulous/meticulous/commit/539f672e598db9270ac5014dc43632a08b827fa5) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional per-step outcomes and screenshot highlight regions to agentic run results.
+
+### Patch Changes
+
+- Updated dependencies [[`46fce61`](https://github.com/alwaysmeticulous/meticulous/commit/46fce6165d356e006bd432c16c194034cce4b7c9), [`4bc27fe`](https://github.com/alwaysmeticulous/meticulous/commit/4bc27fed7e2e3b837cb10738dd9e4df5754e3a2b)]:
+  - @alwaysmeticulous/api@2.319.0
+  - @alwaysmeticulous/common@2.310.0
+
 ## 2.318.0
 
 ### Minor Changes

@@ -24,6 +24,7 @@ export {
 } from "./sdk-bundle-api/bundle-to-sdk/screenshot-diff-result";
 export {
   SessionRelevance,
+  SessionRelevanceReason,
   isPrAuthorRelevance,
   TestCase,
   TestCaseReplayOptions,
@@ -81,6 +82,7 @@ export {
   CustomRecordingType,
   HttpSpanAttributes,
   SerializedBackendSpan,
+  WORKERD_FETCH_CLIENT_TECHNOLOGY,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export {
   SequenceNumber,

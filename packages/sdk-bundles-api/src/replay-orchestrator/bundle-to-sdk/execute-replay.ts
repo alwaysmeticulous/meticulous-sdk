@@ -77,6 +77,14 @@ export interface ReplayAndStoreResultsResult {
    * Only present on replays from March 2025 and later.
    */
   comparedAgainstReplayWithDifferentLogicVersion?: boolean;
+
+  /**
+   * How long this replay spent blocked waiting for its base session to finish,
+   * after its own replay work was done. The orchestrator uses it to work out
+   * whether base waits extended the chunk's wall clock, which is what makes
+   * them cost compute.
+   */
+  baseSessionWaitMs?: number;
 }
 
 export interface BeforeUserEventResult {
