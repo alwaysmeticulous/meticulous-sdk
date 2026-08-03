@@ -113,10 +113,72 @@ export interface BindingRequestEvent extends BaseRequestEvent {
   responseBody?: CapturedBody;
 }
 
+/** KV namespace methods the shim records. */
+export type KvOperation = "get" | "getWithMetadata" | "put" | "delete" | "list";
+
+/**
+ * Why a KV value is absent from an event: workerd handed it over in a form that cannot be
+ * persisted as text. A `"stream"` value must not even be read — consuming it would take the
+ * bytes away from the app — and binary values are skipped deliberately, since KV blobs are
+ * large and would both bloat the recording and be mangled by UTF-8 capture.
+ */
+export type KvOmittedReason = "binary" | "stream";
+
+/**
+ * An operation on a Cloudflare KV namespace binding, made while handling an inbound request
+ * (becomes a CLIENT span).
+ *
+ * KV is not HTTP: there is no method, URL or status code, so this event shares nothing with
+ * {@link BaseRequestEvent} beyond correlation and timing. Values are JSON so that a single
+ * `JSON.parse` reconstructs exactly what the app saw, whichever `type` the read asked for.
+ */
+export interface KvOperationEvent {
+  kind: "kv";
+  /** Correlates the operation to the inbound request being handled. */
+  requestId: string;
+  frontendSessionId?: string;
+  /**
+   * The `env` key the KV namespace was found under. Always present, unlike on a binding
+   * event: a namespace has no factory equivalent to `DurableObjectNamespace.get()`, so one
+   * that was never seen on `env` is not recorded at all.
+   */
+  bindingName: string;
+  operation: KvOperation;
+  /**
+   * The key operated on, when it is a single string. Absent for `list` (which spans keys) and
+   * for a bulk `get` (which takes an array) — both keep their arguments in {@link args}.
+   */
+  key?: string;
+  /**
+   * JSON of the call's arguments: the read `type`, the `put` options, the `list` selector.
+   * A `put` value appears as `null` here — it is captured in {@link value} instead, so that
+   * redaction applies to it.
+   */
+  args?: CapturedBody;
+  /** JSON of the value a `put` wrote, with secret-looking fields redacted. */
+  value?: CapturedBody;
+  /**
+   * JSON of what the operation returned: the value for `get`, `{value, metadata}` for
+   * `getWithMetadata`, the key page for `list`. Absent for `put`/`delete`, which return
+   * nothing, and for a value that could not be captured (see {@link omitted}).
+   */
+  result?: CapturedBody;
+  /**
+   * Why the operation's value is missing. Refers to the written value for `put` and to the
+   * read value otherwise — a `put` has no result, so this is never ambiguous.
+   */
+  omitted?: KvOmittedReason;
+  startTimeMs: number;
+  endTimeMs: number;
+  /** Set when the operation threw. */
+  error?: string;
+}
+
 export type CaptureEvent =
   | InboundRequestEvent
   | OutboundRequestEvent
-  | BindingRequestEvent;
+  | BindingRequestEvent
+  | KvOperationEvent;
 
 export interface CaptureEventsPayload {
   events: CaptureEvent[];

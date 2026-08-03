@@ -1,5 +1,15 @@
 # @alwaysmeticulous/api
 
+## 2.321.0
+
+### Minor Changes
+
+- [#11593](https://github.com/alwaysmeticulous/meticulous/pull/11593) [`3529e08`](https://github.com/alwaysmeticulous/meticulous/commit/3529e081dc13602a463e3d47c64b674316777722) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add optional `coverageReplaysByFileV2` to `TestRunDataLocations` for the
+  `coverage-replays-by-file.v2.json.gz` artifact. It carries the same
+  line-level simulation index as `coverageReplaysByFile`, but replay sets store
+  indices into a shared `replayIds` dictionary so the artifact stays small
+  enough for the browser to materialize on large projects.
+
 ## 2.319.0
 
 ### Minor Changes

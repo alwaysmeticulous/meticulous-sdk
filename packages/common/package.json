@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/common",
-  "version": "2.310.0",
+  "version": "2.321.0",
   "description": "Meticulous common utilities",
   "license": "ISC",
   "main": "dist/index.js",
@@ -13,12 +13,19 @@
     "./constants": {
       "types": "./dist/constants.d.ts",
       "default": "./dist/constants.js"
+    },
+    "./json": {
+      "types": "./dist/json.utils.d.ts",
+      "default": "./dist/json.utils.js"
     }
   },
   "typesVersions": {
     "*": {
       "constants": [
         "./dist/constants.d.ts"
+      ],
+      "json": [
+        "./dist/json.utils.d.ts"
       ]
     }
   },

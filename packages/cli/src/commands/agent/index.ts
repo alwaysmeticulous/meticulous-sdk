@@ -1,4 +1,5 @@
 import type { CommandModule } from "yargs";
+import { diffCommentsCommand } from "./diff-comments.command";
 import { jsCoverageDiffCommand } from "./js-coverage-diff.command";
 import { jsCoverageCommand } from "./js-coverage.command";
 import { domDiffCommand } from "./screenshot-dom-diff.command";
@@ -20,6 +21,7 @@ export const agentCommand: CommandModule = {
     yargs
       .command(testRunForCommitCommand)
       .command(testRunDiffsCommand)
+      .command(diffCommentsCommand)
       .command(jsCoverageCommand)
       .command(jsCoverageDiffCommand)
       .command(imageFilesCommand)

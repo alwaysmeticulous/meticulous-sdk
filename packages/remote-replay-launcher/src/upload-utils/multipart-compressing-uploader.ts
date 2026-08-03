@@ -21,7 +21,12 @@ export const UPLOAD_ARCHIVE_FILE_FORMAT: DeploymentArchiveType = "tar.d";
 const COMPRESSION_LEVEL = 3;
 
 export interface MultipartCompressingUploaderArgs extends ProjectIdentifier {
-  folderPath: string;
+  /**
+   * Exactly one of `folderPath` (tarred from disk) or `tarStream` (an
+   * already-built tar, e.g. read out of a Docker image) must be provided.
+   */
+  folderPath?: string | undefined;
+  tarStream?: NodeJS.ReadableStream | undefined;
   uploadPartUrls: string[];
   uploadChunkSize: number;
   awsUploadId: string;
@@ -61,14 +66,27 @@ export class MultipartCompressingUploader {
 
   private streamTarCompressed(deflate: DeflateRaw): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      const tarStream = tarCreate(
-        {
-          cwd: this.args.folderPath,
-          follow: true,
-          portable: true,
-        },
-        ["."],
-      );
+      const { folderPath, tarStream: providedTarStream } = this.args;
+      const tarStream: NodeJS.ReadableStream | undefined = providedTarStream
+        ? providedTarStream
+        : folderPath
+          ? (tarCreate(
+              {
+                cwd: folderPath,
+                follow: true,
+                portable: true,
+              },
+              ["."],
+            ) as unknown as NodeJS.ReadableStream)
+          : undefined;
+      if (!tarStream) {
+        reject(
+          new Error(
+            "MultipartCompressingUploader requires either folderPath or tarStream",
+          ),
+        );
+        return;
+      }
 
       tarStream.on("data", (chunk: Buffer) => {
         const compressed = deflate.process(chunk);

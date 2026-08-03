@@ -1,5 +1,21 @@
 # @alwaysmeticulous/replay-orchestrator-launcher
 
+## 2.322.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @alwaysmeticulous/downloading-helpers@2.322.0
+
+## 2.321.0
+
+### Patch Changes
+
+- Updated dependencies [[`064702f`](https://github.com/alwaysmeticulous/meticulous/commit/064702f02963eff44863ea6676c015e60e5276c1), [`5bfa22f`](https://github.com/alwaysmeticulous/meticulous/commit/5bfa22f2ffb76e357ef9bed77f30ef29538a3b58)]:
+  - @alwaysmeticulous/common@2.321.0
+  - @alwaysmeticulous/sdk-bundles-api@2.321.0
+  - @alwaysmeticulous/downloading-helpers@2.321.0
+
 ## 2.320.0
 
 ### Patch Changes

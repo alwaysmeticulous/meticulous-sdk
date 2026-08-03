@@ -1,5 +1,11 @@
 # @alwaysmeticulous/common
 
+## 2.321.0
+
+### Patch Changes
+
+- [#11571](https://github.com/alwaysmeticulous/meticulous/pull/11571) [`064702f`](https://github.com/alwaysmeticulous/meticulous/commit/064702f02963eff44863ea6676c015e60e5276c1) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add open review-comment counts to test-run diffs and add diff-comments CLI/MCP retrieval with nested replies, with resolved comments available on request. Share exact JSON serialization between CLI and MCP outputs.
+
 ## 2.310.0
 
 ### Patch Changes

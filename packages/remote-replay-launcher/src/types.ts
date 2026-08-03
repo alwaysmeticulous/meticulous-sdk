@@ -14,6 +14,20 @@ export interface TunnelData {
   basicAuthPassword: string;
 }
 
+export interface CompanionAssetsOptions {
+  folder?: string | undefined;
+  zip?: string | undefined;
+  /**
+   * A path to a file or directory inside the uploaded Docker image (e.g.
+   * `/app/dist`) to extract and serve as the companion assets bundle. Only
+   * applicable when uploading a container (`uploadContainer` /
+   * `uploadContainerAndTriggerTestRun`) — exactly one of `folder`, `zip`, or
+   * `pathInImage` must be provided.
+   */
+  pathInImage?: string | undefined;
+  regex: string;
+}
+
 export interface ExecuteRemoteTestRunOptions {
   apiToken: string | null | undefined;
 
@@ -53,11 +67,7 @@ export interface ExecuteRemoteTestRunOptions {
   enableDnsCache?: boolean;
   http2Connections?: number | undefined;
   silenceTunnelWorker?: boolean;
-  companionAssets?: {
-    folder?: string | undefined;
-    zip?: string | undefined;
-    regex: string;
-  };
+  companionAssets?: CompanionAssetsOptions;
 
   /**
    * Post a comment for this test run, even if comments are still disabled for the project.
@@ -102,4 +112,5 @@ export interface UploadContainerAndTriggerTestRunOptions extends ProjectIdentifi
   containerPort?: number;
   containerEnv?: ContainerEnvVariable[];
   containerHealthCheckEndpoint?: string;
+  companionAssets?: CompanionAssetsOptions;
 }

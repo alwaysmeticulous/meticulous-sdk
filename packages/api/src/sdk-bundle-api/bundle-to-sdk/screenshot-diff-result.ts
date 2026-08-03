@@ -138,6 +138,10 @@ export interface ScreenshotDiffResultCompared {
 
   /**
    * First 8 characters of the hash of the diff image.
+   *
+   * Always present for a fresh `outcome: "diff"` comparison. Optional only
+   * because old, already-stored replay diffs predate hash computation and
+   * genuinely lack it - not because current code ever skips computing it.
    */
   diffHash?: string;
 

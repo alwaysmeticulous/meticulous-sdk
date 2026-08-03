@@ -16,14 +16,24 @@ export type DiffDecisionState =
   | "ignored"
   | "unreviewed";
 
+/**
+ * @deprecated Legacy v1/v2 nested response shape. v3 returns a flat list of
+ * {@link DiffsSummaryDiff} entries.
+ */
 export interface DiffsSummaryScreenshot {
   screenshotName: string;
   /**
    * Global 1-based rank across all differences. By default the selection-priority
    * order; with `orderByReplayDiffs` it's re-sequenced so a replay diff's
    * differences are consecutive.
+   *
+   * @deprecated Present only in v1/v2 responses. In v3, array order conveys
+   * priority.
    */
   index: number;
+  /**
+   * @deprecated Present only in v1/v2 responses. Every v3 entry is a difference.
+   */
   outcome: string;
   userVisibleOutcome: string;
   mismatchFraction: number | null;
@@ -37,11 +47,17 @@ export interface DiffsSummaryScreenshot {
   isSelected?: boolean;
   /**
    * The review decision for this difference on its PR. Present only when
-   * `includeReviewDecisions` is set. `unreviewed` when there's no decision or no PR.
+   * `includeReviews` is set. `unreviewed` when there's no decision or no PR.
    */
   decision?: DiffDecisionState;
+  /** Number of open review comments. Present with `includeReviews`. */
+  openComments?: number;
 }
 
+/**
+ * @deprecated Legacy v1/v2 nested response shape. v3 returns a flat list of
+ * {@link DiffsSummaryDiff} entries.
+ */
 export interface DiffsSummaryReplayDiff {
   replayDiffId: string;
   baseReplayId?: string;
@@ -49,8 +65,30 @@ export interface DiffsSummaryReplayDiff {
   screenshots: DiffsSummaryScreenshot[];
 }
 
+/** A screenshot difference in the order it should be reviewed. */
+export interface DiffsSummaryDiff {
+  replayDiffId: string;
+  screenshotName: string;
+  /** Present only when `includeMismatchFraction` is set. */
+  mismatchFraction?: number;
+  /** Present only when `includeDomDiffIds` is set. */
+  domDiffIds?: string;
+  /** Present only when `includeAllDiffs` is set. */
+  isSelected?: boolean;
+  /** Present only when `includeReviews` is set. */
+  decision?: DiffDecisionState;
+  /** Number of open review comments. Present with `includeReviews`. */
+  openComments?: number;
+  /** Present only when `includeReplayIds` is set. */
+  baseReplayId?: string;
+  /** Present only when `includeReplayIds` is set. */
+  headReplayId?: string;
+}
+
 export interface DiffsSummaryOptions {
   includeReplayIds?: boolean;
+  /** Include the fraction of screenshot pixels that differ. Default false. */
+  includeMismatchFraction?: boolean;
   /** Include the `domDiffIds` field on each screenshot. Default false. */
   includeDomDiffIds?: boolean;
   /**
@@ -59,14 +97,18 @@ export interface DiffsSummaryOptions {
    */
   includeAllDiffs?: boolean;
   /**
-   * Assign the global `index` in replay-diff-grouped order (a replay diff's
-   * differences get consecutive indices) instead of priority order.
+   * Order the returned list by replay diff (a replay diff's differences are
+   * consecutive) instead of by global priority order. Array order is the only
+   * signal — there is no `index` field.
    */
   orderByReplayDiffs?: boolean;
   /**
-   * Include the `decision` field (the PR review decision) on each screenshot.
-   * Default false. Resolved against the test run's PR at request time.
+   * Include review metadata (`decision` and `openComments`) on each screenshot.
+   * Default false. The decision is resolved against the test run's PR at
+   * request time; replies do not contribute to the comment count.
    */
+  includeReviews?: boolean;
+  /** @deprecated Use `includeReviews`. */
   includeReviewDecisions?: boolean;
   /**
    * Return only the differences still awaiting review (decision `unreviewed`),
@@ -74,6 +116,12 @@ export interface DiffsSummaryOptions {
    * i.e. everything a reviewer still has to act on. Default false.
    */
   onlyUnreviewed?: boolean;
+  /**
+   * Return only differences rejected during review (decision `rejected`),
+   * across every difference rather than just the selected representative subset.
+   * Default false.
+   */
+  onlyRejected?: boolean;
   /**
    * Request a fresh computation when the previous attempt failed. A normal poll
    * returns `status: "failed"` without restarting; pass this to start a clean
@@ -114,9 +162,29 @@ export interface DiffsSummaryResponse {
    * `retrigger` to try a fresh run).
    */
   status: "pending" | "processing" | "complete" | "failed";
-  data?: DiffsSummaryReplayDiff[];
+  data?: DiffsSummaryDiff[];
   /** Present only when `status` is `failed`. */
   reason?: DiffsSummaryFailureReason;
+}
+
+export interface AgentDiffCommentReply {
+  id: string;
+  author?: string;
+  text: string;
+}
+
+export interface AgentDiffComment {
+  id: string;
+  author?: string;
+  text: string;
+  x: number;
+  y: number;
+  replies: AgentDiffCommentReply[];
+  isResolved?: boolean;
+}
+
+export interface GetDiffCommentsOptions {
+  includeResolved?: boolean;
 }
 
 /**
@@ -130,8 +198,10 @@ export interface DiffsSummaryResponse {
  * - v2: introduces `--includeDomDiffIds` / `--includeAllDiffs` as opt-in flags
  *   (default off), so the response defaults to the curated selected subset
  *   with `domDiffIds` omitted.
+ * - v3: returns a flat ordered list without `index` or `outcome`, and makes
+ *   `mismatchFraction` opt-in.
  */
-export const DIFFS_SUMMARY_CLIENT_VERSION = 2;
+export const DIFFS_SUMMARY_CLIENT_VERSION = 3;
 
 // ---------------------------------------------------------------------------
 // Screenshot DOM Diff types
@@ -544,6 +614,9 @@ export const getTestRunDiffsSummary = async (
   if (options?.includeReplayIds) {
     params.includeReplayIds = "true";
   }
+  if (options?.includeMismatchFraction) {
+    params.includeMismatchFraction = "true";
+  }
   if (options?.includeDomDiffIds) {
     params.includeDomDiffIds = "true";
   }
@@ -553,17 +626,104 @@ export const getTestRunDiffsSummary = async (
   if (options?.orderByReplayDiffs) {
     params.orderByReplayDiffs = "true";
   }
-  if (options?.includeReviewDecisions) {
-    params.includeReviewDecisions = "true";
+  if (options?.includeReviews || options?.includeReviewDecisions) {
+    params.includeReviews = "true";
   }
   if (options?.onlyUnreviewed) {
     params.onlyUnreviewed = "true";
+  }
+  if (options?.onlyRejected) {
+    params.onlyRejected = "true";
   }
   if (options?.retrigger) {
     params.retrigger = "true";
   }
   const { data } = await client
     .get(`agent/test-runs/${testRunId}/diffs-summary`, { params })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return normalizeDiffsSummaryResponse(
+    data as DiffsSummaryResponse | LegacyDiffsSummaryResponse,
+    options?.includeMismatchFraction ?? false,
+  );
+};
+
+interface LegacyDiffsSummaryResponse extends Omit<
+  DiffsSummaryResponse,
+  "data"
+> {
+  data?: DiffsSummaryReplayDiff[];
+}
+
+const normalizeDiffsSummaryResponse = (
+  response: DiffsSummaryResponse | LegacyDiffsSummaryResponse,
+  includeMismatchFraction: boolean,
+): DiffsSummaryResponse => {
+  const { data, ...metadata } = response;
+  // A v3+ backend already returns the flat shape, with mismatchFraction
+  // already projected server-side (the request carried includeMismatchFraction)
+  // — nothing left to normalize.
+  if (data == null || data.length === 0 || !("screenshots" in data[0])) {
+    return response as DiffsSummaryResponse;
+  }
+  // Legacy (pre-v3) backend: predates clientVersion gating entirely, so this
+  // path exists only until every backend a published client might talk to is
+  // on v3+ — remove once that's true (or, if self-hosted/enterprise backends
+  // can stay on older versions indefinitely, keep it and drop this note).
+  const entries = (data as DiffsSummaryReplayDiff[])
+    .flatMap((replayDiff) =>
+      replayDiff.screenshots.map((screenshot) => ({
+        index: screenshot.index,
+        diff: {
+          replayDiffId: replayDiff.replayDiffId,
+          screenshotName: screenshot.screenshotName,
+          ...(includeMismatchFraction && screenshot.mismatchFraction != null
+            ? { mismatchFraction: screenshot.mismatchFraction }
+            : {}),
+          ...(screenshot.domDiffIds != null
+            ? { domDiffIds: screenshot.domDiffIds }
+            : {}),
+          ...(screenshot.isSelected != null
+            ? { isSelected: screenshot.isSelected }
+            : {}),
+          ...(screenshot.decision != null
+            ? { decision: screenshot.decision }
+            : {}),
+          ...(screenshot.openComments != null
+            ? { openComments: screenshot.openComments }
+            : {}),
+          ...(replayDiff.baseReplayId != null
+            ? { baseReplayId: replayDiff.baseReplayId }
+            : {}),
+          ...(replayDiff.headReplayId != null
+            ? { headReplayId: replayDiff.headReplayId }
+            : {}),
+        } satisfies DiffsSummaryDiff,
+      })),
+    )
+    .sort((a, b) => a.index - b.index);
+  return {
+    ...metadata,
+    data: entries.map(({ diff }) => diff),
+  };
+};
+
+export const getDiffComments = async (
+  client: MeticulousClient,
+  replayDiffId: string,
+  screenshotName: string,
+  options: GetDiffCommentsOptions = {},
+): Promise<AgentDiffComment[]> => {
+  const params: Record<string, string> = {};
+  if (options.includeResolved) {
+    params.includeResolved = "true";
+  }
+  const { data } = await client
+    .get(
+      `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/comments`,
+      { params },
+    )
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });

@@ -1,5 +1,34 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.321.0
+
+### Patch Changes
+
+- [#11616](https://github.com/alwaysmeticulous/meticulous/pull/11616) [`5bfa22f`](https://github.com/alwaysmeticulous/meticulous/commit/5bfa22f2ffb76e357ef9bed77f30ef29538a3b58) Thanks [@dennysem](https://github.com/dennysem)! - Add `BackendRecorderHandle.withMeticulousPostgres`, the wrapper that records and replays
+  postgres.js (the `postgres` npm package) queries.
+
+  Apply it to your `sql` instance where you construct it:
+
+  ```ts
+  const handle = await initBackendRecorder(config);
+  const sql =
+    handle?.withMeticulousPostgres?.(postgres(connectionString)) ??
+    postgres(connectionString);
+  ```
+
+  This is required for apps whose bundler inlines `postgres` — a Vite SSR graph (React Router,
+  TanStack Start), Next.js / Turbopack and similar — because `postgres` then never passes through
+  Node's module loader, so the recorder's require-hook instrumentation can never fire. Apps that
+  `require`/`import` it normally are instrumented automatically and need no wrapper.
+
+  Every postgres.js query funnels through one internal method, so the wrapper instruments that
+  rather than the client instance: one call also covers read-replica clients and any other client
+  in the process. It dispatches at query time, so it is safe to apply at module-load time even
+  though replay-mode init is asynchronous, and it is a no-op when the recorder is disabled.
+
+- Updated dependencies [[`3529e08`](https://github.com/alwaysmeticulous/meticulous/commit/3529e081dc13602a463e3d47c64b674316777722)]:
+  - @alwaysmeticulous/api@2.321.0
+
 ## 2.319.0
 
 ### Patch Changes

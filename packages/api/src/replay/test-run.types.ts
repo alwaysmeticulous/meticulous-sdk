@@ -170,6 +170,13 @@ export interface TestRunDataLocations {
   coverageStatsPr: S3Location;
   coverageReplaysByFile?: S3Location;
   coverageReplaysByFilePr?: S3Location;
+  /**
+   * `coverage-replays-by-file.v2.json.gz`: same line-level index as
+   * `coverageReplaysByFile`, but replay sets store indices into a shared
+   * `replayIds` dictionary. Served to the full coverage page when the v1
+   * artifact is too large for the browser to materialize.
+   */
+  coverageReplaysByFileV2?: S3Location;
   coverageReplaysByFileUnmapped?: S3Location;
   coverageReplaysByFileUnmappedWithRanges?: S3Location;
   coverageScreenshotReplaysByFile?: S3Location;

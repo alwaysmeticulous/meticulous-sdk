@@ -86,6 +86,67 @@ export const uploadAssets = async (
   });
 };
 
+/**
+ * Uploads an already-built tar (e.g. read directly out of a Docker image) as
+ * a deployment's assets. Same end-to-end flow as {@link uploadAssets}
+ * (upload bytes, optionally attach a git diff, complete + wait for base) but
+ * for a tar stream instead of a directory on disk.
+ */
+export const uploadAssetsFromTarStream = async (
+  opts: UploadAssetsOptions & { tarStream: NodeJS.ReadableStream },
+): Promise<UploadAssetsResult> => {
+  const { tarStream, apiToken: apiToken_ } = opts;
+
+  const apiToken = getApiToken(apiToken_);
+  const client = createClient({ apiToken });
+
+  const {
+    commitSha,
+    baseSha,
+    gitDiffOutput,
+    waitForBase = false,
+    rewrites = [],
+    createDeployment = true,
+    projectId,
+  } = opts;
+
+  const { uploadId, multipartUploadInfo } = await uploadAssetBytesFromTarStream(
+    {
+      client,
+      tarStream,
+      ...(projectId ? { projectId } : {}),
+    },
+  );
+
+  if (gitDiffOutput) {
+    await uploadGitDiffToS3({
+      client,
+      uploadId,
+      gitDiffOutput,
+      ...(projectId ? { projectId } : {}),
+    });
+  }
+
+  const { testRun, message } = await completeUploadAndWaitForBase({
+    client,
+    uploadId,
+    commitSha,
+    baseSha,
+    hasGitDiff: !!gitDiffOutput,
+    waitForBase,
+    rewrites,
+    createDeployment,
+    multipartUploadInfo,
+    ...(projectId ? { projectId } : {}),
+  });
+
+  return {
+    uploadId,
+    testRun,
+    ...(message ? { message } : {}),
+  };
+};
+
 const completeUploadAndWaitForBase = async ({
   client,
   uploadId,
@@ -172,6 +233,34 @@ export const uploadAssetBytesFromDirectory = async ({
 }: ProjectIdentifier & {
   client: ReturnType<typeof createClient>;
   folderPath: string;
+}): Promise<{ uploadId: string; multipartUploadInfo: MultiPartUploadInfo }> =>
+  uploadAssetBytesFromTarSource({ client, folderPath, projectId });
+
+/**
+ * Streams an already-built tar (e.g. read directly out of a Docker image) to
+ * the Meticulous bundle store and returns the `uploadId` + multipart info.
+ * Same wire format as {@link uploadAssetBytesFromDirectory}, but skips ever
+ * tarring anything from disk ourselves — the caller supplies the tar bytes.
+ */
+export const uploadAssetBytesFromTarStream = async ({
+  client,
+  tarStream,
+  projectId,
+}: ProjectIdentifier & {
+  client: ReturnType<typeof createClient>;
+  tarStream: NodeJS.ReadableStream;
+}): Promise<{ uploadId: string; multipartUploadInfo: MultiPartUploadInfo }> =>
+  uploadAssetBytesFromTarSource({ client, tarStream, projectId });
+
+const uploadAssetBytesFromTarSource = async ({
+  client,
+  folderPath,
+  tarStream,
+  projectId,
+}: ProjectIdentifier & {
+  client: ReturnType<typeof createClient>;
+  folderPath?: string | undefined;
+  tarStream?: NodeJS.ReadableStream | undefined;
 }): Promise<{ uploadId: string; multipartUploadInfo: MultiPartUploadInfo }> => {
   const logger = initLogger();
 
@@ -185,7 +274,8 @@ export const uploadAssetBytesFromDirectory = async ({
   logger.info(`Starting streaming upload for deployment ${uploadId}`);
 
   const uploader = new MultipartCompressingUploader({
-    folderPath,
+    ...(folderPath ? { folderPath } : {}),
+    ...(tarStream ? { tarStream } : {}),
     uploadPartUrls,
     uploadChunkSize,
     awsUploadId,

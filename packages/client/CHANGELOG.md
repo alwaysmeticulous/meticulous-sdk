@@ -1,5 +1,27 @@
 # @alwaysmeticulous/client
 
+## 2.322.0
+
+### Minor Changes
+
+- [#11624](https://github.com/alwaysmeticulous/meticulous/pull/11624) [`57c6f62`](https://github.com/alwaysmeticulous/meticulous/commit/57c6f6231fee758b3598d7e961d6422dbfb22b56) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Support companion assets when uploading a Docker container. Previously `--companionAssetsFolder`/`--companionAssetsZip`/`--companionAssetsRegex` only worked with `ci run-with-tunnel`; `ci upload-container` now accepts the same flags, plus a new `--companionAssetsPathInImage` to serve a bundle straight out of a path inside the uploaded image itself, with no local copy needed.
+
+## 2.321.0
+
+### Minor Changes
+
+- [#11571](https://github.com/alwaysmeticulous/meticulous/pull/11571) [`064702f`](https://github.com/alwaysmeticulous/meticulous/commit/064702f02963eff44863ea6676c015e60e5276c1) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add open review-comment counts to test-run diffs and add diff-comments CLI/MCP retrieval with nested replies, with resolved comments available on request. Share exact JSON serialization between CLI and MCP outputs.
+
+- [#11574](https://github.com/alwaysmeticulous/meticulous/pull/11574) [`b5b2c6b`](https://github.com/alwaysmeticulous/meticulous/commit/b5b2c6ba1b85d3e5c8090802b9c947bcb98a5734) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Simplify `agent test-run-diffs` output by removing redundant `index` and `outcome` fields and making `mismatchFraction` opt-in via `--includeMismatchFraction`. This also changes `getTestRunDiffsSummary`'s return type in `@alwaysmeticulous/client`: `DiffsSummaryResponse.data` is now `DiffsSummaryDiff[]` (a flat `{ replayDiffId, screenshotName, ... }` list) instead of the nested `DiffsSummaryReplayDiff[]` (one entry per replay diff, each with a `screenshots` array) — a compile break for any direct caller of `getTestRunDiffsSummary`.
+
+- [#11570](https://github.com/alwaysmeticulous/meticulous/pull/11570) [`3096d56`](https://github.com/alwaysmeticulous/meticulous/commit/3096d56bbb7341fd2af918050bf59496b9a57e28) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add an `--onlyRejected` filter to `agent test-run-diffs` and the corresponding `onlyRejected` option to the client API. The hosted `get_test_run_diffs` MCP tool now exposes the same filter.
+
+### Patch Changes
+
+- Updated dependencies [[`3529e08`](https://github.com/alwaysmeticulous/meticulous/commit/3529e081dc13602a463e3d47c64b674316777722), [`064702f`](https://github.com/alwaysmeticulous/meticulous/commit/064702f02963eff44863ea6676c015e60e5276c1)]:
+  - @alwaysmeticulous/api@2.321.0
+  - @alwaysmeticulous/common@2.321.0
+
 ## 2.320.0
 
 ### Minor Changes

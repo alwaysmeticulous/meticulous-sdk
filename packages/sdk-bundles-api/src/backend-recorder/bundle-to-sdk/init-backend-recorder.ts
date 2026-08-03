@@ -23,6 +23,14 @@ export interface MeticulousPrismaExtension {
  */
 export type MeticulousIORedisWrapper = <T>(client: T) => T;
 
+/**
+ * Wraps a postgres.js `sql` instance so its queries are recorded (record mode) or served from
+ * recordings (replay mode), returning the same instance. Apply it where you construct the
+ * client: `const sql = handle.withMeticulousPostgres(postgres(connectionString))`. Safe to call
+ * across the bundle boundary.
+ */
+export type MeticulousPostgresJsWrapper = <T>(sql: T) => T;
+
 export interface BackendRecorderHandle {
   stopRecording: () => Promise<void>;
 
@@ -72,4 +80,29 @@ export interface BackendRecorderHandle {
    * guard with `handle?.withMeticulousIORedis`.
    */
   withMeticulousIORedis?: MeticulousIORedisWrapper;
+
+  /**
+   * The Meticulous postgres.js wrapper. Apply it to your `sql` instance
+   * (`const sql = handle.withMeticulousPostgres(postgres(connectionString))`) so its queries
+   * are recorded (record mode) or served from recordings (replay mode).
+   *
+   * Required to capture postgres.js in apps whose bundler inlines it — a Vite SSR graph
+   * (React Router, TanStack Start), Next.js / Turbopack and similar — because `postgres` then
+   * never passes through Node's module loader and the recorder's require-hook instrumentation
+   * can never fire. The only seam is the app's own code, so wrap the instance where you
+   * construct it.
+   *
+   * Every postgres.js query funnels through one internal method, so the wrapper instruments
+   * that rather than the instance: one call therefore also covers read-replica clients and any
+   * other client in the process. The instrumentation dispatches at query time, so it is safe to
+   * apply at module-load time; when the recorder is disabled or uninitialised it passes through
+   * (no-op).
+   *
+   * Apply it outermost if other instrumentation also wraps the client (e.g. Sentry's
+   * `instrumentPostgresJsSql`).
+   *
+   * Optional so older recorder bundles (which predate this field) still satisfy the type;
+   * guard with `handle?.withMeticulousPostgres`.
+   */
+  withMeticulousPostgres?: MeticulousPostgresJsWrapper;
 }

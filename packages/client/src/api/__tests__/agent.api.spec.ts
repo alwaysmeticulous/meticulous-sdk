@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import type { MeticulousClient } from "../../types/client.types";
 import {
   DIFFS_SUMMARY_CLIENT_VERSION,
+  getDiffComments,
   getProjectJsCoverage,
   getTestRunDiffsSummary,
   getTestRunDiffsSummaryCounts,
@@ -46,21 +47,36 @@ describe("getTestRunDiffsSummary", () => {
   it("maps each option to its query param", async () => {
     await getTestRunDiffsSummary(asClient(), "tr-1", {
       includeReplayIds: true,
+      includeMismatchFraction: true,
       includeDomDiffIds: true,
       includeAllDiffs: true,
       orderByReplayDiffs: true,
-      includeReviewDecisions: true,
+      includeReviews: true,
       onlyUnreviewed: true,
+      onlyRejected: true,
     });
 
     expect(paramsFromLastCall()).toEqual({
       clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
       includeReplayIds: "true",
+      includeMismatchFraction: "true",
       includeDomDiffIds: "true",
       includeAllDiffs: "true",
       orderByReplayDiffs: "true",
-      includeReviewDecisions: "true",
+      includeReviews: "true",
       onlyUnreviewed: "true",
+      onlyRejected: "true",
+    });
+  });
+
+  it("maps the deprecated includeReviewDecisions option to includeReviews", async () => {
+    await getTestRunDiffsSummary(asClient(), "tr-1", {
+      includeReviewDecisions: true,
+    });
+
+    expect(paramsFromLastCall()).toEqual({
+      clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
+      includeReviews: "true",
     });
   });
 
@@ -90,6 +106,115 @@ describe("getTestRunDiffsSummary", () => {
     expect(paramsFromLastCall()).toEqual({
       clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
     });
+  });
+
+  it("normalizes a legacy nested response from an older backend", async () => {
+    client.get.mockResolvedValue({
+      data: {
+        status: "complete",
+        data: [
+          {
+            replayDiffId: "rd-1",
+            screenshots: [
+              {
+                screenshotName: "later",
+                index: 2,
+                outcome: "diff",
+                userVisibleOutcome: "difference",
+                mismatchFraction: 0.5,
+              },
+              {
+                screenshotName: "first",
+                index: 1,
+                outcome: "diff",
+                userVisibleOutcome: "difference",
+                mismatchFraction: 0.25,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    await expect(getTestRunDiffsSummary(asClient(), "tr-1")).resolves.toEqual({
+      status: "complete",
+      data: [
+        { replayDiffId: "rd-1", screenshotName: "first" },
+        { replayDiffId: "rd-1", screenshotName: "later" },
+      ],
+    });
+  });
+
+  it("keeps mismatchFraction from an older backend when requested", async () => {
+    client.get.mockResolvedValue({
+      data: {
+        status: "complete",
+        data: [
+          {
+            replayDiffId: "rd-1",
+            screenshots: [
+              {
+                screenshotName: "end-state",
+                index: 1,
+                outcome: "diff",
+                userVisibleOutcome: "difference",
+                mismatchFraction: 0.25,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const result = await getTestRunDiffsSummary(asClient(), "tr-1", {
+      includeMismatchFraction: true,
+    });
+
+    expect(result.data).toEqual([
+      {
+        replayDiffId: "rd-1",
+        screenshotName: "end-state",
+        mismatchFraction: 0.25,
+      },
+    ]);
+  });
+});
+
+describe("getDiffComments", () => {
+  it("addresses a screenshot name safely", async () => {
+    const client = {
+      get: vi.fn().mockResolvedValue({ data: [{ id: "comment-1" }] }),
+    };
+
+    await expect(
+      getDiffComments(
+        client as unknown as MeticulousClient,
+        "rd-1",
+        "auxiliary-1-2-reason with spaces",
+      ),
+    ).resolves.toEqual([{ id: "comment-1" }]);
+    expect(client.get).toHaveBeenCalledWith(
+      "agent/replay-diffs/rd-1/screenshots/auxiliary-1-2-reason%20with%20spaces/comments",
+      { params: {} },
+    );
+  });
+
+  it("requests resolved comments only when explicitly included", async () => {
+    const client = {
+      get: vi.fn().mockResolvedValue({ data: [] }),
+    };
+
+    await getDiffComments(
+      client as unknown as MeticulousClient,
+      "rd-1",
+      "end-state",
+      { includeResolved: true },
+    );
+
+    expect(client.get).toHaveBeenCalledWith(
+      "agent/replay-diffs/rd-1/screenshots/end-state/comments",
+      { params: { includeResolved: "true" } },
+    );
   });
 });
 

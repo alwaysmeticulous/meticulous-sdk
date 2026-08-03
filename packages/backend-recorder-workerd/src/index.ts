@@ -5,6 +5,7 @@ import {
   requestCaptureContext,
 } from "./context";
 import { installFetchPatch } from "./fetch-patch";
+import { installKvPatch } from "./kv-patch";
 import { warnOnce } from "./log";
 import { getOriginalFetch } from "./original-fetch";
 import { headersToRecord } from "./outbound-capture";
@@ -16,6 +17,7 @@ import {
 import { parseReplaySidecarUrl } from "./replay-sidecar-url";
 import { getReplaySessionInfo, postCaptureEvents } from "./sidecar-client";
 import { installVirtualClock } from "./virtual-clock";
+import { installVirtualRandom } from "./virtual-random";
 
 export type {
   BindingRequestEvent,
@@ -23,6 +25,9 @@ export type {
   CapturedBody,
   CaptureEventsPayload,
   InboundRequestEvent,
+  KvOmittedReason,
+  KvOperation,
+  KvOperationEvent,
   OutboundFetchLookupRequest,
   OutboundFetchLookupResponse,
   OutboundRequestEvent,
@@ -66,6 +71,7 @@ export interface WithMeticulousOptions {
   /**
    * Binding names to leave unrecorded, on top of the defaults (`ASSETS`,
    * `__STATIC_CONTENT`). Use this for a binding whose traffic is high-volume or binary.
+   * Applies to KV namespaces as well as `fetch`-shaped bindings.
    */
   skipBindings?: readonly string[];
 }
@@ -79,13 +85,16 @@ export interface WithMeticulousOptions {
  *   });
  *
  * **Recording** activates on a `METICULOUS_SIDECAR_URL` var/binding (e.g. via `.dev.vars`
- * or `wrangler dev --var`) or `options.sidecarUrl`. Inbound requests and outgoing `fetch`
- * calls are reported to the sidecar as capture events, without affecting the app.
+ * or `wrangler dev --var`) or `options.sidecarUrl`. Inbound requests, outgoing `fetch`
+ * calls, calls through `fetch`-shaped bindings and KV namespace operations are reported to
+ * the sidecar as capture events, without affecting the app.
  *
  * **Replay** activates on the `x-meticulous-backend-replay-sidecar-url` header, injected by
  * the Meticulous replay runner on requests to the app under test. Outgoing `fetch` calls are
- * then served from the recording instead of reaching the real service, and the clock is
- * frozen at the recorded session's end so recorded credentials are still valid. Workerd
+ * then served from the recording instead of reaching the real service, the clock is frozen at
+ * the recorded session's end so recorded credentials are still valid, and `Math.random` /
+ * `crypto.randomUUID` / `crypto.getRandomValues` are seeded so ids the app mints are the same
+ * in every replay of that session. Workerd
  * cannot read container environment variables, which is why per-replay config arrives as a
  * request header; the shim validates it and only honours a loopback / docker-gateway /
  * private-network `http:` origin.
@@ -127,11 +136,13 @@ export const withMeticulous = <H extends MeticulousWorkerHandler<never>>(
         // effect can legitimately be tree-shaken by a customer's bundler. Re-run per
         // request because `env` is the only handle on the binding instances.
         //
-        // Record mode only. Binding calls are recorded as their own technology
-        // (`workerd-binding`) and the replay sidecar's store holds only `workerd-fetch`
-        // spans, so there is nothing to serve them from — and patching would only route
-        // them into the capture tee, which POSTs to an events route a replay sidecar 404s.
+        // Record mode only. Binding and KV calls are recorded as their own technologies
+        // (`workerd-binding`, `workerd-kv`) and the replay sidecar's store holds only
+        // `workerd-fetch` spans, so there is nothing to serve them from — and patching would
+        // only route them into the capture tee, which POSTs to an events route a replay
+        // sidecar 404s.
         installBindingPatch(env, { skipBindings: options?.skipBindings });
+        installKvPatch(env, { skipBindings: options?.skipBindings });
       }
     } catch (error) {
       warnOnce(
@@ -147,6 +158,10 @@ export const withMeticulous = <H extends MeticulousWorkerHandler<never>>(
       // Install the clock before any app code runs, so a module that reads Date.now() at
       // call time (the firebase auth libraries do) sees the session's frozen instant.
       installVirtualClock();
+      // Likewise the random generators: an id the app mints during SSR (a guest id, a
+      // request id) otherwise differs between a base and a head replay, and every rendered
+      // page carrying it diffs forever.
+      installVirtualRandom();
       // No inbound reporting in replay mode: there is no exporter behind the replay
       // sidecar, and the events route 404s there.
       return requestCaptureContext.run(replayContext, invokeHandler);

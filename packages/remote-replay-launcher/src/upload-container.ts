@@ -1,4 +1,4 @@
-import type { TestRun } from "@alwaysmeticulous/api";
+import type { CompanionAssetsInfo, TestRun } from "@alwaysmeticulous/api";
 import type {
   ContainerEnvVariable,
   ProjectIdentifier,
@@ -12,15 +12,23 @@ import {
 import { initLogger, logProgress } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import type Docker from "dockerode";
-import { uploadGitDiffToS3 } from "./asset-upload-utils";
+import {
+  uploadAssets,
+  uploadAssetsFromTarStream,
+  uploadAssetsFromZip,
+  uploadGitDiffToS3,
+} from "./asset-upload-utils";
 import {
   getDockerClient,
   getImageInfo,
+  getTarStreamFromImage,
   pushImage,
   tagImage,
   verifyDockerConnection,
 } from "./docker-utils";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
+import type { CompanionAssetsOptions } from "./types";
+import { UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
 
 export interface UploadContainerOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
@@ -32,6 +40,7 @@ export interface UploadContainerOptions extends ProjectIdentifier {
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
+  companionAssets?: CompanionAssetsOptions | undefined;
 }
 
 export interface UploadContainerResult {
@@ -127,6 +136,7 @@ export const uploadContainer = async ({
   containerPort,
   containerEnv,
   containerHealthCheckEndpoint,
+  companionAssets,
   projectId,
 }: UploadContainerOptions): Promise<UploadContainerResult> => {
   const projectIdentifier = projectId ? { projectId } : {};
@@ -148,6 +158,53 @@ export const uploadContainer = async ({
     });
   }
 
+  let companionAssetsInfo: CompanionAssetsInfo | undefined = undefined;
+  if (companionAssets) {
+    const { folder, zip, pathInImage, regex } = companionAssets;
+    logProgress(
+      `Uploading companion assets from ${folder ?? zip ?? pathInImage}`,
+    );
+    const opts = {
+      apiToken: apiToken_,
+      commitSha,
+      waitForBase: false,
+      rewrites: [],
+      createDeployment: false,
+      ...projectIdentifier,
+    };
+    const result = folder
+      ? await uploadAssets({
+          ...opts,
+          appDirectory: folder,
+          warnIfNoIndexHtml: false,
+        })
+      : zip
+        ? await uploadAssetsFromZip({ ...opts, zipPath: zip })
+        : pathInImage
+          ? await uploadAssetsFromTarStream({
+              ...opts,
+              tarStream: await getTarStreamFromImage(
+                getDockerClient(),
+                localImageTag,
+                pathInImage,
+              ),
+            })
+          : undefined;
+    if (!result) {
+      throw new Error(
+        "Expected one of folder, zip, or pathInImage to be provided!",
+      );
+    }
+    // Folder uploads stream multipart `tar.d`; the zip path uses the legacy
+    // single-part upload stored under the `zip` key. archiveType must match.
+    companionAssetsInfo = {
+      deploymentUploadId: result.uploadId,
+      regex,
+      archiveType: folder ? UPLOAD_ARCHIVE_FILE_FORMAT : "zip",
+    };
+    logProgress(`Companion assets uploaded with ID: ${result.uploadId}`);
+  }
+
   const completeContainerArgs = {
     client,
     uploadId,
@@ -158,6 +215,7 @@ export const uploadContainer = async ({
     containerPort,
     containerEnv,
     containerHealthCheckEndpoint,
+    ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
     ...projectIdentifier,
   };
 

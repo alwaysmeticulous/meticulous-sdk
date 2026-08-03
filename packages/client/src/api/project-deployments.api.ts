@@ -1,5 +1,6 @@
 import type {
   AssetUploadMetadata,
+  CompanionAssetsInfo,
   DeploymentArchiveType,
   DownloadDeploymentResponse,
   SessionFilter,
@@ -99,6 +100,7 @@ export interface CompleteContainerUploadParams extends ProjectIdentifier {
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
+  companionAssetsInfo?: CompanionAssetsInfo | undefined;
 }
 
 export interface CompleteContainerUploadResponse {

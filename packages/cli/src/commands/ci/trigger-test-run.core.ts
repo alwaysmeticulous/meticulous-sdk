@@ -188,6 +188,10 @@ const runContainerUpload = async ({
     containerPort,
     containerEnv,
     containerHealthCheckEndpoint,
+    companionAssetsFolder,
+    companionAssetsZip,
+    companionAssetsPathInImage,
+    companionAssetsRegex,
     waitForBase,
     waitForTestRunToComplete,
   } = options;
@@ -195,6 +199,23 @@ const runContainerUpload = async ({
   // detectUploadMode guarantees localImageTag is set in container mode.
   if (!localImageTag) {
     throw new CliUserError("Missing --localImageTag for container upload.");
+  }
+
+  const companionAssetsSourceCount = [
+    companionAssetsFolder,
+    companionAssetsZip,
+    companionAssetsPathInImage,
+  ].filter(Boolean).length;
+  if (companionAssetsSourceCount > 1) {
+    throw new CliUserError(
+      "You cannot provide more than one of --companionAssetsFolder, --companionAssetsZip, and --companionAssetsPathInImage. Please provide only one.",
+    );
+  }
+  const hasCompanionAssets = companionAssetsSourceCount === 1;
+  if (hasCompanionAssets !== !!companionAssetsRegex) {
+    throw new CliUserError(
+      "You must provide both --companionAssetsRegex and exactly one of --companionAssetsFolder/--companionAssetsZip/--companionAssetsPathInImage, or neither.",
+    );
   }
 
   logger.info(
@@ -216,6 +237,16 @@ const runContainerUpload = async ({
       containerPort,
       containerEnv,
       containerHealthCheckEndpoint,
+      ...(hasCompanionAssets && companionAssetsRegex
+        ? {
+            companionAssets: {
+              folder: companionAssetsFolder,
+              zip: companionAssetsZip,
+              pathInImage: companionAssetsPathInImage,
+              regex: companionAssetsRegex,
+            },
+          }
+        : {}),
       ...projectIdentifier,
     });
 

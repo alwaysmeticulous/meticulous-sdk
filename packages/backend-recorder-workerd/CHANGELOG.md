@@ -1,5 +1,42 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.321.0
+
+### Minor Changes
+
+- [#11619](https://github.com/alwaysmeticulous/meticulous/pull/11619) [`56ae3c9`](https://github.com/alwaysmeticulous/meticulous/commit/56ae3c9ee60845b3a7b061ee866deef678523ae9) Thanks [@dennysem](https://github.com/dennysem)! - Seed the worker's random number generation during replay, so ids the app mints on the server
+  are identical in every replay of a recorded session. `Math.random`, `crypto.randomUUID` and
+  `crypto.getRandomValues` are replaced with per-session seeded generators for the duration of a
+  replayed request, alongside the existing virtual clock. Without this a value like a guest id
+  minted during SSR differs between a base and a head replay, so every screenshot showing it
+  diffs forever even when all outbound calls are mocked correctly.
+
+  The design mirrors the browser replayer's: a separate sequence per call stack, seeded from a
+  per-call-site counter, so a change in one part of the app does not shift the numbers another
+  part gets, and a shared id helper called from two places still returns two different ids. The
+  session id is part of the seed, so different recordings do not mint colliding ids. Recording,
+  and any deployed worker that is not serving a replay, keeps the platform's own generators
+  untouched.
+
+- [#11617](https://github.com/alwaysmeticulous/meticulous/pull/11617) [`ce80a69`](https://github.com/alwaysmeticulous/meticulous/commit/ce80a69f5aa7243e288f6961c7e841e56a1e9866) Thanks [@dennysem](https://github.com/dennysem)! - Record Cloudflare KV namespace operations. `get`, `getWithMetadata`, `put`, `delete` and
+  `list` on a namespace found on `env` are now captured as CLIENT spans tagged
+  `clientTechnology: "workerd-kv"` and named `kv.<binding>.<operation>`, carrying the binding
+  name, the key, the call's arguments and the value as JSON — so a single `JSON.parse`
+  reconstructs exactly what the app saw, whichever `type` the read asked for. No app change is
+  required beyond the existing `withMeticulous` wrapper: the namespace's prototype methods are
+  instrumented wherever the app reads the binding from, including via `cloudflare:workers`.
+
+  A KV operation is not Request/Response-shaped, so these spans carry `meticulous.workerd.kv.*`
+  attributes following the Prisma/ioredis contract rather than HTTP attributes, and they are kept
+  apart from `workerd-fetch` and `workerd-binding` for the same reason those two are kept apart.
+  Still record-only: no mock store serves KV yet, so KV reads reach the real namespace during a
+  replay.
+
+  A `put` value is redacted like a request body, while a value read back is stored verbatim like
+  a response body. A value read as a stream is recognised but never read — consuming it would
+  take the bytes from the app — and binary values are skipped; both are recorded with an
+  `omitted` reason in place of the value. `options.skipBindings` now also skips KV namespaces.
+
 ## 2.319.0
 
 ### Minor Changes

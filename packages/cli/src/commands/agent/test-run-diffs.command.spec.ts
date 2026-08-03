@@ -59,11 +59,14 @@ const runHandler = (overrides: Record<string, unknown> = {}) =>
     commitSha: undefined,
     dontWaitForTestRunToComplete: false,
     includeReplayIds: false,
+    includeMismatchFraction: false,
     includeDomDiffIds: false,
     includeAllDiffs: false,
     orderByReplayDiffs: false,
+    includeReviews: false,
     includeReviewDecisions: false,
     onlyUnreviewed: false,
+    onlyRejected: false,
     counts: false,
     json: false,
     ...overrides,
@@ -199,7 +202,32 @@ describe("test-run-diffs command polling", () => {
 
     expect(exitSpy).not.toHaveBeenCalled();
     const stdout = logSpy.mock.calls.flat().join("\n");
-    expect(stdout.split("\n")[0]).toContain("replayDiffId");
+    expect(stdout.split("\n")[0]).toBe("replayDiffId\tscreenshotName");
+  });
+
+  it("requests and prints mismatchFraction only when opted in", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [
+        {
+          replayDiffId: "rd-1",
+          screenshotName: "end-state",
+          mismatchFraction: 0.25,
+        },
+      ],
+    });
+
+    await runHandler({ includeMismatchFraction: true });
+
+    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledWith(
+      expect.anything(),
+      "tr-1",
+      expect.objectContaining({ includeMismatchFraction: true }),
+    );
+    expect(logSpy.mock.calls.map((call: unknown[]) => call[0])).toEqual([
+      "replayDiffId\tscreenshotName\tmismatchFraction",
+      "rd-1\tend-state\t0.25000",
+    ]);
   });
 
   it("treats --onlyUnreviewed as implying --includeAllDiffs (isSelected column + backend flag)", async () => {
@@ -221,6 +249,68 @@ describe("test-run-diffs command polling", () => {
     const stdout = logSpy.mock.calls.flat().join("\n");
     expect(stdout.split("\n")[0].split("\t")).toContain("isSelected");
   });
+
+  it("treats --onlyRejected as implying --includeAllDiffs (isSelected column + backend flag)", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [],
+    });
+
+    await runHandler({ onlyRejected: true });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledWith(
+      expect.anything(),
+      "tr-1",
+      expect.objectContaining({ includeAllDiffs: true, onlyRejected: true }),
+    );
+    const stdout = logSpy.mock.calls.flat().join("\n");
+    expect(stdout.split("\n")[0].split("\t")).toContain("isSelected");
+  });
+
+  // Regression test: yargs' `conflicts` rejects on the option merely being
+  // *present* in argv, which is true for every run since both flags default to
+  // false — so `conflicts` would have rejected every invocation, defaulted or
+  // not. The check lives in the handler instead (see the command's builder).
+  it("rejects --onlyUnreviewed and --onlyRejected together before any network call", async () => {
+    await expect(
+      runHandler({ onlyUnreviewed: true, onlyRejected: true }),
+    ).rejects.toThrow(CliUserError);
+
+    expect(mocks.createClientWithOAuth).not.toHaveBeenCalled();
+    expect(mocks.getTestRunDiffsSummary).not.toHaveBeenCalled();
+  });
+
+  it("allows neither --onlyUnreviewed nor --onlyRejected (both false, the default)", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [],
+    });
+
+    await runHandler({ onlyUnreviewed: false, onlyRejected: false });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalled();
+  });
+
+  it.each(["includeReviews", "includeReviewDecisions"])(
+    "maps --%s to review metadata in the request and output",
+    async (flag) => {
+      mocks.getTestRunDiffsSummary.mockResolvedValue({
+        status: "complete",
+        data: [],
+      });
+
+      await runHandler({ [flag]: true });
+
+      expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledWith(
+        expect.anything(),
+        "tr-1",
+        expect.objectContaining({ includeReviews: true }),
+      );
+      expect(logSpy.mock.calls[0][0]).toContain("decision\topenComments");
+    },
+  );
 
   it("prints the counts from the dedicated endpoint (no summary poll) with --counts", async () => {
     mocks.getTestRunDiffsSummaryCounts.mockResolvedValue({
@@ -294,11 +384,14 @@ describe("test-run-diffs command polling", () => {
 
   it.each([
     "includeReplayIds",
+    "includeMismatchFraction",
     "includeDomDiffIds",
     "includeAllDiffs",
     "orderByReplayDiffs",
+    "includeReviews",
     "includeReviewDecisions",
     "onlyUnreviewed",
+    "onlyRejected",
   ])(
     "rejects --counts combined with --%s before any network call",
     async (flag) => {

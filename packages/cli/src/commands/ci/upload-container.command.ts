@@ -22,6 +22,10 @@ interface Options {
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
+  companionAssetsFolder?: string | undefined;
+  companionAssetsZip?: string | undefined;
+  companionAssetsPathInImage?: string | undefined;
+  companionAssetsRegex?: string | undefined;
   dryRun?: boolean | undefined;
 }
 
@@ -85,6 +89,26 @@ export const ciUploadContainerCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "The endpoint path to use for health checks on the container (e.g., '/health').",
+    },
+    companionAssetsFolder: {
+      string: true,
+      description:
+        "A folder of static assets to serve together with the uploaded container (e.g. a separately-built frontend bundle). Requires --companionAssetsRegex.",
+    },
+    companionAssetsZip: {
+      string: true,
+      description:
+        "A zip file of static assets to serve together with the uploaded container. Requires --companionAssetsRegex.",
+    },
+    companionAssetsPathInImage: {
+      string: true,
+      description:
+        "A path to a file or directory inside the uploaded image (e.g. '/app/dist') to serve as the companion assets, instead of a local folder or zip. Requires --companionAssetsRegex.",
+    },
+    companionAssetsRegex: {
+      string: true,
+      description:
+        "The regex used to determine whether a request path should be served from the companion assets.",
     },
   },
   handler: wrapHandler(handler),

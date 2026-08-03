@@ -27,6 +27,17 @@ export interface TriggerTestRunOptions {
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
+  /**
+   * Static assets served together with the uploaded container (e.g. a
+   * separately-built frontend bundle), matched by `companionAssetsRegex`.
+   * Exactly one of `companionAssetsFolder`/`companionAssetsZip`/
+   * `companionAssetsPathInImage` may be set.
+   */
+  companionAssetsFolder?: string | undefined;
+  companionAssetsZip?: string | undefined;
+  /** A path to a file or directory inside the uploaded image (e.g. `/app/dist`). */
+  companionAssetsPathInImage?: string | undefined;
+  companionAssetsRegex?: string | undefined;
 
   // Common
   waitForBase: boolean;

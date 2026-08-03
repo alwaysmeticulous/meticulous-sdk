@@ -77,4 +77,5 @@ export {
   BackendRecorderHandle,
   MeticulousPrismaExtension,
   MeticulousIORedisWrapper,
+  MeticulousPostgresJsWrapper,
 } from "./backend-recorder/bundle-to-sdk/init-backend-recorder";

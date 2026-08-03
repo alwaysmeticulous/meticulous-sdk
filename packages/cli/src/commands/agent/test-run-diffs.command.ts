@@ -19,8 +19,6 @@ import {
 } from "../../utils/resolve-test-run-from-commit";
 import {
   buildDiffsSummaryHeader,
-  buildDiffsSummaryJson,
-  flattenDiffRows,
   formatDiffRow,
   formatDiffsSummaryCounts,
 } from "./test-run-diffs.utils";
@@ -31,10 +29,13 @@ interface Options {
   commitSha: string | undefined;
   dontWaitForTestRunToComplete: boolean;
   includeReplayIds: boolean;
+  includeMismatchFraction: boolean;
+  includeReviews: boolean;
   includeReviewDecisions: boolean;
   includeDomDiffIds: boolean;
   includeAllDiffs: boolean;
   onlyUnreviewed: boolean;
+  onlyRejected: boolean;
   orderByReplayDiffs: boolean;
   counts: boolean;
   json: boolean;
@@ -53,10 +54,13 @@ const handler = async ({
   commitSha,
   dontWaitForTestRunToComplete,
   includeReplayIds,
+  includeMismatchFraction,
+  includeReviews,
   includeReviewDecisions,
   includeDomDiffIds,
   includeAllDiffs,
   onlyUnreviewed,
+  onlyRejected,
   orderByReplayDiffs,
   counts,
   json,
@@ -64,6 +68,17 @@ const handler = async ({
 }: Options): Promise<void> => {
   if (testRunId != null && commitSha != null) {
     throw new CliUserError("Pass either --testRunId or --commitSha, not both.");
+  }
+
+  // A diff can't be both still awaiting review and rejected, so requesting both
+  // can only ever match nothing. Checked here rather than via yargs `conflicts`:
+  // both flags default to false, and yargs' conflict check fires on the option
+  // merely being *present* in argv (`!== undefined`) — true for every run,
+  // defaulted or not — so `conflicts` would reject every invocation.
+  if (onlyUnreviewed && onlyRejected) {
+    throw new CliUserError(
+      "--onlyUnreviewed and --onlyRejected cannot both be set — a diff can't be both unreviewed and rejected.",
+    );
   }
 
   // --counts reports fixed aggregate totals from a dedicated endpoint that takes
@@ -74,11 +89,14 @@ const handler = async ({
     const incompatible = (
       [
         [includeReplayIds, "--includeReplayIds"],
+        [includeMismatchFraction, "--includeMismatchFraction"],
         [includeDomDiffIds, "--includeDomDiffIds"],
         [includeAllDiffs, "--includeAllDiffs"],
         [orderByReplayDiffs, "--orderByReplayDiffs"],
+        [includeReviews, "--includeReviews"],
         [includeReviewDecisions, "--includeReviewDecisions"],
         [onlyUnreviewed, "--onlyUnreviewed"],
+        [onlyRejected, "--onlyRejected"],
       ] as const
     )
       .filter(([enabled]) => enabled)
@@ -125,16 +143,19 @@ const handler = async ({
     status = run.status;
   }
 
-  // --onlyUnreviewed spans every unreviewed difference (selected or not), so it
-  // implies --includeAllDiffs: the isSelected column is included to tell them
+  // Decision filters span every matching difference (selected or not), so they
+  // imply --includeAllDiffs: the isSelected column is included to tell them
   // apart, matching the backend, which resolves the same implication.
-  const includeAllDiffsResolved = includeAllDiffs || onlyUnreviewed;
+  const includeAllDiffsResolved =
+    includeAllDiffs || onlyUnreviewed || onlyRejected;
+  const includeReviewsResolved = includeReviews || includeReviewDecisions;
 
   const columns = {
     includeDomDiffIds,
     includeAllDiffs: includeAllDiffsResolved,
     includeReplayIds,
-    includeReviewDecisions,
+    includeMismatchFraction,
+    includeReviews: includeReviewsResolved,
   };
 
   // Diffs are only meaningful once the run has finished with a verdict
@@ -189,11 +210,13 @@ const handler = async ({
 
   const diffsSummaryOptions = {
     includeReplayIds,
+    includeMismatchFraction,
     includeDomDiffIds,
     includeAllDiffs: includeAllDiffsResolved,
     orderByReplayDiffs,
-    includeReviewDecisions,
+    includeReviews: includeReviewsResolved,
     onlyUnreviewed,
+    onlyRejected,
   };
 
   let response = await getTestRunDiffsSummary(
@@ -255,18 +278,15 @@ const handler = async ({
   }
 
   const data = response.data ?? [];
-  // The backend sets `index` to a global rank — a flat priority rank by default,
-  // or a replayDiff-grouped rank under orderByReplayDiffs; rows sort by it.
-  const rows = flattenDiffRows(data);
 
   if (json) {
-    printJson(buildDiffsSummaryJson(data));
+    printJson(data);
   } else {
     // Always emit the TSV header so a zero-diff run is a header with no rows (the
     // same shape as the in-progress short-circuit above), never empty stdout.
     console.log(buildDiffsSummaryHeader(columns).join("\t"));
-    for (const row of rows) {
-      console.log(formatDiffRow(row, columns).join("\t"));
+    for (const diff of data) {
+      console.log(formatDiffRow(diff, columns).join("\t"));
     }
   }
 
@@ -276,19 +296,17 @@ const handler = async ({
     return;
   }
 
-  const totalDiffScreenshots = rows.filter(
-    (row) => row.screenshot.userVisibleOutcome === "difference",
-  ).length;
+  const numReplayDiffs = new Set(data.map((diff) => diff.replayDiffId)).size;
   const tEnd = performance.now();
   logNotice(
-    `${data.length} replay diff(s), ${totalDiffScreenshots} screenshot diff(s), total ${((tEnd - t0) / 1000).toFixed(1)}s`,
+    `${numReplayDiffs} replay diff(s), ${data.length} screenshot diff(s), total ${((tEnd - t0) / 1000).toFixed(1)}s`,
   );
 };
 
 export const testRunDiffsCommand: CommandModule<unknown, Options> = {
   command: "test-run-diffs",
   describe:
-    "Get the list of screenshot diffs for a given test run (by default a selected subset of representative diffs in priority order). Outputs a TSV table with columns replayDiffId, screenshotName, index, outcome, mismatchFraction plus the requested additional columns. Pass --counts to print just the totals instead of the list.",
+    "Get the list of screenshot diffs for a given test run (by default a selected subset of representative diffs in priority order). Outputs a priority-ordered TSV table with columns replayDiffId and screenshotName plus the requested additional columns. Pass --counts to print just the totals instead of the list.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     testRunId: {
@@ -319,16 +337,34 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
         "Output only screenshot diffs still awaiting review (decision unreviewed), across every difference rather than just the selected subset — i.e. everything left to review. Implies --includeAllDiffs, so the isSelected column is included to tell selected from unselected differences.",
       default: false,
     },
+    onlyRejected: {
+      boolean: true,
+      description:
+        "Output only screenshot diffs rejected during review (decision rejected), across every difference rather than just the selected subset — i.e. every diff already marked rejected. Implies --includeAllDiffs, so the isSelected column is included to tell selected from unselected differences.",
+      default: false,
+    },
     includeReplayIds: {
       boolean: true,
       description:
         "Add baseReplayId and headReplayId columns with each diff's base and head replay IDs.",
       default: false,
     },
-    includeReviewDecisions: {
+    includeMismatchFraction: {
       boolean: true,
       description:
-        "Add a decision column with the PR review decision per diff (accepted/rejected/ignored/unreviewed; unreviewed when undecided or no PR).",
+        "Add a mismatchFraction column with the fraction of pixels that differ between the before and after screenshots.",
+      default: false,
+    },
+    includeReviews: {
+      boolean: true,
+      description:
+        "Add decision and openComments columns with the PR review decision and number of open review comments per diff.",
+      default: false,
+    },
+    includeReviewDecisions: {
+      boolean: true,
+      description: "Deprecated alias for --includeReviews.",
+      deprecated: "use --includeReviews instead",
       default: false,
     },
     includeDomDiffIds: {
@@ -340,7 +376,7 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     orderByReplayDiffs: {
       boolean: true,
       description:
-        "Order the list by replay diff (a replay diff's differences get consecutive index values) instead of the default global priority order.",
+        "Order the list by replay diff (a replay diff's differences are consecutive) instead of the default global priority order.",
       default: false,
     },
     dontWaitForTestRunToComplete: {

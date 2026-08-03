@@ -62,6 +62,52 @@ export const tagImage = async (
   }
 };
 
+/**
+ * Gets a tarball of a path from inside a local image as a stream, by
+ * creating a container from the image without starting it, reading the path
+ * out via the Docker archive API (equivalent of `docker cp <container>:<path> -`),
+ * and removing the container once the stream has been fully consumed.
+ *
+ * The trailing `/.` mirrors `docker cp`'s own convention: it makes the
+ * returned tar contain the *contents* of `pathInImage` at its root (e.g.
+ * `index.html`, `assets/...`) rather than wrapping them in a `<basename>/`
+ * directory, so the tar can be re-used as-is as the deployable bundle without
+ * any repacking.
+ */
+export const getTarStreamFromImage = async (
+  docker: Docker,
+  imageTag: string,
+  pathInImage: string,
+): Promise<NodeJS.ReadableStream> => {
+  const logger = initLogger();
+  const container = await docker.createContainer({ Image: imageTag });
+
+  const cleanup = () =>
+    container.remove({ force: true }).catch(() => {
+      // Best-effort cleanup; the container was never started so a leaked
+      // one is inert, just wastes a small amount of disk.
+    });
+
+  try {
+    const normalizedPath = pathInImage.endsWith("/.")
+      ? pathInImage
+      : `${pathInImage.replace(/\/+$/, "")}/.`;
+    logger.info(`Reading ${pathInImage} from image ${imageTag}...`);
+    const archiveStream = await container.getArchive({
+      path: normalizedPath,
+    });
+    archiveStream.once("end", () => void cleanup());
+    archiveStream.once("error", () => void cleanup());
+    return archiveStream;
+  } catch (error) {
+    await cleanup();
+    throw new Error(
+      `Failed to read '${pathInImage}' from image '${imageTag}'. Ensure the path exists in the image.`,
+      { cause: error },
+    );
+  }
+};
+
 export const pushImage = async (
   docker: Docker,
   imageReference: string,
