@@ -7,7 +7,7 @@ import {
   IN_PROGRESS_TEST_RUN_STATUS,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import { runWithUploadedAssetChunks } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
 import type { CommandModule } from "yargs";
@@ -193,23 +193,30 @@ const handler = async ({
       ...(sessionFilter ? { sessionFilter } : {}),
       ...projectIdentifier,
     });
+    // Emit overlaps as a single warn (stderr) before the null check so failure
+    // paths that return overlaps without a test run still surface collisions.
+    // On success, print the test-run URLs via logNotice (also stderr) after so
+    // they land as a clean trailing block. Same-stream writes preserve order;
+    // the old bug was logger.info (stdout) racing with per-line logger.warn
+    // (stderr) under CI tools like Gradle that merge the streams
+    // asynchronously. Verify the assembled build via `/download-build-assets`.
     if (result.overlaps && result.overlaps.length > 0) {
-      logger.warn(
+      const overlapLines = [
         `WARNING: ${result.overlaps.length} file path(s) appear in multiple chunks (computed over the fully resolved manifest, ` +
           `including any versionLookup entries resolved to concrete versions). ` +
           `Chunks later in the manifest win: the test run serves the later chunk's copy of each colliding path.`,
-      );
-      for (const overlap of result.overlaps) {
-        logger.warn(
-          `  - ${overlap.path}: served from ${overlap.upperChunk.name}@${overlap.upperChunk.versionId} (overriding ${overlap.lowerChunk.name}@${overlap.lowerChunk.versionId})`,
-        );
-      }
+        ...result.overlaps.map(
+          (overlap) =>
+            `  - ${overlap.path}: served from ${overlap.upperChunk.name}@${overlap.upperChunk.versionId} (overriding ${overlap.lowerChunk.name}@${overlap.lowerChunk.versionId})`,
+        ),
+      ];
       if (result.overlapsTruncated) {
-        logger.warn(`  ... and more overlapping paths (not shown).`);
+        overlapLines.push(`  ... and more overlapping paths (not shown).`);
       }
-      logger.warn(
+      overlapLines.push(
         `If this is unintentional, adjust your chunking scheme so no two chunks produce the same final path.`,
       );
+      logger.warn(overlapLines.join("\n"));
     }
 
     if (!result.testRun) {
@@ -219,12 +226,12 @@ const handler = async ({
     }
     testRunId = result.testRun.id;
 
-    logger.info(`Test run created: ${result.testRun.url}`);
-    // Verify the assembled (concatenated) build assets via the test-run URL
-    // with `/download-build-assets` appended.
-    logger.info(
+    logNotice("");
+    logNotice(`Test run created: ${result.testRun.url}`);
+    logNotice(
       `Verify assembled build assets: ${result.testRun.url}/download-build-assets`,
     );
+    logNotice("");
   } catch (error) {
     if (isOutOfDateClientError(error)) {
       throw new OutOfDateCLIError();

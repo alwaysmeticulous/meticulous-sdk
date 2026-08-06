@@ -36,6 +36,8 @@ The shim is passive: outgoing requests go straight to their real destination; th
    npx @alwaysmeticulous/cli record backend -- npx wrangler dev
    ```
 
+   If the recorder cannot start — no credentials, no network to fetch the sidecar bundle, an unusable port — the CLI warns and runs your dev command unrecorded rather than failing, so this is safe to leave in a `dev` script.
+
    Or run the sidecar standalone with `npx @alwaysmeticulous/cli record backend` and point the shim at it yourself — the value must be a worker var/binding (host environment variables are not visible inside workerd), e.g. in `.dev.vars`:
 
    ```
@@ -54,6 +56,18 @@ Without `METICULOUS_SIDECAR_URL` (or `options.sidecarUrl`) the wrapper is a comp
 - **KV namespace operations** — `get`, `getWithMetadata`, `put`, `delete` and `list` on a namespace found on `env`, recorded with the binding name, the key, the call's arguments and the value as JSON (so one `JSON.parse` reconstructs exactly what the app saw, whichever `type` the read asked for). Also no code change needed. A value read as a stream is never read by the recorder — that would take the bytes from the app — and binary values are skipped; both cases are recorded with the reason instead of the value.
 
 Request bodies have secret-looking JSON fields (`clientSecret`, `apiKey`, `token`, `password`, …) replaced with `REDACTED` before they leave the worker, since plenty of APIs carry a credential in the body rather than a header. Response bodies are stored verbatim. A KV `put` value is redacted the same way, for the same reason; a value read back from KV is stored verbatim, like a response body.
+
+## Replay
+
+The same wrapper serves the recording back when Meticulous replays a session against your app: outgoing `fetch` calls are answered from the recording instead of reaching the real service, the clock is frozen at the recorded session's end, and `Math.random` / `crypto.randomUUID` / `crypto.getRandomValues` are seeded so ids the app mints are identical in every replay. Replay is activated by a header the Meticulous replay runner injects, so nothing extra is needed to enable it.
+
+Replay is **hermetic**: a call the recording does not cover fails with a `[backend-recorder] workerd replay: …` error rather than quietly reaching the real service, so a gap in the recording surfaces instead of turning a replay into live traffic. For a call that must stay live during a replay, set the `meticulous-passthrough` header to `true` on the request:
+
+```ts
+await fetch(url, { headers: { "meticulous-passthrough": "true" } });
+```
+
+Calls through bindings and KV namespaces are not served from the recording (see Limitations) and are never failed — they always reach the real binding.
 
 ## Limitations
 

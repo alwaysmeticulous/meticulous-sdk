@@ -155,7 +155,7 @@ export const executeWithRetry = async <T>(
           logger.warn(
             `Operation failed, retrying in ${Math.round(delay)}ms (attempt ${
               attempt + 2
-            } of ${maxRetries + 1})`,
+            } of ${maxRetries + 1}): ${describeRetriedError(error)}`,
           );
         }
         await new Promise((resolve) => setTimeout(resolve, delay));
@@ -167,3 +167,11 @@ export const executeWithRetry = async <T>(
 
   throw lastError;
 };
+
+/**
+ * The retried error only escapes if every attempt fails, so without this the
+ * retry warnings name no cause and a run that eventually succeeds leaves no
+ * record of what it was retrying.
+ */
+const describeRetriedError = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);

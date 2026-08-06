@@ -1,5 +1,35 @@
 # @alwaysmeticulous/client
 
+## 2.323.0
+
+### Minor Changes
+
+- [#11727](https://github.com/alwaysmeticulous/meticulous/pull/11727) [`583b59c`](https://github.com/alwaysmeticulous/meticulous/commit/583b59c9d32fa3c21575765f8475a00f315d7b1d) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add pre-action screenshot paths and highlight regions to agentic run result steps, allowing reviewers to inspect the targeted element before an interaction alongside its post-action state.
+
+- [#11673](https://github.com/alwaysmeticulous/meticulous/pull/11673) [`a579631`](https://github.com/alwaysmeticulous/meticulous/commit/a579631e702203e78c81435b43162efec60893cf) Thanks [@sesajad](https://github.com/sesajad)! - `AgenticRunResultBlob` now carries a top-level `version`, so a reader holding only the document can tell whether it can interpret it. The redundant `version` fields on `AgenticRunSummary` and `AgenticRunTraces` are removed — the document's version now covers them.
+
+- [#11707](https://github.com/alwaysmeticulous/meticulous/pull/11707) [`15c3c0a`](https://github.com/alwaysmeticulous/meticulous/commit/15c3c0a1d173992db7963bf7f6bfc00831d26157) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add concise agentic case outcome summaries and distinguish cases skipped by execution limits from behavioral failures and blockers.
+
+- [#11661](https://github.com/alwaysmeticulous/meticulous/pull/11661) [`0ef2f27`](https://github.com/alwaysmeticulous/meticulous/commit/0ef2f27855381b29551b3f7b90ac92b6ed03e92d) Thanks [@sesajad](https://github.com/sesajad)! - Agentic run results are now uploaded straight to S3 through a presigned URL rather than POSTed inline. `reportAgenticRunResult` is replaced by `requestAgenticResultUpload` followed by `completeAgenticRunResult`, and the uploaded document's shape is exported as `AgenticRunResultBlob`.
+
+- [#11757](https://github.com/alwaysmeticulous/meticulous/pull/11757) [`672e710`](https://github.com/alwaysmeticulous/meticulous/commit/672e710e504b843d84ea0dae85612390b2b0ad26) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add screenshot content hashes to agentic run result steps so reviewers can identify duplicate visual evidence across different artifact paths.
+
+- [#11715](https://github.com/alwaysmeticulous/meticulous/pull/11715) [`fed0068`](https://github.com/alwaysmeticulous/meticulous/commit/fed00687ed753102ecaad6e5f5aabbf089e5e9f1) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Return all diffs by default when there are at most five, apply representative selection above that threshold (falling back to every matching diff for `--onlyUnreviewed` if the representative subset has already been fully reviewed), expose response-level `selectionApplied` metadata, and remove `isSelected` from current full-diff results. `--onlyRejected`/`--onlyWithComments` are unaffected by the cap and always return every matching diff.
+
+- [#11653](https://github.com/alwaysmeticulous/meticulous/pull/11653) [`3abdf06`](https://github.com/alwaysmeticulous/meticulous/commit/3abdf06b85ef1b9d054b54ab500c6462a4556c3c) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add a terminal `Skipped` test run status for runs that deliberately do not execute (e.g. when no base test run is available). The client sends a `clientVersion` on `getTestRun` so the backend can return `Skipped` to new clients and downgrade it to `Aborted` for pinned older CLIs.
+
+### Patch Changes
+
+- [#11522](https://github.com/alwaysmeticulous/meticulous/pull/11522) [`4c2c367`](https://github.com/alwaysmeticulous/meticulous/commit/4c2c367837bd717fcaa471730b3ac8c9224766d8) Thanks [@sesajad](https://github.com/sesajad)! - Add the API surface for persistent agentic testcases: `requestAgenticTestcasesUpload` presigns the run's testcase bundle (the verbatim code of every testcase, which the next run on the same PR inherits as its baseline), and the run result now carries per-testcase `provenance`.
+
+- [#11689](https://github.com/alwaysmeticulous/meticulous/pull/11689) [`2c15475`](https://github.com/alwaysmeticulous/meticulous/commit/2c15475d9661cd496699f07901fd487800b717d1) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `onlyWithComments` to `agent test-run-diffs`, the client API, and the hosted MCP tool, and report `numWithOpenComments` in the `--counts` totals.
+
+  Multiple `only*` row filters now combine as a union: a difference is returned if it matches any enabled filter, so combining them widens the result rather than narrowing it. Requesting `onlyUnreviewed` together with `onlyRejected` previously failed with a `400` / `CliUserError`; that error is gone and the pair now returns both sets, so a caller that was relying on it to catch a mis-set flag pair gets a larger result instead.
+
+- Updated dependencies [[`54741e1`](https://github.com/alwaysmeticulous/meticulous/commit/54741e1ab73a0e2ffa40e59eb7a0f8340b309095), [`8346ef7`](https://github.com/alwaysmeticulous/meticulous/commit/8346ef7ff80d1e24f1ce692a61789083a0cb187e), [`3abdf06`](https://github.com/alwaysmeticulous/meticulous/commit/3abdf06b85ef1b9d054b54ab500c6462a4556c3c)]:
+  - @alwaysmeticulous/common@2.323.0
+  - @alwaysmeticulous/api@2.323.0
+
 ## 2.322.0
 
 ### Minor Changes

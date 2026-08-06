@@ -67,6 +67,7 @@ const runHandler = (overrides: Record<string, unknown> = {}) =>
     includeReviewDecisions: false,
     onlyUnreviewed: false,
     onlyRejected: false,
+    onlyWithComments: false,
     counts: false,
     json: false,
     ...overrides,
@@ -230,27 +231,32 @@ describe("test-run-diffs command polling", () => {
     ]);
   });
 
-  it("treats --onlyUnreviewed as implying --includeAllDiffs (isSelected column + backend flag)", async () => {
+  it("reports representative selection without adding isSelected", async () => {
     mocks.getTestRunDiffsSummary.mockResolvedValue({
       status: "complete",
       data: [],
+      selectionApplied: true,
     });
 
-    await runHandler({ onlyUnreviewed: true });
+    await runHandler();
 
     expect(exitSpy).not.toHaveBeenCalled();
-    // The request carries includeAllDiffs so the backend returns isSelected.
     expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledWith(
       expect.anything(),
       "tr-1",
-      expect.objectContaining({ includeAllDiffs: true, onlyUnreviewed: true }),
+      expect.objectContaining({ includeAllDiffs: false }),
     );
-    // ...and the TSV header includes the isSelected column.
     const stdout = logSpy.mock.calls.flat().join("\n");
-    expect(stdout.split("\n")[0].split("\t")).toContain("isSelected");
+    expect(stdout.split("\n")[0].split("\t")).not.toContain("isSelected");
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      "Only selected representative diffs are included. Set includeAllDiffs to true to return all diffs.",
+    );
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      "Test run tr-1 does not have any diffs matching the query.",
+    );
   });
 
-  it("treats --onlyRejected as implying --includeAllDiffs (isSelected column + backend flag)", async () => {
+  it("keeps --onlyRejected independent from --includeAllDiffs and isSelected", async () => {
     mocks.getTestRunDiffsSummary.mockResolvedValue({
       status: "complete",
       data: [],
@@ -262,26 +268,78 @@ describe("test-run-diffs command polling", () => {
     expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledWith(
       expect.anything(),
       "tr-1",
-      expect.objectContaining({ includeAllDiffs: true, onlyRejected: true }),
+      expect.objectContaining({ includeAllDiffs: false, onlyRejected: true }),
     );
     const stdout = logSpy.mock.calls.flat().join("\n");
-    expect(stdout.split("\n")[0].split("\t")).toContain("isSelected");
+    expect(stdout.split("\n")[0].split("\t")).not.toContain("isSelected");
   });
 
-  // Regression test: yargs' `conflicts` rejects on the option merely being
-  // *present* in argv, which is true for every run since both flags default to
-  // false — so `conflicts` would have rejected every invocation, defaulted or
-  // not. The check lives in the handler instead (see the command's builder).
-  it("rejects --onlyUnreviewed and --onlyRejected together before any network call", async () => {
-    await expect(
-      runHandler({ onlyUnreviewed: true, onlyRejected: true }),
-    ).rejects.toThrow(CliUserError);
+  it("passes an explicit --includeAllDiffs through without adding isSelected", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [],
+      selectionApplied: false,
+    });
 
-    expect(mocks.createClientWithOAuth).not.toHaveBeenCalled();
-    expect(mocks.getTestRunDiffsSummary).not.toHaveBeenCalled();
+    await runHandler({ includeAllDiffs: true, onlyUnreviewed: true });
+
+    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledWith(
+      expect.anything(),
+      "tr-1",
+      expect.objectContaining({ includeAllDiffs: true, onlyUnreviewed: true }),
+    );
+    expect(logSpy.mock.calls[0][0]).toBe("replayDiffId\tscreenshotName");
+    expect(mocks.logNotice).not.toHaveBeenCalledWith(
+      expect.stringContaining("selected representative diffs"),
+    );
   });
 
-  it("allows neither --onlyUnreviewed nor --onlyRejected (both false, the default)", async () => {
+  it("keeps --onlyWithComments independent from --includeAllDiffs and isSelected", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [],
+    });
+
+    await runHandler({ onlyWithComments: true });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledWith(
+      expect.anything(),
+      "tr-1",
+      expect.objectContaining({
+        includeAllDiffs: false,
+        onlyWithComments: true,
+      }),
+    );
+    const stdout = logSpy.mock.calls.flat().join("\n");
+    expect(stdout.split("\n")[0].split("\t")).not.toContain("isSelected");
+  });
+
+  it("allows --only* filters together and forwards all of them", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [],
+    });
+
+    await runHandler({
+      onlyUnreviewed: true,
+      onlyRejected: true,
+      onlyWithComments: true,
+    });
+
+    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledWith(
+      expect.anything(),
+      "tr-1",
+      expect.objectContaining({
+        includeAllDiffs: false,
+        onlyUnreviewed: true,
+        onlyRejected: true,
+        onlyWithComments: true,
+      }),
+    );
+  });
+
+  it("allows no --only* filters (all false by default)", async () => {
     mocks.getTestRunDiffsSummary.mockResolvedValue({
       status: "complete",
       data: [],
@@ -320,6 +378,7 @@ describe("test-run-diffs command polling", () => {
       numIgnored: 0,
       numRejected: 0,
       numUnreviewed: 1,
+      numWithOpenComments: 0,
     });
 
     await runHandler({ counts: true });
@@ -340,6 +399,7 @@ describe("test-run-diffs command polling", () => {
         "numIgnored:\t0",
         "numRejected:\t0",
         "numUnreviewed:\t1",
+        "numWithOpenComments:\t0",
       ].join("\n"),
     );
   });
@@ -352,6 +412,7 @@ describe("test-run-diffs command polling", () => {
       numIgnored: 0,
       numRejected: 0,
       numUnreviewed: 1,
+      numWithOpenComments: 0,
     });
 
     await runHandler({ counts: true, json: true });
@@ -365,6 +426,7 @@ describe("test-run-diffs command polling", () => {
       numIgnored: 0,
       numRejected: 0,
       numUnreviewed: 1,
+      numWithOpenComments: 0,
     });
   });
 
@@ -392,6 +454,7 @@ describe("test-run-diffs command polling", () => {
     "includeReviewDecisions",
     "onlyUnreviewed",
     "onlyRejected",
+    "onlyWithComments",
   ])(
     "rejects --counts combined with --%s before any network call",
     async (flag) => {

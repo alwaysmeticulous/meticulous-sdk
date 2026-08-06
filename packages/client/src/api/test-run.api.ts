@@ -8,6 +8,7 @@ import type {
 import { isFetchError, maybeEnrichFetchError } from "../errors";
 import type { MeticulousClient } from "../types/client.types";
 import type { ReplayDiffResponse } from "./replay-diff.api";
+import { TEST_RUN_STATUS_CLIENT_VERSION } from "./test-run-status-client-version";
 
 export type ExecuteSecureTunnelTestRunOptions =
   ExecuteSecureTunnelTestRunPayload & {
@@ -54,6 +55,9 @@ export const getTestRun: (options: {
 }) => Promise<TestRun> = async ({ client, testRunId }) => {
   const { data } = await client.get<unknown, { data: TestRun }>(
     `test-runs/${testRunId}`,
+    {
+      params: { clientVersion: String(TEST_RUN_STATUS_CLIENT_VERSION) },
+    },
   );
   return data;
 };

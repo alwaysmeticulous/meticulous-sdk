@@ -4,7 +4,11 @@ import type { IncomingMessage } from "http";
 import { request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
 import { join, resolve } from "path";
-import type { AssetUploadMetadata, TestRun } from "@alwaysmeticulous/api";
+import type {
+  AssetUploadMetadata,
+  DeploymentArchiveType,
+  TestRun,
+} from "@alwaysmeticulous/api";
 import type {
   ProjectIdentifier,
   MultiPartUploadInfo,
@@ -43,6 +47,7 @@ export interface UploadAssetsOptions extends ProjectIdentifier {
 
 export interface UploadAssetsResult {
   uploadId: string;
+  archiveType: DeploymentArchiveType;
   testRun?: TestRun | null;
   message?: string;
 }
@@ -136,12 +141,14 @@ export const uploadAssetsFromTarStream = async (
     waitForBase,
     rewrites,
     createDeployment,
+    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     multipartUploadInfo,
     ...(projectId ? { projectId } : {}),
   });
 
   return {
     uploadId,
+    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     testRun,
     ...(message ? { message } : {}),
   };
@@ -156,6 +163,7 @@ const completeUploadAndWaitForBase = async ({
   waitForBase,
   rewrites,
   createDeployment,
+  archiveType,
   multipartUploadInfo,
   projectId,
 }: ProjectIdentifier & {
@@ -167,6 +175,7 @@ const completeUploadAndWaitForBase = async ({
   waitForBase: boolean;
   rewrites: AssetUploadMetadata["rewrites"];
   createDeployment: boolean;
+  archiveType: DeploymentArchiveType;
   multipartUploadInfo?: MultiPartUploadInfo;
 }): Promise<{
   testRun: TestRun | null;
@@ -183,7 +192,7 @@ const completeUploadAndWaitForBase = async ({
     mustHaveBase: waitForBase,
     rewrites,
     createDeployment,
-    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+    archiveType,
     ...(multipartUploadInfo ? { multipartUploadInfo } : {}),
     ...(projectId ? { projectId } : {}),
   };
@@ -331,12 +340,14 @@ const uploadAssetsStreaming = async ({
     waitForBase,
     rewrites,
     createDeployment,
+    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     multipartUploadInfo,
     ...(projectId ? { projectId } : {}),
   });
 
   return {
     uploadId,
+    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     testRun,
     ...(message ? { message } : {}),
   };
@@ -544,11 +555,13 @@ export const uploadAssetsFromZip = async ({
       waitForBase,
       rewrites,
       createDeployment,
+      archiveType: "zip",
       ...projectIdentifier,
     });
 
     return {
       uploadId,
+      archiveType: "zip",
       testRun,
       ...(message ? { message } : {}),
     };

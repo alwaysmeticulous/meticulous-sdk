@@ -16,6 +16,17 @@ export const SIDECAR_PROTOCOL_VERSION_HEADER =
  */
 export const FRONTEND_SESSION_ID_HEADER = "x-meticulous-session-id";
 
+/**
+ * A request carrying this header set to `"true"` is never served from the recording and
+ * never fails on a miss — it goes to the real network. Use it for a call that must be live
+ * during replay (a health probe, telemetry, a resource the recording cannot cover).
+ *
+ * Same convention and value as the frontend network stubbing and the Node backend recorder
+ * (`METICULOUS_PASSTHROUGH_HEADER` in `@alwaysmeticulous/backend-recorder-js`); the value
+ * must stay in step with both.
+ */
+export const METICULOUS_PASSTHROUGH_HEADER = "meticulous-passthrough";
+
 export const SIDECAR_EVENTS_PATH = "/v1/events";
 
 /**
@@ -212,9 +223,9 @@ export interface OutboundFetchLookupRequest {
 }
 
 /**
- * Either a recorded response to serve, or an instruction to let the real call through.
- * An unrecognised `outcome` must be treated as `passthrough`, so an older shim keeps
- * working against a newer sidecar.
+ * A recorded response to serve, a miss the caller must fail, or an instruction to let the
+ * real call through. An unrecognised `outcome` must be treated as `passthrough`, so an older
+ * shim keeps working against a newer sidecar.
  */
 export type OutboundFetchLookupResponse =
   | {
@@ -223,4 +234,15 @@ export type OutboundFetchLookupResponse =
       body: string;
       headers: Record<string, string>;
     }
+  /**
+   * The store was consulted and holds nothing for this call. Replay is hermetic, so the
+   * shim fails the request rather than letting it reach the real service — matching the
+   * Node backend recorder's http/undici mocks.
+   */
+  | { outcome: "no-mock" }
+  /**
+   * The call cannot be looked up at all (an unparseable URL), so there is no miss to report.
+   * Also what an older sidecar answers on a miss, in which case the shim degrades to the
+   * pre-`no-mock` fail-open behaviour rather than breaking the app.
+   */
   | { outcome: "passthrough" };

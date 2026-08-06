@@ -1,5 +1,13 @@
 # @alwaysmeticulous/common
 
+## 2.323.0
+
+### Patch Changes
+
+- [#11718](https://github.com/alwaysmeticulous/meticulous/pull/11718) [`54741e1`](https://github.com/alwaysmeticulous/meticulous/commit/54741e1ab73a0e2ffa40e59eb7a0f8340b309095) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - Removed the unused `COMMON_CHROMIUM_FLAGS` export. It was a stale duplicate of the flag list actually used when launching Chromium for replays and crawls, and had drifted out of sync with it.
+
+- [#11675](https://github.com/alwaysmeticulous/meticulous/pull/11675) [`8346ef7`](https://github.com/alwaysmeticulous/meticulous/commit/8346ef7ff80d1e24f1ce692a61789083a0cb187e) Thanks [@sesajad](https://github.com/sesajad)! - Name the cause in `executeWithRetry`'s retry warning. The retried error was only surfaced if every attempt failed, so a request that eventually succeeded — or one whose failure was swallowed by a caller — logged `Operation failed, retrying in 889ms (attempt 2 of 4)` with no indication of what went wrong.
+
 ## 2.321.0
 
 ### Patch Changes

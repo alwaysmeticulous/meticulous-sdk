@@ -36,6 +36,7 @@ export type {
 export {
   CAPTURED_HEADERS,
   FRONTEND_SESSION_ID_HEADER,
+  METICULOUS_PASSTHROUGH_HEADER,
   REPLAY_SIDECAR_URL_HEADER,
   SIDECAR_EVENTS_PATH,
   SIDECAR_PROTOCOL_VERSION,
@@ -91,8 +92,10 @@ export interface WithMeticulousOptions {
  *
  * **Replay** activates on the `x-meticulous-backend-replay-sidecar-url` header, injected by
  * the Meticulous replay runner on requests to the app under test. Outgoing `fetch` calls are
- * then served from the recording instead of reaching the real service, the clock is frozen at
- * the recorded session's end so recorded credentials are still valid, and `Math.random` /
+ * then served from the recording instead of reaching the real service — and a call the
+ * recording does not cover fails, rather than quietly becoming live traffic; put a
+ * `meticulous-passthrough: true` header on a request that must stay real. The clock is frozen
+ * at the recorded session's end so recorded credentials are still valid, and `Math.random` /
  * `crypto.randomUUID` / `crypto.getRandomValues` are seeded so ids the app mints are the same
  * in every replay of that session. Workerd
  * cannot read container environment variables, which is why per-replay config arrives as a

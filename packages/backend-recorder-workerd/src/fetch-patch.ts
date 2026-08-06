@@ -18,7 +18,8 @@ export { headersToRecord } from "./outbound-capture";
  *     never in the request path); request and response are cloned and reported in the
  *     background.
  *   - replaying: decide-then-serve. The call is looked up against the sidecar's mock store
- *     and a recorded response is synthesised, or the real call is let through on a miss.
+ *     and a recorded response is synthesised, or the call fails — replay is hermetic unless
+ *     the request opts out with the `meticulous-passthrough` header.
  *
  * Outside a withMeticulous request context the patch is a pure pass-through. Idempotent.
  */

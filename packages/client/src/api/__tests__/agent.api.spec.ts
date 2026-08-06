@@ -54,6 +54,7 @@ describe("getTestRunDiffsSummary", () => {
       includeReviews: true,
       onlyUnreviewed: true,
       onlyRejected: true,
+      onlyWithComments: true,
     });
 
     expect(paramsFromLastCall()).toEqual({
@@ -66,6 +67,7 @@ describe("getTestRunDiffsSummary", () => {
       includeReviews: "true",
       onlyUnreviewed: "true",
       onlyRejected: "true",
+      onlyWithComments: "true",
     });
   });
 
@@ -177,6 +179,131 @@ describe("getTestRunDiffsSummary", () => {
         mismatchFraction: 0.25,
       },
     ]);
+  });
+
+  it("preserves selection metadata and strips isSelected from current responses", async () => {
+    client.get.mockResolvedValue({
+      data: {
+        status: "complete",
+        selectionApplied: false,
+        data: [
+          {
+            replayDiffId: "rd-1",
+            screenshotName: "end-state",
+            isSelected: true,
+          },
+        ],
+      },
+    });
+
+    await expect(
+      getTestRunDiffsSummary(asClient(), "tr-1", { includeAllDiffs: true }),
+    ).resolves.toEqual({
+      status: "complete",
+      selectionApplied: false,
+      data: [{ replayDiffId: "rd-1", screenshotName: "end-state" }],
+    });
+  });
+
+  it("applies representative selection when talking to a v3 backend", async () => {
+    client.get.mockResolvedValue({
+      data: {
+        status: "complete",
+        data: Array.from({ length: 6 }, (_, index) => ({
+          replayDiffId: "rd-1",
+          screenshotName: `diff-${index}`,
+          isSelected: index < 2,
+        })),
+      },
+    });
+
+    const result = await getTestRunDiffsSummary(asClient(), "tr-1");
+
+    expect(result).toEqual({
+      status: "complete",
+      selectionApplied: true,
+      data: [
+        { replayDiffId: "rd-1", screenshotName: "diff-0" },
+        { replayDiffId: "rd-1", screenshotName: "diff-1" },
+      ],
+    });
+  });
+
+  it("never re-caps an onlyRejected/onlyWithComments response from a v3 backend", async () => {
+    const sixRows = Array.from({ length: 6 }, (_, index) => ({
+      replayDiffId: "rd-1",
+      screenshotName: `diff-${index}`,
+      isSelected: index < 2,
+    }));
+    client.get.mockResolvedValue({
+      data: { status: "complete", data: sixRows },
+    });
+
+    const result = await getTestRunDiffsSummary(asClient(), "tr-1", {
+      onlyRejected: true,
+    });
+
+    expect(result.data).toHaveLength(6);
+    expect(result.selectionApplied).toBeUndefined();
+  });
+
+  it("falls back to every matching row from a v3 backend when the isSelected intersection is empty", async () => {
+    client.get.mockResolvedValue({
+      data: {
+        status: "complete",
+        data: Array.from({ length: 6 }, (_, index) => ({
+          replayDiffId: "rd-1",
+          screenshotName: `diff-${index}`,
+          isSelected: false,
+        })),
+      },
+    });
+
+    const result = await getTestRunDiffsSummary(asClient(), "tr-1", {
+      onlyUnreviewed: true,
+    });
+
+    expect(result.data).toHaveLength(6);
+    expect(result.selectionApplied).toBeUndefined();
+  });
+
+  it("does not report selectionApplied from a v3 backend when every match is already selected", async () => {
+    client.get.mockResolvedValue({
+      data: {
+        status: "complete",
+        data: Array.from({ length: 6 }, (_, index) => ({
+          replayDiffId: "rd-1",
+          screenshotName: `diff-${index}`,
+          isSelected: true,
+        })),
+      },
+    });
+
+    const result = await getTestRunDiffsSummary(asClient(), "tr-1");
+
+    expect(result.data).toHaveLength(6);
+    expect(result.selectionApplied).toBeUndefined();
+  });
+
+  it("does not drop rows when isSelected is only present on some of them", async () => {
+    client.get.mockResolvedValue({
+      data: {
+        status: "complete",
+        data: [
+          ...Array.from({ length: 5 }, (_, index) => ({
+            replayDiffId: "rd-1",
+            screenshotName: `selected-${index}`,
+            isSelected: true,
+          })),
+          { replayDiffId: "rd-1", screenshotName: "no-isSelected-field" },
+        ],
+      },
+    });
+
+    const result = await getTestRunDiffsSummary(asClient(), "tr-1");
+
+    expect(result.data).toHaveLength(6);
+    expect(result.selectionApplied).toBeUndefined();
   });
 });
 
@@ -306,6 +433,7 @@ describe("getTestRunDiffsSummaryCounts", () => {
       numIgnored: 0,
       numRejected: 0,
       numUnreviewed: 1,
+      numWithOpenComments: 0,
     };
     const client = { get: vi.fn().mockResolvedValue({ data: counts }) };
     const result = await getTestRunDiffsSummaryCounts(

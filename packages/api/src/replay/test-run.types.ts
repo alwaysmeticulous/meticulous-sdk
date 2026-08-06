@@ -121,7 +121,12 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
  *
  * `Success` = completed, and no replays had notable differences
  *
- * `Aborted` = the test run was stopped before it could complete
+ * `Aborted` = the test run was stopped before it could complete because a newer
+ * commit superseded it on the same pull request; a replacement run is expected.
+ *
+ * `Skipped` = the test run was deliberately not executed (for example, because
+ * no base test run was available to compare against). Distinct from `Aborted`:
+ * nothing is expected to replace this run automatically.
  *
  * `ExecutionError` = the test run failed fatally, and didn't complete. To get accurate results it'll need to be re-run. The test run may shortly switch back
  * into 'Running' in this case, if the worker retries it.
@@ -135,6 +140,7 @@ export type TestRunStatus =
   | "Success"
   | "Failure"
   | "Aborted"
+  | "Skipped"
   | "ExecutionError";
 
 /**

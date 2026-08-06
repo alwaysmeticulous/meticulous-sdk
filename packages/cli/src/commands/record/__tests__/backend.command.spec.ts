@@ -28,8 +28,16 @@ const mocks = vi.hoisted(() => ({
   spawn: vi.fn(),
 }));
 
+const sentryMocks = vi.hoisted(() => ({
+  captureException: vi.fn(),
+}));
+
 vi.mock("../../../command-utils/sentry.utils", () => ({
   wrapHandler: (fn: (...args: unknown[]) => Promise<void>) => fn,
+}));
+
+vi.mock("@sentry/node", () => ({
+  captureException: sentryMocks.captureException,
 }));
 
 vi.mock("@alwaysmeticulous/common", async (importOriginal) => {
@@ -201,7 +209,7 @@ describe("record backend command", () => {
     );
   });
 
-  it("fails cleanly when the project has no recording token", async () => {
+  it("fails cleanly in sidecar-only mode when the project has no recording token", async () => {
     mocks.resolveApiTokenWithOAuth.mockResolvedValue("api-token");
     mocks.resolveProjectIdentifier.mockResolvedValue({ projectId: "p-1" });
     mocks.createClientWithOAuth.mockResolvedValue({});
@@ -210,10 +218,19 @@ describe("record backend command", () => {
       name: "my-project",
       organization: { name: "my-org" },
     });
-    process.argv = ["node", "main.js", "record", "backend", "--", "node"];
+    process.argv = ["node", "main.js", "record", "backend"];
 
     await expect(runHandler({})).rejects.toThrow(/recording token/);
     expect(mocks.startSidecar).not.toHaveBeenCalled();
+  });
+
+  it("fails cleanly in sidecar-only mode when the sidecar cannot start", async () => {
+    mocks.startSidecar.mockRejectedValue(new Error("port bound"));
+    process.argv = ["node", "main.js", "record", "backend"];
+
+    await expect(runHandler({ recordingToken: "t" })).rejects.toThrow(
+      /port bound/,
+    );
   });
 
   it("injects --var into a recognized wrangler dev command", async () => {
@@ -259,6 +276,85 @@ describe("record backend command", () => {
     expect(loggerMock.info).toHaveBeenCalledWith(
       expect.stringContaining(".dev.vars"),
     );
+  });
+
+  describe("when the recorder cannot start in wrapped mode", () => {
+    const getSpawnEnv = (): Record<string, string | undefined> =>
+      (
+        mocks.spawn.mock.calls[0][2] as {
+          env: Record<string, string | undefined>;
+        }
+      ).env;
+
+    it("runs the dev command unrecorded when the sidecar bundle cannot be fetched", async () => {
+      mocks.fetchAsset.mockRejectedValue(new Error("getaddrinfo ENOTFOUND"));
+
+      await runWrapped({ recordingToken: "t" }, ["npx", "wrangler", "dev"]);
+
+      // Unmodified argv: without a sidecar there is no URL to inject.
+      expect(mocks.spawn).toHaveBeenCalledWith(
+        "npx",
+        ["wrangler", "dev"],
+        expect.anything(),
+      );
+      expect(getSpawnEnv()).not.toHaveProperty("METICULOUS_SIDECAR_URL");
+      expect(loggerMock.warn).toHaveBeenCalledWith(
+        expect.stringContaining("running your dev command without it"),
+      );
+      expect(sentryMocks.captureException).toHaveBeenCalled();
+    });
+
+    it("runs the dev command unrecorded when the sidecar does not come up", async () => {
+      mocks.startSidecar.mockRejectedValue(
+        new Error("The Meticulous sidecar did not become healthy within 15s."),
+      );
+
+      await runWrapped({ recordingToken: "t" }, ["npm", "run", "dev"]);
+
+      expect(mocks.spawn).toHaveBeenCalledWith(
+        "npm",
+        ["run", "dev"],
+        expect.anything(),
+      );
+      expect(getSpawnEnv()).not.toHaveProperty("METICULOUS_SIDECAR_URL");
+      expect(loggerMock.warn).toHaveBeenCalledWith(
+        expect.stringContaining("running your dev command without it"),
+      );
+    });
+
+    it("runs the dev command unrecorded when authentication fails", async () => {
+      mocks.resolveApiTokenWithOAuth.mockRejectedValue(
+        new Error("No API token"),
+      );
+
+      await runWrapped({}, ["npx", "wrangler", "dev"]);
+
+      expect(mocks.startSidecar).not.toHaveBeenCalled();
+      expect(mocks.spawn).toHaveBeenCalledWith(
+        "npx",
+        ["wrangler", "dev"],
+        expect.anything(),
+      );
+    });
+
+    it("reports a user error without sending it to Sentry", async () => {
+      mocks.resolveApiTokenWithOAuth.mockResolvedValue("api-token");
+      mocks.resolveProjectIdentifier.mockResolvedValue({ projectId: "p-1" });
+      mocks.createClientWithOAuth.mockResolvedValue({});
+      mocks.getProject.mockResolvedValue({
+        recordingToken: null,
+        name: "my-project",
+        organization: { name: "my-org" },
+      });
+
+      await runWrapped({}, ["npx", "wrangler", "dev"]);
+
+      expect(loggerMock.error).toHaveBeenCalledWith(
+        expect.stringContaining("recording token"),
+      );
+      expect(sentryMocks.captureException).not.toHaveBeenCalled();
+      expect(mocks.spawn).toHaveBeenCalled();
+    });
   });
 
   it("rejects a positional dev command passed without --", async () => {

@@ -1,33 +1,45 @@
 import { readRequestBodyWithCap } from "./body-capture";
 import type { RequestReplayContext } from "./context";
-import { warnOnce } from "./log";
+import { warn, warnOnce } from "./log";
 import { getOriginalFetch } from "./original-fetch";
-import type { OutboundFetchLookupRequest } from "./protocol";
+import {
+  METICULOUS_PASSTHROUGH_HEADER,
+  type OutboundFetchLookupRequest,
+} from "./protocol";
 import { postOutboundFetchLookup } from "./sidecar-client";
 
 /**
- * Serves a recorded response for an outbound call, or lets the real one through.
+ * Serves a recorded response for an outbound call, or fails it.
  *
  * The mirror image of `captureOutboundCall`: recording tees a call that happens anyway,
  * whereas replay decides first and only then calls — so the sidecar sits in the request
- * path here, and every failure mode below falls back to `invoke`.
+ * path here.
  *
- * A miss always falls through to the real service rather than erroring. Recordings are
- * legitimately incomplete — anything the app cached during recording (e.g. public JWKs held
- * in a KV namespace) is never captured, and is fetched for real when replay starts with a
- * cold cache.
+ * Replay is hermetic: a call the recording does not cover must not silently reach the real
+ * service, since that turns a replay into live traffic against real credentials and hides
+ * the gap in the recording behind a response no base replay will reproduce. So anything we
+ * cannot serve from the recording — a miss, an unreachable sidecar, a mock that cannot be
+ * represented — throws, matching the Node recorder's http/undici mocks.
+ *
+ * The two ways out are an explicit `meticulous-passthrough: true` header on the request, and
+ * a sidecar that answers `passthrough` (it cannot look the call up, or it predates
+ * `no-mock`).
  */
 export const replayOutboundCall = async (
   ctx: RequestReplayContext,
   request: Request,
   invoke: (request: Request) => Promise<Response>,
 ): Promise<Response> => {
+  if (hasPassthroughHeader(request)) {
+    return invoke(request);
+  }
+
   let lookup: OutboundFetchLookupRequest;
   try {
-    // Read the clone and pass the original through untouched, mirroring the record path —
-    // so the miss branch needs no body rebuild. The sidecar hashes what we send here, and
-    // it was captured by the same readRequestBodyWithCap the recorder used (redaction
-    // included), so the hashes on both sides derive from byte-identical input.
+    // Read the clone and pass the original through untouched, mirroring the record path.
+    // The sidecar hashes what we send here, and it was captured by the same
+    // readRequestBodyWithCap the recorder used (redaction included), so the hashes on both
+    // sides derive from byte-identical input.
     const requestBody = request.body
       ? await readRequestBodyWithCap(request.clone().body).catch(
           () => undefined,
@@ -40,12 +52,14 @@ export const replayOutboundCall = async (
       ...(requestBody !== undefined ? { requestBody } : {}),
     };
   } catch (error) {
-    warnOnce(
-      "replay-lookup-build",
-      "Failed to prepare a mock lookup — letting the real call through.",
+    // Without a lookup there is nothing to serve, and passing through would be exactly the
+    // silent real call this path exists to prevent.
+    throw buildReplayError(
+      request,
+      ctx.frontendSessionId,
+      "could not prepare a mock lookup",
       error,
     );
-    return invoke(request);
   }
 
   const result = await postOutboundFetchLookup(
@@ -53,11 +67,84 @@ export const replayOutboundCall = async (
     ctx.sidecarUrl,
     lookup,
   );
-  // Also covers an unrecognised `outcome` from a newer sidecar.
-  if (result?.outcome !== "mock") {
+  if (result === undefined) {
+    throw buildReplayError(
+      request,
+      ctx.frontendSessionId,
+      "the replay sidecar did not answer a mock lookup",
+    );
+  }
+  if (result.outcome === "no-mock") {
+    throw buildReplayError(
+      request,
+      ctx.frontendSessionId,
+      "no recorded response",
+    );
+  }
+  // Covers `passthrough` and an unrecognised `outcome` from a newer sidecar.
+  if (result.outcome !== "mock") {
     return invoke(request);
   }
-  return buildMockResponse(result) ?? invoke(request);
+  const mocked = buildMockResponse(result);
+  if (mocked === undefined) {
+    throw buildReplayError(
+      request,
+      ctx.frontendSessionId,
+      `the recorded response (status ${result.statusCode}) cannot be represented`,
+    );
+  }
+  return mocked;
+};
+
+const hasPassthroughHeader = (request: Request): boolean => {
+  try {
+    return request.headers.get(METICULOUS_PASSTHROUGH_HEADER) === "true";
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Builds — and logs — the error the app sees for a call replay cannot serve. Deliberately
+ * names the shim and the session so an app-side stack trace is enough to tell a replay gap
+ * from a real bug, and logs as well because an app that catches its own fetch errors would
+ * otherwise swallow the only signal.
+ *
+ * The query string is left out on purpose — it routinely carries API keys, and the sidecar
+ * logs the full path anyway.
+ */
+const buildReplayError = (
+  request: Request,
+  frontendSessionId: string,
+  reason: string,
+  cause?: unknown,
+): Error => {
+  const error = new Error(
+    `[backend-recorder] workerd replay: ${reason} for ${describeRequest(request)} (session ${frontendSessionId}). Set the "${METICULOUS_PASSTHROUGH_HEADER}: true" header on this request if it must reach the real service during replay.`,
+  );
+  if (cause !== undefined) {
+    // `cause` in the constructor options is not universally available in workerd builds.
+    (error as { cause?: unknown }).cause = cause;
+  }
+  warn(error.message);
+  return error;
+};
+
+const describeRequest = (request: Request): string => {
+  let method = "GET";
+  let url = "";
+  try {
+    method = request.method;
+    url = request.url;
+  } catch {
+    return method;
+  }
+  try {
+    const parsed = new URL(url);
+    return `${method} ${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return `${method} ${url}`;
+  }
 };
 
 // Recorded bodies are already decoded and may have been truncated, so the recorded framing
@@ -74,7 +161,7 @@ const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
 /**
  * Turns a recorded response into a real one, or undefined if it cannot be represented (the
  * constructor throws a RangeError on an out-of-range status, or a body on a null-body
- * status), in which case the caller passes through.
+ * status), in which case the caller fails the request.
  *
  * Note recorded headers are limited to CAPTURED_HEADERS, so a mocked response carries
  * essentially just content-type. In particular it can never set cookies — fine for the API
@@ -102,7 +189,7 @@ const buildMockResponse = (mock: {
   } catch (error) {
     warnOnce(
       "replay-mock-response",
-      "Could not construct a mocked response — letting the real call through.",
+      "Could not construct a mocked response.",
       error,
     );
     return undefined;

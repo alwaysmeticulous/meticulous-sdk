@@ -40,9 +40,8 @@ export interface DiffsSummaryScreenshot {
   /** Present only when `includeDomDiffIds` is set. */
   domDiffIds?: string;
   /**
-   * Whether this screenshot is part of the selected representative subset.
-   * Present only when `includeAllDiffs` is set — otherwise the response
-   * already contains only selected screenshots.
+   * Whether this screenshot is part of the selected representative subset in
+   * legacy nested responses. Current responses use `selectionApplied` metadata.
    */
   isSelected?: boolean;
   /**
@@ -73,8 +72,6 @@ export interface DiffsSummaryDiff {
   mismatchFraction?: number;
   /** Present only when `includeDomDiffIds` is set. */
   domDiffIds?: string;
-  /** Present only when `includeAllDiffs` is set. */
-  isSelected?: boolean;
   /** Present only when `includeReviews` is set. */
   decision?: DiffDecisionState;
   /** Number of open review comments. Present with `includeReviews`. */
@@ -92,8 +89,8 @@ export interface DiffsSummaryOptions {
   /** Include the `domDiffIds` field on each screenshot. Default false. */
   includeDomDiffIds?: boolean;
   /**
-   * Return every diff rather than only the pre-selected representative subset.
-   * When true, `isSelected` marks which screenshots are in the selected subset.
+   * Return all screenshot diffs instead of only the selected representative
+   * subset.
    */
   includeAllDiffs?: boolean;
   /**
@@ -111,17 +108,25 @@ export interface DiffsSummaryOptions {
   /** @deprecated Use `includeReviews`. */
   includeReviewDecisions?: boolean;
   /**
-   * Return only the differences still awaiting review (decision `unreviewed`),
-   * across every difference rather than just the selected representative subset —
-   * i.e. everything a reviewer still has to act on. Default false.
+   * Return only differences still awaiting review (decision `unreviewed`).
+   * Default false.
+   *
+   * The `only*` filters are additive: when several are set, differences matching
+   * any of them are returned, so combining them widens the result rather than
+   * narrowing it.
    */
   onlyUnreviewed?: boolean;
   /**
-   * Return only differences rejected during review (decision `rejected`),
-   * across every difference rather than just the selected representative subset.
+   * Return only differences rejected during review (decision `rejected`).
+   * Additive with the other `only*` filters (see {@link onlyUnreviewed}).
    * Default false.
    */
   onlyRejected?: boolean;
+  /**
+   * Return only differences with one or more open review comments. Additive
+   * with the other `only*` filters (see {@link onlyUnreviewed}). Default false.
+   */
+  onlyWithComments?: boolean;
   /**
    * Request a fresh computation when the previous attempt failed. A normal poll
    * returns `status: "failed"` without restarting; pass this to start a clean
@@ -146,6 +151,11 @@ export interface DiffsSummaryCountsResponse {
   numIgnored: number;
   numRejected: number;
   numUnreviewed: number;
+  /**
+   * Differences with one or more open review comments. Cuts across the decision
+   * buckets rather than partitioning them.
+   */
+  numWithOpenComments: number;
 }
 
 /** The terminal Temporal workflow status that produced a `failed` response. */
@@ -163,6 +173,11 @@ export interface DiffsSummaryResponse {
    */
   status: "pending" | "processing" | "complete" | "failed";
   data?: DiffsSummaryDiff[];
+  /**
+   * Present on complete responses; true when only a subset of selected
+   * representative diffs is returned.
+   */
+  selectionApplied?: boolean;
   /** Present only when `status` is `failed`. */
   reason?: DiffsSummaryFailureReason;
 }
@@ -200,8 +215,11 @@ export interface GetDiffCommentsOptions {
  *   with `domDiffIds` omitted.
  * - v3: returns a flat ordered list without `index` or `outcome`, and makes
  *   `mismatchFraction` opt-in.
+ * - v4: returns all diffs up to five and a selected representative subset
+ *   above that unless `includeAllDiffs` is explicit; removes per-row
+ *   `isSelected` and adds response-level `selectionApplied` metadata.
  */
-export const DIFFS_SUMMARY_CLIENT_VERSION = 3;
+export const DIFFS_SUMMARY_CLIENT_VERSION = 4;
 
 // ---------------------------------------------------------------------------
 // Screenshot DOM Diff types
@@ -635,6 +653,9 @@ export const getTestRunDiffsSummary = async (
   if (options?.onlyRejected) {
     params.onlyRejected = "true";
   }
+  if (options?.onlyWithComments) {
+    params.onlyWithComments = "true";
+  }
   if (options?.retrigger) {
     params.retrigger = "true";
   }
@@ -645,7 +666,7 @@ export const getTestRunDiffsSummary = async (
     });
   return normalizeDiffsSummaryResponse(
     data as DiffsSummaryResponse | LegacyDiffsSummaryResponse,
-    options?.includeMismatchFraction ?? false,
+    options,
   );
 };
 
@@ -658,14 +679,21 @@ interface LegacyDiffsSummaryResponse extends Omit<
 
 const normalizeDiffsSummaryResponse = (
   response: DiffsSummaryResponse | LegacyDiffsSummaryResponse,
-  includeMismatchFraction: boolean,
+  options: DiffsSummaryOptions | undefined,
 ): DiffsSummaryResponse => {
   const { data, ...metadata } = response;
+  if (data == null) {
+    return response as DiffsSummaryResponse;
+  }
   // A v3+ backend already returns the flat shape, with mismatchFraction
   // already projected server-side (the request carried includeMismatchFraction)
   // — nothing left to normalize.
-  if (data == null || data.length === 0 || !("screenshots" in data[0])) {
-    return response as DiffsSummaryResponse;
+  if (data.length === 0 || !("screenshots" in data[0])) {
+    return normalizeCurrentDiffsResponse(
+      metadata,
+      data as CompatibilityDiff[],
+      options,
+    );
   }
   // Legacy (pre-v3) backend: predates clientVersion gating entirely, so this
   // path exists only until every backend a published client might talk to is
@@ -678,7 +706,8 @@ const normalizeDiffsSummaryResponse = (
         diff: {
           replayDiffId: replayDiff.replayDiffId,
           screenshotName: screenshot.screenshotName,
-          ...(includeMismatchFraction && screenshot.mismatchFraction != null
+          ...(options?.includeMismatchFraction &&
+          screenshot.mismatchFraction != null
             ? { mismatchFraction: screenshot.mismatchFraction }
             : {}),
           ...(screenshot.domDiffIds != null
@@ -699,13 +728,68 @@ const normalizeDiffsSummaryResponse = (
           ...(replayDiff.headReplayId != null
             ? { headReplayId: replayDiff.headReplayId }
             : {}),
-        } satisfies DiffsSummaryDiff,
+        } satisfies CompatibilityDiff,
       })),
     )
     .sort((a, b) => a.index - b.index);
+  return normalizeCurrentDiffsResponse(
+    metadata,
+    entries.map(({ diff }) => diff),
+    options,
+  );
+};
+
+interface CompatibilityDiff extends DiffsSummaryDiff {
+  isSelected?: boolean;
+}
+
+/**
+ * Mirrors the backend's `DEFAULT_REPRESENTATIVE_SELECTION_THRESHOLD` for the
+ * old-backend shim below. Kept in sync by hand since the client and backend
+ * are separate packages.
+ */
+const LEGACY_REPRESENTATIVE_SELECTION_THRESHOLD = 5;
+
+const normalizeCurrentDiffsResponse = (
+  metadata: Omit<DiffsSummaryResponse, "data">,
+  data: CompatibilityDiff[],
+  options: DiffsSummaryOptions | undefined,
+): DiffsSummaryResponse => {
+  const isOldBackend = metadata.selectionApplied == null;
+  const canCapToRepresentativeSubset =
+    isOldBackend &&
+    options?.includeAllDiffs !== true &&
+    // onlyRejected/onlyWithComments always return every matching difference —
+    // never subject to the representative-subset cap (see the backend's
+    // agent.diffs-summary.utils.ts) — so an old backend's response to either
+    // is already complete and must not be re-capped here.
+    options?.onlyRejected !== true &&
+    options?.onlyWithComments !== true &&
+    data.length > LEGACY_REPRESENTATIVE_SELECTION_THRESHOLD &&
+    // Only cap when every row reports isSelected. A partially-present field
+    // would otherwise arm the filter below and then silently drop rows where
+    // it happens to be missing — requiring it on every row is the safe
+    // direction: worst case we skip capping, never wrongly drop a diff.
+    data.every((diff) => diff.isSelected != null);
+  let selectedData = data;
+  let cappingApplied = false;
+  if (canCapToRepresentativeSubset) {
+    const selected = data.filter((diff) => diff.isSelected === true);
+    // Mirror the backend's onlyUnreviewed fallback: if every representative
+    // diff has already been reviewed away, the intersection is empty — fall
+    // back to every matching difference rather than reporting a false
+    // "nothing left".
+    if (selected.length > 0) {
+      selectedData = selected;
+      cappingApplied = selected.length < data.length;
+    }
+  }
+  const selectionApplied =
+    metadata.selectionApplied ?? (cappingApplied || undefined);
   return {
     ...metadata,
-    data: entries.map(({ diff }) => diff),
+    ...(selectionApplied != null ? { selectionApplied } : {}),
+    data: selectedData.map(({ isSelected: _isSelected, ...diff }) => diff),
   };
 };
 

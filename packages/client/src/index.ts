@@ -118,6 +118,7 @@ export {
   LabelCommitResponse,
 } from "./api/commit-label.api";
 export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
+export { TEST_RUN_STATUS_CLIENT_VERSION } from "./api/test-run-status-client-version";
 export {
   getApiToken,
   getAuthToken,
@@ -221,6 +222,7 @@ export {
   AgenticRunResultCaseOutcome,
   AgenticRunResultCaseTag,
   AgenticRunResultCase,
+  AgenticCaseProvenance,
   AgenticRunSummary,
   AgenticRunSummaryTakeaway,
   AgenticRunResultStep,
@@ -236,13 +238,20 @@ export {
   AgenticRunTraces,
   AgenticRunCoverage,
   AgenticRunCoverageFile,
-  ReportAgenticRunResultParams,
+  AgenticRunResultBlob,
   ReportAgenticRunResultResponse,
-  reportAgenticRunResult,
+  RequestAgenticResultUploadParams,
+  RequestAgenticResultUploadResponse,
+  requestAgenticResultUpload,
+  CompleteAgenticRunResultParams,
+  completeAgenticRunResult,
   AgenticArtifactUploadFile,
   RequestAgenticArtifactUploadsParams,
   RequestAgenticArtifactUploadsResponse,
   requestAgenticArtifactUploads,
+  RequestAgenticTestcasesUploadParams,
+  RequestAgenticTestcasesUploadResponse,
+  requestAgenticTestcasesUpload,
   GetAgenticRunCoverageParams,
   GetAgenticRunCoverageResponse,
   getAgenticRunCoverage,

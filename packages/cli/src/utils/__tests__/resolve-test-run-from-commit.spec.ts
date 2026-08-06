@@ -16,6 +16,7 @@ describe("isTestRunComplete", () => {
     ["Partial", false],
     ["Aborted", false],
     ["ExecutionError", false],
+    ["Skipped", false],
   ])("%s -> %s", (status, expected) => {
     expect(isTestRunComplete(status)).toBe(expected);
   });
@@ -29,6 +30,7 @@ describe("isTestRunFailed", () => {
     ["Failure", false],
     ["Partial", false],
     ["Running", false],
+    ["Skipped", false],
   ])("%s -> %s", (status, expected) => {
     expect(isTestRunFailed(status)).toBe(expected);
   });
@@ -42,6 +44,7 @@ describe("isTestRunPartial", () => {
     ["Running", false],
     ["Aborted", false],
     ["ExecutionError", false],
+    ["Skipped", false],
   ])("%s -> %s", (status, expected) => {
     expect(isTestRunPartial(status)).toBe(expected);
   });
@@ -64,6 +67,15 @@ describe("assertTestRunComplete", () => {
       );
     },
   );
+
+  test("throws a dedicated skipped message for Skipped", () => {
+    expect(() => assertTestRunComplete("tr-1", "Skipped")).toThrow(
+      CliUserError,
+    );
+    expect(() => assertTestRunComplete("tr-1", "Skipped")).toThrow(
+      /was skipped \(no base test run was found, so nothing ran\)/,
+    );
+  });
 
   test("throws 'not complete' for Running", () => {
     expect(() => assertTestRunComplete("tr-1", "Running")).toThrow(

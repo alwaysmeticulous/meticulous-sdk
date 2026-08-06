@@ -282,7 +282,9 @@ const handler = async ({
 
 /**
  * Waits for base run to be available, polling until found or timeout.
- * Timeout is set to 30 minutes; after that we proceed without a base.
+ * Timeout is set to 30 minutes; after that we stop waiting and still trigger
+ * the head test run. Without a base, user-visible PR runs conclude as Skipped
+ * and no sessions are executed.
  * Non-GitHub-hosted projects are not currently supported.
  */
 const waitForBase = async ({
@@ -324,7 +326,7 @@ const waitForBase = async ({
           baseCommitSha: cloudReplayBaseTestRun.baseCommitSha,
         },
       });
-      // We proceed without base
+      // Stop waiting; still trigger. Without a base, no sessions will run.
       break;
     }
     if (lastTimeElapsed === 0 || timeElapsed - lastTimeElapsed >= 30000) {

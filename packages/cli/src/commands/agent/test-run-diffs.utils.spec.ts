@@ -9,7 +9,6 @@ import {
 
 const NO_COLUMNS: DiffsSummaryColumns = {
   includeDomDiffIds: false,
-  includeAllDiffs: false,
   includeReplayIds: false,
   includeMismatchFraction: false,
   includeReviews: false,
@@ -17,7 +16,6 @@ const NO_COLUMNS: DiffsSummaryColumns = {
 
 const ALL_COLUMNS: DiffsSummaryColumns = {
   includeDomDiffIds: true,
-  includeAllDiffs: true,
   includeReplayIds: true,
   includeMismatchFraction: true,
   includeReviews: true,
@@ -28,7 +26,6 @@ const FULLY_POPULATED_DIFF: Required<DiffsSummaryDiff> = {
   screenshotName: "home",
   mismatchFraction: 0.12345678,
   domDiffIds: "d1,d2",
-  isSelected: true,
   decision: "accepted",
   openComments: 2,
   baseReplayId: "base-1",
@@ -45,6 +42,7 @@ describe("formatDiffsSummaryCounts", () => {
         numIgnored: 0,
         numRejected: 1,
         numUnreviewed: 1,
+        numWithOpenComments: 2,
       }),
     ).toEqual([
       "numReplays:\t5",
@@ -53,6 +51,7 @@ describe("formatDiffsSummaryCounts", () => {
       "numIgnored:\t0",
       "numRejected:\t1",
       "numUnreviewed:\t1",
+      "numWithOpenComments:\t2",
     ]);
   });
 });
@@ -71,7 +70,6 @@ describe("buildDiffsSummaryHeader", () => {
       "screenshotName",
       "mismatchFraction",
       "domDiffIds",
-      "isSelected",
       "decision",
       "openComments",
       "baseReplayId",
@@ -119,7 +117,6 @@ describe("formatDiffRow", () => {
       "home",
       "0.12346",
       "d1,d2",
-      "true",
       "accepted",
       2,
       "base-1",
@@ -133,7 +130,7 @@ describe("formatDiffRow", () => {
         { replayDiffId: "rd-1", screenshotName: "home" },
         ALL_COLUMNS,
       ),
-    ).toEqual(["rd-1", "home", "", "", "false", "", 0, "", ""]);
+    ).toEqual(["rd-1", "home", "", "", "", 0, "", ""]);
   });
 
   test("gates the review columns independently of the other columns", () => {

@@ -22,6 +22,21 @@ type FetchFn = typeof globalThis.fetch;
 const SESSION_INFO_TIMEOUT_MS = 10_000;
 const LOOKUP_TIMEOUT_MS = 5_000;
 
+/**
+ * Capture reporting is off the response path (it runs under `ctx.waitUntil`), so a timeout
+ * here is not about latency the app can see — it is about not holding the request context
+ * open on a sidecar that will never answer. A refused connection rejects immediately, but a
+ * sidecar URL pointing at a host that drops packets rather than refusing them (a firewalled
+ * container or LAN address instead of loopback) would otherwise leave the POST pending until
+ * the runtime tears the context down, on every captured call.
+ *
+ * Generous relative to what it bounds: the sidecar is always loopback or the docker gateway
+ * and answers a single small event in single-digit milliseconds, so this only ever fires on
+ * a sidecar that is wedged or unreachable — never on one that is merely busy. Being generous
+ * costs nothing because {@link withTimeout} clears the timer the moment the POST settles.
+ */
+const CAPTURE_POST_TIMEOUT_MS = 2_000;
+
 /** POSTs capture events to the sidecar. Never rejects — reporting failures only warn (once). */
 export const postCaptureEvents = async (
   fetchFn: FetchFn,
@@ -30,21 +45,24 @@ export const postCaptureEvents = async (
 ): Promise<void> => {
   try {
     const payload: CaptureEventsPayload = { events };
-    const response = await fetchFn(`${sidecarUrl}${SIDECAR_EVENTS_PATH}`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        [SIDECAR_PROTOCOL_VERSION_HEADER]: SIDECAR_PROTOCOL_VERSION,
-      },
-      body: JSON.stringify(payload),
+    await withTimeout(CAPTURE_POST_TIMEOUT_MS, async (signal) => {
+      const response = await fetchFn(`${sidecarUrl}${SIDECAR_EVENTS_PATH}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          [SIDECAR_PROTOCOL_VERSION_HEADER]: SIDECAR_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify(payload),
+        signal,
+      });
+      if (!response.ok) {
+        warnOnce(
+          "sidecar-rejected",
+          `Meticulous sidecar rejected capture events (HTTP ${response.status}).`,
+        );
+      }
+      await response.arrayBuffer().catch(() => undefined);
     });
-    if (!response.ok) {
-      warnOnce(
-        "sidecar-rejected",
-        `Meticulous sidecar rejected capture events (HTTP ${response.status}).`,
-      );
-    }
-    await response.arrayBuffer().catch(() => undefined);
   } catch (error) {
     warnOnce(
       "sidecar-unreachable",
@@ -86,43 +104,47 @@ export const getReplaySessionInfo = async (
     frontendSessionId,
   )}`;
   try {
-    const response = await fetchFn(url, {
-      headers: {
-        [SIDECAR_PROTOCOL_VERSION_HEADER]: SIDECAR_PROTOCOL_VERSION,
-      },
-      signal: timeoutSignal(SESSION_INFO_TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      await response.arrayBuffer().catch(() => undefined);
-      // 4xx is the sidecar telling us something definitive — no such route (a record-only
-      // sidecar), or a protocol version it will not speak. Retrying cannot change either.
-      // 5xx may well be a sidecar still finding its feet, so leave it retryable.
-      if (response.status >= 500) {
+    return await withTimeout(SESSION_INFO_TIMEOUT_MS, async (signal) => {
+      const response = await fetchFn(url, {
+        headers: {
+          [SIDECAR_PROTOCOL_VERSION_HEADER]: SIDECAR_PROTOCOL_VERSION,
+        },
+        signal,
+      });
+      if (!response.ok) {
+        await response.arrayBuffer().catch(() => undefined);
+        // 4xx is the sidecar telling us something definitive — no such route (a record-only
+        // sidecar), or a protocol version it will not speak. Retrying cannot change either.
+        // 5xx may well be a sidecar still finding its feet, so leave it retryable.
+        if (response.status >= 500) {
+          warnOnce(
+            "replay-session-unreachable",
+            `Meticulous replay sidecar failed the replay session handshake (HTTP ${response.status}) — will retry on the next request.`,
+          );
+          return { outcome: "unreachable" };
+        }
         warnOnce(
-          "replay-session-unreachable",
-          `Meticulous replay sidecar failed the replay session handshake (HTTP ${response.status}) — will retry on the next request.`,
+          "replay-session-unavailable",
+          `Meticulous replay sidecar did not recognise the replay session route (HTTP ${response.status}) — outbound calls will not be mocked.`,
         );
-        return { outcome: "unreachable" };
+        return { outcome: "unavailable" };
       }
-      warnOnce(
-        "replay-session-unavailable",
-        `Meticulous replay sidecar did not recognise the replay session route (HTTP ${response.status}) — outbound calls will not be mocked.`,
-      );
-      return { outcome: "unavailable" };
-    }
-    const info = (await response.json()) as ReplaySessionInfoResponse;
-    if (info.found !== true) {
-      warnOnce(
-        "replay-session-unknown",
-        "Meticulous replay sidecar holds no mocks for this session — outbound calls will not be mocked.",
-      );
-      return { outcome: "unavailable" };
-    }
-    return {
-      outcome: "found",
-      clockAnchorMs:
-        typeof info.clockAnchorMs === "number" ? info.clockAnchorMs : undefined,
-    };
+      const info = (await response.json()) as ReplaySessionInfoResponse;
+      if (info.found !== true) {
+        warnOnce(
+          "replay-session-unknown",
+          "Meticulous replay sidecar holds no mocks for this session — outbound calls will not be mocked.",
+        );
+        return { outcome: "unavailable" };
+      }
+      return {
+        outcome: "found",
+        clockAnchorMs:
+          typeof info.clockAnchorMs === "number"
+            ? info.clockAnchorMs
+            : undefined,
+      };
+    });
   } catch (error) {
     warnOnce(
       "replay-session-unreachable",
@@ -135,8 +157,8 @@ export const getReplaySessionInfo = async (
 
 /**
  * Looks up a recorded response for one outbound call. Never rejects; returns undefined when
- * the sidecar could not be consulted, which callers treat the same as a miss (let the real
- * call through).
+ * the sidecar could not be consulted, which the caller fails the request on — an unanswered
+ * lookup is not evidence that a real call is safe.
  */
 export const postOutboundFetchLookup = async (
   fetchFn: FetchFn,
@@ -144,42 +166,58 @@ export const postOutboundFetchLookup = async (
   payload: OutboundFetchLookupRequest,
 ): Promise<OutboundFetchLookupResponse | undefined> => {
   try {
-    const response = await fetchFn(
-      `${sidecarUrl}${SIDECAR_REPLAY_OUTBOUND_FETCH_PATH}`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          [SIDECAR_PROTOCOL_VERSION_HEADER]: SIDECAR_PROTOCOL_VERSION,
+    return await withTimeout(LOOKUP_TIMEOUT_MS, async (signal) => {
+      const response = await fetchFn(
+        `${sidecarUrl}${SIDECAR_REPLAY_OUTBOUND_FETCH_PATH}`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            [SIDECAR_PROTOCOL_VERSION_HEADER]: SIDECAR_PROTOCOL_VERSION,
+          },
+          body: JSON.stringify(payload),
+          signal,
         },
-        body: JSON.stringify(payload),
-        signal: timeoutSignal(LOOKUP_TIMEOUT_MS),
-      },
-    );
-    if (!response.ok) {
-      warnOnce(
-        "replay-lookup-rejected",
-        `Meticulous replay sidecar rejected a mock lookup (HTTP ${response.status}).`,
       );
-      await response.arrayBuffer().catch(() => undefined);
-      return undefined;
-    }
-    return (await response.json()) as OutboundFetchLookupResponse;
+      if (!response.ok) {
+        warnOnce(
+          "replay-lookup-rejected",
+          `Meticulous replay sidecar rejected a mock lookup (HTTP ${response.status}).`,
+        );
+        await response.arrayBuffer().catch(() => undefined);
+        return undefined;
+      }
+      return (await response.json()) as OutboundFetchLookupResponse;
+    });
   } catch (error) {
     warnOnce(
       "replay-lookup-unreachable",
-      "Could not reach the Meticulous replay sidecar for a mock lookup — letting the real call through.",
+      "Could not reach the Meticulous replay sidecar for a mock lookup — the call will fail.",
       error,
     );
     return undefined;
   }
 };
 
-/** AbortSignal.timeout, or undefined where it is unavailable. */
-const timeoutSignal = (ms: number): AbortSignal | undefined => {
+/**
+ * Runs `send` under an abort signal that fires after `ms`, clearing the timer as soon as the
+ * call settles — including the response body read, which an abort must still cut short.
+ *
+ * Deliberately not `AbortSignal.timeout`: its timer cannot be cancelled, and a pending timer
+ * keeps workerd's request context alive. Bounding a 5ms POST at 2s would then pin the context
+ * for the remaining ~2s on every captured call — worse than the unbounded wait it exists to
+ * prevent, and on the healthy path rather than the broken one. `body-capture.ts` uses this
+ * same clearable shape, for the same reason.
+ */
+const withTimeout = async <T>(
+  ms: number,
+  send: (signal: AbortSignal) => Promise<T>,
+): Promise<T> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
   try {
-    return AbortSignal.timeout(ms);
-  } catch {
-    return undefined;
+    return await send(controller.signal);
+  } finally {
+    clearTimeout(timer);
   }
 };

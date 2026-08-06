@@ -22,7 +22,6 @@ export {
   DEFAULT_EXECUTION_OPTIONS,
   DEFAULT_SCREENSHOTTING_OPTIONS,
   BASE_SNIPPETS_URL,
-  COMMON_CHROMIUM_FLAGS,
   IS_METICULOUS_SUPER_USER,
 } from "./constants";
 export { getMeticulousVersion } from "./version.utils";

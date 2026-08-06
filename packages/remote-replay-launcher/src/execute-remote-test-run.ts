@@ -15,7 +15,6 @@ import type {
   ExecuteRemoteTestRunOptions,
   ExecuteRemoteTestRunResult,
 } from "./types";
-import { UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
 import { getPort } from "./url.utils";
 
 export { TunnelData } from "./types";
@@ -88,11 +87,11 @@ export const executeRemoteTestRun = async ({
     if (!result) {
       throw new Error("Expected either folder or zip to be provided!");
     }
-    const { uploadId } = result;
+    const { uploadId, archiveType } = result;
     companionAssetsInfo = {
       deploymentUploadId: uploadId,
       regex,
-      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+      archiveType,
     };
     logger.info(`Companion assets uploaded with ID: ${uploadId}`);
   }
@@ -183,6 +182,11 @@ export const executeRemoteTestRun = async ({
       case "Aborted":
         logger.info(
           `Test run aborted because a newer commit was pushed. A new test run will start shortly.`,
+        );
+        break;
+      case "Skipped":
+        logger.info(
+          `Test run skipped because no base test run was found. No sessions were executed.`,
         );
         break;
       case "ExecutionError":

@@ -7,8 +7,6 @@ import type {
 export interface DiffsSummaryColumns {
   /** Add the domDiffIds column. */
   includeDomDiffIds: boolean;
-  /** Return every diff, not just the selected subset; adds the isSelected column. */
-  includeAllDiffs: boolean;
   /** Add the base/head replay ID columns. */
   includeReplayIds: boolean;
   /** Add the mismatchFraction column. */
@@ -27,6 +25,7 @@ export const formatDiffsSummaryCounts = (
   `numIgnored:\t${counts.numIgnored}`,
   `numRejected:\t${counts.numRejected}`,
   `numUnreviewed:\t${counts.numUnreviewed}`,
+  `numWithOpenComments:\t${counts.numWithOpenComments}`,
 ];
 
 const fmtMismatch = (v: number | undefined): string =>
@@ -39,7 +38,6 @@ export const buildDiffsSummaryHeader = (
   const fields = ["replayDiffId", "screenshotName"];
   if (columns.includeMismatchFraction) fields.push("mismatchFraction");
   if (columns.includeDomDiffIds) fields.push("domDiffIds");
-  if (columns.includeAllDiffs) fields.push("isSelected");
   if (columns.includeReviews) fields.push("decision", "openComments");
   if (columns.includeReplayIds) fields.push("baseReplayId", "headReplayId");
   return fields;
@@ -54,7 +52,6 @@ export const formatDiffRow = (
   if (columns.includeMismatchFraction)
     fields.push(fmtMismatch(diff.mismatchFraction));
   if (columns.includeDomDiffIds) fields.push(diff.domDiffIds ?? "");
-  if (columns.includeAllDiffs) fields.push(String(diff.isSelected ?? false));
   if (columns.includeReviews)
     fields.push(diff.decision ?? "", diff.openComments ?? 0);
   if (columns.includeReplayIds)

@@ -101,6 +101,11 @@ export const assertTestRunComplete = (
   status: TestRunStatus,
   { resultName = "results" }: { resultName?: string } = {},
 ): void => {
+  if (status === "Skipped") {
+    throw new CliUserError(
+      `Test run ${testRunId} was skipped (no base test run was found, so nothing ran); ${resultName} are not available.`,
+    );
+  }
   if (isTestRunFailed(status)) {
     throw new CliUserError(
       `Test run ${testRunId} finished unsuccessfully (status: ${status}).`,

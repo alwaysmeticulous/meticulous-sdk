@@ -15,22 +15,27 @@ type PollResult = {
 
 /**
  * Polls by repeatedly calling `retryFn` until a test run is found or the timeout is reached.
- * If the timeout is reached without finding a test run, calls `fallbackFn` with mustHaveBase: false.
+ * If the timeout is reached without finding a test run, calls `fallbackFn` (typically with
+ * mustHaveBase: false) to create the test run without a base. For user-visible PR runs the
+ * backend will conclude that run as `Skipped` without executing sessions.
  */
 export const pollWhileBaseNotFound = async ({
   initialResult,
   retryFn,
   fallbackFn,
-  fallbackLogMessage = "Base test run not found, proceeding without it.",
+  fallbackLogMessage = "Base test run not found. Creating the test run without a base; no sessions will be executed.",
 }: {
   initialResult: PollResult;
   retryFn: () => Promise<PollResult>;
   fallbackFn: () => Promise<PollResult>;
   /**
-   * Logged just before `fallbackFn` runs. Callers whose fallback does not
-   * actually proceed without a base (e.g. versionLookup manifests, which fail
-   * instead) should override this so the log doesn't misreport a hard failure
-   * as a successful degraded path.
+   * Logged just before `fallbackFn` runs. The default states that the test run
+   * is created without a base and that no sessions will be executed (user-visible
+   * PR runs conclude as `Skipped`). Main-branch / session-pool base runs can still
+   * execute; callers on those paths may override this message. Callers whose
+   * fallback does not create a base-less run (e.g. versionLookup manifests, which
+   * fail instead) should override this so the log doesn't misreport a hard
+   * failure as success.
    */
   fallbackLogMessage?: string;
 }): Promise<PollResult> => {

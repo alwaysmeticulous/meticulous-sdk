@@ -236,7 +236,7 @@ describe("uploadContainer", () => {
     vi.useRealTimers();
   });
 
-  it("should proceed without base after timeout", async () => {
+  it("should create the test run without a base after timeout", async () => {
     vi.useFakeTimers();
 
     let callCount = 0;

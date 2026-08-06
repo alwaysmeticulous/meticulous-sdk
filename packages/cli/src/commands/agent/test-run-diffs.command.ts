@@ -36,6 +36,7 @@ interface Options {
   includeAllDiffs: boolean;
   onlyUnreviewed: boolean;
   onlyRejected: boolean;
+  onlyWithComments: boolean;
   orderByReplayDiffs: boolean;
   counts: boolean;
   json: boolean;
@@ -61,6 +62,7 @@ const handler = async ({
   includeAllDiffs,
   onlyUnreviewed,
   onlyRejected,
+  onlyWithComments,
   orderByReplayDiffs,
   counts,
   json,
@@ -68,17 +70,6 @@ const handler = async ({
 }: Options): Promise<void> => {
   if (testRunId != null && commitSha != null) {
     throw new CliUserError("Pass either --testRunId or --commitSha, not both.");
-  }
-
-  // A diff can't be both still awaiting review and rejected, so requesting both
-  // can only ever match nothing. Checked here rather than via yargs `conflicts`:
-  // both flags default to false, and yargs' conflict check fires on the option
-  // merely being *present* in argv (`!== undefined`) — true for every run,
-  // defaulted or not — so `conflicts` would reject every invocation.
-  if (onlyUnreviewed && onlyRejected) {
-    throw new CliUserError(
-      "--onlyUnreviewed and --onlyRejected cannot both be set — a diff can't be both unreviewed and rejected.",
-    );
   }
 
   // --counts reports fixed aggregate totals from a dedicated endpoint that takes
@@ -97,6 +88,7 @@ const handler = async ({
         [includeReviewDecisions, "--includeReviewDecisions"],
         [onlyUnreviewed, "--onlyUnreviewed"],
         [onlyRejected, "--onlyRejected"],
+        [onlyWithComments, "--onlyWithComments"],
       ] as const
     )
       .filter(([enabled]) => enabled)
@@ -143,16 +135,10 @@ const handler = async ({
     status = run.status;
   }
 
-  // Decision filters span every matching difference (selected or not), so they
-  // imply --includeAllDiffs: the isSelected column is included to tell them
-  // apart, matching the backend, which resolves the same implication.
-  const includeAllDiffsResolved =
-    includeAllDiffs || onlyUnreviewed || onlyRejected;
   const includeReviewsResolved = includeReviews || includeReviewDecisions;
 
   const columns = {
     includeDomDiffIds,
-    includeAllDiffs: includeAllDiffsResolved,
     includeReplayIds,
     includeMismatchFraction,
     includeReviews: includeReviewsResolved,
@@ -212,11 +198,12 @@ const handler = async ({
     includeReplayIds,
     includeMismatchFraction,
     includeDomDiffIds,
-    includeAllDiffs: includeAllDiffsResolved,
+    includeAllDiffs,
     orderByReplayDiffs,
     includeReviews: includeReviewsResolved,
     onlyUnreviewed,
     onlyRejected,
+    onlyWithComments,
   };
 
   let response = await getTestRunDiffsSummary(
@@ -290,9 +277,17 @@ const handler = async ({
     }
   }
 
+  if (response.selectionApplied) {
+    logNotice(
+      "Only selected representative diffs are included. Set includeAllDiffs to true to return all diffs.",
+    );
+  }
+
   // Summaries on stderr regardless of --json (which only changes stdout).
   if (data.length === 0) {
-    logNotice(`Test run ${resolvedTestRunId} does not have diffs.`);
+    logNotice(
+      `Test run ${resolvedTestRunId} does not have any diffs matching the query.`,
+    );
     return;
   }
 
@@ -306,7 +301,7 @@ const handler = async ({
 export const testRunDiffsCommand: CommandModule<unknown, Options> = {
   command: "test-run-diffs",
   describe:
-    "Get the list of screenshot diffs for a given test run (by default a selected subset of representative diffs in priority order). Outputs a priority-ordered TSV table with columns replayDiffId and screenshotName plus the requested additional columns. Pass --counts to print just the totals instead of the list.",
+    "Get the list of screenshot diffs for a given test run (by default all diffs when there are at most five; above that, a selected representative subset in priority order). Outputs a priority-ordered TSV table with columns replayDiffId and screenshotName plus the requested additional columns. Pass --counts to print just the totals instead of the list.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     testRunId: {
@@ -328,19 +323,25 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     includeAllDiffs: {
       boolean: true,
       description:
-        "Output all screenshot diffs instead of only the selected representative subset; adds an isSelected column.",
+        "Output all screenshot diffs instead of only the selected representative subset.",
       default: false,
     },
     onlyUnreviewed: {
       boolean: true,
       description:
-        "Output only screenshot diffs still awaiting review (decision unreviewed), across every difference rather than just the selected subset — i.e. everything left to review. Implies --includeAllDiffs, so the isSelected column is included to tell selected from unselected differences.",
+        "Output only screenshot diffs still awaiting review (decision unreviewed). The --only* flags are additive: when several are set, diffs matching any of them are output, so combining them widens the output rather than narrowing it.",
       default: false,
     },
     onlyRejected: {
       boolean: true,
       description:
-        "Output only screenshot diffs rejected during review (decision rejected), across every difference rather than just the selected subset — i.e. every diff already marked rejected. Implies --includeAllDiffs, so the isSelected column is included to tell selected from unselected differences.",
+        "Output only screenshot diffs rejected during review (decision rejected). The --only* flags are additive: when several are set, diffs matching any of them are output, so combining them widens the output rather than narrowing it.",
+      default: false,
+    },
+    onlyWithComments: {
+      boolean: true,
+      description:
+        "Output only screenshot diffs with one or more open review comments. The --only* flags are additive: when several are set, diffs matching any of them are output, so combining them widens the output rather than narrowing it.",
       default: false,
     },
     includeReplayIds: {
@@ -388,7 +389,7 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     counts: {
       boolean: true,
       description:
-        "Get the aggregate diff counts for a given test run instead of the per-diff list: number of replays, number of differences, and the PR review-decision breakdown (approved/ignored/rejected/unreviewed). Cannot be combined with the list/filter flags, only with --json.",
+        "Get the aggregate diff counts for a given test run instead of the per-diff list: number of replays, number of differences, the PR review-decision breakdown (approved/ignored/rejected/unreviewed), and the number of differences with open review comments. Cannot be combined with the list/filter flags, only with --json.",
       default: false,
     },
   },

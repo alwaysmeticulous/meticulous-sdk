@@ -2,9 +2,10 @@ import * as http from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { type MeticulousExecutionContext, withMeticulous } from "../index";
-import type {
-  OutboundFetchLookupRequest,
-  OutboundFetchLookupResponse,
+import {
+  METICULOUS_PASSTHROUGH_HEADER,
+  type OutboundFetchLookupRequest,
+  type OutboundFetchLookupResponse,
 } from "../protocol";
 
 /**
@@ -138,6 +139,7 @@ const callWorker = async ({
   omitSessionId = false,
   requestBody,
   readClock = false,
+  passthroughHeader = false,
 }: {
   sidecarUrlHeader?: string;
   sessionId?: string;
@@ -145,12 +147,17 @@ const callWorker = async ({
   omitSessionId?: boolean;
   requestBody?: string;
   readClock?: boolean;
+  /** Marks the app's outbound call as one that must stay live during replay. */
+  passthroughHeader?: boolean;
 } = {}): Promise<{ status: number; body: string; clockNow: number }> => {
   const handler = withMeticulous({
     fetch: async () => {
       const upstream = await fetch(`${upstreamUrl}/items`, {
         method: requestBody === undefined ? "GET" : "POST",
         ...(requestBody === undefined ? {} : { body: requestBody }),
+        ...(passthroughHeader
+          ? { headers: { [METICULOUS_PASSTHROUGH_HEADER]: "true" } }
+          : {}),
       });
       const text = await upstream.text();
       return new Response(
@@ -211,16 +218,38 @@ describe("withMeticulous in replay mode", () => {
     });
   });
 
-  it("passes the real call through on a miss", async () => {
-    lookupHandler = () => ({ outcome: "passthrough" });
+  it("fails the call on a miss instead of reaching the real service", async () => {
+    lookupHandler = () => ({ outcome: "no-mock" });
 
-    const result = await callWorker({ sessionId: "miss-1" });
+    await expect(callWorker({ sessionId: "miss-1" })).rejects.toThrow(
+      /no recorded response for GET .*\/items \(session miss-1\)/,
+    );
+    expect(upstreamHits).toBe(0);
+  });
 
-    // Recordings are legitimately incomplete (anything the app had cached is never
-    // captured), so a miss must reach the real service rather than fail.
+  it("lets a call marked with the passthrough header stay live", async () => {
+    lookupHandler = () => ({ outcome: "no-mock" });
+
+    const result = await callWorker({
+      sessionId: "passthrough-1",
+      passthroughHeader: true,
+    });
+
+    // The escape hatch for a call the recording can never cover: not looked up, not failed.
     expect(result.status).toBe(201);
     expect(result.body).toBe('{"from":"real-upstream"}');
     expect(upstreamHits).toBe(1);
+    expect(lookups).toHaveLength(0);
+  });
+
+  it("fails the call when the sidecar cannot answer the lookup", async () => {
+    // An unanswered lookup is not evidence that a real call is safe.
+    unavailableRoutes = new Set(["/v1/replay/outbound-fetch"]);
+
+    await expect(callWorker({ sessionId: "lookup-dead-1" })).rejects.toThrow(
+      /did not answer a mock lookup/,
+    );
+    expect(upstreamHits).toBe(0);
   });
 
   it("passes through when the sidecar returns an unrecognised outcome", async () => {
@@ -229,6 +258,17 @@ describe("withMeticulous in replay mode", () => {
       ({ outcome: "something-new" }) as unknown as OutboundFetchLookupResponse;
 
     const result = await callWorker({ sessionId: "unknown-outcome-1" });
+
+    expect(result.status).toBe(201);
+    expect(upstreamHits).toBe(1);
+  });
+
+  it("still passes through against a sidecar that predates no-mock", async () => {
+    // Backwards compatibility: an older sidecar answers a miss with `passthrough`, and
+    // degrading to the old fail-open behaviour beats breaking the app.
+    lookupHandler = () => ({ outcome: "passthrough" });
+
+    const result = await callWorker({ sessionId: "old-passthrough-1" });
 
     expect(result.status).toBe(201);
     expect(upstreamHits).toBe(1);
@@ -348,7 +388,7 @@ describe("withMeticulous in replay mode", () => {
     expect(result.status).toBe(200);
   });
 
-  it("passes through rather than failing on an unrepresentable mock", async () => {
+  it("fails rather than passing through on an unrepresentable mock", async () => {
     lookupHandler = () => ({
       outcome: "mock",
       statusCode: 999,
@@ -356,10 +396,10 @@ describe("withMeticulous in replay mode", () => {
       headers: {},
     });
 
-    const result = await callWorker({ sessionId: "bad-status-1" });
-
-    expect(result.status).toBe(201);
-    expect(upstreamHits).toBe(1);
+    await expect(callWorker({ sessionId: "bad-status-1" })).rejects.toThrow(
+      /recorded response \(status 999\) cannot be represented/,
+    );
+    expect(upstreamHits).toBe(0);
   });
 
   it("serves a null-body status without a body", async () => {

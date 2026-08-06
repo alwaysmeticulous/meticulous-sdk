@@ -1,5 +1,17 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.323.0
+
+### Minor Changes
+
+- [#11692](https://github.com/alwaysmeticulous/meticulous/pull/11692) [`8c0d99a`](https://github.com/alwaysmeticulous/meticulous/commit/8c0d99a58fd15783527a36440fce952532c31cc9) Thanks [@dennysem](https://github.com/dennysem)! - Replay is now hermetic: an outgoing `fetch` the recording does not cover fails with a `[backend-recorder] workerd replay: …` error instead of quietly reaching the real service, matching the Node backend recorder's http/undici mocks. Set the `meticulous-passthrough` header to `"true"` on a request that must stay live during a replay.
+
+### Patch Changes
+
+- [#11817](https://github.com/alwaysmeticulous/meticulous/pull/11817) [`a4c293a`](https://github.com/alwaysmeticulous/meticulous/commit/a4c293a697d5eb9c15f33e1d38dbaa1e4a6e2fdc) Thanks [@dennysem](https://github.com/dennysem)! - Bound the shim's capture-event POST to the sidecar with a 2s timeout, so a sidecar that drops packets rather than refusing them cannot hold the worker's request context open on every captured call. The replay lookups were already bounded; record-mode reporting was not.
+
+  All three sidecar calls now use a clearable timer rather than `AbortSignal.timeout`, whose timer cannot be cancelled and so keeps the worker's request context alive for the full timeout even after the call has settled.
+
 ## 2.321.0
 
 ### Minor Changes

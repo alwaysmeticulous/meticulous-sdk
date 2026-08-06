@@ -121,7 +121,11 @@ const redactLaunchCredentials = (
   }
 };
 
-export type AgenticRunResultCaseOutcome = "pass" | "fail" | "blocked";
+export type AgenticRunResultCaseOutcome =
+  | "pass"
+  | "fail"
+  | "blocked"
+  | "skipped";
 
 export type AgenticRunResultCaseTag = "happy-path" | "edge-case" | "regression";
 
@@ -130,7 +134,10 @@ export type AgenticRunResultCaseTag = "happy-path" | "edge-case" | "regression";
  * outcomes: any failed step fails the case, otherwise any blocked step blocks
  * it, otherwise it passes.
  */
-export type AgenticRunStepOutcome = AgenticRunResultCaseOutcome;
+export type AgenticRunStepOutcome = Exclude<
+  AgenticRunResultCaseOutcome,
+  "skipped"
+>;
 
 export type AgenticRunStepKind =
   | "navigate"
@@ -141,10 +148,9 @@ export type AgenticRunStepKind =
 
 /**
  * The region of a step's screenshot the reviewer should focus on, in CSS
- * pixels relative to the top-left of the (full-page) screenshot. Inferred by
- * the worker from the bounding box of the element the test last acted on
- * (clicked, filled, …) before the screenshot was taken — never supplied by the
- * model.
+ * pixels relative to the top-left of the viewport screenshot. Inferred by the
+ * worker from a live DOM element's bounding box — never supplied as coordinates
+ * by the model.
  */
 export interface AgenticRunHighlightRegion {
   x: number;
@@ -169,17 +175,36 @@ export interface AgenticRunResultStep {
    * `artifactDownloadUrls` GraphQL field once the worker has uploaded it.
    */
   screenshotPath?: string;
-  /** Where on the screenshot the acted-on element was, when the worker knows. */
+  /** SHA-256 of the screenshot bytes, used to identify duplicate evidence. */
+  screenshotContentHash?: string;
+  /** Worker-measured element the reviewer should focus on, when available. */
   highlightRegion?: AgenticRunHighlightRegion;
+  /**
+   * Worker-captured viewport immediately before the action associated with this
+   * step. Kept alongside `screenshotPath`, which shows the post-action state.
+   */
+  actionScreenshotPath?: string;
+  /** SHA-256 of the pre-action screenshot bytes. */
+  actionScreenshotContentHash?: string;
+  /** Where the acted-on element was in `actionScreenshotPath`. */
+  actionHighlightRegion?: AgenticRunHighlightRegion;
 }
 
 /**
  * A single user flow the agent exercised, with its outcome and the sessions it
  * recorded while running it. One agentic run produces many of these.
  */
+export type AgenticCaseProvenance = "new" | "reused" | "repaired";
+
 export interface AgenticRunResultCase {
-  /** Short human-readable name of the flow, e.g. "Sign up with email". */
+  /** Short human-readable name of the flow, unique within this run. */
   title: string;
+  /**
+   * How this run came by the case: authored fresh, inherited and re-run
+   * unchanged, or inherited and edited. Derived by the worker from the case
+   * file's hash — never declared by the agent.
+   */
+  provenance?: AgenticCaseProvenance;
   /** The kind of flow this case exercises. */
   tag?: AgenticRunResultCaseTag;
   /** Short human-readable name shared by closely related cases. */
@@ -187,6 +212,11 @@ export interface AgenticRunResultCase {
   /** The steps the agent took, in order. */
   steps: AgenticRunResultStep[];
   outcome: AgenticRunResultCaseOutcome;
+  /**
+   * Concise user-visible account of what happened and, for a non-passing case,
+   * the concrete reason. Optional for result blobs written by older workers.
+   */
+  outcomeSummary?: string;
   /** Sessions recorded while running this case. */
   sessionIds: string[];
   /** Why this case was worth testing, e.g. which changed code it targets. */
@@ -205,9 +235,8 @@ export interface AgenticRunSummaryTakeaway {
   text: string;
 }
 
-/** Versioned, agent-written summary of the completed run. */
+/** Agent-written summary of the completed run. */
 export interface AgenticRunSummary {
-  version: 1;
   takeaways: AgenticRunSummaryTakeaway[];
 }
 
@@ -265,9 +294,8 @@ export interface AgenticRunCaseTrace extends AgenticRunTrace {
   caseTitle: string;
 }
 
-/** Versioned transcript of the planning agent and each independently-run case agent. */
+/** Transcript of the planning agent and each independently-run case agent. */
 export interface AgenticRunTraces {
-  version: 1;
   planner: AgenticRunTrace;
   cases: AgenticRunCaseTrace[];
 }
@@ -303,18 +331,21 @@ export interface AgenticRunCoverage {
   unobservedFiles: string[];
 }
 
-export interface ReportAgenticRunResultParams extends ProjectIdentifier {
+/**
+ * The `{ cases, coverage, runMetadata, traces, summary }` document stored in S3
+ * for one run — everything about a run that is too big to belong on its row.
+ * Uploaded by the worker straight to a presigned URL; read back by the webapp
+ * via the run's `resultBlobUrl`, and by the backend for its coverage.
+ */
+export interface AgenticRunResultBlob {
   /**
-   * The agentic run id the backend minted at launch and passed to the worker,
-   * echoed back so the backend updates the exact run record. Optional: a worker
-   * that doesn't have it falls back to matching by project + commit server-side.
+   * Format version of this document, so a reader holding only the bytes can
+   * tell whether it can parse them. `AGENTIC_RESULT_VERSION` in
+   * `@alwaysmeticulous/common-utils` is the current value and documents when to
+   * bump it; absent means the blob predates versioning and reads as version 1.
    */
-  agenticRunId?: string;
-  /** Every session produced across the run (the union of all cases' sessions). */
-  sessionIds: string[];
+  version: number;
   cases: AgenticRunResultCase[];
-  appUrl: string;
-  commitSha: string;
   /** Edit-coverage for the run; omitted when coverage could not be measured. */
   coverage?: AgenticRunCoverage;
   /** How the run itself executed (timing, model, iterations), when known. */
@@ -336,17 +367,67 @@ export interface ReportAgenticRunResultResponse {
   recorded?: boolean;
 }
 
-export const reportAgenticRunResult = async ({
+export interface RequestAgenticResultUploadParams extends ProjectIdentifier {
+  /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
+  agenticRunId: string;
+  /** Size in bytes of the blob about to be PUT, signed into the URL. */
+  size: number;
+}
+
+export interface RequestAgenticResultUploadResponse {
+  uploadUrl: string;
+}
+
+/**
+ * Requests a presigned URL for the run's result blob, so the worker PUTs the
+ * payload straight to S3 rather than sending it through the API. The key is
+ * derived server-side from the run, so the caller never names its destination.
+ * Followed by {@link completeAgenticRunResult} once the PUT succeeds.
+ */
+export const requestAgenticResultUpload = async ({
   client,
   projectId,
   ...body
-}: ReportAgenticRunResultParams & {
+}: RequestAgenticResultUploadParams & {
+  client: MeticulousClient;
+}): Promise<RequestAgenticResultUploadResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestAgenticResultUploadResponse }
+  >(
+    "agentic-session-generation/request-result-upload",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export interface CompleteAgenticRunResultParams extends ProjectIdentifier {
+  /** The agentic run id the blob was keyed on when its upload was presigned. */
+  agenticRunId: string;
+  /** Every session produced across the run (the union of all cases' sessions). */
+  sessionIds: string[];
+}
+
+/**
+ * Points a run at the result blob the worker has already uploaded. Everything
+ * else the run records — its commit and app URL — the backend wrote at launch.
+ */
+export const completeAgenticRunResult = async ({
+  client,
+  projectId,
+  ...body
+}: CompleteAgenticRunResultParams & {
   client: MeticulousClient;
 }): Promise<ReportAgenticRunResultResponse> => {
   const { data } = await client.post<
     typeof body,
     { data: ReportAgenticRunResultResponse }
-  >("agentic-session-generation/result", body, projectIdQuery(projectId));
+  >(
+    "agentic-session-generation/complete-result",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
@@ -385,6 +466,42 @@ export const isAgenticRunCancelled = async ({
       agenticRunId,
     },
   });
+  return data;
+};
+
+export interface RequestAgenticTestcasesUploadParams extends ProjectIdentifier {
+  /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
+  agenticRunId: string;
+  /** Bundle size in bytes. */
+  size: number;
+}
+
+export interface RequestAgenticTestcasesUploadResponse {
+  uploadUrl: string;
+}
+
+/**
+ * Requests a presigned upload URL for the run's testcase bundle — the verbatim
+ * code of every testcase, which the next run on the same PR inherits as
+ * its baseline. Deliberately takes no path: there is exactly one bundle per run
+ * and the backend derives its key, so no part of the destination is
+ * caller-controlled.
+ */
+export const requestAgenticTestcasesUpload = async ({
+  client,
+  projectId,
+  ...body
+}: RequestAgenticTestcasesUploadParams & {
+  client: MeticulousClient;
+}): Promise<RequestAgenticTestcasesUploadResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestAgenticTestcasesUploadResponse }
+  >(
+    "agentic-session-generation/request-testcases-upload",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 

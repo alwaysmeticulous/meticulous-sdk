@@ -28,7 +28,6 @@ import {
 } from "./docker-utils";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 import type { CompanionAssetsOptions } from "./types";
-import { UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
 
 export interface UploadContainerOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
@@ -195,12 +194,10 @@ export const uploadContainer = async ({
         "Expected one of folder, zip, or pathInImage to be provided!",
       );
     }
-    // Folder uploads stream multipart `tar.d`; the zip path uses the legacy
-    // single-part upload stored under the `zip` key. archiveType must match.
     companionAssetsInfo = {
       deploymentUploadId: result.uploadId,
       regex,
-      archiveType: folder ? UPLOAD_ARCHIVE_FILE_FORMAT : "zip",
+      archiveType: result.archiveType,
     };
     logProgress(`Companion assets uploaded with ID: ${result.uploadId}`);
   }
@@ -233,7 +230,9 @@ export const uploadContainer = async ({
         mustHaveBase: true,
       }),
     fallbackFn: () => {
-      logProgress("No base test run found, creating test run without base");
+      logProgress(
+        "No base test run found. Creating the test run without a base; no sessions will be executed.",
+      );
       return completeContainerUpload({
         ...completeContainerArgs,
         mustHaveBase: false,
