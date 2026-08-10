@@ -1,5 +1,56 @@
 # @alwaysmeticulous/cli
 
+## 2.324.0
+
+### Minor Changes
+
+- [#11766](https://github.com/alwaysmeticulous/meticulous/pull/11766) [`c93b469`](https://github.com/alwaysmeticulous/meticulous/commit/c93b4698a4d77668910f140e9e69b3e53c601dbf) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Let agents reject a screenshot diff through the client, agent CLI, and MCP server. A rejection is a real rejection: it goes into the same review ledger a human rejection goes into, blocks the pull request identically, and replaces any earlier decision on the diff. It requires a review comment at approximate image coordinates explaining why, and the test run must belong to a pull request.
+
+  `ignore-diff` records an agent's view that a diff is expected variation as a comment only — it deliberately decides nothing, since a non-blocking `ignored` would let any holder of a project write token green their own pull request. The diff stays unreviewed and the check stays pending until a human decides.
+
+  Agents can also start and reply to comment threads independently of a decision, and `diff-comments` gains an `isAgentAuthored` attribute — the only thing distinguishing an agent's comment from a human's when there is no author name.
+
+- [#11880](https://github.com/alwaysmeticulous/meticulous/pull/11880) [`73ee2cd`](https://github.com/alwaysmeticulous/meticulous/commit/73ee2cd3f19e577f1f054de45c838b3780ea1998) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - The diffs-summary endpoint (`getTestRunDiffsSummary` / CLI `test-run-diffs` / MCP `get_test_run_diffs`) no longer supports `retrigger` — `DiffsSummaryOptions.retrigger` is removed. `DiffsSummaryFailureReason` gains `test-run-not-ready` / `test-run-unavailable` / `computation-error` in place of the old generic `FAILED`, so a `failed` response's `reason` says why rather than just how the underlying workflow ended. A `failed` response never has a computation still running behind it, so stop polling on one; `test-run-not-ready` (the test run hadn't finished in time) is the one reason worth asking again about later.
+
+- [#11906](https://github.com/alwaysmeticulous/meticulous/pull/11906) [`4002026`](https://github.com/alwaysmeticulous/meticulous/commit/4002026f54633115bdee622980790c66f7e2f57d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add an optional session duration (in seconds) to the agent sessions listing via `--includeDurationSeconds`. Omitted (empty in TSV) for sessions where a duration couldn't be computed, e.g. recorded before this was tracked.
+
+- [#11891](https://github.com/alwaysmeticulous/meticulous/pull/11891) [`f51f89a`](https://github.com/alwaysmeticulous/meticulous/commit/f51f89ad7775dbee23e9d33cb26e5f0500e5c1ba) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add optional user-event and URL-visit counts to the agent sessions listing.
+
+- [#11970](https://github.com/alwaysmeticulous/meticulous/pull/11970) [`f907b09`](https://github.com/alwaysmeticulous/meticulous/commit/f907b0921c2d11f9d11205b8dca160e163d2e99b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Report `agent test-run-diffs` results as "16 screenshot diffs", with singulars/plurals inferred, and name the pre-selection total ("Including 5 representative screenshot diffs out of 42 total") whenever representative selection dropped diffs. The diffs summary response carries the new `numMatchingDiffs` count that total comes from.
+
+### Patch Changes
+
+- [#11905](https://github.com/alwaysmeticulous/meticulous/pull/11905) [`71dae8b`](https://github.com/alwaysmeticulous/meticulous/commit/71dae8b638e96c9c8f0c642f79df2c89ceb4b4ea) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Review follow-ups for the agent project-selection commands:
+  - `auth get-project`/`get_project` and the empty-result hints now distinguish an auto-picked project (`source: "auto-picked"`, when nothing is stored but it's your only accessible project) from a stored default (`source: "user-default"`).
+  - `auth whoami`/`whoami` now reports `authenticatedVia: "test-run-token"` for a test-run API token, distinct from `"project-api-token"`.
+  - `agent js-coverage --latestForProject` and `get_project_js_coverage` now get the same "searched project" guidance on an empty result as `agent sessions`/`get_sessions` and `agent test-run-for-commit`/`get_test_run_for_commit`; the latter's empty-result guidance now also names the project on a filtered, still-empty `agent sessions`/`get_sessions` call only when no filter argument was given.
+  - Fixed the CLI project-selection hint occasionally giving the opposite advice (naming the wrong credential kind) on a transient lookup failure, by resolving the selection through a single request instead of two.
+  - An empty or whitespace-only `--project`/`project` argument is now treated as absent (matching the backend), instead of suppressing the empty-result hint.
+  - A `404` from a route this CLI expects but an older backend doesn't have yet is no longer misreported as "project not found".
+
+- [#11890](https://github.com/alwaysmeticulous/meticulous/pull/11890) [`daf7259`](https://github.com/alwaysmeticulous/meticulous/commit/daf72590468aee89a73dea858d003efe41385b75) Thanks [@claude](https://github.com/apps/claude)! - Bump the pinned `puppeteer-core` version from `24.14.0` to `24.42.0`, so the published packages install Chrome for Testing `147.0.7727.57` instead of `138.0.7204.157`. This matches the Chrome version already used by Meticulous's cloud replay infrastructure, keeping local recording/replay/debugging behavior consistent with cloud test runs.
+
+- [#11905](https://github.com/alwaysmeticulous/meticulous/pull/11905) [`71dae8b`](https://github.com/alwaysmeticulous/meticulous/commit/71dae8b638e96c9c8f0c642f79df2c89ceb4b4ea) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Project-scoped commands that come back empty (`agent test-run-for-commit`, `agent sessions`, and every command that resolves a test run from a commit) now name the project they searched and how to change it, since an unexpectedly empty result is usually the wrong project rather than missing data.
+
+  `auth get-project` and `auth set-project` gained `--json`, and `auth whoami --json` now reports the token's project under `selectedProject` (the key its OAuth output already used, and the one the matching MCP tool uses) — `pinnedProject` remains as a deprecated alias. The four `auth` commands now resolve through `agent/whoami`, `agent/projects` and `agent/project` rather than the `oauth/*` endpoints the CLI also uses internally, so each command is one request; their output is unchanged.
+
+- [#11877](https://github.com/alwaysmeticulous/meticulous/pull/11877) [`b1f6156`](https://github.com/alwaysmeticulous/meticulous/commit/b1f61565c15626c704e6892cab658c4059785297) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add agent CLI and client support for retrieving builtin and custom non-visual check reports.
+
+- Updated dependencies [[`71dae8b`](https://github.com/alwaysmeticulous/meticulous/commit/71dae8b638e96c9c8f0c642f79df2c89ceb4b4ea), [`c93b469`](https://github.com/alwaysmeticulous/meticulous/commit/c93b4698a4d77668910f140e9e69b3e53c601dbf), [`b89a9e8`](https://github.com/alwaysmeticulous/meticulous/commit/b89a9e82013b34552b044443b80e65c297f8c487), [`2f1c1cc`](https://github.com/alwaysmeticulous/meticulous/commit/2f1c1cc6dce21dd4ac39b58936ed0993e944e1f5), [`daf7259`](https://github.com/alwaysmeticulous/meticulous/commit/daf72590468aee89a73dea858d003efe41385b75), [`e9d9a7a`](https://github.com/alwaysmeticulous/meticulous/commit/e9d9a7a74abac6468e18ec347684f421ddfcab12), [`73ee2cd`](https://github.com/alwaysmeticulous/meticulous/commit/73ee2cd3f19e577f1f054de45c838b3780ea1998), [`38e5c1a`](https://github.com/alwaysmeticulous/meticulous/commit/38e5c1a36ee1c47d0adad1c92a5f7c2dd08a26d6), [`297a0f5`](https://github.com/alwaysmeticulous/meticulous/commit/297a0f57c2acbb26e48c8f346b463f240212941f), [`3d94e23`](https://github.com/alwaysmeticulous/meticulous/commit/3d94e23e750a448db9e3270db62737e8f4af9a3e), [`b1f6156`](https://github.com/alwaysmeticulous/meticulous/commit/b1f61565c15626c704e6892cab658c4059785297), [`71dae8b`](https://github.com/alwaysmeticulous/meticulous/commit/71dae8b638e96c9c8f0c642f79df2c89ceb4b4ea), [`4002026`](https://github.com/alwaysmeticulous/meticulous/commit/4002026f54633115bdee622980790c66f7e2f57d), [`4d402a0`](https://github.com/alwaysmeticulous/meticulous/commit/4d402a0dba16ed5d9cbc1df300e2d498cd974a1b), [`f51f89a`](https://github.com/alwaysmeticulous/meticulous/commit/f51f89ad7775dbee23e9d33cb26e5f0500e5c1ba), [`38e5c1a`](https://github.com/alwaysmeticulous/meticulous/commit/38e5c1a36ee1c47d0adad1c92a5f7c2dd08a26d6), [`f907b09`](https://github.com/alwaysmeticulous/meticulous/commit/f907b0921c2d11f9d11205b8dca160e163d2e99b), [`b1f6156`](https://github.com/alwaysmeticulous/meticulous/commit/b1f61565c15626c704e6892cab658c4059785297)]:
+  - @alwaysmeticulous/client@2.324.0
+  - @alwaysmeticulous/common@2.324.0
+  - @alwaysmeticulous/record@2.324.0
+  - @alwaysmeticulous/sdk-bundles-api@2.324.0
+  - @alwaysmeticulous/api@2.324.0
+  - @alwaysmeticulous/session-filters@2.324.0
+  - @alwaysmeticulous/debug-workspace@2.324.0
+  - @alwaysmeticulous/downloading-helpers@2.324.0
+  - @alwaysmeticulous/remote-replay-launcher@2.324.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.324.0
+  - @alwaysmeticulous/sentry@2.324.0
+  - @alwaysmeticulous/tunnels-client@2.324.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+
 ## 2.323.0
 
 ### Minor Changes

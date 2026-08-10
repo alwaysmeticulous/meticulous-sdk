@@ -2,14 +2,54 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import type { MeticulousClient } from "../../types/client.types";
 import {
   DIFFS_SUMMARY_CLIENT_VERSION,
+  createDiffComment,
   getDiffComments,
   getProjectJsCoverage,
+  getTestRunCheckReport,
   getTestRunDiffsSummary,
   getTestRunDiffsSummaryCounts,
   getTestRunJsCoverage,
   getSessions,
+  ignoreDiff,
+  rejectDiff,
+  replyToDiffComment,
   TESTRUN_JS_COVERAGE_CLIENT_VERSION,
 } from "../agent.api";
+
+describe("getTestRunCheckReport", () => {
+  const asClient = (get: Mock): MeticulousClient =>
+    ({ get }) as unknown as MeticulousClient;
+
+  it("defaults to builtin and omits the query parameter", async () => {
+    const get = vi.fn().mockResolvedValue({
+      data: { status: "complete", text: "# Report" },
+    });
+
+    await expect(
+      getTestRunCheckReport(asClient(get), "tr-1", "accessibility"),
+    ).resolves.toEqual({ status: "complete", text: "# Report" });
+    expect(get).toHaveBeenCalledWith(
+      "agent/test-runs/tr-1/checks/accessibility",
+      { params: {} },
+    );
+  });
+
+  it("sends a custom check type explicitly", async () => {
+    const get = vi.fn().mockResolvedValue({ data: { status: "processing" } });
+
+    await getTestRunCheckReport(
+      asClient(get),
+      "tr-1",
+      "react-component-renders",
+      { checkType: "custom" },
+    );
+
+    expect(get).toHaveBeenCalledWith(
+      "agent/test-runs/tr-1/checks/react-component-renders",
+      { params: { checkType: "custom" } },
+    );
+  });
+});
 
 describe("getTestRunDiffsSummary", () => {
   let client: { get: Mock };
@@ -90,23 +130,6 @@ describe("getTestRunDiffsSummary", () => {
     expect(paramsFromLastCall()).toEqual({
       clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
       includeDomDiffIds: "true",
-    });
-  });
-
-  it("maps retrigger: true to the retrigger param", async () => {
-    await getTestRunDiffsSummary(asClient(), "tr-1", { retrigger: true });
-
-    expect(paramsFromLastCall()).toEqual({
-      clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
-      retrigger: "true",
-    });
-  });
-
-  it("omits the retrigger param when unset", async () => {
-    await getTestRunDiffsSummary(asClient(), "tr-1", { retrigger: false });
-
-    expect(paramsFromLastCall()).toEqual({
-      clientVersion: String(DIFFS_SUMMARY_CLIENT_VERSION),
     });
   });
 
@@ -222,11 +245,28 @@ describe("getTestRunDiffsSummary", () => {
     expect(result).toEqual({
       status: "complete",
       selectionApplied: true,
+      // The pre-cap set this client capped itself.
+      numMatchingDiffs: 6,
       data: [
         { replayDiffId: "rd-1", screenshotName: "diff-0" },
         { replayDiffId: "rd-1", screenshotName: "diff-1" },
       ],
     });
+  });
+
+  it("passes the backend's matching count through", async () => {
+    client.get.mockResolvedValue({
+      data: {
+        status: "complete",
+        selectionApplied: true,
+        numMatchingDiffs: 16,
+        data: [{ replayDiffId: "rd-1", screenshotName: "end-state" }],
+      },
+    });
+
+    const result = await getTestRunDiffsSummary(asClient(), "tr-1");
+
+    expect(result.numMatchingDiffs).toBe(16);
   });
 
   it("never re-caps an onlyRejected/onlyWithComments response from a v3 backend", async () => {
@@ -345,6 +385,73 @@ describe("getDiffComments", () => {
   });
 });
 
+describe("rejectDiff", () => {
+  it("posts the reason to the encoded screenshot resource", async () => {
+    const client = { post: vi.fn().mockResolvedValue({ data: undefined }) };
+
+    await rejectDiff({
+      client: client as unknown as MeticulousClient,
+      replayDiffId: "rd-1",
+      screenshotName: "reason with spaces",
+      reason: "The checkout total regressed",
+      x: 0.4,
+      y: 0.6,
+    });
+
+    expect(client.post).toHaveBeenCalledWith(
+      "agent/replay-diffs/rd-1/screenshots/reason%20with%20spaces/reject",
+      { reason: "The checkout total regressed", x: 0.4, y: 0.6 },
+    );
+  });
+});
+
+describe("agent diff comment writes", () => {
+  it("posts ignores, comment threads, and replies to their scoped resources", async () => {
+    const client = {
+      post: vi.fn().mockResolvedValue({ data: { commentId: "comment-1" } }),
+    };
+    const typedClient = client as unknown as MeticulousClient;
+
+    await ignoreDiff({
+      client: typedClient,
+      replayDiffId: "rd-1",
+      screenshotName: "end-state",
+      reason: "Expected variation",
+      x: 0.2,
+      y: 0.8,
+    });
+    await expect(
+      createDiffComment({
+        client: typedClient,
+        replayDiffId: "rd-1",
+        screenshotName: "end-state",
+        text: "Check the total",
+        x: 0.4,
+        y: 0.6,
+      }),
+    ).resolves.toEqual({ commentId: "comment-1" });
+    await expect(
+      replyToDiffComment({
+        client: typedClient,
+        commentId: "comment-1",
+        text: "Agreed",
+      }),
+    ).resolves.toEqual({ commentId: "comment-1" });
+
+    expect(client.post.mock.calls).toEqual([
+      [
+        "agent/replay-diffs/rd-1/screenshots/end-state/ignore",
+        { reason: "Expected variation", x: 0.2, y: 0.8 },
+      ],
+      [
+        "agent/replay-diffs/rd-1/screenshots/end-state/comments",
+        { text: "Check the total", x: 0.4, y: 0.6 },
+      ],
+      ["agent/diff-comments/comment-1/replies", { text: "Agreed" }],
+    ]);
+  });
+});
+
 describe("getSessions", () => {
   let client: { get: Mock };
   const asClient = (): MeticulousClient =>
@@ -372,6 +479,9 @@ describe("getSessions", () => {
       recordedBy: "a@b.com",
       excludeSyntheticSessions: true,
       visitedUrlFilter: "*/checkout*",
+      includeDurationSeconds: true,
+      includeNumberUserEvents: true,
+      includeNumberUrlsVisited: true,
       includeStartUrl: true,
       includeAbandonedReason: true,
       limit: 25,
@@ -388,6 +498,9 @@ describe("getSessions", () => {
         recordedBy: "a@b.com",
         excludeSyntheticSessions: "true",
         visitedUrlFilter: "*/checkout*",
+        includeDurationSeconds: "true",
+        includeNumberUserEvents: "true",
+        includeNumberUrlsVisited: "true",
         includeStartUrl: "true",
         includeAbandonedReason: "true",
         limit: "25",
@@ -399,6 +512,9 @@ describe("getSessions", () => {
   it("omits boolean flags when false", async () => {
     await getSessions(asClient(), {
       excludeSyntheticSessions: false,
+      includeDurationSeconds: false,
+      includeNumberUserEvents: false,
+      includeNumberUrlsVisited: false,
       includeStartUrl: false,
       includeAbandonedReason: false,
     });
@@ -432,6 +548,8 @@ describe("getTestRunDiffsSummaryCounts", () => {
       numApproved: 1,
       numIgnored: 0,
       numRejected: 0,
+      numAgentIgnored: 0,
+      numAgentRejected: 0,
       numUnreviewed: 1,
       numWithOpenComments: 0,
     };

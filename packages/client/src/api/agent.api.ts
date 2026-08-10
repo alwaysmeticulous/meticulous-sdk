@@ -1,19 +1,62 @@
 import type { SessionContext, TestRunStatus } from "@alwaysmeticulous/api";
 import { maybeEnrichFetchError } from "../errors";
-import type { MeticulousClient } from "../types/client.types";
+import type { MeticulousClient, Response } from "../types/client.types";
+
+// ---------------------------------------------------------------------------
+// Non-visual check report types
+// ---------------------------------------------------------------------------
+
+export type TestRunCheckType = "custom" | "builtin";
+
+export interface TestRunCheckReport {
+  text: string;
+}
+
+/**
+ * On a `custom` check, the customer's own reported error text; on a
+ * `builtin` check, a classified code (`execution-error`, `computation-error`,
+ * or a raw Temporal terminal status) rather than internal error text.
+ */
+export type TestRunCheckReportResponse =
+  | { status: "processing" }
+  | { status: "failed"; reason: string }
+  | ({ status: "complete" } & TestRunCheckReport);
+
+export const getTestRunCheckReport = async (
+  client: MeticulousClient,
+  testRunId: string,
+  checkId: string,
+  options: { checkType?: TestRunCheckType } = {},
+): Promise<TestRunCheckReportResponse> => {
+  const params: Record<string, string> = {};
+  if (options.checkType != null && options.checkType !== "builtin") {
+    params.checkType = options.checkType;
+  }
+  const { data } = await client
+    .get(`agent/test-runs/${testRunId}/checks/${encodeURIComponent(checkId)}`, {
+      params,
+    })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
 
 // ---------------------------------------------------------------------------
 // Diffs Summary types
 // ---------------------------------------------------------------------------
 
 /**
- * The review decision recorded for a difference on its PR. `unreviewed` means no
- * decision (or no PR); `accepted`/`rejected`/`ignored` are the explicit verdicts.
+ * The review decision for a difference.
+ *
+ * An agent can only ever produce `rejected`, and it is the same `rejected` a
+ * human produces — it blocks the pull request identically. Nothing here says who
+ * decided; read `isAgentAuthored` on the decision for that.
  */
 export type DiffDecisionState =
   | "accepted"
-  | "rejected"
   | "ignored"
+  | "rejected"
   | "unreviewed";
 
 /**
@@ -44,10 +87,7 @@ export interface DiffsSummaryScreenshot {
    * legacy nested responses. Current responses use `selectionApplied` metadata.
    */
   isSelected?: boolean;
-  /**
-   * The review decision for this difference on its PR. Present only when
-   * `includeReviews` is set. `unreviewed` when there's no decision or no PR.
-   */
+  /** The review decision for this difference. Present with `includeReviews`. */
   decision?: DiffDecisionState;
   /** Number of open review comments. Present with `includeReviews`. */
   openComments?: number;
@@ -101,8 +141,7 @@ export interface DiffsSummaryOptions {
   orderByReplayDiffs?: boolean;
   /**
    * Include review metadata (`decision` and `openComments`) on each screenshot.
-   * Default false. The decision is resolved against the test run's PR at
-   * request time; replies do not contribute to the comment count.
+   * Default false. Replies do not contribute to the comment count.
    */
   includeReviews?: boolean;
   /** @deprecated Use `includeReviews`. */
@@ -117,9 +156,8 @@ export interface DiffsSummaryOptions {
    */
   onlyUnreviewed?: boolean;
   /**
-   * Return only differences rejected during review (decision `rejected`).
-   * Additive with the other `only*` filters (see {@link onlyUnreviewed}).
-   * Default false.
+   * Return only rejected differences. Additive with the other `only*` filters
+   * (see {@link onlyUnreviewed}). Default false.
    */
   onlyRejected?: boolean;
   /**
@@ -127,13 +165,6 @@ export interface DiffsSummaryOptions {
    * with the other `only*` filters (see {@link onlyUnreviewed}). Default false.
    */
   onlyWithComments?: boolean;
-  /**
-   * Request a fresh computation when the previous attempt failed. A normal poll
-   * returns `status: "failed"` without restarting; pass this to start a clean
-   * run over the failed one. Off by default. A no-op if no computation has ever
-   * been triggered for this test run — that case already starts one regardless.
-   */
-  retrigger?: boolean;
 }
 
 /**
@@ -149,6 +180,7 @@ export interface DiffsSummaryCountsResponse {
   numDiffs: number;
   numApproved: number;
   numIgnored: number;
+  /** Rejected by a human or an agent — both block the check identically. */
   numRejected: number;
   numUnreviewed: number;
   /**
@@ -158,18 +190,46 @@ export interface DiffsSummaryCountsResponse {
   numWithOpenComments: number;
 }
 
-/** The terminal Temporal workflow status that produced a `failed` response. */
+/**
+ * Why a `failed` response has no data. The first three are business reasons
+ * determined while waiting for the test run to finish; the rest are
+ * Temporal's own terminal execution status, surfaced as-is because the
+ * computation's own code never ran (so there's nothing more specific to
+ * report):
+ * - `test-run-not-ready`: the test run hadn't finished within the
+ *   computation's bounded wait for it. **The one reason worth retrying** —
+ *   the test run is likely still going, and may well have finished by the
+ *   time you ask again. Ask again at least a minute later and a fresh attempt
+ *   is started (answering `pending`); ask sooner and you just get this same
+ *   failure back, since an immediate re-ask can't be told apart from the poll
+ *   that was handed it.
+ * - `test-run-unavailable`: the test run became a base run, or was aborted
+ *   or skipped, while waiting for it to finish.
+ * - `computation-error`: the computation itself failed (a genuine bug),
+ *   after exhausting its retries.
+ * - `TIMED_OUT` / `TERMINATED` / `CANCELLED`: the computation hit its own
+ *   execution timeout, or was terminated/cancelled directly (e.g. by an
+ *   operator) — rather than failing through its own code path.
+ *
+ * A `failed` response never has a computation still running behind it, so
+ * stop polling when you get one. Spending another computation on the test run
+ * is a separate, deliberate decision, made by asking again later.
+ */
 export type DiffsSummaryFailureReason =
-  | "FAILED"
+  | "test-run-not-ready"
+  | "test-run-unavailable"
+  | "computation-error"
   | "TIMED_OUT"
   | "TERMINATED"
   | "CANCELLED";
 
 export interface DiffsSummaryResponse {
   /**
-   * `pending` / `processing` — poll again; `complete` — `data` is populated;
-   * `failed` — the last computation failed and left no result (poll again with
-   * `retrigger` to try a fresh run).
+   * `pending` — computation queued; `processing` — the test run or summary
+   * computation is still running; poll again; `complete` — `data` is
+   * populated; `failed` — no result exists and nothing is still computing
+   * one, see `reason`. Stop polling on `failed`; `test-run-not-ready` is the
+   * one reason worth asking again about later.
    */
   status: "pending" | "processing" | "complete" | "failed";
   data?: DiffsSummaryDiff[];
@@ -178,6 +238,12 @@ export interface DiffsSummaryResponse {
    * representative diffs is returned.
    */
   selectionApplied?: boolean;
+  /**
+   * How many diffs matched the query before representative selection — i.e. the
+   * number `includeAllDiffs` would have returned. Present on complete responses
+   * from backends that report it (absent from older ones).
+   */
+  numMatchingDiffs?: number;
   /** Present only when `status` is `failed`. */
   reason?: DiffsSummaryFailureReason;
 }
@@ -185,12 +251,20 @@ export interface DiffsSummaryResponse {
 export interface AgentDiffCommentReply {
   id: string;
   author?: string;
+  /**
+   * Whether an agent wrote this. A project-token agent has no `author` to give
+   * it away and the text carries no marker, so this is the only thing
+   * distinguishing an agent's comment from a human's.
+   */
+  isAgentAuthored: boolean;
   text: string;
 }
 
 export interface AgentDiffComment {
   id: string;
   author?: string;
+  /** See {@link AgentDiffCommentReply.isAgentAuthored}. */
+  isAgentAuthored: boolean;
   text: string;
   x: number;
   y: number;
@@ -200,6 +274,17 @@ export interface AgentDiffComment {
 
 export interface GetDiffCommentsOptions {
   includeResolved?: boolean;
+}
+
+export interface AgentDiffCommentMutationResponse {
+  commentId: string;
+}
+
+export interface AgentDiffCommentCoordinates {
+  /** Required approximate normalized horizontal image coordinate (0..1). */
+  x: number;
+  /** Required approximate normalized vertical image coordinate (0..1). */
+  y: number;
 }
 
 /**
@@ -656,9 +741,6 @@ export const getTestRunDiffsSummary = async (
   if (options?.onlyWithComments) {
     params.onlyWithComments = "true";
   }
-  if (options?.retrigger) {
-    params.retrigger = "true";
-  }
   const { data } = await client
     .get(`agent/test-runs/${testRunId}/diffs-summary`, { params })
     .catch((error) => {
@@ -786,9 +868,14 @@ const normalizeCurrentDiffsResponse = (
   }
   const selectionApplied =
     metadata.selectionApplied ?? (cappingApplied || undefined);
+  // Only report a matching count we actually know: from the backend, or — when
+  // this client did the capping itself — the pre-cap set it capped.
+  const numMatchingDiffs =
+    metadata.numMatchingDiffs ?? (cappingApplied ? data.length : undefined);
   return {
     ...metadata,
     ...(selectionApplied != null ? { selectionApplied } : {}),
+    ...(numMatchingDiffs != null ? { numMatchingDiffs } : {}),
     data: selectedData.map(({ isSelected: _isSelected, ...diff }) => diff),
   };
 };
@@ -808,6 +895,105 @@ export const getDiffComments = async (
       `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/comments`,
       { params },
     )
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+/** Record an agent review rejecting one screenshot difference. */
+export const rejectDiff = async ({
+  client,
+  replayDiffId,
+  screenshotName,
+  reason,
+  x,
+  y,
+}: {
+  client: MeticulousClient;
+  replayDiffId: string;
+  screenshotName: string;
+  reason: string;
+  x: number;
+  y: number;
+}): Promise<void> => {
+  await client
+    .post(
+      `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/reject`,
+      { reason, x, y },
+    )
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+};
+
+/** Record an agent review ignoring one screenshot difference. */
+export const ignoreDiff = async ({
+  client,
+  replayDiffId,
+  screenshotName,
+  reason,
+  x,
+  y,
+}: {
+  client: MeticulousClient;
+  replayDiffId: string;
+  screenshotName: string;
+  reason: string;
+  x: number;
+  y: number;
+}): Promise<void> => {
+  await client
+    .post(
+      `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/ignore`,
+      { reason, x, y },
+    )
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+};
+
+/** Start a review comment thread on one screenshot difference. */
+export const createDiffComment = async ({
+  client,
+  replayDiffId,
+  screenshotName,
+  text,
+  x,
+  y,
+}: {
+  client: MeticulousClient;
+  replayDiffId: string;
+  screenshotName: string;
+  text: string;
+  x: number;
+  y: number;
+}): Promise<AgentDiffCommentMutationResponse> => {
+  const { data } = await client
+    .post(
+      `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/comments`,
+      { text, x, y },
+    )
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+/** Reply to an existing root review comment. */
+export const replyToDiffComment = async ({
+  client,
+  commentId,
+  text,
+}: {
+  client: MeticulousClient;
+  commentId: string;
+  text: string;
+}): Promise<AgentDiffCommentMutationResponse> => {
+  const { data } = await client
+    .post(`agent/diff-comments/${commentId}/replies`, {
+      text,
+    })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
@@ -843,6 +1029,93 @@ export const getScreenshotDomDiff = async (
     .get(
       `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/dom-diff`,
       { params },
+    )
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+// ---------------------------------------------------------------------------
+// Identity and project selection
+//
+// The `agent/*` counterparts of the older `oauth/*` endpoints. Those remain the
+// mechanism the CLI resolves a default project through on every OAuth call;
+// these are only ever hit when the *user* asks who they are or which project
+// they are pointed at, which is what makes them measurable as operations.
+// ---------------------------------------------------------------------------
+
+export interface AgentWhoamiResponse {
+  authenticatedVia: "oauth" | "project-api-token" | "test-run-token";
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  isAdmin?: boolean;
+  organizations?: { name: string; role: string | null }[];
+  /** `"organization/name"` slug, or `null` for a user with no default project. */
+  selectedProject: string | null;
+}
+
+export interface AgentProjectListItem {
+  id: string;
+  name: string;
+  organization: { name: string };
+}
+
+export interface AgentCurrentProjectResponse {
+  /** `"organization/name"` slug. */
+  project: string;
+  projectId: string;
+  /**
+   * Whether the project came from the user's stored default, was auto-picked
+   * because it's the caller's only accessible project (no preference stored
+   * yet, but `set_project`/`auth set-project` can still change it), or came
+   * from the token.
+   */
+  source: "user-default" | "auto-picked" | "api-token";
+}
+
+export interface AgentSetProjectResponse {
+  /** `"organization/name"` slug. */
+  project: string;
+  projectId: string;
+}
+
+export const getAgentWhoami = async (
+  client: MeticulousClient,
+): Promise<AgentWhoamiResponse> => {
+  const { data } = await client.get("agent/whoami").catch((error) => {
+    throw maybeEnrichFetchError(error);
+  });
+  return data;
+};
+
+export const getAgentProjects = async (
+  client: MeticulousClient,
+): Promise<AgentProjectListItem[]> => {
+  const { data } = await client.get("agent/projects").catch((error) => {
+    throw maybeEnrichFetchError(error);
+  });
+  return data;
+};
+
+export const getAgentCurrentProject = async (
+  client: MeticulousClient,
+): Promise<AgentCurrentProjectResponse> => {
+  const { data } = await client.get("agent/project").catch((error) => {
+    throw maybeEnrichFetchError(error);
+  });
+  return data;
+};
+
+export const setAgentCurrentProject = async (
+  client: MeticulousClient,
+  project: string,
+): Promise<AgentSetProjectResponse> => {
+  const { data } = await client
+    .put<{ project: string }, Response<AgentSetProjectResponse>>(
+      "agent/project",
+      { project },
     )
     .catch((error) => {
       throw maybeEnrichFetchError(error);
@@ -1126,6 +1399,23 @@ export interface SessionListItem {
    * `excludeSyntheticSessions` is set (every row is then `original`).
    */
   status?: SessionStatus;
+  /**
+   * The session's duration in seconds, computed from its first and last
+   * recorded user event with a timestamp. Included only when
+   * `includeDurationSeconds` is set and a duration could be computed (e.g.
+   * omitted for sessions recorded before this was tracked).
+   */
+  durationSeconds?: number;
+  /**
+   * The number of recorded user events. Included only when
+   * `includeNumberUserEvents` is set.
+   */
+  numberUserEvents?: number;
+  /**
+   * The number of recorded URL visits, including the initial URL and repeated
+   * visits. Included only when `includeNumberUrlsVisited` is set.
+   */
+  numberUrlsVisited?: number;
   /** The session's start URL. Included only when `includeStartUrl` is set. */
   startUrl?: string;
   /**
@@ -1160,6 +1450,9 @@ export const getSessions = async (
     recordedBy?: string | undefined;
     excludeSyntheticSessions?: boolean | undefined;
     visitedUrlFilter?: string | undefined;
+    includeDurationSeconds?: boolean | undefined;
+    includeNumberUserEvents?: boolean | undefined;
+    includeNumberUrlsVisited?: boolean | undefined;
     includeStartUrl?: boolean | undefined;
     includeAbandonedReason?: boolean | undefined;
     limit?: number | undefined;
@@ -1190,6 +1483,15 @@ export const getSessions = async (
   }
   if (options?.visitedUrlFilter != null) {
     params.visitedUrlFilter = options.visitedUrlFilter;
+  }
+  if (options?.includeDurationSeconds) {
+    params.includeDurationSeconds = "true";
+  }
+  if (options?.includeNumberUserEvents) {
+    params.includeNumberUserEvents = "true";
+  }
+  if (options?.includeNumberUrlsVisited) {
+    params.includeNumberUrlsVisited = "true";
   }
   if (options?.includeStartUrl) {
     params.includeStartUrl = "true";

@@ -1,5 +1,11 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.324.0
+
+### Patch Changes
+
+- [#11841](https://github.com/alwaysmeticulous/meticulous/pull/11841) [`a9b9ca8`](https://github.com/alwaysmeticulous/meticulous/commit/a9b9ca864a5ef6de85a908fd6930ecff27426778) Thanks [@dennysem](https://github.com/dennysem)! - Freeze the replay clock at a fixed fallback date (13 May 2026) for a replayed request whose session carries no clock anchor, instead of leaving it on live wall-clock time. Live time there differed between two replays of the same session, which is the non-determinism the replay clock exists to remove. Recordings and deployed production workers are unaffected — they still read the real clock.
+
 ## 2.323.0
 
 ### Minor Changes

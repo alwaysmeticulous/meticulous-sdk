@@ -21,6 +21,7 @@ import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
+import { appendProjectSelectionHint } from "../../utils/project-selection-hint";
 import {
   assertTestRunComplete,
   ensureTestRunFinished,
@@ -128,7 +129,7 @@ const handler = async (options: Options): Promise<void> => {
       client,
       buildProjectCoverageRequestOptions(options, columns),
     );
-    printProjectCoverage(result, columns, json);
+    await printProjectCoverage(client, project, result, columns, json);
     return;
   }
   // --replayId takes precedence: repo file paths are resolved against the run
@@ -546,15 +547,21 @@ export const buildProjectCoverageRequestOptions = (
   return requestOptions;
 };
 
-export const printProjectCoverage = (
+export const printProjectCoverage = async (
+  client: MeticulousClient,
+  project: string | undefined,
   result: ProjectJsCoverageResponse,
   columns: CoverageColumn[],
   json: boolean,
-): void => {
+): Promise<void> => {
   printCoverageFiles(result.files, columns, json);
   if (result.testRunId == null) {
     logNotice(
-      "No successful test run with coverage found for this project; returning empty coverage.",
+      await appendProjectSelectionHint(
+        "No successful test run with coverage found for this project; returning empty coverage.",
+        client,
+        project,
+      ),
     );
     return;
   }

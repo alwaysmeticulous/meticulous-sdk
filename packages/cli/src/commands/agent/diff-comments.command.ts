@@ -37,7 +37,15 @@ const handler = async ({
     return;
   }
 
-  const columns = ["id", "replyToCommentId", "author", "text", "x", "y"];
+  const columns = [
+    "id",
+    "replyToCommentId",
+    "author",
+    "isAgentAuthored",
+    "text",
+    "x",
+    "y",
+  ];
   if (includeResolved) columns.push("isResolved");
   console.log(columns.join("\t"));
   for (const comment of flattenCommentsForTsv(comments)) {
@@ -46,6 +54,7 @@ const handler = async ({
         comment.id,
         comment.replyToCommentId ?? "",
         comment.author ?? "",
+        comment.isAgentAuthored,
         // Preserve a one-row-per-comment TSV shape for multiline/tabbed text.
         JSON.stringify(comment.text),
         comment.x.toFixed(5),
@@ -62,6 +71,7 @@ const flattenCommentsForTsv = (
   id: string;
   replyToCommentId?: string;
   author?: string;
+  isAgentAuthored: boolean;
   text: string;
   x: number;
   y: number;
@@ -71,6 +81,7 @@ const flattenCommentsForTsv = (
     {
       id: comment.id,
       ...(comment.author != null ? { author: comment.author } : {}),
+      isAgentAuthored: comment.isAgentAuthored,
       text: comment.text,
       x: comment.x,
       y: comment.y,
@@ -80,6 +91,7 @@ const flattenCommentsForTsv = (
       id: reply.id,
       replyToCommentId: comment.id,
       ...(reply.author != null ? { author: reply.author } : {}),
+      isAgentAuthored: reply.isAgentAuthored,
       text: reply.text,
       x: comment.x,
       y: comment.y,
@@ -90,7 +102,7 @@ const flattenCommentsForTsv = (
 export const diffCommentsCommand: CommandModule<unknown, Options> = {
   command: "diff-comments",
   describe:
-    "Get the list of review comments for a given screenshot diff. Outputs a TSV table with columns id, replyToCommentId, author, text, x, y plus the requested additional columns, with each comment followed by its replies; comments and replies are in oldest-first order. replyToCommentId is TSV-only (blank for top-level comments, no JSON/MCP equivalent) so a reply row can be linked back to its parent; a reply's x/y repeat the parent's, since replies don't carry their own coordinates. Outputs only open comments by default. The text column is JSON-quoted (the only column that is) to keep multiline/tabbed comment bodies on one row.",
+    "Get the list of review comments for a given screenshot diff. Outputs a TSV table with columns id, replyToCommentId, author, isAgentAuthored, text, x, y plus the requested additional columns, with each comment followed by its replies; comments and replies are in oldest-first order. replyToCommentId is TSV-only (blank for top-level comments, no JSON/MCP equivalent) so a reply row can be linked back to its parent; a reply's x/y repeat the parent's, since replies don't carry their own coordinates. Outputs only open comments by default. The text column is JSON-quoted (the only column that is) to keep multiline/tabbed comment bodies on one row.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     replayDiffId: {

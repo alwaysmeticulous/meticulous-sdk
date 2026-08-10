@@ -1,10 +1,5 @@
 import { initLogger } from "@alwaysmeticulous/common";
-import {
-  createClient,
-  getProject,
-  isOAuthJwt,
-  resolveDefaultProjectId,
-} from "@alwaysmeticulous/client";
+import { isOAuthJwt, resolveDefaultProjectId } from "@alwaysmeticulous/client";
 import { CliUserError } from "./cli-user-error";
 
 /**
@@ -40,28 +35,4 @@ export const resolveProjectIdentifier = async (
     );
   }
   return { projectId };
-};
-
-/**
- * Resolves the single project a project-scoped API token is bound to, via the
- * `token-info` endpoint, as an `"organization/name"` slug. Best-effort: any
- * failure (network, older backend without the endpoint, etc.) resolves to
- * `null` rather than throwing — used for informational display (`whoami`,
- * `get-project`), where a missing project name shouldn't fail the command.
- *
- * A `null` token sends the request without an Authorization header, which
- * doubles as a probe for environments that inject credentials into outbound
- * requests: it resolves to the pinned project when injection is working and
- * `null` otherwise.
- */
-export const resolvePinnedProjectSlug = async (
-  apiToken: string | null,
-): Promise<string | null> => {
-  try {
-    const client = createClient({ apiToken });
-    const project = await getProject(client);
-    return project ? `${project.organization.name}/${project.name}` : null;
-  } catch {
-    return null;
-  }
 };

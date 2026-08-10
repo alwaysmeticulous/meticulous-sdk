@@ -37,7 +37,7 @@ describe("formatDiffsSummaryCounts", () => {
     expect(
       formatDiffsSummaryCounts({
         numReplays: 5,
-        numDiffs: 3,
+        numDiffs: 5,
         numApproved: 1,
         numIgnored: 0,
         numRejected: 1,
@@ -46,7 +46,7 @@ describe("formatDiffsSummaryCounts", () => {
       }),
     ).toEqual([
       "numReplays:\t5",
-      "numDiffs:\t3",
+      "numDiffs:\t5",
       "numApproved:\t1",
       "numIgnored:\t0",
       "numRejected:\t1",

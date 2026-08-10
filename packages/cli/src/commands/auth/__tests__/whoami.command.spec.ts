@@ -23,13 +23,9 @@ const loggerMock = {
 };
 
 const mocks = vi.hoisted(() => ({
-  resolveApiTokenWithOAuth: vi.fn(),
-  isOAuthJwt: vi.fn(),
-  createClient: vi.fn(),
+  getAuthToken: vi.fn(),
   createClientWithOAuth: vi.fn(),
-  getWhoami: vi.fn(),
-  getOAuthDefaultProject: vi.fn(),
-  getProject: vi.fn(),
+  getAgentWhoami: vi.fn(),
   logNotice: vi.fn(),
 }));
 
@@ -39,17 +35,14 @@ vi.mock("@alwaysmeticulous/common", () => ({
 }));
 
 vi.mock("@alwaysmeticulous/client", () => ({
-  resolveApiTokenWithOAuth: mocks.resolveApiTokenWithOAuth,
-  isOAuthJwt: mocks.isOAuthJwt,
-  createClient: mocks.createClient,
+  getAuthToken: mocks.getAuthToken,
   createClientWithOAuth: mocks.createClientWithOAuth,
-  getWhoami: mocks.getWhoami,
-  getOAuthDefaultProject: mocks.getOAuthDefaultProject,
-  getProject: mocks.getProject,
+  getAgentWhoami: mocks.getAgentWhoami,
 }));
 
 vi.mock("../../../utils/handle-auth-failure", () => ({
   handleAuthFailure: vi.fn().mockReturnValue(false),
+  toServerMessageError: (error: unknown) => error,
 }));
 
 const runHandler = (args: { json?: boolean } = {}) =>
@@ -62,12 +55,19 @@ let logSpy: ReturnType<typeof vi.spyOn>;
 const stdoutText = () => logSpy.mock.calls.flat().join("\n");
 const noticeText = () => mocks.logNotice.mock.calls.flat().join("\n");
 
-const FAKE_WHOAMI = {
+const OAUTH_WHOAMI = {
+  authenticatedVia: "oauth" as const,
   email: "alice@example.com",
   firstName: "Alice",
   lastName: "Smith",
   isAdmin: false,
   organizations: [],
+  selectedProject: null,
+};
+
+const TOKEN_WHOAMI = {
+  authenticatedVia: "project-api-token" as const,
+  selectedProject: "Org/App",
 };
 
 describe("whoami command", () => {
@@ -76,11 +76,8 @@ describe("whoami command", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env["METICULOUS_API_TOKEN"];
-    mocks.createClient.mockReturnValue({});
     mocks.createClientWithOAuth.mockResolvedValue({});
-    mocks.getWhoami.mockResolvedValue(FAKE_WHOAMI);
-    mocks.getOAuthDefaultProject.mockResolvedValue({ projectId: null });
-    mocks.getProject.mockResolvedValue(null);
+    mocks.getAgentWhoami.mockResolvedValue(OAUTH_WHOAMI);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
@@ -98,18 +95,12 @@ describe("whoami command", () => {
 
   describe("OAuth token", () => {
     beforeEach(() => {
-      mocks.resolveApiTokenWithOAuth.mockResolvedValue("oauth-jwt");
-      mocks.isOAuthJwt.mockReturnValue(true);
+      mocks.getAuthToken.mockResolvedValue("oauth-jwt");
     });
 
-    it("reports the OAuth user and skips the project-token path", async () => {
+    it("reports the OAuth user", async () => {
       await runHandler();
 
-      expect(mocks.getWhoami).toHaveBeenCalled();
-      expect(mocks.getProject).not.toHaveBeenCalled();
-      // OAuth path uses the refreshing client, not the static one.
-      expect(mocks.createClientWithOAuth).toHaveBeenCalledTimes(1);
-      expect(mocks.createClient).not.toHaveBeenCalled();
       const out = stdoutText();
       expect(out).toContain("Authenticated via: OAuth");
       expect(out).toContain("alice@example.com");
@@ -117,9 +108,9 @@ describe("whoami command", () => {
     });
 
     it("prints organizations with their role", async () => {
-      mocks.getWhoami.mockResolvedValue({
-        ...FAKE_WHOAMI,
-        organizations: [{ id: "org-1", name: "Acme", role: "owner" }],
+      mocks.getAgentWhoami.mockResolvedValue({
+        ...OAUTH_WHOAMI,
+        organizations: [{ name: "Acme", role: "owner" }],
       });
 
       await runHandler();
@@ -128,10 +119,9 @@ describe("whoami command", () => {
     });
 
     it("prints the selected project when one is stored", async () => {
-      mocks.getOAuthDefaultProject.mockResolvedValue({
-        projectId: "proj-1",
-        name: "my-project",
-        organization: { id: "org-1", name: "Acme" },
+      mocks.getAgentWhoami.mockResolvedValue({
+        ...OAUTH_WHOAMI,
+        selectedProject: "Acme/my-project",
       });
 
       await runHandler();
@@ -140,22 +130,16 @@ describe("whoami command", () => {
     });
 
     it("prompts (on stderr) to set a project when none is selected", async () => {
-      mocks.getOAuthDefaultProject.mockResolvedValue({ projectId: null });
-
       await runHandler();
 
       expect(noticeText()).toContain("auth set-project");
     });
 
     it("emits structured JSON with --json", async () => {
-      mocks.getOAuthDefaultProject.mockResolvedValue({
-        projectId: "proj-1",
-        name: "my-project",
-        organization: { id: "org-1", name: "Acme" },
-      });
-      mocks.getWhoami.mockResolvedValue({
-        ...FAKE_WHOAMI,
-        organizations: [{ id: "org-1", name: "Acme", role: "owner" }],
+      mocks.getAgentWhoami.mockResolvedValue({
+        ...OAUTH_WHOAMI,
+        organizations: [{ name: "Acme", role: "owner" }],
+        selectedProject: "Acme/my-project",
       });
 
       await runHandler({ json: true });
@@ -172,78 +156,24 @@ describe("whoami command", () => {
     });
   });
 
-  describe("no local token (request-time injected auth)", () => {
-    beforeEach(() => {
-      mocks.resolveApiTokenWithOAuth.mockResolvedValue(null);
-    });
-
-    it("reports injected credentials when the probe resolves a project", async () => {
-      mocks.getProject.mockResolvedValue({
-        id: "p1",
-        name: "App",
-        organization: { id: "o1", name: "Org" },
-      });
-
-      await runHandler();
-
-      // The OAuth-only whoami endpoint would reject the injected project
-      // token — the probe must be the only round-trip.
-      expect(mocks.getWhoami).not.toHaveBeenCalled();
-      expect(mocks.createClientWithOAuth).not.toHaveBeenCalled();
-      const out = stdoutText();
-      expect(out).toContain("credentials injected at request time");
-      expect(out).toContain("Pinned project: Org/App");
-    });
-
-    it("emits structured JSON with --json", async () => {
-      mocks.getProject.mockResolvedValue({
-        id: "p1",
-        name: "App",
-        organization: { id: "o1", name: "Org" },
-      });
-
-      await runHandler({ json: true });
-
-      expect(JSON.parse(stdoutText())).toEqual({
-        authenticatedVia: "injected-credentials",
-        pinnedProject: "Org/App",
-      });
-    });
-
-    it("errors with not-logged-in guidance when the probe request fails", async () => {
-      mocks.getProject.mockRejectedValue(new Error("HTTP 403"));
-
-      await expect(runHandler()).rejects.toThrow(/Not logged in/);
-      expect(mocks.getWhoami).not.toHaveBeenCalled();
-    });
-
-    it("errors when the probe resolves no project", async () => {
-      mocks.getProject.mockResolvedValue(null);
-
-      await expect(runHandler()).rejects.toThrow(/Not logged in/);
-    });
-  });
-
   describe("project API token", () => {
     beforeEach(() => {
-      mocks.resolveApiTokenWithOAuth.mockResolvedValue("project-token");
-      mocks.isOAuthJwt.mockReturnValue(false);
+      mocks.getAuthToken.mockResolvedValue("project-token");
+      mocks.getAgentWhoami.mockResolvedValue(TOKEN_WHOAMI);
     });
 
-    it("reports the env var as the source and never calls getWhoami", async () => {
+    it("reports the env var as the source", async () => {
       process.env["METICULOUS_API_TOKEN"] = "project-token";
 
       await runHandler();
 
-      expect(mocks.getWhoami).not.toHaveBeenCalled();
-      // Project-token path stays on the static client (never expires).
-      expect(mocks.createClient).toHaveBeenCalled();
-      expect(mocks.createClientWithOAuth).not.toHaveBeenCalled();
       expect(stdoutText()).toContain(
         "project API token (METICULOUS_API_TOKEN environment variable)",
       );
     });
 
+    // Which local file or env var supplied the token is knowable only in the
+    // CLI — the backend sees a bearer, not where it came from.
     it("reports the config file as the source when the env var is unset", async () => {
       await runHandler();
 
@@ -252,88 +182,104 @@ describe("whoami command", () => {
       );
     });
 
-    it("shows the pinned project resolved via token-info", async () => {
-      mocks.getProject.mockResolvedValue({
-        id: "p1",
-        name: "App",
-        organization: { id: "o1", name: "Org" },
-      });
-
+    it("shows the project the token is pinned to", async () => {
       await runHandler();
 
       expect(stdoutText()).toContain("Pinned project: Org/App");
-    });
-
-    it("swallows token-info failures without failing whoami", async () => {
-      mocks.getProject.mockRejectedValue(new Error("boom"));
-
-      await expect(runHandler()).resolves.toBeUndefined();
       expect(noticeText()).toContain("scoped to a single project");
     });
 
     it("emits structured JSON with --json", async () => {
-      mocks.getProject.mockResolvedValue({
-        id: "p1",
-        name: "App",
-        organization: { id: "o1", name: "Org" },
-      });
-
       await runHandler({ json: true });
 
       expect(JSON.parse(stdoutText())).toEqual({
         authenticatedVia: "project-api-token",
         tokenSource: "~/.meticulous/config.json",
+        selectedProject: "Org/App",
         pinnedProject: "Org/App",
       });
     });
   });
 
-  describe("no local credentials (empty token)", () => {
+  describe("no local token (request-time injected auth)", () => {
     beforeEach(() => {
-      mocks.resolveApiTokenWithOAuth.mockResolvedValue(null);
+      mocks.getAuthToken.mockResolvedValue(null);
     });
 
-    it("reports injected credentials when a pinned project resolves", async () => {
-      mocks.getProject.mockResolvedValue({
-        id: "p1",
-        name: "App",
-        organization: { id: "o1", name: "Org" },
-      });
+    it("reports injected credentials when the header-less call is answered", async () => {
+      mocks.getAgentWhoami.mockResolvedValue(TOKEN_WHOAMI);
 
       await runHandler();
 
-      expect(mocks.getWhoami).not.toHaveBeenCalled();
       const out = stdoutText();
       expect(out).toContain("credentials injected at request time");
       expect(out).toContain("Pinned project: Org/App");
     });
 
-    it("emits structured JSON for injected credentials with --json", async () => {
-      mocks.getProject.mockResolvedValue({
-        id: "p1",
-        name: "App",
-        organization: { id: "o1", name: "Org" },
-      });
+    it("emits structured JSON with --json", async () => {
+      mocks.getAgentWhoami.mockResolvedValue(TOKEN_WHOAMI);
 
       await runHandler({ json: true });
 
       expect(JSON.parse(stdoutText())).toEqual({
         authenticatedVia: "injected-credentials",
+        selectedProject: "Org/App",
         pinnedProject: "Org/App",
       });
     });
 
-    it("reports not logged in when nothing is injected", async () => {
-      mocks.getProject.mockResolvedValue(null);
+    it("errors with not-logged-in guidance when nothing is injected", async () => {
+      mocks.getAgentWhoami.mockRejectedValue(new Error("HTTP 401"));
 
       await expect(runHandler()).rejects.toThrow(/Not logged in/);
     });
 
     it("prints nothing to stdout before throwing not-logged-in with --json", async () => {
-      mocks.getProject.mockResolvedValue(null);
+      mocks.getAgentWhoami.mockRejectedValue(new Error("HTTP 401"));
 
       await expect(runHandler({ json: true })).rejects.toThrow(/Not logged in/);
       expect(stdoutText()).toBe("");
+    });
+
+    it("omits the Pinned project line when the injected credentials have no selected project", async () => {
+      mocks.getAgentWhoami.mockResolvedValue({
+        ...TOKEN_WHOAMI,
+        selectedProject: null,
+      });
+
+      await runHandler();
+
+      expect(stdoutText()).not.toContain("Pinned project");
+    });
+  });
+
+  describe("test-run API token", () => {
+    beforeEach(() => {
+      mocks.getAuthToken.mockResolvedValue("test-run-token");
+      mocks.getAgentWhoami.mockResolvedValue({
+        authenticatedVia: "test-run-token" as const,
+        selectedProject: "Org/App",
+      });
+    });
+
+    it("reports itself distinctly from a project API token", async () => {
+      await runHandler();
+
+      const out = stdoutText();
+      expect(out).toContain("test-run API token");
+      expect(out).toContain("Pinned project: Org/App");
+      expect(noticeText()).toContain("scoped to a single project");
+    });
+
+    it("emits structured JSON with --json", async () => {
+      await runHandler({ json: true });
+
+      expect(JSON.parse(stdoutText())).toEqual({
+        authenticatedVia: "test-run-token",
+        tokenSource: "~/.meticulous/config.json",
+        selectedProject: "Org/App",
+        pinnedProject: "Org/App",
+      });
     });
   });
 });

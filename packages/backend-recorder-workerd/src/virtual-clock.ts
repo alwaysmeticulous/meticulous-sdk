@@ -26,6 +26,19 @@ const OriginalDate = globalThis.Date;
 /** Real wall clock, immune to the patch below. */
 export const nativeDateNow = (): number => OriginalDate.now();
 
+/**
+ * The frozen time a replayed request with no anchor gets: 13 May 2026, World Cocktail Day.
+ * A replay whose anchor is missing is already degraded, and live time there is the exact
+ * non-determinism this file exists to remove — two replays of that session would render
+ * different timestamps. A fixed recent date rather than the epoch, since app code routinely
+ * renders or rejects an implausibly old timestamp differently. Matches the Node recorder's
+ * unattributed fallback (`replay/virtual-clock.ts`).
+ *
+ * Exported for the tests: this is the time such a replay renders, so changing it changes
+ * that replay's output.
+ */
+export const UNANCHORED_BASE_TIME_MS = OriginalDate.UTC(2026, 4, 13);
+
 // ---------------------------------------------------------------------------
 // Busy-wait loop breaker
 // ---------------------------------------------------------------------------
@@ -74,18 +87,18 @@ const applyLoopBreak = (baseMs: number): number => {
 // ---------------------------------------------------------------------------
 
 /**
- * The virtual "now" for the request currently executing, or null when it is not a replay or
- * carries no anchor — in which case callers use the real clock. Reads outside any request
- * (module evaluation, background work) always get the real clock.
+ * The virtual "now" for the request currently executing, or null when this is not a replayed
+ * request — a recording, a deployed production worker, or a read outside any request (module
+ * evaluation, background work) — in which case callers use the real clock. A replayed request
+ * always gets a frozen time: its own anchor, or {@link UNANCHORED_BASE_TIME_MS} if it carries
+ * none.
  */
 const resolveVirtualNow = (): number | null => {
   const ctx = requestCaptureContext.getStore();
   if (ctx === undefined || ctx.mode !== "replay") {
     return null;
   }
-  return ctx.clockAnchorMs === undefined
-    ? null
-    : applyLoopBreak(ctx.clockAnchorMs);
+  return applyLoopBreak(ctx.clockAnchorMs ?? UNANCHORED_BASE_TIME_MS);
 };
 
 // ---------------------------------------------------------------------------

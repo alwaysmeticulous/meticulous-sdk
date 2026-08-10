@@ -1,6 +1,6 @@
 import type { SessionFilter } from "@alwaysmeticulous/api";
 
-export const MAX_SESSION_FILTER_REGEXES = 100;
+export const MAX_SESSION_FILTER_REGEXES = 500;
 export const MAX_SESSION_FILTER_REGEX_LENGTH = 1_000;
 
 export type SessionFilterValidationResult =

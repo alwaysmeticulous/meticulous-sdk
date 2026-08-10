@@ -1,5 +1,11 @@
 # @alwaysmeticulous/common
 
+## 2.324.0
+
+### Patch Changes
+
+- [#11890](https://github.com/alwaysmeticulous/meticulous/pull/11890) [`daf7259`](https://github.com/alwaysmeticulous/meticulous/commit/daf72590468aee89a73dea858d003efe41385b75) Thanks [@claude](https://github.com/apps/claude)! - Bump the pinned `puppeteer-core` version from `24.14.0` to `24.42.0`, so the published packages install Chrome for Testing `147.0.7727.57` instead of `138.0.7204.157`. This matches the Chrome version already used by Meticulous's cloud replay infrastructure, keeping local recording/replay/debugging behavior consistent with cloud test runs.
+
 ## 2.323.0
 
 ### Patch Changes

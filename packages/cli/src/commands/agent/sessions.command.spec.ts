@@ -41,6 +41,9 @@ const runHandler = (
     recordedBy?: string;
     excludeSyntheticSessions?: boolean;
     visitedUrlFilter?: string;
+    includeDurationSeconds?: boolean;
+    includeNumberUserEvents?: boolean;
+    includeNumberUrlsVisited?: boolean;
     includeStartUrl?: boolean;
     includeAbandonedReason?: boolean;
     limit?: number;
@@ -67,6 +70,9 @@ const SESSIONS = [
     recordedBy: "a@b.com",
     status: "original",
     startUrl: "https://example.com",
+    durationSeconds: 42,
+    numberUserEvents: 7,
+    numberUrlsVisited: 2,
   },
   {
     id: "session-2_p1704825600000",
@@ -74,6 +80,10 @@ const SESSIONS = [
     recordedAt: "2026-07-15T00:00:00.000Z",
     status: "patched",
     startUrl: "https://example.com/login",
+    // Omitted models a session where a duration couldn't be computed (e.g.
+    // recorded before duration tracking existed).
+    numberUserEvents: 3,
+    numberUrlsVisited: 4,
     abandonedReason: "max_session_time",
   },
 ];
@@ -123,9 +133,12 @@ describe("sessions command", () => {
     );
   });
 
-  it("--includeStartUrl and --includeAbandonedReason append those columns (in that order)", async () => {
+  it("appends requested optional columns in output order", async () => {
     await runHandler({
       json: false,
+      includeDurationSeconds: true,
+      includeNumberUserEvents: true,
+      includeNumberUrlsVisited: true,
       includeStartUrl: true,
       includeAbandonedReason: true,
     });
@@ -138,15 +151,21 @@ describe("sessions command", () => {
         "recordedAt",
         "recordedBy",
         "status",
+        "durationSeconds",
+        "numberUserEvents",
+        "numberUrlsVisited",
         "startUrl",
         "abandonedReason",
       ].join("\t"),
     );
-    // session-1: has startUrl, not abandoned (empty abandonedReason cell).
-    expect(lines[1].endsWith("\thttps://example.com\t")).toBe(true);
-    // session-2: has both.
+    // session-1: has durationSeconds and startUrl, not abandoned (empty
+    // abandonedReason cell).
+    expect(lines[1].endsWith("\t42\t7\t2\thttps://example.com\t")).toBe(true);
+    // session-2: has no durationSeconds (empty cell), has everything else.
     expect(
-      lines[2].endsWith("\thttps://example.com/login\tmax_session_time"),
+      lines[2].endsWith(
+        "\t\t3\t4\thttps://example.com/login\tmax_session_time",
+      ),
     ).toBe(true);
   });
 
@@ -194,6 +213,9 @@ describe("sessions command", () => {
       recordedBy: "a@b.com",
       excludeSyntheticSessions: true,
       visitedUrlFilter: "*/checkout*",
+      includeDurationSeconds: true,
+      includeNumberUserEvents: true,
+      includeNumberUrlsVisited: true,
       includeStartUrl: true,
       includeAbandonedReason: true,
       limit: 25,
@@ -211,6 +233,9 @@ describe("sessions command", () => {
         recordedBy: "a@b.com",
         excludeSyntheticSessions: true,
         visitedUrlFilter: "*/checkout*",
+        includeDurationSeconds: true,
+        includeNumberUserEvents: true,
+        includeNumberUrlsVisited: true,
         includeStartUrl: true,
         includeAbandonedReason: true,
         limit: 25,
@@ -233,6 +258,9 @@ describe("sessions command", () => {
         recordedBy: undefined,
         excludeSyntheticSessions: undefined,
         visitedUrlFilter: undefined,
+        includeDurationSeconds: undefined,
+        includeNumberUserEvents: undefined,
+        includeNumberUrlsVisited: undefined,
         includeStartUrl: undefined,
         includeAbandonedReason: undefined,
         limit: undefined,

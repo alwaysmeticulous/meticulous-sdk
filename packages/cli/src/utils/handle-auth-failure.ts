@@ -61,6 +61,47 @@ export const handleAuthFailure = (error: unknown): false => {
   );
 };
 
+/**
+ * Re-presents a backend rejection as a `CliUserError` carrying the server's own
+ * message, so `wrapHandler` prints that message and exits non-zero instead of
+ * dumping a fetch error and stack. Use for endpoints whose 4xx bodies are
+ * written for the user (e.g. "no default project is set ..." — the backend is
+ * the only side that knows *why*, and duplicating that reasoning in the CLI is
+ * how the two drift apart). Returns the error unchanged when it carries no
+ * message, so genuine transport failures keep their original diagnostics.
+ *
+ * Deliberately narrowed to `400` rather than "any fetch error with a message":
+ * every business rejection these agent endpoints throw for a user to read is a
+ * `400` (see `AgentAccountService`'s `BadRequestException`/`AgentReasonedHttpException`
+ * throws). A `404` can just as easily mean the route itself doesn't exist (an
+ * older backend than this CLI) and a `5xx` is always a real defect — converting
+ * those into a `CliUserError` here would stop them reaching Sentry and hide the
+ * status/body that would explain them.
+ */
+export const toServerMessageError = (error: unknown): unknown => {
+  if (!isFetchError(error) || error.response?.status !== 400) {
+    return error;
+  }
+  const message = extractServerMessage(error.response?.data);
+  return message ? new CliUserError(message) : error;
+};
+
+/**
+ * Whether `error` is Nest's default response for a request that matched no
+ * route at all (as opposed to a route that matched and rejected the request) —
+ * e.g. `{"statusCode":404,"message":"Cannot PUT /api/agent/project", "error":"Not Found"}`.
+ * Distinguishes "this CLI is newer than the backend it's talking to" from a
+ * genuine, intentionally-thrown 404 (like "project not found"), which callers
+ * must not conflate — see `toProjectResolutionError` in `select-project.ts`.
+ */
+export const isRouteNotFoundError = (error: unknown): boolean => {
+  if (!isFetchError(error) || error.response?.status !== 404) {
+    return false;
+  }
+  const message = extractServerMessage(error.response?.data);
+  return message != null && /^Cannot [A-Z]+ /.test(message);
+};
+
 export const extractServerMessage = (data: unknown): string | null => {
   if (!data) {
     return null;

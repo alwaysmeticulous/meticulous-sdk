@@ -7,6 +7,7 @@ import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
+import { appendProjectSelectionHint } from "../../utils/project-selection-hint";
 import {
   awaitTestRunCompletion,
   isTestRunInProgress,
@@ -58,7 +59,13 @@ const handler = async ({
       printJson(result);
     }
     // Guidance on stderr regardless of --json (which only changes stdout).
-    logNotice(`No test run found for commit ${resolvedCommitSha}`);
+    logNotice(
+      await appendProjectSelectionHint(
+        `No test run found for commit ${resolvedCommitSha}.`,
+        client,
+        project,
+      ),
+    );
     return;
   }
 
@@ -95,7 +102,7 @@ const handler = async ({
 export const testRunForCommitCommand: CommandModule<unknown, Options> = {
   command: "test-run-for-commit",
   describe:
-    "Look up the latest test run for a given commit (defaults to the current git HEAD). Outputs the testRunId.",
+    "Look up the latest test run for a given commit (defaults to the current git HEAD). Outputs the testRunId, or nothing (with --json, a null testRunId) when there is no usable run yet — in which case the reply also names the project that was searched, since the failure may be due to a wrong project being selected as default (see auth get-project / auth set-project).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     commitSha: {

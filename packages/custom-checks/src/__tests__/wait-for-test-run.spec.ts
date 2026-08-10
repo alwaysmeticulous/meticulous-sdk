@@ -271,6 +271,25 @@ describe("waitForBaseTestRunCompletion", () => {
 describe("findTestRunForCustomChecks", () => {
   const client = {} as MeticulousClient;
 
+  it("returns early without registering when the run was Skipped", async () => {
+    (getTestRun as Mock).mockResolvedValue({
+      id: ORIGINAL,
+      status: "Skipped",
+    } as TestRun);
+
+    const result = await findTestRunForCustomChecks({
+      client,
+      testRunId: ORIGINAL,
+    });
+
+    expect(result).toEqual({
+      testRunId: ORIGINAL,
+      testRun: { id: ORIGINAL, status: "Skipped" },
+    });
+    expect(markTestRunExpectsCustomChecks).not.toHaveBeenCalled();
+    expect(getTestRunNetworkPatchingResult).not.toHaveBeenCalled();
+  });
+
   it("registers the original run as expecting custom checks when no patching applies", async () => {
     (getTestRun as Mock).mockResolvedValue(testRunFixture(ORIGINAL));
     (getTestRunNetworkPatchingResult as Mock).mockResolvedValue({

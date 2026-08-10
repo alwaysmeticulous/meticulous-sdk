@@ -287,6 +287,13 @@ export interface ReplayExecutionOptions {
    */
   extraCookies?: Cookie[];
 
+  /**
+   * Names of cookies whose value should be inferred at replay time from the bearer token in the
+   * Authorization header of the first recorded request that carries one, rather than from a fixed
+   * value. The inferred cookies override any same-named cookie from the session or `extraCookies`.
+   */
+  cookieNamesToInferFromBearerToken?: string[];
+
   extraLocalStorageEntries?: StorageEntryOverride[];
 
   extraSessionStorageEntries?: StorageEntryOverride[];
@@ -296,6 +303,13 @@ export interface ReplayExecutionOptions {
    * to ensure that we don't compare screenshots that were generated from replays with different project settings.
    */
   projectSettingsHash?: string;
+
+  /**
+   * `BACKEND_TESTING_LOGIC_NUMBER` at the time the test run or replay was initiated, only set when the project has
+   * backend testing enabled. Threaded into `ReplayLogicVersion` so that bumping the number only invalidates cached
+   * screenshots for backend-testing-enabled projects.
+   */
+  backendTestingLogicVersion?: number;
 
   delayLayoutTriggeredEvents?: boolean;
 

@@ -7,11 +7,16 @@ import { imageFilesCommand } from "./screenshot-image-files.command";
 import { imageUrlsCommand } from "./screenshot-image.command";
 import { sessionsCommand } from "./sessions.command";
 import { submitFeedbackCommand } from "./submit-feedback.command";
+import { testRunChecksCommand } from "./test-run-checks.command";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
 import { testRunForCommitCommand } from "./test-run-for-commit.command";
 import { timelineDiffCommand } from "./timeline.command";
 import { triggerTestRunCommand } from "./trigger-test-run.command";
 import { uploadBuildCommand } from "./upload-build.command";
+import { rejectDiffCommand } from "./reject-diff.command";
+import { ignoreDiffCommand } from "./ignore-diff.command";
+import { createDiffCommentCommand } from "./create-diff-comment.command";
+import { replyToDiffCommentCommand } from "./reply-to-diff-comment.command";
 
 export const agentCommand: CommandModule = {
   command: "agent",
@@ -20,17 +25,22 @@ export const agentCommand: CommandModule = {
   builder: (yargs) =>
     yargs
       .command(testRunForCommitCommand)
+      .command(testRunChecksCommand)
       .command(testRunDiffsCommand)
-      .command(diffCommentsCommand)
-      .command(jsCoverageCommand)
-      .command(jsCoverageDiffCommand)
       .command(imageFilesCommand)
       .command(imageUrlsCommand)
       .command(domDiffCommand)
       .command(timelineDiffCommand)
+      .command(diffCommentsCommand)
+      .command(rejectDiffCommand)
+      .command(ignoreDiffCommand)
+      .command(createDiffCommentCommand)
+      .command(replyToDiffCommentCommand)
+      .command(jsCoverageCommand)
+      .command(jsCoverageDiffCommand)
+      .command(sessionsCommand)
       .command(uploadBuildCommand)
       .command(triggerTestRunCommand)
-      .command(sessionsCommand)
       .command(submitFeedbackCommand)
       .option("verbose", {
         boolean: true,

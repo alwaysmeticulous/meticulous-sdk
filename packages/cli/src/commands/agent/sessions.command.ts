@@ -7,6 +7,7 @@ import { logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { appendProjectSelectionHint } from "../../utils/project-selection-hint";
 
 // Mirror of the server-side MAX_SESSIONS_LIMIT (webapp-backend's
 // agent.types.ts) — public_packages/cli can't depend on webapp-backend, so
@@ -27,6 +28,9 @@ interface Options {
   recordedBy?: string | undefined;
   excludeSyntheticSessions?: boolean | undefined;
   visitedUrlFilter?: string | undefined;
+  includeDurationSeconds?: boolean | undefined;
+  includeNumberUserEvents?: boolean | undefined;
+  includeNumberUrlsVisited?: boolean | undefined;
   includeStartUrl?: boolean | undefined;
   includeAbandonedReason?: boolean | undefined;
   limit?: number | undefined;
@@ -44,6 +48,9 @@ const handler = async ({
   recordedBy,
   excludeSyntheticSessions,
   visitedUrlFilter,
+  includeDurationSeconds,
+  includeNumberUserEvents,
+  includeNumberUrlsVisited,
   includeStartUrl,
   includeAbandonedReason,
   limit,
@@ -67,6 +74,9 @@ const handler = async ({
     recordedBy,
     excludeSyntheticSessions,
     visitedUrlFilter,
+    includeDurationSeconds,
+    includeNumberUserEvents,
+    includeNumberUrlsVisited,
     includeStartUrl,
     includeAbandonedReason,
     limit,
@@ -78,7 +88,8 @@ const handler = async ({
   } else if (sessions.length > 0) {
     // Columns mirror the JSON attributes: `status` is dropped under
     // --excludeSyntheticSessions (every row is then original); `startUrl` and
-    // `abandonedReason` are opt-in via --includeStartUrl / --includeAbandonedReason.
+    // the remaining columns are opt-in through their corresponding --include*
+    // flags.
     const columns: Array<{
       header: string;
       value: (session: SessionListItem) => string;
@@ -95,6 +106,33 @@ const handler = async ({
               value: (session: SessionListItem) => session.status ?? "",
             },
           ]),
+      ...(includeDurationSeconds
+        ? [
+            {
+              header: "durationSeconds",
+              value: (session: SessionListItem) =>
+                String(session.durationSeconds ?? ""),
+            },
+          ]
+        : []),
+      ...(includeNumberUserEvents
+        ? [
+            {
+              header: "numberUserEvents",
+              value: (session: SessionListItem) =>
+                String(session.numberUserEvents ?? ""),
+            },
+          ]
+        : []),
+      ...(includeNumberUrlsVisited
+        ? [
+            {
+              header: "numberUrlsVisited",
+              value: (session: SessionListItem) =>
+                String(session.numberUrlsVisited ?? ""),
+            },
+          ]
+        : []),
       ...(includeStartUrl
         ? [
             {
@@ -124,7 +162,13 @@ const handler = async ({
   // full page (== limit, likely more via --offset) is easy to tell from a
   // partial one.
   if (sessions.length === 0) {
-    logNotice("No recorded sessions found for this project.");
+    logNotice(
+      await appendProjectSelectionHint(
+        "No recorded sessions found for this project.",
+        client,
+        project,
+      ),
+    );
     return;
   }
   const effectiveLimit = limit ?? DEFAULT_SESSIONS_LIMIT;
@@ -184,6 +228,21 @@ export const sessionsCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "Output only sessions that visited a URL matching this glob (only '*' is a wildcard, matching any run of characters; everything else — including '?', '.', '/' — is literal). Matched against every visited URL and the startUrl, e.g. '*/checkout*'.",
+    },
+    includeDurationSeconds: {
+      boolean: true,
+      description:
+        "Add a durationSeconds column with the session's duration in seconds, computed from its first and last recorded user event with a timestamp. Empty for sessions where a duration couldn't be computed (e.g. recorded before this was tracked).",
+    },
+    includeNumberUserEvents: {
+      boolean: true,
+      description:
+        "Add a numberUserEvents column with the number of recorded user events.",
+    },
+    includeNumberUrlsVisited: {
+      boolean: true,
+      description:
+        "Add a numberUrlsVisited column with the number of recorded URL visits, including the initial URL and repeated visits.",
     },
     includeStartUrl: {
       boolean: true,

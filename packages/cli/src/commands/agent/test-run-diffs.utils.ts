@@ -15,6 +15,9 @@ export interface DiffsSummaryColumns {
   includeReviews: boolean;
 }
 
+export const pluralize = (count: number, singular: string): string =>
+  count === 1 ? singular : `${singular}s`;
+
 /** `key\tvalue` lines for the `--counts` output in the default (non-JSON) mode. */
 export const formatDiffsSummaryCounts = (
   counts: DiffsSummaryCountsResponse,

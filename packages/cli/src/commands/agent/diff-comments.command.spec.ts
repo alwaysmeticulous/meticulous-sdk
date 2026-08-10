@@ -34,14 +34,17 @@ const comments = [
     y: 0.5,
     text: "first\tline\nsecond line",
     author: "Ada Lovelace",
+    isAgentAuthored: false,
     replies: [
       {
         id: "reply-1",
         author: "Grace Hopper",
+        isAgentAuthored: false,
         text: "first reply",
       },
       {
         id: "reply-2",
+        isAgentAuthored: true,
         text: "second reply",
       },
     ],
@@ -51,6 +54,7 @@ const comments = [
     x: 0.75,
     y: 0.8,
     text: "second comment",
+    isAgentAuthored: true,
     replies: [],
   },
 ];
@@ -92,12 +96,21 @@ describe("diff-comments command", () => {
     const lines = stdoutText().split("\n");
     expect(lines).toHaveLength(5);
     expect(lines[0]).toBe(
-      ["id", "replyToCommentId", "author", "text", "x", "y"].join("\t"),
+      [
+        "id",
+        "replyToCommentId",
+        "author",
+        "isAgentAuthored",
+        "text",
+        "x",
+        "y",
+      ].join("\t"),
     );
     expect(lines[1].split("\t")).toEqual([
       "comment-1",
       "",
       "Ada Lovelace",
+      "false",
       '"first\\tline\\nsecond line"',
       "0.25000",
       "0.50000",
@@ -112,14 +125,17 @@ describe("diff-comments command", () => {
       "reply-1",
       "comment-1",
       "Grace Hopper",
+      "false",
       '"first reply"',
       "0.25000",
       "0.50000",
     ]);
+    // An agent reply with no author name: the flag is the only thing marking it.
     expect(lines[3].split("\t")).toEqual([
       "reply-2",
       "comment-1",
       "",
+      "true",
       '"second reply"',
       "0.25000",
       "0.50000",
@@ -138,9 +154,16 @@ describe("diff-comments command", () => {
 
     const lines = stdoutText().split("\n");
     expect(lines[0]).toBe(
-      ["id", "replyToCommentId", "author", "text", "x", "y", "isResolved"].join(
-        "\t",
-      ),
+      [
+        "id",
+        "replyToCommentId",
+        "author",
+        "isAgentAuthored",
+        "text",
+        "x",
+        "y",
+        "isResolved",
+      ].join("\t"),
     );
     expect(lines.slice(1).map((line) => line.split("\t").at(-1))).toEqual([
       "true",

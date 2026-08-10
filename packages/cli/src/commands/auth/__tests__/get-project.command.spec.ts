@@ -7,12 +7,13 @@ vi.mock("../../../command-utils/sentry.utils", () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
-  resolveApiTokenWithOAuth: vi.fn(),
   createClientWithOAuth: vi.fn(),
-  isOAuthJwt: vi.fn(),
-  getOAuthDefaultProject: vi.fn(),
-  createClient: vi.fn(),
-  getProject: vi.fn(),
+  getAgentCurrentProject: vi.fn(),
+  isFetchError: vi.fn(),
+  isAuthFailureStatus: vi.fn(),
+  getStoredOAuthTokens: vi.fn(),
+  isJwtExpired: vi.fn(),
+  clearOAuthTokens: vi.fn(),
 }));
 
 vi.mock("@alwaysmeticulous/common", () => ({
@@ -21,17 +22,20 @@ vi.mock("@alwaysmeticulous/common", () => ({
 
 vi.mock("@alwaysmeticulous/client", () => ({
   createClientWithOAuth: mocks.createClientWithOAuth,
-  isOAuthJwt: mocks.isOAuthJwt,
-  resolveApiTokenWithOAuth: mocks.resolveApiTokenWithOAuth,
-  getOAuthDefaultProject: mocks.getOAuthDefaultProject,
-  createClient: mocks.createClient,
-  getProject: mocks.getProject,
+  getAgentCurrentProject: mocks.getAgentCurrentProject,
+  isFetchError: mocks.isFetchError,
+  isAuthFailureStatus: mocks.isAuthFailureStatus,
+  getStoredOAuthTokens: mocks.getStoredOAuthTokens,
+  isJwtExpired: mocks.isJwtExpired,
+  clearOAuthTokens: mocks.clearOAuthTokens,
+  MISSING_AUTH_GUIDANCE: "guidance",
 }));
 
-const runHandler = () =>
-  (getProjectCommand as { handler: (args: unknown) => Promise<void> }).handler(
-    {},
-  );
+const runHandler = (args: { json?: boolean } = {}) =>
+  (getProjectCommand as { handler: (args: unknown) => Promise<void> }).handler({
+    json: false,
+    ...args,
+  });
 
 let logSpy: ReturnType<typeof vi.spyOn>;
 const stdoutText = () => logSpy.mock.calls.flat().join("\n");
@@ -39,18 +43,17 @@ const stdoutText = () => logSpy.mock.calls.flat().join("\n");
 describe("get-project command", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.resolveApiTokenWithOAuth.mockResolvedValue("oauth-jwt");
     mocks.createClientWithOAuth.mockResolvedValue({});
-    mocks.createClient.mockReturnValue({});
-    mocks.isOAuthJwt.mockReturnValue(true);
+    mocks.isFetchError.mockReturnValue(false);
+    mocks.isAuthFailureStatus.mockReturnValue(false);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
-  it("prints the default project for an OAuth caller", async () => {
-    mocks.getOAuthDefaultProject.mockResolvedValue({
+  it("prints the bare slug so the output can be piped", async () => {
+    mocks.getAgentCurrentProject.mockResolvedValue({
+      project: "Org/App",
       projectId: "proj-1",
-      name: "App",
-      organization: { id: "org-1", name: "Org" },
+      source: "user-default",
     });
 
     await runHandler();
@@ -58,39 +61,34 @@ describe("get-project command", () => {
     expect(stdoutText()).toBe("Org/App");
   });
 
-  it("throws when no default project is set for an OAuth caller", async () => {
-    mocks.getOAuthDefaultProject.mockResolvedValue({ projectId: null });
+  it("reports where the project came from with --json", async () => {
+    mocks.getAgentCurrentProject.mockResolvedValue({
+      project: "Org/App",
+      projectId: "proj-1",
+      source: "api-token",
+    });
 
+    await runHandler({ json: true });
+
+    expect(JSON.parse(stdoutText())).toEqual({
+      project: "Org/App",
+      projectId: "proj-1",
+      source: "api-token",
+    });
+  });
+
+  // The backend is the only side that knows why there is no project, so its
+  // message is surfaced verbatim rather than re-derived here.
+  it("surfaces the backend's explanation when no project resolves", async () => {
+    mocks.isFetchError.mockReturnValue(true);
+    mocks.getAgentCurrentProject.mockRejectedValue({
+      response: {
+        status: 400,
+        data: { message: "No default project is set." },
+      },
+    });
+
+    await expect(runHandler()).rejects.toThrow("No default project is set.");
     await expect(runHandler()).rejects.toBeInstanceOf(CliUserError);
-  });
-
-  it("prints the pinned project for a project-scoped API token", async () => {
-    mocks.isOAuthJwt.mockReturnValue(false);
-    mocks.getProject.mockResolvedValue({
-      name: "App",
-      organization: { name: "Org" },
-    });
-
-    await runHandler();
-
-    expect(stdoutText()).toBe("Org/App");
-    expect(mocks.getOAuthDefaultProject).not.toHaveBeenCalled();
-  });
-
-  it("throws when a project-scoped token's project can't be resolved", async () => {
-    mocks.isOAuthJwt.mockReturnValue(false);
-    mocks.getProject.mockResolvedValue(null);
-
-    await expect(runHandler()).rejects.toThrow(
-      "Could not resolve the project this API token is bound to.",
-    );
-  });
-
-  it("falls through to the OAuth path when there is no local token", async () => {
-    mocks.resolveApiTokenWithOAuth.mockResolvedValue(null);
-    mocks.getOAuthDefaultProject.mockResolvedValue({ projectId: null });
-
-    await expect(runHandler()).rejects.toThrow(/No default project set/);
-    expect(mocks.getProject).not.toHaveBeenCalled();
   });
 });

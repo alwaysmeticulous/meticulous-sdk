@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   isInteractiveContext: vi.fn(),
   performOAuthLogin: vi.fn(),
   createClient: vi.fn(),
-  fetchAccessibleProjects: vi.fn(),
+  listProjectsForUser: vi.fn(),
   logNotice: vi.fn(),
 }));
 
@@ -35,7 +35,7 @@ vi.mock("@alwaysmeticulous/client", () => ({
 }));
 
 vi.mock("../../../utils/select-project", () => ({
-  fetchAccessibleProjects: mocks.fetchAccessibleProjects,
+  listProjectsForUser: mocks.listProjectsForUser,
 }));
 
 const runHandler = (args: { json?: boolean } = {}) =>
@@ -43,10 +43,11 @@ const runHandler = (args: { json?: boolean } = {}) =>
     listProjectsCommand as { handler: (args: unknown) => Promise<void> }
   ).handler(args);
 
+// Matches the backend's list shape, which the command passes through verbatim.
 const project = (org: string, name: string, id: string) => ({
   id,
   name,
-  organization: { id: `${org}-id`, name: org },
+  organization: { name: org },
 });
 
 describe("list-projects command", () => {
@@ -70,7 +71,7 @@ describe("list-projects command", () => {
     });
 
     it("writes one slug per line", async () => {
-      mocks.fetchAccessibleProjects.mockResolvedValue([
+      mocks.listProjectsForUser.mockResolvedValue([
         project("OrgA", "App1", "id-1"),
         project("OrgB", "App2", "id-2"),
       ]);
@@ -82,7 +83,7 @@ describe("list-projects command", () => {
     });
 
     it("writes a JSON array with --json", async () => {
-      mocks.fetchAccessibleProjects.mockResolvedValue([
+      mocks.listProjectsForUser.mockResolvedValue([
         project("OrgA", "App1", "id-1"),
       ]);
 
@@ -95,7 +96,7 @@ describe("list-projects command", () => {
     });
 
     it("reports an empty account on stderr (human mode) and writes no slugs", async () => {
-      mocks.fetchAccessibleProjects.mockResolvedValue([]);
+      mocks.listProjectsForUser.mockResolvedValue([]);
 
       await runHandler();
 
@@ -106,7 +107,7 @@ describe("list-projects command", () => {
     });
 
     it("writes an empty JSON array (not a message) on stdout with --json when there are none", async () => {
-      mocks.fetchAccessibleProjects.mockResolvedValue([]);
+      mocks.listProjectsForUser.mockResolvedValue([]);
 
       await runHandler({ json: true });
 
@@ -134,7 +135,7 @@ describe("list-projects command", () => {
     it("performs a browser login when interactive, then lists", async () => {
       mocks.isInteractiveContext.mockReturnValue(true);
       mocks.performOAuthLogin.mockResolvedValue({ accessToken: "fresh-jwt" });
-      mocks.fetchAccessibleProjects.mockResolvedValue([
+      mocks.listProjectsForUser.mockResolvedValue([
         project("OrgA", "App1", "id-1"),
       ]);
 

@@ -6,7 +6,7 @@ vi.mock("../../../command-utils/sentry.utils", () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
-  resolveApiTokenWithOAuth: vi.fn(),
+  getAuthToken: vi.fn(),
   createClientWithOAuth: vi.fn(),
   isInteractiveContext: vi.fn(),
   isOAuthJwt: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock("@alwaysmeticulous/client", () => ({
   createClientWithOAuth: mocks.createClientWithOAuth,
   isInteractiveContext: mocks.isInteractiveContext,
   isOAuthJwt: mocks.isOAuthJwt,
-  resolveApiTokenWithOAuth: mocks.resolveApiTokenWithOAuth,
+  getAuthToken: mocks.getAuthToken,
 }));
 
 vi.mock("../../../utils/select-project", () => ({
@@ -36,7 +36,7 @@ const runHandler = (args: { project?: string } = {}) =>
 describe("set-project command", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.resolveApiTokenWithOAuth.mockResolvedValue("oauth-jwt");
+    mocks.getAuthToken.mockResolvedValue("oauth-jwt");
     mocks.createClientWithOAuth.mockResolvedValue({});
     mocks.isInteractiveContext.mockReturnValue(true);
     mocks.isOAuthJwt.mockReturnValue(true);
@@ -61,11 +61,10 @@ describe("set-project command", () => {
       /already in use.*bound to a single project/s,
     );
     expect(mocks.selectAndStoreProject).not.toHaveBeenCalled();
-    expect(mocks.createClientWithOAuth).not.toHaveBeenCalled();
   });
 
   it("falls through to the OAuth path when there is no local token", async () => {
-    mocks.resolveApiTokenWithOAuth.mockResolvedValue(null);
+    mocks.getAuthToken.mockResolvedValue(null);
 
     await runHandler({ project: "Org/App" });
 

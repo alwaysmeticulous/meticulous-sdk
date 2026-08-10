@@ -1,5 +1,14 @@
 # @alwaysmeticulous/session-filters
 
+## 2.324.0
+
+### Patch Changes
+
+- [#11908](https://github.com/alwaysmeticulous/meticulous/pull/11908) [`4d402a0`](https://github.com/alwaysmeticulous/meticulous/commit/4d402a0dba16ed5d9cbc1df300e2d498cd974a1b) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - Raise the maximum number of regexes allowed in a session filter from 100 to 500.
+
+- Updated dependencies [[`297a0f5`](https://github.com/alwaysmeticulous/meticulous/commit/297a0f57c2acbb26e48c8f346b463f240212941f), [`b1f6156`](https://github.com/alwaysmeticulous/meticulous/commit/b1f61565c15626c704e6892cab658c4059785297)]:
+  - @alwaysmeticulous/api@2.324.0
+
 ## 2.323.0
 
 ### Patch Changes

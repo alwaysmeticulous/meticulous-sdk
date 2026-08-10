@@ -13,6 +13,7 @@ import {
   logProgress,
 } from "@alwaysmeticulous/common";
 import { CliUserError } from "./cli-user-error";
+import { appendProjectSelectionHint } from "./project-selection-hint";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -147,7 +148,13 @@ export const resolveTestRunForCommitOrThrow = async (
     project,
   });
   if (testRunId == null || status == null) {
-    throw new CliUserError(`No test run found for commit ${sha}.`);
+    throw new CliUserError(
+      await appendProjectSelectionHint(
+        `No test run found for commit ${sha}.`,
+        client,
+        project,
+      ),
+    );
   }
   logProgress(`Resolved test run id: ${testRunId}`);
   return { testRunId, status };

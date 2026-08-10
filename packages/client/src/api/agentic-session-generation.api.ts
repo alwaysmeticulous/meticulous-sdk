@@ -168,6 +168,16 @@ export interface AgenticRunResultStep {
   outcome?: AgenticRunStepOutcome;
   /** Extra detail, e.g. the selector used or the exact text asserted. */
   detail?: string;
+  /** Browser actions from the testcase execution that produced this step. */
+  actionIds?: number[];
+  /** Screenshot immediately before the first linked browser action. */
+  beforeScreenshotPath?: string;
+  /** Screenshot immediately after the last linked browser action. */
+  afterScreenshotPath?: string;
+  /** Target region measured in the before frame. */
+  beforeHighlightRegion?: AgenticRunHighlightRegion;
+  /** Target region measured in the after frame. */
+  afterHighlightRegion?: AgenticRunHighlightRegion;
   /**
    * Workdir-relative artifact path of a screenshot taken at this step (as
    * returned by the test facade's `page.screenshot`), e.g.
@@ -177,17 +187,21 @@ export interface AgenticRunResultStep {
   screenshotPath?: string;
   /** SHA-256 of the screenshot bytes, used to identify duplicate evidence. */
   screenshotContentHash?: string;
-  /** Worker-measured element the reviewer should focus on, when available. */
+  /**
+   * Legacy alias for `afterHighlightRegion`, retained for v1 readers and
+   * explicit screenshots.
+   */
   highlightRegion?: AgenticRunHighlightRegion;
   /**
-   * Worker-captured viewport immediately before the action associated with this
-   * step. Kept alongside `screenshotPath`, which shows the post-action state.
+   * @deprecated Prefer `beforeScreenshotPath`. Legacy pre-action screenshot from
+   * workers that paired a single action frame with `screenshotPath` instead of
+   * emitting `beforeScreenshotPath` / `afterScreenshotPath`.
    */
-  actionScreenshotPath?: string;
-  /** SHA-256 of the pre-action screenshot bytes. */
-  actionScreenshotContentHash?: string;
-  /** Where the acted-on element was in `actionScreenshotPath`. */
-  actionHighlightRegion?: AgenticRunHighlightRegion;
+  legacyActionScreenshotPath?: string;
+  /** @deprecated Prefer measuring highlights on `beforeScreenshotPath`. */
+  legacyActionScreenshotContentHash?: string;
+  /** @deprecated Prefer `beforeHighlightRegion`. */
+  legacyActionHighlightRegion?: AgenticRunHighlightRegion;
 }
 
 /**
@@ -217,6 +231,8 @@ export interface AgenticRunResultCase {
    * the concrete reason. Optional for result blobs written by older workers.
    */
   outcomeSummary?: string;
+  /** Evidence-backed explanation of the underlying cause, when established. */
+  diagnosis?: string;
   /** Sessions recorded while running this case. */
   sessionIds: string[];
   /** Why this case was worth testing, e.g. which changed code it targets. */

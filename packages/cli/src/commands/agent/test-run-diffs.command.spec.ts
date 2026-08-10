@@ -96,40 +96,48 @@ describe("test-run-diffs command polling", () => {
     exitSpy.mockRestore();
   });
 
-  it("retriggers once up front when the run starts out failed, then reports success", async () => {
-    mocks.getTestRunDiffsSummary
-      .mockResolvedValueOnce({ status: "failed", reason: "TIMED_OUT" }) // cold-start check
-      .mockResolvedValueOnce({ status: "pending" }) // the retrigger call
-      .mockResolvedValueOnce({ status: "complete", data: [] }); // first poll
+  // The CLI never retries a `failed` response within one invocation, whether
+  // it's discovered on the very first call or partway through polling —
+  // nothing is computing behind it, so retrying is the user's call, made by
+  // running the command again.
+  it("exits 1 immediately when the run starts out failed", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValueOnce({
+      status: "failed",
+      reason: "test-run-unavailable",
+    });
 
-    vi.useFakeTimers();
-    const handlerPromise = runHandler();
-    await vi.advanceTimersByTimeAsync(2_000);
-    await handlerPromise;
-    vi.useRealTimers();
+    await expect(runHandler()).rejects.toThrow(ProcessExitError);
 
-    expect(exitSpy).not.toHaveBeenCalled();
-    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledTimes(3);
-    expect(mocks.getTestRunDiffsSummary).toHaveBeenNthCalledWith(
-      2,
-      expect.anything(),
-      "tr-1",
-      expect.objectContaining({ retrigger: true }),
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringContaining("failed (test-run-unavailable)"),
     );
-    // The poll after retriggering carries no retrigger param of its own.
-    expect(mocks.getTestRunDiffsSummary).toHaveBeenNthCalledWith(
-      3,
-      expect.anything(),
-      "tr-1",
-      expect.not.objectContaining({ retrigger: true }),
+    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledTimes(1);
+  });
+
+  // The one reason another attempt is worth making, so it must say so rather
+  // than reading as a dead end like the others.
+  it("tells the user to run again later when the test run wasn't ready in time", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValueOnce({
+      status: "failed",
+      reason: "test-run-not-ready",
+    });
+
+    await expect(runHandler()).rejects.toThrow(ProcessExitError);
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringContaining("Run this command again in a minute or more"),
+    );
+    expect(mocks.logNotice).not.toHaveBeenCalledWith(
+      expect.stringContaining("diffs are not available"),
     );
   });
 
-  it("does not retrigger a second time if the freshly retriggered run also fails", async () => {
+  it("exits 1 once a poll later returns failed", async () => {
     mocks.getTestRunDiffsSummary
-      .mockResolvedValueOnce({ status: "failed", reason: "TIMED_OUT" }) // cold-start check
-      .mockResolvedValueOnce({ status: "pending" }) // the retrigger call
-      .mockResolvedValueOnce({ status: "failed", reason: "FAILED" }); // first poll fails too
+      .mockResolvedValueOnce({ status: "pending" })
+      .mockResolvedValueOnce({ status: "failed", reason: "computation-error" });
 
     vi.useFakeTimers();
     const handlerRejection =
@@ -140,27 +148,9 @@ describe("test-run-diffs command polling", () => {
 
     expect(exitSpy).toHaveBeenCalledWith(1);
     expect(mocks.logNotice).toHaveBeenCalledWith(
-      expect.stringContaining("failed (FAILED)"),
+      expect.stringContaining("failed (computation-error)"),
     );
-    // Exactly one retrigger for the whole invocation: the initial cold-start
-    // check plus the one retrigger call, nothing more.
-    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledTimes(3);
-  });
-
-  it("does not retrigger when the run isn't already failed", async () => {
-    mocks.getTestRunDiffsSummary.mockResolvedValue({
-      status: "complete",
-      data: [],
-    });
-
-    await runHandler();
-
-    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledTimes(1);
-    expect(mocks.getTestRunDiffsSummary).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      expect.objectContaining({ retrigger: true }),
-    );
+    expect(mocks.getTestRunDiffsSummary).toHaveBeenCalledTimes(2);
   });
 
   it("exits 1 immediately on an unrecognized status", async () => {
@@ -231,7 +221,7 @@ describe("test-run-diffs command polling", () => {
     ]);
   });
 
-  it("reports representative selection without adding isSelected", async () => {
+  it("does not add isSelected to the TSV header even when selection is reported", async () => {
     mocks.getTestRunDiffsSummary.mockResolvedValue({
       status: "complete",
       data: [],
@@ -248,11 +238,47 @@ describe("test-run-diffs command polling", () => {
     );
     const stdout = logSpy.mock.calls.flat().join("\n");
     expect(stdout.split("\n")[0].split("\t")).not.toContain("isSelected");
-    expect(mocks.logNotice).toHaveBeenCalledWith(
-      "Only selected representative diffs are included. Set includeAllDiffs to true to return all diffs.",
-    );
+    // No diffs at all: the "no diffs" notice, not the selection summary.
     expect(mocks.logNotice).toHaveBeenCalledWith(
       "Test run tr-1 does not have any diffs matching the query.",
+    );
+    expect(mocks.logNotice).not.toHaveBeenCalledWith(
+      expect.stringContaining("representative"),
+    );
+  });
+
+  it("summarizes the diffs with the pre-selection total when representative selection applies", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [
+        { replayDiffId: "rd-1", screenshotName: "a" },
+        { replayDiffId: "rd-1", screenshotName: "b" },
+        { replayDiffId: "rd-2", screenshotName: "c" },
+      ],
+      selectionApplied: true,
+      numMatchingDiffs: 16,
+    });
+
+    await runHandler();
+
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^Including 3 representative screenshot diffs out of 16 total \([\d.]+s\)$/,
+      ),
+    );
+  });
+
+  it("infers singulars and omits the selection clause when nothing was selected away", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [{ replayDiffId: "rd-1", screenshotName: "a" }],
+      selectionApplied: false,
+    });
+
+    await runHandler();
+
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringMatching(/^1 screenshot diff \([\d.]+s\)$/),
     );
   });
 
@@ -290,7 +316,7 @@ describe("test-run-diffs command polling", () => {
     );
     expect(logSpy.mock.calls[0][0]).toBe("replayDiffId\tscreenshotName");
     expect(mocks.logNotice).not.toHaveBeenCalledWith(
-      expect.stringContaining("selected representative diffs"),
+      expect.stringContaining("representative screenshot diffs"),
     );
   });
 

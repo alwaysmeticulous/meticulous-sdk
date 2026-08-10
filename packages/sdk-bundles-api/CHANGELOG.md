@@ -1,5 +1,69 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.324.0
+
+### Patch Changes
+
+- [#11888](https://github.com/alwaysmeticulous/meticulous/pull/11888) [`e9d9a7a`](https://github.com/alwaysmeticulous/meticulous/commit/e9d9a7a74abac6468e18ec347684f421ddfcab12) Thanks [@claude](https://github.com/apps/claude)! - Add an optional `backendTestingLogicVersion` field to `ReplayExecutionOptions`, threaded through from a project's `BACKEND_TESTING_LOGIC_NUMBER` when backend testing is enabled. This lets bumping that number invalidate cached screenshots only for backend-testing-enabled projects, leaving every other project's cache untouched. Purely additive — existing callers are unaffected.
+
+- [#11940](https://github.com/alwaysmeticulous/meticulous/pull/11940) [`38e5c1a`](https://github.com/alwaysmeticulous/meticulous/commit/38e5c1a36ee1c47d0adad1c92a5f7c2dd08a26d6) Thanks [@dennysem](https://github.com/dennysem)! - Add `withMeticulousOperation` and `recordMeticulousObservation` to `BackendRecorderHandle` — a
+  generic, self-serve seam for backend recording.
+
+  `withMeticulousOperation({ name, key }, fn)` wraps one call so it is recorded in record mode
+  and served from the recording in replay mode, where `fn` is never invoked. It covers two cases
+  the per-technology instrumentations cannot: a client library Meticulous has no instrumentation
+  for, and — often the better seam even for a supported transport — an operation sitting _above_
+  one, such as a function that reads a cache and falls back to an API. Instrumenting only the
+  transport there records nothing when the recorded run hit the cache.
+
+  `recordMeticulousObservation(name, value)` records app state that no call produces (resolved
+  feature flags, a chosen experiment arm) into the session. It never throws, never changes
+  control flow, and is ignored during replay.
+
+  Both fields are optional, so a handle from an older recorder bundle still satisfies the type.
+
+- [#11973](https://github.com/alwaysmeticulous/meticulous/pull/11973) [`3d94e23`](https://github.com/alwaysmeticulous/meticulous/commit/3d94e23e750a448db9e3270db62737e8f4af9a3e) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `cookieNamesToInferFromBearerToken` to `ReplayExecutionOptions`. When set, the named cookies have their value inferred at replay time from the bearer token in the Authorization header of the first recorded request that carries one, rather than from a fixed value.
+
+- [#11940](https://github.com/alwaysmeticulous/meticulous/pull/11940) [`38e5c1a`](https://github.com/alwaysmeticulous/meticulous/commit/38e5c1a36ee1c47d0adad1c92a5f7c2dd08a26d6) Thanks [@dennysem](https://github.com/dennysem)! - Add `isMeticulousReplaying`, `stubWithMeticulous` and `recordWithMeticulous` to
+  `BackendRecorderHandle` — the same capture as `withMeticulousOperation`, split into the two
+  halves the app calls itself.
+
+  Some teams will not put their own code inside our callback. These move the branch into the app
+  instead:
+
+  ```ts
+  function getUser(id: string) {
+    if (handle.isMeticulousReplaying()) {
+      return handle.stubWithMeticulous<User>(`user_${id}`);
+    }
+    const user = crm.getUser(id);
+    handle.recordWithMeticulous(`user_${id}`, user);
+    return user;
+  }
+  ```
+
+  Recordings interoperate with `withMeticulousOperation`'s in both directions: the name is the
+  whole identity and keys the same way the wrapper's no-key form does. `recordWithMeticulous`
+  accepts a promise (its resolved value is recorded, or its rejection as the error) and leaves the
+  promise the caller holds untouched, so `stubWithMeticulous` returns a promise to match.
+
+  The branch is unavoidable in this form — the app keeps the invocation, so only the app can stop
+  the real call happening — and `isMeticulousReplaying()` is what it should branch on.
+  `METICULOUS_BUILD` marks the image, which is the same one in both modes, so branching on it would
+  take the stub path while recording and never record anything; `METICULOUS_BACKEND_RECORDER_MODE`
+  is the mode the process was asked for, whereas this is true only when the recorder actually
+  initialised into replay.
+
+  The wrapper remains the recommendation where handing over the call is acceptable: it has one
+  path so it cannot be branched wrongly, and it captures a thrown error, which the split form
+  cannot see (a rejected promise it does capture).
+
+  All three fields are optional, so a handle from an older recorder bundle still satisfies the
+  type.
+
+- Updated dependencies [[`297a0f5`](https://github.com/alwaysmeticulous/meticulous/commit/297a0f57c2acbb26e48c8f346b463f240212941f), [`b1f6156`](https://github.com/alwaysmeticulous/meticulous/commit/b1f61565c15626c704e6892cab658c4059785297)]:
+  - @alwaysmeticulous/api@2.324.0
+
 ## 2.323.0
 
 ### Patch Changes

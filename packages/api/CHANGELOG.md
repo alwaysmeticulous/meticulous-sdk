@@ -1,5 +1,13 @@
 # @alwaysmeticulous/api
 
+## 2.324.0
+
+### Patch Changes
+
+- [#11983](https://github.com/alwaysmeticulous/meticulous/pull/11983) [`297a0f5`](https://github.com/alwaysmeticulous/meticulous/commit/297a0f57c2acbb26e48c8f346b463f240212941f) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `html_template_sibling_coverage` to `SessionRelevanceReason`, recording that a session was selected because its coverage-source replay covered the co-located sibling source file of a changed HTML template (e.g. `foo.component.ts` for `foo.component.html`), rather than covering a directly edited line.
+
+- [#11877](https://github.com/alwaysmeticulous/meticulous/pull/11877) [`b1f6156`](https://github.com/alwaysmeticulous/meticulous/commit/b1f61565c15626c704e6892cab658c4059785297) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `TestRunDataLocations.coveragePr` and `coverageStatsPr` are now optional: the `GET test-runs/:id/data` endpoint omits the PR-scoped coverage artifact URLs for callers without code-data access.
+
 ## 2.323.0
 
 ### Minor Changes

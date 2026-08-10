@@ -165,6 +165,18 @@ export const findTestRunForCustomChecks = async ({
   // Phase 1: wait for the requested test run to reach a terminal status.
   const testRun = await pollUntilTestRunComplete(phase);
 
+  // Skipped / Aborted / ExecutionError runs have no (usable) sessions to check.
+  // Return immediately without registering "expects custom checks" or waiting
+  // on a base — callers should treat these as a no-op rather than reporting
+  // vacuous results or leaving the Checks tab pending forever.
+  if (
+    testRun.status === "Skipped" ||
+    testRun.status === "Aborted" ||
+    testRun.status === "ExecutionError"
+  ) {
+    return { testRunId: testRun.id, testRun };
+  }
+
   // Phase 2: resolve the effective (merged) test run, accounting for network
   // patching. Returns the original test run id when no patching applies.
   const effectiveTestRunId = await resolveEffectiveTestRunId(phase);

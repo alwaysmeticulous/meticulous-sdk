@@ -9,7 +9,7 @@ import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
-import { fetchAccessibleProjects } from "../../utils/select-project";
+import { listProjectsForUser } from "../../utils/select-project";
 
 interface Options {
   json?: boolean;
@@ -39,16 +39,10 @@ export const listProjectsCommand: CommandModule<unknown, Options> = {
     const apiToken = await resolveOAuthToken();
 
     const client = createClient({ apiToken });
-    const projects = await fetchAccessibleProjects(client);
+    const projects = await listProjectsForUser(client);
 
     if (json) {
-      printJson(
-        projects.map((p) => ({
-          id: p.id,
-          name: p.name,
-          organization: { name: p.organization.name },
-        })),
-      );
+      printJson(projects);
     } else {
       for (const p of projects) {
         console.log(`${p.organization.name}/${p.name}`);

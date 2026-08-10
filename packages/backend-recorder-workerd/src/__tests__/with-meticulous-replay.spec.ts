@@ -7,6 +7,7 @@ import {
   type OutboundFetchLookupRequest,
   type OutboundFetchLookupResponse,
 } from "../protocol";
+import { UNANCHORED_BASE_TIME_MS } from "../virtual-clock";
 
 /**
  * In-Node integration test for replay mode: a local HTTP server stands in for the replay
@@ -280,13 +281,20 @@ describe("withMeticulous in replay mode", () => {
     expect(result.clockNow).toBe(ANCHOR_MS);
   });
 
-  it("leaves the clock alone when the sidecar reports no anchor", async () => {
+  it("freezes at the fixed fallback date when the sidecar reports no anchor", async () => {
+    // Live time here would be non-deterministic across two replays of the same session,
+    // which is the whole thing the clock exists to remove — so an anchorless replayed
+    // request still gets a frozen time, just a fixed one (13 May 2026).
     sessionInfoHandler = () => ({});
-    const before = Date.now();
 
     const result = await callWorker({ sessionId: "clock-2", readClock: true });
 
-    expect(result.clockNow).toBeGreaterThanOrEqual(before);
+    expect(result.clockNow).toBe(UNANCHORED_BASE_TIME_MS);
+    // Deliberately a literal too: the shim ships standalone, so its fallback is a second copy
+    // of the Node recorder's by design, and the two must stay in step.
+    expect(new Date(UNANCHORED_BASE_TIME_MS).toISOString()).toBe(
+      "2026-05-13T00:00:00.000Z",
+    );
   });
 
   it("handshakes once per session, not once per request", async () => {

@@ -9,7 +9,8 @@ import {
 
 const mocks = vi.hoisted(() => ({
   getOAuthProjects: vi.fn(),
-  setOAuthDefaultProject: vi.fn(),
+  setAgentCurrentProject: vi.fn(),
+  getAgentProjects: vi.fn(),
   getOAuthDefaultProject: vi.fn(),
   isFetchError: vi.fn(() => false),
   prompt: vi.fn(),
@@ -17,7 +18,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@alwaysmeticulous/client", () => ({
   getOAuthProjects: mocks.getOAuthProjects,
-  setOAuthDefaultProject: mocks.setOAuthDefaultProject,
+  setAgentCurrentProject: mocks.setAgentCurrentProject,
+  getAgentProjects: mocks.getAgentProjects,
   getOAuthDefaultProject: mocks.getOAuthDefaultProject,
   isFetchError: mocks.isFetchError,
 }));
@@ -25,9 +27,8 @@ vi.mock("@alwaysmeticulous/client", () => ({
 // The backend resolves the identifier and returns the resolved project; model
 // that here.
 const resolved = (org: string, name: string, id: string) => ({
+  project: `${org}/${name}`,
   projectId: id,
-  name,
-  organization: { id: `${org}-id`, name: org },
 });
 
 vi.mock("@alwaysmeticulous/common", () => ({
@@ -52,7 +53,7 @@ describe("selectAndStoreProject", () => {
   it("sends an explicit identifier to the backend verbatim (not matched client-side)", async () => {
     // A bare name, id, or slug all go straight to the backend, which resolves
     // flexibly and returns the resolved project.
-    mocks.setOAuthDefaultProject.mockResolvedValue(
+    mocks.setAgentCurrentProject.mockResolvedValue(
       resolved("OrgB", "App2", "id-2"),
     );
 
@@ -61,8 +62,8 @@ describe("selectAndStoreProject", () => {
       project: "App2",
     });
 
-    expect(result).toBe("OrgB/App2");
-    expect(mocks.setOAuthDefaultProject).toHaveBeenCalledWith(
+    expect(result).toEqual({ project: "OrgB/App2", projectId: "id-2" });
+    expect(mocks.setAgentCurrentProject).toHaveBeenCalledWith(
       fakeClient,
       "App2",
     );
@@ -71,7 +72,7 @@ describe("selectAndStoreProject", () => {
   });
 
   it("trims surrounding whitespace from the provided identifier", async () => {
-    mocks.setOAuthDefaultProject.mockResolvedValue(
+    mocks.setAgentCurrentProject.mockResolvedValue(
       resolved("OrgA", "App1", "id-1"),
     );
 
@@ -80,15 +81,15 @@ describe("selectAndStoreProject", () => {
       project: "  OrgA/App1  ",
     });
 
-    expect(result).toBe("OrgA/App1");
-    expect(mocks.setOAuthDefaultProject).toHaveBeenCalledWith(
+    expect(result).toEqual({ project: "OrgA/App1", projectId: "id-1" });
+    expect(mocks.setAgentCurrentProject).toHaveBeenCalledWith(
       fakeClient,
       "OrgA/App1",
     );
   });
 
   it("throws with the available list when the backend can't resolve the identifier", async () => {
-    mocks.setOAuthDefaultProject.mockRejectedValueOnce(new Error("not found"));
+    mocks.setAgentCurrentProject.mockRejectedValueOnce(new Error("not found"));
     mocks.getOAuthProjects.mockResolvedValue([project("OrgA", "App1", "id-1")]);
 
     await expect(
@@ -106,8 +107,8 @@ describe("selectAndStoreProject", () => {
       client: fakeClient,
     });
 
-    expect(result).toBe("OrgA/App1");
-    expect(mocks.setOAuthDefaultProject).toHaveBeenCalledWith(
+    expect(result).toEqual({ project: "OrgA/App1", projectId: "id-1" });
+    expect(mocks.setAgentCurrentProject).toHaveBeenCalledWith(
       fakeClient,
       "id-1",
     );
@@ -135,7 +136,7 @@ describe("selectAndStoreProject", () => {
     expect(caught).toBeInstanceOf(CliUserError);
     expect((caught as CliUserError).severity).toBe("warn");
     expect((caught as CliUserError).exitCode).toBe(1);
-    expect(mocks.setOAuthDefaultProject).not.toHaveBeenCalled();
+    expect(mocks.setAgentCurrentProject).not.toHaveBeenCalled();
   });
 });
 
@@ -145,7 +146,7 @@ describe("selectProjectOnLogin", () => {
   });
 
   it("persists an explicit --project (resolved by the backend)", async () => {
-    mocks.setOAuthDefaultProject.mockResolvedValue(
+    mocks.setAgentCurrentProject.mockResolvedValue(
       resolved("OrgB", "App2", "id-2"),
     );
 
@@ -155,7 +156,7 @@ describe("selectProjectOnLogin", () => {
       interactive: true,
     });
 
-    expect(mocks.setOAuthDefaultProject).toHaveBeenCalledWith(
+    expect(mocks.setAgentCurrentProject).toHaveBeenCalledWith(
       fakeClient,
       "OrgB/App2",
     );
@@ -166,7 +167,7 @@ describe("selectProjectOnLogin", () => {
 
     await selectProjectOnLogin({ client: fakeClient, interactive: true });
 
-    expect(mocks.setOAuthDefaultProject).toHaveBeenCalledWith(
+    expect(mocks.setAgentCurrentProject).toHaveBeenCalledWith(
       fakeClient,
       "id-1",
     );
@@ -188,7 +189,7 @@ describe("selectProjectOnLogin", () => {
 
     await selectProjectOnLogin({ client: fakeClient, interactive: false });
 
-    expect(mocks.setOAuthDefaultProject).not.toHaveBeenCalled();
+    expect(mocks.setAgentCurrentProject).not.toHaveBeenCalled();
   });
 
   it("succeeds non-interactively when a default already exists, even with multiple projects", async () => {
@@ -220,7 +221,7 @@ describe("selectProjectOnLogin", () => {
     }).catch((error: unknown) => error);
 
     expect(caught).toBeInstanceOf(CliUserError);
-    expect(mocks.setOAuthDefaultProject).not.toHaveBeenCalled();
+    expect(mocks.setAgentCurrentProject).not.toHaveBeenCalled();
   });
 
   it("prompts and persists when interactive with several projects and no default", async () => {
@@ -233,7 +234,7 @@ describe("selectProjectOnLogin", () => {
 
     await selectProjectOnLogin({ client: fakeClient, interactive: true });
 
-    expect(mocks.setOAuthDefaultProject).toHaveBeenCalledWith(
+    expect(mocks.setAgentCurrentProject).toHaveBeenCalledWith(
       fakeClient,
       "id-2",
     );

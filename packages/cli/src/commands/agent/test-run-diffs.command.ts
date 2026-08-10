@@ -21,6 +21,7 @@ import {
   buildDiffsSummaryHeader,
   formatDiffRow,
   formatDiffsSummaryCounts,
+  pluralize,
 } from "./test-run-diffs.utils";
 
 interface Options {
@@ -212,21 +213,6 @@ const handler = async ({
     diffsSummaryOptions,
   );
 
-  // A cold start finding the last computation already `failed` retriggers
-  // once, up front — before the poll deadline below is computed, so the fresh
-  // run always gets the full timeout. This is a one-shot decision made only
-  // here, not inside the poll loop: once we're polling, a `failed` result is
-  // reported and the command exits, it never retriggers again.
-  if (response.status === "failed") {
-    logProgress(
-      `Diffs computation failed for test run ${resolvedTestRunId}; retriggering...`,
-    );
-    response = await getTestRunDiffsSummary(client, resolvedTestRunId, {
-      ...diffsSummaryOptions,
-      retrigger: true,
-    });
-  }
-
   // Poll until complete (or give up after the timeout, rather than forever).
   // A single line when we start waiting — no per-poll output.
   const summaryDeadline = performance.now() + SUMMARY_POLL_TIMEOUT_MS;
@@ -239,9 +225,17 @@ const handler = async ({
     if (response.status === "failed") {
       const reasonSuffix =
         response.reason != null ? ` (${response.reason})` : "";
+      // Only `test-run-not-ready` is worth another attempt: the test run was
+      // still going when the computation's own wait for it ran out, so it may
+      // well have finished by the time this command is run again. Nothing is
+      // still computing in the background either way — see
+      // DiffsSummaryFailureReason.
+      const advice =
+        response.reason === "test-run-not-ready"
+          ? `the test run hadn't finished in time. Run this command again in a minute or more to start a fresh attempt.`
+          : `diffs are not available for it.`;
       logNotice(
-        `Diffs summary computation failed${reasonSuffix} for test run ${resolvedTestRunId}. ` +
-          `Something may have gone wrong — try again later.`,
+        `Diffs summary computation failed${reasonSuffix} for test run ${resolvedTestRunId}; ${advice}`,
       );
       process.exit(1);
     }
@@ -277,12 +271,6 @@ const handler = async ({
     }
   }
 
-  if (response.selectionApplied) {
-    logNotice(
-      "Only selected representative diffs are included. Set includeAllDiffs to true to return all diffs.",
-    );
-  }
-
   // Summaries on stderr regardless of --json (which only changes stdout).
   if (data.length === 0) {
     logNotice(
@@ -291,10 +279,13 @@ const handler = async ({
     return;
   }
 
-  const numReplayDiffs = new Set(data.map((diff) => diff.replayDiffId)).size;
   const tEnd = performance.now();
+  const elapsed = `${((tEnd - t0) / 1000).toFixed(1)}s`;
   logNotice(
-    `${numReplayDiffs} replay diff(s), ${data.length} screenshot diff(s), total ${((tEnd - t0) / 1000).toFixed(1)}s`,
+    response.selectionApplied
+      ? // The backend always reports numMatchingDiffs alongside selectionApplied.
+        `Including ${data.length} representative screenshot ${pluralize(data.length, "diff")} out of ${response.numMatchingDiffs!} total (${elapsed})`
+      : `${data.length} screenshot ${pluralize(data.length, "diff")} (${elapsed})`,
   );
 };
 
@@ -335,7 +326,7 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     onlyRejected: {
       boolean: true,
       description:
-        "Output only screenshot diffs rejected during review (decision rejected). The --only* flags are additive: when several are set, diffs matching any of them are output, so combining them widens the output rather than narrowing it.",
+        "Output only rejected screenshot diffs. The --only* flags are additive: when several are set, diffs matching any of them are output, so combining them widens the output rather than narrowing it.",
       default: false,
     },
     onlyWithComments: {
@@ -359,7 +350,7 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     includeReviews: {
       boolean: true,
       description:
-        "Add decision and openComments columns with the PR review decision and number of open review comments per diff.",
+        "Add decision and openComments columns with the review decision and number of open review comments per diff.",
       default: false,
     },
     includeReviewDecisions: {
@@ -389,7 +380,7 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     counts: {
       boolean: true,
       description:
-        "Get the aggregate diff counts for a given test run instead of the per-diff list: number of replays, number of differences, the PR review-decision breakdown (approved/ignored/rejected/unreviewed), and the number of differences with open review comments. Cannot be combined with the list/filter flags, only with --json.",
+        "Get the aggregate diff counts for a given test run instead of the per-diff list: number of replays, number of differences, the review-decision breakdown (approved/ignored/rejected/unreviewed), and the number of differences with open review comments. Cannot be combined with the list/filter flags, only with --json.",
       default: false,
     },
   },

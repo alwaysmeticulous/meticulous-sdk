@@ -1,10 +1,12 @@
 import {
+  getAgentProjects,
   getOAuthDefaultProject,
   getOAuthProjects,
   isFetchError,
-  setOAuthDefaultProject,
+  setAgentCurrentProject,
 } from "@alwaysmeticulous/client";
 import type {
+  AgentProjectListItem,
   MeticulousClient,
   OAuthDefaultProjectResponse,
   OAuthProject,
@@ -12,7 +14,12 @@ import type {
 import { logNotice } from "@alwaysmeticulous/common";
 import inquirer from "inquirer";
 import { CliUserError } from "./cli-user-error";
-import { extractServerMessage, handleAuthFailure } from "./handle-auth-failure";
+import {
+  extractServerMessage,
+  handleAuthFailure,
+  isRouteNotFoundError,
+  toServerMessageError,
+} from "./handle-auth-failure";
 
 /**
  * Fetches the projects accessible to the OAuth caller, surfacing auth failures
@@ -32,6 +39,24 @@ export const fetchAccessibleProjects = async (
   } catch (error) {
     handleAuthFailure(error);
     throw error;
+  }
+};
+
+/**
+ * The `auth list-projects` operation itself, as opposed to the incidental
+ * listing {@link fetchAccessibleProjects} does for the interactive picker and
+ * its error messages. It goes through the agent endpoint so the two are
+ * distinguishable server-side — a counter that also fired for every picker
+ * render would not measure the command.
+ */
+export const listProjectsForUser = async (
+  client: MeticulousClient,
+): Promise<AgentProjectListItem[]> => {
+  try {
+    return await getAgentProjects(client);
+  } catch (error) {
+    handleAuthFailure(error);
+    throw toServerMessageError(error);
   }
 };
 
@@ -62,8 +87,10 @@ export const formatProjectSlug = (
 
 /**
  * Picks a project and persists it as the caller's default (via the backend —
- * see `setOAuthDefaultProject`, consistent across machines and visible to the
- * MCP server). Shared by `auth login` and `auth set-project`.
+ * see `setAgentCurrentProject`, consistent across machines and visible to the
+ * MCP server). Shared by `auth login` and `auth set-project`: choosing a
+ * default at login is the same operation as choosing one later, so both count
+ * as one server-side.
  *
  * - When `project` is given, it's resolved by the backend, which accepts any of
  *   a bare id, an `organization/name` slug, or a unique bare name (see
@@ -86,22 +113,21 @@ export const selectAndStoreProject = async ({
   client: MeticulousClient;
   project?: string | undefined;
   allowInteractivePrompt?: boolean;
-}): Promise<string> => {
+}): Promise<SelectedProject> => {
   if (project) {
     // Tolerate accidental surrounding whitespace (e.g. from copy-paste). The
     // backend resolves the identifier flexibly and returns the resolved
     // project, so there's no client-side lookup here.
     const trimmedProject = project.trim();
-    let stored: OAuthDefaultProjectResponse;
+    let stored: SelectedProject;
     try {
-      stored = await setOAuthDefaultProject(client, trimmedProject);
+      stored = await setAgentCurrentProject(client, trimmedProject);
     } catch (error) {
       handleAuthFailure(error);
       throw await toProjectResolutionError(client, trimmedProject, error);
     }
-    const projectSlug = formatProjectSlug(stored);
-    logNotice(`Selected project: ${projectSlug}`);
-    return projectSlug;
+    logNotice(`Selected project: ${stored.project}`);
+    return stored;
   }
 
   const projects = await fetchAccessibleProjects(client);
@@ -127,22 +153,39 @@ export const selectAndStoreProject = async ({
     );
   }
 
-  const projectSlug = `${selected.organization.name}/${selected.name}`;
-  await setOAuthDefaultProject(client, selected.id);
-  logNotice(`Selected project: ${projectSlug}`);
-  return projectSlug;
+  const stored = await setAgentCurrentProject(client, selected.id);
+  logNotice(`Selected project: ${stored.project}`);
+  return stored;
 };
+
+/** The stored default project, as `auth set-project --json` reports it. */
+export interface SelectedProject {
+  /** `"organization/name"` slug. */
+  project: string;
+  projectId: string;
+}
 
 /**
  * Turns a failed explicit-project resolution into a helpful `CliUserError`: the
  * backend's own message (not found / not accessible / ambiguous name) plus the
  * list of accessible projects to pick from.
+ *
+ * Checked separately from that: a `404` because `PUT agent/project` itself
+ * doesn't exist yet (this CLI newer than the backend) would otherwise be
+ * misread as "project not found" — worse, with a list of "available projects"
+ * attached that makes the named project look like it's simply not among them.
  */
 const toProjectResolutionError = async (
   client: MeticulousClient,
   identifier: string,
   error: unknown,
 ): Promise<CliUserError> => {
+  if (isRouteNotFoundError(error)) {
+    return new CliUserError(
+      "The backend doesn't support project selection yet (it may not have finished deploying " +
+        "this CLI's server-side counterpart). Try again shortly.",
+    );
+  }
   const serverMessage = isFetchError(error)
     ? extractServerMessage(error.response?.data)
     : null;

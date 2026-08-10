@@ -1,5 +1,17 @@
 # @alwaysmeticulous/custom-checks
 
+## 2.324.0
+
+### Patch Changes
+
+- [#11903](https://github.com/alwaysmeticulous/meticulous/pull/11903) [`7a050bd`](https://github.com/alwaysmeticulous/meticulous/commit/7a050bd270a3b0bccd8ec708f195a9e016bbb377) Thanks [@linpengzhang](https://github.com/linpengzhang)! - `findTestRunForCustomChecks` returns early for `Skipped` / `Aborted` / `ExecutionError` runs without registering expected custom checks, so callers can no-op instead of leaving the Checks tab pending.
+
+- Updated dependencies [[`71dae8b`](https://github.com/alwaysmeticulous/meticulous/commit/71dae8b638e96c9c8f0c642f79df2c89ceb4b4ea), [`c93b469`](https://github.com/alwaysmeticulous/meticulous/commit/c93b4698a4d77668910f140e9e69b3e53c601dbf), [`b89a9e8`](https://github.com/alwaysmeticulous/meticulous/commit/b89a9e82013b34552b044443b80e65c297f8c487), [`2f1c1cc`](https://github.com/alwaysmeticulous/meticulous/commit/2f1c1cc6dce21dd4ac39b58936ed0993e944e1f5), [`daf7259`](https://github.com/alwaysmeticulous/meticulous/commit/daf72590468aee89a73dea858d003efe41385b75), [`73ee2cd`](https://github.com/alwaysmeticulous/meticulous/commit/73ee2cd3f19e577f1f054de45c838b3780ea1998), [`297a0f5`](https://github.com/alwaysmeticulous/meticulous/commit/297a0f57c2acbb26e48c8f346b463f240212941f), [`b1f6156`](https://github.com/alwaysmeticulous/meticulous/commit/b1f61565c15626c704e6892cab658c4059785297), [`71dae8b`](https://github.com/alwaysmeticulous/meticulous/commit/71dae8b638e96c9c8f0c642f79df2c89ceb4b4ea), [`4002026`](https://github.com/alwaysmeticulous/meticulous/commit/4002026f54633115bdee622980790c66f7e2f57d), [`f51f89a`](https://github.com/alwaysmeticulous/meticulous/commit/f51f89ad7775dbee23e9d33cb26e5f0500e5c1ba), [`f907b09`](https://github.com/alwaysmeticulous/meticulous/commit/f907b0921c2d11f9d11205b8dca160e163d2e99b), [`b1f6156`](https://github.com/alwaysmeticulous/meticulous/commit/b1f61565c15626c704e6892cab658c4059785297)]:
+  - @alwaysmeticulous/client@2.324.0
+  - @alwaysmeticulous/common@2.324.0
+  - @alwaysmeticulous/api@2.324.0
+  - @alwaysmeticulous/downloading-helpers@2.324.0
+
 ## 2.323.0
 
 ### Patch Changes

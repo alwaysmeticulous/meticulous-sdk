@@ -1,4 +1,5 @@
 import type {
+  MeticulousClient,
   ProjectJsCoverageResponse,
   TestRunCoverageFile,
 } from "@alwaysmeticulous/client";
@@ -477,7 +478,9 @@ describe("printProjectCoverage", () => {
     spy.mockClear();
   });
 
-  it("prints the same coverage rows as explicit test-run mode", () => {
+  const client = {} as MeticulousClient;
+
+  it("prints the same coverage rows as explicit test-run mode", async () => {
     const result: ProjectJsCoverageResponse = {
       testRunId: "tr-9",
       files: [
@@ -488,7 +491,9 @@ describe("printProjectCoverage", () => {
         },
       ],
     };
-    printProjectCoverage(
+    await printProjectCoverage(
+      client,
+      undefined,
       result,
       ["executedRanges", "coveragePercentage"],
       false,
@@ -499,8 +504,10 @@ describe("printProjectCoverage", () => {
     ]);
   });
 
-  it("prints an empty JSON list when no run can be resolved", () => {
-    printProjectCoverage(
+  it("prints an empty JSON list when no run can be resolved", async () => {
+    await printProjectCoverage(
+      client,
+      undefined,
       { testRunId: null, files: [] },
       ["executedRanges"],
       true,

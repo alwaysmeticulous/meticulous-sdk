@@ -46,6 +46,8 @@ export const isPrAuthorRelevance = (
  *   the co-located sibling source file of a changed stylesheet (e.g.
  *   `foo.component.ts` for `foo.component.scss`) without covering any directly
  *   edited line (IsRelevant).
+ * - `html_template_sibling_coverage`: the same signal for a changed HTML
+ *   template (e.g. `foo.component.ts` for `foo.component.html`) (IsRelevant).
  * - `relevant_side_effect`: a file matching the "relevant" patterns (server
  *   config, migration, infra) forced every session relevant (IsRelevant).
  * - `mark_all_maybe_relevant`: a change with no precise line coverage to anchor
@@ -67,6 +69,7 @@ export const isPrAuthorRelevance = (
 export type SessionRelevanceReason =
   | "direct_coverage"
   | "stylesheet_sibling_coverage"
+  | "html_template_sibling_coverage"
   | "relevant_side_effect"
   | "mark_all_maybe_relevant"
   | "no_coverage_or_not_chosen"
@@ -172,15 +175,26 @@ export interface AppContainerLogsLocations {
 export interface TestRunDataLocations {
   coverage: S3Location;
   coverageStats: S3Location;
-  coveragePr: S3Location;
-  coverageStatsPr: S3Location;
+  /**
+   * PR-scoped coverage (keyed by repo file path, carrying PR-edited line
+   * ranges). Omitted for callers without code-data access — a restricted-admin
+   * OAuth caller without membership on the project — mirroring the webapp's
+   * prMode coverage gate.
+   */
+  coveragePr?: S3Location;
+  coverageStatsPr?: S3Location;
+  /**
+   * Legacy full v1 mapped artifact. No longer minted on put for new runs
+   * (workers write v2 instead). On get, only present when the S3 object
+   * exists (older runs); omitted for v2-only runs so downloaders that pull
+   * every returned location do not 404.
+   */
   coverageReplaysByFile?: S3Location;
   coverageReplaysByFilePr?: S3Location;
   /**
-   * `coverage-replays-by-file.v2.json.gz`: same line-level index as
-   * `coverageReplaysByFile`, but replay sets store indices into a shared
-   * `replayIds` dictionary. Served to the full coverage page when the v1
-   * artifact is too large for the browser to materialize.
+   * `coverage-replays-by-file.v2.json.gz`: full mapped artifact for new runs.
+   * Same line-level index as the legacy v1 key, but replay sets store indices
+   * into a shared `replayIds` dictionary.
    */
   coverageReplaysByFileV2?: S3Location;
   coverageReplaysByFileUnmapped?: S3Location;
