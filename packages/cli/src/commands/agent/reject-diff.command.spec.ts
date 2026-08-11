@@ -33,7 +33,7 @@ describe("reject-diff command", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createClientWithOAuth.mockResolvedValue({});
-    mocks.rejectDiff.mockResolvedValue(undefined);
+    mocks.rejectDiff.mockResolvedValue({ commentId: "comment-1" });
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
@@ -48,7 +48,7 @@ describe("reject-diff command", () => {
     expect(builder.y.demandOption).toBe(true);
   });
 
-  it("records the agent rejection and is silent by default", async () => {
+  it("records the agent rejection and outputs the comment it wrote", async () => {
     await runHandler(false);
 
     expect(mocks.rejectDiff).toHaveBeenCalledWith({
@@ -59,15 +59,15 @@ describe("reject-diff command", () => {
       x: 0.4,
       y: 0.6,
     });
-    expect(logSpy).not.toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith("comment-1");
   });
 
-  it("emits the same empty object as MCP with --json", async () => {
+  it("emits the same object as MCP with --json", async () => {
     await runHandler(true);
 
     expect(logSpy).toHaveBeenCalledOnce();
     expect(`${String(logSpy.mock.calls[0][0])}\n`).toBe(
-      `${serializeJson({})}\n`,
+      `${serializeJson({ commentId: "comment-1" })}\n`,
     );
   });
 });

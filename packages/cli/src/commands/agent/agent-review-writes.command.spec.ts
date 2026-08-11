@@ -34,7 +34,7 @@ describe("agent review write commands", () => {
     mocks.createClientWithOAuth.mockResolvedValue({});
     mocks.createDiffComment.mockResolvedValue({ commentId: "comment-1" });
     mocks.replyToDiffComment.mockResolvedValue({ commentId: "reply-1" });
-    mocks.ignoreDiff.mockResolvedValue(undefined);
+    mocks.ignoreDiff.mockResolvedValue({ commentId: "comment-2" });
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
@@ -90,7 +90,7 @@ describe("agent review write commands", () => {
     );
   });
 
-  it("records an agent ignore and is silent by default", async () => {
+  it("records an agent ignore and outputs the comment it wrote", async () => {
     await run(ignoreDiffCommand, {
       replayDiffId: "rd-1",
       screenshotName: "end-state",
@@ -108,6 +108,21 @@ describe("agent review write commands", () => {
       x: 0.2,
       y: 0.8,
     });
-    expect(logSpy).not.toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith("comment-2");
+  });
+
+  it("emits the ignore comment id as MCP-identical JSON", async () => {
+    await run(ignoreDiffCommand, {
+      replayDiffId: "rd-1",
+      screenshotName: "end-state",
+      reason: "Expected variation",
+      x: 0.2,
+      y: 0.8,
+      json: true,
+    });
+
+    expect(`${String(logSpy.mock.calls[0][0])}\n`).toBe(
+      `${serializeJson({ commentId: "comment-2" })}\n`,
+    );
   });
 });

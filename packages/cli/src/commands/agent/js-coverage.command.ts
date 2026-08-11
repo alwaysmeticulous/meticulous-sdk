@@ -208,9 +208,7 @@ const handler = async (options: Options): Promise<void> => {
     // don't change how the primary run above was resolved — they just add more
     // coverage to union in. Each extra run needs the same "finished" guarantee
     // as the primary.
-    const unionTestRunIds = rawUnionIds.filter(
-      (id) => id !== resolvedTestRunId,
-    );
+    const unionTestRunIds = assertNoSelfUnion(resolvedTestRunId, rawUnionIds);
     for (const unionTestRunId of unionTestRunIds) {
       const unionStatus = (
         await getTestRun({ client, testRunId: unionTestRunId })
@@ -280,6 +278,26 @@ export const logBaseRunCoverageNotice = (baseRunIds: string[]): void => {
       `Test run ${testRunId} is a base run (status: Partial): its sessions are executed on demand, so its coverage reflects the sessions replayed so far and grows over time.`,
     );
   }
+};
+
+/**
+ * Rejects naming the run being queried among the runs to union in. A run
+ * unioned with itself is just that run, so honouring it would answer a request
+ * to combine with a single run's coverage — which reads as a collapse in
+ * coverage against anything it's compared to. That is how the mistake shows up
+ * in practice: passing the run a commit already resolves to. Checked here as
+ * well as server-side to save the round trip.
+ */
+const assertNoSelfUnion = (
+  resolvedTestRunId: string,
+  rawUnionIds: string[],
+): string[] => {
+  if (rawUnionIds.includes(resolvedTestRunId)) {
+    throw new CliUserError(
+      `Test run ${resolvedTestRunId} is the run being queried, so it cannot also be one of the runs to union in — a run unioned with itself is just that run. Drop it, and name the other runs to combine with it.`,
+    );
+  }
+  return rawUnionIds;
 };
 
 /**

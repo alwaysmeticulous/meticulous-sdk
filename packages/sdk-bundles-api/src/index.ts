@@ -75,6 +75,9 @@ export {
 export { BackendRecorderConfig } from "./backend-recorder/sdk-to-bundle/init-backend-recorder";
 export {
   BackendRecorderHandle,
+  MeticulousCloudflareBindingKind,
+  MeticulousCloudflareEnvOptions,
+  MeticulousCloudflareEnvWrapper,
   MeticulousPrismaExtension,
   MeticulousIORedisWrapper,
   MeticulousPostgresJsWrapper,

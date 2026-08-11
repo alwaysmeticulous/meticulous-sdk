@@ -1,5 +1,35 @@
 # @alwaysmeticulous/cli
 
+## 2.325.0
+
+### Minor Changes
+
+- [#11992](https://github.com/alwaysmeticulous/meticulous/pull/11992) [`9944e6b`](https://github.com/alwaysmeticulous/meticulous/commit/9944e6b493fbc23f6b8ce1158e97696fc215e669) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Agents can now reject a screenshot diff on a custom-trigger test run — one with no pull request, e.g. a CLI or agent `trigger-test-run` call — not just a pull-request run. The rejection is recorded against the test run's own ledger instead of a pull request's, with the same idempotency and comment-supersession behavior. `ignore-diff` already worked on such runs, since it only ever writes a comment.
+
+### Patch Changes
+
+- [#12028](https://github.com/alwaysmeticulous/meticulous/pull/12028) [`575bd1b`](https://github.com/alwaysmeticulous/meticulous/commit/575bd1be1294293df9890cfcf958697b5c819018) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent reject-diff` and `ignore-diff` now output the ID of the review comment they
+  wrote, matching `create-diff-comment` — the caller can reply to the thread it just started
+  instead of having to look the comment up again.
+
+  Repeating a verdict the diff already carries still appends no second decision, but now records
+  its own explanation rather than discarding it, since the reason and coordinates it was called
+  with may be new.
+
+- [#11994](https://github.com/alwaysmeticulous/meticulous/pull/11994) [`239d613`](https://github.com/alwaysmeticulous/meticulous/commit/239d6130d17fe80737e8573268eaf24883d29807) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Stop a run over an explicit set of sessions from standing in for its commit:
+  - A run triggered with `--sessionIds` replays exactly those sessions, so it describes them rather than its commit. Being the newest run for that commit, it won every by-commit lookup — most damagingly in `agent js-coverage`, where a handful of sessions' coverage was reported as the commit's, and where pairing it with `--headPlusTestRunIds` unioned the run with itself and returned one run's coverage as a combined total. Such runs are now skipped whenever a commit is resolved to a run (`js-coverage`, `test-run-diffs`, `test-run-for-commit`, the MCP `get_test_run_for_commit`, …); pass the id `trigger-test-run` returns as `--testRunId` to work with one.
+  - Naming the run being queried among the runs to union in (`--headPlusTestRunIds` / `--testRunIds` / `unionTestRunIds`) is now rejected rather than silently dropped: a run unioned with itself is just that run, so the response would answer a combine with a single run's coverage. Repeated ids are still collapsed silently.
+
+- Updated dependencies [[`9944e6b`](https://github.com/alwaysmeticulous/meticulous/commit/9944e6b493fbc23f6b8ce1158e97696fc215e669), [`575bd1b`](https://github.com/alwaysmeticulous/meticulous/commit/575bd1be1294293df9890cfcf958697b5c819018), [`3837dd1`](https://github.com/alwaysmeticulous/meticulous/commit/3837dd1645cbf2c47c6fcc0cf11d907204ca9b72), [`8e26cb9`](https://github.com/alwaysmeticulous/meticulous/commit/8e26cb9de09cdd8c90db9b1c187c87fd3becf913), [`d4be3d8`](https://github.com/alwaysmeticulous/meticulous/commit/d4be3d8db101166488602da08a7f425ef3f07a1e)]:
+  - @alwaysmeticulous/client@2.325.0
+  - @alwaysmeticulous/sdk-bundles-api@2.325.0
+  - @alwaysmeticulous/downloading-helpers@2.325.0
+  - @alwaysmeticulous/remote-replay-launcher@2.325.0
+  - @alwaysmeticulous/debug-workspace@2.325.0
+  - @alwaysmeticulous/common@2.324.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.325.0
+
 ## 2.324.0
 
 ### Minor Changes

@@ -1,5 +1,15 @@
 # @alwaysmeticulous/remote-replay-launcher
 
+## 2.325.0
+
+### Patch Changes
+
+- [#11977](https://github.com/alwaysmeticulous/meticulous/pull/11977) [`d4be3d8`](https://github.com/alwaysmeticulous/meticulous/commit/d4be3d8db101166488602da08a7f425ef3f07a1e) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Bump the `systeminformation` dependency floor from `^5.25.11` to `^5.33.1` to address CVE-2026-50289 (command injection in `networkInterfaces()` on Linux).
+
+- Updated dependencies [[`9944e6b`](https://github.com/alwaysmeticulous/meticulous/commit/9944e6b493fbc23f6b8ce1158e97696fc215e669), [`575bd1b`](https://github.com/alwaysmeticulous/meticulous/commit/575bd1be1294293df9890cfcf958697b5c819018), [`8e26cb9`](https://github.com/alwaysmeticulous/meticulous/commit/8e26cb9de09cdd8c90db9b1c187c87fd3becf913)]:
+  - @alwaysmeticulous/client@2.325.0
+  - @alwaysmeticulous/common@2.324.0
+
 ## 2.324.0
 
 ### Patch Changes

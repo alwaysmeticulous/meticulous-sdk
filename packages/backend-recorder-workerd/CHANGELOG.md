@@ -1,5 +1,17 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.325.0
+
+### Minor Changes
+
+- [#12027](https://github.com/alwaysmeticulous/meticulous/pull/12027) [`3837dd1`](https://github.com/alwaysmeticulous/meticulous/commit/3837dd1645cbf2c47c6fcc0cf11d907204ca9b72) Thanks [@dennysem](https://github.com/dennysem)! - Record and replay Cloudflare bindings from an app running on Node.
+
+  An app that runs on Node but gets its bindings from Cloudflare — a React Router or TanStack Start dev server or container using `cloudflareDevProxy`, or anything else built on wrangler's `getPlatformProxy` — can now hand its `env` to the recorder: `const env = handle.withMeticulousCloudflareEnv(context.cloudflare.env)`. JS-RPC methods, KV operations, queue sends and `fetch` through a service binding or Durable Object stub are recorded, and all but R2 are served back during a replay, so a replay no longer needs the sibling workers running or the local KV contents to match the recording. R2 calls are recorded but still run for real.
+
+  There was previously no seam for this at all: in that setup each binding is a proxy object created per process, so no require hook can reach it and there is no prototype to patch, unlike in a deployed Worker.
+
+  `@alwaysmeticulous/backend-recorder-workerd` now exports `serializeKvCaptureFields` and `serializeKvArgs`, which define how a KV operation's key, arguments and value are persisted. The Node recorder calls them so a KV operation recorded in Node is byte-identical to the same one recorded in workerd, and either recording can be replayed by either runtime.
+
 ## 2.324.0
 
 ### Patch Changes

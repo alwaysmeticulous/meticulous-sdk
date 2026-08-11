@@ -187,6 +187,77 @@ describe("getOrFetchReplayArchive — excludeFileTypes", () => {
     expect(downloadedKeys).not.toContain(undefined);
   });
 
+  it("downloads app container logs as a plain file, not through the extract path", async () => {
+    (getReplayV3DownloadUrls as Mock).mockResolvedValue({
+      ...(buildDownloadUrls() as Record<string, unknown>),
+      appContainerLogs: {
+        signedUrl: "https://example/appContainerLogs",
+        filePath: "app-container-logs.ndjson",
+      },
+    });
+
+    await run();
+
+    expect(downloadFile as Mock).toHaveBeenCalledWith(
+      "https://example/appContainerLogs",
+      join(replayDir(), "app-container-logs.ndjson"),
+    );
+    // It is plain NDJSON, so it must not go through downloadAndExtractFile.
+    expect(
+      (downloadAndExtractFile as Mock).mock.calls.map((call) => call[0]),
+    ).not.toContain("https://example/appContainerLogs");
+  });
+
+  // Most replays never get this artifact, so the common case is the server
+  // omitting the key entirely and nothing being attempted.
+  it("does not fail the download when app container logs are absent", async () => {
+    await expect(run()).resolves.toBeDefined();
+
+    expect(
+      (downloadFile as Mock).mock.calls.map((call) => call[1] as string),
+    ).not.toContain(join(replayDir(), "app-container-logs.ndjson"));
+  });
+
+  // The opt-in is what keeps the server's existence check off every other
+  // caller's path, so it has to be asserted rather than assumed.
+  it("asks the server for app container logs on an 'everything' download", async () => {
+    await run();
+
+    expect(getReplayV3DownloadUrls as Mock).toHaveBeenCalledWith(
+      expect.anything(),
+      REPLAY_ID,
+      expect.objectContaining({ includeAppContainerLogs: true }),
+    );
+  });
+
+  it("does not ask for app container logs when the scope would discard them", async () => {
+    await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive({} as never, REPLAY_ID, "screenshots-only"),
+    );
+
+    expect(getReplayV3DownloadUrls as Mock).toHaveBeenCalledWith(
+      expect.anything(),
+      REPLAY_ID,
+      expect.objectContaining({ includeAppContainerLogs: false }),
+    );
+  });
+
+  it("does not ask for app container logs when the caller excludes them", async () => {
+    await run(new Set<ReplayFileType>(["appContainerLogs"]));
+
+    expect(getReplayV3DownloadUrls as Mock).toHaveBeenCalledWith(
+      expect.anything(),
+      REPLAY_ID,
+      expect.objectContaining({ includeAppContainerLogs: false }),
+    );
+  });
+
+  it("still writes the cache marker when the replay simply has no app container logs", async () => {
+    await run();
+
+    expect(existsSync(markerPath())).toBe(true);
+  });
+
   it("hits the cache short-circuit when the marker says 'everything' and no exclusions are set", async () => {
     // Pre-seed the marker as if a prior unfiltered run completed.
     await mkdir(replayDir(), { recursive: true });

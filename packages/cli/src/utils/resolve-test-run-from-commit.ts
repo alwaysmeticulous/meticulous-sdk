@@ -128,6 +128,11 @@ export const assertTestRunComplete = (
  * omitted, project-scoped tokens use their own project and OAuth tokens fall
  * back to the caller's stored default (`meticulous auth set-project`).
  *
+ * A run triggered over an explicit set of sessions (`trigger-test-run
+ * --sessionIds`) is never resolved to: it replays exactly those sessions, so it
+ * describes them rather than the commit. Pass its id — which the trigger
+ * printed — with `--testRunId` to work with one.
+ *
  * Logs the resolved commit (see {@link logResolvedCommitSha}) and the test run
  * id (under `--verbose`).
  */

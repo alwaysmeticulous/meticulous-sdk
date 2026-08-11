@@ -135,7 +135,8 @@ export type ReplayFileType =
   | "stackTraces"
   | "cookies"
   | "launchBrowserAndReplayParams"
-  | "logs";
+  | "logs"
+  | "appContainerLogs";
 
 /**
  * The subset of {@link ReplayFileType}s that are downloaded as unzipped archive
@@ -298,19 +299,23 @@ const downloadReplayV3Files = async (
   bestEffortFileTypes: ReadonlySet<string> | undefined,
 ) => {
   const logger = initLogger();
+
+  const includes = (fileType: string): boolean =>
+    shouldDownloadFile(fileType, downloadScope) &&
+    !(excludeFileTypes?.has(fileType) ?? false);
+
   const downloadUrls = await getReplayV3DownloadUrls(client, replayId, {
     includeScreenshots,
     includeDiffs,
+    // Costs the server an S3 existence check, so only ask when this download
+    // would actually keep the file.
+    includeAppContainerLogs: includes("appContainerLogs"),
   });
   if (!downloadUrls) {
     throw new Error(
       "Error: Could not retrieve replay download URLs. This may be an invalid replay",
     );
   }
-
-  const includes = (fileType: string): boolean =>
-    shouldDownloadFile(fileType, downloadScope) &&
-    !(excludeFileTypes?.has(fileType) ?? false);
 
   // Wrap a download thunk so that, for file types the caller marked best-effort,
   // a failure (e.g. a 403/404 on a pruned artifact) is logged and swallowed
@@ -347,6 +352,10 @@ const downloadReplayV3Files = async (
     // here. Leaving it in `rest` would make the loop below call
     // `downloadAndExtractFile(undefined, ...)` -> `new URL(undefined)`.
     customCheckSnapshots,
+    // Pulled out of `rest` because it is plain NDJSON, not one of the
+    // gzipped/zipped artifacts the `rest` loop feeds to
+    // `downloadAndExtractFile`, and because it is optional (see below).
+    appContainerLogs,
     ...rest
   } = downloadUrls;
 
@@ -500,6 +509,22 @@ const downloadReplayV3Files = async (
       : []),
   ];
 
+  // Absent for most replays, which is why the key is optional rather than this
+  // download being best-effort: the server omits it unless the object exists, so
+  // there is nothing to attempt. Once it is offered it is as reliable as any
+  // other artifact here — same bucket, same lifecycle — so a failure is fatal,
+  // like `timeline` or `metadata`.
+  const appContainerLogsPromises =
+    includes("appContainerLogs") && appContainerLogs
+      ? [
+          () =>
+            downloadFile(
+              appContainerLogs.signedUrl,
+              join(replayDir, appContainerLogs.filePath),
+            ),
+        ]
+      : [];
+
   const limited = pLimit(MAX_DOWNLOAD_CONCURRENCY);
   await Promise.all(
     [
@@ -507,6 +532,7 @@ const downloadReplayV3Files = async (
       ...screenshotPromises,
       ...diffsPromises,
       ...archivePromises,
+      ...appContainerLogsPromises,
     ].map((p) => limited(p)),
   );
 };

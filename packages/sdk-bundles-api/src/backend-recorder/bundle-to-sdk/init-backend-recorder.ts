@@ -31,6 +31,36 @@ export type MeticulousIORedisWrapper = <T>(client: T) => T;
  */
 export type MeticulousPostgresJsWrapper = <T>(sql: T) => T;
 
+/**
+ * The kinds of Cloudflare binding the recorder captures. Normally inferred from the binding
+ * itself; name one explicitly when inference gets it wrong. `"skip"` leaves it untouched.
+ */
+export type MeticulousCloudflareBindingKind =
+  | "kv"
+  | "r2"
+  | "queue"
+  | "durable-object-namespace"
+  | "fetcher"
+  | "skip";
+
+export interface MeticulousCloudflareEnvOptions {
+  /** Binding names to leave unrecorded, on top of the defaults (`ASSETS`, `__STATIC_CONTENT`). */
+  skipBindings?: readonly string[];
+  /** Overrides for the inferred binding kind, keyed by `env` key. */
+  bindings?: Readonly<Record<string, MeticulousCloudflareBindingKind>>;
+}
+
+/**
+ * Wraps a Cloudflare `env` so calls through its bindings are recorded (record mode) or served from
+ * recordings (replay mode), returning a shallow copy with each recognised binding replaced. Apply it
+ * at the request edge: `const env = handle.withMeticulousCloudflareEnv(context.cloudflare.env)`.
+ * Safe to call across the bundle boundary.
+ */
+export type MeticulousCloudflareEnvWrapper = <TEnv extends object>(
+  env: TEnv,
+  options?: MeticulousCloudflareEnvOptions,
+) => TEnv;
+
 /** Identifies one wrapped operation to the recorder. See {@link MeticulousOperationWrapper}. */
 export interface MeticulousOperationSpec {
   /**
@@ -216,6 +246,37 @@ export interface BackendRecorderHandle {
    * guard with `handle?.withMeticulousOperation`.
    */
   withMeticulousOperation?: MeticulousOperationWrapper;
+
+  /**
+   * The Meticulous Cloudflare `env` wrapper. Apply it at your request edge
+   * (`const env = handle.withMeticulousCloudflareEnv(context.cloudflare.env)`) so calls through
+   * your KV, R2, queue, Durable Object and service bindings are recorded (record mode) or served
+   * from recordings (replay mode).
+   *
+   * Required for an app that runs on **Node** with Cloudflare bindings — a React Router or
+   * TanStack Start dev server or container using `cloudflareDevProxy`, or anything else built on
+   * wrangler's `getPlatformProxy`. There each binding is a proxy object created per process: there
+   * is no module for a require hook to intercept and no prototype to patch, so handing us `env` is
+   * the only seam. (A deployed Worker records through `@alwaysmeticulous/backend-recorder-workerd`
+   * instead.)
+   *
+   * Returns a shallow copy of `env` with each recognised binding replaced by a wrapper; plain
+   * variables are passed through untouched. It dispatches per call, so it is safe to apply while
+   * building your request handler, and with the recorder disabled or uninitialised it returns `env`
+   * unchanged.
+   *
+   * Apply it **before any `env` wrapper of your own**. Outermost, a replayed call is served without
+   * your wrapper running at all; innermost, your wrapper still runs — emitting spans, retrying,
+   * mutating — around a call that never happens.
+   *
+   * Arguments and results are stored as JSON, so both must be JSON-serializable. R2 is a partial
+   * exception: its calls are recorded but still run for real during a replay, because what its
+   * operations return is a metadata handle that cannot be captured cheaply.
+   *
+   * Optional so older recorder bundles (which predate this field) still satisfy the type;
+   * guard with `handle?.withMeticulousCloudflareEnv`.
+   */
+  withMeticulousCloudflareEnv?: MeticulousCloudflareEnvWrapper;
 
   /**
    * Records a value into the session without stubbing anything — app state a replay should be

@@ -51,6 +51,17 @@ export {
 } from "./body-capture";
 export { headersToRecord } from "./outbound-capture";
 export { redactRequestBody, STR_REDACTED } from "./redact-body";
+/**
+ * Exported for the Node recorder's `withMeticulousCloudflareEnv`, which records the same KV
+ * operations from a process whose bindings come from wrangler's `getPlatformProxy`. Both
+ * surfaces must produce identical fields, so the contract has exactly one implementation.
+ */
+export {
+  type KvCaptureFields,
+  type KvCaptureOutcome,
+  serializeKvArgs,
+  serializeKvCaptureFields,
+} from "./kv-capture";
 
 /** Structural subset of workerd's ExecutionContext — avoids a @cloudflare/workers-types dependency. */
 export interface MeticulousExecutionContext {
@@ -305,7 +316,7 @@ const getCachedReplaySessionInfo = (
   sidecarUrl: string,
   frontendSessionId: string,
 ): Promise<{ clockAnchorMs: number | undefined } | null> => {
-  const key = `${sidecarUrl} ${frontendSessionId}`;
+  const key = `${sidecarUrl}\u0000${frontendSessionId}`;
   const cached = replaySessionInfoCache.get(key);
   if (cached !== undefined) {
     return cached;

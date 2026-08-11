@@ -29,7 +29,7 @@ const handler = async ({
     apiToken,
     enableOAuthLogin: true,
   });
-  await rejectDiff({
+  const response = await rejectDiff({
     client,
     replayDiffId,
     screenshotName,
@@ -38,14 +38,16 @@ const handler = async ({
     y,
   });
   if (json) {
-    printJson({});
+    printJson(response);
+  } else {
+    console.log(response.commentId);
   }
 };
 
 export const rejectDiffCommand: CommandModule<unknown, Options> = {
   command: "reject-diff",
   describe:
-    "Record an agent decision rejecting a screenshot diff and add a review comment explaining why. The rejection goes into the same review ledger a human rejection goes into and blocks the pull request the same way, replacing any earlier decision on the diff. The test run must belong to a pull request. Outputs nothing on success, or an empty object with --json.",
+    "Record an agent decision rejecting a screenshot diff and add a review comment explaining why. Outputs the ID of the review comment recording the decision, or an object with commentId with --json.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     replayDiffId: {

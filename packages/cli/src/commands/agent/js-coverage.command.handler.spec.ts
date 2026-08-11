@@ -12,6 +12,7 @@ vi.mock("../../command-utils/sentry.utils", () => ({
 const mocks = vi.hoisted(() => ({
   createClientWithOAuth: vi.fn(),
   getTestRun: vi.fn(),
+  getTestRunForCommit: vi.fn(),
   getTestRunJsCoverage: vi.fn(),
   getProjectJsCoverage: vi.fn(),
   getReplayJsCoverage: vi.fn(),
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   logNotice: vi.fn(),
   logProgress: vi.fn(),
   initLogger: vi.fn(),
+  getCommitSha: vi.fn(),
 }));
 
 // Partial: the column-selection helpers are real logic this command depends on,
@@ -27,6 +29,7 @@ vi.mock("@alwaysmeticulous/client", async (importOriginal) => ({
   ...(await importOriginal<typeof MeticulousClientModule>()),
   createClientWithOAuth: mocks.createClientWithOAuth,
   getTestRun: mocks.getTestRun,
+  getTestRunForCommit: mocks.getTestRunForCommit,
   getTestRunJsCoverage: mocks.getTestRunJsCoverage,
   getProjectJsCoverage: mocks.getProjectJsCoverage,
   getReplayJsCoverage: mocks.getReplayJsCoverage,
@@ -37,9 +40,7 @@ vi.mock("@alwaysmeticulous/common", () => ({
   logNotice: mocks.logNotice,
   logProgress: mocks.logProgress,
   initLogger: mocks.initLogger,
-  // Used by the resolver's dirty-tree notice, which no test here exercises
-  // (every case passes an explicit --testRunId).
-  getCommitSha: vi.fn(),
+  getCommitSha: mocks.getCommitSha,
   getUntrackedFiles: vi.fn().mockResolvedValue([]),
   hasUncommittedChanges: vi.fn().mockResolvedValue(false),
 }));
@@ -187,6 +188,65 @@ describe("js-coverage handler on a completed run", () => {
       {},
       "tr-1",
       expect.objectContaining({ prDiffOnly: true }),
+    );
+  });
+});
+
+// Which run a commit resolves to is the backend's decision (it skips runs over
+// a pinned session set); these cover what the handler does with the result.
+describe("js-coverage handler resolving a run from a commit", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createClientWithOAuth.mockResolvedValue({});
+    mocks.getCommitSha.mockResolvedValue("sha-1");
+    mocks.getTestRun.mockResolvedValue({ status: "Success" });
+    mocks.getTestRunForCommit.mockResolvedValue({
+      testRunId: "tr-head",
+      status: "Success",
+    });
+    mocks.getTestRunJsCoverage.mockResolvedValue({ files: [] });
+    mocks.isFetchError.mockImplementation(
+      (error: unknown) =>
+        typeof error === "object" && error != null && "response" in error,
+    );
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  it("fetches coverage for the resolved run", async () => {
+    await runHandler({ testRunId: undefined });
+    expect(mocks.getTestRunJsCoverage).toHaveBeenCalledWith(
+      {},
+      "tr-head",
+      expect.anything(),
+    );
+  });
+
+  // The failure this whole path exists to prevent: before the lookup skipped
+  // runs over a pinned session set, a just-triggered run won it, so
+  // --headPlusTestRunIds naming that run unioned it with itself and returned one
+  // run's coverage looking like a combined total.
+  it("rejects unioning the resolved run with itself", async () => {
+    await expect(
+      runHandler({ testRunId: undefined, headPlusTestRunIds: "tr-head" }),
+    ).rejects.toThrow(/tr-head is the run being queried/);
+    expect(mocks.getTestRunJsCoverage).not.toHaveBeenCalled();
+  });
+
+  // Rejected on the id itself, not on "nothing left to union" — the request is
+  // equally confused when other runs remain.
+  it("rejects it even when other runs would remain", async () => {
+    await expect(
+      runHandler({ testRunId: undefined, headPlusTestRunIds: "tr-head,tr-2" }),
+    ).rejects.toBeInstanceOf(CliUserError);
+    expect(mocks.getTestRunJsCoverage).not.toHaveBeenCalled();
+  });
+
+  it("unions runs that are not the primary", async () => {
+    await runHandler({ testRunId: undefined, headPlusTestRunIds: "tr-2,tr-3" });
+    expect(mocks.getTestRunJsCoverage).toHaveBeenCalledWith(
+      {},
+      "tr-head",
+      expect.objectContaining({ unionTestRunIds: ["tr-2", "tr-3"] }),
     );
   });
 });

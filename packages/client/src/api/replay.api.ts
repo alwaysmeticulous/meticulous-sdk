@@ -53,11 +53,24 @@ export type ReplayV3UploadLocations = Record<string, S3Location> & {
    * `S3Location` (which would lead to `signedUrl === undefined`).
    */
   customCheckSnapshots?: Record<string, { file: S3Location }>;
+  /**
+   * The replay's app-container logs. Declared explicitly because the flat
+   * `Record<string, S3Location>` index signature above would otherwise type it
+   * as always present, and it is genuinely optional: the server only returns it
+   * when the artifact exists and the caller passed `includeAppContainerLogs`.
+   */
+  appContainerLogs?: S3Location;
 };
 
 export interface GetReplayV3DownloadUrlsOptions {
   includeScreenshots?: boolean;
   includeDiffs?: boolean;
+  /**
+   * Include the replay's app-container logs, when it has any. Opt-in because
+   * the server has to check S3 for the artifact's existence, which the rest of
+   * this response never does. Only ask for it if you will read it.
+   */
+  includeAppContainerLogs?: boolean;
 }
 
 export const getReplayV3DownloadUrls: (
@@ -75,6 +88,9 @@ export const getReplayV3DownloadUrls: (
   }
   if (options?.includeDiffs === false) {
     params["includeDiffs"] = "false";
+  }
+  if (options?.includeAppContainerLogs === true) {
+    params["includeAppContainerLogs"] = "true";
   }
 
   const { data } = await client

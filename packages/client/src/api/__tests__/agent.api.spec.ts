@@ -386,17 +386,21 @@ describe("getDiffComments", () => {
 });
 
 describe("rejectDiff", () => {
-  it("posts the reason to the encoded screenshot resource", async () => {
-    const client = { post: vi.fn().mockResolvedValue({ data: undefined }) };
+  it("posts the reason to the encoded screenshot resource and returns the comment", async () => {
+    const client = {
+      post: vi.fn().mockResolvedValue({ data: { commentId: "comment-1" } }),
+    };
 
-    await rejectDiff({
-      client: client as unknown as MeticulousClient,
-      replayDiffId: "rd-1",
-      screenshotName: "reason with spaces",
-      reason: "The checkout total regressed",
-      x: 0.4,
-      y: 0.6,
-    });
+    await expect(
+      rejectDiff({
+        client: client as unknown as MeticulousClient,
+        replayDiffId: "rd-1",
+        screenshotName: "reason with spaces",
+        reason: "The checkout total regressed",
+        x: 0.4,
+        y: 0.6,
+      }),
+    ).resolves.toEqual({ commentId: "comment-1" });
 
     expect(client.post).toHaveBeenCalledWith(
       "agent/replay-diffs/rd-1/screenshots/reason%20with%20spaces/reject",
@@ -412,14 +416,16 @@ describe("agent diff comment writes", () => {
     };
     const typedClient = client as unknown as MeticulousClient;
 
-    await ignoreDiff({
-      client: typedClient,
-      replayDiffId: "rd-1",
-      screenshotName: "end-state",
-      reason: "Expected variation",
-      x: 0.2,
-      y: 0.8,
-    });
+    await expect(
+      ignoreDiff({
+        client: typedClient,
+        replayDiffId: "rd-1",
+        screenshotName: "end-state",
+        reason: "Expected variation",
+        x: 0.2,
+        y: 0.8,
+      }),
+    ).resolves.toEqual({ commentId: "comment-1" });
     await expect(
       createDiffComment({
         client: typedClient,

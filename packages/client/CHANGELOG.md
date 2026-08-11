@@ -1,5 +1,26 @@
 # @alwaysmeticulous/client
 
+## 2.325.0
+
+### Minor Changes
+
+- [#11992](https://github.com/alwaysmeticulous/meticulous/pull/11992) [`9944e6b`](https://github.com/alwaysmeticulous/meticulous/commit/9944e6b493fbc23f6b8ce1158e97696fc215e669) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Agents can now reject a screenshot diff on a custom-trigger test run — one with no pull request, e.g. a CLI or agent `trigger-test-run` call — not just a pull-request run. The rejection is recorded against the test run's own ledger instead of a pull request's, with the same idempotency and comment-supersession behavior. `ignore-diff` already worked on such runs, since it only ever writes a comment.
+
+### Patch Changes
+
+- [#12028](https://github.com/alwaysmeticulous/meticulous/pull/12028) [`575bd1b`](https://github.com/alwaysmeticulous/meticulous/commit/575bd1be1294293df9890cfcf958697b5c819018) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent reject-diff` and `ignore-diff` now output the ID of the review comment they
+  wrote, matching `create-diff-comment` — the caller can reply to the thread it just started
+  instead of having to look the comment up again.
+
+  Repeating a verdict the diff already carries still appends no second decision, but now records
+  its own explanation rather than discarding it, since the reason and coordinates it was called
+  with may be new.
+
+- [#12021](https://github.com/alwaysmeticulous/meticulous/pull/12021) [`8e26cb9`](https://github.com/alwaysmeticulous/meticulous/commit/8e26cb9de09cdd8c90db9b1c187c87fd3becf913) Thanks [@calebgcc](https://github.com/calebgcc)! - `meticulous download replay` now also fetches the replay's `app-container-logs.ndjson` when one exists. Most replays have no such artifact, and the server omits the key entirely in that case, so the download is unchanged for them. `getReplayV3DownloadUrls` gains an opt-in `includeAppContainerLogs` option for callers that want the artifact located.
+
+- Updated dependencies []:
+  - @alwaysmeticulous/common@2.324.0
+
 ## 2.324.0
 
 ### Minor Changes

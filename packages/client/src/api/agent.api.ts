@@ -916,8 +916,8 @@ export const rejectDiff = async ({
   reason: string;
   x: number;
   y: number;
-}): Promise<void> => {
-  await client
+}): Promise<AgentDiffCommentMutationResponse> => {
+  const { data } = await client
     .post(
       `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/reject`,
       { reason, x, y },
@@ -925,6 +925,7 @@ export const rejectDiff = async ({
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
+  return data;
 };
 
 /** Record an agent review ignoring one screenshot difference. */
@@ -942,8 +943,8 @@ export const ignoreDiff = async ({
   reason: string;
   x: number;
   y: number;
-}): Promise<void> => {
-  await client
+}): Promise<AgentDiffCommentMutationResponse> => {
+  const { data } = await client
     .post(
       `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/ignore`,
       { reason, x, y },
@@ -951,6 +952,7 @@ export const ignoreDiff = async ({
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
+  return data;
 };
 
 /** Start a review comment thread on one screenshot difference. */

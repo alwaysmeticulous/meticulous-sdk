@@ -1,14 +1,8 @@
-import { MAX_BODY_CAPTURE_SIZE } from "./body-capture";
 import { type RequestCaptureContext, requestCaptureContext } from "./context";
+import { type KvCaptureOutcome, serializeKvCaptureFields } from "./kv-capture";
 import { warnOnce } from "./log";
 import { getOriginalFetch } from "./original-fetch";
-import type {
-  CapturedBody,
-  KvOmittedReason,
-  KvOperation,
-  KvOperationEvent,
-} from "./protocol";
-import { redactRequestBody } from "./redact-body";
+import type { KvOperation, KvOperationEvent } from "./protocol";
 import { postCaptureEvents } from "./sidecar-client";
 
 /**
@@ -277,7 +271,7 @@ const report = (
   bindingName: string,
   args: unknown[],
   startTimeMs: number,
-  outcome: { result: unknown } | { error: string },
+  outcome: KvCaptureOutcome,
 ): void => {
   try {
     const event = buildKvEvent(
@@ -303,121 +297,17 @@ const buildKvEvent = (
   bindingName: string,
   args: unknown[],
   startTimeMs: number,
-  outcome: { result: unknown } | { error: string },
-): KvOperationEvent => {
-  const [key] = args;
-  const written =
-    operation === "put" ? serializeWrittenValue(args[1]) : undefined;
-  const read =
-    "result" in outcome ? serializeKvValue(outcome.result) : undefined;
-  const omitted = written?.omitted ?? read?.omitted;
-  const serializedArgs = serializeKvArgs(operation, args);
-
-  return {
-    kind: "kv",
-    requestId: ctx.requestId,
-    ...(ctx.frontendSessionId !== undefined
-      ? { frontendSessionId: ctx.frontendSessionId }
-      : {}),
-    bindingName,
-    operation,
-    ...(typeof key === "string" ? { key } : {}),
-    ...(serializedArgs !== undefined ? { args: serializedArgs } : {}),
-    ...(written?.captured !== undefined ? { value: written.captured } : {}),
-    ...(read?.captured !== undefined ? { result: read.captured } : {}),
-    ...(omitted !== undefined ? { omitted } : {}),
-    startTimeMs,
-    endTimeMs: Date.now(),
-    ...("error" in outcome ? { error: outcome.error } : {}),
-  };
-};
-
-interface SerializedKvValue {
-  captured?: CapturedBody;
-  omitted?: KvOmittedReason;
-}
-
-/**
- * JSON of a value workerd returned, with anything unpersistable replaced by `null` and the
- * reason reported alongside. A `Map` (what a bulk `get` returns) becomes a plain object,
- * which `JSON.stringify` would otherwise flatten to `{}`.
- *
- * Read values are stored verbatim, deliberately: a future replay would serve them straight
- * back to the app, so redacting one would corrupt what the app receives. Only the write path
- * ({@link serializeWrittenValue}) is redacted — nothing ever replays a `put`.
- */
-const serializeKvValue = (value: unknown): SerializedKvValue => {
-  let omitted: KvOmittedReason | undefined;
-  try {
-    const json = JSON.stringify(value, (_key: string, nested: unknown) => {
-      const reason = omittedReason(nested);
-      if (reason !== undefined) {
-        omitted ??= reason;
-        return null;
-      }
-      return nested instanceof Map
-        ? Object.fromEntries(nested as Map<string, unknown>)
-        : nested;
-    });
-    return {
-      // `undefined` (what `put`/`delete` resolve to) has no JSON form — nothing to capture.
-      ...(json !== undefined ? { captured: capture(json) } : {}),
-      ...(omitted !== undefined ? { omitted } : {}),
-    };
-  } catch {
-    // Circular, or a getter that throws. The operation itself is still recorded.
-    return {};
-  }
-};
-
-/**
- * JSON of the value a `put` wrote, redacted like a request body. KV takes a string, an
- * ArrayBuffer(View) or a stream; only the string form can be captured, and it is redacted as
- * text before being JSON-encoded so that secret-looking fields *inside* the app's payload are
- * caught (redacting the JSON-encoded form would only ever see one opaque string).
- */
-const serializeWrittenValue = (value: unknown): SerializedKvValue => {
-  if (typeof value === "string") {
-    try {
-      return { captured: capture(JSON.stringify(redactRequestBody(value))) };
-    } catch {
-      return {};
-    }
-  }
-  return serializeKvValue(value);
-};
-
-/**
- * JSON of the call's arguments. A `put` value is replaced by `null` rather than dropped, so
- * the remaining arguments keep their positions — and so the value is only ever persisted via
- * the redacted {@link serializeWrittenValue} path.
- */
-const serializeKvArgs = (
-  operation: KvOperation,
-  args: unknown[],
-): CapturedBody | undefined => {
-  const withoutValue =
-    operation === "put"
-      ? args.map((arg, index) => (index === 1 ? null : arg))
-      : args;
-  return serializeKvValue(withoutValue).captured;
-};
-
-const omittedReason = (value: unknown): KvOmittedReason | undefined => {
-  // A stream is never read, only recognised: reading it would consume the app's bytes.
-  if (
-    typeof ReadableStream !== "undefined" &&
-    value instanceof ReadableStream
-  ) {
-    return "stream";
-  }
-  if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
-    return "binary";
-  }
-  return undefined;
-};
-
-const capture = (json: string): CapturedBody =>
-  json.length > MAX_BODY_CAPTURE_SIZE
-    ? { body: json.slice(0, MAX_BODY_CAPTURE_SIZE), truncated: true }
-    : { body: json, truncated: false };
+  outcome: KvCaptureOutcome,
+): KvOperationEvent => ({
+  kind: "kv",
+  requestId: ctx.requestId,
+  ...(ctx.frontendSessionId !== undefined
+    ? { frontendSessionId: ctx.frontendSessionId }
+    : {}),
+  bindingName,
+  operation,
+  ...serializeKvCaptureFields(operation, args, outcome),
+  startTimeMs,
+  endTimeMs: Date.now(),
+  ...("error" in outcome ? { error: outcome.error } : {}),
+});
