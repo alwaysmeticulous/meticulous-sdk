@@ -1,4 +1,4 @@
-import { requestCaptureContext } from "./context";
+import { requestCaptureContext, sidecarOriginOf } from "./context";
 import { getOriginalFetch, setOriginalFetch } from "./original-fetch";
 import { captureOutboundCall } from "./outbound-capture";
 import { replayOutboundCall } from "./replay-fetch";
@@ -52,8 +52,8 @@ const patchedFetch: FetchFn = async (input, init) => {
   }
 
   // Never intercept the shim's own traffic to the sidecar. Defence in depth: every
-  // shim → sidecar call already goes through the unpatched fetch.
-  if (request.url.startsWith(`${ctx.sidecarUrl}/`)) {
+  // shim → sidecar call already goes through the unpatched fetch, or a service binding.
+  if (request.url.startsWith(`${sidecarOriginOf(ctx)}/`)) {
     return original(request);
   }
 

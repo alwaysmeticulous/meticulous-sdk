@@ -1,5 +1,21 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.326.0
+
+### Minor Changes
+
+- [#12203](https://github.com/alwaysmeticulous/meticulous/pull/12203) [`78da03a`](https://github.com/alwaysmeticulous/meticulous/commit/78da03ae2ba6c9451d1dd730008fee465767fe06) Thanks [@dennysem](https://github.com/dennysem)! - Backend recording now works from a **deployed** Cloudflare Worker or Pages project, not just `wrangler dev`.
+  - New `@alwaysmeticulous/backend-recorder-sidecar-worker`: the recorder sidecar as a Worker you deploy into your own Cloudflare account. Your app reaches it through a `METICULOUS_SIDECAR` service binding; a Durable Object buffers reports and uploads finished session chunks to Meticulous.
+  - `withMeticulous` now activates on that service binding as well as on the `METICULOUS_SIDECAR_URL` var, and batches a request's capture events into one report instead of one per captured call.
+  - New `withMeticulousPagesFunction`, for a Cloudflare Pages project whose worker exports `onRequest` rather than `{ fetch }`.
+  - New `withMeticulousPostgres`, which records postgres.js queries (typically over Hyperdrive) from a deployed Worker. The captured spans are identical to the Node recorder's, so these recordings replay through the existing path.
+
+- [#12135](https://github.com/alwaysmeticulous/meticulous/pull/12135) [`8ab6eab`](https://github.com/alwaysmeticulous/meticulous/commit/8ab6eabdb3d6ac70346462e4ecbf8176f7bc7fe4) Thanks [@dennysem](https://github.com/dennysem)! - The shim now mints a session id for a page's initial document navigation — the one request a browser cannot tag with `x-meticulous-session-id` — so the server-side render and everything it calls are recorded under the same session as the page it produces. The id is published on a `Server-Timing: metsession` response header, which the frontend recorder adopts, and is also readable from the new `getMeticulousSessionId()` export for an app that wants to render it into its HTML or forward it to another service. On by default while recording; opt out with `mintProvisionalSessionIds: false` or a `METICULOUS_BACKEND_PROVISIONAL_SESSION_IDS` var of `"false"`.
+
+### Patch Changes
+
+- [#12267](https://github.com/alwaysmeticulous/meticulous/pull/12267) [`46416ce`](https://github.com/alwaysmeticulous/meticulous/commit/46416ce1369e81de4731fb8e650f8ed29740baf3) Thanks [@calebgcc](https://github.com/calebgcc)! - Include the replay id in sidecar mock lookups so separate replays of one recorded session consume their backend responses independently.
+
 ## 2.325.0
 
 ### Minor Changes

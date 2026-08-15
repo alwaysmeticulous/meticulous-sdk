@@ -1,6 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { setOriginalFetch } from "../original-fetch";
 import type { CaptureEvent } from "../protocol";
 import { postCaptureEvents } from "../sidecar-client";
+import type { SidecarTransport } from "../sidecar-transport";
 
 const EVENT: CaptureEvent = {
   kind: "inbound",
@@ -12,17 +14,38 @@ const EVENT: CaptureEvent = {
   endTimeMs: 2,
 };
 
-const SIDECAR_URL = "http://127.0.0.1:9670";
+const TRANSPORT: SidecarTransport = {
+  kind: "url",
+  url: "http://127.0.0.1:9670",
+};
+
+const nativeFetch = globalThis.fetch;
+
+/**
+ * `postCaptureEvents` reaches the sidecar through the unpatched fetch the fetch patch stashed,
+ * so a stub has to be installed there rather than passed in.
+ */
+const stubFetch = (implementation: () => Promise<Response>) => {
+  const fetchFn = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) =>
+    implementation(),
+  );
+  setOriginalFetch(fetchFn as unknown as typeof globalThis.fetch);
+  return fetchFn;
+};
+
+afterEach(() => {
+  setOriginalFetch(nativeFetch);
+});
 
 describe("postCaptureEvents", () => {
   it("bounds the POST with an abort signal", async () => {
-    const fetchFn = vi
-      .fn()
-      .mockResolvedValue(new Response(null, { status: 204 }));
+    const fetchFn = stubFetch(() =>
+      Promise.resolve(new Response(null, { status: 204 })),
+    );
 
-    await postCaptureEvents(fetchFn, SIDECAR_URL, [EVENT]);
+    await postCaptureEvents(TRANSPORT, [EVENT]);
 
-    const init = fetchFn.mock.calls[0][1] as RequestInit;
+    const init = fetchFn.mock.calls[0][1] ?? {};
     // A sidecar that drops packets rather than refusing them would otherwise keep the
     // request context open on every captured call.
     expect(init.signal).toBeInstanceOf(AbortSignal);
@@ -32,16 +55,16 @@ describe("postCaptureEvents", () => {
   it("clears the timeout once the POST settles", async () => {
     vi.useFakeTimers();
     try {
-      const fetchFn = vi
-        .fn()
-        .mockResolvedValue(new Response(null, { status: 204 }));
+      const fetchFn = stubFetch(() =>
+        Promise.resolve(new Response(null, { status: 204 })),
+      );
 
-      await postCaptureEvents(fetchFn, SIDECAR_URL, [EVENT]);
+      await postCaptureEvents(TRANSPORT, [EVENT]);
       vi.advanceTimersByTime(60_000);
 
       // A timer left pending after the POST finished would keep workerd's request context
       // alive for the rest of the timeout, on the healthy path — the regression this guards.
-      const init = fetchFn.mock.calls[0][1] as RequestInit;
+      const init = fetchFn.mock.calls[0][1] ?? {};
       expect(init.signal?.aborted).toBe(false);
     } finally {
       vi.useRealTimers();
@@ -49,17 +72,19 @@ describe("postCaptureEvents", () => {
   });
 
   it("resolves without throwing when the POST is aborted", async () => {
-    const fetchFn = vi.fn().mockRejectedValue(
-      Object.assign(new Error("The operation was aborted"), {
-        name: "AbortError",
-      }),
+    stubFetch(() =>
+      Promise.reject(
+        Object.assign(new Error("The operation was aborted"), {
+          name: "AbortError",
+        }),
+      ),
     );
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     // Capture runs under ctx.waitUntil: a rejection here would surface as an unhandled
     // rejection in the app, so the timeout must never escape.
     await expect(
-      postCaptureEvents(fetchFn, SIDECAR_URL, [EVENT]),
+      postCaptureEvents(TRANSPORT, [EVENT]),
     ).resolves.toBeUndefined();
 
     expect(warn).toHaveBeenCalledWith(

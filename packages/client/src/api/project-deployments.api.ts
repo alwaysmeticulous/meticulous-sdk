@@ -84,6 +84,11 @@ export interface ChunkPathOverlap {
 export interface CompleteAssetUploadResponse {
   testRun?: TestRun;
   baseNotFound?: boolean;
+  /**
+   * When set alongside `baseNotFound`, the server is asking the client to
+   * extend its default base-polling window by this many milliseconds.
+   */
+  extraBasePollTimeoutMs?: number;
   message?: string;
   overlaps?: ChunkPathOverlap[];
   overlapsTruncated?: boolean;
@@ -107,6 +112,11 @@ export interface CompleteContainerUploadResponse {
   testRun?: TestRun;
   message?: string;
   baseNotFound?: boolean;
+  /**
+   * When set alongside `baseNotFound`, the server is asking the client to
+   * extend its default base-polling window by this many milliseconds.
+   */
+  extraBasePollTimeoutMs?: number;
 }
 
 export interface GetContainerDeploymentResponse {

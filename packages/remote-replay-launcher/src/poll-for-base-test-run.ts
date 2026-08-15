@@ -8,6 +8,11 @@ const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 type PollResult = {
   testRun?: TestRun | null;
   baseNotFound?: boolean | undefined;
+  /**
+   * Server-provided extension (in milliseconds) to the default polling
+   * window, driven by a per-project feature flag on the backend.
+   */
+  extraBasePollTimeoutMs?: number | undefined;
   message?: string | undefined;
   overlaps?: ChunkPathOverlap[] | undefined;
   overlapsTruncated?: boolean | undefined;
@@ -44,6 +49,9 @@ export const pollWhileBaseNotFound = async ({
   let testRun = initialResult.testRun ?? null;
   let baseNotFound = initialResult.baseNotFound;
   let message = initialResult.message;
+  // Server-driven extension of the polling window (per-project feature flag).
+  // Tracked across retries so a change in the server's answer takes effect.
+  let extraBasePollTimeoutMs = initialResult.extraBasePollTimeoutMs;
   // Track overlaps from whichever attempt ultimately resolves the manifest;
   // they aren't known on a baseNotFound response but arrive once it succeeds.
   let overlaps = initialResult.overlaps;
@@ -56,11 +64,13 @@ export const pollWhileBaseNotFound = async ({
     logger.info("Waiting for base test run to be created...");
 
     while (!testRun && baseNotFound) {
+      const maxTimeoutMs =
+        POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS + (extraBasePollTimeoutMs ?? 0);
       const timeElapsed = Date.now() - startTime;
-      if (timeElapsed > POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS) {
+      if (timeElapsed > maxTimeoutMs) {
         logger.warn(
           `Timed out after ${
-            POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS / 1000
+            maxTimeoutMs / 1000
           } seconds waiting for base test run`,
         );
         break;
@@ -78,6 +88,7 @@ export const pollWhileBaseNotFound = async ({
       testRun = retryResult.testRun ?? null;
       baseNotFound = retryResult.baseNotFound;
       message = retryResult.message;
+      extraBasePollTimeoutMs = retryResult.extraBasePollTimeoutMs;
       overlaps = retryResult.overlaps;
       overlapsTruncated = retryResult.overlapsTruncated;
     }

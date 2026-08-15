@@ -4,7 +4,7 @@
  * is the single source of truth for the shape of capture events.
  */
 
-export const SIDECAR_PROTOCOL_VERSION = "1";
+export const SIDECAR_PROTOCOL_VERSION = "2";
 
 /** Header carrying {@link SIDECAR_PROTOCOL_VERSION} on every shim → sidecar request. */
 export const SIDECAR_PROTOCOL_VERSION_HEADER =
@@ -15,6 +15,9 @@ export const SIDECAR_PROTOCOL_VERSION_HEADER =
  * under recording; its value ties backend spans to the frontend session.
  */
 export const FRONTEND_SESSION_ID_HEADER = "x-meticulous-session-id";
+
+/** Header identifying one replay attempt of a recorded frontend session. */
+export const REPLAY_ID_HEADER = "x-meticulous-replay-id";
 
 /**
  * A request carrying this header set to `"true"` is never served from the recording and
@@ -51,9 +54,12 @@ export const REPLAY_SIDECAR_URL_HEADER =
 /**
  * The only headers persisted on capture events. Everything else — notably
  * authorization, cookie/set-cookie, and API-key headers — is dropped at
- * capture time, before it ever leaves the worker. Mirrors the Node backend
- * recorder, which persists only content-type plus the Meticulous session
- * header.
+ * capture time, before it ever leaves the worker.
+ *
+ * The Node backend recorder persists the same two, plus the inbound request's
+ * `Cookie` header on SERVER spans (`recorded-request-headers.ts`). This list
+ * has not followed it there, so a workerd recording of an authenticated server
+ * render still carries no session cookie.
  */
 export const CAPTURED_HEADERS = [
   "content-type",
@@ -67,11 +73,34 @@ export interface CapturedBody {
   truncated: boolean;
 }
 
-interface BaseRequestEvent {
+/**
+ * The fields every capture event carries to say which request, session and trace it belongs to.
+ */
+interface CorrelatedEvent {
   /** Correlates outbound events to the inbound request being handled. */
   requestId: string;
   /** Value of {@link FRONTEND_SESSION_ID_HEADER} on the inbound request, if any. */
   frontendSessionId?: string;
+  /**
+   * Trace the request's spans belong to (32 hex chars), minted by the shim.
+   *
+   * The shim mints it, rather than the sidecar deriving it from {@link requestId}, so span
+   * assembly is stateless: a sidecar that had to remember `requestId → traceId` would give a
+   * request's SERVER span and its CLIENT children different traces whenever it lost that memory
+   * between two batches — which, for a Worker-hosted sidecar, an eviction can do at any moment.
+   *
+   * Optional so a sidecar keeps working against a shim that predates this field, in which case
+   * it falls back to its own per-`requestId` map.
+   */
+  traceId?: string;
+  /**
+   * Span id of the request's SERVER span (16 hex chars), also minted by the shim: it is the
+   * parent of every CLIENT span the request produced, and the inbound event's own span id.
+   */
+  serverSpanId?: string;
+}
+
+interface BaseRequestEvent extends CorrelatedEvent {
   method: string;
   /** Full URL including query string. */
   url: string;
@@ -91,6 +120,19 @@ interface BaseRequestEvent {
  */
 export interface InboundRequestEvent extends BaseRequestEvent {
   kind: "inbound";
+  /**
+   * Where {@link BaseRequestEvent.frontendSessionId} came from. Absent means the browser
+   * minted it and sent it on the request, which is the normal case. `"backend"` means the
+   * shim minted it for a document navigation the browser could not tag, and the page may or
+   * may not have gone on to adopt it — a distinction ingestion needs, because an unadopted
+   * backend-minted id names a session that will never exist and must be treated as unstamped.
+   * The sidecar turns it into `meticulous.session_id_origin`.
+   *
+   * Optional, and therefore compatible with an older sidecar (which ignores it) — which is
+   * why adding it does not bump {@link SIDECAR_PROTOCOL_VERSION}, a strict-equality check
+   * whose bump would instead make this shim unusable against one.
+   */
+  sessionIdOrigin?: "backend";
 }
 
 /**
@@ -143,11 +185,8 @@ export type KvOmittedReason = "binary" | "stream";
  * {@link BaseRequestEvent} beyond correlation and timing. Values are JSON so that a single
  * `JSON.parse` reconstructs exactly what the app saw, whichever `type` the read asked for.
  */
-export interface KvOperationEvent {
+export interface KvOperationEvent extends CorrelatedEvent {
   kind: "kv";
-  /** Correlates the operation to the inbound request being handled. */
-  requestId: string;
-  frontendSessionId?: string;
   /**
    * The `env` key the KV namespace was found under. Always present, unlike on a binding
    * event: a namespace has no factory equivalent to `DurableObjectNamespace.get()`, so one
@@ -185,11 +224,40 @@ export interface KvOperationEvent {
   error?: string;
 }
 
+/**
+ * One postgres.js query made while handling an inbound request (becomes a CLIENT span).
+ *
+ * Deliberately carries the same fields the Node recorder puts on a postgres.js span rather than
+ * anything Worker-specific: `PostgresJsMockStore` builds its match key from those attributes at
+ * load time, so a query recorded here replays through the existing Node mock path unchanged.
+ * See `postgres/capture.ts` for the serialization, which both surfaces share.
+ */
+export interface PostgresQueryEvent extends CorrelatedEvent {
+  kind: "postgres";
+  /** SQL rebuilt from the tagged template's chunks, with `$1`, `$2`… placeholders. */
+  queryText: string;
+  /** JSON of the interpolated values, from `serializePostgresJsArgs`. */
+  params: string;
+  /** `""`, `"raw"` or `"values"` — the row shape the query asked for. */
+  rowMode: string;
+  /** JSON of the resolved `Result`, capped at {@link MAX_POSTGRES_JS_RESULT_SIZE}. */
+  result?: CapturedBody;
+  /**
+   * JSON of the rejection, from `serializePostgresJsError`. Set instead of {@link result}, and
+   * distinct from the transport-level `error` string on the HTTP-shaped events: this one is a
+   * recorded outcome the replay reproduces, not a note that capture failed.
+   */
+  errorJson?: string;
+  startTimeMs: number;
+  endTimeMs: number;
+}
+
 export type CaptureEvent =
   | InboundRequestEvent
   | OutboundRequestEvent
   | BindingRequestEvent
-  | KvOperationEvent;
+  | KvOperationEvent
+  | PostgresQueryEvent;
 
 export interface CaptureEventsPayload {
   events: CaptureEvent[];
@@ -211,6 +279,7 @@ export interface ReplaySessionInfoResponse {
 /** Lookup for a single outbound `fetch`, sent to {@link SIDECAR_REPLAY_OUTBOUND_FETCH_PATH}. */
 export interface OutboundFetchLookupRequest {
   frontendSessionId: string;
+  replayId: string;
   method: string;
   /** Full URL including query string. */
   url: string;

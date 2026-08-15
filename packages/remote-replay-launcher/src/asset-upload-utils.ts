@@ -27,7 +27,7 @@ import {
   retryTransientUploadErrors,
 } from "@alwaysmeticulous/client";
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
-import { initLogger } from "@alwaysmeticulous/common";
+import { executeWithRetry, initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 import {
@@ -154,6 +154,18 @@ export const uploadAssetsFromTarStream = async (
   };
 };
 
+/**
+ * Matches errors where a gateway/proxy in front of the backend gave up
+ * waiting for the response (502/503/504). In that case the request very
+ * likely kept executing server-side, so retrying the idempotent completion
+ * call picks up its committed result rather than duplicating work.
+ */
+const isGatewayError = (error: unknown): boolean => {
+  const status = (error as { response?: { status?: unknown } } | null)?.response
+    ?.status;
+  return status === 502 || status === 503 || status === 504;
+};
+
 const completeUploadAndWaitForBase = async ({
   client,
   uploadId,
@@ -197,11 +209,30 @@ const completeUploadAndWaitForBase = async ({
     ...(projectId ? { projectId } : {}),
   };
 
-  const initialResult = await completeAssetUpload(completeAssetUploadArgs);
+  // `completeAssetUpload` runs the whole deployment trigger synchronously on
+  // the backend, which can outlast the gateway's response timeout: CloudFront
+  // returns a 504 after 30s while the backend keeps working and eventually
+  // commits the deployment and test run. The client's built-in retries are
+  // quick attempts that all fall inside that same window, so they exhaust
+  // (~2 minutes) before a slow original has committed. The endpoint is
+  // idempotent — a retry that finds the committed deployment returns the
+  // existing test run immediately — so on gateway errors we keep retrying on
+  // a longer schedule instead of failing a run that very likely succeeded.
+  const initialResult = await executeWithRetry(
+    () => completeAssetUpload(completeAssetUploadArgs),
+    {
+      maxRetries: 2,
+      retryDelay: 20_000,
+      maxRetryDelay: 60_000,
+      shouldRetry: isGatewayError,
+      logger,
+    },
+  );
   const { testRun, baseNotFound, message } = await pollWhileBaseNotFound({
     initialResult: {
       testRun: initialResult?.testRun ?? null,
       baseNotFound: initialResult?.baseNotFound,
+      extraBasePollTimeoutMs: initialResult?.extraBasePollTimeoutMs,
       message: initialResult?.message,
     },
     retryFn: () => triggerRunOnDeployment(completeAssetUploadArgs),

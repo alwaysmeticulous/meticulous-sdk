@@ -10,6 +10,12 @@ export type TestRunCheckType = "custom" | "builtin";
 
 export interface TestRunCheckReport {
   text: string;
+  /**
+   * Present when the report is too large to return inline — a presigned URL
+   * to download the full report, since `text` above is a short notice rather
+   * than the report itself in that case.
+   */
+  url?: string;
 }
 
 /**
@@ -36,6 +42,24 @@ export const getTestRunCheckReport = async (
     .get(`agent/test-runs/${testRunId}/checks/${encodeURIComponent(checkId)}`, {
       params,
     })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+/** One check that has reported results for a test run so far. */
+export interface TestRunCheckAvailableId {
+  checkType: TestRunCheckType;
+  checkId: string;
+}
+
+export const getTestRunCheckAvailableIds = async (
+  client: MeticulousClient,
+  testRunId: string,
+): Promise<TestRunCheckAvailableId[]> => {
+  const { data } = await client
+    .get(`agent/test-runs/${testRunId}/checks`)
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
@@ -334,6 +358,19 @@ export interface TestRunForCommitResponse {
    * status lets the caller decide whether to wait for the run to finish.
    */
   status: TestRunStatus | null;
+  /**
+   * Whether the matched run is a session-pool base (`false` when `testRunId`
+   * is null). A session-pool base can settle into `Success`/`Failure` without
+   * ever becoming `Partial`, so a caller treating `Partial` as "this is a base
+   * run with no diffs/PR of its own" needs this checked independently of
+   * status too.
+   *
+   * `true` for ANY `configData.arguments.isSessionPool` run, including one
+   * that also triggered eager session selection (`forceEagerExecution`) — no
+   * eager/non-eager distinction, matching what `test-run-diffs`/
+   * `test-run-check`/`js-coverage --prDiffOnly` treat as a base run.
+   */
+  isSessionPoolRun: boolean;
 }
 
 export interface TestRunJsCoverageResponse {

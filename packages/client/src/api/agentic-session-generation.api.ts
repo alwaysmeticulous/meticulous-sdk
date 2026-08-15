@@ -28,6 +28,8 @@ export interface AgenticAssetsBackend {
   url: string;
   username?: string | undefined;
   password?: string | undefined;
+  /** TOTP seed for the project's configured MFA login flow. */
+  totpSecret?: string | undefined;
   proxyPaths?: string[] | undefined;
 }
 
@@ -103,20 +105,31 @@ const redactLaunchCredentials = (
   error: unknown,
   appTarget: AgenticAppTarget | undefined,
 ): void => {
-  const password =
-    appTarget?.type === "assets" ? appTarget.backend?.password : undefined;
-  if (!password || typeof error !== "object" || error === null) {
+  const secrets =
+    appTarget?.type === "assets"
+      ? [appTarget.backend?.password, appTarget.backend?.totpSecret].filter(
+          (secret): secret is string => Boolean(secret),
+        )
+      : [];
+  if (secrets.length === 0 || typeof error !== "object" || error === null) {
     return;
   }
   const config = (error as { config?: { data?: unknown } }).config;
   if (typeof config?.data === "string") {
-    config.data = config.data.split(password).join("[REDACTED]");
+    let redacted = config.data;
+    for (const secret of secrets) {
+      redacted = redacted.split(secret).join("[REDACTED]");
+    }
+    config.data = redacted;
   } else if (typeof config?.data === "object" && config.data !== null) {
     const target = config.data as {
-      appTarget?: { backend?: { password?: string } };
+      appTarget?: { backend?: { password?: string; totpSecret?: string } };
     };
     if (target.appTarget?.backend?.password) {
       target.appTarget.backend.password = "[REDACTED]";
+    }
+    if (target.appTarget?.backend?.totpSecret) {
+      target.appTarget.backend.totpSecret = "[REDACTED]";
     }
   }
 };
@@ -128,6 +141,23 @@ export type AgenticRunResultCaseOutcome =
   | "skipped";
 
 export type AgenticRunResultCaseTag = "happy-path" | "edge-case" | "regression";
+
+export const AGENTIC_RUN_NOT_TESTABLE_CATEGORIES = [
+  "infrastructure",
+  "build-or-tooling",
+  "backend-only",
+  "docs-or-config",
+  "no-reachable-ui",
+] as const;
+
+export type AgenticRunNotTestableCategory =
+  (typeof AGENTIC_RUN_NOT_TESTABLE_CATEGORIES)[number];
+
+/** Why a PR review intentionally completed without executing browser flows. */
+export interface AgenticRunNotTestable {
+  category: AgenticRunNotTestableCategory;
+  reason: string;
+}
 
 /**
  * Outcome of a single step. A case's outcome is derived from its steps'
@@ -166,14 +196,35 @@ export interface AgenticRunResultStep {
   kind?: AgenticRunStepKind;
   /** How the step went. Absent on blobs from older workers. */
   outcome?: AgenticRunStepOutcome;
+  /**
+   * Plain-English explanation of why a failed or blocked step went that way,
+   * written for a reader who has not seen the test. Absent on passing steps
+   * and on blobs from older workers.
+   */
+  reason?: string;
   /** Extra detail, e.g. the selector used or the exact text asserted. */
   detail?: string;
   /** Browser actions from the testcase execution that produced this step. */
   actionIds?: number[];
+  /** Recorded session containing the linked actions, when they share one. */
+  sessionId?: string;
+  /** Epoch timestamp when the first linked action began executing. */
+  startTimestampMs?: number;
+  /** Epoch timestamp after the last linked action's resulting state was captured. */
+  endTimestampMs?: number;
   /** Screenshot immediately before the first linked browser action. */
   beforeScreenshotPath?: string;
+  /** Canonical route group for the pre-action screenshot. */
+  beforeScreenshotRouteGroup?: string;
+  /**
+   * Worker-internal selector choosing the per-step highlight for an explicit
+   * before screenshot. Removed before the result blob is persisted.
+   */
+  beforeHighlight?: string;
   /** Screenshot immediately after the last linked browser action. */
   afterScreenshotPath?: string;
+  /** Canonical route group for the post-action screenshot. */
+  afterScreenshotRouteGroup?: string;
   /** Target region measured in the before frame. */
   beforeHighlightRegion?: AgenticRunHighlightRegion;
   /** Target region measured in the after frame. */
@@ -185,6 +236,13 @@ export interface AgenticRunResultStep {
    * `artifactDownloadUrls` GraphQL field once the worker has uploaded it.
    */
   screenshotPath?: string;
+  /** Canonical route group for this explicit screenshot. */
+  screenshotRouteGroup?: string;
+  /**
+   * Worker-internal selector choosing the per-step highlight for an explicit
+   * result screenshot. Removed before the result blob is persisted.
+   */
+  highlight?: string;
   /** SHA-256 of the screenshot bytes, used to identify duplicate evidence. */
   screenshotContentHash?: string;
   /**
@@ -370,6 +428,8 @@ export interface AgenticRunResultBlob {
   traces?: AgenticRunTraces;
   /** Agent-written takeaways grounded in completed cases. */
   summary?: AgenticRunSummary;
+  /** Present when the agent determined no browser flow can exercise the change. */
+  notTestable?: AgenticRunNotTestable;
 }
 
 export interface ReportAgenticRunResultResponse {
@@ -423,6 +483,8 @@ export interface CompleteAgenticRunResultParams extends ProjectIdentifier {
   agenticRunId: string;
   /** Every session produced across the run (the union of all cases' sessions). */
   sessionIds: string[];
+  /** Whether the run intentionally completed without browser-exercisable cases. */
+  notTestable?: boolean;
 }
 
 /**
@@ -441,6 +503,75 @@ export const completeAgenticRunResult = async ({
     { data: ReportAgenticRunResultResponse }
   >(
     "agentic-session-generation/complete-result",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
+/**
+ * Lifecycle state of one case in a run's progress snapshot: `not-started` and
+ * `running` while the case is still in flight, then its outcome
+ * (`pass`/`fail`/`blocked`) once it has reported.
+ */
+export type AgenticRunProgressCaseStatus =
+  | "not-started"
+  | "running"
+  | AgenticRunResultCaseOutcome;
+
+/**
+ * One case in a run's progress snapshot. Planning metadata is present from the
+ * moment the plan is submitted; `steps`/`sessionIds`/`outcome` only appear once
+ * the case has reported (at which point `status` carries the outcome).
+ */
+export interface AgenticRunProgressCase {
+  title: string;
+  status: AgenticRunProgressCaseStatus;
+  tag?: AgenticRunResultCaseTag;
+  group?: string;
+  rationale?: string;
+  steps?: AgenticRunResultStep[];
+  sessionIds?: string[];
+  outcome?: AgenticRunResultCaseOutcome;
+}
+
+/**
+ * The throttled, last-value-wins JSON the worker overwrites at
+ * `{prefix}/{projectId}/{runId}/progress.json` from the moment its plan exists
+ * until it reports its terminal result (which stays authoritative).
+ */
+export interface AgenticRunProgressSnapshot {
+  cases: AgenticRunProgressCase[];
+}
+
+export interface RequestAgenticProgressUploadParams extends ProjectIdentifier {
+  /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
+  agenticRunId: string;
+}
+
+export interface RequestAgenticProgressUploadResponse {
+  uploadUrl: string;
+}
+
+/**
+ * Requests a presigned upload URL for the run's progress snapshot. Deliberately
+ * takes no path: there is exactly one snapshot per run and the backend derives
+ * its key, so no part of the destination is caller-controlled. The worker calls
+ * this once at startup and again whenever the URL's credentials expire mid-run;
+ * the first call also moves the run's status from `scheduled` to `running`.
+ */
+export const requestAgenticProgressUpload = async ({
+  client,
+  projectId,
+  ...body
+}: RequestAgenticProgressUploadParams & {
+  client: MeticulousClient;
+}): Promise<RequestAgenticProgressUploadResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: RequestAgenticProgressUploadResponse }
+  >(
+    "agentic-session-generation/request-progress-upload",
     body,
     projectIdQuery(projectId),
   );
@@ -817,6 +948,37 @@ export const listAgenticRepoTree = async ({
   return data;
 };
 
+export interface ListAgenticRepoSourceFilesParams
+  extends ProjectIdentifier, AgenticRepoLeaseRef {
+  commitSha: string;
+}
+
+export interface ListAgenticRepoSourceFilesResponse {
+  /** Repo-relative paths eligible for source-map coverage. */
+  paths: string[];
+  /** `true` when paths were filtered from only a bounded tree prefix. */
+  truncated: boolean;
+}
+
+/** Lists source-map coverage candidates in the project's repo. */
+export const listAgenticRepoSourceFiles = async ({
+  client,
+  projectId,
+  ...body
+}: ListAgenticRepoSourceFilesParams & {
+  client: MeticulousClient;
+}): Promise<ListAgenticRepoSourceFilesResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: ListAgenticRepoSourceFilesResponse }
+  >(
+    "agentic-session-generation/repo/source-files",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
 export interface AcquireAgenticRepoLeaseParams extends ProjectIdentifier {
   /** The agentic run id (workflow run id) the lease is keyed on. */
   runId: string;
@@ -948,6 +1110,136 @@ export const releaseAgenticRepoLease = async ({
     "agentic-session-generation/repo/lease/release",
     body,
     projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export interface SearchRecordedRequestsParams extends ProjectIdentifier {
+  method: string;
+  /**
+   * Absolute URL of the request to look for. Only its path reaches the fuzzy
+   * hash, but a relative URL cannot be parsed, so callers resolve it first.
+   */
+  url: string;
+  /** Request body, when there is one. Only its structure affects matching. */
+  body?: string;
+  /** Page size, capped at 20. */
+  limit?: number;
+  /** Zero-based page offset. */
+  offset?: number;
+  /** Narrows a shape search to a candidate session printed by an earlier page. */
+  sessionId?: string;
+  /** Narrows a shape search to a candidate hash printed by an earlier page. */
+  hash?: string;
+  /** Returns the complete selected request document, including bodies. */
+  includeDetails?: boolean;
+}
+
+/** Details available only when the recorded document is small enough to read. */
+export interface RecordedRequestDetails {
+  method: string;
+  url: string;
+  responseStatus: number;
+  mimeType: string;
+  requestBodySize: number;
+  responseBodySize: number;
+}
+
+/** One recorded request whose fuzzy hash matched. */
+export interface RecordedRequestMatch {
+  sessionId: string;
+  hash: string;
+  /** Full stored document size, including request and response bodies. */
+  size: number;
+  /** Null when the document exceeds the broad-search detail-read limit. */
+  details: RecordedRequestDetails | null;
+  /** Complete exchange, returned only for an exact `includeDetails` selection. */
+  request?: RecordedRequestDocument;
+}
+
+export interface SearchRecordedRequestsResponse {
+  matches: RecordedRequestMatch[];
+  /** Offset for the next page, or null when this was the final page. */
+  nextOffset: number | null;
+}
+
+/**
+ * Finds recorded requests across the project whose fuzzy hash matches the given
+ * one — the same corpus and hashing network patching uses to find a fresh
+ * response for a stale request.
+ *
+ * Matching is forgiving about values and strict about structure: only the method,
+ * the normalised path, and either the GraphQL operation names / variable names /
+ * field paths or the top-level body keys are hashed. Values and query strings are
+ * not, so an exemplar with placeholder ids still matches.
+ */
+export const searchRecordedRequests = async ({
+  client,
+  projectId,
+  ...body
+}: SearchRecordedRequestsParams & {
+  client: MeticulousClient;
+}): Promise<SearchRecordedRequestsResponse> => {
+  const { data } = await client.post<
+    typeof body,
+    { data: SearchRecordedRequestsResponse }
+  >(
+    "agentic-session-generation/recorded-requests/search",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export interface GetRecordedRequestParams extends ProjectIdentifier {
+  sessionId: string;
+  hash: string;
+}
+
+/** A stored request, with enough of the exchange to rebuild its HAR entry. */
+export interface RecordedRequestDocument {
+  sessionId: string;
+  hash: string;
+  method: string;
+  url: string;
+  headers: Array<{ name: string; value: string }>;
+  /** PollyJS can record an object value here, e.g. for `?obj[key]=1`. */
+  queryString: Array<{ name: string; value: object | string }>;
+  postData?: { mimeType: string; text?: string };
+  response: {
+    status: number;
+    headers: Array<{ name: string; value: string }>;
+    content: { mimeType: string; text?: string; encoding?: string };
+  };
+}
+
+export type GetRecordedRequestResponse =
+  | { kind: "found"; request: RecordedRequestDocument }
+  | { kind: "missing" }
+  | { kind: "too-large"; size: number; maxSize: number };
+
+/**
+ * Reads one recorded request in full, addressed by the session that recorded it
+ * and its hash. `kind: "missing"` when the payload is gone — the index row can
+ * outlive the stored object — and `kind: "too-large"` when reading it into the
+ * backend process would exceed the safety limit.
+ */
+export const getRecordedRequest = async ({
+  client,
+  projectId,
+  sessionId,
+  hash,
+}: GetRecordedRequestParams & {
+  client: MeticulousClient;
+}): Promise<GetRecordedRequestResponse> => {
+  const { data } = await client.get<
+    unknown,
+    { data: GetRecordedRequestResponse }
+  >(
+    `agentic-session-generation/recorded-requests/${encodeURIComponent(
+      sessionId,
+    )}/${encodeURIComponent(hash)}`,
+    { params: { ...(projectId ? { projectId } : {}) } },
   );
   return data;
 };

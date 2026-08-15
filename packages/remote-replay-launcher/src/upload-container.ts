@@ -222,6 +222,7 @@ export const uploadContainer = async ({
     initialResult: {
       testRun: completeResult.testRun ?? null,
       baseNotFound: waitForBase ? completeResult.baseNotFound : false,
+      extraBasePollTimeoutMs: completeResult.extraBasePollTimeoutMs,
       message: completeResult.message,
     },
     retryFn: () =>

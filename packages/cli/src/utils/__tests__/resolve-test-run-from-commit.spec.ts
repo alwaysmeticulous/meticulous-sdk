@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { CliUserError } from "../cli-user-error";
 import {
   assertTestRunComplete,
+  isSessionPool,
   isTestRunComplete,
   isTestRunFailed,
   isTestRunPartial,
@@ -47,6 +48,35 @@ describe("isTestRunPartial", () => {
     ["Skipped", false],
   ])("%s -> %s", (status, expected) => {
     expect(isTestRunPartial(status)).toBe(expected);
+  });
+});
+
+describe("isSessionPool", () => {
+  test("false when configData is undefined", () => {
+    expect(isSessionPool(undefined)).toBe(false);
+  });
+
+  test("false when arguments is absent", () => {
+    expect(isSessionPool({})).toBe(false);
+  });
+
+  test("false when isSessionPool is not set", () => {
+    expect(isSessionPool({ arguments: {} })).toBe(false);
+  });
+
+  test("true for a lazy session-pool base", () => {
+    expect(isSessionPool({ arguments: { isSessionPool: true } })).toBe(true);
+  });
+
+  // Unlike isNonEagerSessionPool, this draws no eager/non-eager distinction:
+  // for diffs/checks/prDiffOnly-coverage, a session-pool run has no
+  // meaningful results of its own to serve regardless of eagerness.
+  test("also true for an eagerly-executing session-pool run", () => {
+    expect(
+      isSessionPool({
+        arguments: { isSessionPool: true, forceEagerExecution: true },
+      }),
+    ).toBe(true);
   });
 });
 

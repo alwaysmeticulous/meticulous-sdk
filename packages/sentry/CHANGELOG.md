@@ -1,5 +1,12 @@
 # @alwaysmeticulous/sentry
 
+## 2.326.0
+
+### Patch Changes
+
+- Updated dependencies [[`f1c9afa`](https://github.com/alwaysmeticulous/meticulous/commit/f1c9afaf7d88f35487ed7e625dccebc930a90ee2), [`e31cd70`](https://github.com/alwaysmeticulous/meticulous/commit/e31cd700185109bf0591167fa0a28c7dfda25742)]:
+  - @alwaysmeticulous/common@2.326.0
+
 ## 2.324.0
 
 ### Patch Changes

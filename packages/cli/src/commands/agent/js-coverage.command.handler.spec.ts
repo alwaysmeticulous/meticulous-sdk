@@ -111,7 +111,7 @@ describe("js-coverage handler on a base run", () => {
   it("caveats the returned coverage as a moving total", async () => {
     await runHandler();
     expect(mocks.logNotice).toHaveBeenCalledWith(
-      expect.stringMatching(/tr-1 is a base run .*grows over time/),
+      expect.stringMatching(/tr-1 is a base run:.*grows over time/),
     );
   });
 
@@ -158,6 +158,83 @@ describe("js-coverage handler on a base run", () => {
       /has no PR diff to scope coverage to/,
     );
     expect(mocks.getTestRunJsCoverage).not.toHaveBeenCalled();
+  });
+});
+
+// A session-pool base can settle into Success/Failure without ever becoming
+// Partial, so it must get the same "grows over time" treatment as a Partial
+// base run — keyed off isSessionPoolRun rather than status alone.
+describe("js-coverage handler on a settled session-pool run", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createClientWithOAuth.mockResolvedValue({});
+    mocks.getTestRun.mockResolvedValue({
+      status: "Success",
+      configData: { arguments: { isSessionPool: true } },
+    });
+    mocks.getTestRunJsCoverage.mockResolvedValue({ files: [] });
+    mocks.isFetchError.mockImplementation(
+      (error: unknown) =>
+        typeof error === "object" && error != null && "response" in error,
+    );
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  it("caveats the returned coverage as a moving total despite its Success status", async () => {
+    await runHandler();
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringMatching(/tr-1 is a base run:.*grows over time/),
+    );
+  });
+
+  it("rejects --prDiffOnly before fetching", async () => {
+    await expect(runHandler({ prDiffOnly: true })).rejects.toThrow(
+      /has no PR diff to scope coverage to/,
+    );
+    expect(mocks.getTestRunJsCoverage).not.toHaveBeenCalled();
+  });
+});
+
+// Unlike isNonEagerSessionPool (used elsewhere, e.g. the check-report write
+// path), prDiffOnly and the base-run notice draw no eager/non-eager
+// distinction: a session-pool run has no PR-diff of its own to scope
+// coverage to here regardless of whether it also triggered eager session
+// selection. Plain coverage is unaffected either way.
+describe("js-coverage handler on an eagerly-executing session-pool run", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createClientWithOAuth.mockResolvedValue({});
+    mocks.getTestRun.mockResolvedValue({
+      status: "Success",
+      configData: {
+        arguments: { isSessionPool: true, forceEagerExecution: true },
+      },
+    });
+    mocks.getTestRunJsCoverage.mockResolvedValue({ files: [] });
+    mocks.isFetchError.mockImplementation(
+      (error: unknown) =>
+        typeof error === "object" && error != null && "response" in error,
+    );
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  it("still caveats the returned coverage as a moving total", async () => {
+    await runHandler();
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringMatching(/tr-1 is a base run:.*grows over time/),
+    );
+  });
+
+  it("rejects --prDiffOnly before fetching", async () => {
+    await expect(runHandler({ prDiffOnly: true })).rejects.toThrow(
+      /has no PR diff to scope coverage to/,
+    );
+    expect(mocks.getTestRunJsCoverage).not.toHaveBeenCalled();
+  });
+
+  it("still fetches plain coverage", async () => {
+    await runHandler();
+    expect(mocks.getTestRunJsCoverage).toHaveBeenCalled();
   });
 });
 

@@ -1,4 +1,5 @@
 import type { TestRunStatus } from "@alwaysmeticulous/api";
+import { isSessionPool } from "@alwaysmeticulous/api";
 import type { MeticulousClient } from "@alwaysmeticulous/client";
 import {
   getTestRun,
@@ -52,6 +53,7 @@ const hasLocalChanges = async (): Promise<boolean> =>
 export interface ResolvedTestRun {
   testRunId: string;
   status: TestRunStatus;
+  isSessionPoolRun: boolean;
 }
 
 /** Whether a status means the run is still running (not yet usable). */
@@ -82,9 +84,26 @@ export const isTestRunFailed = (status: TestRunStatus): boolean =>
  * change, and never finishes on its own — it stays `Partial` until some future
  * PR requests more of its sessions. So it isn't a proper test run with a
  * comparable set of diffs.
+ *
+ * Status alone isn't a complete test — a session-pool base can settle into
+ * `Success`/`Failure` without ever becoming `Partial` (it only stays `Partial`
+ * while its latest chunk under-schedules sessions). Callers that need to
+ * catch a base run in general should also check `isSessionPoolRun` (from
+ * {@link ResolvedTestRun} or `getTestRun`'s `configData.arguments`),
+ * mirroring the backend's `isSessionPoolRun || isBaseRun(status)` in
+ * `agent-api.service.ts`.
  */
 export const isTestRunPartial = (status: TestRunStatus): boolean =>
   status === "Partial";
+
+// Re-exported so existing call sites here keep importing it from this module
+// — it's {@link isTestRunPartial}'s doc comment's non-status half, for a
+// caller resolved via `getTestRun` (the `--testRunId` path, rather than
+// commit resolution) that already has the run in hand. Shared with the
+// backend via `@alwaysmeticulous/api`. No eager/non-eager distinction: a
+// session-pool run has no meaningful diffs/checks/PR-diff of its own to serve
+// regardless of eagerness — see `isBaseOrAnySessionPoolRun` on the backend.
+export { isSessionPool };
 
 /**
  * Asserts a resolved run has finished with a usable verdict (Success/Failure),
@@ -149,9 +168,11 @@ export const resolveTestRunForCommitOrThrow = async (
   }
   await logResolvedCommitSha(commitSha, sha);
 
-  const { testRunId, status } = await getTestRunForCommit(client, sha, {
-    project,
-  });
+  const { testRunId, status, isSessionPoolRun } = await getTestRunForCommit(
+    client,
+    sha,
+    { project },
+  );
   if (testRunId == null || status == null) {
     throw new CliUserError(
       await appendProjectSelectionHint(
@@ -162,7 +183,7 @@ export const resolveTestRunForCommitOrThrow = async (
     );
   }
   logProgress(`Resolved test run id: ${testRunId}`);
-  return { testRunId, status };
+  return { testRunId, status, isSessionPoolRun };
 };
 
 /**
@@ -180,10 +201,14 @@ export const tryResolveTestRunForCommit = async (
     if (!sha) {
       return null;
     }
-    const { testRunId, status } = await getTestRunForCommit(client, sha, {
-      project,
-    });
-    return testRunId != null && status != null ? { testRunId, status } : null;
+    const { testRunId, status, isSessionPoolRun } = await getTestRunForCommit(
+      client,
+      sha,
+      { project },
+    );
+    return testRunId != null && status != null
+      ? { testRunId, status, isSessionPoolRun }
+      : null;
   } catch (error) {
     // A CliUserError (e.g. no project selected for an OAuth caller) is an
     // actionable configuration problem the user must address, not a reason to

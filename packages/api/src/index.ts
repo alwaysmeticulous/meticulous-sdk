@@ -34,6 +34,8 @@ export {
   AppContainerLogsLocations,
   TestRunDataLocations,
   TestRun,
+  isNonEagerSessionPool,
+  isSessionPool,
   TestRunNetworkPatchingResult,
   ExecuteSecureTunnelTestRunOptions,
   ExecuteSecureTunnelTestRunResponse,

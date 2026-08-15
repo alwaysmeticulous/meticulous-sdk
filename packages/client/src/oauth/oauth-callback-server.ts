@@ -18,6 +18,20 @@ const SUCCESS_HTML = `<!DOCTYPE html>
     </svg>
     <h2 style="margin: 0; font-size: 24px; font-weight: 600;">Authentication successful</h2>
     <p style="margin: 0; font-size: 16px; color: #a1a1aa;">You can close this tab and return to the terminal.</p>
+    <div style="margin-top: 16px; padding: 20px 24px; max-width: 720px; border: 1px solid #27272a; border-radius: 12px; display: flex; flex-direction: column; gap: 20px; text-align: left;">
+      <p style="margin: 0; font-size: 14px; color: #e4e4e7; font-weight: 500;">Using an AI coding agent? Set Meticulous up for it:</p>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <p style="margin: 0; font-size: 13px; color: #a1a1aa;">1. Install the Meticulous CLI:</p>
+        <code style="display: block; padding: 10px 14px; background: #27272a; border-radius: 8px; font-size: 13px; color: #e4e4e7; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere;">npm install --global @alwaysmeticulous/cli@latest</code>
+        <p style="margin: 6px 0 0; font-size: 13px; color: #a1a1aa;">or, alternatively, add the Meticulous MCP server:</p>
+        <code style="display: block; padding: 10px 14px; background: #27272a; border-radius: 8px; font-size: 13px; color: #e4e4e7; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere;">https://app.meticulous.ai/api/mcp</code>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <p style="margin: 0; font-size: 13px; color: #a1a1aa;">2. Either way, install the Meticulous agent skills:</p>
+        <code style="display: block; padding: 10px 14px; background: #27272a; border-radius: 8px; font-size: 13px; color: #e4e4e7; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere;">npx skills add alwaysmeticulous/skills --skill "*" --agent claude-code --agent codex --agent cursor -y</code>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #a1a1aa;">See the <a href="https://app.meticulous.ai/docs/agents/setup" style="color: #a5b4fc;">agent setup docs</a> for details.</p>
+    </div>
   </div>
 </body>
 </html>`;

@@ -143,6 +143,27 @@ export type MeticulousStubReader = <T = unknown>(name: string) => T;
  */
 export type MeticulousValueRecorder = (name: string, value: unknown) => void;
 
+/**
+ * The Meticulous session id of the request currently being served, or `undefined` if this call
+ * cannot be tied to one.
+ *
+ * Two uses, both for a server-rendered page load, whose first request the browser cannot tag
+ * with a session id of its own:
+ *
+ *   - render it into the HTML you are about to return, typically as `data-session-id` on the
+ *     recorder's `<script>` tag, so the page records under the same session as the render that
+ *     produced it. Exact, and unaffected by a cache or proxy dropping response headers — the
+ *     recorder also publishes the id on a `Server-Timing` header, which needs no app change but
+ *     can be stripped. **Escape it as you would any other value you interpolate into markup.**
+ *   - forward it as `x-meticulous-session-id` on a request to another service of yours, so that
+ *     service's own work is attributed too. A request the browser tagged is forwarded by the
+ *     recorder's usual header propagation; a document navigation has no such header to forward,
+ *     which is why this exists.
+ *
+ * Request-scoped: call it while handling the request it belongs to, never cache the result.
+ */
+export type MeticulousSessionIdReader = () => string | undefined;
+
 export interface BackendRecorderHandle {
   stopRecording: () => Promise<void>;
 
@@ -308,4 +329,13 @@ export interface BackendRecorderHandle {
   stubWithMeticulous?: MeticulousStubReader;
   /** See {@link isMeticulousReplaying}. Optional for the same reason. */
   recordWithMeticulous?: MeticulousValueRecorder;
+
+  /**
+   * The Meticulous session id of the request currently being served. See
+   * {@link MeticulousSessionIdReader} for what it is for and when to reach for it.
+   *
+   * Optional so older recorder bundles (which predate this field) still satisfy the type;
+   * guard with `handle?.getMeticulousSessionId`.
+   */
+  getMeticulousSessionId?: MeticulousSessionIdReader;
 }

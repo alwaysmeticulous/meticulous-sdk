@@ -136,6 +136,7 @@ export const runWithUploadedAssetChunks = async ({
     initialResult: {
       testRun: initialResult?.testRun ?? null,
       baseNotFound: initialResult?.baseNotFound,
+      extraBasePollTimeoutMs: initialResult?.extraBasePollTimeoutMs,
       message: initialResult?.message,
       overlaps: initialResult?.overlaps,
       overlapsTruncated: initialResult?.overlapsTruncated,

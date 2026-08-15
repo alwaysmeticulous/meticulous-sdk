@@ -14,6 +14,7 @@ import { CliUserError } from "../../utils/cli-user-error";
 import {
   assertTestRunComplete,
   ensureTestRunFinished,
+  isSessionPool,
   isTestRunPartial,
   resolveTestRunForCommitOrThrow,
 } from "../../utils/resolve-test-run-from-commit";
@@ -123,9 +124,15 @@ const handler = async ({
   // given, from the local checkout's HEAD.
   let resolvedTestRunId: string;
   let status: TestRunStatus;
+  let isSessionPoolRun: boolean;
   if (testRunId != null) {
     resolvedTestRunId = testRunId;
-    status = (await getTestRun({ client, testRunId })).status;
+    const run = await getTestRun({ client, testRunId });
+    status = run.status;
+    // No eager/non-eager distinction here: a session-pool run has no diffs of
+    // its own to list regardless of eagerness (see isBaseOrAnySessionPoolRun
+    // on the backend).
+    isSessionPoolRun = isSessionPool(run.configData);
   } else {
     const run = await resolveTestRunForCommitOrThrow(
       client,
@@ -134,6 +141,23 @@ const handler = async ({
     );
     resolvedTestRunId = run.testRunId;
     status = run.status;
+    isSessionPoolRun = run.isSessionPoolRun;
+  }
+
+  // A base run exists to be compared against, not to be a change of its own,
+  // so it has no diffs to list. A session-pool base can settle into
+  // Success/Failure without ever becoming Partial, so this is checked
+  // independently of status — and before waiting below, since it's already
+  // known at this point and there's no reason to block on (or silently skip
+  // past, with --dontWaitForTestRunToComplete) a run that will never have
+  // diffs (mirrors the backend's assertDiffsSummaryApplicable/assertNotBaseRun).
+  const assertNotBaseRun = (): void => {
+    throw new CliUserError(
+      `Test run ${resolvedTestRunId} is a base run other test runs compare against and consequently has no changes/diffs.`,
+    );
+  };
+  if (isSessionPoolRun) {
+    assertNotBaseRun();
   }
 
   const includeReviewsResolved = includeReviews || includeReviewDecisions;
@@ -171,13 +195,10 @@ const handler = async ({
     return;
   }
 
-  // A base run (Partial) exists to be compared against, not to be a change of
-  // its own, so it has no diffs to list — and it never finishes on its own, so
-  // waiting for it wouldn't help either.
+  // isSessionPoolRun was already checked above, before waiting; Partial only
+  // becomes known once the run has finished.
   if (isTestRunPartial(finishedStatus)) {
-    throw new CliUserError(
-      `Test run ${resolvedTestRunId} is a base run other test runs compare against and consequently has no changes/diffs.`,
-    );
+    assertNotBaseRun();
   }
   // Fatal failures already threw while waiting.
   assertTestRunComplete(resolvedTestRunId, finishedStatus, {

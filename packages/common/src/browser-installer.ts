@@ -36,6 +36,19 @@ const INSTALL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_INSTALL_RETRIES = 3;
 
 /**
+ * Optional explicit Chrome-for-Testing build id (e.g. "153.0.8001.0") that
+ * overrides the version puppeteer-core recommends. Used to bake a different
+ * Chrome into a purpose-built replay image (e.g. the arm64 worker, whose
+ * Chrome for Testing arm64 binary first shipped in 153) without moving the
+ * repo-wide puppeteer-core pin. Unset everywhere else, so the puppeteer-core
+ * pin remains the source of truth.
+ */
+function getOverrideChromeBuildId(): string | undefined {
+  const override = process.env.METICULOUS_CHROME_BUILD_ID?.trim();
+  return override ? override : undefined;
+}
+
+/**
  * Validates and sanitizes cache directory path
  */
 function validateCacheDir(cacheDir: string | undefined): string | undefined {
@@ -117,6 +130,17 @@ async function installBrowserWithRetry(
 }
 
 /**
+ * When set, use this pre-installed Chrome executable instead of downloading via
+ * `@puppeteer/browsers`. Used by the arm64 replay-cloud-worker image, which
+ * bakes a linux-arm64 Chrome for Testing build directly because our pinned
+ * `@puppeteer/browsers` still resolves linux_arm to the x86-64 linux64 zip.
+ */
+const getExplicitExecutablePath = (): string | undefined => {
+  const explicit = process.env.PUPPETEER_EXECUTABLE_PATH?.trim();
+  return explicit ? explicit : undefined;
+};
+
+/**
  * Ensures browser is available using Puppeteer's built-in browser installer
  * @param browserType The type of browser to install (default: Chrome)
  * @returns Path to the browser executable
@@ -125,16 +149,40 @@ async function installBrowserWithRetry(
 export async function ensureBrowser(
   browserType: Browser = Browser.CHROME,
 ): Promise<string> {
+  // Prefer an explicitly configured executable (e.g. the arm64 worker's
+  // directly-downloaded Chrome for Testing). Must come before any cache lookup
+  // or install attempt — cloud replay pods have a read-only root filesystem, so
+  // falling through to install() fails with ENOENT/EROFS on the cache dir.
+  const explicitExecutable = getExplicitExecutablePath();
+  if (explicitExecutable) {
+    if (!fs.existsSync(explicitExecutable)) {
+      throw new Error(
+        `PUPPETEER_EXECUTABLE_PATH is set to ${explicitExecutable} but no file ` +
+          "exists there. Ensure the browser package is installed, or unset the " +
+          "variable to allow automatic installation.",
+      );
+    }
+    if (!process.env.METICULOUS_IS_CLOUD_REPLAY) {
+      console.log(
+        chalk.gray(
+          `Using browser from PUPPETEER_EXECUTABLE_PATH: ${explicitExecutable}`,
+        ),
+      );
+    }
+    return explicitExecutable;
+  }
+
   const platform = detectBrowserPlatform();
   if (platform) {
     const validatedCacheDir = validateCacheDir(process.env.PUPPETEER_CACHE_DIR);
     const cacheDir =
       validatedCacheDir || path.join(os.homedir(), ".cache", "puppeteer");
 
-    // Get the expected Chrome version from puppeteer-core first if available,
-    // otherwise use the latest stable version
+    // Get the expected Chrome version: an explicit METICULOUS_CHROME_BUILD_ID
+    // override wins, else the version puppeteer-core recommends, else (later)
+    // the latest stable version.
     const revisions = await loadPuppeteerRevisions();
-    const expectedVersion = revisions?.chrome;
+    const expectedVersion = getOverrideChromeBuildId() ?? revisions?.chrome;
 
     try {
       const installedBrowsers = await getInstalledBrowsers({ cacheDir });
@@ -197,14 +245,22 @@ export async function ensureBrowser(
   const cacheDir =
     validatedCacheDir || path.join(os.homedir(), ".cache", "puppeteer");
 
+  // `@puppeteer/browsers` mkdir's `<cacheDir>/chrome` during install; if the
+  // cache root itself is missing that can surface as ENOENT (see #6091). Create
+  // it up front so installs are resilient in fresh environments.
+  fs.mkdirSync(cacheDir, { recursive: true });
+
   let buildId: string;
   const revisions = await loadPuppeteerRevisions();
-  const expectedVersion = revisions?.chrome;
+  const overrideBuildId = getOverrideChromeBuildId();
+  const expectedVersion = overrideBuildId ?? revisions?.chrome;
 
   if (expectedVersion) {
     console.log(
       chalk.gray(
-        `Using Chrome version from puppeteer-core: ${expectedVersion}`,
+        overrideBuildId
+          ? `Using Chrome version from METICULOUS_CHROME_BUILD_ID: ${expectedVersion}`
+          : `Using Chrome version from puppeteer-core: ${expectedVersion}`,
       ),
     );
     buildId = expectedVersion;

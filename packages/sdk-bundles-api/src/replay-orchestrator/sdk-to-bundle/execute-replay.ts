@@ -311,6 +311,22 @@ export interface ReplayExecutionOptions {
    */
   backendTestingLogicVersion?: number;
 
+  /**
+   * `SCREENSHOTTING_LOGIC_NUMBER` at the time the test run was initiated.
+   *
+   * Unlike the fields above this is *not* threaded into `ReplayLogicVersion` — the value actually stamped on a
+   * replay row is the executing replay bundle's own compiled constant, which is the only correct source. It is
+   * recorded here so that a base run that is still executing can be checked for logic-version compatibility (see
+   * `findByProjectAndCommitAndLogicVersion`): while a run is in flight, `resultData.results` is only a
+   * completion-ordered sample of its replays (replay rows are reserved and stamped at chunk start, but `replays`
+   * has no test-run FK, so they can't be read directly), so this frozen value is treated as authoritative until
+   * the run completes.
+   *
+   * Best-effort: a bundle rollout landing mid-run can still stamp replays with a different number than the one
+   * frozen here, so this is a filter for the common case, not a guarantee.
+   */
+  logicVersion?: number;
+
   delayLayoutTriggeredEvents?: boolean;
 
   /**

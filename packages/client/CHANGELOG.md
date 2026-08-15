@@ -1,5 +1,39 @@
 # @alwaysmeticulous/client
 
+## 2.326.0
+
+### Minor Changes
+
+- [#12052](https://github.com/alwaysmeticulous/meticulous/pull/12052) [`00066d3`](https://github.com/alwaysmeticulous/meticulous/commit/00066d3f830390c2df1227044bc172789abba7da) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agent Review runs can now report that a pull request has no browser-exercisable changes, including a category and evidence-backed reason.
+
+- [#12232](https://github.com/alwaysmeticulous/meticulous/pull/12232) [`d4b5a1e`](https://github.com/alwaysmeticulous/meticulous/commit/d4b5a1e52e37e5ff6e20a7dba7f6894285ce7f3b) Thanks [@sesajad](https://github.com/sesajad)! - Added `searchRecordedRequests` and `getRecordedRequest`, which look up a project's recorded requests by request shape — the same fuzzy hash network patching uses — and read one back in full. Matching ignores values and query strings and considers only structure (for GraphQL the operation names, variable names and field paths; otherwise the top-level keys of the JSON body), so an exemplar with placeholder ids still matches the recorded request.
+
+- [#12145](https://github.com/alwaysmeticulous/meticulous/pull/12145) [`84feae7`](https://github.com/alwaysmeticulous/meticulous/commit/84feae7f6b335a4445206b6c17a7168cbbcfded2) Thanks [@sesajad](https://github.com/sesajad)! - Add canonical route-group metadata to agentic result screenshot evidence.
+
+- [#12085](https://github.com/alwaysmeticulous/meticulous/pull/12085) [`c810f6f`](https://github.com/alwaysmeticulous/meticulous/commit/c810f6f58ae213f9d3d878f3f9f9c2bcfa9b94a5) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agentic run result steps can include a user-friendly reason explaining failed or blocked outcomes.
+
+- [#12123](https://github.com/alwaysmeticulous/meticulous/pull/12123) [`88d0868`](https://github.com/alwaysmeticulous/meticulous/commit/88d086862afbf39bb24f798566ca67981220b12b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent test-run-check` (MCP: `get_test_run_check`) now caps how much of a report it returns inline. A report over the cap returns a short notice plus a `url` to download the full report, instead of the full text — the CLI prints the notice and the URL on the plain-text path, and both are available as `text`/`url` with `--json`.
+
+- [#11580](https://github.com/alwaysmeticulous/meticulous/pull/11580) [`ac2e48b`](https://github.com/alwaysmeticulous/meticulous/commit/ac2e48b1b28f3c3fa361d31e4aaa3582ffb96055) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Support a server-driven extension of the base polling window. When a run is triggered with `--waitForBase` and no base exists yet, `baseNotFound` responses can now carry an `extraBasePollTimeoutMs` hint (set per project via a backend feature flag); `pollWhileBaseNotFound` adds it to its default 5-minute window, re-reading the hint on every retry. Responses without the hint behave exactly as before.
+
+- [#12212](https://github.com/alwaysmeticulous/meticulous/pull/12212) [`bca9805`](https://github.com/alwaysmeticulous/meticulous/commit/bca980587b44e428c9a4f5c3e84b9af1ee9041c7) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `TestRun.configData` and `getTestRunForCommit`'s response now expose whether a run is a lazy session-pool base — which can settle into `Success`/`Failure` without ever passing through `Partial`. `meticulous agent test-run-diffs`, `test-run-check`, and `js-coverage --prDiffOnly` now reject any session-pool run client-side, matching the backend's rejection for these commands (previously the CLI's own pre-check only caught one still `Partial`; a session-pool run that had settled still reached the server and was correctly rejected there, just via a round trip instead of instantly). This includes a session-pool run that also triggered eager session selection on a main-branch push — its diffs/checks/PR-diff-scoped coverage are not reachable through these three commands even though it represents a change of its own; plain (non-`prDiffOnly`) `js-coverage` is unaffected and continues to serve any session-pool run's coverage normally.
+
+- [#12064](https://github.com/alwaysmeticulous/meticulous/pull/12064) [`abd232d`](https://github.com/alwaysmeticulous/meticulous/commit/abd232db2372fa03babc4cda95f683256e116053) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent test-run-checks` is renamed to `meticulous agent test-run-check` (MCP: `get_test_run_check`), since it operates on a single check; the client's exported `getTestRunCheckReport` is unaffected but the CLI command name changed. The new `--availableIds` flag on `test-run-check` (MCP: `get_test_run_check_available_ids`) lists the check IDs that have reported results for a test run, exposed on the client as `getTestRunCheckAvailableIds`.
+
+### Patch Changes
+
+- [#12149](https://github.com/alwaysmeticulous/meticulous/pull/12149) [`e369a5a`](https://github.com/alwaysmeticulous/meticulous/commit/e369a5af5f90fca48bdfdd7adecc7908bd7472d3) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Allow agentic review steps to choose distinct highlight selectors for a shared explicit screenshot (`highlight` / `beforeHighlight` on `AgenticRunResultStep`), so adjacent steps can reuse one image without inheriting the same highlight region.
+
+- [#11995](https://github.com/alwaysmeticulous/meticulous/pull/11995) [`04c8bc7`](https://github.com/alwaysmeticulous/meticulous/commit/04c8bc7258c2ea2055651e029b6ee5d762d87a0b) Thanks [@sesajad](https://github.com/sesajad)! - Add `requestAgenticProgressUpload` and the `AgenticRunProgressSnapshot` types: the agentic session generation worker now streams a throttled per-case progress snapshot to S3 (overwriting `progress.json` next to the run's artifacts) from the moment its plan exists until it reports its terminal result.
+
+- [#11650](https://github.com/alwaysmeticulous/meticulous/pull/11650) [`654b4c5`](https://github.com/alwaysmeticulous/meticulous/commit/654b4c5bfac3bd4c94c63eaecf804b1231980c97) Thanks [@claude](https://github.com/apps/claude)! - Add agent setup steps to the OAuth login success page: the CLI install command or, alternatively, the MCP server URL, then the agent skills install command, and a link to the agent setup docs
+
+- [#12186](https://github.com/alwaysmeticulous/meticulous/pull/12186) [`cbb227c`](https://github.com/alwaysmeticulous/meticulous/commit/cbb227c3fe7df7fa4d01f02b4b425fb012c1b62b) Thanks [@sesajad](https://github.com/sesajad)! - Allow configured agentic staging logins to receive a CI-supplied TOTP secret.
+
+- Updated dependencies [[`f1c9afa`](https://github.com/alwaysmeticulous/meticulous/commit/f1c9afaf7d88f35487ed7e625dccebc930a90ee2), [`e31cd70`](https://github.com/alwaysmeticulous/meticulous/commit/e31cd700185109bf0591167fa0a28c7dfda25742), [`bc5e33d`](https://github.com/alwaysmeticulous/meticulous/commit/bc5e33df47f22fc88fe956b4c1202163dc4fa813), [`bca9805`](https://github.com/alwaysmeticulous/meticulous/commit/bca980587b44e428c9a4f5c3e84b9af1ee9041c7)]:
+  - @alwaysmeticulous/common@2.326.0
+  - @alwaysmeticulous/api@2.326.0
+
 ## 2.325.0
 
 ### Minor Changes

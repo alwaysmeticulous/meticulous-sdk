@@ -7,7 +7,7 @@ import { imageFilesCommand } from "./screenshot-image-files.command";
 import { imageUrlsCommand } from "./screenshot-image.command";
 import { sessionsCommand } from "./sessions.command";
 import { submitFeedbackCommand } from "./submit-feedback.command";
-import { testRunChecksCommand } from "./test-run-checks.command";
+import { testRunCheckCommand } from "./test-run-check.command";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
 import { testRunForCommitCommand } from "./test-run-for-commit.command";
 import { timelineDiffCommand } from "./timeline.command";
@@ -25,7 +25,7 @@ export const agentCommand: CommandModule = {
   builder: (yargs) =>
     yargs
       .command(testRunForCommitCommand)
-      .command(testRunChecksCommand)
+      .command(testRunCheckCommand)
       .command(testRunDiffsCommand)
       .command(imageFilesCommand)
       .command(imageUrlsCommand)

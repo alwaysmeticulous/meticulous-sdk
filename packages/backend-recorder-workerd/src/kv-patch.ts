@@ -1,9 +1,7 @@
 import { type RequestCaptureContext, requestCaptureContext } from "./context";
 import { type KvCaptureOutcome, serializeKvCaptureFields } from "./kv-capture";
 import { warnOnce } from "./log";
-import { getOriginalFetch } from "./original-fetch";
 import type { KvOperation, KvOperationEvent } from "./protocol";
-import { postCaptureEvents } from "./sidecar-client";
 
 /**
  * Records operations on Cloudflare KV namespace bindings (`env.MY_KV.get(key)`).
@@ -62,6 +60,11 @@ type KvNamespaceLike = Record<KvOperation, KvMethod>;
 export interface InstallKvPatchOptions {
   /** Binding names to leave unrecorded. */
   skipBindings?: readonly string[];
+  /**
+   * Binding instances to leave unrecorded, whatever they are called. Accepted for symmetry with
+   * the binding patch — a KV namespace is never the sidecar, so nothing uses it today.
+   */
+  skipInstances?: readonly object[];
 }
 
 /**
@@ -79,6 +82,7 @@ export const installKvPatch = (
     for (const { name, value, skip } of kvBindings(
       env,
       options?.skipBindings,
+      options?.skipInstances,
     )) {
       // Patch even a skipped namespace's methods: they are shared with every other namespace,
       // so seeding them is what gives those coverage. Skipping is enforced by leaving the
@@ -106,15 +110,21 @@ interface DiscoveredKvBinding {
 const kvBindings = (
   env: unknown,
   skipBindings: readonly string[] | undefined,
+  skipInstances: readonly object[] | undefined,
 ): DiscoveredKvBinding[] => {
   if (env === null || typeof env !== "object") {
     return [];
   }
   const skipped = new Set<string>(skipBindings ?? []);
+  const skippedInstances = new Set<object>(skipInstances ?? []);
   const found: DiscoveredKvBinding[] = [];
   for (const [name, value] of Object.entries(env)) {
     if (isKvNamespaceLike(value)) {
-      found.push({ name, value, skip: skipped.has(name) });
+      found.push({
+        name,
+        value,
+        skip: skipped.has(name) || skippedInstances.has(value),
+      });
     }
   }
   return found;
@@ -274,17 +284,8 @@ const report = (
   outcome: KvCaptureOutcome,
 ): void => {
   try {
-    const event = buildKvEvent(
-      ctx,
-      operation,
-      bindingName,
-      args,
-      startTimeMs,
-      outcome,
-    );
-    // postCaptureEvents never rejects — it warns once on an unreachable sidecar.
-    ctx.waitUntil(
-      postCaptureEvents(getOriginalFetch(), ctx.sidecarUrl, [event]),
+    ctx.buffer.add(
+      buildKvEvent(ctx, operation, bindingName, args, startTimeMs, outcome),
     );
   } catch (error) {
     warnOnce("kv-report", "Failed to report a KV operation.", error);
@@ -304,6 +305,8 @@ const buildKvEvent = (
   ...(ctx.frontendSessionId !== undefined
     ? { frontendSessionId: ctx.frontendSessionId }
     : {}),
+  traceId: ctx.traceId,
+  serverSpanId: ctx.serverSpanId,
   bindingName,
   operation,
   ...serializeKvCaptureFields(operation, args, outcome),

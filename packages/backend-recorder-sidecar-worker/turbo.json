@@ -1,0 +1,15 @@
+{
+  "$schema": "https://turborepo.org/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      // tsdown stamps METICULOUS_COMMIT_HASH into the bundle, honouring this
+      // variable as an override when git is unavailable. Turbo runs in strict
+      // env mode, so without declaring it the override would be filtered out of
+      // the build's environment; declaring it also makes turbo hash it, so an
+      // override cannot be masked by a cache hit. Scoped to this package to
+      // avoid rekeying every other package's build.
+      "env": ["METICULOUS_COMMIT_HASH"]
+    }
+  }
+}

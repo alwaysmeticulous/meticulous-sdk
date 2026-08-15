@@ -214,12 +214,69 @@ export interface TestRun {
   project: Project;
   configData: {
     testCases?: TestCase[];
+    /**
+     * A session-pool base run executes its sessions on demand for other test
+     * runs (lazy session execution) rather than representing a change of its
+     * own, so it never has diffs or a PR of its own — but it can settle into
+     * `Success`/`Failure` without ever reaching `status: "Partial"`, so this
+     * must be checked independently of status.
+     *
+     * `isSessionPool` is also set on a main-branch push run that happens to
+     * trigger eager session selection (`forceEagerExecution`) — that run
+     * represents a change of its own (its own commit, its own diffs), reusable
+     * as a base only as a side effect of having already replayed those
+     * sessions, so it must not be treated as one: a caller should only treat
+     * `isSessionPool: true` as a base run when `forceEagerExecution` is not
+     * also `true`.
+     */
+    arguments?: {
+      isSessionPool?: boolean;
+      forceEagerExecution?: boolean;
+    };
   };
   resultData?: {
     results?: TestCaseResult[];
   };
   url: string;
 }
+
+/**
+ * Whether a run is a session-pool base being reused for another test run's
+ * lazy session execution, rather than one that executed its own eager golden
+ * set. `isSessionPool` is also set on a main-branch push run that happens to
+ * trigger eager session selection (`forceEagerExecution`) — that run
+ * represents a change of its own (its own commit, its own diffs), reusable as
+ * a base only as a side effect of having already replayed those sessions, so
+ * it's excluded here.
+ *
+ * Takes a minimal structural shape (not `TestRun["configData"]` itself) so
+ * both the public `TestRun` type here and the backend's internal, richer
+ * config-data type can share this one implementation.
+ */
+export const isNonEagerSessionPool = (
+  configData:
+    | { arguments?: { isSessionPool?: boolean; forceEagerExecution?: boolean } }
+    | null
+    | undefined,
+): boolean => {
+  const args = configData?.arguments;
+  return args?.isSessionPool === true && args.forceEagerExecution !== true;
+};
+
+/**
+ * Whether a run's configData marks it as a session-pool run at all, with no
+ * exception for one that also triggered eager session selection
+ * (`forceEagerExecution`) — unlike {@link isNonEagerSessionPool}. Used by
+ * reads where a run's own diffs/checks/PR-diff-scoped coverage never exist
+ * once it's reused as a pool, eager or not: `test-run-diffs`, `test-run-check`,
+ * and `js-coverage --prDiffOnly`.
+ */
+export const isSessionPool = (
+  configData:
+    | { arguments?: { isSessionPool?: boolean; forceEagerExecution?: boolean } }
+    | null
+    | undefined,
+): boolean => configData?.arguments?.isSessionPool === true;
 
 /**
  * Result of resolving the "effective" test run for a (potentially network

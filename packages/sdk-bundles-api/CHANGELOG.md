@@ -1,5 +1,20 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.326.0
+
+### Minor Changes
+
+- [#12107](https://github.com/alwaysmeticulous/meticulous/pull/12107) [`52df6fa`](https://github.com/alwaysmeticulous/meticulous/commit/52df6fa26dda3cc9e52726a4a41eaf51935f2ed9) Thanks [@dennysem](https://github.com/dennysem)! - The backend recorder handle now exposes `getMeticulousSessionId()`, the session id of the request currently being served, for an app that needs to render it into a server-rendered page or forward it to another service.
+
+### Patch Changes
+
+- [#12153](https://github.com/alwaysmeticulous/meticulous/pull/12153) [`db593ac`](https://github.com/alwaysmeticulous/meticulous/commit/db593ac7b7f359d6440cc3a9cd33ff48c7555155) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `ReplayExecutionOptions` gains an optional `logicVersion`, recording the screenshotting logic number at the time a test run was initiated so a base run that has not yet produced replays can still be checked for logic-version compatibility.
+
+- [#12204](https://github.com/alwaysmeticulous/meticulous/pull/12204) [`e64edef`](https://github.com/alwaysmeticulous/meticulous/commit/e64edef217b5f6738728fc5119e710a21e354958) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Clarify the `ReplayExecutionOptions.logicVersion` doc comment: the frozen value is now treated as authoritative for any base run that is still executing, not only when `resultData.results` is empty.
+
+- Updated dependencies [[`bc5e33d`](https://github.com/alwaysmeticulous/meticulous/commit/bc5e33df47f22fc88fe956b4c1202163dc4fa813), [`bca9805`](https://github.com/alwaysmeticulous/meticulous/commit/bca980587b44e428c9a4f5c3e84b9af1ee9041c7)]:
+  - @alwaysmeticulous/api@2.326.0
+
 ## 2.325.0
 
 ### Minor Changes

@@ -1,0 +1,61 @@
+{
+  "name": "@alwaysmeticulous/backend-recorder-sidecar-worker",
+  "version": "2.326.0",
+  "type": "module",
+  "description": "Meticulous backend recorder sidecar for Cloudflare Workers. Deploy it into your own Cloudflare account and point your app's Worker at it with a service binding to record backend sessions from a deployed Worker or Pages project.",
+  "license": "ISC",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./wrangler.template.toml": "./wrangler.template.toml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "wrangler.template.toml"
+  ],
+  "keywords": [
+    "meticulous",
+    "cloudflare",
+    "workers",
+    "workerd",
+    "recorder",
+    "sidecar"
+  ],
+  "scripts": {
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "format": "prettier --write src",
+    "lint": "oxlint --type-aware src",
+    "lint:fix": "oxlint --type-aware src --fix",
+    "depcheck": "depcheck --ignore-patterns=dist",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@alwaysmeticulous/backend-recorder-workerd": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsdown": "^0.21.7",
+    "vitest": "catalog:"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/backend-recorder-sidecar-worker"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}

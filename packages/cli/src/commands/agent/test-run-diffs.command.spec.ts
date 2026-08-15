@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   getTestRunDiffsSummaryCounts: vi.fn(),
   ensureTestRunFinished: vi.fn(),
   assertTestRunComplete: vi.fn(),
+  isSessionPool: vi.fn(),
   isTestRunPartial: vi.fn(),
   resolveTestRunForCommitOrThrow: vi.fn(),
   logNotice: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock("@alwaysmeticulous/common", () => ({
 vi.mock("../../utils/resolve-test-run-from-commit", () => ({
   ensureTestRunFinished: mocks.ensureTestRunFinished,
   assertTestRunComplete: mocks.assertTestRunComplete,
+  isSessionPool: mocks.isSessionPool,
   isTestRunPartial: mocks.isTestRunPartial,
   resolveTestRunForCommitOrThrow: mocks.resolveTestRunForCommitOrThrow,
 }));
@@ -85,6 +87,7 @@ describe("test-run-diffs command polling", () => {
     mocks.ensureTestRunFinished.mockResolvedValue("Success");
     mocks.assertTestRunComplete.mockReturnValue(undefined);
     mocks.isTestRunPartial.mockReturnValue(false);
+    mocks.isSessionPool.mockReturnValue(false);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
       throw new ProcessExitError(code);
@@ -510,5 +513,30 @@ describe("test-run-diffs command polling", () => {
     // verdict-only assertion.
     expect(mocks.getTestRunDiffsSummary).not.toHaveBeenCalled();
     expect(mocks.assertTestRunComplete).not.toHaveBeenCalled();
+  });
+
+  // A session-pool base can settle into Success/Failure without ever
+  // becoming Partial, so isSessionPool is checked independently of
+  // status (mirrors the backend's isBaseOrSessionPoolRun).
+  it("rejects a settled session-pool run resolved via --testRunId", async () => {
+    mocks.isSessionPool.mockReturnValue(true);
+
+    await expect(runHandler()).rejects.toThrow(
+      /is a base run other test runs compare against and consequently has no changes\/diffs/,
+    );
+    expect(mocks.getTestRunDiffsSummary).not.toHaveBeenCalled();
+  });
+
+  // isSessionPoolRun is already known before the run needs to finish, so a
+  // still-running session pool must be rejected immediately rather than
+  // waiting on (or, with --dontWaitForTestRunToComplete, silently returning
+  // an empty result past) a run that will never have diffs.
+  it("rejects a settled session-pool run without waiting for it to finish", async () => {
+    mocks.isSessionPool.mockReturnValue(true);
+
+    await expect(runHandler()).rejects.toThrow(
+      /is a base run other test runs compare against and consequently has no changes\/diffs/,
+    );
+    expect(mocks.ensureTestRunFinished).not.toHaveBeenCalled();
   });
 });

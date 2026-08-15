@@ -1,4 +1,5 @@
 import { warnOnce } from "./log";
+import { getOriginalFetch } from "./original-fetch";
 import {
   type CaptureEvent,
   type CaptureEventsPayload,
@@ -11,6 +12,7 @@ import {
   SIDECAR_REPLAY_OUTBOUND_FETCH_PATH,
   SIDECAR_REPLAY_SESSION_PATH,
 } from "./protocol";
+import { sidecarFetch, type SidecarTransport } from "./sidecar-transport";
 
 type FetchFn = typeof globalThis.fetch;
 
@@ -23,38 +25,55 @@ const SESSION_INFO_TIMEOUT_MS = 10_000;
 const LOOKUP_TIMEOUT_MS = 5_000;
 
 /**
- * Capture reporting is off the response path (it runs under `ctx.waitUntil`), so a timeout
- * here is not about latency the app can see — it is about not holding the request context
- * open on a sidecar that will never answer. A refused connection rejects immediately, but a
- * sidecar URL pointing at a host that drops packets rather than refusing them (a firewalled
- * container or LAN address instead of loopback) would otherwise leave the POST pending until
- * the runtime tears the context down, on every captured call.
+ * Capture reporting is off the response path (it runs under `ctx.waitUntil`), so a timeout here
+ * is not about latency the app can see — it is about not holding the request context open on a
+ * sidecar that will never answer. A refused connection rejects immediately, but a sidecar URL
+ * pointing at a host that drops packets rather than refusing them (a firewalled container or LAN
+ * address instead of loopback) would otherwise leave the POST pending until the runtime tears the
+ * context down, on every captured call.
  *
- * Generous relative to what it bounds: the sidecar is always loopback or the docker gateway
- * and answers a single small event in single-digit milliseconds, so this only ever fires on
- * a sidecar that is wedged or unreachable — never on one that is merely busy. Being generous
- * costs nothing because {@link withTimeout} clears the timer the moment the POST settles.
+ * Generous relative to what it bounds: a local sidecar answers a small batch in single-digit
+ * milliseconds, so this only ever fires on one that is wedged or unreachable — never on one that
+ * is merely busy. Being generous costs nothing because {@link withTimeout} clears the timer the
+ * moment the POST settles.
  */
 const CAPTURE_POST_TIMEOUT_MS = 2_000;
 
+/**
+ * The same bound for a service-binding transport, where the sidecar is a Worker that hands the
+ * batch to a Durable Object before answering. That object may live in another region and is
+ * single-threaded, so a busy one can legitimately take far longer than a loopback process — and
+ * failing the report early would drop spans a slightly longer wait would have recorded.
+ * `waitUntil` allows 30s past the response, so this stays well inside its budget.
+ */
+const CAPTURE_POST_BINDING_TIMEOUT_MS = 10_000;
+
 /** POSTs capture events to the sidecar. Never rejects — reporting failures only warn (once). */
 export const postCaptureEvents = async (
-  fetchFn: FetchFn,
-  sidecarUrl: string,
+  transport: SidecarTransport,
   events: CaptureEvent[],
 ): Promise<void> => {
+  const timeoutMs =
+    transport.kind === "binding"
+      ? CAPTURE_POST_BINDING_TIMEOUT_MS
+      : CAPTURE_POST_TIMEOUT_MS;
   try {
     const payload: CaptureEventsPayload = { events };
-    await withTimeout(CAPTURE_POST_TIMEOUT_MS, async (signal) => {
-      const response = await fetchFn(`${sidecarUrl}${SIDECAR_EVENTS_PATH}`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          [SIDECAR_PROTOCOL_VERSION_HEADER]: SIDECAR_PROTOCOL_VERSION,
+    await withTimeout(timeoutMs, async (signal) => {
+      const response = await sidecarFetch(
+        transport,
+        getOriginalFetch(),
+        SIDECAR_EVENTS_PATH,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            [SIDECAR_PROTOCOL_VERSION_HEADER]: SIDECAR_PROTOCOL_VERSION,
+          },
+          body: JSON.stringify(payload),
+          signal,
         },
-        body: JSON.stringify(payload),
-        signal,
-      });
+      );
       if (!response.ok) {
         warnOnce(
           "sidecar-rejected",

@@ -1,5 +1,15 @@
 # @alwaysmeticulous/common
 
+## 2.326.0
+
+### Minor Changes
+
+- [#12083](https://github.com/alwaysmeticulous/meticulous/pull/12083) [`f1c9afa`](https://github.com/alwaysmeticulous/meticulous/commit/f1c9afaf7d88f35487ed7e625dccebc930a90ee2) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `ensureBrowser` now honours an optional `METICULOUS_CHROME_BUILD_ID` environment variable, which overrides the Chrome-for-Testing version otherwise taken from the puppeteer-core pin. Unset by default, so behaviour is unchanged unless explicitly opted in.
+
+### Patch Changes
+
+- [#12150](https://github.com/alwaysmeticulous/meticulous/pull/12150) [`e31cd70`](https://github.com/alwaysmeticulous/meticulous/commit/e31cd700185109bf0591167fa0a28c7dfda25742) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `ensureBrowser` now honours `PUPPETEER_EXECUTABLE_PATH` when set to an existing binary, skipping the `@puppeteer/browsers` download/install path. This unblocks arm64 cloud-replay workers that bake Chrome for Testing outside puppeteer and point at it via that env var.
+
 ## 2.324.0
 
 ### Patch Changes

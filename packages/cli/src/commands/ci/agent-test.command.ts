@@ -114,6 +114,7 @@ const handler = async ({
               url: backendUrl,
               username: process.env["METICULOUS_STAGING_USERNAME"],
               password: process.env["METICULOUS_STAGING_PASSWORD"],
+              totpSecret: process.env["METICULOUS_STAGING_TOTP_SECRET"],
               proxyPaths: backendProxyPaths,
             },
           }
@@ -160,7 +161,7 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
     backendUrl: {
       string: true,
       description:
-        "HTTPS staging backend URL. Credentials are read from METICULOUS_STAGING_USERNAME and METICULOUS_STAGING_PASSWORD.",
+        "HTTPS staging backend URL. Credentials are read from METICULOUS_STAGING_USERNAME, METICULOUS_STAGING_PASSWORD, and METICULOUS_STAGING_TOTP_SECRET when the configured login flow requires TOTP.",
     },
     backendProxyPaths: {
       array: true,

@@ -1,8 +1,16 @@
 import * as http from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { type MeticulousExecutionContext, withMeticulous } from "../index";
-import type { CaptureEvent, CaptureEventsPayload } from "../protocol";
+import {
+  type MeticulousExecutionContext,
+  getMeticulousSessionId,
+  withMeticulous,
+} from "../index";
+import {
+  type CaptureEvent,
+  type CaptureEventsPayload,
+  SIDECAR_PROTOCOL_VERSION,
+} from "../protocol";
 
 /**
  * In-Node integration test: one local HTTP server acts as the fake sidecar
@@ -18,6 +26,8 @@ let sidecarUrl: string;
 let upstreamUrl: string;
 let receivedEvents: CaptureEvent[] = [];
 let receivedProtocolVersions: (string | string[] | undefined)[] = [];
+/** Events per POST, so batching can be asserted rather than only its side effects. */
+let receivedBatchSizes: number[] = [];
 
 const listen = async (server: http.Server): Promise<string> => {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -42,6 +52,7 @@ beforeAll(async () => {
           Buffer.concat(chunks).toString("utf-8"),
         ) as CaptureEventsPayload;
         receivedEvents.push(...payload.events);
+        receivedBatchSizes.push(payload.events.length);
         res.writeHead(204).end();
         return;
       }
@@ -73,6 +84,7 @@ afterAll(async () => {
 beforeEach(() => {
   receivedEvents = [];
   receivedProtocolVersions = [];
+  receivedBatchSizes = [];
 });
 
 /** ExecutionContext stub that lets tests await all background capture work. */
@@ -178,7 +190,10 @@ describe("withMeticulous", () => {
       "fs-123",
     ]);
 
-    expect(receivedProtocolVersions).toEqual(["1", "1"]);
+    // One POST, carrying both events: a request's captures are batched into a single report,
+    // so an SSR request making many calls costs one round trip rather than one per call.
+    expect(receivedProtocolVersions).toEqual([SIDECAR_PROTOCOL_VERSION]);
+    expect(receivedBatchSizes).toEqual([2]);
   });
 
   it("does not intercept anything without a sidecar URL", async () => {
@@ -240,10 +255,16 @@ describe("withMeticulous", () => {
       kind: "outbound",
       url: "http://127.0.0.1:1/unreachable",
     });
+    if (outbound.kind !== "outbound") {
+      throw new Error("expected outbound event");
+    }
     expect(outbound.error).toBeTruthy();
     expect(outbound.statusCode).toBeUndefined();
 
     const [inbound] = eventsOfKind("inbound");
+    if (inbound.kind !== "inbound") {
+      throw new Error("expected inbound event");
+    }
     expect(inbound.error).toBeTruthy();
   });
 
@@ -263,5 +284,135 @@ describe("withMeticulous", () => {
     expect(inbound.statusCode).toBe(203);
     expect(inbound.frontendSessionId).toBeUndefined();
     expect(eventsOfKind("outbound")).toHaveLength(0);
+  });
+});
+
+/**
+ * A top-level document navigation is the one request that can never carry
+ * `x-meticulous-session-id`, so the shim mints one and hands it to the page — otherwise the
+ * server-side render it triggers is recorded against no session at all.
+ */
+describe("withMeticulous provisional session ids", () => {
+  /** The app the SSR render of a page would be: one upstream call, then HTML. */
+  const documentHandler = (options?: Parameters<typeof withMeticulous>[1]) =>
+    withMeticulous(
+      {
+        fetch: async () => {
+          await fetch(`${upstreamUrl}/items`);
+          return new Response(
+            `<html><body>${getMeticulousSessionId() ?? "none"}</body></html>`,
+            { headers: { "content-type": "text/html" } },
+          );
+        },
+      },
+      options,
+    );
+
+  const navigate = (headers: Record<string, string> = {}) =>
+    new Request("http://worker.local/", {
+      headers: { "sec-fetch-dest": "document", ...headers },
+    });
+
+  it("mints an id for a document navigation and puts the whole request under it", async () => {
+    const ctx = makeCtx();
+    const response = await documentHandler().fetch(
+      navigate(),
+      { METICULOUS_SIDECAR_URL: sidecarUrl } as never,
+      ctx,
+    );
+    const body = await response.text();
+    await ctx.drain();
+
+    const [inbound] = eventsOfKind("inbound");
+    const sessionId = inbound.frontendSessionId;
+    expect(sessionId).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z_[A-Za-z0-9_-]{21}$/,
+    );
+    // Marks the id as one the page may never adopt, which ingestion has to tell apart from
+    // one the browser sent us.
+    expect(inbound).toMatchObject({ sessionIdOrigin: "backend" });
+
+    // The render's own outbound call lands on the same session — the point of the exercise.
+    const [outbound] = eventsOfKind("outbound");
+    expect(outbound.frontendSessionId).toBe(sessionId);
+
+    // Channel 1: readable by the page from the navigation's serverTiming entries.
+    expect(response.headers.get("server-timing")).toBe(
+      `metsession;desc="${sessionId}"`,
+    );
+    // Channel 2: the app rendered the same id via getMeticulousSessionId().
+    expect(body).toBe(`<html><body>${sessionId}</body></html>`);
+  });
+
+  it("leaves an id the browser supplied alone", async () => {
+    const ctx = makeCtx();
+    const response = await documentHandler().fetch(
+      navigate({ "x-meticulous-session-id": "fs-123" }),
+      { METICULOUS_SIDECAR_URL: sidecarUrl } as never,
+      ctx,
+    );
+    await ctx.drain();
+
+    const [inbound] = eventsOfKind("inbound");
+    expect(inbound.frontendSessionId).toBe("fs-123");
+    expect(inbound).not.toHaveProperty("sessionIdOrigin");
+    expect(response.headers.get("server-timing")).toBeNull();
+  });
+
+  it("declines an in-page fetch, which is how an RSC navigation arrives", async () => {
+    const ctx = makeCtx();
+    const response = await documentHandler().fetch(
+      new Request("http://worker.local/api", {
+        headers: { "sec-fetch-dest": "empty" },
+      }),
+      { METICULOUS_SIDECAR_URL: sidecarUrl } as never,
+      ctx,
+    );
+    await ctx.drain();
+
+    const [inbound] = eventsOfKind("inbound");
+    expect(inbound.frontendSessionId).toBeUndefined();
+    expect(response.headers.get("server-timing")).toBeNull();
+  });
+
+  it("can be opted out of with the option", async () => {
+    const ctx = makeCtx();
+    await documentHandler({ mintProvisionalSessionIds: false }).fetch(
+      navigate(),
+      { METICULOUS_SIDECAR_URL: sidecarUrl } as never,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(eventsOfKind("inbound")[0].frontendSessionId).toBeUndefined();
+  });
+
+  it("can be opted out of with the worker var", async () => {
+    const ctx = makeCtx();
+    await documentHandler().fetch(
+      navigate(),
+      {
+        METICULOUS_SIDECAR_URL: sidecarUrl,
+        METICULOUS_BACKEND_PROVISIONAL_SESSION_IDS: "false",
+      } as never,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(eventsOfKind("inbound")[0].frontendSessionId).toBeUndefined();
+  });
+
+  it("mints nothing when there is no sidecar, so a deployed worker is untouched", async () => {
+    const ctx = makeCtx();
+    const response = await documentHandler().fetch(
+      navigate(),
+      {} as never,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(response.headers.get("server-timing")).toBeNull();
+    expect(await response.text()).toBe("<html><body>none</body></html>");
+    expect(receivedEvents).toHaveLength(0);
   });
 });

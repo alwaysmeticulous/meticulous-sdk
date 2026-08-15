@@ -1,11 +1,16 @@
 import * as http from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { type MeticulousExecutionContext, withMeticulous } from "../index";
+import {
+  type MeticulousExecutionContext,
+  getMeticulousSessionId,
+  withMeticulous,
+} from "../index";
 import {
   METICULOUS_PASSTHROUGH_HEADER,
   type OutboundFetchLookupRequest,
   type OutboundFetchLookupResponse,
+  REPLAY_ID_HEADER,
 } from "../protocol";
 import { UNANCHORED_BASE_TIME_MS } from "../virtual-clock";
 
@@ -137,15 +142,19 @@ const makeCtx = (): MeticulousExecutionContext => ({
 const callWorker = async ({
   sidecarUrlHeader = sidecarUrl,
   sessionId = SESSION,
+  replayId = "replay-1",
   omitSessionId = false,
+  omitReplayId = false,
   requestBody,
   readClock = false,
   passthroughHeader = false,
 }: {
   sidecarUrlHeader?: string;
   sessionId?: string;
+  replayId?: string;
   /** A separate flag, not `sessionId: undefined` — that would trigger the default above. */
   omitSessionId?: boolean;
+  omitReplayId?: boolean;
   requestBody?: string;
   readClock?: boolean;
   /** Marks the app's outbound call as one that must stay live during replay. */
@@ -181,6 +190,9 @@ const callWorker = async ({
   if (!omitSessionId) {
     headers["x-meticulous-session-id"] = sessionId;
   }
+  if (!omitReplayId) {
+    headers[REPLAY_ID_HEADER] = replayId;
+  }
   headers["x-meticulous-backend-replay-sidecar-url"] = sidecarUrlHeader;
 
   const response = await handler.fetch(
@@ -205,6 +217,7 @@ describe("withMeticulous in replay mode", () => {
     expect(lookups).toHaveLength(1);
     expect(lookups[0]).toMatchObject({
       frontendSessionId: "serve-1",
+      replayId: "replay-1",
       method: "GET",
       url: `${upstreamUrl}/items`,
     });
@@ -377,6 +390,14 @@ describe("withMeticulous in replay mode", () => {
     expect(sessionInfoRequests).toHaveLength(0);
   });
 
+  it("does not replay without a replay id", async () => {
+    const result = await callWorker({ omitReplayId: true });
+
+    expect(result.status).toBe(201);
+    expect(upstreamHits).toBe(1);
+    expect(sessionInfoRequests).toHaveLength(0);
+  });
+
   it("drops recorded framing headers that no longer describe the body", async () => {
     lookupHandler = () => ({
       outcome: "mock",
@@ -422,5 +443,33 @@ describe("withMeticulous in replay mode", () => {
 
     expect(result.status).toBe(204);
     expect(upstreamHits).toBe(0);
+  });
+
+  /**
+   * An app that renders the session id into its HTML must render the same bytes on a replay
+   * as it did when recording, or every server-rendered page it produces is a permanent diff.
+   * It does, because the id the runner injects here is the one the page adopted then.
+   */
+  it("reports the replayed session's id to an app that renders it", async () => {
+    const handler = withMeticulous({
+      fetch: () => Promise.resolve(new Response(getMeticulousSessionId())),
+    });
+
+    const response = await handler.fetch(
+      new Request("http://worker.local/page", {
+        headers: {
+          "sec-fetch-dest": "document",
+          "x-meticulous-session-id": "rendered-1",
+          [REPLAY_ID_HEADER]: "replay-rendered-1",
+          "x-meticulous-backend-replay-sidecar-url": sidecarUrl,
+        },
+      }),
+      undefined as never,
+      makeCtx(),
+    );
+
+    expect(await response.text()).toBe("rendered-1");
+    // Nothing is minted or published in replay: the runner already named the session.
+    expect(response.headers.get("server-timing")).toBeNull();
   });
 });

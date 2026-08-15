@@ -1,6 +1,7 @@
-import { requestCaptureContext } from "./context";
+import { requestCaptureContext, sidecarOriginOf } from "./context";
 import { warnOnce } from "./log";
 import { captureOutboundCall } from "./outbound-capture";
+import { SIDECAR_BINDING_ENV_KEY } from "./sidecar-transport";
 
 /**
  * Records calls made through Cloudflare bindings (`env.MY_SERVICE.fetch(...)`).
@@ -34,8 +35,15 @@ const BINDING_FETCH_PATCHED = Symbol.for("meticulous.workerd.bindingPatched");
  * so it cannot be told apart by duck-typing and has to be skipped by name. Recording it would
  * push every static asset through the body capture cap for no benefit: asset bytes are large
  * and often binary, and asset serving is typically the highest-volume call a worker makes.
+ *
+ * The sidecar binding is here as belt-and-braces only: the wrapper also passes its resolved
+ * instance as a `skipInstances` entry, which holds however the customer named it.
  */
-const DEFAULT_SKIPPED_BINDINGS = ["ASSETS", "__STATIC_CONTENT"] as const;
+const DEFAULT_SKIPPED_BINDINGS = [
+  "ASSETS",
+  "__STATIC_CONTENT",
+  SIDECAR_BINDING_ENV_KEY,
+] as const;
 
 /** Identifies a binding instance so its calls can be attributed to an `env` key. */
 const bindingNames = new WeakMap<object, string>();
@@ -50,6 +58,13 @@ type BindingFetch = (...args: unknown[]) => Promise<Response>;
 export interface InstallBindingPatchOptions {
   /** Extra binding names to leave unrecorded, on top of the defaults. */
   skipBindings?: readonly string[];
+  /**
+   * Binding instances to leave unrecorded, whatever they are called on `env`. This is how the
+   * sidecar's own service binding is excluded: recording the shim's reports would be an infinite
+   * regress, and a name-based skip would miss a binding the customer named something else or
+   * passed in through `options.sidecarBinding`.
+   */
+  skipInstances?: readonly object[];
 }
 
 /**
@@ -67,6 +82,7 @@ export const installBindingPatch = (
     for (const { name, value, skip } of fetcherBindings(
       env,
       options?.skipBindings,
+      options?.skipInstances,
     )) {
       // Patch even a skipped binding's prototype: it is shared with every other
       // Fetcher-shaped binding (and is in a Durable Object stub's prototype chain), so
@@ -97,6 +113,7 @@ interface DiscoveredBinding {
 const fetcherBindings = (
   env: unknown,
   extraSkipped: readonly string[] | undefined,
+  skipInstances: readonly object[] | undefined,
 ): DiscoveredBinding[] => {
   if (env === null || typeof env !== "object") {
     return [];
@@ -105,10 +122,15 @@ const fetcherBindings = (
     ...DEFAULT_SKIPPED_BINDINGS,
     ...(extraSkipped ?? []),
   ]);
+  const skippedInstances = new Set<object>(skipInstances ?? []);
   const found: DiscoveredBinding[] = [];
   for (const [name, value] of Object.entries(env)) {
     if (isFetcherLike(value)) {
-      found.push({ name, value, skip: skipped.has(name) });
+      found.push({
+        name,
+        value,
+        skip: skipped.has(name) || skippedInstances.has(value),
+      });
     }
   }
   return found;
@@ -188,7 +210,7 @@ const patchedBindingFetch = (original: BindingFetch): BindingFetch =>
 
     // Defence in depth: a binding pointed at the sidecar must not be recorded. Forwards
     // `request`, not `args` — normalizing may already have consumed the original body.
-    if (request.url.startsWith(`${ctx.sidecarUrl}/`)) {
+    if (request.url.startsWith(`${sidecarOriginOf(ctx)}/`)) {
       return original.apply(this, [request]);
     }
 

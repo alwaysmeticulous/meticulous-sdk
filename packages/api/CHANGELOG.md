@@ -1,5 +1,13 @@
 # @alwaysmeticulous/api
 
+## 2.326.0
+
+### Minor Changes
+
+- [#12286](https://github.com/alwaysmeticulous/meticulous/pull/12286) [`bc5e33d`](https://github.com/alwaysmeticulous/meticulous/commit/bc5e33df47f22fc88fe956b4c1202163dc4fa813) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Removed the `pathsToIncludeInCoverage` project setting from `Project["settings"]`. The setting has had no effect since server-side `.meticulousignore` support replaced it: nothing read it, so anything still setting it was silently a no-op. Scope coverage with `pathsToExcludeFromCoverage` or a repository-root `.meticulousignore` / `.meticulousignore.{slug}` instead. To restrict coverage to one subtree, either exclude the other trees or un-ignore each ancestor after a blanket `**` (e.g. `**`, `!apps/`, `!apps/web/`, `!apps/web/src/`, `!apps/web/src/**`) — a nested negation alone will not re-include files whose parent is still excluded.
+
+- [#12212](https://github.com/alwaysmeticulous/meticulous/pull/12212) [`bca9805`](https://github.com/alwaysmeticulous/meticulous/commit/bca980587b44e428c9a4f5c3e84b9af1ee9041c7) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `TestRun.configData` and `getTestRunForCommit`'s response now expose whether a run is a lazy session-pool base — which can settle into `Success`/`Failure` without ever passing through `Partial`. `meticulous agent test-run-diffs`, `test-run-check`, and `js-coverage --prDiffOnly` now reject any session-pool run client-side, matching the backend's rejection for these commands (previously the CLI's own pre-check only caught one still `Partial`; a session-pool run that had settled still reached the server and was correctly rejected there, just via a round trip instead of instantly). This includes a session-pool run that also triggered eager session selection on a main-branch push — its diffs/checks/PR-diff-scoped coverage are not reachable through these three commands even though it represents a change of its own; plain (non-`prDiffOnly`) `js-coverage` is unaffected and continues to serve any session-pool run's coverage normally.
+
 ## 2.324.0
 
 ### Patch Changes

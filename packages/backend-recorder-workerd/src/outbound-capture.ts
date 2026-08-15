@@ -1,7 +1,6 @@
 import { readBodyWithCap, readRequestBodyWithCap } from "./body-capture";
 import type { RequestCaptureContext } from "./context";
 import { warnOnce } from "./log";
-import { getOriginalFetch } from "./original-fetch";
 import {
   CAPTURED_HEADERS,
   type BindingRequestEvent,
@@ -9,7 +8,6 @@ import {
   type CapturedBody,
   type OutboundRequestEvent,
 } from "./protocol";
-import { postCaptureEvents } from "./sidecar-client";
 
 /**
  * Which transport an intercepted call left the isolate through. Both are
@@ -50,6 +48,8 @@ interface OutboundMeta {
 interface EventFields extends OutboundMeta {
   requestId: string;
   frontendSessionId?: string;
+  traceId: string;
+  serverSpanId: string;
   requestBody?: CapturedBody;
   responseBody?: CapturedBody;
   responseHeaders?: Record<string, string[]>;
@@ -126,20 +126,23 @@ export const captureOutboundCall = async (
       const frozenMeta = meta;
       const endTimeMs = Date.now();
       const errorMessage = String(error);
-      reportInBackground(ctx, async () => {
-        const requestBody = await requestBodyPromise;
-        await report(ctx, transport, {
-          ...frozenMeta,
-          requestId: ctx.requestId,
-          ...(ctx.frontendSessionId !== undefined
-            ? { frontendSessionId: ctx.frontendSessionId }
-            : {}),
-          ...(requestBody !== undefined ? { requestBody } : {}),
-          startTimeMs,
-          endTimeMs,
-          error: errorMessage,
-        });
-      });
+      // Tracked rather than reported directly: the request body is still being read, and the
+      // buffer's `close()` is what waits for it before sending the batch.
+      ctx.buffer.track(
+        async () => {
+          const requestBody = await requestBodyPromise;
+          report(ctx, transport, {
+            ...frozenMeta,
+            ...correlation(ctx),
+            ...(requestBody !== undefined ? { requestBody } : {}),
+            startTimeMs,
+            endTimeMs,
+            error: errorMessage,
+          });
+        },
+        "outbound-error-report",
+        "Failed to report a failed outbound request.",
+      );
     }
     throw error;
   }
@@ -156,18 +159,15 @@ export const captureOutboundCall = async (
       const responseHeaders = headersToRecord(response.headers);
       const statusCode = response.status;
       const endTimeMs = Date.now();
-      ctx.waitUntil(
-        (async () => {
+      ctx.buffer.track(
+        async () => {
           const [requestBody, responseBody] = await Promise.all([
             requestBodyPromise,
             readBodyWithCap(responseClone.body).catch(() => undefined),
           ]);
-          await report(ctx, transport, {
+          report(ctx, transport, {
             ...frozenMeta,
-            requestId: ctx.requestId,
-            ...(ctx.frontendSessionId !== undefined
-              ? { frontendSessionId: ctx.frontendSessionId }
-              : {}),
+            ...correlation(ctx),
             responseHeaders,
             statusCode,
             ...(requestBody !== undefined ? { requestBody } : {}),
@@ -175,13 +175,9 @@ export const captureOutboundCall = async (
             startTimeMs,
             endTimeMs,
           });
-        })().catch((error) => {
-          warnOnce(
-            "outbound-response-capture",
-            "Failed to capture an outbound response.",
-            error,
-          );
-        }),
+        },
+        "outbound-response-capture",
+        "Failed to capture an outbound response.",
       );
     } catch (error) {
       warnOnce(
@@ -195,38 +191,30 @@ export const captureOutboundCall = async (
   return response;
 };
 
-const report = async (
+/** The fields tying an event to its request, session and trace. */
+const correlation = (
+  ctx: RequestCaptureContext,
+): Pick<
+  EventFields,
+  "requestId" | "frontendSessionId" | "traceId" | "serverSpanId"
+> => ({
+  requestId: ctx.requestId,
+  ...(ctx.frontendSessionId !== undefined
+    ? { frontendSessionId: ctx.frontendSessionId }
+    : {}),
+  traceId: ctx.traceId,
+  serverSpanId: ctx.serverSpanId,
+});
+
+const report = (
   ctx: RequestCaptureContext,
   transport: OutboundTransport,
   fields: EventFields,
-): Promise<void> => {
+): void => {
   const event: CaptureEvent = buildEvent(transport, fields);
-  await postCaptureEvents(getOriginalFetch(), ctx.sidecarUrl, [event]);
+  ctx.buffer.add(event);
 };
 
 /** Detects a WebSocket upgrade response without assuming the property exists. */
-const hasWebSocket = (response: Response): boolean =>
+export const hasWebSocket = (response: Response): boolean =>
   (response as Response & { webSocket?: unknown }).webSocket != null;
-
-const reportInBackground = (
-  ctx: { waitUntil: (p: Promise<unknown>) => void },
-  reportFn: () => Promise<void>,
-): void => {
-  try {
-    ctx.waitUntil(
-      reportFn().catch((error) => {
-        warnOnce(
-          "outbound-error-report",
-          "Failed to report a failed outbound request.",
-          error,
-        );
-      }),
-    );
-  } catch (error) {
-    warnOnce(
-      "outbound-error-report",
-      "Failed to report a failed outbound request.",
-      error,
-    );
-  }
-};

@@ -303,7 +303,7 @@ const streamDownloadAndExtractTarImpl = async (
   opts: StreamDownloadAndExtractTarOptions,
 ): Promise<string[]> => {
   const firstDataTimeoutInMs = opts.firstDataTimeoutInMs ?? 60_000;
-  const totalTimeoutInMs = opts.totalTimeoutInMs ?? 600_000;
+  const totalTimeoutInMs = opts.totalTimeoutInMs ?? 3_600_000;
   const maxRetries = opts.maxRetries ?? 3;
   const retryDelay = opts.retryDelay ?? 1000;
   const extractConcurrency = Math.max(1, opts.extractConcurrency ?? 1);

@@ -1,0 +1,58 @@
+#:schema https://json.schemastore.org/wrangler
+#
+# Deploy the Meticulous backend recorder sidecar into your own Cloudflare account.
+#
+#   1. Copy this file to `wrangler.toml` in a directory of its own.
+#   2. Create `src/index.ts` next to it containing:
+#
+#        export { default, MeticulousRecorderSession } from "@alwaysmeticulous/backend-recorder-sidecar-worker";
+#
+#   3. Set METICULOUS_RECORDING_TOKEN below to your project's recording token — the same value your
+#      frontend recorder snippet already carries in `data-recording-token`. It is not a secret.
+#   4. `npx wrangler deploy`
+#   5. Add a service binding to your app's Worker or Pages project:
+#
+#        [[services]]
+#        binding = "METICULOUS_SIDECAR"
+#        service = "meticulous-recorder-sidecar"
+
+name = "meticulous-recorder-sidecar"
+main = "src/index.ts"
+compatibility_date = "2026-02-01"
+
+# `nodejs_als` is required by the recorder packages (AsyncLocalStorage).
+compatibility_flags = ["nodejs_als"]
+
+# LOAD-BEARING. The capture protocol carries no authentication — it was designed for a loopback
+# sidecar — so a public route would be an open endpoint that writes spans into your Meticulous
+# project. The sidecar is only ever reached through the service binding above.
+workers_dev = false
+
+[observability]
+enabled = true
+
+[vars]
+# Required. Your Meticulous project's recording token.
+METICULOUS_RECORDING_TOKEN = ""
+
+# Optional. Shown on the recorded session; defaults to "unknown_service".
+# METICULOUS_PROJECT_NAME = "my-app"
+
+# Optional. How many Durable Objects reports are spread across. One is right until you are
+# recording close to a thousand requests per second (a single object's soft limit). Raising it is
+# free: nothing downstream depends on which object a span passed through.
+# METICULOUS_SIDECAR_SHARDS = "1"
+
+# Optional. "trace" | "debug" | "info" | "warn" | "error" | "silent". Defaults to "info".
+# METICULOUS_LOG_LEVEL = "info"
+
+# The object that buffers reports and uploads them. SQLite-backed is required: a single capture
+# event can carry two 256 KB bodies, which exceeds the 128 KiB per-value limit of the older
+# key-value backing store.
+[[durable_objects.bindings]]
+name = "METICULOUS_SESSION"
+class_name = "MeticulousRecorderSession"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MeticulousRecorderSession"]

@@ -47,6 +47,7 @@ export const replayOutboundCall = async (
       : undefined;
     lookup = {
       frontendSessionId: ctx.frontendSessionId,
+      replayId: ctx.replayId,
       method: request.method,
       url: request.url,
       ...(requestBody !== undefined ? { requestBody } : {}),

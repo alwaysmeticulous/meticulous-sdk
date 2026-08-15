@@ -5,6 +5,7 @@ import {
   createDiffComment,
   getDiffComments,
   getProjectJsCoverage,
+  getTestRunCheckAvailableIds,
   getTestRunCheckReport,
   getTestRunDiffsSummary,
   getTestRunDiffsSummaryCounts,
@@ -34,6 +35,24 @@ describe("getTestRunCheckReport", () => {
     );
   });
 
+  it("passes a download url through for a report too large to inline", async () => {
+    const get = vi.fn().mockResolvedValue({
+      data: {
+        status: "complete",
+        text: "Report is 512KB — too large to return inline. Download the full report from the accompanying url.",
+        url: "https://example.com/signed-url",
+      },
+    });
+
+    await expect(
+      getTestRunCheckReport(asClient(get), "tr-1", "accessibility"),
+    ).resolves.toEqual({
+      status: "complete",
+      text: expect.stringContaining("too large to return inline"),
+      url: "https://example.com/signed-url",
+    });
+  });
+
   it("sends a custom check type explicitly", async () => {
     const get = vi.fn().mockResolvedValue({ data: { status: "processing" } });
 
@@ -48,6 +67,22 @@ describe("getTestRunCheckReport", () => {
       "agent/test-runs/tr-1/checks/react-component-renders",
       { params: { checkType: "custom" } },
     );
+  });
+});
+
+describe("getTestRunCheckAvailableIds", () => {
+  const asClient = (get: Mock): MeticulousClient =>
+    ({ get }) as unknown as MeticulousClient;
+
+  it("returns the bare list of available check IDs", async () => {
+    const get = vi.fn().mockResolvedValue({
+      data: [{ checkType: "builtin", checkId: "accessibility" }],
+    });
+
+    await expect(
+      getTestRunCheckAvailableIds(asClient(get), "tr-1"),
+    ).resolves.toEqual([{ checkType: "builtin", checkId: "accessibility" }]);
+    expect(get).toHaveBeenCalledWith("agent/test-runs/tr-1/checks");
   });
 });
 

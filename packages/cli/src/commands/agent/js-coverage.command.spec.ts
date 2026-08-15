@@ -134,7 +134,7 @@ describe("logBaseRunCoverageNotice", () => {
     logBaseRunCoverageNotice(["tr-1", "tr-2"]);
     expect(mocks.logNotice).toHaveBeenCalledTimes(2);
     expect(mocks.logNotice.mock.calls[0][0]).toMatch(
-      /tr-1 is a base run .*grows over time/,
+      /tr-1 is a base run:.*grows over time/,
     );
     expect(mocks.logNotice.mock.calls[1][0]).toMatch(/tr-2 is a base run/);
   });
@@ -155,6 +155,7 @@ describe("assertPrDiffOnlyCompatible", () => {
         "tr-1",
         "Partial",
         baseOptions({ prDiffOnly: true }),
+        { isSessionPoolRun: false },
       ),
     ).toThrow(/has no PR diff to scope coverage to/);
   });
@@ -167,6 +168,7 @@ describe("assertPrDiffOnlyCompatible", () => {
           "tr-1",
           status,
           baseOptions({ prDiffOnly: true }),
+          { isSessionPoolRun: false },
         ),
       ).not.toThrow();
     },
@@ -178,9 +180,27 @@ describe("assertPrDiffOnlyCompatible", () => {
         "tr-1",
         "Partial",
         baseOptions({ prDiffOnly: false }),
+        { isSessionPoolRun: false },
       ),
     ).not.toThrow();
   });
+
+  // A session-pool base can settle into Success/Failure without ever becoming
+  // Partial, but it still has no PR of its own — isSessionPoolRun must be
+  // checked independently of status.
+  it.each(["Success", "Failure"] as const)(
+    "rejects --prDiffOnly for a settled session-pool run (%s)",
+    (status) => {
+      expect(() =>
+        assertPrDiffOnlyCompatible(
+          "tr-1",
+          status,
+          baseOptions({ prDiffOnly: true }),
+          { isSessionPoolRun: true },
+        ),
+      ).toThrow(/has no PR diff to scope coverage to/);
+    },
+  );
 });
 
 describe("--latestForProject", () => {

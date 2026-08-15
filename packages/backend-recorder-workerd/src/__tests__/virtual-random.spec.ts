@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CaptureBuffer } from "../capture-buffer";
 import type { RequestContext } from "../context";
+import type { SidecarTransport } from "../sidecar-transport";
 
 /**
  * Unit test for replay randomness virtualization, run in Node — which supplies
@@ -13,16 +15,25 @@ const REPLAY_CONTEXT: RequestContext = {
   mode: "replay",
   requestId: "req-1",
   frontendSessionId: "fs-random-1",
+  replayId: "replay-random-1",
   sidecarUrl: "http://127.0.0.1:9670",
   clockAnchorMs: 1_785_230_474_662,
   waitUntil: () => undefined,
+};
+
+const RECORD_TRANSPORT: SidecarTransport = {
+  kind: "url",
+  url: "http://127.0.0.1:9670",
 };
 
 const RECORD_CONTEXT: RequestContext = {
   mode: "record",
   requestId: "req-2",
   frontendSessionId: "fs-random-1",
-  sidecarUrl: "http://127.0.0.1:9670",
+  transport: RECORD_TRANSPORT,
+  buffer: new CaptureBuffer(RECORD_TRANSPORT, () => undefined),
+  traceId: "0".repeat(32),
+  serverSpanId: "1".repeat(16),
   waitUntil: () => undefined,
 };
 

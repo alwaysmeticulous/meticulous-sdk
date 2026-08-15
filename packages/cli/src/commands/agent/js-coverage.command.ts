@@ -25,6 +25,7 @@ import { appendProjectSelectionHint } from "../../utils/project-selection-hint";
 import {
   assertTestRunComplete,
   ensureTestRunFinished,
+  isSessionPool,
   isTestRunComplete,
   isTestRunPartial,
   resolveTestRunForCommitOrThrow,
@@ -156,20 +157,33 @@ const handler = async (options: Options): Promise<void> => {
     // --dontWaitForTestRunToComplete, report the in-progress run and stop.
     let resolvedTestRunId: string;
     let status;
+    let isSessionPoolRun: boolean;
     let rawUnionIds: string[];
+    // No eager/non-eager distinction for either getTestRun branch below: a
+    // session-pool run has no PR-diff to scope prDiffOnly coverage to
+    // regardless of eagerness (see isBaseOrAnySessionPoolRun on the backend).
     if (testRunIds != null) {
       const ids = parseTestRunIds(testRunIds);
       resolvedTestRunId = ids[0];
       rawUnionIds = ids.slice(1);
-      status = (await getTestRun({ client, testRunId: resolvedTestRunId }))
-        .status;
+      const run = await getTestRun({ client, testRunId: resolvedTestRunId });
+      status = run.status;
+      isSessionPoolRun = isSessionPool(run.configData);
     } else if (testRunId != null) {
       resolvedTestRunId = testRunId;
-      status = (await getTestRun({ client, testRunId })).status;
+      const run = await getTestRun({ client, testRunId });
+      status = run.status;
+      isSessionPoolRun = isSessionPool(run.configData);
       rawUnionIds = [];
     } else {
-      ({ testRunId: resolvedTestRunId, status } =
-        await resolveTestRunForCommitOrThrow(client, commitSha, project));
+      const run = await resolveTestRunForCommitOrThrow(
+        client,
+        commitSha,
+        project,
+      );
+      resolvedTestRunId = run.testRunId;
+      status = run.status;
+      isSessionPoolRun = run.isSessionPoolRun;
       rawUnionIds = parseHeadPlusTestRunIds(headPlusTestRunIds);
     }
     const printEmptyResult = (): void => {
@@ -196,13 +210,18 @@ const handler = async (options: Options): Promise<void> => {
     // Base runs (Partial) do have coverage and are accepted; fatal failures
     // already threw.
     assertTestRunCoverageAvailable(resolvedTestRunId, finishedStatus);
-    assertPrDiffOnlyCompatible(resolvedTestRunId, finishedStatus, options);
+    assertPrDiffOnlyCompatible(resolvedTestRunId, finishedStatus, options, {
+      isSessionPoolRun,
+    });
     // Tracked so the "coverage grows over time" caveat can be attached to the
     // results, once there are some — a base run with nothing recorded yet
-    // errors instead.
-    const baseRunIds = isTestRunPartial(finishedStatus)
-      ? [resolvedTestRunId]
-      : [];
+    // errors instead. A session-pool base can settle into Success/Failure
+    // without ever becoming Partial, so isSessionPoolRun is checked
+    // independently of status too (mirrors assertPrDiffOnlyCompatible above).
+    const baseRunIds =
+      isTestRunPartial(finishedStatus) || isSessionPoolRun
+        ? [resolvedTestRunId]
+        : [];
 
     // The extra runs (from --headPlusTestRunIds or the tail of --testRunIds)
     // don't change how the primary run above was resolved — they just add more
@@ -270,12 +289,15 @@ export const assertTestRunCoverageAvailable = (
 /**
  * A base run keeps executing sessions on demand, so its coverage is a moving
  * total rather than a fixed one — say so rather than letting the numbers read
- * as final. Emitted per base run involved (the primary and/or any unioned in).
+ * as final. Emitted per base run involved (the primary and/or any unioned
+ * in). Status isn't named here: a `Partial` run is still accumulating
+ * sessions, but a settled session-pool base (status Success/Failure) can
+ * reach here too, so the wording has to hold for either.
  */
 export const logBaseRunCoverageNotice = (baseRunIds: string[]): void => {
   for (const testRunId of baseRunIds) {
     logNotice(
-      `Test run ${testRunId} is a base run (status: Partial): its sessions are executed on demand, so its coverage reflects the sessions replayed so far and grows over time.`,
+      `Test run ${testRunId} is a base run: its sessions are executed on demand, so its coverage reflects the sessions replayed so far and grows over time.`,
     );
   }
 };
@@ -305,13 +327,18 @@ const assertNoSelfUnion = (
  * coverage to it would answer "nothing covered" to a question that doesn't
  * apply to this kind of run. Rejected client-side to save the round trip; the
  * backend enforces the same rule for the MCP surface.
+ *
+ * A session-pool base can settle into Success/Failure without ever becoming
+ * Partial, and it still has no PR once settled, so `isSessionPoolRun` is
+ * checked independently of status (mirrors the backend's `getTestRunJsCoverageV2`).
  */
 export const assertPrDiffOnlyCompatible = (
   testRunId: string,
   status: TestRunStatus,
   { prDiffOnly }: Pick<Options, "prDiffOnly">,
+  { isSessionPoolRun }: { isSessionPoolRun: boolean },
 ): void => {
-  if (prDiffOnly && isTestRunPartial(status)) {
+  if (prDiffOnly && (isSessionPoolRun || isTestRunPartial(status))) {
     throw new CliUserError(BASE_RUN_NO_PR_DIFF_MESSAGE(testRunId));
   }
 };
