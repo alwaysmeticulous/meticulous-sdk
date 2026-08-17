@@ -1,5 +1,11 @@
 # @alwaysmeticulous/backend-recorder-sidecar-worker
 
+## 2.326.2
+
+### Patch Changes
+
+- [#12321](https://github.com/alwaysmeticulous/meticulous/pull/12321) [`75c0228`](https://github.com/alwaysmeticulous/meticulous/commit/75c0228e9ecc2784fb86c35242c41076bae23cb7) Thanks [@dennysem](https://github.com/dennysem)! - Republish the Cloudflare sidecar worker.
+
 ## 2.326.0
 
 ### Minor Changes

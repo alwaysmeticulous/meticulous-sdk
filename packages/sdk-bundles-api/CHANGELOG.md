@@ -1,5 +1,13 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.326.1
+
+### Patch Changes
+
+- [#12316](https://github.com/alwaysmeticulous/meticulous/pull/12316) [`9abb35f`](https://github.com/alwaysmeticulous/meticulous/commit/9abb35f8c7797fe9549c9642c6569c95b1bc053d) Thanks [@dennysem](https://github.com/dennysem)! - Export `MeticulousReplayCheck`, `MeticulousStubReader` and `MeticulousValueRecorder` from the package root.
+
+  These are the types behind `isMeticulousReplaying`, `stubWithMeticulous` and `recordWithMeticulous` — the split form of the generic backend-recorder seam. They were already exported from their own module, and their siblings (`MeticulousOperationSpec`, `MeticulousOperationWrapper`, `MeticulousObservationRecorder`) were re-exported from the index, but these three were not — so typing the split form against the package root meant falling back to `NonNullable<BackendRecorderHandle["stubWithMeticulous"]>`.
+
 ## 2.326.0
 
 ### Minor Changes

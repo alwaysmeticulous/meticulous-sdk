@@ -84,4 +84,7 @@ export {
   MeticulousOperationSpec,
   MeticulousOperationWrapper,
   MeticulousObservationRecorder,
+  MeticulousReplayCheck,
+  MeticulousStubReader,
+  MeticulousValueRecorder,
 } from "./backend-recorder/bundle-to-sdk/init-backend-recorder";
