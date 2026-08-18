@@ -6,6 +6,7 @@ import { crawlCommand } from "./crawl.command";
 import { debugCommand } from "./debug/index";
 import { downloadCommand } from "./download/index";
 import { localCommand } from "./local";
+import { onboardCommand } from "./onboard/index";
 import { projectCommand } from "./project/index";
 import { recordCommand } from "./record/index";
 import { replayCommand } from "./replay.command";
@@ -28,6 +29,7 @@ export const CLI_COMMANDS: CommandModule<unknown, any>[] = [
   debugCommand,
   downloadCommand,
   localCommand,
+  onboardCommand,
   projectCommand,
   recordCommand,
   replayCommand,

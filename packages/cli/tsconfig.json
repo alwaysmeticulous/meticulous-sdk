@@ -5,6 +5,7 @@
     "tsBuildInfoFile": "tsconfig.tsbuildinfo",
     /* Modules */
     "rootDir": "./src",
+    "resolveJsonModule": true,
     /* Emit */
     "outDir": "./dist"
   },

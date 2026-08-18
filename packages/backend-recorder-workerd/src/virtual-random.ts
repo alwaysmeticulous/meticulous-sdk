@@ -1,8 +1,8 @@
-import { requestCaptureContext } from "./context";
+import { requestCaptureContext, type RequestReplayContext } from "./context";
 import { warnOnce } from "./log";
 
 /**
- * Per-session randomness virtualization for replay mode.
+ * Per-request randomness virtualization for replay mode.
  *
  * Mocking every outbound `fetch` is not enough to make a replay deterministic: a Worker that
  * mints an id (`crypto.randomUUID()` for a guest id, `getRandomValues` for a token) produces
@@ -19,8 +19,16 @@ import { warnOnce } from "./log";
  * the browser replayer's `mockOutRandomNumberGeneration`, including its butterfly-effect
  * containment: a separate sequence per call stack, seeded from a per-call-site counter, so a
  * change in one part of the app does not shift the numbers another part gets, and a shared
- * helper called from two places does not return the same value twice. Two differences from
- * the Node version, both forced by the runtime:
+ * helper called from two places does not return the same value twice. Sequences are scoped
+ * to the inbound request, not the whole replay: two concurrent requests of the same session
+ * that race to the same call site would otherwise consume one shared stream in arrival
+ * order, and a Fisher-Yates shuffle (or any other draw) would then differ between replays.
+ * Each request starts its sequences over from the same session-scoped seed. Each call site
+ * on a request returns {@link UNATTRIBUTED_DRAW} for the first {@link FIXED_DRAWS_BEFORE_PRNG}
+ * draws and only then starts the PRNG, so a shuffle is identical across concurrent requests
+ * and a `while (Math.random() < 0.5)` loop still terminates.
+ *
+ * Two differences from the Node version, both forced by the runtime:
  *
  *   - the session comes from the request context rather than a session resolver with a
  *     process-wide fallback, because workerd's AsyncLocalStorage propagates reliably from the
@@ -51,22 +59,41 @@ const FRAMES_TO_APP = 3; // getCallStack ← openSequence ← patched global ←
 /** How much of the stack identifies a sequence. Ten frames tells call paths apart cheaply. */
 const STACK_FRAMES = 10;
 
-/** Stack captures per session, after which sequences are keyed by call site alone. */
+/** Stack captures per request, after which sequences are keyed by call site alone. */
 const MAX_STACK_CAPTURES = 10_000;
-
-/** Bounds the state a stream of unrecognised session ids can accumulate in one isolate. */
-const MAX_TRACKED_SESSIONS = 50;
 
 const UNKNOWN_CALL_SITE = "unknown";
 
-interface SessionRandomState {
+/**
+ * What a draw returns before its call site's PRNG starts, and what unattributed draws
+ * return. Leading digits of pi, so the value is recognisably ours in a diff or a log.
+ */
+export const UNATTRIBUTED_DRAW = 0.3142;
+
+/**
+ * Draws at one call site on one request that return {@link UNATTRIBUTED_DRAW} before the
+ * seeded PRNG starts. Large enough that a shuffle stays constant, small enough that
+ * `while (Math.random() < 0.5)` still exits.
+ */
+export const FIXED_DRAWS_BEFORE_PRNG = 1_000;
+
+const drawUnattributed = (): number => UNATTRIBUTED_DRAW;
+
+interface RequestRandomState {
   frontendSessionId: string;
   generatorBySequenceKey: Map<string, () => number>;
   nextCallerIdByCallSite: Map<string, number>;
+  drawsByCallSite: Map<string, number>;
   stackCaptures: number;
 }
 
-const stateBySession = new Map<string, SessionRandomState>();
+/**
+ * Held on the inbound request object, so two concurrent requests of one replay cannot share
+ * a generator. The seed below stays session-scoped: base and head are different replays of
+ * the same recording and must draw identical numbers, and two requests of that recording
+ * must draw the same first values rather than racing to consume one stream.
+ */
+const stateByRequest = new WeakMap<RequestReplayContext, RequestRandomState>();
 
 // ---------------------------------------------------------------------------
 // Seeded PRNG (Alea)
@@ -124,10 +151,12 @@ export const createSeededRandom = (seed: string): (() => number) => {
 // Sequence resolution
 // ---------------------------------------------------------------------------
 
-const getCallStack = (): { stack: string; site: string } => {
+const getCallStack = (
+  frameCount: number = STACK_FRAMES,
+): { stack: string; site: string } => {
   const originalLimit = Error.stackTraceLimit;
   try {
-    Error.stackTraceLimit = FRAMES_TO_APP + STACK_FRAMES;
+    Error.stackTraceLimit = FRAMES_TO_APP + frameCount;
     const stack = new Error().stack;
     if (stack == null) {
       return { stack: UNKNOWN_CALL_SITE, site: UNKNOWN_CALL_SITE };
@@ -146,28 +175,32 @@ const getCallStack = (): { stack: string; site: string } => {
   }
 };
 
-const getSessionState = (): SessionRandomState | undefined => {
+const stillInFixedDrawPhase = (
+  state: RequestRandomState,
+  callSite: string,
+): boolean => {
+  const n = (state.drawsByCallSite.get(callSite) ?? 0) + 1;
+  state.drawsByCallSite.set(callSite, n);
+  return n <= FIXED_DRAWS_BEFORE_PRNG;
+};
+
+const getRequestState = (): RequestRandomState | undefined => {
   const ctx = requestCaptureContext.getStore();
   if (ctx === undefined || ctx.mode !== "replay") {
     return undefined;
   }
-  const existing = stateBySession.get(ctx.frontendSessionId);
+  const existing = stateByRequest.get(ctx);
   if (existing !== undefined) {
     return existing;
   }
-  if (stateBySession.size >= MAX_TRACKED_SESSIONS) {
-    const oldest = stateBySession.keys().next();
-    if (!oldest.done) {
-      stateBySession.delete(oldest.value);
-    }
-  }
-  const created: SessionRandomState = {
+  const created: RequestRandomState = {
     frontendSessionId: ctx.frontendSessionId,
     generatorBySequenceKey: new Map(),
     nextCallerIdByCallSite: new Map(),
+    drawsByCallSite: new Map(),
     stackCaptures: 0,
   };
-  stateBySession.set(ctx.frontendSessionId, created);
+  stateByRequest.set(ctx, created);
   return created;
 };
 
@@ -191,9 +224,15 @@ const getSessionState = (): SessionRandomState | undefined => {
  * avoid.
  */
 const openSequence = (): (() => number) | undefined => {
-  const state = getSessionState();
+  const state = getRequestState();
   if (state === undefined) {
     return undefined;
+  }
+
+  // Called directly so FRAMES_TO_APP still lands on the app. A wrapper here would make
+  // every Math.random share one call site and one fixed-draw budget.
+  if (stillInFixedDrawPhase(state, getCallStack(1).site)) {
+    return drawUnattributed;
   }
 
   let sequenceKey = UNKNOWN_CALL_SITE;
@@ -265,7 +304,7 @@ const fillBytes = (view: ArrayBufferView, draw: () => number): void => {
 let installed = false;
 
 /**
- * Replaces the worker's sources of randomness with per-session seeded generators. Idempotent,
+ * Replaces the worker's sources of randomness with per-request seeded generators. Idempotent,
  * and a no-op failure: a worker that will not let them be replaced still replays, just
  * without randomness virtualisation.
  *

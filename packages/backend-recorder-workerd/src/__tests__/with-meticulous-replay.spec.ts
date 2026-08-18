@@ -266,26 +266,29 @@ describe("withMeticulous in replay mode", () => {
     expect(upstreamHits).toBe(0);
   });
 
-  it("passes through when the sidecar returns an unrecognised outcome", async () => {
-    // Forward compatibility: an older shim against a newer sidecar.
+  it("fails on an unrecognised outcome instead of reaching the real service", async () => {
+    // A failure to stub, whatever its shape, is hermetic: an outcome this shim does not
+    // recognise fails the request rather than falling back to a real call.
     lookupHandler = () =>
       ({ outcome: "something-new" }) as unknown as OutboundFetchLookupResponse;
 
-    const result = await callWorker({ sessionId: "unknown-outcome-1" });
-
-    expect(result.status).toBe(201);
-    expect(upstreamHits).toBe(1);
+    await expect(
+      callWorker({ sessionId: "unknown-outcome-1" }),
+    ).rejects.toThrow(/unrecognised sidecar outcome/);
+    expect(upstreamHits).toBe(0);
   });
 
-  it("still passes through against a sidecar that predates no-mock", async () => {
-    // Backwards compatibility: an older sidecar answers a miss with `passthrough`, and
-    // degrading to the old fail-open behaviour beats breaking the app.
-    lookupHandler = () => ({ outcome: "passthrough" });
+  it("fails on a legacy `passthrough` outcome instead of reaching the real service", async () => {
+    // `passthrough` is no longer a valid outcome — an older sidecar could still answer a miss
+    // with it. Replay is hermetic, so the shim fails the call rather than falling back to the
+    // old pass-through behaviour, exactly as it does for any unrecognised outcome.
+    lookupHandler = () =>
+      ({ outcome: "passthrough" }) as unknown as OutboundFetchLookupResponse;
 
-    const result = await callWorker({ sessionId: "old-passthrough-1" });
-
-    expect(result.status).toBe(201);
-    expect(upstreamHits).toBe(1);
+    await expect(
+      callWorker({ sessionId: "old-passthrough-1" }),
+    ).rejects.toThrow(/unrecognised sidecar outcome/);
+    expect(upstreamHits).toBe(0);
   });
 
   it("freezes the clock at the session anchor", async () => {

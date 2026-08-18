@@ -1,5 +1,14 @@
 # @alwaysmeticulous/backend-recorder-launcher
 
+## 2.327.0
+
+### Patch Changes
+
+- Updated dependencies [[`bdd342f`](https://github.com/alwaysmeticulous/meticulous/commit/bdd342f6056dac385a1d994d951adcb27c2bef99)]:
+  - @alwaysmeticulous/sdk-bundles-api@2.327.0
+  - @alwaysmeticulous/common@2.326.0
+  - @alwaysmeticulous/downloading-helpers@2.327.0
+
 ## 2.326.1
 
 ### Patch Changes

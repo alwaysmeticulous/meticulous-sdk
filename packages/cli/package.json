@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "2.326.1",
+  "version": "2.327.0",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
@@ -15,6 +15,7 @@
   "scripts": {
     "clean": "rimraf dist tsconfig.tsbuildinfo",
     "build": "tsc --build tsconfig.json",
+    "postbuild": "node scripts/copy-onboard-templates.mjs",
     "dev": "tsc --build tsconfig.json --watch",
     "format": "prettier --write src",
     "lint": "oxlint --type-aware src",
@@ -42,6 +43,7 @@
     "@alwaysmeticulous/sentry": "workspace:*",
     "@alwaysmeticulous/session-filters": "workspace:*",
     "@alwaysmeticulous/tunnels-client": "workspace:*",
+    "@inquirer/search": "^3.2.2",
     "@sentry/node": "^10.3.0",
     "chalk": "^4.1.2",
     "ci-info": "^4.0.0",

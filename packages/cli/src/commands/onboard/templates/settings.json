@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Grep",
+      "Glob",
+      "Task",
+      "WebFetch(domain:app.meticulous.ai)"
+    ]
+  }
+}

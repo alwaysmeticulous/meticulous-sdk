@@ -12,7 +12,7 @@ import type {
   OAuthProject,
 } from "@alwaysmeticulous/client";
 import { logNotice } from "@alwaysmeticulous/common";
-import inquirer from "inquirer";
+import search from "@inquirer/search";
 import { CliUserError } from "./cli-user-error";
 import {
   extractServerMessage,
@@ -142,7 +142,12 @@ export const selectAndStoreProject = async ({
   if (projects.length === 1) {
     selected = projects[0];
   } else if (allowInteractivePrompt) {
-    selected = await promptForProject(projects);
+    const existing = await getOAuthDefaultProject(client).catch(() => ({
+      projectId: null,
+    }));
+    selected = await promptForProject(projects, {
+      defaultProjectId: existing.projectId,
+    });
   } else {
     throw new CliUserError(
       "Multiple projects are accessible but none was selected (no interactive " +
@@ -247,20 +252,69 @@ export const selectProjectOnLogin = async ({
   await selectAndStoreProject({ client, allowInteractivePrompt: interactive });
 };
 
-const promptForProject = async (
+/**
+ * Interactive searchable project picker (type to filter, ↑/↓ to move, Enter
+ * to select). Shared by `auth set-project` and `onboard`.
+ */
+export const promptForProject = async (
   projects: OAuthProject[],
+  options?: {
+    message?: string;
+    /** Pre-select this project id when the filter is empty. */
+    defaultProjectId?: string | null;
+  },
 ): Promise<OAuthProject> => {
-  const { projectId } = await inquirer.prompt<{ projectId: string }>([
-    {
-      type: "list",
-      name: "projectId",
-      message: "Select a project:",
-      choices: projects.map((project) => ({
-        name: `${project.organization.name}/${project.name}`,
+  const message = options?.message ?? "Select a project:";
+  const defaultProjectId = options?.defaultProjectId ?? null;
+
+  const choicesFor = (input: string | undefined) => {
+    const term = (input ?? "").trim().toLowerCase();
+    const filtered = term
+      ? projects.filter((project) => {
+          const slug = `${project.organization.name}/${project.name}`;
+          return (
+            slug.toLowerCase().includes(term) ||
+            project.name.toLowerCase().includes(term) ||
+            project.organization.name.toLowerCase().includes(term)
+          );
+        })
+      : projects;
+
+    // Prefer the current default at the top when the user hasn't typed yet.
+    const ordered =
+      !term && defaultProjectId
+        ? [
+            ...filtered.filter((p) => p.id === defaultProjectId),
+            ...filtered.filter((p) => p.id !== defaultProjectId),
+          ]
+        : filtered;
+
+    return ordered.map((project) => {
+      const slug = `${project.organization.name}/${project.name}`;
+      const isDefault = project.id === defaultProjectId;
+      return {
+        name: isDefault && !term ? `${slug} (current)` : slug,
         value: project.id,
-      })),
+      };
+    });
+  };
+
+  const projectId = await search({
+    message,
+    source: (input: string | undefined) => {
+      const choices = choicesFor(input);
+      if (choices.length === 0) {
+        return [
+          {
+            name: "No projects match that filter",
+            value: "",
+            disabled: true,
+          },
+        ];
+      }
+      return choices;
     },
-  ]);
+  });
 
   const selected = projects.find((project) => project.id === projectId);
   if (!selected) {

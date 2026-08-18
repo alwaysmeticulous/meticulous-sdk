@@ -33,9 +33,9 @@ export const METICULOUS_PASSTHROUGH_HEADER = "meticulous-passthrough";
 export const SIDECAR_EVENTS_PATH = "/v1/events";
 
 /**
- * Replay routes. A sidecar started in record mode answers 404 on both, which the shim
- * treats as "replay unavailable" and falls back to plain pass-through — so a new shim
- * keeps working against an older, record-only sidecar.
+ * Replay routes. A sidecar started in record mode answers 404 on both. Replay is hermetic,
+ * so an unanswered outbound-fetch lookup fails the app's call rather than letting it reach
+ * the real service — the same as any other failure to stub.
  */
 export const SIDECAR_REPLAY_SESSION_PATH = "/v1/replay/session";
 export const SIDECAR_REPLAY_OUTBOUND_FETCH_PATH = "/v1/replay/outbound-fetch";
@@ -292,9 +292,10 @@ export interface OutboundFetchLookupRequest {
 }
 
 /**
- * A recorded response to serve, a miss the caller must fail, or an instruction to let the
- * real call through. An unrecognised `outcome` must be treated as `passthrough`, so an older
- * shim keeps working against a newer sidecar.
+ * A recorded response to serve, or a signal the caller must fail the request. Replay is
+ * hermetic, so the shim never turns any of these into a real call — nor an outcome it does
+ * not recognise. The only live path is the request-side `meticulous-passthrough` header,
+ * handled before the lookup, not any response here.
  */
 export type OutboundFetchLookupResponse =
   | {
@@ -304,14 +305,10 @@ export type OutboundFetchLookupResponse =
       headers: Record<string, string>;
     }
   /**
-   * The store was consulted and holds nothing for this call. Replay is hermetic, so the
-   * shim fails the request rather than letting it reach the real service — matching the
-   * Node backend recorder's http/undici mocks.
+   * The store holds nothing for this call — a genuine miss, or a call the sidecar could not
+   * look up at all (an unparseable URL). Replay is hermetic, so the shim fails the request
+   * rather than letting it reach the real service — matching the Node backend recorder's
+   * http/undici mocks. There is deliberately no "let the call through" outcome: the only
+   * live path is the request-side `meticulous-passthrough` header.
    */
-  | { outcome: "no-mock" }
-  /**
-   * The call cannot be looked up at all (an unparseable URL), so there is no miss to report.
-   * Also what an older sidecar answers on a miss, in which case the shim degrades to the
-   * pre-`no-mock` fail-open behaviour rather than breaking the app.
-   */
-  | { outcome: "passthrough" };
+  | { outcome: "no-mock" };

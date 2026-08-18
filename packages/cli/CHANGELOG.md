@@ -1,5 +1,30 @@
 # @alwaysmeticulous/cli
 
+## 2.327.0
+
+### Minor Changes
+
+- [#12299](https://github.com/alwaysmeticulous/meticulous/pull/12299) [`18f08df`](https://github.com/alwaysmeticulous/meticulous/commit/18f08df1169dadd792e1b20308e092e5611a2c79) Thanks [@adrikoz](https://github.com/adrikoz)! - Added `meticulous onboard`, which sets up Meticulous in a local repository: it picks the project and frontend app, detects the framework, materializes an onboard workspace with the install skills and MCP configuration, and hands off to Claude Code or Codex to apply the changes and open a pull request. The agent presents its install plan for approval before editing anything, and unsupported-SSR detections warn and ask before continuing. The recorder and CI reference docs (including the GitLab CI and Bitbucket Pipelines templates and the per-framework recorder snippets) are bundled into the onboard workspace, since the live docs pages render that content client-side where the agent cannot fetch it. Constants those docs import from each other — such as the GitLab and Bitbucket repository-linking steps — are inlined as the docs site would render them, rather than being left as placeholders.
+
+### Patch Changes
+
+- [#12299](https://github.com/alwaysmeticulous/meticulous/pull/12299) [`18f08df`](https://github.com/alwaysmeticulous/meticulous/commit/18f08df1169dadd792e1b20308e092e5611a2c79) Thanks [@adrikoz](https://github.com/adrikoz)! - Fixed the CLI failing to start with `ERR_REQUIRE_ESM` on Node versions without unflagged `require(esm)` support (Node 18, Node 20 before 20.19, Node 22 before 22.12). `@inquirer/search` 4 is ESM-only, and the CLI compiles to CommonJS, so requiring it threw while the command modules loaded — taking down every command, not just the pickers that use it. Pinned to the 3.x line, which publishes a CommonJS entry point and supports Node 18 and above, matching this package's own `engines`.
+
+- [#12299](https://github.com/alwaysmeticulous/meticulous/pull/12299) [`18f08df`](https://github.com/alwaysmeticulous/meticulous/commit/18f08df1169dadd792e1b20308e092e5611a2c79) Thanks [@adrikoz](https://github.com/adrikoz)! - `meticulous onboard` now filters the agents it materializes through the customer-safe allowlist in every mode. Previously, when the bundled `templates/agents` directory was absent (source-mode runs such as `cli:dev`, or any build where the postbuild copy step had not run), it copied every markdown file out of the canonical agents directory, including internal-only playbooks the allowlist exists to exclude. The allowlist now lives in a single `customer-agents.json` shared by the runtime and the postbuild copy script, and both fail loudly if a listed agent is missing rather than silently shipping the wrong set.
+
+- Updated dependencies [[`18f08df`](https://github.com/alwaysmeticulous/meticulous/commit/18f08df1169dadd792e1b20308e092e5611a2c79), [`bdd342f`](https://github.com/alwaysmeticulous/meticulous/commit/bdd342f6056dac385a1d994d951adcb27c2bef99), [`ea7d1b4`](https://github.com/alwaysmeticulous/meticulous/commit/ea7d1b40ec04a6e876d9312e8d2385dc619c4e93)]:
+  - @alwaysmeticulous/api@2.327.0
+  - @alwaysmeticulous/sdk-bundles-api@2.327.0
+  - @alwaysmeticulous/client@2.327.0
+  - @alwaysmeticulous/common@2.326.0
+  - @alwaysmeticulous/downloading-helpers@2.327.0
+  - @alwaysmeticulous/record@2.327.0
+  - @alwaysmeticulous/remote-replay-launcher@2.327.0
+  - @alwaysmeticulous/session-filters@2.327.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.327.0
+  - @alwaysmeticulous/debug-workspace@2.327.0
+
 ## 2.326.1
 
 ### Patch Changes

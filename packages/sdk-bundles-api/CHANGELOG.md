@@ -1,5 +1,14 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.327.0
+
+### Patch Changes
+
+- [#12359](https://github.com/alwaysmeticulous/meticulous/pull/12359) [`bdd342f`](https://github.com/alwaysmeticulous/meticulous/commit/bdd342f6056dac385a1d994d951adcb27c2bef99) Thanks [@dennysem](https://github.com/dennysem)! - Add `cookieNamesToInferFromRecordedCookies` replay execution option, for cookies whose value should be taken at replay time from the `Cookie` header recorded on the app's own inbound requests.
+
+- Updated dependencies [[`18f08df`](https://github.com/alwaysmeticulous/meticulous/commit/18f08df1169dadd792e1b20308e092e5611a2c79), [`ea7d1b4`](https://github.com/alwaysmeticulous/meticulous/commit/ea7d1b40ec04a6e876d9312e8d2385dc619c4e93)]:
+  - @alwaysmeticulous/api@2.327.0
+
 ## 2.326.1
 
 ### Patch Changes

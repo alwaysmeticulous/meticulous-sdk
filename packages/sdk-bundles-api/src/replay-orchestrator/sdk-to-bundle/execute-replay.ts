@@ -294,6 +294,17 @@ export interface ReplayExecutionOptions {
    */
   cookieNamesToInferFromBearerToken?: string[];
 
+  /**
+   * Names of cookies whose value should be inferred at replay time from the `Cookie` header
+   * recorded on the app's own inbound requests, rather than from a fixed value. This is the
+   * only surface an httpOnly session cookie survives on, since the browser cannot read it.
+   * The inferred cookies override any same-named cookie from the session or `extraCookies`.
+   *
+   * Independent of {@link cookieNamesToInferFromBearerToken}. A cookie named in both tries
+   * the bearer token first and falls back to the recorded cookie.
+   */
+  cookieNamesToInferFromRecordedCookies?: string[];
+
   extraLocalStorageEntries?: StorageEntryOverride[];
 
   extraSessionStorageEntries?: StorageEntryOverride[];

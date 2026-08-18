@@ -1,5 +1,13 @@
 # @alwaysmeticulous/api
 
+## 2.327.0
+
+### Minor Changes
+
+- [#12299](https://github.com/alwaysmeticulous/meticulous/pull/12299) [`18f08df`](https://github.com/alwaysmeticulous/meticulous/commit/18f08df1169dadd792e1b20308e092e5611a2c79) Thanks [@adrikoz](https://github.com/adrikoz)! - Added optional `isGitLabIntegrationActive` and `isBitbucketIntegrationActive` fields on `Project` so API consumers can tell whether a project is linked to GitLab or Bitbucket.
+
+- [#12298](https://github.com/alwaysmeticulous/meticulous/pull/12298) [`ea7d1b4`](https://github.com/alwaysmeticulous/meticulous/commit/ea7d1b40ec04a6e876d9312e8d2385dc619c4e93) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Added optional `dirNamesToTreatAsSource` on `Project["settings"]`. Admin-only: skip-list directory basenames (`specs`, `tests`, …) this project treats as product source, so coverage discovery descends into them.
+
 ## 2.326.0
 
 ### Minor Changes

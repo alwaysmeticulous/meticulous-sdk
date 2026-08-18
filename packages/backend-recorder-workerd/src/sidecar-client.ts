@@ -111,8 +111,8 @@ export type ReplaySessionInfoResult =
  * Asks whether the sidecar holds mocks for a session, and at what instant to freeze the
  * clock while serving it.
  *
- * A 404 is how a record-only sidecar answers, so it counts as a settled `unavailable` and
- * the shim degrades to pass-through against an older sidecar rather than failing.
+ * A 404 is how a record-only sidecar answers, so it counts as a settled `unavailable`
+ * rather than a retryable blip.
  */
 export const getReplaySessionInfo = async (
   fetchFn: FetchFn,

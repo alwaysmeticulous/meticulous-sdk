@@ -10,6 +10,10 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   isGitHubIntegrationActive?: boolean;
+  /** Whether the project is linked to a GitLab repository (hostKind + project id). */
+  isGitLabIntegrationActive?: boolean;
+  /** Whether the project is linked to a Bitbucket repository. */
+  isBitbucketIntegrationActive?: boolean;
   isMonitoringEnabled: boolean;
   /**
    * When `true`, the project gets its source code from customer-uploaded
@@ -28,6 +32,7 @@ export interface Project {
     networkStubbingMode?: NetworkStubbingMode;
     defaultScreenshottingOptions?: ProjectSettingsScreenshottingOptions;
     pathsToExcludeFromCoverage?: string[];
+    dirNamesToTreatAsSource?: string[];
     perScreenshotCoveragePostProcessing?:
       | "all-screenshots"
       | "diffs-only"

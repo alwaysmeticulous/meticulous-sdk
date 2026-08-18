@@ -18,12 +18,13 @@ import { postOutboundFetchLookup } from "./sidecar-client";
  * Replay is hermetic: a call the recording does not cover must not silently reach the real
  * service, since that turns a replay into live traffic against real credentials and hides
  * the gap in the recording behind a response no base replay will reproduce. So anything we
- * cannot serve from the recording — a miss, an unreachable sidecar, a mock that cannot be
- * represented — throws, matching the Node recorder's http/undici mocks.
+ * cannot serve from the recording — a miss, a call the sidecar cannot look up, an
+ * unreachable sidecar, a mock that cannot be represented, or an outcome this shim does not
+ * recognise — throws, matching the Node recorder's http/undici mocks.
  *
- * The two ways out are an explicit `meticulous-passthrough: true` header on the request, and
- * a sidecar that answers `passthrough` (it cannot look the call up, or it predates
- * `no-mock`).
+ * The only way out is an explicit `meticulous-passthrough: true` header on the request: a
+ * call the customer has marked as one that must reach the real service. A failure to stub is
+ * never treated as such a mark.
  */
 export const replayOutboundCall = async (
   ctx: RequestReplayContext,
@@ -75,27 +76,32 @@ export const replayOutboundCall = async (
       "the replay sidecar did not answer a mock lookup",
     );
   }
-  if (result.outcome === "no-mock") {
-    throw buildReplayError(
-      request,
-      ctx.frontendSessionId,
-      "no recorded response",
-    );
+  if (result.outcome === "mock") {
+    const mocked = buildMockResponse(result);
+    if (mocked === undefined) {
+      throw buildReplayError(
+        request,
+        ctx.frontendSessionId,
+        `the recorded response (status ${result.statusCode}) cannot be represented`,
+      );
+    }
+    return mocked;
   }
-  // Covers `passthrough` and an unrecognised `outcome` from a newer sidecar.
-  if (result.outcome !== "mock") {
-    return invoke(request);
-  }
-  const mocked = buildMockResponse(result);
-  if (mocked === undefined) {
-    throw buildReplayError(
-      request,
-      ctx.frontendSessionId,
-      `the recorded response (status ${result.statusCode}) cannot be represented`,
-    );
-  }
-  return mocked;
+  // Every other outcome is a failure to stub — a miss (`no-mock`) or an outcome this shim
+  // does not recognise (e.g. a legacy `passthrough`). None may reach the real service, so we
+  // fail the request; the only path to a live call is the explicit passthrough header
+  // handled above.
+  throw buildReplayError(
+    request,
+    ctx.frontendSessionId,
+    describeUnservedOutcome(result.outcome),
+  );
 };
+
+const describeUnservedOutcome = (outcome: string): string =>
+  outcome === "no-mock"
+    ? "no recorded response"
+    : `an unrecognised sidecar outcome (${outcome})`;
 
 const hasPassthroughHeader = (request: Request): boolean => {
   try {

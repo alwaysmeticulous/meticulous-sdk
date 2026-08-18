@@ -1,5 +1,15 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.327.0
+
+### Patch Changes
+
+- [#12342](https://github.com/alwaysmeticulous/meticulous/pull/12342) [`aa46fab`](https://github.com/alwaysmeticulous/meticulous/commit/aa46fabc842b03c203a1773f5df7e65e09e185c9) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Replay is now fully hermetic: an outbound fetch the recording does not cover — a miss, a call the sidecar cannot look up, or an unrecognised sidecar outcome — fails the call instead of passing it through to the real service. The only path to a live call remains the explicit `meticulous-passthrough: true` request header.
+
+- [#12380](https://github.com/alwaysmeticulous/meticulous/pull/12380) [`e277287`](https://github.com/alwaysmeticulous/meticulous/commit/e2772871291e48afeb277016288d525061b3ed1a) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Reset replay randomness sequences on each inbound request instead of sharing one stream across the replay. Each call site returns a fixed 0.3142 for the first 1,000 draws and only then starts a seeded PRNG, so a Fisher-Yates shuffle is identical in every replay and a `while (Math.random() < 0.5)` loop still terminates. The seed stays session-scoped, so base and head still match.
+
+- [#12355](https://github.com/alwaysmeticulous/meticulous/pull/12355) [`16486b4`](https://github.com/alwaysmeticulous/meticulous/commit/16486b46889de770883b4527b7968a1bd20c3452) Thanks [@narobertson42](https://github.com/narobertson42)! - Key the replay randomness state by replay id rather than session id. An isolate outlives a single replay, so a second replay of the same recording — a retry, or the same session scheduled again — continued the first replay's number sequences instead of restarting them, drew different values, and rendered differently. The seed stays session-scoped, so every replay of a recording still draws the identical sequence.
+
 ## 2.326.0
 
 ### Minor Changes

@@ -1,0 +1,35 @@
+{
+  "docFiles": [
+    "how-to/recorder-script.ts",
+    "session-recording/recorder-npm-dependency.ts",
+    "recorder-getting-started.ts",
+    "github-actions-v2.ts",
+    "constants.ts",
+    "how-to/link-gitlab.ts",
+    "how-to/link-bitbucket.ts",
+    "cloud-replay.ts",
+    "ci.ts",
+    "how-to/auth/bypassing-auth.ts",
+    "how-to/auth/enabling-full-auth.ts",
+    "how-to/troubleshoot-auth.ts",
+    "how-to/window-meticulous-object.ts",
+    "how-to/typescript-types.ts",
+    "how-to/fix-false-positive-diffs.ts",
+    "how-to/enable-source-coverage.ts",
+    "how-to/testing-feature-flags.ts",
+    "how-to/record-session-context.ts",
+    "session-recording/csp-exceptions.ts",
+    "how-to/testing-multiple-apps-or-app-variants.ts",
+    "how-to/configure-ignore-patterns.ts",
+    "how-to/troubleshoot-failed-simulations.ts",
+    "onboarding-guide.ts",
+    "ci/not-yet-run-checks.ts",
+    "reference/cli-commands.ts",
+    "additional-guides/backend-recorder.ts"
+  ],
+  "docDirs": ["recorder-snippets"],
+  "importFiles": [
+    "src/lib/next/next.constants.ts",
+    "src/lib/utils/internal-urls/docs-urls.utils.ts"
+  ]
+}

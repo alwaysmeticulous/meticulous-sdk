@@ -35,7 +35,7 @@ vi.mock("@alwaysmeticulous/common", () => ({
   logNotice: vi.fn(),
 }));
 
-vi.mock("inquirer", () => ({ default: { prompt: mocks.prompt } }));
+vi.mock("@inquirer/search", () => ({ default: mocks.prompt }));
 
 const project = (org: string, name: string, id: string) => ({
   id,
@@ -230,7 +230,8 @@ describe("selectProjectOnLogin", () => {
       project("OrgB", "App2", "id-2"),
     ]);
     mocks.getOAuthDefaultProject.mockResolvedValue({ projectId: null });
-    mocks.prompt.mockResolvedValue({ projectId: "id-2" });
+    // @inquirer/search resolves to the chosen value directly.
+    mocks.prompt.mockResolvedValue("id-2");
 
     await selectProjectOnLogin({ client: fakeClient, interactive: true });
 
