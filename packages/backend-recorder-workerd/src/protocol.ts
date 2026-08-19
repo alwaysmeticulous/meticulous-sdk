@@ -41,6 +41,15 @@ export const SIDECAR_REPLAY_SESSION_PATH = "/v1/replay/session";
 export const SIDECAR_REPLAY_OUTBOUND_FETCH_PATH = "/v1/replay/outbound-fetch";
 
 /**
+ * Line-coverage reporting. Additive: an older sidecar answers 404, which the
+ * shim treats as "coverage not collected here" and stops reporting for the life
+ * of the isolate. Deliberately NOT guarded by a
+ * {@link SIDECAR_PROTOCOL_VERSION} bump — that check is exact equality, so a
+ * bump would stop every already-built customer image from mocking at all.
+ */
+export const SIDECAR_REPLAY_COVERAGE_PATH = "/v1/replay/coverage";
+
+/**
  * Header carrying the replay sidecar's origin, injected by the Meticulous replay runner
  * on requests to the app under test. Workerd cannot see container environment variables,
  * so an inbound header is the only way per-replay config can reach the shim.
@@ -50,6 +59,15 @@ export const SIDECAR_REPLAY_OUTBOUND_FETCH_PATH = "/v1/replay/outbound-fetch";
  */
 export const REPLAY_SIDECAR_URL_HEADER =
   "x-meticulous-backend-replay-sidecar-url";
+
+/**
+ * Header the in-worker shim stamps on every app response (record and replay)
+ * carrying the shim's npm package version. The replay runner reads this from
+ * Puppeteer — workerd cannot see container env, and the execute pod cannot
+ * reach the in-pod sidecar, so a response header is the only channel that
+ * reports which bundled shim produced a replay's After screenshots.
+ */
+export const WORKERD_SHIM_VERSION_HEADER = "x-meticulous-workerd-shim-version";
 
 /**
  * The only headers persisted on capture events. Everything else — notably
@@ -274,6 +292,27 @@ export interface ReplaySessionInfoResponse {
    * that credentials minted during the recording are already issued but not yet expired.
    */
   clockAnchorMs?: number;
+}
+
+/**
+ * One request's line coverage, sent to {@link SIDECAR_REPLAY_COVERAGE_PATH}
+ * after the response has been produced.
+ *
+ * `files` carries the build-time id→line map and is sent only on the first
+ * report of an isolate: it is the same for every request the isolate serves and
+ * is far larger than the hits themselves.
+ */
+export interface CoverageReportRequest {
+  frontendSessionId: string;
+  /** Global line ids marked during this request, ascending. */
+  hitIds: number[];
+  /** Present on an isolate's first report only. */
+  files?: Array<{
+    path: string;
+    firstId: number;
+    /** Inclusive 1-based line ranges, flattened as `[s1, e1, s2, e2, ...]`. */
+    lineRanges: number[];
+  }>;
 }
 
 /** Lookup for a single outbound `fetch`, sent to {@link SIDECAR_REPLAY_OUTBOUND_FETCH_PATH}. */

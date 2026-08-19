@@ -1,5 +1,11 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.329.0
+
+### Patch Changes
+
+- [#12466](https://github.com/alwaysmeticulous/meticulous/pull/12466) [`454042f`](https://github.com/alwaysmeticulous/meticulous/commit/454042f1d259df6a64602056fb898599a7940253) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Stamp the bundled workerd shim version on app responses so test runs can show a banner when head and base used different versions.
+
 ## 2.327.0
 
 ### Patch Changes

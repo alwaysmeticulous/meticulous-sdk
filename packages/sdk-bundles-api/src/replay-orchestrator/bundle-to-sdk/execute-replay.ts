@@ -70,6 +70,13 @@ export interface ReplayAndStoreResultsResult {
   hitReplayKillingError?: boolean;
 
   /**
+   * npm package version of the customer's bundled workerd shim, captured from
+   * the replay's app responses. Absent when the app is not a workerd app, or
+   * the bundled shim predates version reporting.
+   */
+  workerdShimVersion?: string;
+
+  /**
    * Indicates that at least one of the screenshots was compared against a replay
    * that was generated with a different Meticulous logic/environment version, or
    * with different project settings.

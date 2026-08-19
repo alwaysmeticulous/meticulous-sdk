@@ -11,6 +11,16 @@ interface BaseRequestContext {
   requestId: string;
   /** The inbound request's ctx.waitUntil, for post-response capture work. */
   waitUntil: (promise: Promise<unknown>) => void;
+  /**
+   * Per-request line-coverage sink, indexed by the global line id the build
+   * plugin assigned. Present only when the bundle is instrumented and the
+   * request is being replayed.
+   *
+   * Lives here rather than in a module-scope global because workerd interleaves
+   * concurrent requests in one isolate — a shared sink would merge sessions'
+   * coverage together.
+   */
+  coverage?: Uint8Array;
 }
 
 /** Recording: capture events are reported to the sidecar, which stays out of the request path. */

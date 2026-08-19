@@ -155,7 +155,43 @@ Replay is **hermetic**: a call the recording does not cover fails with a `[backe
 await fetch(url, { headers: { "meticulous-passthrough": "true" } });
 ```
 
+While serving a replay, the shim prefixes request-scoped `console.debug`, `console.log`,
+`console.info`, `console.warn`, `console.error`, and `console.trace` output with the active replay
+ID. Each request reads its own ID from `AsyncLocalStorage`, so logs stay correctly attributed when
+one Worker isolate serves concurrent replays. Startup and other work outside a replay request stays
+untagged.
+
 Calls through bindings and KV namespaces are not served from the recording (see Limitations) and are never failed — they always reach the real binding.
+
+## Code coverage
+
+Meticulous can report which of your server lines each replayed session executed. Workerd exposes no usable V8 coverage — its inspector never dispatches `Profiler.enable`, so `Profiler.startPreciseCoverage` is unreachable, and the one coverage call it does forward reports binary counts that never reset, which cannot be split per request. So the lines are marked at build time instead.
+
+Add the plugin to the build you **upload for testing**, not the one you deploy:
+
+```ts
+import { defineConfig } from "vite";
+import { meticulousCoverage } from "@alwaysmeticulous/backend-recorder-workerd/vite";
+
+export default defineConfig({
+  plugins: [meticulousCoverage()],
+});
+```
+
+Then replays report coverage automatically — the wrapper posts the lines each request ran to the Meticulous replay sidecar, which attributes them to that session.
+
+- Only **server** modules are instrumented; the client build is untouched unless you pass `includeClient: true`.
+- `node_modules` and virtual modules are always skipped. `exclude: [/pattern/]` skips more.
+- The instrumented bundle is safe to run with coverage off: every marker is a no-op when nothing is collecting, so the same image still works for ordinary replays and for local development.
+- A module the plugin cannot parse is passed through unchanged. Coverage is never worth failing your build for.
+- Some lines are deliberately not marked, because marking them would mean rewriting code rather than adding to it: statements at module top level (they run at isolate startup, outside any request), class `static` blocks, the body of a braceless single statement such as `if (x) return;`, and the condition of an `else if` (only the first `if` of a chain gets a marker, though every branch body still gets its own). Those lines therefore read as uncovered even in a run that executed them.
+
+Reported line numbers are lines in your source, not in the bundle. The plugin runs after your build's TypeScript/JSX pass, which re-prints each module and drops comments and blank lines — so it resolves every line back through that pass's source map. Two consequences worth knowing:
+
+- A module whose source map your build does not produce is still instrumented, but its lines are reported as the build printed them. The plugin says how many modules this affected at the end of the build.
+- A module whose source map covers some other file is skipped entirely rather than reported against the wrong lines.
+
+Because each function re-reads the current request's sink, a callback that outlives the request that created it is credited to the request that actually runs it, not the one that built it.
 
 ## Limitations
 

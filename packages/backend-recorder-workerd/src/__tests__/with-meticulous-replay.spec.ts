@@ -11,7 +11,9 @@ import {
   type OutboundFetchLookupRequest,
   type OutboundFetchLookupResponse,
   REPLAY_ID_HEADER,
+  WORKERD_SHIM_VERSION_HEADER,
 } from "../protocol";
+import { WORKERD_SHIM_VERSION } from "../version";
 import { UNANCHORED_BASE_TIME_MS } from "../virtual-clock";
 
 /**
@@ -159,7 +161,12 @@ const callWorker = async ({
   readClock?: boolean;
   /** Marks the app's outbound call as one that must stay live during replay. */
   passthroughHeader?: boolean;
-} = {}): Promise<{ status: number; body: string; clockNow: number }> => {
+} = {}): Promise<{
+  status: number;
+  body: string;
+  clockNow: number;
+  shimVersion: string | null;
+}> => {
   const handler = withMeticulous({
     fetch: async () => {
       const upstream = await fetch(`${upstreamUrl}/items`, {
@@ -204,6 +211,7 @@ const callWorker = async ({
     status: response.status,
     body: await response.text(),
     clockNow: Number(response.headers.get("x-clock-now")),
+    shimVersion: response.headers.get(WORKERD_SHIM_VERSION_HEADER),
   };
 };
 
@@ -474,5 +482,15 @@ describe("withMeticulous in replay mode", () => {
     expect(await response.text()).toBe("rendered-1");
     // Nothing is minted or published in replay: the runner already named the session.
     expect(response.headers.get("server-timing")).toBeNull();
+    expect(response.headers.get(WORKERD_SHIM_VERSION_HEADER)).toBe(
+      WORKERD_SHIM_VERSION,
+    );
+  });
+
+  it("stamps the bundled shim version on every replayed response", async () => {
+    const result = await callWorker({ sessionId: "shim-version-1" });
+
+    expect(result.status).toBe(200);
+    expect(result.shimVersion).toBe(WORKERD_SHIM_VERSION);
   });
 });

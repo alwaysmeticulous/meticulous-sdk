@@ -5,6 +5,7 @@ import {
   type RequestReplayContext,
   requestCaptureContext,
 } from "./context";
+import { runReplayWithCoverage } from "./coverage/replay-coverage";
 import { installFetchPatch } from "./fetch-patch";
 import { installKvPatch } from "./kv-patch";
 import { warnOnce } from "./log";
@@ -21,6 +22,8 @@ import {
   mintProvisionalSessionId,
 } from "./provisional-session-id";
 import { publishSessionIdOnResponse } from "./publish-session-id";
+import { publishWorkerdShimVersionOnResponse } from "./publish-shim-version";
+import { installReplayLogTagging } from "./replay-log-tagging";
 import { parseReplaySidecarUrl } from "./replay-sidecar-url";
 import { getReplaySessionInfo } from "./sidecar-client";
 import {
@@ -123,6 +126,10 @@ export const runWithMeticulous = async (
   }
 
   if (replayContext !== undefined) {
+    // Workerd has no process.stdout/process.stderr seam like Node. Patch its
+    // console methods instead; each call resolves this request's replay id from
+    // the AsyncLocalStorage entered below.
+    installReplayLogTagging();
     // Install the clock before any app code runs, so a module that reads Date.now() at call time
     // (the firebase auth libraries do) sees the session's frozen instant.
     installVirtualClock();
@@ -132,7 +139,11 @@ export const runWithMeticulous = async (
     installVirtualRandom();
     // No inbound reporting in replay mode: there is no exporter behind the replay sidecar, and
     // the events route 404s there.
-    return requestCaptureContext.run(replayContext, invokeHandler);
+    const replayResponse = await runReplayWithCoverage(
+      replayContext,
+      invokeHandler,
+    );
+    return publishWorkerdShimVersionOnResponse(replayResponse);
   }
 
   if (transport === undefined) {
@@ -213,6 +224,7 @@ export const runWithMeticulous = async (
   if (mintedSessionId !== undefined) {
     response = publishSessionIdOnResponse(response, mintedSessionId);
   }
+  response = publishWorkerdShimVersionOnResponse(response);
 
   try {
     reportInbound({

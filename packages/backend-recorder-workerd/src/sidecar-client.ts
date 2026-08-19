@@ -3,12 +3,14 @@ import { getOriginalFetch } from "./original-fetch";
 import {
   type CaptureEvent,
   type CaptureEventsPayload,
+  type CoverageReportRequest,
   type OutboundFetchLookupRequest,
   type OutboundFetchLookupResponse,
   type ReplaySessionInfoResponse,
   SIDECAR_EVENTS_PATH,
   SIDECAR_PROTOCOL_VERSION,
   SIDECAR_PROTOCOL_VERSION_HEADER,
+  SIDECAR_REPLAY_COVERAGE_PATH,
   SIDECAR_REPLAY_OUTBOUND_FETCH_PATH,
   SIDECAR_REPLAY_SESSION_PATH,
 } from "./protocol";
@@ -47,6 +49,14 @@ const CAPTURE_POST_TIMEOUT_MS = 2_000;
  * `waitUntil` allows 30s past the response, so this stays well inside its budget.
  */
 const CAPTURE_POST_BINDING_TIMEOUT_MS = 10_000;
+
+/**
+ * Coverage reports are larger than capture events — the first one of an isolate
+ * carries the whole id→line map — so they get more headroom than
+ * {@link CAPTURE_POST_TIMEOUT_MS}. Still bounded, and for the same reason: an
+ * unreachable sidecar must not hold the request context open.
+ */
+const COVERAGE_POST_TIMEOUT_MS = 5_000;
 
 /** POSTs capture events to the sidecar. Never rejects — reporting failures only warn (once). */
 export const postCaptureEvents = async (
@@ -215,6 +225,67 @@ export const postOutboundFetchLookup = async (
       error,
     );
     return undefined;
+  }
+};
+
+/**
+ * Outcome of a coverage report.
+ *
+ * `unsupported` and `failed` both mean the report did not land, but only the
+ * first is settled: the caller latches `unsupported` and stops collecting, while
+ * `failed` leaves the id→line map queued for the next report. Conflating them
+ * would either disable coverage on one blip or lose a map permanently.
+ */
+export type CoverageReportOutcome = "accepted" | "unsupported" | "failed";
+
+/**
+ * Reports one request's line coverage. Runs under `ctx.waitUntil`, so it is off
+ * the response path like record-mode capture reporting.
+ *
+ * Returns `unsupported` when the sidecar will never accept coverage (404 — an
+ * older sidecar, or one started without coverage enabled), which the caller
+ * latches so it stops paying to serialise hits for the rest of the isolate's
+ * life.
+ */
+export const postCoverageReport = async (
+  fetchFn: FetchFn,
+  sidecarUrl: string,
+  payload: CoverageReportRequest,
+): Promise<CoverageReportOutcome> => {
+  try {
+    return await withTimeout(COVERAGE_POST_TIMEOUT_MS, async (signal) => {
+      const response = await fetchFn(
+        `${sidecarUrl}${SIDECAR_REPLAY_COVERAGE_PATH}`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            [SIDECAR_PROTOCOL_VERSION_HEADER]: SIDECAR_PROTOCOL_VERSION,
+          },
+          body: JSON.stringify(payload),
+          signal,
+        },
+      );
+      await response.arrayBuffer().catch(() => undefined);
+      if (response.status === 404) {
+        return "unsupported";
+      }
+      if (!response.ok) {
+        warnOnce(
+          "coverage-rejected",
+          `Meticulous replay sidecar rejected a coverage report (HTTP ${response.status}).`,
+        );
+        return "failed";
+      }
+      return "accepted";
+    });
+  } catch (error) {
+    warnOnce(
+      "coverage-unreachable",
+      "Could not report line coverage to the Meticulous replay sidecar.",
+      error,
+    );
+    return "failed";
   }
 };
 

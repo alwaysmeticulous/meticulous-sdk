@@ -10,6 +10,7 @@ export type {
   CaptureEvent,
   CapturedBody,
   CaptureEventsPayload,
+  CoverageReportRequest,
   InboundRequestEvent,
   KvOmittedReason,
   KvOperation,
@@ -29,9 +30,12 @@ export {
   SIDECAR_EVENTS_PATH,
   SIDECAR_PROTOCOL_VERSION,
   SIDECAR_PROTOCOL_VERSION_HEADER,
+  SIDECAR_REPLAY_COVERAGE_PATH,
   SIDECAR_REPLAY_OUTBOUND_FETCH_PATH,
   SIDECAR_REPLAY_SESSION_PATH,
+  WORKERD_SHIM_VERSION_HEADER,
 } from "./protocol";
+export { WORKERD_SHIM_VERSION } from "./version";
 export {
   MAX_BODY_CAPTURE_SIZE,
   readBodyWithCap,
@@ -39,6 +43,20 @@ export {
 } from "./body-capture";
 export { headersToRecord } from "./outbound-capture";
 export { redactRequestBody, STR_REDACTED } from "./redact-body";
+export type { CoverageMap, CoverageMapFile } from "./coverage/coverage.types";
+// __mcEnter / __mcHit are the entry points the Vite plugin's injected imports
+// bind to, so they are part of the package's public surface even though no
+// human writes a call to them.
+export {
+  __mcEnter,
+  __mcHit,
+  collectHitIds,
+  createCoverageSink,
+  getCoverageMap,
+  getUnreportedCoverageFiles,
+  markCoverageFilesReported,
+  registerCoverageFile,
+} from "./coverage/runtime";
 export type { MeticulousExecutionContext, WithMeticulousOptions };
 export {
   type MeticulousPagesFunction,

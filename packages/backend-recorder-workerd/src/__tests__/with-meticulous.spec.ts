@@ -10,7 +10,9 @@ import {
   type CaptureEvent,
   type CaptureEventsPayload,
   SIDECAR_PROTOCOL_VERSION,
+  WORKERD_SHIM_VERSION_HEADER,
 } from "../protocol";
+import { WORKERD_SHIM_VERSION } from "../version";
 
 /**
  * In-Node integration test: one local HTTP server acts as the fake sidecar
@@ -147,6 +149,9 @@ describe("withMeticulous", () => {
     await ctx.drain();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get(WORKERD_SHIM_VERSION_HEADER)).toBe(
+      WORKERD_SHIM_VERSION,
+    );
     expect(await response.json()).toEqual({ created: true });
 
     const [inbound] = eventsOfKind("inbound");

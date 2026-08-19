@@ -1,5 +1,52 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.329.0
+
+### Minor Changes
+
+- [#12437](https://github.com/alwaysmeticulous/meticulous/pull/12437) [`facc68c`](https://github.com/alwaysmeticulous/meticulous/commit/facc68cc4fb26d8d8a9861ffb2cf8ee7f13043ea) Thanks [@calebgcc](https://github.com/calebgcc)! - Prefix Workerd console output with the active replay ID during backend replay, allowing app-container logs from concurrent replay requests to be attributed to the correct replay.
+
+- [#12252](https://github.com/alwaysmeticulous/meticulous/pull/12252) [`eeba9b5`](https://github.com/alwaysmeticulous/meticulous/commit/eeba9b506e0592545b15b3daa22dbee9b6373044) Thanks [@dennysem](https://github.com/dennysem)! - Adds build-time line coverage for Cloudflare Workers replays. A new
+  `@alwaysmeticulous/backend-recorder-workerd/vite` entry point exports
+  `meticulousCoverage()`, a Vite plugin that marks each line of the server bundle,
+  and `withMeticulous` now reports the lines a replayed request executed to the
+  Meticulous replay sidecar.
+
+  This exists because workerd exposes no usable V8 coverage: its inspector never
+  dispatches `Profiler.enable`, so `Profiler.startPreciseCoverage` is unreachable,
+  and the one coverage call it does forward (`getBestEffortCoverage`) has binary
+  saturating counts that cannot be turned into per-request deltas. Instrumenting at
+  build time sidesteps that, and because the per-request sink lives on the shim's
+  existing AsyncLocalStorage store, hits are attributed to exactly one session even
+  though workerd interleaves concurrent requests in one isolate.
+
+  Add the plugin to the build you upload for testing, not the one you deploy:
+
+  ```ts
+  import { meticulousCoverage } from "@alwaysmeticulous/backend-recorder-workerd/vite";
+  export default defineConfig({ plugins: [meticulousCoverage()] });
+  ```
+
+  Reported lines are lines in the customer's source. The plugin runs after the
+  build's own TypeScript/JSX pass, which re-prints each module and drops comments
+  and blank lines, so it resolves each marker back through that pass's source map;
+  without that, a commented codebase reports nearly every line short by however
+  much was stripped above it.
+
+  A code-split app registers its modules as their chunks are imported rather than
+  at startup, so both halves of the reporting follow the load order: a request's
+  sink grows when it imports a module (which is what covers the very first render
+  on a cold isolate, before anything has registered), and the id→line map is sent
+  incrementally as blocks appear, retried until the sidecar acknowledges them.
+
+  The instrumented bundle is safe to run with coverage off — every marker is a
+  no-op when no sink is present — and a module the plugin cannot parse is passed
+  through untouched rather than failing the build.
+
+### Patch Changes
+
+- [#12466](https://github.com/alwaysmeticulous/meticulous/pull/12466) [`454042f`](https://github.com/alwaysmeticulous/meticulous/commit/454042f1d259df6a64602056fb898599a7940253) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Stamp the bundled workerd shim version on app responses so test runs can show a banner when head and base used different versions.
+
 ## 2.327.0
 
 ### Patch Changes
