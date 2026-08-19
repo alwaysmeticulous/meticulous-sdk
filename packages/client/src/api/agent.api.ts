@@ -1,6 +1,6 @@
 import type { SessionContext, TestRunStatus } from "@alwaysmeticulous/api";
 import { maybeEnrichFetchError } from "../errors";
-import type { MeticulousClient, Response } from "../types/client.types";
+import type { MeticulousClient } from "../types/client.types";
 
 // ---------------------------------------------------------------------------
 // Non-visual check report types
@@ -1152,10 +1152,9 @@ export const setAgentCurrentProject = async (
   project: string,
 ): Promise<AgentSetProjectResponse> => {
   const { data } = await client
-    .put<{ project: string }, Response<AgentSetProjectResponse>>(
-      "agent/project",
-      { project },
-    )
+    .put<AgentSetProjectResponse, { project: string }>("agent/project", {
+      project,
+    })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });

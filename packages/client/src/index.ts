@@ -163,7 +163,11 @@ export {
 export { resolveDefaultProjectId } from "./oauth/default-project";
 export { migrateLegacySelectedProjectIfPresent } from "./oauth/legacy-project-migration";
 export { getJwtClaims, isJwtExpired, isOAuthJwt } from "./oauth/oauth-utils";
-export type { MeticulousClient } from "./types/client.types";
+export type {
+  MeticulousClient,
+  Response,
+  RequestConfig,
+} from "./types/client.types";
 export { getProxyAgent } from "./utils/get-proxy-agent";
 export {
   PutFileToSignedUrlOptions,
@@ -250,6 +254,7 @@ export {
   AgenticRunSummaryTakeaway,
   AgenticRunResultStep,
   AgenticRunHighlightRegion,
+  AgenticRunUrlHighlightRange,
   AgenticRunStepKind,
   AgenticRunStepOutcome,
   AgenticRunMetadata,

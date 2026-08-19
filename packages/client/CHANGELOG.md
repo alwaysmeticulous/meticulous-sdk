@@ -1,5 +1,19 @@
 # @alwaysmeticulous/client
 
+## 2.328.0
+
+### Minor Changes
+
+- [#12458](https://github.com/alwaysmeticulous/meticulous/pull/12458) [`bc8ff00`](https://github.com/alwaysmeticulous/meticulous/commit/bc8ff00296dbee5ee25386a1b9b7b1252dfca8b9) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `--appPort` to `meticulous ci agent-test` so uploaded-assets agentic runs serve the frontend on a stable origin (`http://localhost:8000` by default) that staging CORS allowlists can pin.
+
+- [#12434](https://github.com/alwaysmeticulous/meticulous/pull/12434) [`4fb60b8`](https://github.com/alwaysmeticulous/meticulous/commit/4fb60b8d04fa0f122609efe3ab99a4462ca83f27) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `--trustedOrigins` to `ci agent-test` so uploaded-assets agentic runs can allowlist extra HTTPS origins that the frontend calls with absolute cross-origin URLs.
+
+- [#12405](https://github.com/alwaysmeticulous/meticulous/pull/12405) [`6a97671`](https://github.com/alwaysmeticulous/meticulous/commit/6a976713186d6592cdc1867d6451328cb51870cd) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agentic run result steps can now name (part of) their URL as the step's evidence. `AgenticRunResultStep` gains `urlHighlightRange` — a character range into the step's verification route group, resolved by the worker from the substring the agent reported — plus the worker-internal `urlHighlight` it is resolved from. Both are optional, so blobs written by older workers read unchanged and `AGENTIC_RESULT_VERSION` is not bumped.
+
+- [#12391](https://github.com/alwaysmeticulous/meticulous/pull/12391) [`77b0b49`](https://github.com/alwaysmeticulous/meticulous/commit/77b0b49662720e5a7fb459cb73e306915b7da6b5) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `MeticulousClient`'s methods now resolve to `Response<T>` rather than a return type the caller names. The `R` type parameter was implemented as an unchecked cast, so a call site could assert any return type and still receive the response envelope at runtime. Type parameters now read response-first, request-body-second on all four methods: `get<TestRun>(url)` in place of `get<unknown, { data: TestRun }>(url)`, and `post<Res, Req>(url, body)` where the request type is worth naming.
+
+  **Migration note:** this is a breaking type change for direct callers of `MeticulousClient`. A two-generic call like `client.get<unknown, { data: TestRun }>(url)` no longer compiles. More importantly, `client.post<RequestBody>(url, body)` still compiles but now types the _response_ as `RequestBody` instead of the request — that single-generic form was previously used to name the request body, and must be dropped or moved to the second parameter (`client.post<ResponseBody, RequestBody>(url, body)`).
+
 ## 2.327.0
 
 ### Patch Changes

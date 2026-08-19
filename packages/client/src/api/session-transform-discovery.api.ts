@@ -33,10 +33,11 @@ export const getDiscoveryRepoFile = async ({
 }: GetAgenticRepoFileParams & {
   client: MeticulousClient;
 }): Promise<GetAgenticRepoFileResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: GetAgenticRepoFileResponse }
-  >("session-transform-discovery/repo/file", body, projectIdQuery(projectId));
+  const { data } = await client.post<GetAgenticRepoFileResponse>(
+    "session-transform-discovery/repo/file",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
@@ -47,10 +48,11 @@ export const searchDiscoveryRepoCode = async ({
 }: SearchAgenticRepoCodeParams & {
   client: MeticulousClient;
 }): Promise<SearchAgenticRepoCodeResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: SearchAgenticRepoCodeResponse }
-  >("session-transform-discovery/repo/search", body, projectIdQuery(projectId));
+  const { data } = await client.post<SearchAgenticRepoCodeResponse>(
+    "session-transform-discovery/repo/search",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
@@ -61,10 +63,7 @@ export const listDiscoveryRepoTree = async ({
 }: ListAgenticRepoTreeParams & {
   client: MeticulousClient;
 }): Promise<ListAgenticRepoTreeResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: ListAgenticRepoTreeResponse }
-  >(
+  const { data } = await client.post<ListAgenticRepoTreeResponse>(
     "session-transform-discovery/repo/ls-tree",
     body,
     projectIdQuery(projectId),
@@ -79,15 +78,16 @@ export const acquireDiscoveryRepoLease = async ({
 }: AcquireAgenticRepoLeaseParams & {
   client: MeticulousClient;
 }): Promise<AcquireAgenticRepoLeaseResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: AcquireAgenticRepoLeaseResponse }
-  >("session-transform-discovery/repo/lease/acquire", body, {
-    ...projectIdQuery(projectId),
-    // The acquire endpoint blocks server-side up to ~6 min bringing a cold
-    // pod up; wait that out in a single attempt (matches the agentic client).
-    timeout: 6.5 * 60 * 1000,
-  });
+  const { data } = await client.post<AcquireAgenticRepoLeaseResponse>(
+    "session-transform-discovery/repo/lease/acquire",
+    body,
+    {
+      ...projectIdQuery(projectId),
+      // The acquire endpoint blocks server-side up to ~6 min bringing a cold
+      // pod up; wait that out in a single attempt (matches the agentic client).
+      timeout: 6.5 * 60 * 1000,
+    },
+  );
   return data;
 };
 
@@ -98,15 +98,15 @@ export const getDiscoveryRepoLeaseStatus = async ({
 }: GetAgenticRepoLeaseStatusParams & {
   client: MeticulousClient;
 }): Promise<AgenticRepoLeaseStatusResponse> => {
-  const { data } = await client.get<
-    unknown,
-    { data: AgenticRepoLeaseStatusResponse }
-  >("session-transform-discovery/repo/lease/status", {
-    params: {
-      ...(projectId ? { projectId } : {}),
-      ...(podInstanceId ? { podInstanceId } : {}),
+  const { data } = await client.get<AgenticRepoLeaseStatusResponse>(
+    "session-transform-discovery/repo/lease/status",
+    {
+      params: {
+        ...(projectId ? { projectId } : {}),
+        ...(podInstanceId ? { podInstanceId } : {}),
+      },
     },
-  });
+  );
   return data;
 };
 
@@ -117,10 +117,7 @@ export const heartbeatDiscoveryRepoLease = async ({
 }: HeartbeatAgenticRepoLeaseParams & {
   client: MeticulousClient;
 }): Promise<HeartbeatAgenticRepoLeaseResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: HeartbeatAgenticRepoLeaseResponse }
-  >(
+  const { data } = await client.post<HeartbeatAgenticRepoLeaseResponse>(
     "session-transform-discovery/repo/lease/heartbeat",
     body,
     projectIdQuery(projectId),
@@ -135,10 +132,7 @@ export const releaseDiscoveryRepoLease = async ({
 }: ReleaseAgenticRepoLeaseParams & {
   client: MeticulousClient;
 }): Promise<ReleaseAgenticRepoLeaseResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: ReleaseAgenticRepoLeaseResponse }
-  >(
+  const { data } = await client.post<ReleaseAgenticRepoLeaseResponse>(
     "session-transform-discovery/repo/lease/release",
     body,
     projectIdQuery(projectId),

@@ -53,12 +53,9 @@ export const getTestRun: (options: {
   client: MeticulousClient;
   testRunId: string;
 }) => Promise<TestRun> = async ({ client, testRunId }) => {
-  const { data } = await client.get<unknown, { data: TestRun }>(
-    `test-runs/${testRunId}`,
-    {
-      params: { clientVersion: String(TEST_RUN_STATUS_CLIENT_VERSION) },
-    },
-  );
+  const { data } = await client.get<TestRun>(`test-runs/${testRunId}`, {
+    params: { clientVersion: String(TEST_RUN_STATUS_CLIENT_VERSION) },
+  });
   return data;
 };
 
@@ -77,7 +74,7 @@ export const getTestRunNetworkPatchingResult = async ({
   testRunId: string;
 }): Promise<TestRunNetworkPatchingResult | null> => {
   const { data } = await client
-    .get<unknown, { data: TestRunNetworkPatchingResult | null }>(
+    .get<TestRunNetworkPatchingResult | null>(
       `test-runs/${testRunId}/network-patching-result`,
     )
     .catch((error) => {
@@ -131,7 +128,7 @@ export const getTestRunData: (options: {
   const params = includeAppContainerLogs
     ? { params: { includeAppContainerLogs: true } }
     : {};
-  const { data } = await client.get<unknown, { data: TestRunDataLocations }>(
+  const { data } = await client.get<TestRunDataLocations>(
     `test-runs/${testRunId}/data`,
     params,
   );
@@ -189,7 +186,7 @@ export const getTestRunReplayDiffs = async ({
   let offset = 0;
   let hasMore = true;
   while (hasMore) {
-    const { data } = await client.get<unknown, { data: ReplayDiffResponse[] }>(
+    const { data } = await client.get<ReplayDiffResponse[]>(
       `test-runs/${testRunId}/replay-diffs?limit=${BATCH_SIZE}&offset=${offset}`,
     );
     replayDiffs.push(...data);

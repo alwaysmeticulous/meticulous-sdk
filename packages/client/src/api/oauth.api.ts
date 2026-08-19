@@ -1,4 +1,4 @@
-import type { MeticulousClient, Response } from "../types/client.types";
+import type { MeticulousClient } from "../types/client.types";
 
 export interface WhoamiOrganization {
   id: string;
@@ -85,8 +85,8 @@ export const setOAuthDefaultProject = async (
   project: string,
 ): Promise<OAuthDefaultProjectResponse> => {
   const { data } = await client.put<
-    { project: string },
-    Response<OAuthDefaultProjectResponse>
+    OAuthDefaultProjectResponse,
+    { project: string }
   >("oauth/default-project", { project });
   return data;
 };

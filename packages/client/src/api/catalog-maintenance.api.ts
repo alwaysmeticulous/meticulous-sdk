@@ -36,10 +36,11 @@ export const launchCatalogMaintenance = async ({
 }: LaunchCatalogMaintenanceParams & {
   client: MeticulousClient;
 }): Promise<LaunchCatalogMaintenanceResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: LaunchCatalogMaintenanceResponse }
-  >("catalog-maintenance/launch", body, projectIdQuery(projectId));
+  const { data } = await client.post<LaunchCatalogMaintenanceResponse>(
+    "catalog-maintenance/launch",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
@@ -60,15 +61,15 @@ export const getCatalogMaintenanceWorkflowStatus = async ({
 }: GetCatalogMaintenanceWorkflowStatusParams & {
   client: MeticulousClient;
 }): Promise<CatalogMaintenanceWorkflowStatusResponse> => {
-  const { data } = await client.get<
-    unknown,
-    { data: CatalogMaintenanceWorkflowStatusResponse }
-  >("catalog-maintenance/status", {
-    params: {
-      workflowName,
-      ...(projectId ? { projectId } : {}),
+  const { data } = await client.get<CatalogMaintenanceWorkflowStatusResponse>(
+    "catalog-maintenance/status",
+    {
+      params: {
+        workflowName,
+        ...(projectId ? { projectId } : {}),
+      },
     },
-  });
+  );
   return data;
 };
 
@@ -79,13 +80,11 @@ export const requestCatalogMaintenanceProposalUpload = async ({
 }: RequestCatalogMaintenanceProposalUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestCatalogMaintenanceProposalUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestCatalogMaintenanceProposalUploadResponse }
-  >(
-    "catalog-maintenance/request-proposal-upload",
-    body,
-    projectIdQuery(projectId),
-  );
+  const { data } =
+    await client.post<RequestCatalogMaintenanceProposalUploadResponse>(
+      "catalog-maintenance/request-proposal-upload",
+      body,
+      projectIdQuery(projectId),
+    );
   return data;
 };

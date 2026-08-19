@@ -41,6 +41,16 @@ export interface GenerateSessionsOptions extends ProjectIdentifier {
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
   backend?: AgenticAssetsBackend | undefined;
+  /**
+   * Extra HTTPS origins the agent's browser may call besides the app origin.
+   * Only supported with uploaded assets (not `--localImageTag`).
+   */
+  trustedOrigins?: string[] | undefined;
+  /**
+   * Port to serve uploaded frontend assets on. Only supported with uploaded
+   * assets (not `--localImageTag`). Defaults to 8000 on the worker when omitted.
+   */
+  appPort?: number | undefined;
 }
 
 export interface GenerateSessionsResult {
@@ -67,6 +77,8 @@ export const generateSessions = async ({
   containerEnv,
   containerHealthCheckEndpoint,
   backend,
+  trustedOrigins,
+  appPort,
   projectId,
 }: GenerateSessionsOptions): Promise<GenerateSessionsResult> => {
   const logger = initLogger();
@@ -87,6 +99,12 @@ export const generateSessions = async ({
   }
   if (backend && localImageTag) {
     throw new Error("backend is only supported with uploaded assets.");
+  }
+  if (trustedOrigins?.length && localImageTag) {
+    throw new Error("trustedOrigins is only supported with uploaded assets.");
+  }
+  if (appPort != null && localImageTag) {
+    throw new Error("appPort is only supported with uploaded assets.");
   }
 
   let uploadId: string;
@@ -149,6 +167,8 @@ export const generateSessions = async ({
           type: "assets",
           assetsUploadId: uploadId,
           ...(backend ? { backend } : {}),
+          ...(trustedOrigins?.length ? { trustedOrigins } : {}),
+          ...(appPort != null ? { appPort } : {}),
         },
     ...projectIdentifier,
   });

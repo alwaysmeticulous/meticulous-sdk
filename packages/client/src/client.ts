@@ -224,52 +224,44 @@ export const buildClient = (
   };
 
   return {
-    get: <T = any, R = Response<T>>(
+    get: <T = any>(
       url: string,
       config?: RequestConfig<any>,
-    ): Promise<R> => {
-      return makeRequestWithToken<T>(
-        url,
-        { method: "GET" },
-        config,
-      ) as Promise<R>;
+    ): Promise<Response<T>> => {
+      return makeRequestWithToken<T>(url, { method: "GET" }, config);
     },
 
-    post: <T = any, R = Response<T>, D = any>(
+    post: <T = any, D = any>(
       url: string,
       data?: D,
       config?: RequestConfig<any>,
-    ): Promise<R> => {
+    ): Promise<Response<T>> => {
       const body = data !== undefined ? JSON.stringify(data) : undefined;
       const requestOptions: RequestInit = { method: "POST" };
       if (body !== undefined) {
         requestOptions.body = body;
       }
-      return makeRequestWithToken<T>(url, requestOptions, config) as Promise<R>;
+      return makeRequestWithToken<T>(url, requestOptions, config);
     },
 
-    put: <T = any, R = Response<T>, D = any>(
+    put: <T = any, D = any>(
       url: string,
       data?: D,
       config?: RequestConfig<any>,
-    ): Promise<R> => {
+    ): Promise<Response<T>> => {
       const body = data !== undefined ? JSON.stringify(data) : undefined;
       const requestOptions: RequestInit = { method: "PUT" };
       if (body !== undefined) {
         requestOptions.body = body;
       }
-      return makeRequestWithToken<T>(url, requestOptions, config) as Promise<R>;
+      return makeRequestWithToken<T>(url, requestOptions, config);
     },
 
-    delete: <T = any, R = Response<T>>(
+    delete: <T = any>(
       url: string,
       config?: RequestConfig<any>,
-    ): Promise<R> => {
-      return makeRequestWithToken<T>(
-        url,
-        { method: "DELETE" },
-        config,
-      ) as Promise<R>;
+    ): Promise<Response<T>> => {
+      return makeRequestWithToken<T>(url, { method: "DELETE" }, config);
     },
   };
 };

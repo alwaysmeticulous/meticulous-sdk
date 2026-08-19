@@ -34,7 +34,7 @@ export const getRelevantSessions = async (
   params: GetRelevantSessionsParams,
 ): Promise<GetRelevantSessionsResponse> => {
   const { data } = await client
-    .post<unknown, { data: GetRelevantSessionsResponse }>(
+    .post<GetRelevantSessionsResponse>(
       "local-changes/relevant-sessions",
       params,
     )

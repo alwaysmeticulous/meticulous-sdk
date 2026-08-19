@@ -17,7 +17,7 @@ export const getRegistryAuth = async ({
 }: ProjectIdentifier & {
   client: MeticulousClient;
 }): Promise<GetRegistryAuthResponse> => {
-  const { data } = await client.get<unknown, { data: GetRegistryAuthResponse }>(
+  const { data } = await client.get<GetRegistryAuthResponse>(
     "registry/auth",
     projectId ? { params: { projectId } } : undefined,
   );

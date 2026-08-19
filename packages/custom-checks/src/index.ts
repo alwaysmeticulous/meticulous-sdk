@@ -36,4 +36,5 @@ export {
   CustomCheckResultsStatus,
   CUSTOM_CHECK_RESULTS_STATUSES,
   CUSTOM_CHECK_SUMMARY_MAX_LENGTH,
+  TestRun,
 } from "@alwaysmeticulous/api";

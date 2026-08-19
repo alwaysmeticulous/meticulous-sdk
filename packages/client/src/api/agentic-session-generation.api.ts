@@ -37,6 +37,16 @@ export interface AgenticAssetsAppTarget {
   type: "assets";
   assetsUploadId: string;
   backend?: AgenticAssetsBackend | undefined;
+  /**
+   * Extra HTTPS origins the agent's browser may call besides the app origin
+   * (e.g. absolute cross-origin API or auth hosts). Assets targets only.
+   */
+  trustedOrigins?: string[] | undefined;
+  /**
+   * Port to serve the uploaded frontend on. Assets targets only; the worker
+   * defaults to 8000 when omitted.
+   */
+  appPort?: number | undefined;
 }
 
 export type AgenticAppTarget =
@@ -71,10 +81,7 @@ export const requestAgenticInstructionsUpload = async ({
 }: RequestAgenticInstructionsUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestAgenticInstructionsUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestAgenticInstructionsUploadResponse }
-  >(
+  const { data } = await client.post<RequestAgenticInstructionsUploadResponse>(
     "agentic-session-generation/request-instructions-upload",
     body,
     projectIdQuery(projectId),
@@ -90,10 +97,12 @@ export const completeAgenticSessionGeneration = async ({
   client: MeticulousClient;
 }): Promise<CompleteAgenticSessionGenerationResponse> => {
   try {
-    const { data } = await client.post<
-      typeof body,
-      { data: CompleteAgenticSessionGenerationResponse }
-    >("agentic-session-generation/launch", body, projectIdQuery(projectId));
+    const { data } =
+      await client.post<CompleteAgenticSessionGenerationResponse>(
+        "agentic-session-generation/launch",
+        body,
+        projectIdQuery(projectId),
+      );
     return data;
   } catch (error) {
     redactLaunchCredentials(error, body.appTarget);
@@ -189,6 +198,16 @@ export interface AgenticRunHighlightRegion {
   height: number;
 }
 
+/**
+ * The part of a step's URL that is the step's evidence, as a half-open character
+ * range `[start, end)`. Offsets are into the sanitized route group, since raw
+ * URLs are never persisted.
+ */
+export interface AgenticRunUrlHighlightRange {
+  start: number;
+  end: number;
+}
+
 /** A single step the agent took while running a case. */
 export interface AgenticRunResultStep {
   /** What the step did, e.g. "Click the 'Schedule for later' switch". */
@@ -243,6 +262,16 @@ export interface AgenticRunResultStep {
    * result screenshot. Removed before the result blob is persisted.
    */
   highlight?: string;
+  /**
+   * Worker-internal substring of the step's URL the model wants highlighted.
+   * Resolved into `urlHighlightRange`, then dropped before the blob is persisted.
+   */
+  urlHighlight?: string;
+  /**
+   * The part of the URL that is this step's evidence, indexing
+   * `afterScreenshotRouteGroup` when present, else `screenshotRouteGroup`.
+   */
+  urlHighlightRange?: AgenticRunUrlHighlightRange;
   /** SHA-256 of the screenshot bytes, used to identify duplicate evidence. */
   screenshotContentHash?: string;
   /**
@@ -467,10 +496,7 @@ export const requestAgenticResultUpload = async ({
 }: RequestAgenticResultUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestAgenticResultUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestAgenticResultUploadResponse }
-  >(
+  const { data } = await client.post<RequestAgenticResultUploadResponse>(
     "agentic-session-generation/request-result-upload",
     body,
     projectIdQuery(projectId),
@@ -498,10 +524,7 @@ export const completeAgenticRunResult = async ({
 }: CompleteAgenticRunResultParams & {
   client: MeticulousClient;
 }): Promise<ReportAgenticRunResultResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: ReportAgenticRunResultResponse }
-  >(
+  const { data } = await client.post<ReportAgenticRunResultResponse>(
     "agentic-session-generation/complete-result",
     body,
     projectIdQuery(projectId),
@@ -567,10 +590,7 @@ export const requestAgenticProgressUpload = async ({
 }: RequestAgenticProgressUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestAgenticProgressUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestAgenticProgressUploadResponse }
-  >(
+  const { data } = await client.post<RequestAgenticProgressUploadResponse>(
     "agentic-session-generation/request-progress-upload",
     body,
     projectIdQuery(projectId),
@@ -604,15 +624,15 @@ export const isAgenticRunCancelled = async ({
 }: IsAgenticRunCancelledParams & {
   client: MeticulousClient;
 }): Promise<IsAgenticRunCancelledResponse> => {
-  const { data } = await client.get<
-    unknown,
-    { data: IsAgenticRunCancelledResponse }
-  >("agentic-session-generation/run-cancelled", {
-    params: {
-      ...(projectId ? { projectId } : {}),
-      agenticRunId,
+  const { data } = await client.get<IsAgenticRunCancelledResponse>(
+    "agentic-session-generation/run-cancelled",
+    {
+      params: {
+        ...(projectId ? { projectId } : {}),
+        agenticRunId,
+      },
     },
-  });
+  );
   return data;
 };
 
@@ -641,10 +661,7 @@ export const requestAgenticTestcasesUpload = async ({
 }: RequestAgenticTestcasesUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestAgenticTestcasesUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestAgenticTestcasesUploadResponse }
-  >(
+  const { data } = await client.post<RequestAgenticTestcasesUploadResponse>(
     "agentic-session-generation/request-testcases-upload",
     body,
     projectIdQuery(projectId),
@@ -685,10 +702,7 @@ export const requestAgenticArtifactUploads = async ({
 }: RequestAgenticArtifactUploadsParams & {
   client: MeticulousClient;
 }): Promise<RequestAgenticArtifactUploadsResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestAgenticArtifactUploadsResponse }
-  >(
+  const { data } = await client.post<RequestAgenticArtifactUploadsResponse>(
     "agentic-session-generation/request-artifact-uploads",
     body,
     projectIdQuery(projectId),
@@ -726,12 +740,12 @@ export const getAgenticRunCoverage = async ({
 }: GetAgenticRunCoverageParams & {
   client: MeticulousClient;
 }): Promise<GetAgenticRunCoverageResponse> => {
-  const { data } = await client.get<
-    unknown,
-    { data: GetAgenticRunCoverageResponse }
-  >(`agentic-session-generation/runs/${agenticRunId}/js-coverage`, {
-    params: projectId ? { projectId } : {},
-  });
+  const { data } = await client.get<GetAgenticRunCoverageResponse>(
+    `agentic-session-generation/runs/${agenticRunId}/js-coverage`,
+    {
+      params: projectId ? { projectId } : {},
+    },
+  );
   return data;
 };
 
@@ -772,16 +786,16 @@ export const getAgenticChangedFiles = async ({
 }: GetAgenticChangedFilesParams & {
   client: MeticulousClient;
 }): Promise<GetAgenticChangedFilesResponse> => {
-  const { data } = await client.get<
-    unknown,
-    { data: GetAgenticChangedFilesResponse }
-  >("agentic-session-generation/changed-files", {
-    params: {
-      ...(projectId ? { projectId } : {}),
-      commitSha,
-      ...(runId ? { runId } : {}),
+  const { data } = await client.get<GetAgenticChangedFilesResponse>(
+    "agentic-session-generation/changed-files",
+    {
+      params: {
+        ...(projectId ? { projectId } : {}),
+        commitSha,
+        ...(runId ? { runId } : {}),
+      },
     },
-  });
+  );
   return data;
 };
 
@@ -821,10 +835,11 @@ export const getAgenticRepoFile = async ({
 }: GetAgenticRepoFileParams & {
   client: MeticulousClient;
 }): Promise<GetAgenticRepoFileResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: GetAgenticRepoFileResponse }
-  >("agentic-session-generation/repo/file", body, projectIdQuery(projectId));
+  const { data } = await client.post<GetAgenticRepoFileResponse>(
+    "agentic-session-generation/repo/file",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
@@ -863,10 +878,11 @@ export const searchAgenticRepoCode = async ({
 }: SearchAgenticRepoCodeParams & {
   client: MeticulousClient;
 }): Promise<SearchAgenticRepoCodeResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: SearchAgenticRepoCodeResponse }
-  >("agentic-session-generation/repo/search", body, projectIdQuery(projectId));
+  const { data } = await client.post<SearchAgenticRepoCodeResponse>(
+    "agentic-session-generation/repo/search",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
@@ -898,10 +914,7 @@ export const getAgenticFileChanges = async ({
 }: GetAgenticFileChangesParams & {
   client: MeticulousClient;
 }): Promise<GetAgenticFileChangesResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: GetAgenticFileChangesResponse }
-  >(
+  const { data } = await client.post<GetAgenticFileChangesResponse>(
     "agentic-session-generation/repo/file-changes",
     body,
     projectIdQuery(projectId),
@@ -941,10 +954,11 @@ export const listAgenticRepoTree = async ({
 }: ListAgenticRepoTreeParams & {
   client: MeticulousClient;
 }): Promise<ListAgenticRepoTreeResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: ListAgenticRepoTreeResponse }
-  >("agentic-session-generation/repo/ls-tree", body, projectIdQuery(projectId));
+  const { data } = await client.post<ListAgenticRepoTreeResponse>(
+    "agentic-session-generation/repo/ls-tree",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
@@ -968,10 +982,7 @@ export const listAgenticRepoSourceFiles = async ({
 }: ListAgenticRepoSourceFilesParams & {
   client: MeticulousClient;
 }): Promise<ListAgenticRepoSourceFilesResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: ListAgenticRepoSourceFilesResponse }
-  >(
+  const { data } = await client.post<ListAgenticRepoSourceFilesResponse>(
     "agentic-session-generation/repo/source-files",
     body,
     projectIdQuery(projectId),
@@ -1008,18 +1019,19 @@ export const acquireAgenticRepoLease = async ({
 }: AcquireAgenticRepoLeaseParams & {
   client: MeticulousClient;
 }): Promise<AcquireAgenticRepoLeaseResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: AcquireAgenticRepoLeaseResponse }
-  >("agentic-session-generation/repo/lease/acquire", body, {
-    ...projectIdQuery(projectId),
-    // The acquire endpoint blocks server-side up to ~6 min bringing a cold pod
-    // up (backend REPO_SERVER_ACQUIRE_REQUEST_TIMEOUT_MS). Wait that out in a
-    // single attempt — with a little headroom so the server's own response
-    // lands first — rather than aborting at the client's 60s default and
-    // retrying, which fires several redundant bring-ups.
-    timeout: 6.5 * 60 * 1000,
-  });
+  const { data } = await client.post<AcquireAgenticRepoLeaseResponse>(
+    "agentic-session-generation/repo/lease/acquire",
+    body,
+    {
+      ...projectIdQuery(projectId),
+      // The acquire endpoint blocks server-side up to ~6 min bringing a cold pod
+      // up (backend REPO_SERVER_ACQUIRE_REQUEST_TIMEOUT_MS). Wait that out in a
+      // single attempt — with a little headroom so the server's own response
+      // lands first — rather than aborting at the client's 60s default and
+      // retrying, which fires several redundant bring-ups.
+      timeout: 6.5 * 60 * 1000,
+    },
+  );
   return data;
 };
 
@@ -1045,15 +1057,15 @@ export const getAgenticRepoLeaseStatus = async ({
 }: GetAgenticRepoLeaseStatusParams & {
   client: MeticulousClient;
 }): Promise<AgenticRepoLeaseStatusResponse> => {
-  const { data } = await client.get<
-    unknown,
-    { data: AgenticRepoLeaseStatusResponse }
-  >("agentic-session-generation/repo/lease/status", {
-    params: {
-      ...(projectId ? { projectId } : {}),
-      ...(podInstanceId ? { podInstanceId } : {}),
+  const { data } = await client.get<AgenticRepoLeaseStatusResponse>(
+    "agentic-session-generation/repo/lease/status",
+    {
+      params: {
+        ...(projectId ? { projectId } : {}),
+        ...(podInstanceId ? { podInstanceId } : {}),
+      },
     },
-  });
+  );
   return data;
 };
 
@@ -1075,10 +1087,7 @@ export const heartbeatAgenticRepoLease = async ({
 }: HeartbeatAgenticRepoLeaseParams & {
   client: MeticulousClient;
 }): Promise<HeartbeatAgenticRepoLeaseResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: HeartbeatAgenticRepoLeaseResponse }
-  >(
+  const { data } = await client.post<HeartbeatAgenticRepoLeaseResponse>(
     "agentic-session-generation/repo/lease/heartbeat",
     body,
     projectIdQuery(projectId),
@@ -1103,10 +1112,7 @@ export const releaseAgenticRepoLease = async ({
 }: ReleaseAgenticRepoLeaseParams & {
   client: MeticulousClient;
 }): Promise<ReleaseAgenticRepoLeaseResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: ReleaseAgenticRepoLeaseResponse }
-  >(
+  const { data } = await client.post<ReleaseAgenticRepoLeaseResponse>(
     "agentic-session-generation/repo/lease/release",
     body,
     projectIdQuery(projectId),
@@ -1180,10 +1186,7 @@ export const searchRecordedRequests = async ({
 }: SearchRecordedRequestsParams & {
   client: MeticulousClient;
 }): Promise<SearchRecordedRequestsResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: SearchRecordedRequestsResponse }
-  >(
+  const { data } = await client.post<SearchRecordedRequestsResponse>(
     "agentic-session-generation/recorded-requests/search",
     body,
     projectIdQuery(projectId),
@@ -1232,10 +1235,7 @@ export const getRecordedRequest = async ({
 }: GetRecordedRequestParams & {
   client: MeticulousClient;
 }): Promise<GetRecordedRequestResponse> => {
-  const { data } = await client.get<
-    unknown,
-    { data: GetRecordedRequestResponse }
-  >(
+  const { data } = await client.get<GetRecordedRequestResponse>(
     `agentic-session-generation/recorded-requests/${encodeURIComponent(
       sessionId,
     )}/${encodeURIComponent(hash)}`,

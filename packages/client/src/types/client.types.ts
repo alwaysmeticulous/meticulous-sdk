@@ -13,26 +13,29 @@ export interface Response<T = any> {
   headers: Record<string, string>;
 }
 
+/**
+ * The response type parameter is the body type, not the envelope: every method
+ * resolves to `Response<T>`. Callers cannot substitute their own return type,
+ * which is what previously allowed a call site to assert the unwrapped body and
+ * silently receive the envelope at runtime.
+ */
 export interface MeticulousClient {
-  get<T = any, R = Response<T>>(
-    url: string,
-    config?: RequestConfig<any>,
-  ): Promise<R>;
+  get<T = any>(url: string, config?: RequestConfig<any>): Promise<Response<T>>;
 
-  post<T = any, R = Response<any>>(
+  post<T = any, D = any>(
     url: string,
-    data?: T,
+    data?: D,
     config?: RequestConfig<any>,
-  ): Promise<R>;
+  ): Promise<Response<T>>;
 
-  put<T = any, R = Response<any>>(
+  put<T = any, D = any>(
     url: string,
-    data?: T,
+    data?: D,
     config?: RequestConfig<any>,
-  ): Promise<R>;
+  ): Promise<Response<T>>;
 
-  delete<T = any, R = Response<T>>(
+  delete<T = any>(
     url: string,
     config?: RequestConfig<any>,
-  ): Promise<R>;
+  ): Promise<Response<T>>;
 }

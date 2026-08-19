@@ -196,10 +196,7 @@ export const requestAssetUpload = async ({
 }: RequestAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestAssetUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestAssetUploadResponse }
-  >(
+  const { data } = await client.post<RequestAssetUploadResponse>(
     "project-deployments/request-asset-upload",
     body,
     projectIdQuery(projectId),
@@ -214,10 +211,7 @@ export const requestMultipartAssetUpload = async ({
 }: RequestMultipartAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestMultipartAssetUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestMultipartAssetUploadResponse }
-  >(
+  const { data } = await client.post<RequestMultipartAssetUploadResponse>(
     "project-deployments/request-multipart-asset-upload",
     body,
     projectIdQuery(projectId),
@@ -232,10 +226,11 @@ export const requestUploadPart = async ({
 }: RequestUploadPartParams & {
   client: MeticulousClient;
 }): Promise<RequestUploadPartResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestUploadPartResponse }
-  >("project-deployments/request-upload-part", body, projectIdQuery(projectId));
+  const { data } = await client.post<RequestUploadPartResponse>(
+    "project-deployments/request-upload-part",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
@@ -246,10 +241,7 @@ export const requestGitDiffUpload = async ({
 }: RequestGitDiffUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestGitDiffUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestGitDiffUploadResponse }
-  >(
+  const { data } = await client.post<RequestGitDiffUploadResponse>(
     "project-deployments/request-git-diff-upload",
     body,
     projectIdQuery(projectId),
@@ -264,10 +256,11 @@ export const triggerRunOnDeployment = async ({
 }: CompleteAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: CompleteAssetUploadResponse }
-  >("project-deployments/trigger-run", body, projectIdQuery(projectId));
+  const { data } = await client.post<CompleteAssetUploadResponse>(
+    "project-deployments/trigger-run",
+    body,
+    projectIdQuery(projectId),
+  );
   return data;
 };
 
@@ -278,10 +271,7 @@ export const completeAssetUpload = async ({
 }: CompleteAssetUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: CompleteAssetUploadResponse }
-  >(
+  const { data } = await client.post<CompleteAssetUploadResponse>(
     "project-deployments/complete-asset-upload-and-maybe-trigger-run",
     body,
     projectIdQuery(projectId),
@@ -296,10 +286,7 @@ export const completeContainerUpload = async ({
 }: CompleteContainerUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteContainerUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: CompleteContainerUploadResponse }
-  >(
+  const { data } = await client.post<CompleteContainerUploadResponse>(
     "project-deployments/complete-container-upload",
     body,
     projectIdQuery(projectId),
@@ -401,10 +388,7 @@ export const createRunWithUploadedAssetChunks = async ({
 }: CreateRunWithUploadedAssetChunksParams & {
   client: MeticulousClient;
 }): Promise<CreateRunWithUploadedAssetChunksResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: CreateRunWithUploadedAssetChunksResponse }
-  >(
+  const { data } = await client.post<CreateRunWithUploadedAssetChunksResponse>(
     "project-deployments/create-run-with-uploaded-asset-chunks",
     body,
     projectIdQuery(projectId),
@@ -419,10 +403,7 @@ export const triggerRunWithUploadedAssetChunks = async ({
 }: TriggerRunWithUploadedAssetChunksParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: CompleteAssetUploadResponse }
-  >(
+  const { data } = await client.post<CompleteAssetUploadResponse>(
     "project-deployments/trigger-run-with-uploaded-asset-chunks",
     body,
     projectIdQuery(projectId),
@@ -437,10 +418,7 @@ export const requestAssetChunkUpload = async ({
 }: RequestAssetChunkUploadParams & {
   client: MeticulousClient;
 }): Promise<RequestAssetChunkUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: RequestAssetChunkUploadResponse }
-  >(
+  const { data } = await client.post<RequestAssetChunkUploadResponse>(
     "project-deployments/request-asset-chunk-upload",
     body,
     projectIdQuery(projectId),
@@ -455,10 +433,7 @@ export const completeAssetChunkUpload = async ({
 }: CompleteAssetChunkUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteAssetChunkUploadResponse> => {
-  const { data } = await client.post<
-    typeof body,
-    { data: CompleteAssetChunkUploadResponse }
-  >(
+  const { data } = await client.post<CompleteAssetChunkUploadResponse>(
     "project-deployments/complete-asset-chunk-upload",
     body,
     projectIdQuery(projectId),
@@ -473,10 +448,9 @@ export const downloadProjectDeployment = async ({
   client: MeticulousClient;
   deploymentUploadId: string;
 }): Promise<DownloadDeploymentResponse> => {
-  const { data } = await client.get<
-    unknown,
-    { data: DownloadDeploymentResponse }
-  >(`project-deployments/${deploymentUploadId}`);
+  const { data } = await client.get<DownloadDeploymentResponse>(
+    `project-deployments/${deploymentUploadId}`,
+  );
   return data;
 };
 
@@ -487,10 +461,9 @@ export const getContainerDeployment = async ({
   client: MeticulousClient;
   deploymentUploadId: string;
 }): Promise<GetContainerDeploymentResponse> => {
-  const { data } = await client.get<
-    unknown,
-    { data: GetContainerDeploymentResponse }
-  >(`project-deployments/container/${deploymentUploadId}`);
+  const { data } = await client.get<GetContainerDeploymentResponse>(
+    `project-deployments/container/${deploymentUploadId}`,
+  );
   return data;
 };
 
@@ -522,10 +495,11 @@ export const agentUploadAssetBuild = async ({
   client: MeticulousClient;
 }): Promise<AgentUploadBuildResponse> => {
   rejectLegacyProjectId(body);
-  const { data } = await client.post<
-    typeof body,
-    { data: AgentUploadBuildResponse }
-  >("agent/upload-build/asset", body, projectQuery(project));
+  const { data } = await client.post<AgentUploadBuildResponse>(
+    "agent/upload-build/asset",
+    body,
+    projectQuery(project),
+  );
   return data;
 };
 
@@ -545,10 +519,11 @@ export const agentUploadContainerBuild = async ({
   client: MeticulousClient;
 }): Promise<AgentUploadBuildResponse> => {
   rejectLegacyProjectId(body);
-  const { data } = await client.post<
-    typeof body,
-    { data: AgentUploadBuildResponse }
-  >("agent/upload-build/container", body, projectQuery(project));
+  const { data } = await client.post<AgentUploadBuildResponse>(
+    "agent/upload-build/container",
+    body,
+    projectQuery(project),
+  );
   return data;
 };
 
@@ -590,10 +565,11 @@ export const agentUploadGitDiffBuild = async ({
   client: MeticulousClient;
 }): Promise<AgentUploadGitDiffBuildResponse> => {
   rejectLegacyProjectId(body);
-  const { data } = await client.post<
-    typeof body,
-    { data: AgentUploadGitDiffBuildResponse }
-  >("agent/upload-build/git-diff", body, projectQuery(project));
+  const { data } = await client.post<AgentUploadGitDiffBuildResponse>(
+    "agent/upload-build/git-diff",
+    body,
+    projectQuery(project),
+  );
   return data;
 };
 
@@ -643,9 +619,10 @@ export const agentTriggerTestRun = async ({
   client: MeticulousClient;
 }): Promise<AgentTriggerTestRunResponse> => {
   rejectLegacyProjectId(body);
-  const { data } = await client.post<
-    typeof body,
-    { data: AgentTriggerTestRunResponse }
-  >("agent/trigger-test-run", body, projectQuery(project));
+  const { data } = await client.post<AgentTriggerTestRunResponse>(
+    "agent/trigger-test-run",
+    body,
+    projectQuery(project),
+  );
   return data;
 };

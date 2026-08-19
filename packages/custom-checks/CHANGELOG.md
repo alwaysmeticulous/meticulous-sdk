@@ -1,5 +1,17 @@
 # @alwaysmeticulous/custom-checks
 
+## 2.328.0
+
+### Minor Changes
+
+- [#12398](https://github.com/alwaysmeticulous/meticulous/pull/12398) [`1d370fb`](https://github.com/alwaysmeticulous/meticulous/commit/1d370fb12a08042983f05d4d6d4679815d826a5d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Export `TestRun` from the package index. `WaitForTestRunResult.testRun` (returned by `findTestRunForCustomChecks` / `findTestRunByCommitForCustomChecks`) is typed as `TestRun`, but the type itself wasn't re-exported, so a consumer depending only on `@alwaysmeticulous/custom-checks` couldn't name it without an undeclared dependency on `@alwaysmeticulous/api`.
+
+### Patch Changes
+
+- Updated dependencies [[`bc8ff00`](https://github.com/alwaysmeticulous/meticulous/commit/bc8ff00296dbee5ee25386a1b9b7b1252dfca8b9), [`4fb60b8`](https://github.com/alwaysmeticulous/meticulous/commit/4fb60b8d04fa0f122609efe3ab99a4462ca83f27), [`6a97671`](https://github.com/alwaysmeticulous/meticulous/commit/6a976713186d6592cdc1867d6451328cb51870cd), [`77b0b49`](https://github.com/alwaysmeticulous/meticulous/commit/77b0b49662720e5a7fb459cb73e306915b7da6b5)]:
+  - @alwaysmeticulous/client@2.328.0
+  - @alwaysmeticulous/downloading-helpers@2.328.0
+
 ## 2.327.0
 
 ### Patch Changes

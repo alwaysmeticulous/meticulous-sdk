@@ -7,7 +7,7 @@ export const getPrDiff = async ({
   client: MeticulousClient;
   testRunId: string;
 }): Promise<{ content: string }> => {
-  const { data } = await client.post<unknown, { data: { content: string } }>(
+  const { data } = await client.post<{ content: string }>(
     "/source-code/pr-diff",
     { testRunId },
   );
@@ -21,7 +21,7 @@ export const getPrDiffForTestRun = async ({
   client: MeticulousClient;
   testRunId: string;
 }): Promise<{ content: string }> => {
-  const { data } = await client.get<unknown, { data: { content: string } }>(
+  const { data } = await client.get<{ content: string }>(
     `/test-runs/${testRunId}/pr-diff`,
   );
   return data;
@@ -34,7 +34,7 @@ export const getPrDescriptionForTestRun = async ({
   client: MeticulousClient;
   testRunId: string;
 }): Promise<{ content: string }> => {
-  const { data } = await client.get<unknown, { data: { content: string } }>(
+  const { data } = await client.get<{ content: string }>(
     `/test-runs/${testRunId}/pr-description`,
   );
   return data;

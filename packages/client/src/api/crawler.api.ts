@@ -39,7 +39,7 @@ export const createCrawlerTestRun = async ({
   projectId?: string | null | undefined;
 }): Promise<CrawlerTestRun> => {
   const { data } = await client
-    .post<unknown, { data: CrawlerTestRun }>("crawler/test-runs", {
+    .post<CrawlerTestRun>("crawler/test-runs", {
       sessionIds,
       appUrl,
       ...(projectId ? { projectId } : {}),

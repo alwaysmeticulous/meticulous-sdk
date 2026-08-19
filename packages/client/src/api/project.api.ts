@@ -34,7 +34,7 @@ export const getRepoUrl = async ({
   client,
 }: GetRepoUrlOptions): Promise<RepoUrlResponse> => {
   const { data } = await client
-    .get<unknown, { data: RepoUrlResponse }>("projects/repo-url")
+    .get<RepoUrlResponse>("projects/repo-url")
     .catch((error) => {
       if (isFetchError(error)) {
         const errorMessage = error.response?.data?.message;
@@ -99,7 +99,7 @@ export const getSourceArchiveUrl = async ({
   const path = `projects/source-archive-url?${params.toString()}`;
 
   const { data } = await client
-    .get<unknown, { data: SourceArchiveUrlResponse }>(path)
+    .get<SourceArchiveUrlResponse>(path)
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
@@ -132,7 +132,7 @@ export const requestSourceCodeUploadUrl = async ({
   size,
 }: RequestSourceCodeUploadUrlParams): Promise<RequestSourceCodeUploadUrlResponse> => {
   const { data } = await client
-    .post<unknown, { data: RequestSourceCodeUploadUrlResponse }>(
+    .post<RequestSourceCodeUploadUrlResponse>(
       "projects/source-code-upload-url",
       { commitSha, ...(size != null ? { size } : {}) },
     )

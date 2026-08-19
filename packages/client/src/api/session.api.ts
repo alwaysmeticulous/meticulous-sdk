@@ -54,9 +54,7 @@ export const getBackendReplayEnv = async ({
   sessionId: string;
 }): Promise<BackendReplayEnvVariable[]> => {
   const { data } = await client
-    .get<unknown, { data: BackendReplayEnvVariable[] }>(
-      `sessions/${sessionId}/backend-replay-env`,
-    )
+    .get<BackendReplayEnvVariable[]>(`sessions/${sessionId}/backend-replay-env`)
     .catch((error) => {
       if (isFetchError(error) && error.response?.status === 404) {
         return { data: [] };

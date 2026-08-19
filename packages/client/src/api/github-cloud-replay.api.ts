@@ -18,12 +18,9 @@ export const getGitHubCloudReplayBaseTestRun = async ({
   headCommitSha,
 }: GetBaseTestRunOptions): Promise<GitHubBaseTestRunResponse> => {
   const { data } = await client
-    .get<unknown, { data: GitHubBaseTestRunResponse }>(
-      "github-cloud-replay/base-test-run",
-      {
-        params: { headCommitSha },
-      },
-    )
+    .get<GitHubBaseTestRunResponse>("github-cloud-replay/base-test-run", {
+      params: { headCommitSha },
+    })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
