@@ -1,5 +1,14 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.330.0
+
+### Minor Changes
+
+- [#12526](https://github.com/alwaysmeticulous/meticulous/pull/12526) [`d2368cd`](https://github.com/alwaysmeticulous/meticulous/commit/d2368cdadc9aab6f7d01665b9a8926628c74855e) Thanks [@dennysem](https://github.com/dennysem)! - Add `stopRecording()` to the public `window.Meticulous.record` API, so apps that install the recorder via a script tag can stop recording part way through a session without reaching into the internal `window.__meticulous` object.
+
+- [#12481](https://github.com/alwaysmeticulous/meticulous/pull/12481) [`95dbfa2`](https://github.com/alwaysmeticulous/meticulous/commit/95dbfa2abc883e5527dc1167d0a284b3bd1ae8dd) Thanks [@calebgcc](https://github.com/calebgcc)! - Add ordered record-time backend span redaction hooks to `BackendRecorderConfig` and document
+  their use through the backend recorder launcher.
+
 ## 2.329.0
 
 ### Patch Changes

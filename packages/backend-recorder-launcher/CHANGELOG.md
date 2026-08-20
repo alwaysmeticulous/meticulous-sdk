@@ -1,5 +1,16 @@
 # @alwaysmeticulous/backend-recorder-launcher
 
+## 2.330.0
+
+### Patch Changes
+
+- [#12481](https://github.com/alwaysmeticulous/meticulous/pull/12481) [`95dbfa2`](https://github.com/alwaysmeticulous/meticulous/commit/95dbfa2abc883e5527dc1167d0a284b3bd1ae8dd) Thanks [@calebgcc](https://github.com/calebgcc)! - Add ordered record-time backend span redaction hooks to `BackendRecorderConfig` and document
+  their use through the backend recorder launcher.
+- Updated dependencies [[`d2368cd`](https://github.com/alwaysmeticulous/meticulous/commit/d2368cdadc9aab6f7d01665b9a8926628c74855e), [`95dbfa2`](https://github.com/alwaysmeticulous/meticulous/commit/95dbfa2abc883e5527dc1167d0a284b3bd1ae8dd)]:
+  - @alwaysmeticulous/sdk-bundles-api@2.330.0
+  - @alwaysmeticulous/downloading-helpers@2.330.0
+  - @alwaysmeticulous/common@2.326.0
+
 ## 2.329.0
 
 ### Patch Changes

@@ -237,7 +237,9 @@ export interface AgenticRunResultStep {
   beforeScreenshotRouteGroup?: string;
   /**
    * Worker-internal selector choosing the per-step highlight for an explicit
-   * before screenshot. Removed before the result blob is persisted.
+   * before screenshot. Use "none" to explicitly leave a step unhighlighted
+   * when the screenshot measured multiple selectors. Removed before the result
+   * blob is persisted.
    */
   beforeHighlight?: string;
   /** Screenshot immediately after the last linked browser action. */
@@ -259,7 +261,9 @@ export interface AgenticRunResultStep {
   screenshotRouteGroup?: string;
   /**
    * Worker-internal selector choosing the per-step highlight for an explicit
-   * result screenshot. Removed before the result blob is persisted.
+   * result screenshot. Use "none" to explicitly leave a step unhighlighted
+   * when the screenshot measured multiple selectors. Removed before the result
+   * blob is persisted.
    */
   highlight?: string;
   /**
@@ -557,6 +561,35 @@ export interface AgenticRunProgressCase {
   sessionIds?: string[];
   outcome?: AgenticRunResultCaseOutcome;
 }
+
+export interface ReportAgenticRunFailureParams extends ProjectIdentifier {
+  /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
+  agenticRunId: string;
+  /** The error that killed the run. */
+  errorMessage: string;
+}
+
+/**
+ * The worker's dying report: moves the run to a terminal `failed` status with
+ * the error that killed it, so a crash surfaces immediately instead of the run
+ * sitting `scheduled`/`running` until the backend's staleness reaper times it
+ * out. An unmatched or already-terminal report is still a 200 (`recorded:
+ * false`) — the worker is about to exit and can do nothing with an error.
+ */
+export const reportAgenticRunFailure = async ({
+  client,
+  projectId,
+  ...body
+}: ReportAgenticRunFailureParams & {
+  client: MeticulousClient;
+}): Promise<ReportAgenticRunResultResponse> => {
+  const { data } = await client.post<ReportAgenticRunResultResponse>(
+    "agentic-session-generation/report-failure",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
 
 /**
  * The throttled, last-value-wins JSON the worker overwrites at

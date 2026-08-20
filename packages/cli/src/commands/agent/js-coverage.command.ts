@@ -20,12 +20,12 @@ import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
+import { errorResponseBody } from "../../utils/error-response-body";
 import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
 import { appendProjectSelectionHint } from "../../utils/project-selection-hint";
 import {
   assertTestRunComplete,
   ensureTestRunFinished,
-  isSessionPool,
   isTestRunComplete,
   isTestRunPartial,
   resolveTestRunForCommitOrThrow,
@@ -152,38 +152,35 @@ const handler = async (options: Options): Promise<void> => {
     // extras to union in directly; otherwise resolve a single primary from
     // --testRunId, else --commitSha, else the local checkout's HEAD, and take
     // extras (if any) from --headPlusTestRunIds. Coverage exists once the run
-    // has stopped running — a finished verdict, or a base run that keeps
-    // accumulating it — so block until it does (default) or, with
+    // has finished, so block until it does (default) or, with
     // --dontWaitForTestRunToComplete, report the in-progress run and stop.
+    //
+    // Which run is "the primary" is resolved the same way regardless of whether
+    // it turns out to be a base run: whether such a run's coverage describes its
+    // commit depends on how much of its selected set has replayed, which only
+    // the backend knows, so it decides (see `fetchTestRunCoverage`) and a base
+    // run reached via any of these three paths is treated identically.
     let resolvedTestRunId: string;
     let status;
-    let isSessionPoolRun: boolean;
     let rawUnionIds: string[];
-    // No eager/non-eager distinction for either getTestRun branch below: a
-    // session-pool run has no PR-diff to scope prDiffOnly coverage to
-    // regardless of eagerness (see isBaseOrAnySessionPoolRun on the backend).
     if (testRunIds != null) {
       const ids = parseTestRunIds(testRunIds);
       resolvedTestRunId = ids[0];
       rawUnionIds = ids.slice(1);
-      const run = await getTestRun({ client, testRunId: resolvedTestRunId });
-      status = run.status;
-      isSessionPoolRun = isSessionPool(run.configData);
+      status = (await getTestRun({ client, testRunId: resolvedTestRunId }))
+        .status;
     } else if (testRunId != null) {
       resolvedTestRunId = testRunId;
-      const run = await getTestRun({ client, testRunId });
-      status = run.status;
-      isSessionPoolRun = isSessionPool(run.configData);
+      status = (await getTestRun({ client, testRunId })).status;
       rawUnionIds = [];
     } else {
-      const run = await resolveTestRunForCommitOrThrow(
+      const resolved = await resolveTestRunForCommitOrThrow(
         client,
         commitSha,
         project,
       );
-      resolvedTestRunId = run.testRunId;
-      status = run.status;
-      isSessionPoolRun = run.isSessionPoolRun;
+      resolvedTestRunId = resolved.testRunId;
+      status = resolved.status;
       rawUnionIds = parseHeadPlusTestRunIds(headPlusTestRunIds);
     }
     const printEmptyResult = (): void => {
@@ -207,21 +204,7 @@ const handler = async (options: Options): Promise<void> => {
       printEmptyResult();
       return;
     }
-    // Base runs (Partial) do have coverage and are accepted; fatal failures
-    // already threw.
-    assertTestRunCoverageAvailable(resolvedTestRunId, finishedStatus);
-    assertPrDiffOnlyCompatible(resolvedTestRunId, finishedStatus, options, {
-      isSessionPoolRun,
-    });
-    // Tracked so the "coverage grows over time" caveat can be attached to the
-    // results, once there are some — a base run with nothing recorded yet
-    // errors instead. A session-pool base can settle into Success/Failure
-    // without ever becoming Partial, so isSessionPoolRun is checked
-    // independently of status too (mirrors assertPrDiffOnlyCompatible above).
-    const baseRunIds =
-      isTestRunPartial(finishedStatus) || isSessionPoolRun
-        ? [resolvedTestRunId]
-        : [];
+    assertTestRunCoverageResolvable(resolvedTestRunId, finishedStatus);
 
     // The extra runs (from --headPlusTestRunIds or the tail of --testRunIds)
     // don't change how the primary run above was resolved — they just add more
@@ -242,10 +225,7 @@ const handler = async (options: Options): Promise<void> => {
         printEmptyResult();
         return;
       }
-      assertTestRunCoverageAvailable(unionTestRunId, unionFinishedStatus);
-      if (isTestRunPartial(unionFinishedStatus)) {
-        baseRunIds.push(unionTestRunId);
-      }
+      assertTestRunCoverageResolvable(unionTestRunId, unionFinishedStatus);
     }
 
     await printTestRunCoverage(
@@ -255,28 +235,32 @@ const handler = async (options: Options): Promise<void> => {
       columns,
       json,
       unionTestRunIds,
-      baseRunIds,
     );
   }
 };
 
 /**
- * Whether a run can serve coverage. `Partial` base runs can: coverage is
- * recorded per replay as sessions execute, so a session pool that has replayed
- * anything has coverage even though it never reaches a verdict — the backend
- * serves it, and the webapp and Relevant Session Execution both read it.
+ * Whether a run has produced the artifacts a replay's coverage can be resolved
+ * against (its clone-and-parse source-map→repo-path dictionary). A `Partial`
+ * base run has: those artifacts are produced up front, so it can anchor a
+ * replay even though its own coverage total isn't worth reporting on its own
+ * (see {@link assertTestRunCoverageResolvable}).
  */
-export const canServeCoverage = (status: TestRunStatus): boolean =>
+export const canAnchorReplayCoverage = (status: TestRunStatus): boolean =>
   isTestRunComplete(status) || isTestRunPartial(status);
 
 /**
- * Asserts a resolved run can serve coverage, throwing for a fatal or unfinished
- * one and accepting a `Partial` base run. Throw-only: the base run is explained
- * by {@link logBaseRunCoverageNotice} once coverage has actually been returned,
- * since a run with nothing recorded yet fails instead and shouldn't first be
- * told its coverage "grows over time".
+ * Asserts a resolved run's own coverage is resolvable at all, throwing for a
+ * fatal or unfinished one. `Partial` is deliberately not rejected here — a
+ * base run session pool sits in `Partial` indefinitely between requests, which
+ * is not "unfinished" the way an in-progress run is, and whether its coverage
+ * is complete enough to serve depends on how much of its selected set has
+ * actually replayed, which only the backend knows. So the request is sent
+ * through, and the backend refuses it with `incomplete-base-run` (see
+ * {@link fetchTestRunCoverage}) if it isn't ready — the CLI doesn't need to
+ * know "is this a base run" up front to decide whether to even send it.
  */
-export const assertTestRunCoverageAvailable = (
+export const assertTestRunCoverageResolvable = (
   testRunId: string,
   status: TestRunStatus,
 ): void => {
@@ -284,22 +268,6 @@ export const assertTestRunCoverageAvailable = (
     return;
   }
   assertTestRunComplete(testRunId, status, { resultName: "coverage" });
-};
-
-/**
- * A base run keeps executing sessions on demand, so its coverage is a moving
- * total rather than a fixed one — say so rather than letting the numbers read
- * as final. Emitted per base run involved (the primary and/or any unioned
- * in). Status isn't named here: a `Partial` run is still accumulating
- * sessions, but a settled session-pool base (status Success/Failure) can
- * reach here too, so the wording has to hold for either.
- */
-export const logBaseRunCoverageNotice = (baseRunIds: string[]): void => {
-  for (const testRunId of baseRunIds) {
-    logNotice(
-      `Test run ${testRunId} is a base run: its sessions are executed on demand, so its coverage reflects the sessions replayed so far and grows over time.`,
-    );
-  }
 };
 
 /**
@@ -323,42 +291,23 @@ const assertNoSelfUnion = (
 };
 
 /**
- * A base run has no PR, so its `coverage.pr.json` is written empty — scoping
- * coverage to it would answer "nothing covered" to a question that doesn't
- * apply to this kind of run. Rejected client-side to save the round trip; the
- * backend enforces the same rule for the MCP surface.
+ * The backend's response-body `reason`s marking a routine refusal to serve a
+ * base run's coverage, rather than a fault — matched instead of the prose (same
+ * convention as `isAmbiguousTestRunError`) so a genuinely missing artifact on a
+ * completed run stays an unexpected error. Kept in step with
+ * `packages/webapp-backend/src/replay/test-run/utils/base-run.utils.ts`.
  *
- * A session-pool base can settle into Success/Failure without ever becoming
- * Partial, and it still has no PR once settled, so `isSessionPoolRun` is
- * checked independently of status (mirrors the backend's `getTestRunJsCoverageV2`).
+ * All four are actionable by the caller, and the backend's message says how
+ * (replay the rest with `complete-base-run`, ask for project coverage instead,
+ * drop `prDiffOnly`, or complete the specific run --latestForProject itself
+ * resolved to), so it is surfaced as-is.
  */
-export const assertPrDiffOnlyCompatible = (
-  testRunId: string,
-  status: TestRunStatus,
-  { prDiffOnly }: Pick<Options, "prDiffOnly">,
-  { isSessionPoolRun }: { isSessionPoolRun: boolean },
-): void => {
-  if (prDiffOnly && (isSessionPoolRun || isTestRunPartial(status))) {
-    throw new CliUserError(BASE_RUN_NO_PR_DIFF_MESSAGE(testRunId));
-  }
-};
-
-/**
- * The base-run coverage messages, kept in step with the backend's
- * (`packages/webapp-backend/src/agent/agent.base-run.utils.ts`) so the CLI and
- * MCP surfaces explain a base run the same way, whichever side rejects first —
- * differing only in naming a `--flag` rather than an MCP argument.
- */
-const BASE_RUN_NO_PR_DIFF_MESSAGE = (testRunId: string): string =>
-  `Test run ${testRunId} is a base run other test runs compare against, so it has no PR diff to scope coverage to. Drop --prDiffOnly to get its whole-run coverage.`;
-
-/**
- * The backend's response-body `reason` marking an absent artifact as the
- * expected state for a base run, rather than a fault. Matched instead of the
- * prose (same convention as `isAmbiguousTestRunError`) so a genuinely missing
- * artifact on a completed run stays an unexpected error.
- */
-const BASE_RUN_NO_COVERAGE_REASON = "base-run-no-coverage";
+const BASE_RUN_COVERAGE_REJECTION_REASONS = new Set([
+  "incomplete-base-run",
+  "incomplete-base-run-in-union",
+  "base-run-no-pr-diff",
+  "incomplete-project-coverage",
+]);
 
 export const assertLatestForProjectCompatible = (options: Options): void => {
   if (!options.latestForProject) {
@@ -517,11 +466,12 @@ const printReplayCoverage = async (
         undefined,
         project,
       );
-      // Only retry against a run whose coverage we'd serve anyway (a verdict, or
-      // a base run) — an unfinished or failed one has no usable coverage. A
+      // Only retry against a run that can anchor the replay's repo paths (a
+      // verdict, or a base run) — an unfinished or failed one can't. A
       // default-branch checkout resolves to a base run, so excluding those here
-      // would skip disambiguation for the most common local case.
-      if (fallback != null && canServeCoverage(fallback.status)) {
+      // would skip disambiguation for the most common local case; it's the
+      // replay's coverage being served, not the anchoring run's.
+      if (fallback != null && canAnchorReplayCoverage(fallback.status)) {
         try {
           const result = await getReplayJsCoverage(
             client,
@@ -610,7 +560,11 @@ export const printProjectCoverage = async (
     );
     return;
   }
-  logNotice(`Resolved project coverage to test run ${result.testRunId}`);
+  // May not be your current commit — --latestForProject always resolves the
+  // project's own latest successful run, not any particular one.
+  logNotice(
+    `Resolved project coverage to test run ${result.testRunId}${result.commitSha != null ? ` (commit ${result.commitSha})` : ""}`,
+  );
   logNotice(`${result.files.length} file(s)`);
 };
 
@@ -640,7 +594,6 @@ const printTestRunCoverage = async (
   columns: CoverageColumn[],
   json: boolean,
   unionTestRunIds: string[],
-  baseRunIds: string[],
 ): Promise<void> => {
   // Send the resolved columns as explicit flags (the default-to-executed rule
   // lives here in `determineColumns`, not the backend), so the backend never
@@ -659,23 +612,21 @@ const printTestRunCoverage = async (
 
   printCoverageFiles(result.files, columns, json);
 
-  // Summary on stderr regardless of --json (which only changes stdout). The
-  // base-run caveat comes first, so the count below is read in its light.
-  logBaseRunCoverageNotice(baseRunIds);
+  // Summary on stderr regardless of --json (which only changes stdout).
   logNotice(`${result.files.length} file(s)`);
 };
 
 /**
- * A base run whose sessions nothing has replayed yet has no coverage artifact,
- * which the backend reports as a 404 carrying
- * {@link BASE_RUN_NO_COVERAGE_REASON}. That's an expected outcome, not a bug, so
- * it's re-thrown as a `CliUserError` — otherwise it reaches the generic error
- * path, which pairs it with the unhelpful `--help` tip and reports it to Sentry.
+ * The backend declines some coverage requests as routine rather than a fault —
+ * a base run that hasn't replayed its whole selected set (as the primary run or
+ * among `unionTestRunIds`), or a base run's `prDiffOnly` (it has no PR) — each
+ * carrying one of {@link BASE_RUN_COVERAGE_REJECTION_REASONS}. Re-thrown as a
+ * `CliUserError`; otherwise it reaches the generic error path, which pairs it
+ * with the unhelpful `--help` tip and reports it to Sentry.
  *
- * Keyed on that reason rather than "the request involved a base run": a union
- * can mix a base run with completed ones, and a completed run's missing
- * artifact is a real fault that must keep reaching Sentry. The backend's message
- * names the specific run, so it's surfaced as-is.
+ * Keyed on the reason rather than the response code: a genuinely missing
+ * artifact on a completed run is a real fault that must keep reaching Sentry.
+ * The backend's message names the specific run, so it's surfaced as-is.
  */
 const fetchTestRunCoverage = async (
   client: MeticulousClient,
@@ -686,21 +637,16 @@ const fetchTestRunCoverage = async (
     return await getTestRunJsCoverage(client, testRunId, requestOptions);
   } catch (error) {
     const body = errorResponseBody(error);
-    if (body?.reason === BASE_RUN_NO_COVERAGE_REASON && body.message != null) {
+    if (
+      body?.reason != null &&
+      BASE_RUN_COVERAGE_REJECTION_REASONS.has(body.reason) &&
+      body.message != null
+    ) {
       throw new CliUserError(body.message);
     }
     throw error;
   }
 };
-
-const errorResponseBody = (
-  error: unknown,
-): { reason?: string; message?: string } | undefined =>
-  isFetchError(error)
-    ? (error.response?.data as
-        | { reason?: string; message?: string }
-        | undefined)
-    : undefined;
 
 export const isAmbiguousTestRunError = (error: unknown): boolean =>
   isFetchError(error) &&
@@ -710,7 +656,7 @@ export const isAmbiguousTestRunError = (error: unknown): boolean =>
 export const jsCoverageCommand: CommandModule<unknown, Options> = {
   command: "js-coverage",
   describe:
-    "Get the list of per-file JavaScript coverage for a whole test run, a project's preferred latest successful test run, or a single replay (or a single screenshot of it). Outputs a TSV table with columns repoFilePath plus the requested additional columns (default if none: executedRanges).",
+    "Get the list of per-file JavaScript coverage for a whole test run, a project's preferred latest successful test run, or a single replay (or a single screenshot of it). Outputs a TSV table with columns repoFilePath plus the requested additional columns (default if none: executedRanges). A resolved run that turns out to be a base run — the usual outcome on the default branch — replays its selected sessions on demand, so while any of them are still unreplayed its coverage understates the commit and this is refused, naming how many are missing: either replay the rest with 'meticulous agent complete-base-run' and ask again, or pass --latestForProject for the project's overall coverage. This applies however the run was named (--commitSha/HEAD, --testRunId, or the primary of --testRunIds); a base run that has replayed its whole selected set is served normally.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     testRunId: {
@@ -756,7 +702,7 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "Comma-separated additional test run IDs to union with the run resolved via --commitSha, or the current git HEAD by default (cannot be combined with --testRunId — use --testRunIds instead when you already have an explicit primary ID). " +
-        "Useful for checking combined coverage of the base (resolved from --commitSha or the current git HEAD) with additional custom-session test runs, each covering a subset of sessions. No run may still be running, and all must belong to the same project and have executed the exact same commit as the run resolved above " +
+        "Useful for checking combined coverage of the resolved run with additional custom-session test runs, each covering a subset of sessions. No run may still be running, nor be a base run with sessions still unreplayed (complete-base-run first), and all must belong to the same project and have executed the exact same commit as the run resolved above " +
         "(a PR's merge commit is recomputed whenever its base branch moves, so a run triggered against a since-advanced base is rejected). Whole-test-run coverage only.",
     },
     testRunIds: {
@@ -780,7 +726,7 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       boolean: true,
       default: false,
       description:
-        "Output only files changed in the PR diff (from coverage.pr.json). Whole-test-run coverage only, and not for a base run, which has no PR.",
+        "Output only files changed in the PR diff (from coverage.pr.json). Whole-test-run coverage only, and not for a base run, whether or not it has replayed its whole selected set, since it has no PR to scope a diff to.",
     },
     includeExecutedRanges: {
       boolean: true,

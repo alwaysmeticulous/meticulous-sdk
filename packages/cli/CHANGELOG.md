@@ -1,5 +1,23 @@
 # @alwaysmeticulous/cli
 
+## 2.330.0
+
+### Minor Changes
+
+- [#12368](https://github.com/alwaysmeticulous/meticulous/pull/12368) [`4300670`](https://github.com/alwaysmeticulous/meticulous/commit/43006703e6c4da1cc646bfe2cd6e501882f36daf) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - New `agent complete-base-run` command (and `complete_base_run` MCP tool): replays the selected sessions a base run has not run yet, to complete its coverage information. A base run replays sessions on demand for whichever PRs compare against it, so it can sit at any fraction of the project's selected set. `agent js-coverage` now refuses such a run, saying how many sessions are missing, instead of reporting an understated total — complete the run, or pass `--latestForProject` for the project's overall coverage.
+
+### Patch Changes
+
+- Updated dependencies [[`4300670`](https://github.com/alwaysmeticulous/meticulous/commit/43006703e6c4da1cc646bfe2cd6e501882f36daf), [`d2368cd`](https://github.com/alwaysmeticulous/meticulous/commit/d2368cdadc9aab6f7d01665b9a8926628c74855e), [`95dbfa2`](https://github.com/alwaysmeticulous/meticulous/commit/95dbfa2abc883e5527dc1167d0a284b3bd1ae8dd), [`f3f3a5c`](https://github.com/alwaysmeticulous/meticulous/commit/f3f3a5caac23c71252b66df2898fd889fc549d70)]:
+  - @alwaysmeticulous/client@2.330.0
+  - @alwaysmeticulous/sdk-bundles-api@2.330.0
+  - @alwaysmeticulous/debug-workspace@2.330.0
+  - @alwaysmeticulous/downloading-helpers@2.330.0
+  - @alwaysmeticulous/remote-replay-launcher@2.330.0
+  - @alwaysmeticulous/common@2.326.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.330.0
+
 ## 2.329.0
 
 ### Patch Changes

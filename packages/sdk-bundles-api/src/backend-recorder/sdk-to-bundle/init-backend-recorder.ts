@@ -1,3 +1,9 @@
+/**
+ * Transforms one redactable string from a completed backend span before that span is saved.
+ * Hooks run in array order and must return a string.
+ */
+export type BackendRecorderSpanRedactionHook = (value: string) => string;
+
 export interface BackendRecorderConfig {
   /** Enable/disable the recorder. Defaults to `true`. */
   enabled?: boolean;
@@ -11,4 +17,11 @@ export interface BackendRecorderConfig {
   localOutputDir?: string;
   /** How often to flush spans, in milliseconds. */
   flushIntervalMs?: number;
+  /**
+   * Record-mode hooks applied in order to every redactable string in a span before it is saved.
+   * Span and trace IDs, timestamps, technology routing, frontend session IDs, and attribute names
+   * are not transformed. If a hook throws or returns a non-string, recording is abandoned rather
+   * than saving the span without redaction.
+   */
+  spanRedactionHooks?: readonly BackendRecorderSpanRedactionHook[];
 }

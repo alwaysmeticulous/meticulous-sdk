@@ -18,8 +18,16 @@ import { appendProjectSelectionHint } from "./project-selection-hint";
 
 const POLL_INTERVAL_MS = 10_000;
 
-/** Give up waiting for a run after this long, rather than polling forever. */
-const POLL_TIMEOUT_MS = 10 * 60_000;
+/**
+ * Give up waiting for a run after this long, rather than polling forever.
+ * Exported for `complete-base-run`, which reuses the same value for its own
+ * poll loop's stall-detection window — both are answering the same underlying
+ * question (how long to tolerate a poll loop with no new terminal
+ * information before concluding it isn't going to resolve soon), just against
+ * different signals (this file: the run's own status; `complete-base-run`:
+ * its unexecuted-session count).
+ */
+export const POLL_TIMEOUT_MS = 10 * 60_000;
 
 /**
  * Logs which commit a by-commit test-run lookup resolved to, with consistent
@@ -79,19 +87,17 @@ export const isTestRunFailed = (status: TestRunStatus): boolean =>
   FAILED_TEST_RUN_STATUS.includes(status);
 
 /**
- * Whether the run is a session-pool base: it executes sessions on demand for
- * other PRs (lazy session execution) rather than representing a specific
- * change, and never finishes on its own — it stays `Partial` until some future
- * PR requests more of its sessions. So it isn't a proper test run with a
- * comparable set of diffs.
+ * Whether the run is a session-pool base still waiting to execute: it replays
+ * sessions for other PRs (lazy session execution) rather than representing a
+ * specific change, and doesn't finish on its own — it stays `Partial` until some
+ * PR requests sessions on it. So it isn't a proper test run with a comparable
+ * set of diffs.
  *
- * Status alone isn't a complete test — a session-pool base can settle into
- * `Success`/`Failure` without ever becoming `Partial` (it only stays `Partial`
- * while its latest chunk under-schedules sessions). Callers that need to
- * catch a base run in general should also check `isSessionPoolRun` (from
- * {@link ResolvedTestRun} or `getTestRun`'s `configData.arguments`),
- * mirroring the backend's `isSessionPoolRun || isBaseRun(status)` in
- * `agent-api.service.ts`.
+ * Narrower than the backend's notion of a base run, which also covers a pool
+ * that has since settled into a verdict over whatever subset was requested.
+ * Neither says whether the run has replayed its whole selected set, which is
+ * what its coverage being meaningful depends on — only the backend can answer
+ * that.
  */
 export const isTestRunPartial = (status: TestRunStatus): boolean =>
   status === "Partial";
@@ -227,6 +233,14 @@ export const tryResolveTestRunForCommit = async (
  * Throws a `CliUserError` if the run doesn't reach a terminal status within
  * `POLL_TIMEOUT_MS`, or — unless `throwOnFailure: false` — if it finishes
  * unsuccessfully (`ExecutionError`/`Aborted`). Returns the final status.
+ *
+ * `Partial` counts as terminal: a base run (session pool) sits there
+ * indefinitely between the PRs that request sessions on it, so waiting for it
+ * to leave would be waiting on nothing, and it can equally settle into
+ * `Success`/`Failure` without ever leaving `Partial` behind. Neither this nor
+ * any other status-only check can tell whether such a run has replayed its
+ * whole selected set — see `complete-base-run`, which polls that directly
+ * rather than through this function.
  */
 export const awaitTestRunCompletion = async (
   client: MeticulousClient,

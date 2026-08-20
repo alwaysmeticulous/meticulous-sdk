@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CaptureBuffer } from "../capture-buffer";
 import type { RequestContext } from "../context";
 import type { SidecarTransport } from "../sidecar-transport";
-import { FIXED_DRAWS_BEFORE_PRNG, UNATTRIBUTED_DRAW } from "../virtual-random";
 
 /**
  * Unit test for replay randomness virtualization, run in Node — which supplies
@@ -84,8 +83,7 @@ afterEach(() => {
   vi.resetModules();
 });
 
-// One source line for every Math.random, so they share a call site. The first
-// FIXED_DRAWS_BEFORE_PRNG draws are the constant; past that the PRNG starts.
+// One source line for every Math.random, so they share a call site.
 const drawN = (n: number): number[] => {
   const draws: number[] = [];
   for (let i = 0; i < n; i++) {
@@ -96,45 +94,42 @@ const drawN = (n: number): number[] => {
 
 const drawThree = (): number[] => drawN(3);
 
-const drawThreeAfterLimit = (): number[] =>
-  drawN(FIXED_DRAWS_BEFORE_PRNG + 3).slice(FIXED_DRAWS_BEFORE_PRNG);
-
 describe("installVirtualRandom", () => {
-  it("returns the fixed constant for the first draws at a call site", async () => {
+  it("draws from the seeded PRNG from the very first draw", async () => {
     const base = await inFreshIsolate(REPLAY_CONTEXT, drawThree);
     const head = await inFreshIsolate(REPLAY_CONTEXT, drawThree);
     expect(head).toEqual(base);
+    // Independently derived from the Alea seed `meticulous-random-fs-random-1-0`.
     expect(base).toEqual([
-      UNATTRIBUTED_DRAW,
-      UNATTRIBUTED_DRAW,
-      UNATTRIBUTED_DRAW,
+      0.837993758963421, 0.21913789957761765, 0.6825273085851222,
     ]);
   });
 
-  it("starts a deterministic PRNG after the per-call-site fixed-draw limit", async () => {
-    const base = await inFreshIsolate(REPLAY_CONTEXT, drawThreeAfterLimit);
-    const head = await inFreshIsolate(REPLAY_CONTEXT, drawThreeAfterLimit);
+  it("hands out distinct values from the first draw at a call site", async () => {
+    // Anything that mints an id from consecutive draws needs them to differ. A dev server
+    // that keys its in-flight module requests by such an id deadlocks when they collide.
+    const base = await inFreshIsolate(REPLAY_CONTEXT, () => drawN(32));
+    const head = await inFreshIsolate(REPLAY_CONTEXT, () => drawN(32));
     expect(head).toEqual(base);
-    expect(new Set(base).size).toBe(3);
-    expect(base.includes(UNATTRIBUTED_DRAW)).toBe(false);
+    expect(new Set(base).size).toBe(32);
   });
 
   it("returns the same crypto.randomUUID in both replays", async () => {
     const mint = () => globalThis.crypto.randomUUID();
     const base = await inFreshIsolate(REPLAY_CONTEXT, mint);
     expect(await inFreshIsolate(REPLAY_CONTEXT, mint)).toBe(base);
-    expect(base).toBe("55555555-5555-4555-9555-555555555555");
+    expect(base).toBe("d3a66b41-f0b4-4b91-8a80-77f83d2005fe");
   });
 
-  it("mints distinct ids once a call site is past the fixed-draw limit", async () => {
+  it("mints distinct ids from one call site, from the very first draw", async () => {
     const ids = await inFreshIsolate(REPLAY_CONTEXT, () => {
       const minted: string[] = [];
-      for (let i = 0; i < FIXED_DRAWS_BEFORE_PRNG + 3; i++) {
+      for (let i = 0; i < 32; i++) {
         minted.push(globalThis.crypto.randomUUID());
       }
-      return minted.slice(FIXED_DRAWS_BEFORE_PRNG);
+      return minted;
     });
-    expect(new Set(ids).size).toBe(3);
+    expect(new Set(ids).size).toBe(32);
   });
 
   it("keeps the PRNG seed independent of the stack, so a rebuild cannot shift it", async () => {
@@ -143,30 +138,23 @@ describe("installVirtualRandom", () => {
     // at 0 and return the same first PRNG value.
     const fromA = () => Math.random();
     const fromB = () => Math.random();
-    const exhaustThenDraw = (draw: () => number): number => {
-      for (let i = 0; i < FIXED_DRAWS_BEFORE_PRNG; i++) {
-        draw();
-      }
-      return draw();
-    };
     const draws = await inFreshIsolate(REPLAY_CONTEXT, () => [
-      exhaustThenDraw(fromA),
-      exhaustThenDraw(fromB),
+      fromA(),
+      fromB(),
     ]);
     expect(draws[0]).toBe(draws[1]);
-    expect(draws[0]).not.toBe(UNATTRIBUTED_DRAW);
   });
 
   it("gives different sessions different PRNG sequences", async () => {
-    const sessionA = await inFreshIsolate(REPLAY_CONTEXT, drawThreeAfterLimit);
+    const sessionA = await inFreshIsolate(REPLAY_CONTEXT, drawThree);
     const sessionB = await inFreshIsolate(
       { ...REPLAY_CONTEXT, frontendSessionId: "fs-random-2" },
-      drawThreeAfterLimit,
+      drawThree,
     );
     expect(sessionB).not.toEqual(sessionA);
   });
 
-  it("fills getRandomValues with the constant until the call site is past the limit", async () => {
+  it("fills getRandomValues with varying bytes", async () => {
     const draw = () => {
       const array = new Uint8Array(16);
       const returned = globalThis.crypto.getRandomValues(array);
@@ -175,8 +163,11 @@ describe("installVirtualRandom", () => {
     };
     const base = await inFreshIsolate(REPLAY_CONTEXT, draw);
     expect(await inFreshIsolate(REPLAY_CONTEXT, draw)).toEqual(base);
-    expect(new Set(base).size).toBe(1);
-    expect(base[0]).toBe(Math.floor(UNATTRIBUTED_DRAW * 256));
+    // One `openSequence()` call, sixteen draws off the returned generator: every byte used
+    // to come out the same.
+    expect(new Set(base).size).toBeGreaterThan(1);
+    expect(base[0]).toBe(214);
+    expect(base[1]).toBe(56);
   });
 
   it("leaves recording and non-request work on the native generators", async () => {
@@ -218,17 +209,17 @@ describe("state is scoped per inbound request", () => {
 
   it("gives a base and a head replay of one session identical draws on a shared isolate", async () => {
     const [base, head] = await inSharedIsolate([
-      { ctx: replay("replay-base"), fn: drawThreeAfterLimit },
-      { ctx: replay("replay-head"), fn: drawThreeAfterLimit },
+      { ctx: replay("replay-base"), fn: drawThree },
+      { ctx: replay("replay-head"), fn: drawThree },
     ]);
     expect(head).toEqual(base);
   });
 
   it("gives a retry the same draws as the replay it retries", async () => {
     const [, head, retry] = await inSharedIsolate([
-      { ctx: replay("replay-base"), fn: drawThreeAfterLimit },
-      { ctx: replay("replay-head"), fn: drawThreeAfterLimit },
-      { ctx: replay("replay-head-retry"), fn: drawThreeAfterLimit },
+      { ctx: replay("replay-base"), fn: drawThree },
+      { ctx: replay("replay-head"), fn: drawThree },
+      { ctx: replay("replay-head-retry"), fn: drawThree },
     ]);
     expect(retry).toEqual(head);
   });
@@ -240,23 +231,20 @@ describe("state is scoped per inbound request", () => {
       replayId: "replay-other",
     };
     const [alone] = await inSharedIsolate([
-      { ctx: replay("replay-head"), fn: drawThreeAfterLimit },
+      { ctx: replay("replay-head"), fn: drawThree },
     ]);
     const [, interleaved] = await inSharedIsolate([
-      { ctx: other, fn: drawThreeAfterLimit },
-      { ctx: replay("replay-head"), fn: drawThreeAfterLimit },
+      { ctx: other, fn: drawThree },
+      { ctx: replay("replay-head"), fn: drawThree },
     ]);
     expect(interleaved).toEqual(alone);
   });
 
   it("matches what a cold isolate would have produced", async () => {
-    const cold = await inFreshIsolate(
-      replay("replay-head"),
-      drawThreeAfterLimit,
-    );
+    const cold = await inFreshIsolate(replay("replay-head"), drawThree);
     const [, warm] = await inSharedIsolate([
-      { ctx: replay("replay-base"), fn: drawThreeAfterLimit },
-      { ctx: replay("replay-head"), fn: drawThreeAfterLimit },
+      { ctx: replay("replay-base"), fn: drawThree },
+      { ctx: replay("replay-head"), fn: drawThree },
     ]);
     expect(warm).toEqual(cold);
   });
@@ -270,17 +258,13 @@ describe("state is scoped per inbound request", () => {
       { ctx: replay("replay-head", "req-2"), fn: drawThree },
     ]);
     expect(second).toEqual(first);
-    expect(first).toEqual([
-      UNATTRIBUTED_DRAW,
-      UNATTRIBUTED_DRAW,
-      UNATTRIBUTED_DRAW,
-    ]);
+    expect(new Set(first).size).toBe(3);
   });
 
-  it("gives two requests of one replay the same PRNG tail after the fixed-draw limit", async () => {
+  it("gives two requests of one replay the same PRNG sequence", async () => {
     const [first, second] = await inSharedIsolate([
-      { ctx: replay("replay-head", "req-1"), fn: drawThreeAfterLimit },
-      { ctx: replay("replay-head", "req-2"), fn: drawThreeAfterLimit },
+      { ctx: replay("replay-head", "req-1"), fn: drawThree },
+      { ctx: replay("replay-head", "req-2"), fn: drawThree },
     ]);
     expect(second).toEqual(first);
     expect(new Set(first).size).toBe(3);
@@ -310,7 +294,9 @@ describe("state is scoped per inbound request", () => {
       requestCaptureContext.run(ctx, () => into.push(drawNext()));
     }
 
+    // Each request has its own generator: interleaving cannot make one request skip ahead
+    // in the other's sequence.
     expect(interleavedA).toEqual(interleavedB);
-    expect(interleavedA).toEqual([UNATTRIBUTED_DRAW, UNATTRIBUTED_DRAW]);
+    expect(new Set(interleavedA).size).toBe(2);
   });
 });

@@ -23,10 +23,15 @@ import { warnOnce } from "./log";
  * to the inbound request, not the whole replay: two concurrent requests of the same session
  * that race to the same call site would otherwise consume one shared stream in arrival
  * order, and a Fisher-Yates shuffle (or any other draw) would then differ between replays.
- * Each request starts its sequences over from the same session-scoped seed. Each call site
- * on a request returns {@link UNATTRIBUTED_DRAW} for the first {@link FIXED_DRAWS_BEFORE_PRNG}
- * draws and only then starts the PRNG, so a shuffle is identical across concurrent requests
- * and a `while (Math.random() < 0.5)` loop still terminates.
+ * Each request starts its sequences over from the same session-scoped seed, and every draw
+ * inside a replayed request comes from the seeded PRNG.
+ *
+ * A call site's first draws used to return one repeated constant before the PRNG started, to
+ * damp the seed's positional fragility (see {@link openSequence}). That is gone: returning the
+ * same number to consecutive draws is not determinism, it is a collision, and randomness is far
+ * more often consumed for uniqueness than for its value. Anything minting an id from
+ * consecutive draws — `nanoid`, a hand-rolled uuid, a cache-buster — got one repeated value and
+ * broke. The damping was not worth what it cost.
  *
  * Two differences from the Node version, both forced by the runtime:
  *
@@ -64,26 +69,10 @@ const MAX_STACK_CAPTURES = 10_000;
 
 const UNKNOWN_CALL_SITE = "unknown";
 
-/**
- * What a draw returns before its call site's PRNG starts, and what unattributed draws
- * return. Leading digits of pi, so the value is recognisably ours in a diff or a log.
- */
-export const UNATTRIBUTED_DRAW = 0.3142;
-
-/**
- * Draws at one call site on one request that return {@link UNATTRIBUTED_DRAW} before the
- * seeded PRNG starts. Large enough that a shuffle stays constant, small enough that
- * `while (Math.random() < 0.5)` still exits.
- */
-export const FIXED_DRAWS_BEFORE_PRNG = 1_000;
-
-const drawUnattributed = (): number => UNATTRIBUTED_DRAW;
-
 interface RequestRandomState {
   frontendSessionId: string;
   generatorBySequenceKey: Map<string, () => number>;
   nextCallerIdByCallSite: Map<string, number>;
-  drawsByCallSite: Map<string, number>;
   stackCaptures: number;
 }
 
@@ -175,15 +164,6 @@ const getCallStack = (
   }
 };
 
-const stillInFixedDrawPhase = (
-  state: RequestRandomState,
-  callSite: string,
-): boolean => {
-  const n = (state.drawsByCallSite.get(callSite) ?? 0) + 1;
-  state.drawsByCallSite.set(callSite, n);
-  return n <= FIXED_DRAWS_BEFORE_PRNG;
-};
-
 const getRequestState = (): RequestRandomState | undefined => {
   const ctx = requestCaptureContext.getStore();
   if (ctx === undefined || ctx.mode !== "replay") {
@@ -197,7 +177,6 @@ const getRequestState = (): RequestRandomState | undefined => {
     frontendSessionId: ctx.frontendSessionId,
     generatorBySequenceKey: new Map(),
     nextCallerIdByCallSite: new Map(),
-    drawsByCallSite: new Map(),
     stackCaptures: 0,
   };
   stateByRequest.set(ctx, created);
@@ -222,17 +201,17 @@ const getRequestState = (): RequestRandomState | undefined => {
  * separated them (say, an ordinal per call site) would shift every later site's values as soon
  * as a PR added one randomness call, which is the butterfly effect this whole scheme exists to
  * avoid.
+ *
+ * Because callerIds are handed out in order of first arrival, every draw now depends on that
+ * order — there is no longer a fixed-draw phase in front of the PRNG to absorb it, so a PR
+ * that routes a new path through a shared helper can shift the values another path draws.
+ * That fragility was the reason for the phase; a phase that returned one repeated constant
+ * was not a workable way to pay for it.
  */
 const openSequence = (): (() => number) | undefined => {
   const state = getRequestState();
   if (state === undefined) {
     return undefined;
-  }
-
-  // Called directly so FRAMES_TO_APP still lands on the app. A wrapper here would make
-  // every Math.random share one call site and one fixed-draw budget.
-  if (stillInFixedDrawPhase(state, getCallStack(1).site)) {
-    return drawUnattributed;
   }
 
   let sequenceKey = UNKNOWN_CALL_SITE;

@@ -438,6 +438,16 @@ export interface MeticulousPublicRecordApi {
    * and before any full-page navigation.
    */
   flush(): Promise<void>;
+
+  /**
+   * Stop recording this session part way through. No further data is sent to Meticulous, and
+   * recording cannot be restarted without reloading the page.
+   *
+   * Data already sent is kept, and the session is flagged in Meticulous as having been stopped
+   * by the application. Data recorded since the last upload is discarded, so await {@link flush}
+   * first if you need it.
+   */
+  stopRecording(): void;
 }
 
 export interface MeticulousPublicContextApi {

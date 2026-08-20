@@ -1,5 +1,12 @@
 # @alwaysmeticulous/backend-recorder-sidecar-worker
 
+## 2.330.0
+
+### Patch Changes
+
+- Updated dependencies [[`35bd171`](https://github.com/alwaysmeticulous/meticulous/commit/35bd1712f0d55018bcf69587e910f1e9aa2a4b2e)]:
+  - @alwaysmeticulous/backend-recorder-workerd@2.330.0
+
 ## 2.329.0
 
 ### Patch Changes

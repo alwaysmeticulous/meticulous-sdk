@@ -77,14 +77,17 @@ const notFoundError = (message: string, reason?: string): unknown => ({
   response: { status: 404, data: { message, ...(reason ? { reason } : {}) } },
 });
 
-/** The backend's expected-empty-base-run 404 (see BASE_RUN_NO_COVERAGE_REASON). */
-const baseRunEmptyError = (testRunId: string): unknown =>
-  notFoundError(
-    `Test run ${testRunId} is a base run whose sessions have not been replayed yet, so it has no coverage recorded.`,
-    "base-run-no-coverage",
-  );
+/** A backend 400 rejecting the coverage request, as the client surfaces it. */
+const rejectionError = (reason: string, message: string): unknown => ({
+  response: { status: 400, data: { message, reason } },
+});
 
-describe("js-coverage handler on a base run", () => {
+// Which run gets requested, and how a base run's own coverage is handled, is
+// now entirely the backend's call (see `getTestRunJsCoverageV2`): the CLI no
+// longer inspects status itself before fetching, whether the run was named
+// via --testRunId, --testRunIds, or resolved from a commit. These tests cover
+// what the handler does with whatever the backend returns or rejects with.
+describe("js-coverage handler naming a still-Partial run", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createClientWithOAuth.mockResolvedValue({});
@@ -97,143 +100,71 @@ describe("js-coverage handler on a base run", () => {
     vi.spyOn(console, "log").mockImplementation(() => undefined);
   });
 
-  // The whole point of the change: a Partial run is no longer refused before
-  // the fetch, so coverage is actually requested for it.
-  it("proceeds to fetch coverage rather than rejecting", async () => {
+  it("fetches coverage for it like any other run", async () => {
     await runHandler();
     expect(mocks.getTestRunJsCoverage).toHaveBeenCalledWith(
       {},
       "tr-1",
-      expect.objectContaining({ includeExecutedRanges: true }),
+      expect.anything(),
     );
   });
 
-  it("caveats the returned coverage as a moving total", async () => {
-    await runHandler();
-    expect(mocks.logNotice).toHaveBeenCalledWith(
-      expect.stringMatching(/tr-1 is a base run:.*grows over time/),
+  // The backend refuses a base run whose selected set hasn't fully replayed,
+  // naming the remedy — relayed as a clean error rather than the generic path.
+  it("maps the backend's incomplete-base-run refusal to a CliUserError", async () => {
+    mocks.getTestRunJsCoverage.mockRejectedValue(
+      rejectionError(
+        "incomplete-base-run",
+        "Test run tr-1 is a base run other test runs compare against: it replays its selected sessions on demand, and 2 of its 3 have not run, so its coverage understates this commit. Replay the rest with complete-base-run (MCP: complete_base_run) and ask again, or ask for the project's overall coverage instead (js-coverage --latestForProject / get_project_js_coverage).",
+      ),
     );
-  });
-
-  // Regression guard: this used to reach the generic error path, which pairs a
-  // routine "this base run hasn't replayed anything yet" with the unhelpful
-  // `--help` tip and reports it to Sentry.
-  it("turns the expected-empty-base-run 404 into a CliUserError", async () => {
-    mocks.getTestRunJsCoverage.mockRejectedValue(baseRunEmptyError("tr-1"));
     await expect(runHandler()).rejects.toBeInstanceOf(CliUserError);
-    await expect(runHandler()).rejects.toThrow(
-      /is a base run whose sessions have not/,
-    );
+    await expect(runHandler()).rejects.toThrow(/complete-base-run/);
   });
 
-  // The caveat belongs with results that exist; a run with nothing recorded
-  // shouldn't be told its coverage "grows over time" and then handed an error.
-  it("emits no base-run notice when there is no coverage to caveat", async () => {
-    mocks.getTestRunJsCoverage.mockRejectedValue(baseRunEmptyError("tr-1"));
-    await expect(runHandler()).rejects.toThrow();
+  it("says nothing about base runs when the backend served the coverage", async () => {
+    await runHandler();
     expect(mocks.logNotice).not.toHaveBeenCalledWith(
-      expect.stringMatching(/grows over time/),
+      expect.stringMatching(/is a base run/),
     );
   });
 
-  // A union can mix a base run with completed ones. Keying off "a base run was
-  // involved" would blame the base run for a completed sibling's genuinely
-  // missing artifact, and quietly keep that real fault out of Sentry.
-  it("leaves a completed sibling's missing artifact as an unexpected error", async () => {
-    const error = notFoundError("JS coverage artifact not found");
-    mocks.getTestRunJsCoverage.mockRejectedValue(error);
-    await expect(runHandler()).rejects.toBe(error);
+  // A base run named among the runs to union in is sent to the backend like
+  // anything else; the backend's rejection (an unreplayed remainder would
+  // silently understate a combined total) is what turns into a clean error.
+  it("maps the backend's union rejection to a CliUserError", async () => {
+    mocks.getTestRun.mockImplementation(
+      ({ testRunId }: { testRunId: string }) => ({
+        status: testRunId === "tr-1" ? "Success" : "Partial",
+      }),
+    );
+    mocks.getTestRunJsCoverage.mockRejectedValue(
+      rejectionError(
+        "incomplete-base-run-in-union",
+        "tr-2 is a base run other runs compare against.",
+      ),
+    );
+    await expect(
+      runHandler({ testRunId: undefined, testRunIds: "tr-1,tr-2" }),
+    ).rejects.toBeInstanceOf(CliUserError);
+    await expect(
+      runHandler({ testRunId: undefined, testRunIds: "tr-1,tr-2" }),
+    ).rejects.toThrow(/tr-2 is a base run/);
+    expect(mocks.getTestRunJsCoverage).toHaveBeenCalled();
   });
 
-  // Only the expected-absence case is reinterpreted; anything else is still a
-  // genuine failure and must keep reaching the generic (Sentry) path.
-  it("leaves a non-404 failure alone", async () => {
-    const serverError = { response: { status: 500, data: {} } };
-    mocks.getTestRunJsCoverage.mockRejectedValue(serverError);
-    await expect(runHandler()).rejects.toBe(serverError);
-  });
-
-  it("rejects --prDiffOnly before fetching", async () => {
+  // --prDiffOnly is sent through rather than pre-rejected; the backend's
+  // refusal (a base run has no PR to scope a diff to) is what's mapped.
+  it("maps the backend's --prDiffOnly refusal to a CliUserError", async () => {
+    mocks.getTestRunJsCoverage.mockRejectedValue(
+      rejectionError(
+        "base-run-no-pr-diff",
+        "Test run tr-1 is a base run other test runs compare against, so it has no PR diff to scope coverage to. Drop prDiffOnly to get its whole-run coverage.",
+      ),
+    );
     await expect(runHandler({ prDiffOnly: true })).rejects.toThrow(
-      /has no PR diff to scope coverage to/,
+      /drop prDiffOnly/i,
     );
-    expect(mocks.getTestRunJsCoverage).not.toHaveBeenCalled();
-  });
-});
-
-// A session-pool base can settle into Success/Failure without ever becoming
-// Partial, so it must get the same "grows over time" treatment as a Partial
-// base run — keyed off isSessionPoolRun rather than status alone.
-describe("js-coverage handler on a settled session-pool run", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.createClientWithOAuth.mockResolvedValue({});
-    mocks.getTestRun.mockResolvedValue({
-      status: "Success",
-      configData: { arguments: { isSessionPool: true } },
-    });
-    mocks.getTestRunJsCoverage.mockResolvedValue({ files: [] });
-    mocks.isFetchError.mockImplementation(
-      (error: unknown) =>
-        typeof error === "object" && error != null && "response" in error,
-    );
-    vi.spyOn(console, "log").mockImplementation(() => undefined);
-  });
-
-  it("caveats the returned coverage as a moving total despite its Success status", async () => {
-    await runHandler();
-    expect(mocks.logNotice).toHaveBeenCalledWith(
-      expect.stringMatching(/tr-1 is a base run:.*grows over time/),
-    );
-  });
-
-  it("rejects --prDiffOnly before fetching", async () => {
-    await expect(runHandler({ prDiffOnly: true })).rejects.toThrow(
-      /has no PR diff to scope coverage to/,
-    );
-    expect(mocks.getTestRunJsCoverage).not.toHaveBeenCalled();
-  });
-});
-
-// Unlike isNonEagerSessionPool (used elsewhere, e.g. the check-report write
-// path), prDiffOnly and the base-run notice draw no eager/non-eager
-// distinction: a session-pool run has no PR-diff of its own to scope
-// coverage to here regardless of whether it also triggered eager session
-// selection. Plain coverage is unaffected either way.
-describe("js-coverage handler on an eagerly-executing session-pool run", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.createClientWithOAuth.mockResolvedValue({});
-    mocks.getTestRun.mockResolvedValue({
-      status: "Success",
-      configData: {
-        arguments: { isSessionPool: true, forceEagerExecution: true },
-      },
-    });
-    mocks.getTestRunJsCoverage.mockResolvedValue({ files: [] });
-    mocks.isFetchError.mockImplementation(
-      (error: unknown) =>
-        typeof error === "object" && error != null && "response" in error,
-    );
-    vi.spyOn(console, "log").mockImplementation(() => undefined);
-  });
-
-  it("still caveats the returned coverage as a moving total", async () => {
-    await runHandler();
-    expect(mocks.logNotice).toHaveBeenCalledWith(
-      expect.stringMatching(/tr-1 is a base run:.*grows over time/),
-    );
-  });
-
-  it("rejects --prDiffOnly before fetching", async () => {
-    await expect(runHandler({ prDiffOnly: true })).rejects.toThrow(
-      /has no PR diff to scope coverage to/,
-    );
-    expect(mocks.getTestRunJsCoverage).not.toHaveBeenCalled();
-  });
-
-  it("still fetches plain coverage", async () => {
-    await runHandler();
     expect(mocks.getTestRunJsCoverage).toHaveBeenCalled();
   });
 });
@@ -259,6 +190,29 @@ describe("js-coverage handler on a completed run", () => {
     await expect(runHandler()).rejects.toBe(error);
   });
 
+  // Only the expected-refusal reasons are reinterpreted; anything else is
+  // still a genuine failure and must keep reaching the generic (Sentry) path.
+  it("leaves a non-404 failure alone", async () => {
+    const serverError = { response: { status: 500, data: {} } };
+    mocks.getTestRunJsCoverage.mockRejectedValue(serverError);
+    await expect(runHandler()).rejects.toBe(serverError);
+  });
+
+  // The status read before the request is a snapshot: a run reported Success
+  // can still turn out to be a base run with an unreplayed remainder (a settled
+  // pool). The backend's refusal is routine, so it must not reach the generic
+  // error path (unhelpful `--help` tip plus a Sentry report).
+  it("turns the backend's base-run refusal into a CliUserError", async () => {
+    mocks.getTestRunJsCoverage.mockRejectedValue(
+      rejectionError(
+        "incomplete-base-run",
+        "Test run tr-1 is a base run other test runs compare against: it replays its selected sessions on demand, and 2 of its 3 have not run, so its coverage understates this commit.",
+      ),
+    );
+    await expect(runHandler()).rejects.toBeInstanceOf(CliUserError);
+    await expect(runHandler()).rejects.toThrow(/tr-1 is a base run/);
+  });
+
   it("allows --prDiffOnly", async () => {
     await runHandler({ prDiffOnly: true });
     expect(mocks.getTestRunJsCoverage).toHaveBeenCalledWith(
@@ -280,6 +234,7 @@ describe("js-coverage handler resolving a run from a commit", () => {
     mocks.getTestRunForCommit.mockResolvedValue({
       testRunId: "tr-head",
       status: "Success",
+      isSessionPoolRun: false,
     });
     mocks.getTestRunJsCoverage.mockResolvedValue({ files: [] });
     mocks.isFetchError.mockImplementation(
@@ -324,6 +279,58 @@ describe("js-coverage handler resolving a run from a commit", () => {
       {},
       "tr-head",
       expect.objectContaining({ unionTestRunIds: ["tr-2", "tr-3"] }),
+    );
+  });
+});
+
+// A commit on the default branch usually resolves to a base run. Whether such a
+// run's coverage is reportable depends on how much of its selected set has
+// replayed, which only the backend knows (see agent-api.service.base-run.spec.ts)
+// — the CLI relays whatever `getTestRunJsCoverage` returns or rejects with,
+// exactly as for a run named explicitly. This re-covers that the
+// commit-resolution path feeds the same fetch machinery.
+describe("js-coverage handler resolving a commit to a base run", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createClientWithOAuth.mockResolvedValue({});
+    mocks.getCommitSha.mockResolvedValue("sha-1");
+    mocks.getTestRunForCommit.mockResolvedValue({
+      testRunId: "tr-base",
+      status: "Partial",
+      isSessionPoolRun: false,
+    });
+    // Re-reading the resolved run (the wait-for-completion step) sees the same
+    // Partial status the lookup reported.
+    mocks.getTestRun.mockResolvedValue({ status: "Partial" });
+    mocks.getTestRunJsCoverage.mockResolvedValue({ files: [] });
+    mocks.isFetchError.mockImplementation(
+      (error: unknown) =>
+        typeof error === "object" && error != null && "response" in error,
+    );
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  it("fetches coverage for the resolved run rather than branching on isBaseRun", async () => {
+    await runHandler({ testRunId: undefined });
+    expect(mocks.getTestRunJsCoverage).toHaveBeenCalledWith(
+      {},
+      "tr-base",
+      expect.anything(),
+    );
+  });
+
+  it("relays the backend's refusal for the resolved run as a clean error", async () => {
+    mocks.getTestRunJsCoverage.mockRejectedValue(
+      rejectionError(
+        "incomplete-base-run",
+        "Test run tr-base is a base run other test runs compare against: 2 of its 3 have not run. Replay the rest with complete-base-run (MCP: complete_base_run) and ask again.",
+      ),
+    );
+    await expect(runHandler({ testRunId: undefined })).rejects.toBeInstanceOf(
+      CliUserError,
+    );
+    await expect(runHandler({ testRunId: undefined })).rejects.toThrow(
+      /tr-base is a base run/,
     );
   });
 });

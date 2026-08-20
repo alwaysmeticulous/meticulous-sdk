@@ -72,7 +72,10 @@ export {
   RunCrawlOptions,
   RunCrawlResult,
 } from "./crawler/sdk-to-bundle/run-crawl";
-export { BackendRecorderConfig } from "./backend-recorder/sdk-to-bundle/init-backend-recorder";
+export {
+  BackendRecorderConfig,
+  BackendRecorderSpanRedactionHook,
+} from "./backend-recorder/sdk-to-bundle/init-backend-recorder";
 export {
   BackendRecorderHandle,
   MeticulousCloudflareBindingKind,

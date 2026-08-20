@@ -359,18 +359,45 @@ export interface TestRunForCommitResponse {
    */
   status: TestRunStatus | null;
   /**
-   * Whether the matched run is a session-pool base (`false` when `testRunId`
-   * is null). A session-pool base can settle into `Success`/`Failure` without
-   * ever becoming `Partial`, so a caller treating `Partial` as "this is a base
-   * run with no diffs/PR of its own" needs this checked independently of
-   * status too.
+   * Whether the matched run is a base run other test runs compare against
+   * rather than a run of its own — the usual outcome for a main-branch commit.
+   * Such a run has no diffs and no PR, and replays its selected sessions on
+   * demand, so its coverage only describes the commit once they have all run
+   * (see {@link completeBaseRun}). Absent when no run matched, or when the
+   * backend predates the field.
    *
-   * `true` for ANY `configData.arguments.isSessionPool` run, including one
-   * that also triggered eager session selection (`forceEagerExecution`) — no
-   * eager/non-eager distinction, matching what `test-run-diffs`/
-   * `test-run-check`/`js-coverage --prDiffOnly` treat as a base run.
+   * True for a session pool that has settled into a verdict as well as for a
+   * `Partial` one, so it catches base runs `status` alone does not.
    */
   isSessionPoolRun: boolean;
+}
+
+/** The reply to {@link completeBaseRun}. */
+export interface CompleteBaseRunResponse {
+  testRunId: string;
+  /**
+   * The run's status as read when the request was served. Scheduling replays
+   * doesn't itself move the status, so poll the run rather than reading a
+   * transition out of this.
+   */
+  status: TestRunStatus;
+  /**
+   * Configured sessions still without a result after this call. `0` means the
+   * run's coverage is now a real total. Stays above `0` with
+   * `sessionsScheduled: 0` either because earlier-scheduled work is still in
+   * flight, or because everything remaining has permanently failed
+   * (`ExecutionError`) and this operation will never retry it — poll this
+   * count rather than `status`, which scheduling does not itself move.
+   */
+  unexecutedSessionCount: number;
+  /**
+   * Distinct sessions newly scheduled. `0` means the run had already replayed
+   * its whole selected set — the operation is idempotent, so that's a no-op
+   * rather than an error.
+   */
+  sessionsScheduled: number;
+  /** Distinct sessions in the run's selected set. */
+  configuredSessionCount: number;
 }
 
 export interface TestRunJsCoverageResponse {
@@ -487,6 +514,13 @@ export interface ProjectJsCoverageResponse {
    * `null` when the project has no such run. `files` is empty when `null`.
    */
   testRunId: string | null;
+  /**
+   * The resolved run's commit — so a caller can tell this coverage may
+   * describe an older commit than the one they actually asked about (this
+   * endpoint always resolves the project's own latest successful run, not
+   * any particular commit). Absent when `testRunId` is `null`.
+   */
+  commitSha?: string;
   files: TestRunCoverageFile[];
 }
 
@@ -1178,6 +1212,23 @@ export const getTestRunForCommit = async (
   }
   const { data } = await client
     .get("agent/test-runs", { params })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+/**
+ * Schedules the selected sessions a base run hasn't replayed yet, so its
+ * coverage comes to describe its commit. Returns as soon as the work is
+ * scheduled — poll the run to wait for it.
+ */
+export const completeBaseRun = async (
+  client: MeticulousClient,
+  testRunId: string,
+): Promise<CompleteBaseRunResponse> => {
+  const { data } = await client
+    .post(`agent/test-runs/${testRunId}/complete-base-run`)
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });

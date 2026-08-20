@@ -1,5 +1,11 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.330.0
+
+### Patch Changes
+
+- [#12503](https://github.com/alwaysmeticulous/meticulous/pull/12503) [`35bd171`](https://github.com/alwaysmeticulous/meticulous/commit/35bd1712f0d55018bcf69587e910f1e9aa2a4b2e) Thanks [@dennysem](https://github.com/dennysem)! - Draw from the seeded generator from the first draw during replay, instead of returning one repeated constant for a call site's first draws, so ids an app mints from consecutive random draws stay distinct.
+
 ## 2.329.0
 
 ### Minor Changes

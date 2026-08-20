@@ -1,4 +1,5 @@
 import type { CommandModule } from "yargs";
+import { completeBaseRunCommand } from "./complete-base-run.command";
 import { diffCommentsCommand } from "./diff-comments.command";
 import { jsCoverageDiffCommand } from "./js-coverage-diff.command";
 import { jsCoverageCommand } from "./js-coverage.command";
@@ -41,6 +42,7 @@ export const agentCommand: CommandModule = {
       .command(sessionsCommand)
       .command(uploadBuildCommand)
       .command(triggerTestRunCommand)
+      .command(completeBaseRunCommand)
       .command(submitFeedbackCommand)
       .option("verbose", {
         boolean: true,

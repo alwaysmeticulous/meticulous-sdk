@@ -56,14 +56,41 @@ The auto-init entry point reads configuration from environment variables.
 
 `initBackendRecorder` accepts an optional `BackendRecorderConfig` object:
 
-| Option                  | Type              | Description                                   |
-| ----------------------- | ----------------- | --------------------------------------------- |
-| `enabled`               | `boolean`         | Enable/disable the recorder (default: `true`) |
-| `meticulousProjectName` | `string`          | The name of the Meticulous project            |
-| `recordingToken`        | `string`          | Token used to authenticate span uploads       |
-| `exportMode`            | `"local" \| "s3"` | Where to export spans (default: `"local"`)    |
-| `localOutputDir`        | `string`          | Directory for local exports                   |
-| `flushIntervalMs`       | `number`          | How often to flush spans (ms)                 |
+| Option                  | Type                            | Description                                                                    |
+| ----------------------- | ------------------------------- | ------------------------------------------------------------------------------ |
+| `enabled`               | `boolean`                       | Enable/disable the recorder (default: `true`)                                  |
+| `meticulousProjectName` | `string`                        | The name of the Meticulous project                                             |
+| `recordingToken`        | `string`                        | Token used to authenticate span uploads                                        |
+| `exportMode`            | `"local" \| "s3"`               | Where to export spans (default: `"local"`)                                     |
+| `localOutputDir`        | `string`                        | Directory for local exports                                                    |
+| `flushIntervalMs`       | `number`                        | How often to flush spans (ms)                                                  |
+| `spanRedactionHooks`    | `((value: string) => string)[]` | Ordered record-time hooks that transform redactable span strings before upload |
+
+### Redacting recorded backend data
+
+Use `spanRedactionHooks` to replace sensitive values before completed spans are saved or uploaded.
+Each hook receives every redactable string and must return a string. Hooks run in the order they are
+provided.
+
+```ts
+await initBackendRecorder({
+  recordingToken: process.env.METICULOUS_RECORDING_TOKEN,
+  spanRedactionHooks: [
+    (value) =>
+      value.replace(/api_key=[A-Za-z0-9_-]+/g, "api_key=[REDACTED_API_KEY]"),
+  ],
+});
+```
+
+The hooks cover span names, error/status messages, and all span attribute values, including strings
+inside arrays or objects and JSON captured inside strings. They do not transform attribute names,
+trace/span/parent IDs, timestamps, span kind, client-technology routing, or frontend session IDs.
+
+Hooks run only while recording. If a hook throws or returns a non-string, Meticulous abandons the
+recording rather than saving the span without redaction. Replacing backend-generated request data
+can also change a replay match key; use stable replacements and verify that the corresponding input
+will have the same value during replay. This programmatic option applies to the Node.js recorder and
+is not available to the Cloudflare Workers sidecar.
 
 ## Graceful shutdown
 

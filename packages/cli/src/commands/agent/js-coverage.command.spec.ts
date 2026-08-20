@@ -8,17 +8,15 @@ import yargs, { type Options as YargsOptions } from "yargs";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
   assertLatestForProjectCompatible,
-  assertPrDiffOnlyCompatible,
-  assertTestRunCoverageAvailable,
+  assertTestRunCoverageResolvable,
   assertTestRunOnlyFlagsUnsetForReplay,
   buildProjectCoverageRequestOptions,
-  canServeCoverage,
+  canAnchorReplayCoverage,
   coverageColumnValue,
   coverageFileToJson,
   determineColumns,
   isAmbiguousTestRunError,
   jsCoverageCommand,
-  logBaseRunCoverageNotice,
   parseHeadPlusTestRunIds,
   parseTestRunIds,
   printProjectCoverage,
@@ -57,15 +55,17 @@ const baseOptions = (overrides: Partial<Options> = {}): Options => ({
   ...overrides,
 });
 
-describe("canServeCoverage", () => {
+describe("canAnchorReplayCoverage", () => {
   it.each(["Success", "Failure"] as const)("accepts %s", (status) => {
-    expect(canServeCoverage(status)).toBe(true);
+    expect(canAnchorReplayCoverage(status)).toBe(true);
   });
 
-  // Base runs are the common case for a default-branch checkout, and they do
-  // have coverage — the --replayId disambiguation fallback relies on this.
+  // Base runs are the common case for a default-branch checkout, and their
+  // clone-and-parse artifact maps a replay's paths just as well as a completed
+  // run's — the --replayId disambiguation fallback relies on this, even though
+  // the same run's own coverage total is rejected below.
   it("accepts a Partial base run", () => {
-    expect(canServeCoverage("Partial")).toBe(true);
+    expect(canAnchorReplayCoverage("Partial")).toBe(true);
   });
 
   it.each([
@@ -76,36 +76,36 @@ describe("canServeCoverage", () => {
     "Aborted",
     "ExecutionError",
   ] as const)("rejects %s", (status) => {
-    expect(canServeCoverage(status)).toBe(false);
+    expect(canAnchorReplayCoverage(status)).toBe(false);
   });
 });
 
-describe("assertTestRunCoverageAvailable", () => {
+describe("assertTestRunCoverageResolvable", () => {
   it.each(["Success", "Failure"] as const)(
     "does not throw for %s",
     (status) => {
       expect(() =>
-        assertTestRunCoverageAvailable("tr-1", status),
+        assertTestRunCoverageResolvable("tr-1", status),
       ).not.toThrow();
     },
   );
 
-  // Coverage is recorded per replay as sessions execute, so a base run that has
-  // replayed anything has coverage even though it never reaches a verdict.
-  it("accepts Partial rather than throwing", () => {
+  // Whether a base run's own coverage describes its commit depends on how much
+  // of its selected set has replayed, which only the backend knows — so this no
+  // longer rejects Partial client-side and lets the backend decide.
+  it("does not throw for Partial", () => {
     expect(() =>
-      assertTestRunCoverageAvailable("tr-1", "Partial"),
+      assertTestRunCoverageResolvable("tr-1", "Partial"),
     ).not.toThrow();
   });
 
-  // Throw-only: the base-run caveat rides with the results (see
-  // logBaseRunCoverageNotice), so a run with nothing recorded yet isn't first
-  // told its coverage "grows over time" and then handed an error.
+  // Throw-only: an accepted run's results speak for themselves, and a rejected
+  // one gets an error rather than a notice it then contradicts.
   it.each(["Success", "Failure", "Partial"] as const)(
     "emits no notice for %s",
     (status) => {
       mocks.logNotice.mockClear();
-      assertTestRunCoverageAvailable("tr-1", status);
+      assertTestRunCoverageResolvable("tr-1", status);
       expect(mocks.logNotice).not.toHaveBeenCalled();
     },
   );
@@ -113,94 +113,17 @@ describe("assertTestRunCoverageAvailable", () => {
   it.each(["Aborted", "ExecutionError"] as const)(
     "still throws for %s",
     (status) => {
-      expect(() => assertTestRunCoverageAvailable("tr-1", status)).toThrow(
+      expect(() => assertTestRunCoverageResolvable("tr-1", status)).toThrow(
         /finished unsuccessfully/,
       );
     },
   );
 
   it("still throws for an in-progress run", () => {
-    expect(() => assertTestRunCoverageAvailable("tr-1", "Running")).toThrow(
+    expect(() => assertTestRunCoverageResolvable("tr-1", "Running")).toThrow(
       /coverage not yet available/,
     );
   });
-});
-
-describe("logBaseRunCoverageNotice", () => {
-  // Presenting a base run's moving total as a fixed one is the thing this
-  // guards against, so the notice is pinned rather than left droppable.
-  it("explains each base run involved", () => {
-    mocks.logNotice.mockClear();
-    logBaseRunCoverageNotice(["tr-1", "tr-2"]);
-    expect(mocks.logNotice).toHaveBeenCalledTimes(2);
-    expect(mocks.logNotice.mock.calls[0][0]).toMatch(
-      /tr-1 is a base run:.*grows over time/,
-    );
-    expect(mocks.logNotice.mock.calls[1][0]).toMatch(/tr-2 is a base run/);
-  });
-
-  it("says nothing when no base run is involved", () => {
-    mocks.logNotice.mockClear();
-    logBaseRunCoverageNotice([]);
-    expect(mocks.logNotice).not.toHaveBeenCalled();
-  });
-});
-
-describe("assertPrDiffOnlyCompatible", () => {
-  // A base run has no PR, so coverage.pr.json is written empty for it —
-  // scoping to it would read as "nothing covered" rather than "not applicable".
-  it("rejects --prDiffOnly for a base run", () => {
-    expect(() =>
-      assertPrDiffOnlyCompatible(
-        "tr-1",
-        "Partial",
-        baseOptions({ prDiffOnly: true }),
-        { isSessionPoolRun: false },
-      ),
-    ).toThrow(/has no PR diff to scope coverage to/);
-  });
-
-  it.each(["Success", "Failure"] as const)(
-    "allows --prDiffOnly for %s",
-    (status) => {
-      expect(() =>
-        assertPrDiffOnlyCompatible(
-          "tr-1",
-          status,
-          baseOptions({ prDiffOnly: true }),
-          { isSessionPoolRun: false },
-        ),
-      ).not.toThrow();
-    },
-  );
-
-  it("ignores a base run when --prDiffOnly is unset", () => {
-    expect(() =>
-      assertPrDiffOnlyCompatible(
-        "tr-1",
-        "Partial",
-        baseOptions({ prDiffOnly: false }),
-        { isSessionPoolRun: false },
-      ),
-    ).not.toThrow();
-  });
-
-  // A session-pool base can settle into Success/Failure without ever becoming
-  // Partial, but it still has no PR of its own — isSessionPoolRun must be
-  // checked independently of status.
-  it.each(["Success", "Failure"] as const)(
-    "rejects --prDiffOnly for a settled session-pool run (%s)",
-    (status) => {
-      expect(() =>
-        assertPrDiffOnlyCompatible(
-          "tr-1",
-          status,
-          baseOptions({ prDiffOnly: true }),
-          { isSessionPoolRun: true },
-        ),
-      ).toThrow(/has no PR diff to scope coverage to/);
-    },
-  );
 });
 
 describe("--latestForProject", () => {
@@ -533,6 +456,35 @@ describe("printProjectCoverage", () => {
       true,
     );
     expect(JSON.parse(logged.join("\n"))).toEqual([]);
+  });
+
+  // --latestForProject always resolves the project's own latest successful
+  // run, not any particular commit — the notice must say which commit that
+  // was so a caller doesn't mistake it for their own.
+  it("names the resolved commit in the notice", async () => {
+    await printProjectCoverage(
+      client,
+      undefined,
+      { testRunId: "tr-9", commitSha: "abc123", files: [] },
+      ["executedRanges"],
+      false,
+    );
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      "Resolved project coverage to test run tr-9 (commit abc123)",
+    );
+  });
+
+  it("omits the commit parenthetical when commitSha is absent", async () => {
+    await printProjectCoverage(
+      client,
+      undefined,
+      { testRunId: "tr-9", files: [] },
+      ["executedRanges"],
+      false,
+    );
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      "Resolved project coverage to test run tr-9",
+    );
   });
 });
 
