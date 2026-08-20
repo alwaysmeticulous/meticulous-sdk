@@ -240,6 +240,32 @@ describe("withMeticulous in replay mode", () => {
     });
   });
 
+  it("forwards the inbound virtual-time header on outbound lookups", async () => {
+    const handler = withMeticulous({
+      fetch: async () => {
+        const response = await fetch(`${upstreamUrl}/items`);
+        await response.text();
+        return new Response("ok");
+      },
+    });
+
+    await handler.fetch(
+      new Request("http://worker.local/page", {
+        headers: {
+          "x-meticulous-session-id": "virtual-time-1",
+          [REPLAY_ID_HEADER]: "replay-1",
+          "x-meticulous-backend-replay-sidecar-url": sidecarUrl,
+          "x-meticulous-virtual-time": "1500",
+        },
+      }),
+      undefined as never,
+      makeCtx(),
+    );
+
+    expect(lookups).toHaveLength(1);
+    expect(lookups[0].virtualTimeMs).toBe(1500);
+  });
+
   it("fails the call on a miss instead of reaching the real service", async () => {
     lookupHandler = () => ({ outcome: "no-mock" });
 

@@ -1,5 +1,23 @@
 # @alwaysmeticulous/cli
 
+## 2.331.0
+
+### Minor Changes
+
+- [#12543](https://github.com/alwaysmeticulous/meticulous/pull/12543) [`819647c`](https://github.com/alwaysmeticulous/meticulous/commit/819647c71df1e983a33a1e75f00dbd7d34c7c883) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `meticulous ci agent-test` now forwards every `METICULOUS_STAGING_*` environment variable to the project's configured login flow as a generic login-option map, so new login options no longer require a CLI upgrade. This includes the new `METICULOUS_STAGING_SKIP_EMAIL_CLIENT_ID`: a trusted-automation client id passed to the staging app's login page (as `skipEmailClientId` in the login URL) so the agentic totp login flow can bypass an email device-verification challenge the worker cannot answer.
+
+### Patch Changes
+
+- Updated dependencies [[`819647c`](https://github.com/alwaysmeticulous/meticulous/commit/819647c71df1e983a33a1e75f00dbd7d34c7c883), [`cf1dc40`](https://github.com/alwaysmeticulous/meticulous/commit/cf1dc4061871eeb3bd14bb085743fdb7b084e3e7), [`5f64efb`](https://github.com/alwaysmeticulous/meticulous/commit/5f64efb034e5880e5f78164a974389b54d616061), [`223c5c3`](https://github.com/alwaysmeticulous/meticulous/commit/223c5c3c8e4450102471f9c5f48dc8dab14cbc32), [`01ba449`](https://github.com/alwaysmeticulous/meticulous/commit/01ba44963548266ac3b2b9627e23fbaf92154807)]:
+  - @alwaysmeticulous/client@2.331.0
+  - @alwaysmeticulous/sdk-bundles-api@2.331.0
+  - @alwaysmeticulous/downloading-helpers@2.331.0
+  - @alwaysmeticulous/debug-workspace@2.331.0
+  - @alwaysmeticulous/remote-replay-launcher@2.331.0
+  - @alwaysmeticulous/common@2.326.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.331.0
+
 ## 2.330.0
 
 ### Minor Changes

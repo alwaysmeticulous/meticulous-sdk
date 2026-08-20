@@ -20,6 +20,31 @@ export const FRONTEND_SESSION_ID_HEADER = "x-meticulous-session-id";
 export const REPLAY_ID_HEADER = "x-meticulous-replay-id";
 
 /**
+ * Elapsed virtual time (ms from replay start) of the triggering frontend
+ * request. Injected by the replay runner on app-url requests during backend
+ * testing; the sidecar uses it to pick the closest recorded burst when several
+ * candidates share a loosened match key.
+ */
+export const VIRTUAL_TIME_HEADER = "x-meticulous-virtual-time";
+
+/**
+ * Parses {@link VIRTUAL_TIME_HEADER}. `0` is a valid start-of-session time;
+ * anything non-finite or negative is ignored so a garbage header cannot skew matching.
+ */
+export const parseVirtualTimeMs = (
+  value: string | null | undefined,
+): number | undefined => {
+  if (value == null || value === "") {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return undefined;
+  }
+  return parsed;
+};
+
+/**
  * A request carrying this header set to `"true"` is never served from the recording and
  * never fails on a miss — it goes to the real network. Use it for a call that must be live
  * during replay (a health probe, telemetry, a resource the recording cannot cover).
@@ -328,6 +353,15 @@ export interface OutboundFetchLookupRequest {
    * record and replay sides.
    */
   requestBody?: CapturedBody;
+  /**
+   * Elapsed virtual time (ms from replay start) of the inbound request that
+   * dispatched this outbound call, forwarded from {@link VIRTUAL_TIME_HEADER}.
+   * The sidecar clusters candidates by recorded timestamp against this value.
+   *
+   * Additive and non-version-bumping: an older shim omits it, and matching
+   * then hashes across every candidate at the matched key.
+   */
+  virtualTimeMs?: number;
 }
 
 /**

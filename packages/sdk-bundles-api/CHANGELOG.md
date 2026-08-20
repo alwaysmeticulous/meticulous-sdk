@@ -1,5 +1,11 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.331.0
+
+### Patch Changes
+
+- [#11987](https://github.com/alwaysmeticulous/meticulous/pull/11987) [`223c5c3`](https://github.com/alwaysmeticulous/meticulous/commit/223c5c3c8e4450102471f9c5f48dc8dab14cbc32) Thanks [@Genora51](https://github.com/Genora51)! - Add optional `chunkGeneration` to `ReplayAndStoreResultsOptions` so cloud chunked runs can attribute finalize / diff-create completion commands.
+
 ## 2.330.0
 
 ### Minor Changes

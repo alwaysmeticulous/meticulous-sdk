@@ -16,6 +16,7 @@ import {
   getOrDownloadJsonFile,
   waitToAcquireLockOnDirectory,
 } from "../file-downloads/local-data.utils";
+import { ReplayHasNoArtifactsError } from "../errors";
 
 const MAX_DOWNLOAD_CONCURRENCY = 20;
 
@@ -312,9 +313,7 @@ const downloadReplayV3Files = async (
     includeAppContainerLogs: includes("appContainerLogs"),
   });
   if (!downloadUrls) {
-    throw new Error(
-      "Error: Could not retrieve replay download URLs. This may be an invalid replay",
-    );
+    throw new ReplayHasNoArtifactsError(replayId);
   }
 
   // Wrap a download thunk so that, for file types the caller marked best-effort,

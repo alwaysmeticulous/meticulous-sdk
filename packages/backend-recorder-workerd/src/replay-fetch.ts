@@ -51,6 +51,9 @@ export const replayOutboundCall = async (
       replayId: ctx.replayId,
       method: request.method,
       url: request.url,
+      ...(ctx.virtualTimeMs !== undefined
+        ? { virtualTimeMs: ctx.virtualTimeMs }
+        : {}),
       ...(requestBody !== undefined ? { requestBody } : {}),
     };
   } catch (error) {

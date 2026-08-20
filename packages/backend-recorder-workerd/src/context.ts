@@ -69,6 +69,13 @@ export interface RequestReplayContext extends BaseRequestContext {
    * real clock alone.
    */
   clockAnchorMs: number | undefined;
+  /**
+   * Elapsed virtual time (ms from replay start) of this inbound request, when
+   * the replay runner stamped {@link import("./protocol").VIRTUAL_TIME_HEADER}.
+   * Forwarded on every outbound lookup so concurrent calls from this request
+   * share one timestamp and hash across the matching recorded burst.
+   */
+  virtualTimeMs?: number;
 }
 
 export type RequestContext = RequestCaptureContext | RequestReplayContext;

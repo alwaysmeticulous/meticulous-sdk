@@ -128,6 +128,17 @@ export interface ReplayAndStoreResultsOptions {
     replayId: string;
     replayCommandId: string;
   };
+
+  /**
+   * Post-`start` chunk generation for cloud chunked runs. When present,
+   * finalize and final diff-create go through the completion-gateway
+   * endpoints (`/completion`) rather than the legacy entity-returning
+   * APIs. Also stamped onto mid-chunk `session_attempts`.
+   */
+  chunkGeneration?: {
+    chunkNumber: number;
+    chunkAttempt: number;
+  };
 }
 
 export interface PreNavigationResult {

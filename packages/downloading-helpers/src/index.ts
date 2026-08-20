@@ -1,4 +1,8 @@
 export { sanitizeFilename } from "./file-downloads/local-data.utils";
+export {
+  ReplayHasNoArtifactsError,
+  isReplayHasNoArtifactsError,
+} from "./errors";
 export { downloadAppContainerLogs } from "./file-downloads/app-container-logs";
 export {
   getOrFetchReplay,

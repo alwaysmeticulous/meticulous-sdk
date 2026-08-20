@@ -1,5 +1,11 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.331.0
+
+### Patch Changes
+
+- [#12529](https://github.com/alwaysmeticulous/meticulous/pull/12529) [`8bee1d0`](https://github.com/alwaysmeticulous/meticulous/commit/8bee1d0cc1a2b33d7ce9b3c6aa403ace0427bb91) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Forwards the inbound `x-meticulous-virtual-time` header on outbound replay lookups so the sidecar can pick among collapsed match-key candidates by closest recorded timestamp instead of HTTP arrival order.
+
 ## 2.330.0
 
 ### Patch Changes

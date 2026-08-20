@@ -13,6 +13,29 @@ import {
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 import { resolveGitOptions } from "./resolve-git-options";
 
+const STAGING_ENV_PREFIX = "METICULOUS_STAGING_";
+
+/**
+ * Collects every METICULOUS_STAGING_* environment variable into a login-option
+ * map keyed by the camelCased suffix (METICULOUS_STAGING_SKIP_EMAIL_CLIENT_ID
+ * becomes skipEmailClientId). The map is opaque to the CLI and backend — only
+ * the worker's login flow interprets keys — so new login options ship without
+ * a CLI release.
+ */
+const collectLoginOptions = (env: NodeJS.ProcessEnv): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(env).flatMap(([name, value]) =>
+      name.startsWith(STAGING_ENV_PREFIX) && value
+        ? [[toCamelCase(name.slice(STAGING_ENV_PREFIX.length)), value]]
+        : [],
+    ),
+  );
+
+const toCamelCase = (screamingSnakeCase: string): string =>
+  screamingSnakeCase
+    .toLowerCase()
+    .replace(/_([a-z0-9])/g, (_, char: string) => char.toUpperCase());
+
 interface Options {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
@@ -124,9 +147,7 @@ const handler = async ({
         ? {
             backend: {
               url: backendUrl,
-              username: process.env["METICULOUS_STAGING_USERNAME"],
-              password: process.env["METICULOUS_STAGING_PASSWORD"],
-              totpSecret: process.env["METICULOUS_STAGING_TOTP_SECRET"],
+              loginOptions: collectLoginOptions(process.env),
               proxyPaths: backendProxyPaths,
             },
           }
@@ -175,7 +196,8 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
     backendUrl: {
       string: true,
       description:
-        "HTTPS staging backend URL. Credentials are read from METICULOUS_STAGING_USERNAME, METICULOUS_STAGING_PASSWORD, and METICULOUS_STAGING_TOTP_SECRET when the configured login flow requires TOTP.",
+        "HTTPS staging backend URL. Login credentials and options are read from METICULOUS_STAGING_* environment variables and forwarded to the project's configured login flow: " +
+        "METICULOUS_STAGING_USERNAME and METICULOUS_STAGING_PASSWORD, plus flow-specific values such as METICULOUS_STAGING_TOTP_SECRET (base32 TOTP seed) or METICULOUS_STAGING_SKIP_EMAIL_CLIENT_ID (trusted-automation id that bypasses an email verification challenge).",
     },
     backendProxyPaths: {
       array: true,

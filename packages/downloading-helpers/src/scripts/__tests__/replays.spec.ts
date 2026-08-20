@@ -18,6 +18,10 @@ import {
   downloadFile,
 } from "../../file-downloads/download-file";
 import {
+  isReplayHasNoArtifactsError,
+  ReplayHasNoArtifactsError,
+} from "../../errors";
+import {
   getOrFetchReplayArchive,
   type BestEffortFileType,
   type ReplayFileType,
@@ -411,5 +415,45 @@ describe("getOrFetchReplayArchive — missing signedUrl", () => {
     await expect(
       run(new Set<BestEffortFileType>(["snapshottedAssets"])),
     ).resolves.toBeDefined();
+  });
+});
+
+describe("getOrFetchReplayArchive — replay with no artifacts", () => {
+  let dataDir: string;
+
+  beforeEach(() => {
+    dataDir = mkdtempSync(join(tmpdir(), "met-replays-noartifacts-"));
+    vi.clearAllMocks();
+    (getReplay as Mock).mockResolvedValue({ version: "v3" });
+    // A replay that failed, timed out, or has not finished running has no
+    // files index, so `GET /replays/:id/download-urls` 404s and the client
+    // maps that to `null`.
+    (getReplayV3DownloadUrls as Mock).mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  it("throws a ReplayHasNoArtifactsError callers can single out", async () => {
+    const error = await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive({} as never, REPLAY_ID, "everything"),
+    ).catch((e: unknown) => e);
+
+    expect(isReplayHasNoArtifactsError(error)).toBe(true);
+    expect(error).toBeInstanceOf(ReplayHasNoArtifactsError);
+    expect((error as ReplayHasNoArtifactsError).replayId).toBe(REPLAY_ID);
+  });
+
+  it("does not mark the replay as downloaded", async () => {
+    await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive({} as never, REPLAY_ID, "everything"),
+    ).catch(() => undefined);
+
+    expect(
+      existsSync(
+        join(dataDir, "replays", REPLAY_ID, "previously-downloaded.txt"),
+      ),
+    ).toBe(false);
   });
 });

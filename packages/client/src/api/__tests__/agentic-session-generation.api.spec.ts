@@ -3,14 +3,17 @@ import type { MeticulousClient } from "../../types/client.types";
 import { completeAgenticSessionGeneration } from "../agentic-session-generation.api";
 
 describe("completeAgenticSessionGeneration", () => {
-  it("redacts the TOTP seed and password from a failed launch request", async () => {
+  it("redacts every login-option value from a failed launch request", async () => {
     const launchError = {
       config: {
         data: {
           appTarget: {
             backend: {
-              password: "password",
-              totpSecret: "TESTTOTPSECRET",
+              loginOptions: {
+                password: "password",
+                totpSecret: "TESTTOTPSECRET",
+                skipEmailClientId: "trusted-client-id",
+              },
             },
           },
         },
@@ -30,8 +33,11 @@ describe("completeAgenticSessionGeneration", () => {
           assetsUploadId: "upload",
           backend: {
             url: "https://staging.example.com",
-            password: "password",
-            totpSecret: "TESTTOTPSECRET",
+            loginOptions: {
+              password: "password",
+              totpSecret: "TESTTOTPSECRET",
+              skipEmailClientId: "trusted-client-id",
+            },
           },
         },
       }),
@@ -40,8 +46,11 @@ describe("completeAgenticSessionGeneration", () => {
     expect(launchError.config.data).toEqual({
       appTarget: {
         backend: {
-          password: "[REDACTED]",
-          totpSecret: "[REDACTED]",
+          loginOptions: {
+            password: "[REDACTED]",
+            totpSecret: "[REDACTED]",
+            skipEmailClientId: "[REDACTED]",
+          },
         },
       },
     });

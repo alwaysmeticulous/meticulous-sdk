@@ -14,8 +14,10 @@ import { headersToRecord } from "./outbound-capture";
 import {
   FRONTEND_SESSION_ID_HEADER,
   type InboundRequestEvent,
+  parseVirtualTimeMs,
   REPLAY_ID_HEADER,
   REPLAY_SIDECAR_URL_HEADER,
+  VIRTUAL_TIME_HEADER,
 } from "./protocol";
 import {
   isProvisionalSessionIdCandidate,
@@ -269,6 +271,7 @@ const resolveReplayContext = async (
   let sidecarUrl: string | undefined;
   let frontendSessionId: string | undefined;
   let replayId: string | undefined;
+  let virtualTimeMs: number | undefined;
   try {
     sidecarUrl = parseReplaySidecarUrl(
       request.headers.get(REPLAY_SIDECAR_URL_HEADER),
@@ -276,6 +279,9 @@ const resolveReplayContext = async (
     frontendSessionId =
       request.headers.get(FRONTEND_SESSION_ID_HEADER) ?? undefined;
     replayId = request.headers.get(REPLAY_ID_HEADER) ?? undefined;
+    virtualTimeMs = parseVirtualTimeMs(
+      request.headers.get(VIRTUAL_TIME_HEADER),
+    );
   } catch {
     return undefined;
   }
@@ -299,6 +305,7 @@ const resolveReplayContext = async (
     replayId,
     sidecarUrl,
     clockAnchorMs: info.clockAnchorMs,
+    ...(virtualTimeMs !== undefined ? { virtualTimeMs } : {}),
     waitUntil: buildWaitUntil(ctx),
   };
 };

@@ -26,10 +26,14 @@ export interface AgenticContainerAppTarget {
 
 export interface AgenticAssetsBackend {
   url: string;
-  username?: string | undefined;
-  password?: string | undefined;
-  /** TOTP seed for the project's configured MFA login flow. */
-  totpSecret?: string | undefined;
+  /**
+   * Login credentials and options for the project's configured login flow,
+   * keyed by the camelCased METICULOUS_STAGING_* env var suffix (e.g.
+   * METICULOUS_STAGING_TOTP_SECRET becomes totpSecret). Opaque to the CLI and
+   * launch API — only the worker's login flow interprets keys, so new login
+   * options ship without a CLI release. Every value is treated as a secret.
+   */
+  loginOptions?: Record<string, string> | undefined;
   proxyPaths?: string[] | undefined;
 }
 
@@ -116,9 +120,7 @@ const redactLaunchCredentials = (
 ): void => {
   const secrets =
     appTarget?.type === "assets"
-      ? [appTarget.backend?.password, appTarget.backend?.totpSecret].filter(
-          (secret): secret is string => Boolean(secret),
-        )
+      ? Object.values(appTarget.backend?.loginOptions ?? {}).filter(Boolean)
       : [];
   if (secrets.length === 0 || typeof error !== "object" || error === null) {
     return;
@@ -132,13 +134,13 @@ const redactLaunchCredentials = (
     config.data = redacted;
   } else if (typeof config?.data === "object" && config.data !== null) {
     const target = config.data as {
-      appTarget?: { backend?: { password?: string; totpSecret?: string } };
+      appTarget?: { backend?: { loginOptions?: Record<string, string> } };
     };
-    if (target.appTarget?.backend?.password) {
-      target.appTarget.backend.password = "[REDACTED]";
-    }
-    if (target.appTarget?.backend?.totpSecret) {
-      target.appTarget.backend.totpSecret = "[REDACTED]";
+    const loginOptions = target.appTarget?.backend?.loginOptions;
+    if (loginOptions != null) {
+      for (const key of Object.keys(loginOptions)) {
+        loginOptions[key] = "[REDACTED]";
+      }
     }
   }
 };
@@ -148,6 +150,8 @@ export type AgenticRunResultCaseOutcome =
   | "fail"
   | "blocked"
   | "skipped";
+
+export type AgenticRunBlockedBy = "application" | "environment";
 
 export type AgenticRunResultCaseTag = "happy-path" | "edge-case" | "regression";
 
@@ -317,6 +321,8 @@ export interface AgenticRunResultCase {
   /** The steps the agent took, in order. */
   steps: AgenticRunResultStep[];
   outcome: AgenticRunResultCaseOutcome;
+  /** What prevented verification. Present only when `outcome` is `blocked`. */
+  blockedBy?: AgenticRunBlockedBy;
   /**
    * Concise user-visible account of what happened and, for a non-passing case,
    * the concrete reason. Optional for result blobs written by older workers.
@@ -1188,6 +1194,8 @@ export interface RecordedRequestDetails {
 export interface RecordedRequestMatch {
   sessionId: string;
   hash: string;
+  /** True when only a one-segment wildcard shape matched. */
+  nearMatch?: boolean;
   /** Full stored document size, including request and response bodies. */
   size: number;
   /** Null when the document exceeds the broad-search detail-read limit. */

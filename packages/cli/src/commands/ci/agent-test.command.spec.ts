@@ -121,6 +121,61 @@ describe("ci agent-test --trustedOrigins", () => {
   });
 });
 
+describe("ci agent-test login options", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it("collects METICULOUS_STAGING_* env vars into a camelCased loginOptions map", async () => {
+    vi.stubEnv("METICULOUS_STAGING_USERNAME", "user@example.com");
+    vi.stubEnv("METICULOUS_STAGING_PASSWORD", "password");
+    vi.stubEnv("METICULOUS_STAGING_TOTP_SECRET", "TESTTOTPSECRET");
+    vi.stubEnv("METICULOUS_STAGING_SKIP_EMAIL_CLIENT_ID", "trusted-client-id");
+
+    await runHandler({
+      assetsDir: "dist",
+      backendUrl: "https://staging.example.com",
+      backendProxyPaths: ["/api"],
+    });
+
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backend: {
+          url: "https://staging.example.com",
+          loginOptions: {
+            username: "user@example.com",
+            password: "password",
+            totpSecret: "TESTTOTPSECRET",
+            skipEmailClientId: "trusted-client-id",
+          },
+          proxyPaths: ["/api"],
+        },
+      }),
+    );
+  });
+
+  it("omits empty env values and ignores non-staging vars", async () => {
+    vi.stubEnv("METICULOUS_STAGING_USERNAME", "user@example.com");
+    vi.stubEnv("METICULOUS_STAGING_TOTP_SECRET", "");
+    vi.stubEnv("METICULOUS_API_TOKEN", "not-a-login-option");
+
+    await runHandler({
+      assetsDir: "dist",
+      backendUrl: "https://staging.example.com",
+      backendProxyPaths: ["/api"],
+    });
+
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backend: expect.objectContaining({
+          loginOptions: { username: "user@example.com" },
+        }),
+      }),
+    );
+  });
+});
+
 describe("ci agent-test --appPort", () => {
   beforeEach(() => {
     vi.clearAllMocks();
