@@ -6,6 +6,7 @@ import type {
   SessionFilter,
   TestRun,
 } from "@alwaysmeticulous/api";
+import { maybeEnrichFetchError } from "../errors";
 import type { MeticulousClient } from "../types/client.types";
 
 /**
@@ -286,12 +287,16 @@ export const completeContainerUpload = async ({
 }: CompleteContainerUploadParams & {
   client: MeticulousClient;
 }): Promise<CompleteContainerUploadResponse> => {
-  const { data } = await client.post<CompleteContainerUploadResponse>(
-    "project-deployments/complete-container-upload",
-    body,
-    projectIdQuery(projectId),
-  );
-  return data;
+  try {
+    const { data } = await client.post<CompleteContainerUploadResponse>(
+      "project-deployments/complete-container-upload",
+      body,
+      projectIdQuery(projectId),
+    );
+    return data;
+  } catch (error) {
+    throw maybeEnrichFetchError(error);
+  }
 };
 
 export type AssetChunkUploadPreviousStatus =

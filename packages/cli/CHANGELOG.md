@@ -1,5 +1,16 @@
 # @alwaysmeticulous/cli
 
+## 2.331.1
+
+### Patch Changes
+
+- Updated dependencies [[`c7a028b`](https://github.com/alwaysmeticulous/meticulous/commit/c7a028b28300ee2e4cef43a9a2b396828b3f76c0)]:
+  - @alwaysmeticulous/remote-replay-launcher@2.331.1
+  - @alwaysmeticulous/client@2.331.1
+  - @alwaysmeticulous/debug-workspace@2.331.1
+  - @alwaysmeticulous/downloading-helpers@2.331.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.331.1
+
 ## 2.331.0
 
 ### Minor Changes

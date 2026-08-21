@@ -5,6 +5,7 @@ import {
   agentUploadAssetBuild,
   agentUploadContainerBuild,
   agentUploadGitDiffBuild,
+  completeContainerUpload,
 } from "../project-deployments.api";
 
 describe("agent project-deployment client helpers", () => {
@@ -169,5 +170,41 @@ describe("agent project-deployment client helpers", () => {
         undefined,
       ]);
     });
+  });
+});
+
+describe("completeContainerUpload", () => {
+  it("surfaces the backend error message instead of only the HTTP status", async () => {
+    const error = Object.assign(new Error("HTTP 404: Not Found"), {
+      config: {
+        method: "POST",
+        url: "https://app.meticulous.ai/api/project-deployments/complete-container-upload",
+      },
+      response: {
+        status: 404,
+        statusText: "Not Found",
+        data: {
+          statusCode: 404,
+          message:
+            "Container image test-project/app:upload-1 not found in Harbor registry.",
+          error: "Not Found",
+        },
+        headers: {},
+      },
+    });
+    const client = {
+      post: vi.fn().mockRejectedValue(error),
+    } as unknown as MeticulousClient;
+
+    await expect(
+      completeContainerUpload({
+        client,
+        uploadId: "upload-1",
+        commitSha: "sha-1",
+        mustHaveBase: false,
+      }),
+    ).rejects.toThrow(
+      "Container image test-project/app:upload-1 not found in Harbor registry.",
+    );
   });
 });

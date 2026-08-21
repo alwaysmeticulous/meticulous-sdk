@@ -146,7 +146,9 @@ export const uploadContainer = async ({
     projectId,
   });
 
-  logProgress("Completing container upload and triggering test run...");
+  logProgress(
+    `Completing container upload ${uploadId} for commit ${commitSha} and triggering test run...`,
+  );
 
   if (gitDiffOutput) {
     await uploadGitDiffToS3({
@@ -216,7 +218,24 @@ export const uploadContainer = async ({
     ...projectIdentifier,
   };
 
-  const completeResult = await completeContainerUpload(completeContainerArgs);
+  const completeUpload = async (
+    args: typeof completeContainerArgs,
+  ): ReturnType<typeof completeContainerUpload> => {
+    try {
+      return await completeContainerUpload(args);
+    } catch (error) {
+      const logger = initLogger();
+      logger.error(
+        `Failed to complete container upload ${uploadId} for image ${imageReference} and commit ${commitSha}`,
+      );
+      if (error instanceof Error) {
+        logger.error(error.message);
+      }
+      throw error;
+    }
+  };
+
+  const completeResult = await completeUpload(completeContainerArgs);
 
   const pollResult = await pollWhileBaseNotFound({
     initialResult: {
@@ -226,7 +245,7 @@ export const uploadContainer = async ({
       message: completeResult.message,
     },
     retryFn: () =>
-      completeContainerUpload({
+      completeUpload({
         ...completeContainerArgs,
         mustHaveBase: true,
       }),
@@ -234,7 +253,7 @@ export const uploadContainer = async ({
       logProgress(
         "No base test run found. Creating the test run without a base; no sessions will be executed.",
       );
-      return completeContainerUpload({
+      return completeUpload({
         ...completeContainerArgs,
         mustHaveBase: false,
       });

@@ -3,9 +3,15 @@ import {
   getRegistryAuth,
   completeContainerUpload,
 } from "@alwaysmeticulous/client";
+import type * as Common from "@alwaysmeticulous/common";
 import Docker from "dockerode";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { uploadContainer } from "../upload-container";
+
+const PUSH_DIGEST = `sha256:${"a".repeat(64)}`;
+const SUCCESSFUL_PUSH_OUTPUT = [
+  { status: `upload-123: digest: ${PUSH_DIGEST} size: 1234` },
+];
 
 // Mock the dependencies
 vi.mock("@alwaysmeticulous/client", () => ({
@@ -14,8 +20,10 @@ vi.mock("@alwaysmeticulous/client", () => ({
   completeContainerUpload: vi.fn(),
   getApiToken: vi.fn((token) => token || "mocked-token"),
 }));
-vi.mock("@alwaysmeticulous/common", () => ({
+vi.mock("@alwaysmeticulous/common", async (importOriginal) => ({
+  ...(await importOriginal<typeof Common>()),
   initLogger: () => ({
+    debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
@@ -60,7 +68,7 @@ describe("uploadContainer", () => {
       modem: {
         followProgress: vi.fn((stream, onFinished) => {
           // Call onFinished to complete the push
-          onFinished(null, []);
+          onFinished(null, SUCCESSFUL_PUSH_OUTPUT);
         }),
       },
     };
@@ -286,8 +294,14 @@ describe("uploadContainer", () => {
 
   it("should handle progress events during push", async () => {
     mockDockerClient.modem.followProgress.mockImplementation(
-      (stream: any, onFinished: any) => {
-        onFinished(null, []);
+      (stream: any, onFinished: any, onProgress: any) => {
+        const progressEvent = {
+          id: "layer-1",
+          status: "Pushing",
+          progress: "50%",
+        };
+        onProgress(progressEvent);
+        onFinished(null, [progressEvent, ...SUCCESSFUL_PUSH_OUTPUT]);
       },
     );
 
@@ -300,5 +314,61 @@ describe("uploadContainer", () => {
 
     // Verify that progress was tracked (through modem.followProgress)
     expect(mockDockerClient.modem.followProgress).toHaveBeenCalled();
+  });
+
+  it("retries when Docker reports an error in a successful progress stream", async () => {
+    vi.useFakeTimers();
+    mockDockerClient.modem.followProgress
+      .mockImplementationOnce((stream: any, onFinished: any) => {
+        onFinished(null, [
+          {
+            errorDetail: {
+              message: "blob unknown to registry",
+            },
+            error: "blob unknown to registry",
+          },
+        ]);
+      })
+      .mockImplementationOnce((stream: any, onFinished: any) => {
+        onFinished(null, SUCCESSFUL_PUSH_OUTPUT);
+      });
+
+    const resultPromise = uploadContainer({
+      apiToken: "test-token",
+      localImageTag: "myapp:latest",
+      commitSha: "abc123def456",
+      waitForBase: false,
+    });
+    await vi.runAllTimersAsync();
+
+    await expect(resultPromise).resolves.toMatchObject({
+      uploadId: "upload-123",
+    });
+    expect(mockImage.push).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it("does not report success without a published manifest digest", async () => {
+    vi.useFakeTimers();
+    mockDockerClient.modem.followProgress.mockImplementation(
+      (stream: any, onFinished: any) => {
+        onFinished(null, [{ status: "Pushed", id: "layer-1" }]);
+      },
+    );
+
+    const resultPromise = uploadContainer({
+      apiToken: "test-token",
+      localImageTag: "myapp:latest",
+      commitSha: "abc123def456",
+      waitForBase: false,
+    });
+    const rejection = expect(resultPromise).rejects.toThrow(
+      "before the registry confirmed a manifest digest",
+    );
+    await vi.runAllTimersAsync();
+
+    await rejection;
+    expect(mockImage.push).toHaveBeenCalledTimes(3);
+    vi.useRealTimers();
   });
 });

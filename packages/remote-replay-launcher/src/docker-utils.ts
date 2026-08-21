@@ -1,5 +1,28 @@
-import { initLogger } from "@alwaysmeticulous/common";
+import { executeWithRetry, initLogger } from "@alwaysmeticulous/common";
 import Docker from "dockerode";
+
+type DockerPushProgressEvent = {
+  status?: string;
+  id?: string;
+  progress?: string;
+  error?: string;
+  errorDetail?: {
+    message?: string;
+  };
+  aux?: {
+    Digest?: string;
+  };
+};
+
+class IncompleteDockerPushError extends Error {}
+
+const DOCKER_PUSH_RETRY_OPTIONS = {
+  maxRetries: 2,
+  retryDelay: 1_000,
+  maxRetryDelay: 2_000,
+  shouldRetry: (error: unknown): boolean =>
+    error instanceof IncompleteDockerPushError,
+};
 
 export const getDockerClient = (): Docker => {
   return new Docker();
@@ -115,14 +138,32 @@ export const pushImage = async (
 ): Promise<void> => {
   const logger = initLogger();
 
+  logger.info(`Starting Docker push for ${imageReference}`);
+  await executeWithRetry(
+    () => pushImageOnce(docker, imageReference, authconfig),
+    {
+      ...DOCKER_PUSH_RETRY_OPTIONS,
+      logger,
+    },
+  );
+};
+
+const pushImageOnce = async (
+  docker: Docker,
+  imageReference: string,
+  authconfig: Docker.AuthConfig,
+): Promise<void> => {
+  const logger = initLogger();
+
   return new Promise((resolve, reject) => {
     const image = docker.getImage(imageReference);
 
     image.push({ authconfig }, (err, stream) => {
       if (err) {
+        const message = err instanceof Error ? err.message : String(err);
         logger.error(`Failed to push image ${imageReference}`);
-        logger.error(`Error: ${err.message}`);
-        reject(new Error(`Failed to push Docker image: ${err.message}`));
+        logger.error(`Error: ${message}`);
+        reject(new Error(`Failed to push Docker image: ${message}`));
         return;
       }
 
@@ -131,15 +172,108 @@ export const pushImage = async (
         return;
       }
 
-      docker.modem.followProgress(stream, (err) => {
-        if (err) {
-          logger.error(`Error during image push: ${err.message}`);
-          reject(err instanceof Error ? err : new Error(String(err)));
-          return;
-        }
-        logger.info(`Successfully pushed image ${imageReference}`);
-        resolve();
-      });
+      docker.modem.followProgress(
+        stream,
+        (err, output: DockerPushProgressEvent[]) => {
+          if (err) {
+            logger.error(
+              `Docker push stream failed for ${imageReference}: ${err.message}`,
+            );
+            reject(
+              new IncompleteDockerPushError(
+                `Docker push stream failed: ${err.message}`,
+                { cause: err },
+              ),
+            );
+            return;
+          }
+
+          const daemonError = getDockerPushError(output);
+          if (daemonError) {
+            logger.error(
+              `Docker daemon reported an incomplete push for ${imageReference}: ${daemonError}`,
+            );
+            reject(
+              new IncompleteDockerPushError(
+                `Docker daemon reported an incomplete push: ${daemonError}`,
+              ),
+            );
+            return;
+          }
+
+          const digest = getPushedDigest(output);
+          if (!digest) {
+            const lastStatus = getLastDockerPushStatus(output);
+            logger.error(
+              `Docker push stream ended without publishing a manifest for ${imageReference}. Last status: ${lastStatus}`,
+            );
+            reject(
+              new IncompleteDockerPushError(
+                `Docker push ended before the registry confirmed a manifest digest. Last status: ${lastStatus}`,
+              ),
+            );
+            return;
+          }
+
+          logger.info(
+            `Successfully pushed image ${imageReference} with digest ${digest}`,
+          );
+          resolve();
+        },
+        (event: DockerPushProgressEvent) => {
+          logger.debug(formatDockerPushProgress(event));
+        },
+      );
     });
   });
+};
+
+const getDockerPushError = (
+  output: DockerPushProgressEvent[],
+): string | null => {
+  for (const event of output) {
+    const message = event.errorDetail?.message ?? event.error;
+    if (message) {
+      return message;
+    }
+  }
+  return null;
+};
+
+const getPushedDigest = (output: DockerPushProgressEvent[]): string | null => {
+  for (let index = output.length - 1; index >= 0; index -= 1) {
+    const event = output[index];
+    if (!event) {
+      continue;
+    }
+    if (event.aux?.Digest) {
+      return event.aux.Digest;
+    }
+    const digest = event.status?.match(/\bdigest:\s*(sha256:[a-f0-9]{64})\b/i);
+    if (digest?.[1]) {
+      return digest[1];
+    }
+  }
+  return null;
+};
+
+const getLastDockerPushStatus = (output: DockerPushProgressEvent[]): string => {
+  for (let index = output.length - 1; index >= 0; index -= 1) {
+    const status = output[index]?.status;
+    if (status) {
+      return status;
+    }
+  }
+  return "no progress events received";
+};
+
+const formatDockerPushProgress = (event: DockerPushProgressEvent): string => {
+  const layer = event.id ? ` [${event.id}]` : "";
+  const progress = event.progress ? ` ${event.progress}` : "";
+  const status =
+    event.errorDetail?.message ??
+    event.error ??
+    event.status ??
+    "unknown Docker push event";
+  return `Docker push${layer}: ${status}${progress}`;
 };
