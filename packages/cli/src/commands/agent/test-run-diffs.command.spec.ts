@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   getTestRunDiffsSummaryCounts: vi.fn(),
   ensureTestRunFinished: vi.fn(),
   assertTestRunComplete: vi.fn(),
+  isFetchError: vi.fn(),
   isSessionPool: vi.fn(),
   isTestRunPartial: vi.fn(),
   resolveTestRunForCommitOrThrow: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock("@alwaysmeticulous/client", () => ({
   getTestRun: mocks.getTestRun,
   getTestRunDiffsSummary: mocks.getTestRunDiffsSummary,
   getTestRunDiffsSummaryCounts: mocks.getTestRunDiffsSummaryCounts,
+  isFetchError: mocks.isFetchError,
 }));
 
 vi.mock("@alwaysmeticulous/common", () => ({
@@ -88,6 +90,14 @@ describe("test-run-diffs command polling", () => {
     mocks.assertTestRunComplete.mockReturnValue(undefined);
     mocks.isTestRunPartial.mockReturnValue(false);
     mocks.isSessionPool.mockReturnValue(false);
+    mocks.isFetchError.mockImplementation(
+      (error: unknown) =>
+        typeof error === "object" && error != null && "response" in error,
+    );
+    mocks.resolveTestRunForCommitOrThrow.mockResolvedValue({
+      testRunId: "tr-1",
+      status: "Success",
+    });
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
       throw new ProcessExitError(code);
@@ -527,7 +537,7 @@ describe("test-run-diffs command polling", () => {
     expect(mocks.getTestRunDiffsSummary).not.toHaveBeenCalled();
   });
 
-  // isSessionPoolRun is already known before the run needs to finish, so a
+  // Session-pool state is already known before the run needs to finish, so a
   // still-running session pool must be rejected immediately rather than
   // waiting on (or, with --dontWaitForTestRunToComplete, silently returning
   // an empty result past) a run that will never have diffs.
@@ -538,5 +548,53 @@ describe("test-run-diffs command polling", () => {
       /is a base run other test runs compare against and consequently has no changes\/diffs/,
     );
     expect(mocks.ensureTestRunFinished).not.toHaveBeenCalled();
+  });
+
+  // A settled session pool resolved from a commit can't be recognised locally:
+  // that needs `configData`, and the commit lookup deliberately carries only
+  // the id and status. Fetching the run just to classify it would add a round
+  // trip to every call on this path, so the backend's rejection is relayed —
+  // and it has to arrive as a clean user error, not an unexpected failure with
+  // a --help tip and a Sentry report.
+  it("relays the backend's rejection for a commit-resolved settled session pool", async () => {
+    mocks.getTestRunDiffsSummary.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          reason: "base-run-not-applicable",
+          message:
+            "Test run tr-pool is a base run other test runs compare against and consequently has no changes/diffs.",
+        },
+      },
+    });
+
+    const handled = runHandler({ testRunId: undefined, commitSha: "sha-1" });
+    await expect(handled).rejects.toBeInstanceOf(CliUserError);
+    await expect(
+      runHandler({ testRunId: undefined, commitSha: "sha-1" }),
+    ).rejects.toThrow(/has no changes\/diffs/);
+  });
+
+  // The whole point of relaying rather than pre-checking: the commit path must
+  // not buy `configData` it only needs for the uncommon settled-pool case.
+  it("does not fetch the run when resolving from a commit", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [],
+    });
+
+    await runHandler({ testRunId: undefined, commitSha: "sha-1" });
+    expect(mocks.getTestRun).not.toHaveBeenCalled();
+  });
+
+  // Anything else from the same call is a genuine failure and must keep
+  // reaching the generic (Sentry) path.
+  it("leaves an unexpected failure from the diffs request alone", async () => {
+    const serverError = { response: { status: 500, data: {} } };
+    mocks.getTestRunDiffsSummary.mockRejectedValue(serverError);
+
+    await expect(
+      runHandler({ testRunId: undefined, commitSha: "sha-1" }),
+    ).rejects.toBe(serverError);
   });
 });

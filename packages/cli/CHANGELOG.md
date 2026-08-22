@@ -1,5 +1,22 @@
 # @alwaysmeticulous/cli
 
+## 2.331.2
+
+### Patch Changes
+
+- [#12669](https://github.com/alwaysmeticulous/meticulous/pull/12669) [`be6e14a`](https://github.com/alwaysmeticulous/meticulous/commit/be6e14aeee646706157e728d1fbf325e659ef23d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Serve a base run's coverage when a small share of its selected set can never be replayed, rather than refusing that commit permanently. `agent complete-base-run` reports `unobtainableSessionCount`, and stops waiting for sessions nothing will retry.
+
+- [#12669](https://github.com/alwaysmeticulous/meticulous/pull/12669) [`be6e14a`](https://github.com/alwaysmeticulous/meticulous/commit/be6e14aeee646706157e728d1fbf325e659ef23d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Align base-run completion with coverage readiness, and keep commit lookup output limited to the test run id and status.
+
+- [#12669](https://github.com/alwaysmeticulous/meticulous/pull/12669) [`be6e14a`](https://github.com/alwaysmeticulous/meticulous/commit/be6e14aeee646706157e728d1fbf325e659ef23d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent complete-base-run` now waits up to 10 minutes for the run to finish, matching the other agent commands' poll timeout (was 45 minutes with a separate stall-detection grace period), and returns whatever it has if the run isn't done by then instead of erroring.
+
+- Updated dependencies [[`be6e14a`](https://github.com/alwaysmeticulous/meticulous/commit/be6e14aeee646706157e728d1fbf325e659ef23d), [`be6e14a`](https://github.com/alwaysmeticulous/meticulous/commit/be6e14aeee646706157e728d1fbf325e659ef23d)]:
+  - @alwaysmeticulous/client@2.331.2
+  - @alwaysmeticulous/debug-workspace@2.331.2
+  - @alwaysmeticulous/downloading-helpers@2.331.2
+  - @alwaysmeticulous/remote-replay-launcher@2.331.2
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.331.2
+
 ## 2.331.1
 
 ### Patch Changes

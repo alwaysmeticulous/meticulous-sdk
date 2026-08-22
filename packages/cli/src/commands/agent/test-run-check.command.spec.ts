@@ -193,7 +193,7 @@ describe("test-run-check command", () => {
     expect(mocks.getTestRunCheckReport).not.toHaveBeenCalled();
   });
 
-  // isSessionPoolRun is already known before the run needs to finish, so a
+  // Session-pool state is already known before the run needs to finish, so a
   // still-running session pool must be rejected immediately rather than
   // waiting on (or, with --dontWaitForTestRunToComplete, silently returning
   // processing JSON past) a run that will never have check reports.
@@ -269,7 +269,7 @@ describe("test-run-check --availableIds", () => {
       expect.anything(),
       "tr-1",
     );
-    // Resolving isSessionPoolRun for an explicit --testRunId needs its
+    // Resolving session-pool state for an explicit --testRunId needs its
     // configData, but --availableIds still never waits for the run to finish.
     expect(mocks.getTestRun).toHaveBeenCalledWith({
       client: expect.anything(),

@@ -11,6 +11,7 @@ import { logNotice, logProgress } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { relayingBaseRunRejection } from "../../utils/base-run-rejection";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
   assertTestRunComplete,
@@ -105,7 +106,7 @@ const handler = async ({
 
   let resolvedTestRunId: string;
   let status: TestRunStatus;
-  let isSessionPoolRun: boolean;
+  let sessionPoolRun: boolean;
   if (testRunId != null) {
     resolvedTestRunId = testRunId;
     const run = await getTestRun({ client, testRunId });
@@ -113,21 +114,24 @@ const handler = async ({
     // No eager/non-eager distinction here: a session-pool run has no check
     // reports of its own to serve regardless of eagerness (see
     // isBaseOrAnySessionPoolRun on the backend).
-    isSessionPoolRun = isSessionPool(run.configData);
+    sessionPoolRun = isSessionPool(run.configData);
   } else {
-    const run = await resolveTestRunForCommitOrThrow(
+    const resolved = await resolveTestRunForCommitOrThrow(
       client,
       commitSha,
       project,
     );
-    resolvedTestRunId = run.testRunId;
-    status = run.status;
-    isSessionPoolRun = run.isSessionPoolRun;
+    resolvedTestRunId = resolved.testRunId;
+    status = resolved.status;
+    // Not fetched here — see the same note in test-run-diffs.command.ts: a
+    // settled session pool needs `configData` to recognise, which would cost a
+    // round trip on every call, so the backend's rejection is relayed instead.
+    sessionPoolRun = false;
   }
 
   // A base run exists to be compared against, not to be a change of its own,
   // so it has no check reports of its own. A session-pool base can settle
-  // into Success/Failure without ever becoming Partial, so isSessionPoolRun
+  // into Success/Failure without ever becoming Partial, so session-pool state
   // is checked independently of status — and, for the --checkId path below,
   // before waiting for the run to finish, since it's already known here and
   // there's no reason to block on (or silently skip past, with
@@ -138,7 +142,7 @@ const handler = async ({
       `Test run ${resolvedTestRunId} is a base run other test runs compare against and consequently has no check reports.`,
     );
   };
-  if (isSessionPoolRun) {
+  if (sessionPoolRun) {
     assertNotBaseRun();
   }
 
@@ -149,7 +153,9 @@ const handler = async ({
     if (isTestRunPartial(status)) {
       assertNotBaseRun();
     }
-    const checks = await getTestRunCheckAvailableIds(client, resolvedTestRunId);
+    const checks = await relayingBaseRunRejection(
+      getTestRunCheckAvailableIds(client, resolvedTestRunId),
+    );
     if (json) {
       printJson(checks);
     } else {
@@ -186,7 +192,7 @@ const handler = async ({
     }
     return;
   }
-  // isSessionPoolRun was already checked above, before waiting; Partial only
+  // Session-pool state was already checked above, before waiting; Partial only
   // becomes known once the run has finished.
   if (isTestRunPartial(finishedStatus)) {
     assertNotBaseRun();
@@ -198,11 +204,8 @@ const handler = async ({
   logProgress(
     `Fetching ${checkType} check ${checkId} for test run ${resolvedTestRunId}...`,
   );
-  let response = await getTestRunCheckReport(
-    client,
-    resolvedTestRunId,
-    checkId,
-    { checkType },
+  let response = await relayingBaseRunRejection(
+    getTestRunCheckReport(client, resolvedTestRunId, checkId, { checkType }),
   );
   const deadline = performance.now() + REPORT_POLL_TIMEOUT_MS;
   if (response.status === "processing") {

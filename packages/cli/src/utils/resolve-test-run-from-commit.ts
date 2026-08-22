@@ -61,7 +61,6 @@ const hasLocalChanges = async (): Promise<boolean> =>
 export interface ResolvedTestRun {
   testRunId: string;
   status: TestRunStatus;
-  isSessionPoolRun: boolean;
 }
 
 /** Whether a status means the run is still running (not yet usable). */
@@ -174,11 +173,9 @@ export const resolveTestRunForCommitOrThrow = async (
   }
   await logResolvedCommitSha(commitSha, sha);
 
-  const { testRunId, status, isSessionPoolRun } = await getTestRunForCommit(
-    client,
-    sha,
-    { project },
-  );
+  const { testRunId, status } = await getTestRunForCommit(client, sha, {
+    project,
+  });
   if (testRunId == null || status == null) {
     throw new CliUserError(
       await appendProjectSelectionHint(
@@ -189,7 +186,7 @@ export const resolveTestRunForCommitOrThrow = async (
     );
   }
   logProgress(`Resolved test run id: ${testRunId}`);
-  return { testRunId, status, isSessionPoolRun };
+  return { testRunId, status };
 };
 
 /**
@@ -207,14 +204,10 @@ export const tryResolveTestRunForCommit = async (
     if (!sha) {
       return null;
     }
-    const { testRunId, status, isSessionPoolRun } = await getTestRunForCommit(
-      client,
-      sha,
-      { project },
-    );
-    return testRunId != null && status != null
-      ? { testRunId, status, isSessionPoolRun }
-      : null;
+    const { testRunId, status } = await getTestRunForCommit(client, sha, {
+      project,
+    });
+    return testRunId != null && status != null ? { testRunId, status } : null;
   } catch (error) {
     // A CliUserError (e.g. no project selected for an OAuth caller) is an
     // actionable configuration problem the user must address, not a reason to

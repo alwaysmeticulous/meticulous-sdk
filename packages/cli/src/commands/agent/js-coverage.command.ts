@@ -656,7 +656,7 @@ export const isAmbiguousTestRunError = (error: unknown): boolean =>
 export const jsCoverageCommand: CommandModule<unknown, Options> = {
   command: "js-coverage",
   describe:
-    "Get the list of per-file JavaScript coverage for a whole test run, a project's preferred latest successful test run, or a single replay (or a single screenshot of it). Outputs a TSV table with columns repoFilePath plus the requested additional columns (default if none: executedRanges). A resolved run that turns out to be a base run — the usual outcome on the default branch — replays its selected sessions on demand, so while any of them are still unreplayed its coverage understates the commit and this is refused, naming how many are missing: either replay the rest with 'meticulous agent complete-base-run' and ask again, or pass --latestForProject for the project's overall coverage. This applies however the run was named (--commitSha/HEAD, --testRunId, or the primary of --testRunIds); a base run that has replayed its whole selected set is served normally.",
+    "Get the list of per-file JavaScript coverage for a whole test run, a project's preferred latest successful test run, or a single replay (or a single screenshot of it). Outputs a TSV table with columns repoFilePath plus the requested additional columns (default if none: executedRanges).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     testRunId: {
@@ -674,7 +674,7 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       boolean: true,
       default: false,
       description:
-        "Return coverage from the project's preferred latest successful test run (the same run used by the webapp's project coverage view). Uses --project when provided, otherwise the token's project or the OAuth user's default project. Cannot be combined with an explicit run/commit/replay, --prDiffOnly, run unions, or --dontWaitForTestRunToComplete.",
+        "Return coverage from the project's preferred latest successful test run (the same run used by the webapp's project coverage view) — not necessarily your current commit. Uses --project when provided, otherwise the token's project or the OAuth user's default project. Cannot be combined with an explicit run/commit/replay, --prDiffOnly, run unions, or --dontWaitForTestRunToComplete.",
       // No yargs-level `conflicts` here: yargs treats a conflicting option as
       // "present" once it has a value, including its default — since
       // prDiffOnly/dontWaitForTestRunToComplete also default to false, that
@@ -702,7 +702,7 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "Comma-separated additional test run IDs to union with the run resolved via --commitSha, or the current git HEAD by default (cannot be combined with --testRunId — use --testRunIds instead when you already have an explicit primary ID). " +
-        "Useful for checking combined coverage of the resolved run with additional custom-session test runs, each covering a subset of sessions. No run may still be running, nor be a base run with sessions still unreplayed (complete-base-run first), and all must belong to the same project and have executed the exact same commit as the run resolved above " +
+        "Useful for checking combined coverage of the resolved run with additional custom-session test runs, each covering a subset of sessions. No run may still be running, nor be a base run with sessions still unreplayed, and all must belong to the same project and have executed the exact same commit as the run resolved above " +
         "(a PR's merge commit is recomputed whenever its base branch moves, so a run triggered against a since-advanced base is rejected). Whole-test-run coverage only.",
     },
     testRunIds: {
@@ -726,7 +726,7 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       boolean: true,
       default: false,
       description:
-        "Output only files changed in the PR diff (from coverage.pr.json). Whole-test-run coverage only, and not for a base run, whether or not it has replayed its whole selected set, since it has no PR to scope a diff to.",
+        "Output only files changed in the PR diff (from coverage.pr.json). Whole-test-run coverage only, and not for a base run, which has no PR.",
     },
     includeExecutedRanges: {
       boolean: true,

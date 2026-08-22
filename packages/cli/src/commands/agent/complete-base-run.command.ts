@@ -3,7 +3,6 @@ import {
   completeBaseRun,
   createClientWithOAuth,
   getTestRun,
-  IN_PROGRESS_TEST_RUN_STATUS,
   type CompleteBaseRunResponse,
   type MeticulousClient,
   type TestRun,
@@ -15,16 +14,12 @@ import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { errorResponseBody } from "../../utils/error-response-body";
 import {
-  POLL_TIMEOUT_MS as STALL_GRACE_MS,
+  assertTestRunComplete,
+  isTestRunFailed,
+  isTestRunComplete,
+  POLL_TIMEOUT_MS,
   resolveTestRunForCommitOrThrow,
 } from "../../utils/resolve-test-run-from-commit";
-
-/**
- * How long to wait for a completed base run to finish. Longer than the usual
- * poll deadline: this waits out a full test run's replays (every selected
- * session), not a run that was already most of the way through.
- */
-const COMPLETION_TIMEOUT_MS = 45 * 60 * 1000;
 
 /** How often to re-check completion while waiting. */
 const POLL_INTERVAL_MS = 10_000;
@@ -42,22 +37,6 @@ const POLL_INTERVAL_MS = 10_000;
  * transaction and its lock on every tick.
  */
 const RESCHEDULE_INTERVAL_MS = 60_000;
-
-/**
- * `STALL_GRACE_MS` (imported as `POLL_TIMEOUT_MS`) is how long
- * `unexecutedSessionCount` must stay flat (no new sessions scheduled, count
- * unchanged) before giving up early rather than waiting out the full timeout.
- * A session pool has no status this command can wait on — see
- * {@link waitForBaseRunCompletion} — so a stall is detected from the
- * completeness count itself: sessions genuinely in flight keep moving as
- * their chunk completes, while sessions `completeBaseRun` currently has
- * nothing further to schedule for stay flat indefinitely. A chunk replays
- * many sessions together and only reports once the whole chunk finishes, so a
- * perfectly healthy chunk can show no progress at all for several minutes —
- * this has to be sized in minutes, not seconds, or it reads normal replay
- * time as a dead end. Kept well under `COMPLETION_TIMEOUT_MS` so a
- * genuinely-stuck run is still reported long before the full timeout.
- */
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -107,55 +86,78 @@ const handler = async ({
     logNotice(
       `Test run ${resolvedTestRunId} has already replayed all ${result.configuredSessionCount} of its selected sessions; nothing to do.`,
     );
-  } else {
+  } else if (result.unexecutedSessionCount > result.unobtainableSessionCount) {
     logNotice(
       `Test run ${resolvedTestRunId} has nothing further to schedule right now, but ${result.unexecutedSessionCount} of its ${result.configuredSessionCount} selected sessions still lack a result — likely still in flight from an earlier call.`,
     );
-  }
-
-  // Wait by default, so the run this returns is one whose coverage can be
-  // asked for straight away — the point of completing it. Nothing to wait for
-  // once coverage is already servable.
-  let { status, unexecutedSessionCount } = result;
-  if (!dontWaitForTestRunToComplete && !isCoverageServable(result)) {
-    ({ status, unexecutedSessionCount } = await waitForBaseRunCompletion(
-      client,
-      resolvedTestRunId,
-      result,
-    ));
-  }
-
-  if (json) {
-    printJson({ ...result, status, unexecutedSessionCount });
   } else {
-    printKeyValueLines({ ...result, status, unexecutedSessionCount });
+    logNotice(
+      `Test run ${resolvedTestRunId} has ${result.unobtainableSessionCount} of its ${result.configuredSessionCount} selected sessions that can no longer be replayed on it, and nothing left to schedule.`,
+    );
+  }
+
+  // Wait by default, so the run this returns is one nothing more can be
+  // scheduled for — the point of completing it.
+  let { status, unexecutedSessionCount, unobtainableSessionCount } = result;
+  if (!dontWaitForTestRunToComplete && !hasReplayedAllItCan(result)) {
+    ({ status, unexecutedSessionCount, unobtainableSessionCount } =
+      await waitForBaseRunCompletion(client, resolvedTestRunId, result));
+  }
+
+  const output = {
+    ...result,
+    status,
+    unexecutedSessionCount,
+    unobtainableSessionCount,
+  };
+  if (json) {
+    printJson(output);
+  } else {
+    printKeyValueLines(output);
   }
 };
 
 /**
- * Whether `js-coverage` will actually succeed for this run right now.
- * `unexecutedSessionCount === 0` alone isn't enough: session results land
- * per-chunk as soon as replays finish, but the coverage artifact `js-coverage`
- * serves is only rewritten by a later, separate post-process step — which is
- * also what settles a session pool's `status` into a genuinely completed one
- * once *its* snapshot of the configured set is fully covered (mirrors the
- * backend's own gate in `AgentApiService.assertBaseRunCoverageComplete`). So
- * both conditions must hold: nothing left unexecuted, and `status` has
- * settled rather than merely left `Partial` — appending chunks takes a pool
- * through `Running`/`PostProcessing` first (`IN_PROGRESS_TEST_RUN_STATUS`),
- * and the artifact isn't guaranteed to include the new results until
- * post-process next runs.
+ * Whether the run is as complete as replaying can make it — what this command
+ * waits for, computed from the cheap read-only poll so the loop needs no
+ * write-path call to finish.
+ *
+ * `unexecutedSessionCount` reaching `unobtainableSessionCount` is the
+ * scheduling half: nothing is left that replaying could still supply.
+ * `isTestRunComplete` — a usable `Success`/`Failure` verdict, matching the
+ * backend's own gate — is the artifact half: results land per-chunk as soon as
+ * replays finish, but the coverage `js-coverage` serves is only rewritten by a
+ * later, separate post-process step, which is also what settles a pool's
+ * status. Without it, a pool that has just been appended to looks done while
+ * the artifact still describes the old subset.
+ *
+ * Note this says nothing about whether the result is *good enough* for any
+ * particular consumer — whether a remainder that can never be replayed is a
+ * small enough share of the set to ignore is `js-coverage`'s question, and it
+ * answers it with the numbers when it refuses. This command's job ends at
+ * "nothing more can be scheduled".
  */
-const isCoverageServable = ({
+const hasReplayedAllItCan = ({
   status,
   unexecutedSessionCount,
+  unobtainableSessionCount,
 }: {
   status: TestRunStatus;
   unexecutedSessionCount: number;
+  unobtainableSessionCount: number;
 }): boolean =>
-  unexecutedSessionCount === 0 &&
-  status !== "Partial" &&
-  !IN_PROGRESS_TEST_RUN_STATUS.includes(status);
+  unexecutedSessionCount <= unobtainableSessionCount &&
+  isTestRunComplete(status);
+
+/** Reject a whole-run terminal failure instead of polling a state that cannot recover. */
+const assertCoverageCanStillBecomeServable = (
+  testRunId: string,
+  status: TestRunStatus,
+): void => {
+  if (isTestRunFailed(status) || status === "Skipped") {
+    assertTestRunComplete(testRunId, status, { resultName: "coverage" });
+  }
+};
 
 /**
  * The same session-completeness diff the backend's
@@ -182,93 +184,79 @@ const countUnexecutedSessions = (testRun: TestRun): number => {
 };
 
 /**
- * Waits until `complete-base-run`'s coverage is servable (see
- * {@link isCoverageServable}), polling the plain, read-only `getTestRun`
+ * Waits until the run has replayed everything it can (see
+ * {@link hasReplayedAllItCan}), polling the plain, read-only `getTestRun`
  * every {@link POLL_INTERVAL_MS} rather than re-invoking `complete-base-run`
  * itself (idempotent, but a write — see its own docstring) on every tick:
- * `getTestRun` already carries everything needed (see
- * {@link countUnexecutedSessions}), so most ticks need no write-path traffic
- * at all. `complete-base-run` is still re-invoked, at the coarser
- * {@link RESCHEDULE_INTERVAL_MS}, to actually pick up anything newly eligible
- * to (re-)schedule (see `BaseRunCompletionService.completeBaseRun`) —
- * `getTestRun` only observes progress, it can't cause it.
+ * `getTestRun` carries enough to track progress (see
+ * {@link countUnexecutedSessions}), so most ticks need no write-path traffic at
+ * all. `complete-base-run` is re-invoked at the coarser
+ * {@link RESCHEDULE_INTERVAL_MS}, which is what picks up anything newly
+ * eligible to (re-)schedule (see `BaseRunCompletionService.completeBaseRun`)
+ * and what refreshes `unobtainableSessionCount`; `getTestRun` only observes
+ * progress, it can't cause it.
  *
  * A session pool's `status` by itself is not a wait-worthy signal: it can
  * rest in `Partial` indefinitely between requests (not "still running"), and
  * can equally sit in a stale `Success`/`Failure` from before this call's work
- * even starts (scheduling doesn't itself move the status). Unexecuted
- * sessions reaching `0` is the signal that scheduling is done; `status`
+ * even starts (scheduling doesn't itself move the status). Sessions that could
+ * still replay running out is the signal that scheduling is done; `status`
  * leaving `Partial` is the signal that the coverage artifact has caught up
  * with that.
  *
- * Gives up early — rather than waiting out the full timeout — once the
- * unexecuted count has stayed flat for {@link STALL_GRACE_MS}. Sessions
- * actually in flight (scheduled by this call or an earlier one) keep moving
- * as their chunks complete, and a session whose chunk failed with
- * `ExecutionError` (e.g. its pod never actually ran) gets rescheduled the
- * next time this reaches {@link RESCHEDULE_INTERVAL_MS} — so a *sustained*
- * flat count usually means the remainder is just taking longer than usual,
- * not that it's permanently stuck. This can't be told apart from a genuinely
- * wedged state with certainty, hence the hedged error message rather than a
- * confident diagnosis.
+ * Gives up after {@link POLL_TIMEOUT_MS} — the same deadline
+ * `awaitTestRunCompletion` uses for a regular test run — and returns
+ * whatever it has rather than erroring: a base run's remaining sessions can
+ * legitimately take longer than that to replay, so timing out here isn't a
+ * failure, just an "ask again later." A remainder that is definitively beyond
+ * recovering is not waited on at all — it satisfies {@link hasReplayedAllItCan},
+ * so the command returns immediately and reports it.
  */
 const waitForBaseRunCompletion = async (
   client: MeticulousClient,
   testRunId: string,
   initial: CompleteBaseRunResponse,
 ): Promise<
-  Pick<CompleteBaseRunResponse, "status" | "unexecutedSessionCount">
+  Pick<
+    CompleteBaseRunResponse,
+    "status" | "unexecutedSessionCount" | "unobtainableSessionCount"
+  >
 > => {
   logProgress(`Waiting for test run ${testRunId} to finish replaying...`);
-  let unexecutedSessionCount = initial.unexecutedSessionCount;
+  let { unexecutedSessionCount, unobtainableSessionCount } = initial;
   let status: TestRunStatus = initial.status;
-  let stalledSinceMs: number | null = null;
   let lastRescheduledAtMs = performance.now();
-  const deadline = performance.now() + COMPLETION_TIMEOUT_MS;
-  while (!isCoverageServable({ status, unexecutedSessionCount })) {
+  const deadline = performance.now() + POLL_TIMEOUT_MS;
+  while (
+    !hasReplayedAllItCan({
+      status,
+      unexecutedSessionCount,
+      unobtainableSessionCount,
+    })
+  ) {
     if (performance.now() >= deadline) {
-      throw new CliUserError(
-        unexecutedSessionCount > 0
-          ? `Test run ${testRunId} still has ${unexecutedSessionCount} session(s) without a result after ${Math.round(COMPLETION_TIMEOUT_MS / 60_000)} minutes. It may still be running — check back later, or re-run with --dontWaitForTestRunToComplete to return immediately.`
-          : `Test run ${testRunId} has replayed all its selected sessions, but its coverage still hasn't finished being recomputed for the full set after ${Math.round(COMPLETION_TIMEOUT_MS / 60_000)} minutes (status: ${status}). Check back later, or re-run with --dontWaitForTestRunToComplete to return immediately.`,
+      logNotice(
+        unexecutedSessionCount > unobtainableSessionCount
+          ? `Test run ${testRunId} still has ${unexecutedSessionCount - unobtainableSessionCount} session(s) that could still replay but have no result after ${Math.round(POLL_TIMEOUT_MS / 60_000)} minutes. It may still be running — check back later, or re-run this command to keep waiting.`
+          : `Test run ${testRunId} has replayed everything it can, but its coverage still hasn't finished being recomputed for the full set after ${Math.round(POLL_TIMEOUT_MS / 60_000)} minutes (status: ${status}). Check back later, or re-run this command to keep waiting.`,
       );
+      return { status, unexecutedSessionCount, unobtainableSessionCount };
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     const testRun = await getTestRun({ client, testRunId });
-    const newUnexecutedSessionCount = countUnexecutedSessions(testRun);
-    const noProgress = newUnexecutedSessionCount === unexecutedSessionCount;
-    unexecutedSessionCount = newUnexecutedSessionCount;
+    unexecutedSessionCount = countUnexecutedSessions(testRun);
     status = testRun.status;
-    if (isCoverageServable({ status, unexecutedSessionCount })) {
-      break;
-    }
+    // A run that has gone fatally terminal will never serve coverage, so stop
+    // rather than polling a state that cannot recover.
+    assertCoverageCanStillBecomeServable(testRunId, status);
     const now = performance.now();
-    if (!noProgress) {
-      stalledSinceMs = null;
-    } else if (stalledSinceMs == null) {
-      stalledSinceMs = now;
-    } else if (now - stalledSinceMs >= STALL_GRACE_MS) {
-      throw new CliUserError(
-        unexecutedSessionCount > 0
-          ? `Test run ${testRunId} still has ${unexecutedSessionCount} session(s) without a result, and complete-base-run has had nothing further to schedule for them for over ${Math.round(STALL_GRACE_MS / 60_000)} minutes — this may just need more time. Check back later, re-run with --dontWaitForTestRunToComplete to return immediately, or ask for the project's overall coverage instead (js-coverage --latestForProject).`
-          : `Test run ${testRunId} has replayed all its selected sessions, but its coverage still hasn't finished being recomputed for the full set (status: ${status}) after over ${Math.round(STALL_GRACE_MS / 60_000)} minutes. This may just need more time — check back later, re-run with --dontWaitForTestRunToComplete to return immediately, or ask for the project's overall coverage instead (js-coverage --latestForProject).`,
-      );
-    }
     if (now - lastRescheduledAtMs >= RESCHEDULE_INTERVAL_MS) {
       lastRescheduledAtMs = now;
-      const rescheduled = await requestCompletion(client, testRunId);
-      unexecutedSessionCount = rescheduled.unexecutedSessionCount;
-      status = rescheduled.status;
-      // Picking up newly-eligible work here is real progress even though
-      // `unexecutedSessionCount` itself won't move until it lands a result —
-      // without this, the stall clock (armed on an earlier, unrelated tick)
-      // can still time out right after a reschedule found something to do.
-      if (rescheduled.sessionsScheduled > 0) {
-        stalledSinceMs = null;
-      }
+      ({ unexecutedSessionCount, unobtainableSessionCount, status } =
+        await requestCompletion(client, testRunId));
     }
   }
-  return { status, unexecutedSessionCount };
+  return { status, unexecutedSessionCount, unobtainableSessionCount };
 };
 
 /**
@@ -312,7 +300,7 @@ const printKeyValueLines = (result: CompleteBaseRunResponse): void => {
 export const completeBaseRunCommand: CommandModule<unknown, Options> = {
   command: "complete-base-run",
   describe:
-    "Replay the selected sessions a base run has not run yet, so its coverage describes its commit. A base run (the usual outcome for a commit on your default branch) replays sessions on demand for whichever PRs compare against it, so it can sit at any fraction of the project's selected set, and agent js-coverage refuses it while any are missing or while its coverage hasn't finished being recomputed for the full set. This schedules the rest, then waits for its coverage to actually be servable (pass --dontWaitForTestRunToComplete to return as soon as the work is scheduled); a session pool's own status cannot be waited on directly, since it can rest indefinitely between requests. Outputs testRunId, status, unexecutedSessionCount, sessionsScheduled and configuredSessionCount, one per line; sessionsScheduled is 0 when the run had already replayed everything, or when everything left is already covered by a chunk from an earlier call (running this twice is a no-op, not an error), and unexecutedSessionCount is 0 once every selected session has a result — js-coverage additionally needs status to have settled into a completed status (not just left Partial: appending chunks passes through Running/PostProcessing first). Costs a full test run's replays, so ask for it when you want this commit's own coverage — for a rough project-level picture 'agent js-coverage --latestForProject' is free. Fails for a run that is not a base run, is itself a dead end at the whole-run level (status ExecutionError/Aborted — not a single chunk, which is retried automatically), or whose deployment was an ephemeral tunnel that is no longer reachable; if nothing has changed for a while, this command reports that rather than waiting out the full timeout.",
+    "Replay the selected sessions which a base run has not run yet. Outputs testRunId, status, unexecutedSessionCount, unobtainableSessionCount, sessionsScheduled and configuredSessionCount, one per line. A base run (in particular associated with a main branch commit) runs sessions on demand for whichever PRs compare against it, so only part of its selected set has run at any point. Useful when a run needs to stand for its whole commit rather than one PR's slice — 'agent js-coverage', for instance, refuses an incomplete base run. Waits up to 10 minutes for nothing more to be schedulable (unexecutedSessionCount down to unobtainableSessionCount, the sessions that can never gain a result), returning whatever it has if that isn't reached by then; pass --dontWaitForTestRunToComplete to return as soon as the work is scheduled. Running it twice is a no-op, not an error.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     testRunId: {

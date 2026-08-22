@@ -1,5 +1,13 @@
 # @alwaysmeticulous/client
 
+## 2.331.2
+
+### Patch Changes
+
+- [#12669](https://github.com/alwaysmeticulous/meticulous/pull/12669) [`be6e14a`](https://github.com/alwaysmeticulous/meticulous/commit/be6e14aeee646706157e728d1fbf325e659ef23d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Serve a base run's coverage when a small share of its selected set can never be replayed, rather than refusing that commit permanently. `agent complete-base-run` reports `unobtainableSessionCount`, and stops waiting for sessions nothing will retry.
+
+- [#12669](https://github.com/alwaysmeticulous/meticulous/pull/12669) [`be6e14a`](https://github.com/alwaysmeticulous/meticulous/commit/be6e14aeee646706157e728d1fbf325e659ef23d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Align base-run completion with coverage readiness, and keep commit lookup output limited to the test run id and status.
+
 ## 2.331.1
 
 ### Patch Changes

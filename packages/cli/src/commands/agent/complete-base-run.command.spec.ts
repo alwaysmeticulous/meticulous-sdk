@@ -1,3 +1,4 @@
+import type { CompleteBaseRunResponse } from "@alwaysmeticulous/client";
 import type * as MeticulousClientModule from "@alwaysmeticulous/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CliUserError } from "../../utils/cli-user-error";
@@ -75,18 +76,41 @@ const testRunFixture = ({
   },
 });
 
+/** A `completeBaseRun` response. */
+const completionFixture = ({
+  status,
+  sessionsScheduled = 0,
+  unexecutedSessionCount = 0,
+  unobtainableSessionCount = 0,
+  configuredSessionCount = CONFIGURED_SESSION_IDS.length,
+}: {
+  status: string;
+  sessionsScheduled?: number;
+  unexecutedSessionCount?: number;
+  unobtainableSessionCount?: number;
+  configuredSessionCount?: number;
+}): CompleteBaseRunResponse =>
+  ({
+    testRunId: "tr-base",
+    status,
+    sessionsScheduled,
+    configuredSessionCount,
+    unexecutedSessionCount,
+    unobtainableSessionCount,
+  }) as CompleteBaseRunResponse;
+
 describe("complete-base-run handler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createClientWithOAuth.mockResolvedValue({});
     mocks.getCommitSha.mockResolvedValue("sha-1");
-    mocks.completeBaseRun.mockResolvedValue({
-      testRunId: "tr-base",
-      status: "Partial",
-      sessionsScheduled: 2,
-      configuredSessionCount: 3,
-      unexecutedSessionCount: 2,
-    });
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({
+        status: "Partial",
+        sessionsScheduled: 2,
+        unexecutedSessionCount: 2,
+      }),
+    );
     mocks.getTestRun.mockResolvedValue(
       testRunFixture({
         status: "Success",
@@ -132,13 +156,9 @@ describe("complete-base-run handler", () => {
   // Idempotent: asking again must read as "nothing to do", not as an error or as
   // work that was scheduled.
   it("reports an already-complete run as nothing to do", async () => {
-    mocks.completeBaseRun.mockResolvedValue({
-      testRunId: "tr-base",
-      status: "Success",
-      sessionsScheduled: 0,
-      configuredSessionCount: 3,
-      unexecutedSessionCount: 0,
-    });
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({ status: "Success" }),
+    );
 
     await runHandler();
     expect(mocks.logNotice).toHaveBeenCalledWith(
@@ -150,13 +170,9 @@ describe("complete-base-run handler", () => {
   // work is still in flight — must not be read as "nothing to do" just
   // because this call itself scheduled nothing.
   it("reports a remainder still in flight distinctly from a complete run", async () => {
-    mocks.completeBaseRun.mockResolvedValue({
-      testRunId: "tr-base",
-      status: "Partial",
-      sessionsScheduled: 0,
-      configuredSessionCount: 3,
-      unexecutedSessionCount: 2,
-    });
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({ status: "Partial", unexecutedSessionCount: 2 }),
+    );
 
     await runHandler();
     expect(mocks.logNotice).toHaveBeenCalledWith(
@@ -174,13 +190,13 @@ describe("complete-base-run handler", () => {
   // (coverage is only servable once post-process has caught up with the
   // fully-covered set — see `isCoverageServable`).
   it("waits for the run to finish by default", async () => {
-    mocks.completeBaseRun.mockResolvedValue({
-      testRunId: "tr-base",
-      status: "Partial",
-      sessionsScheduled: 2,
-      configuredSessionCount: 3,
-      unexecutedSessionCount: 2,
-    });
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({
+        status: "Partial",
+        sessionsScheduled: 2,
+        unexecutedSessionCount: 2,
+      }),
+    );
     mocks.getTestRun
       .mockResolvedValueOnce(
         testRunFixture({ status: "Partial", executedSessionIds: ["sess-1"] }),
@@ -212,13 +228,13 @@ describe("complete-base-run handler", () => {
   // in flight, since a newly appended chunk's status transition happens
   // independently of the run-level status field.
   it("keeps polling while sessions remain unexecuted, even though the run's own status never changes", async () => {
-    mocks.completeBaseRun.mockResolvedValue({
-      testRunId: "tr-base",
-      status: "Success",
-      sessionsScheduled: 2,
-      configuredSessionCount: 3,
-      unexecutedSessionCount: 2,
-    });
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({
+        status: "Success",
+        sessionsScheduled: 2,
+        unexecutedSessionCount: 2,
+      }),
+    );
     mocks.getTestRun
       .mockResolvedValueOnce(
         testRunFixture({
@@ -263,13 +279,13 @@ describe("complete-base-run handler", () => {
   // is also what moves `status` off `Partial`. Must keep polling through that
   // gap rather than treating a flat 0 as done.
   it("keeps waiting once sessions are all executed but status is still Partial", async () => {
-    mocks.completeBaseRun.mockResolvedValue({
-      testRunId: "tr-base",
-      status: "Partial",
-      sessionsScheduled: 2,
-      configuredSessionCount: 3,
-      unexecutedSessionCount: 2,
-    });
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({
+        status: "Partial",
+        sessionsScheduled: 2,
+        unexecutedSessionCount: 2,
+      }),
+    );
     mocks.getTestRun
       .mockResolvedValueOnce(
         testRunFixture({
@@ -332,22 +348,41 @@ describe("complete-base-run handler", () => {
     expect(mocks.getTestRun.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
-  // complete-base-run keeps finding nothing further to schedule, so waiting
-  // out the full 45-minute timeout would be a long time to learn that. But a
-  // healthy chunk can also show no progress for minutes at a time (it only
+  it.each(["ExecutionError", "Aborted", "Skipped"])(
+    "fails rather than treating fully-executed sessions in %s as complete",
+    async (status) => {
+      mocks.getTestRun.mockResolvedValue(
+        testRunFixture({
+          status,
+          executedSessionIds: CONFIGURED_SESSION_IDS,
+        }),
+      );
+
+      vi.useFakeTimers();
+      try {
+        const handled = runHandler({ dontWaitForTestRunToComplete: false });
+        const rejection = expect(handled).rejects.toBeInstanceOf(CliUserError);
+        await vi.runOnlyPendingTimersAsync();
+        await rejection;
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(mocks.getTestRun).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  // A healthy chunk can show no progress for minutes at a time (it only
   // reports once the whole chunk finishes, and an ExecutionError chunk gets
-  // retried automatically), so this must not fire quickly or claim certainty
-  // about why it's stuck.
-  it("gives up early, rather than waiting out the timeout, once polling shows no progress for the full stall grace period", async () => {
+  // retried automatically), so this must not fire quickly. Once the poll
+  // timeout does elapse, this returns whatever it has rather than erroring —
+  // a base run's remainder may genuinely just need more time.
+  it("returns without erroring once the poll timeout elapses with no progress", async () => {
     // Both the read-only poll and the periodic reschedule report the same
     // stuck state throughout — nothing ever moves.
-    mocks.completeBaseRun.mockResolvedValue({
-      testRunId: "tr-base",
-      status: "Partial",
-      sessionsScheduled: 0,
-      configuredSessionCount: 3,
-      unexecutedSessionCount: 1,
-    });
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({ status: "Partial", unexecutedSessionCount: 1 }),
+    );
     mocks.getTestRun.mockResolvedValue(
       testRunFixture({
         status: "Partial",
@@ -358,18 +393,18 @@ describe("complete-base-run handler", () => {
     vi.useFakeTimers();
     try {
       const handled = runHandler({ dontWaitForTestRunToComplete: false });
-      const assertion = expect(handled).rejects.toThrow(
-        /nothing further to schedule/,
-      );
       await vi.runAllTimersAsync();
-      await assertion;
+      await handled;
     } finally {
       vi.useRealTimers();
     }
 
-    // The stall grace period is minutes, not seconds — assert on call count
-    // (10s polls) rather than a hardcoded duration, so this doesn't silently
-    // stop exercising the real constant if it's retuned again later.
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringMatching(/still has 1 session\(s\) that could still replay/),
+    );
+    // The poll timeout is minutes, not seconds — assert on call count (10s
+    // polls) rather than a hardcoded duration, so this doesn't silently stop
+    // exercising the real constant if it's retuned again later.
     expect(mocks.getTestRun.mock.calls.length).toBeGreaterThan(30);
     // Re-invoked periodically (every 60s) to retry anything newly eligible,
     // but far less often than every 10s poll.
@@ -377,72 +412,13 @@ describe("complete-base-run handler", () => {
     expect(mocks.completeBaseRun.mock.calls.length).toBeLessThan(20);
   });
 
-  // The periodic reschedule can pick up a session newly eligible again (e.g.
-  // one whose only chunk reconciled to ExecutionError) well before the stall
-  // grace period expires — real progress, even though the read-only poll
-  // won't see `unexecutedSessionCount` move until that fresh chunk lands a
-  // result. That must reset the grace period rather than let it expire
-  // underneath work that was in fact just picked back up.
-  it("does not give up when a periodic reschedule finds new work mid-stall", async () => {
-    const start = performance.now();
-    let hasRescheduled = false;
-    mocks.completeBaseRun.mockImplementation(() => {
-      let sessionsScheduled = 0;
-      // Just before the original 10-minute grace period would otherwise
-      // expire (counted from the first no-progress poll, a few seconds in).
-      if (!hasRescheduled && performance.now() - start >= 9 * 60 * 1000) {
-        sessionsScheduled = 1;
-        hasRescheduled = true;
-      }
-      return {
-        testRunId: "tr-base",
-        status: "Partial",
-        sessionsScheduled,
-        configuredSessionCount: 3,
-        unexecutedSessionCount: 1,
-      };
-    });
-    mocks.getTestRun.mockResolvedValue(
-      testRunFixture({
-        status: "Partial",
-        executedSessionIds: ["sess-1", "sess-2"],
-      }),
-    );
-
-    vi.useFakeTimers();
-    try {
-      const handled = runHandler({ dontWaitForTestRunToComplete: false });
-      const assertion = expect(handled).resolves.toBeUndefined();
-      // Past the point the original grace period would have expired — without
-      // the reset this would already have thrown "nothing further to
-      // schedule".
-      await vi.advanceTimersByTimeAsync(11 * 60 * 1000);
-      mocks.getTestRun.mockResolvedValue(
-        testRunFixture({
-          status: "Success",
-          executedSessionIds: CONFIGURED_SESSION_IDS,
-        }),
-      );
-      await vi.runAllTimersAsync();
-      await assertion;
-    } finally {
-      vi.useRealTimers();
-    }
-
-    expect(hasRescheduled).toBe(true);
-  });
-
   // A chunk bundling many sessions can plausibly go several minutes between
   // polls without any progress before it finishes — that must not be
-  // mistaken for a permanent failure.
-  it("does not give up during a stall shorter than the grace period", async () => {
-    mocks.completeBaseRun.mockResolvedValue({
-      testRunId: "tr-base",
-      status: "Partial",
-      sessionsScheduled: 0,
-      configuredSessionCount: 3,
-      unexecutedSessionCount: 2,
-    });
+  // mistaken for a timeout.
+  it("keeps waiting through a stall shorter than the poll timeout", async () => {
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({ status: "Partial", unexecutedSessionCount: 2 }),
+    );
     mocks.getTestRun.mockResolvedValue(
       testRunFixture({
         status: "Partial",
@@ -453,9 +429,8 @@ describe("complete-base-run handler", () => {
     vi.useFakeTimers();
     try {
       const handled = runHandler({ dontWaitForTestRunToComplete: false });
-      // ~5 minutes of no visible progress — comfortably past the old
-      // 30s/3-poll threshold, well short of the new grace period — before the
-      // remaining sessions' chunk finally reports.
+      // ~5 minutes of no visible progress — well short of the 10-minute poll
+      // timeout — before the remaining sessions' chunk finally reports.
       await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
       mocks.getTestRun.mockResolvedValue(
         testRunFixture({
@@ -469,20 +444,104 @@ describe("complete-base-run handler", () => {
       vi.useRealTimers();
     }
 
-    expect(mocks.getTestRun).toHaveBeenCalled();
+    expect(mocks.logNotice).not.toHaveBeenCalledWith(
+      expect.stringMatching(/that could still replay but have no result/),
+    );
   });
 
   it("does not wait when nothing was scheduled and nothing remains unexecuted", async () => {
-    mocks.completeBaseRun.mockResolvedValue({
-      testRunId: "tr-base",
-      status: "Success",
-      sessionsScheduled: 0,
-      configuredSessionCount: 3,
-      unexecutedSessionCount: 0,
-    });
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({ status: "Success" }),
+    );
 
     await runHandler({ dontWaitForTestRunToComplete: false });
     expect(mocks.getTestRun).not.toHaveBeenCalled();
+  });
+
+  // A remainder that can never be replayed is a dead end, not slow work —
+  // there is nothing to wait for, so the command reports it and returns rather
+  // than sitting out the poll timeout. Whether what's left is *good enough*
+  // is js-coverage's question, not this command's, so this is not an error
+  // either.
+  it("does not wait when the whole remainder is beyond recovering", async () => {
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({
+        status: "Failure",
+        unexecutedSessionCount: 2,
+        unobtainableSessionCount: 2,
+      }),
+    );
+
+    await runHandler({ dontWaitForTestRunToComplete: false });
+    expect(mocks.getTestRun).not.toHaveBeenCalled();
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /2 of its 3 selected sessions that can no longer be replayed/,
+      ),
+    );
+  });
+
+  // The same run, with the wait opted out of, is not an error: the caller
+  // asked for the numbers, and they are reported.
+  it("reports an unrecoverable remainder without erroring when not waiting", async () => {
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({
+        status: "Failure",
+        unexecutedSessionCount: 2,
+        unobtainableSessionCount: 2,
+      }),
+    );
+
+    await runHandler();
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /2 of its 3 selected sessions that can no longer be replayed/,
+      ),
+    );
+  });
+
+  // The whole point of tolerating a small unrecoverable share: the wait must
+  // finish on a run whose only missing sessions are ones nothing will retry,
+  // rather than spinning until the stall grace period expires.
+  it("stops waiting once the only sessions left are ones nothing will retry", async () => {
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({
+        status: "Partial",
+        sessionsScheduled: 2,
+        unexecutedSessionCount: 2,
+        unobtainableSessionCount: 1,
+        configuredSessionCount: 100,
+      }),
+    );
+    // One of the two lands a result; the other never will.
+    mocks.getTestRun
+      .mockResolvedValueOnce(
+        testRunFixture({ status: "Partial", executedSessionIds: ["sess-1"] }),
+      )
+      .mockResolvedValue(
+        testRunFixture({
+          status: "Success",
+          executedSessionIds: ["sess-1", "sess-2"],
+        }),
+      );
+
+    vi.useFakeTimers();
+    try {
+      const handled = runHandler({
+        dontWaitForTestRunToComplete: false,
+        json: true,
+      });
+      await vi.runAllTimersAsync();
+      await handled;
+    } finally {
+      vi.useRealTimers();
+    }
+
+    // Returned as soon as the remainder became unobtainable, well before the
+    // poll timeout.
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('"unexecutedSessionCount": 1'),
+    );
   });
 
   it.each(["not-a-base-run", "ephemeral-deployment"])(

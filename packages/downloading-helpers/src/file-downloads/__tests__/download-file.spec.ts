@@ -135,32 +135,35 @@ describe("downloadFile", () => {
   });
 
   it("retries downloading content on file", async () => {
-    let attempt = 0;
+    // The first response stalls after its first bytes, so the content-level
+    // retry is what recovers. Matching "exactly the second request" is racy:
+    // downloadFile also installs axios-retry, which can consume the success
+    // slot before the retry runs.
+    let shouldStall = true;
     const server = http.createServer((_req, res) => {
       res.write("Hello");
-      if (attempt === 1) {
-        res.end(" World");
+      if (shouldStall) {
+        shouldStall = false;
+        return;
       }
-
-      attempt++;
-      setTimeout(() => {
-        res.end("...  ... World.");
-      }, 1000);
+      res.end(" World");
     });
     const { url, close } = await listenOnEphemeralPort(server);
 
     try {
       await downloadFile(url, "file.txt", {
         firstDataTimeoutInMs: 1000,
-        downloadCompleteTimeoutInMs: 20,
+        // Generous against a tiny localhost write, still well below a stream
+        // that never ends.
+        downloadCompleteTimeoutInMs: 200,
         maxDownloadContentRetries: 1,
         downloadContentRetryDelay: 0,
       });
 
-      // Read file contents
       const fileContents = await readFile("file.txt", "utf8");
       expect(fileContents).toBe("Hello World");
     } finally {
+      server.closeAllConnections();
       await close();
       if (existsSync("file.txt")) {
         await rm("file.txt");

@@ -358,18 +358,6 @@ export interface TestRunForCommitResponse {
    * status lets the caller decide whether to wait for the run to finish.
    */
   status: TestRunStatus | null;
-  /**
-   * Whether the matched run is a base run other test runs compare against
-   * rather than a run of its own — the usual outcome for a main-branch commit.
-   * Such a run has no diffs and no PR, and replays its selected sessions on
-   * demand, so its coverage only describes the commit once they have all run
-   * (see {@link completeBaseRun}). Absent when no run matched, or when the
-   * backend predates the field.
-   *
-   * True for a session pool that has settled into a verdict as well as for a
-   * `Partial` one, so it catches base runs `status` alone does not.
-   */
-  isSessionPoolRun: boolean;
 }
 
 /** The reply to {@link completeBaseRun}. */
@@ -377,23 +365,31 @@ export interface CompleteBaseRunResponse {
   testRunId: string;
   /**
    * The run's status as read when the request was served. Scheduling replays
-   * doesn't itself move the status, so poll the run rather than reading a
-   * transition out of this.
+   * doesn't itself move the status. Coverage is ready only once this is
+   * `Success` or `Failure` and `unexecutedSessionCount` is `0`.
    */
   status: TestRunStatus;
   /**
-   * Configured sessions still without a result after this call. `0` means the
-   * run's coverage is now a real total. Stays above `0` with
-   * `sessionsScheduled: 0` either because earlier-scheduled work is still in
-   * flight, or because everything remaining has permanently failed
-   * (`ExecutionError`) and this operation will never retry it — poll this
-   * count rather than `status`, which scheduling does not itself move.
+   * Configured sessions still without a result after this call. Stays above
+   * `0` with `sessionsScheduled: 0` either because earlier-scheduled work is
+   * still in flight, or because what remains is
+   * {@link unobtainableSessionCount}.
    */
   unexecutedSessionCount: number;
   /**
-   * Distinct sessions newly scheduled. `0` means the run had already replayed
-   * its whole selected set — the operation is idempotent, so that's a no-op
-   * rather than an error.
+   * How many of {@link unexecutedSessionCount} can never gain a result: the
+   * chunk covering the session finished without reporting one, and nothing
+   * will re-append it. Replaying more cannot reduce it, so "as complete as it
+   * can get" is `unexecutedSessionCount === unobtainableSessionCount`, not
+   * `0`.
+   */
+  unobtainableSessionCount: number;
+  /**
+   * Distinct sessions newly scheduled. `0` means either the run already
+   * replayed its whole selected set, or every remaining session is covered by
+   * work from an earlier call. The operation is idempotent — a repeat is a
+   * no-op, not an error — and it retries sessions whose earlier chunks
+   * concluded with `ExecutionError`.
    */
   sessionsScheduled: number;
   /** Distinct sessions in the run's selected set. */

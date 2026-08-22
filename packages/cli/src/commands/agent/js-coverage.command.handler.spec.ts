@@ -234,7 +234,6 @@ describe("js-coverage handler resolving a run from a commit", () => {
     mocks.getTestRunForCommit.mockResolvedValue({
       testRunId: "tr-head",
       status: "Success",
-      isSessionPoolRun: false,
     });
     mocks.getTestRunJsCoverage.mockResolvedValue({ files: [] });
     mocks.isFetchError.mockImplementation(
@@ -297,7 +296,6 @@ describe("js-coverage handler resolving a commit to a base run", () => {
     mocks.getTestRunForCommit.mockResolvedValue({
       testRunId: "tr-base",
       status: "Partial",
-      isSessionPoolRun: false,
     });
     // Re-reading the resolved run (the wait-for-completion step) sees the same
     // Partial status the lookup reported.

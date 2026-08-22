@@ -10,6 +10,7 @@ import { logNotice, logProgress } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { relayingBaseRunRejection } from "../../utils/base-run-rejection";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
   assertTestRunComplete,
@@ -124,7 +125,7 @@ const handler = async ({
   // given, from the local checkout's HEAD.
   let resolvedTestRunId: string;
   let status: TestRunStatus;
-  let isSessionPoolRun: boolean;
+  let sessionPoolRun: boolean;
   if (testRunId != null) {
     resolvedTestRunId = testRunId;
     const run = await getTestRun({ client, testRunId });
@@ -132,31 +133,39 @@ const handler = async ({
     // No eager/non-eager distinction here: a session-pool run has no diffs of
     // its own to list regardless of eagerness (see isBaseOrAnySessionPoolRun
     // on the backend).
-    isSessionPoolRun = isSessionPool(run.configData);
+    sessionPoolRun = isSessionPool(run.configData);
   } else {
-    const run = await resolveTestRunForCommitOrThrow(
+    const resolved = await resolveTestRunForCommitOrThrow(
       client,
       commitSha,
       project,
     );
-    resolvedTestRunId = run.testRunId;
-    status = run.status;
-    isSessionPoolRun = run.isSessionPoolRun;
+    resolvedTestRunId = resolved.testRunId;
+    status = resolved.status;
+    // Deliberately not fetched here. Recognising a *settled* session pool needs
+    // `configData`, and the commit lookup carries only the id and status, so
+    // buying it would add a round trip to every call on this path for one
+    // uncommon case. `Partial` is still caught below from `status`, and a
+    // settled pool is rejected by the backend with the same message
+    // (relayingBaseRunRejection turns that into a clean user error).
+    sessionPoolRun = false;
   }
 
   // A base run exists to be compared against, not to be a change of its own,
-  // so it has no diffs to list. A session-pool base can settle into
-  // Success/Failure without ever becoming Partial, so this is checked
-  // independently of status — and before waiting below, since it's already
-  // known at this point and there's no reason to block on (or silently skip
-  // past, with --dontWaitForTestRunToComplete) a run that will never have
-  // diffs (mirrors the backend's assertDiffsSummaryApplicable/assertNotBaseRun).
+  // so it has no diffs to list. Checked before waiting below, since there's no
+  // reason to block on (or silently skip past, with
+  // --dontWaitForTestRunToComplete) a run that will never have diffs — but only
+  // when the answer is already in hand: a session pool that settled into
+  // Success/Failure is only distinguishable via `configData`, which the
+  // --testRunId path has already fetched and the commit path has not (see
+  // above). The backend rejects what reaches it (assertDiffsSummaryApplicable /
+  // assertNotBaseRun), and `Partial` is caught after waiting regardless.
   const assertNotBaseRun = (): void => {
     throw new CliUserError(
       `Test run ${resolvedTestRunId} is a base run other test runs compare against and consequently has no changes/diffs.`,
     );
   };
-  if (isSessionPoolRun) {
+  if (sessionPoolRun) {
     assertNotBaseRun();
   }
 
@@ -195,7 +204,7 @@ const handler = async ({
     return;
   }
 
-  // isSessionPoolRun was already checked above, before waiting; Partial only
+  // Session-pool state was already checked above, before waiting; Partial only
   // becomes known once the run has finished.
   if (isTestRunPartial(finishedStatus)) {
     assertNotBaseRun();
@@ -208,7 +217,11 @@ const handler = async ({
   // `--counts` comes from a dedicated endpoint computed live from the DB, so it
   // needs neither the (potentially large) diffs list nor the summary poll below.
   if (counts) {
-    emitCounts(await getTestRunDiffsSummaryCounts(client, resolvedTestRunId));
+    emitCounts(
+      await relayingBaseRunRejection(
+        getTestRunDiffsSummaryCounts(client, resolvedTestRunId),
+      ),
+    );
     return;
   }
 
@@ -228,10 +241,8 @@ const handler = async ({
     onlyWithComments,
   };
 
-  let response = await getTestRunDiffsSummary(
-    client,
-    resolvedTestRunId,
-    diffsSummaryOptions,
+  let response = await relayingBaseRunRejection(
+    getTestRunDiffsSummary(client, resolvedTestRunId, diffsSummaryOptions),
   );
 
   // Poll until complete (or give up after the timeout, rather than forever).
