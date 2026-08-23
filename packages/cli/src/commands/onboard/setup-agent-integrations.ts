@@ -1,11 +1,12 @@
 import { spawnSync } from "child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { delimiter, join } from "path";
 import chalk from "chalk";
 import { CliUserError } from "../../utils/cli-user-error";
 import { mergeCodexMcp } from "./codex-mcp";
 import {
+  SKILLS_INSTALL_DIR_ROOTS,
   assertSafeSkillsInstallTargets,
   prepareSafeSkillsInstallTargets,
   resolveSafeWritePath,
@@ -75,20 +76,30 @@ export const setupAgentIntegrations = (options: {
 };
 
 export const installSkills = (projectRoot: string): boolean => {
-  // Reject repo-seeded symlinks on every path the skills installer may write
-  // (`.claude`, `.agents`, `.cursor`, `skills-lock.json`), then create those
-  // directory roots as real dirs before handing control to the installer.
-  prepareSafeSkillsInstallTargets(projectRoot);
-
   // Never `npx skills` with cwd=projectRoot: npx prefers a repo-local
   // `node_modules/.bin/skills` (or a `file:` dependency) over the registry,
   // so an untrusted repo could run arbitrary code before any agent sandbox.
   // Materialize the registry CLI into a throwaway prefix, then invoke it by
   // absolute path via `node`.
   let trustedCli: ReturnType<typeof materializeTrustedSkillsCli> | null = null;
+  let skillNames: readonly string[];
   let result: ReturnType<typeof spawnSync>;
   try {
     trustedCli = materializeTrustedSkillsCli();
+    skillNames = discoverSkillNames(trustedCli.cliEntry);
+
+    // Reject repo-seeded symlinks on every path this install will write
+    // (`.claude`, `.agents`, `.cursor`, `skills-lock.json`), then create those
+    // directory roots as real dirs before handing control to the installer.
+    const { blockingLinks } = prepareSafeSkillsInstallTargets(
+      projectRoot,
+      skillNames,
+    );
+    if (blockingLinks.length > 0) {
+      reportSkippedSkillsInstall(blockingLinks);
+      return false;
+    }
+
     result = spawnSync(
       process.execPath,
       [trustedCli.cliEntry, ...SKILLS_ADD_ARGS],
@@ -99,6 +110,9 @@ export const installSkills = (projectRoot: string): boolean => {
       },
     );
   } catch (error) {
+    if (error instanceof CliUserError) {
+      throw error;
+    }
     const detail =
       error instanceof Error ? `: ${error.message}` : `: ${String(error)}`;
     console.log(
@@ -107,7 +121,6 @@ export const installSkills = (projectRoot: string): boolean => {
       ),
     );
     console.log(chalk.dim(`  Retry: ${skillsInstallRetryHint(projectRoot)}`));
-    assertSafeSkillsInstallTargets(projectRoot);
     return false;
   } finally {
     trustedCli?.cleanup();
@@ -115,7 +128,7 @@ export const installSkills = (projectRoot: string): boolean => {
 
   // Always re-check after the installer — a failed or partial install can
   // still plant a symlink escape on a destination we pre-created.
-  assertSafeSkillsInstallTargets(projectRoot);
+  assertSafeSkillsInstallTargets(projectRoot, skillNames);
 
   if (result.error || result.status !== 0) {
     const detail = result.error ? `: ${result.error.message}` : "";
@@ -130,6 +143,99 @@ export const installSkills = (projectRoot: string): boolean => {
 
   console.log(chalk.green("  ✓ Installed Meticulous skills"));
   return true;
+};
+
+const reportSkippedSkillsInstall = (blockingLinks: string[]): void => {
+  console.log(
+    chalk.yellow(
+      "  Skipping Meticulous skills install — onboard will not write through " +
+        `these symlinks:\n${blockingLinks
+          .map((link) => `    - ${link}`)
+          .join("\n")}`,
+    ),
+  );
+  console.log(
+    chalk.dim(
+      "  Remove or replace them and re-run `meticulous onboard` to install the skills.",
+    ),
+  );
+};
+
+/**
+ * Names of the skills the real install will write, found by installing into a
+ * throwaway directory first. Every dest outside this set belongs to another
+ * tool, so onboard neither touches it nor lets it block the install.
+ */
+const discoverSkillNames = (cliEntry: string): readonly string[] => {
+  const stagingDir = mkdtempSync(join(tmpdir(), "meticulous-skills-list-"));
+  try {
+    const result = spawnSync(process.execPath, [cliEntry, ...SKILLS_ADD_ARGS], {
+      cwd: stagingDir,
+      encoding: "utf8",
+      env: sanitizeSkillsInstallEnv(process.env),
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (result.error || result.status !== 0) {
+      const stderr = (result.stderr ?? "").toString().trim();
+      throw new Error(
+        result.error?.message ??
+          (stderr.length > 0 ? stderr : `skills add exited ${result.status}`),
+      );
+    }
+
+    const names = collectStagedSkillNames(stagingDir);
+    if (names.length === 0) {
+      // Carrying on with an empty list would silently disable every guard
+      // below while the real install still writes.
+      throw new Error(
+        "the skills CLI staged no skills, so onboard cannot tell which paths it would write",
+      );
+    }
+    return names;
+  } finally {
+    rmSync(stagingDir, { recursive: true, force: true });
+  }
+};
+
+/**
+ * Skill names in a staging directory. Read from every agent root and from the
+ * lockfile, since which roots the CLI writes depends on the agents it detects.
+ */
+const collectStagedSkillNames = (stagingDir: string): string[] => {
+  const names = new Set<string>();
+
+  for (const dir of SKILLS_INSTALL_DIR_ROOTS) {
+    const stagedSkills = join(stagingDir, dir, "skills");
+    if (!existsSync(stagedSkills)) {
+      continue;
+    }
+    for (const entry of readdirSync(stagedSkills, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        names.add(entry.name);
+      }
+    }
+  }
+
+  for (const name of readStagedLockSkillNames(stagingDir)) {
+    names.add(name);
+  }
+  return [...names];
+};
+
+const readStagedLockSkillNames = (stagingDir: string): string[] => {
+  const lockPath = join(stagingDir, "skills-lock.json");
+  if (!existsSync(lockPath)) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(readFileSync(lockPath, "utf8")) as unknown;
+    const skills = (parsed as { skills?: unknown } | null)?.skills;
+    return typeof skills === "object" && skills !== null
+      ? Object.keys(skills)
+      : [];
+  } catch {
+    return [];
+  }
 };
 
 /** Matches a `node_modules/.bin` PATH entry, on either path separator. */

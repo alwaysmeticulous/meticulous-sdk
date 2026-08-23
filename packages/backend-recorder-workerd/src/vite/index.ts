@@ -375,9 +375,15 @@ const isInstrumentable = (filePath: string, exclude: RegExp[]): boolean => {
 /**
  * Root-relative and posix-separated, so the recorded path matches the repo
  * layout the post-process resolves coverage against.
+ *
+ * A file outside the root — a workspace package in a monorepo, where the root is
+ * the app directory — keeps its `../` prefixes rather than falling back to the
+ * absolute path. The post-process strips leading `../` segments, and their count
+ * is the root's own depth, so what it is left with is the path relative to the
+ * directory the root sits in: for `<repo>/apps/web` as root,
+ * `<repo>/packages/ui/x.tsx` resolves back to `packages/ui/x.tsx`. An absolute
+ * path resolves to nothing, since it carries the build machine's checkout
+ * prefix, and the coverage is discarded as unmapped.
  */
-const toRelativePath = (filePath: string, root: string): string => {
-  const relative = path.relative(root, filePath);
-  const normalised = relative.split(path.sep).join("/");
-  return normalised.startsWith("..") ? filePath : normalised;
-};
+const toRelativePath = (filePath: string, root: string): string =>
+  path.relative(root, filePath).split(path.sep).join("/");

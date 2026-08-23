@@ -5,6 +5,7 @@ import {
   mkdirSync,
   readdirSync,
   realpathSync,
+  unlinkSync,
   writeFileSync,
 } from "fs";
 import {
@@ -243,15 +244,32 @@ export const SKILLS_INSTALL_DIR_ROOTS = [
 
 export const SKILLS_INSTALL_FILE_TARGETS = ["skills-lock.json"] as const;
 
+export interface SkillsInstallTargets {
+  /**
+   * Symlinks at or under a dest this install will write, which we cannot
+   * replace ourselves. Non-empty means the installer must not run.
+   */
+  blockingLinks: string[];
+}
+
 /**
- * Rejects symlinks on every path the skills installer may write through, then
+ * Rejects parent-path symlinks the installer would write through, then
  * creates the destination directory roots as real directories inside the repo.
- * Also walks any pre-existing nested entries under each agent's skills tree —
- * a real `skills` dir with a last-component symlink like
- * `.claude/skills/<name> -> ~/.ssh` would otherwise let the installer write
- * outside the project while the shallow check still passes.
+ *
+ * `skillNames` is the exact set of skills this install will write, so the
+ * guard only looks at those dests. A link for any other skill belongs to
+ * another tool, is never written through, and is ignored.
+ *
+ * A dest we are about to write, such as `.claude/skills/meticulous-cli`, is
+ * often a leftover *link* into a cache from `skills add` without `--copy`.
+ * Unlink those (the link only, never the target) so `--copy` can write a real
+ * directory. A symlink nested inside such a dest is reported instead: the
+ * installer would write through it and it is not ours to delete.
  */
-export const prepareSafeSkillsInstallTargets = (projectRoot: string): void => {
+export const prepareSafeSkillsInstallTargets = (
+  projectRoot: string,
+  skillNames: readonly string[],
+): SkillsInstallTargets => {
   for (const file of SKILLS_INSTALL_FILE_TARGETS) {
     // Throws if the path (or any parent component) is a symlink.
     resolveSafeWritePath(projectRoot, file);
@@ -262,15 +280,54 @@ export const prepareSafeSkillsInstallTargets = (projectRoot: string): void => {
     mkdirSafeSync(projectRoot, join(dir, "skills"));
   }
 
-  assertNoSymlinksUnderSkillsTrees(projectRoot);
+  const replaceable: string[] = [];
+  const blockingLinks: string[] = [];
+  for (const dest of skillDestPaths(projectRoot, skillNames)) {
+    const stat = tryLstat(dest.absolutePath);
+    if (!stat) {
+      continue;
+    }
+    if (stat.isSymbolicLink()) {
+      replaceable.push(dest.relativeDisplay);
+      continue;
+    }
+    if (stat.isDirectory()) {
+      collectSymlinksUnderDirectory(
+        dest.absolutePath,
+        dest.relativeDisplay,
+        blockingLinks,
+      );
+    }
+  }
+
+  if (blockingLinks.length > 0) {
+    // The installer will not run, so leave the leftover links as they are.
+    return { blockingLinks };
+  }
+
+  const realRoot = resolveRealProjectRoot(projectRoot);
+  for (const relative of replaceable) {
+    unlinkSync(join(realRoot, relative));
+  }
+  if (replaceable.length > 0) {
+    console.log(
+      `  Replaced leftover Meticulous skill link(s) so they can be copied into the repo: ${replaceable.join(
+        ", ",
+      )}`,
+    );
+  }
+  return { blockingLinks: [] };
 };
 
 /**
- * Re-checks skills install destinations after an external installer runs, so a
- * TOCTOU symlink plant during the install cannot go unnoticed — including
- * nested last-component symlinks under each agent's skills tree.
+ * Re-checks the dests this install wrote, so a TOCTOU symlink plant during the
+ * install cannot go unnoticed — including nested ones. Dests for other tools'
+ * skills are not ours to police.
  */
-export const assertSafeSkillsInstallTargets = (projectRoot: string): void => {
+export const assertSafeSkillsInstallTargets = (
+  projectRoot: string,
+  skillNames: readonly string[],
+): void => {
   for (const file of SKILLS_INSTALL_FILE_TARGETS) {
     resolveSafeWritePath(projectRoot, file);
   }
@@ -278,55 +335,74 @@ export const assertSafeSkillsInstallTargets = (projectRoot: string): void => {
     resolveSafeWritePath(projectRoot, dir);
     resolveSafeWritePath(projectRoot, join(dir, "skills"));
   }
-  assertNoSymlinksUnderSkillsTrees(projectRoot);
-};
 
-/**
- * Recursively rejects any symlink under `.claude/skills`, `.agents/skills`,
- * and `.cursor/skills`. Matches `resolveSafeWritePath`: any symlink is refused,
- * not only ones that currently resolve outside the repo.
- */
-export const assertNoSymlinksUnderSkillsTrees = (projectRoot: string): void => {
-  const realRoot = resolveRealProjectRoot(projectRoot);
-  for (const dir of SKILLS_INSTALL_DIR_ROOTS) {
-    const relativeSkills = join(dir, "skills").replace(/\\/g, "/");
-    const absoluteSkills = join(realRoot, dir, "skills");
-    assertNoSymlinksUnderDirectory(absoluteSkills, relativeSkills);
+  const found: string[] = [];
+  for (const dest of skillDestPaths(projectRoot, skillNames)) {
+    collectSymlinksAtPath(dest.absolutePath, dest.relativeDisplay, found);
   }
-};
-
-const assertNoSymlinksUnderDirectory = (
-  absoluteDir: string,
-  relativeDisplay: string,
-): void => {
-  const dirStat = tryLstat(absoluteDir);
-  if (!dirStat) {
-    return;
-  }
-  if (dirStat.isSymbolicLink()) {
+  const [first] = found;
+  if (first !== undefined) {
     throw new CliUserError(
-      `Refusing to write through symlink at '${relativeDisplay}'. ` +
+      `Refusing to write through symlink at '${first}'. ` +
         `Remove or replace it, then re-run \`meticulous onboard\`.`,
     );
   }
-  if (!dirStat.isDirectory()) {
+};
+
+/** Where each named skill lands, under every agent's skills directory. */
+const skillDestPaths = (
+  projectRoot: string,
+  skillNames: readonly string[],
+): Array<{ absolutePath: string; relativeDisplay: string }> => {
+  const realRoot = resolveRealProjectRoot(projectRoot);
+  const dests: Array<{ absolutePath: string; relativeDisplay: string }> = [];
+  for (const dir of SKILLS_INSTALL_DIR_ROOTS) {
+    for (const name of skillNames) {
+      dests.push({
+        absolutePath: join(realRoot, dir, "skills", name),
+        relativeDisplay: `${dir}/skills/${name}`,
+      });
+    }
+  }
+  return dests;
+};
+
+const collectSymlinksAtPath = (
+  absolutePath: string,
+  relativeDisplay: string,
+  found: string[],
+): void => {
+  const stat = tryLstat(absolutePath);
+  if (!stat) {
     return;
   }
+  if (stat.isSymbolicLink()) {
+    found.push(relativeDisplay);
+    return;
+  }
+  if (stat.isDirectory()) {
+    collectSymlinksUnderDirectory(absolutePath, relativeDisplay, found);
+  }
+};
 
+const collectSymlinksUnderDirectory = (
+  absoluteDir: string,
+  relativeDisplay: string,
+  found: string[],
+): void => {
   for (const entry of readdirSync(absoluteDir, { withFileTypes: true })) {
     const childRelative = `${relativeDisplay}/${entry.name}`;
     // Check symlink before isDirectory(): a symlink-to-dir can report as both
     // depending on platform / Node version.
     if (entry.isSymbolicLink()) {
-      throw new CliUserError(
-        `Refusing to write through symlink at '${childRelative}'. ` +
-          `Remove or replace it, then re-run \`meticulous onboard\`.`,
-      );
+      found.push(childRelative);
+      continue;
     }
     if (entry.isDirectory()) {
-      assertNoSymlinksUnderDirectory(
+      collectSymlinksUnderDirectory(
         join(absoluteDir, entry.name),
         childRelative,
+        found,
       );
     }
   }

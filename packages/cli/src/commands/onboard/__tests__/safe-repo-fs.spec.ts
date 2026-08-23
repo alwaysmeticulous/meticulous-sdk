@@ -28,6 +28,9 @@ const makeRoot = (): string => {
   return root;
 };
 
+/** The skills the install under test will write. */
+const SKILL_NAMES = ["meticulous-cli"];
+
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
@@ -113,7 +116,7 @@ describe("resolveSafeWritePath", () => {
 describe("prepareSafeSkillsInstallTargets", () => {
   it("creates real .claude/.agents/.cursor skills dirs", () => {
     const root = makeRoot();
-    prepareSafeSkillsInstallTargets(root);
+    prepareSafeSkillsInstallTargets(root, SKILL_NAMES);
     for (const dir of SKILLS_INSTALL_DIR_ROOTS) {
       expect(lstatSync(join(root, dir)).isSymbolicLink()).toBe(false);
       expect(lstatSync(join(root, dir, "skills")).isDirectory()).toBe(true);
@@ -126,7 +129,9 @@ describe("prepareSafeSkillsInstallTargets", () => {
     dirs.push(outside);
     symlinkSync(outside, join(root, ".agents"));
 
-    expect(() => prepareSafeSkillsInstallTargets(root)).toThrow(/symlink/i);
+    expect(() => prepareSafeSkillsInstallTargets(root, SKILL_NAMES)).toThrow(
+      /symlink/i,
+    );
   });
 
   it("rejects a symlinked .cursor before skills install", () => {
@@ -135,7 +140,9 @@ describe("prepareSafeSkillsInstallTargets", () => {
     dirs.push(outside);
     symlinkSync(outside, join(root, ".cursor"));
 
-    expect(() => prepareSafeSkillsInstallTargets(root)).toThrow(/symlink/i);
+    expect(() => prepareSafeSkillsInstallTargets(root, SKILL_NAMES)).toThrow(
+      /symlink/i,
+    );
   });
 
   it("rejects a symlinked skills-lock.json before skills install", () => {
@@ -145,54 +152,179 @@ describe("prepareSafeSkillsInstallTargets", () => {
     dirs.push(outside);
     symlinkSync(outside, join(root, "skills-lock.json"));
 
-    expect(() => prepareSafeSkillsInstallTargets(root)).toThrow(/symlink/i);
-  });
-
-  it("rejects a nested skill-name symlink under an otherwise real skills dir", () => {
-    const root = makeRoot();
-    const outside = mkdtempSync(join(tmpdir(), "onboard-skill-out-"));
-    dirs.push(outside);
-    // Real parents — the shallow check would pass — with a last-component
-    // escape the installer would write through.
-    mkdirSync(join(root, ".claude", "skills"), { recursive: true });
-    symlinkSync(outside, join(root, ".claude", "skills", "evil-skill"));
-
-    expect(() => prepareSafeSkillsInstallTargets(root)).toThrow(
-      /symlink.*\.claude\/skills\/evil-skill/i,
+    expect(() => prepareSafeSkillsInstallTargets(root, SKILL_NAMES)).toThrow(
+      /symlink/i,
     );
   });
 
-  it("rejects nested skill symlinks under .agents and .cursor too", () => {
+  it("unlinks a leftover dest for a skill being installed so --copy can write a real directory", () => {
     const root = makeRoot();
-    const outside = mkdtempSync(join(tmpdir(), "onboard-skill-out-"));
-    dirs.push(outside);
+    const cache = mkdtempSync(join(tmpdir(), "onboard-skill-cache-"));
+    dirs.push(cache);
+    writeFileSync(join(cache, "SKILL.md"), "from cache\n");
+    mkdirSync(join(root, ".claude", "skills"), { recursive: true });
+    symlinkSync(cache, join(root, ".claude", "skills", "meticulous-cli"));
 
-    for (const dir of [".agents", ".cursor"] as const) {
+    expect(
+      prepareSafeSkillsInstallTargets(root, SKILL_NAMES).blockingLinks,
+    ).toEqual([]);
+
+    const dest = join(root, ".claude", "skills", "meticulous-cli");
+    expect(lstatSync(cache).isDirectory()).toBe(true);
+    expect(() => lstatSync(dest)).toThrow();
+  });
+
+  // Another tool's linked skill is never a dest of this install, so it neither
+  // gets deleted nor stops us installing.
+  it("ignores a skill link for a skill this install does not write", () => {
+    const root = makeRoot();
+    const cache = mkdtempSync(join(tmpdir(), "onboard-third-party-"));
+    dirs.push(cache);
+    mkdirSync(join(root, ".claude", "skills"), { recursive: true });
+    const theirs = join(root, ".claude", "skills", "some-other-tool");
+    symlinkSync(cache, theirs);
+    symlinkSync(cache, join(root, ".claude", "skills", "meticulous-cli"));
+
+    expect(
+      prepareSafeSkillsInstallTargets(root, SKILL_NAMES).blockingLinks,
+    ).toEqual([]);
+
+    expect(lstatSync(theirs).isSymbolicLink()).toBe(true);
+    expect(() =>
+      lstatSync(join(root, ".claude", "skills", "meticulous-cli")),
+    ).toThrow();
+  });
+
+  it("ignores a symlink nested inside another tool's skill", () => {
+    const root = makeRoot();
+    const outside = mkdtempSync(join(tmpdir(), "onboard-third-party-nested-"));
+    dirs.push(outside);
+    mkdirSync(join(root, ".claude", "skills", "some-other-tool"), {
+      recursive: true,
+    });
+    symlinkSync(
+      outside,
+      join(root, ".claude", "skills", "some-other-tool", "scripts"),
+    );
+
+    expect(
+      prepareSafeSkillsInstallTargets(root, SKILL_NAMES).blockingLinks,
+    ).toEqual([]);
+  });
+
+  // Here we really cannot install: the installer writes into this dest and
+  // would follow the nested link, and it is not ours to delete.
+  it("reports a symlink nested inside a dest this install writes", () => {
+    const root = makeRoot();
+    const outside = mkdtempSync(join(tmpdir(), "onboard-skill-nested-"));
+    dirs.push(outside);
+    mkdirSync(join(root, ".claude", "skills", "meticulous-cli"), {
+      recursive: true,
+    });
+    symlinkSync(
+      outside,
+      join(root, ".claude", "skills", "meticulous-cli", "scripts"),
+    );
+
+    expect(
+      prepareSafeSkillsInstallTargets(root, SKILL_NAMES).blockingLinks,
+    ).toEqual([".claude/skills/meticulous-cli/scripts"]);
+  });
+
+  it("leaves leftover dests in place when the install is blocked", () => {
+    const root = makeRoot();
+    const cache = mkdtempSync(join(tmpdir(), "onboard-mixed-"));
+    dirs.push(cache);
+    mkdirSync(join(root, ".agents", "skills", "meticulous-cli"), {
+      recursive: true,
+    });
+    symlinkSync(
+      cache,
+      join(root, ".agents", "skills", "meticulous-cli", "scripts"),
+    );
+    mkdirSync(join(root, ".claude", "skills"), { recursive: true });
+    const leftover = join(root, ".claude", "skills", "meticulous-cli");
+    symlinkSync(cache, leftover);
+
+    expect(
+      prepareSafeSkillsInstallTargets(root, SKILL_NAMES).blockingLinks,
+    ).toEqual([".agents/skills/meticulous-cli/scripts"]);
+    // The installer will not run, so there is nothing to make room for.
+    expect(lstatSync(leftover).isSymbolicLink()).toBe(true);
+  });
+
+  it("unlinks leftover dests under every agent tree", () => {
+    const root = makeRoot();
+    const cache = mkdtempSync(join(tmpdir(), "onboard-skill-out-"));
+    dirs.push(cache);
+
+    for (const dir of [".claude", ".agents", ".cursor"] as const) {
       mkdirSync(join(root, dir, "skills"), { recursive: true });
-      symlinkSync(outside, join(root, dir, "skills", "planted"));
-      expect(() => prepareSafeSkillsInstallTargets(root)).toThrow(/symlink/i);
-      rmSync(join(root, dir), { recursive: true, force: true });
+      symlinkSync(cache, join(root, dir, "skills", "meticulous-cli"));
     }
+
+    prepareSafeSkillsInstallTargets(root, SKILL_NAMES);
+
+    for (const dir of [".claude", ".agents", ".cursor"] as const) {
+      expect(() =>
+        lstatSync(join(root, dir, "skills", "meticulous-cli")),
+      ).toThrow();
+    }
+    expect(lstatSync(cache).isDirectory()).toBe(true);
   });
 });
 
 describe("assertSafeSkillsInstallTargets", () => {
-  it("rejects a nested symlink planted after the pre-check", () => {
+  // The pre-check leaves every dest we write symlink-free, so one appearing
+  // afterwards was planted during the install.
+  it("rejects a symlink planted on a dest after the pre-check", () => {
     const root = makeRoot();
-    prepareSafeSkillsInstallTargets(root);
+    prepareSafeSkillsInstallTargets(root, SKILL_NAMES);
 
     const outside = mkdtempSync(join(tmpdir(), "onboard-skill-toctou-"));
     dirs.push(outside);
-    symlinkSync(outside, join(root, ".claude", "skills", "toctou-skill"));
+    symlinkSync(outside, join(root, ".claude", "skills", "meticulous-cli"));
 
-    expect(() => assertSafeSkillsInstallTargets(root)).toThrow(
-      /symlink.*toctou-skill/i,
+    expect(() => assertSafeSkillsInstallTargets(root, SKILL_NAMES)).toThrow(
+      /symlink.*meticulous-cli/i,
     );
+  });
+
+  it("rejects a symlink planted inside a dest after the pre-check", () => {
+    const root = makeRoot();
+    prepareSafeSkillsInstallTargets(root, SKILL_NAMES);
+
+    const outside = mkdtempSync(join(tmpdir(), "onboard-skill-toctou-deep-"));
+    dirs.push(outside);
+    mkdirSync(join(root, ".claude", "skills", "meticulous-cli"), {
+      recursive: true,
+    });
+    symlinkSync(
+      outside,
+      join(root, ".claude", "skills", "meticulous-cli", "scripts"),
+    );
+
+    expect(() => assertSafeSkillsInstallTargets(root, SKILL_NAMES)).toThrow(
+      /symlink.*meticulous-cli\/scripts/i,
+    );
+  });
+
+  it("ignores another tool's skill link", () => {
+    const root = makeRoot();
+    prepareSafeSkillsInstallTargets(root, SKILL_NAMES);
+
+    const outside = mkdtempSync(join(tmpdir(), "onboard-skill-other-"));
+    dirs.push(outside);
+    symlinkSync(outside, join(root, ".claude", "skills", "some-other-tool"));
+
+    expect(() =>
+      assertSafeSkillsInstallTargets(root, SKILL_NAMES),
+    ).not.toThrow();
   });
 
   it("allows a real nested skill directory with no symlinks", () => {
     const root = makeRoot();
-    prepareSafeSkillsInstallTargets(root);
+    prepareSafeSkillsInstallTargets(root, SKILL_NAMES);
     mkdirSync(join(root, ".claude", "skills", "meticulous-cli", "scripts"), {
       recursive: true,
     });
@@ -201,6 +333,8 @@ describe("assertSafeSkillsInstallTargets", () => {
       "# ok\n",
     );
 
-    expect(() => assertSafeSkillsInstallTargets(root)).not.toThrow();
+    expect(() =>
+      assertSafeSkillsInstallTargets(root, SKILL_NAMES),
+    ).not.toThrow();
   });
 });

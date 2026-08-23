@@ -1,5 +1,13 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.331.3
+
+### Patch Changes
+
+- [#12687](https://github.com/alwaysmeticulous/meticulous/pull/12687) [`4a74a3d`](https://github.com/alwaysmeticulous/meticulous/commit/4a74a3dc934f44e38ff2c4ea7bacfd4162f24950) Thanks [@dennysem](https://github.com/dennysem)! - Report line coverage for source files outside the Vite root, which in a monorepo is every workspace package the app imports. The coverage plugin emitted the build machine's absolute path for those files, and an absolute path carries the build's own checkout prefix, so it resolves against no file in the repository and its coverage is discarded as unmapped. They are now emitted relative to the root, `../`-prefixed: the number of `../` segments is the root's own depth, so stripping them recovers the path relative to the repository. That is also the shape the frontend's coverage uses, so a file that ships to both the client and the server bundle now reports one merged set of covered lines rather than only whichever half was resolved first.
+
+  Coverage is instrumented at build time, so this takes effect for builds made with this version onwards; earlier builds keep reporting the absolute paths.
+
 ## 2.331.0
 
 ### Patch Changes

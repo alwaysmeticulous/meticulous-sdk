@@ -54,6 +54,22 @@ describe("meticulousCoverage plugin", () => {
     expect(result!.code).toContain('path:"src/nested/handler.ts"');
   });
 
+  it("keeps a workspace package outside the root resolvable, not machine-specific", () => {
+    const plugin = meticulousCoverage({ onWarning: () => {} });
+    plugin.configResolved?.({ root: "/home/runner/work/repo/repo/apps/web" });
+    const result = transform(
+      plugin,
+      APP,
+      "/home/runner/work/repo/repo/packages/ui/button.tsx",
+    );
+    // The `../` count is the root's depth, so stripping them (which the
+    // post-process does) leaves the repo-relative path. Emitting the absolute
+    // path instead would bake in the build machine's checkout prefix, which
+    // resolves against no repo file and is discarded as unmapped.
+    expect(result!.code).toContain('path:"../../packages/ui/button.tsx"');
+    expect(result!.code).not.toContain("/home/runner");
+  });
+
   it("skips client modules unless asked", () => {
     const plugin = meticulousCoverage({ onWarning: () => {} });
     expect(transform(plugin, APP, "/repo/src/a.ts", false)).toBeNull();

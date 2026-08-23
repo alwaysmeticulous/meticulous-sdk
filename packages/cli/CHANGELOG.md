@@ -1,5 +1,11 @@
 # @alwaysmeticulous/cli
 
+## 2.331.3
+
+### Patch Changes
+
+- [#12638](https://github.com/alwaysmeticulous/meticulous/pull/12638) [`ca69ac0`](https://github.com/alwaysmeticulous/meticulous/commit/ca69ac09d3d7dfefc87ca5f25a89cfaa2b1ea066) Thanks [@adrikoz](https://github.com/adrikoz)! - `meticulous onboard` no longer aborts when a Meticulous skill was previously installed as a link into a cache (`skills add` without `--copy`), which left the run refusing to write through `.claude/skills/meticulous-cli`. Onboard now works out which skills the install will write, replaces leftover links for exactly those, and ignores every other skill in `.claude`, `.agents`, and `.cursor` — so skills installed by other tools, linked or not, neither get touched nor hold up the install. The skills install is skipped, with the paths named, only when a skill being installed has a symlink nested inside it that onboard will not write through.
+
 ## 2.331.2
 
 ### Patch Changes
