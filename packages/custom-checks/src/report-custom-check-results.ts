@@ -17,8 +17,10 @@ export interface ReportCustomCheckResultsOptions {
 
 /**
  * Reports the custom check results computed for a test run (e.g. from a job in
- * the customer's CI after the run completes). May be called only once per test
- * run — a second call fails. Pair with {@link findTestRunForCustomChecks} or
+ * the customer's CI after the run completes). The first report for a run is
+ * the one stored: calling this again for the same run (after re-running the
+ * CI job, say) succeeds without overwriting the stored results. Pair with
+ * {@link findTestRunForCustomChecks} or
  * {@link findTestRunByCommitForCustomChecks} and `getSnapshotsFromTestRun` to
  * write a custom check from any script.
  */

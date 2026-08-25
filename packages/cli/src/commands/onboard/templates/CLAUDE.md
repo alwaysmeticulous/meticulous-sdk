@@ -96,7 +96,6 @@ before proceeding.
    - `recorder-installation`
    - `ci-setup`
    - `false-positive-prevention`
-   - `local-simulation-verification`
 
    Conditionally include (based on the review summary):
    - `auth-setup` — only when server-side / mixed auth needs a Meticulous bypass
@@ -125,12 +124,25 @@ before proceeding.
 5. **Apply the install yourself.** Using the specialist guidance, edit files under
    `projectRoot`:
    - Install the recorder (script tag or npm package, matching the framework)
+   - When adding `@alwaysmeticulous/recorder-plugin` or
+     `@alwaysmeticulous/sdk-bundles-api`, invoke the repository's package manager with
+     an explicit `@latest` specifier so it updates both `package.json` and the lockfile.
+     Never guess a major or write a stale range such as `^1`.
    - Add CI workflow / job for Meticulous
    - Apply only the conditional fixes that the review said are needed
    - Prefer the smallest correct change; do not refactor unrelated code
-   - Confirm each edit with a static read-back (snippet is first in `<head>`, workflow YAML is
-     valid). Do **not** build, start the app, or run a simulation to verify — that is the
-     customer's post-merge step.
+   - Confirm each edit with a static read-back: the snippet is first in `<head>`, and every CI
+     file you touched still parses. Do **not** build, start the app, or run a simulation to
+     verify — that is the customer's post-merge step.
+   - CI YAML is hand-written, so read the whole file back after editing it and check the
+     things a parser rejects: one consistent indentation step, no tabs, every key unique
+     within its mapping, block scalars (`|`, `>`) and `run:` bodies indented past their key,
+     and any value starting with `{`, `[`, `*`, `&`, `%`, `@`, `` ` `` or containing `: `
+     quoted. Any `run:` command containing a colon must use a `run: |` block — inline
+     quotes do not save it, so `run: echo 'nodeLinker: node-modules' > .yarnrc.yml` is
+     rejected by CI. When you add a job to an existing workflow, match that file's existing
+     indentation rather than the docs' — the CLI re-parses these files after you exit and
+     tells the user if one is broken.
 
 6. **Open the pull request(s).** This is the required final output.
    - Create a new branch off the current branch, e.g. `meticulous/install`.
@@ -145,9 +157,10 @@ before proceeding.
    - Stage **both**:
      1. the application/CI files you edited under `projectRoot`, and
      2. every path listed in `onboard-context.json` → `agentIntegrationPaths`
-        (Meticulous skills + MCP config the CLI already installed — typically
-        `.claude/skills/`, `.agents/skills/`, `.cursor/skills/`, `skills-lock.json`,
-        `.mcp.json`, `.cursor/mcp.json`, `.codex/config.toml`). These **must** be in the PR.
+        that exists on disk (MCP config, and Meticulous skills only if the user
+        chose to download them — typically `.claude/skills/`, `.agents/skills/`,
+        `.cursor/skills/`, `skills-lock.json`, `.mcp.json`, `.cursor/mcp.json`,
+        `.codex/config.toml`). Do **not** create missing skill paths.
    - Never stage the `.meticulous-onboard` workspace, and never commit secrets.
    - Commit with a clear message like `Add Meticulous visual testing`.
    - Push the branch to `origin` and open a PR using the GitHub CLI (`gh pr create`) when it
@@ -201,8 +214,8 @@ quoting its full absolute path so they can find it. Mention it in the PR descrip
   config are verified by the customer's own first test run after merge — that is a post-merge
   step, not part of this run. Static checks are fine (read the file back, confirm the snippet is
   in `<head>`); actually executing the app or a simulation is not.
-- Verification instructions (local simulation, first test run) belong **only** in the PR
-  "Next steps" section for the customer to run later — you do not perform them.
+- Do **not** tell the user to simulate locally, in the terminal or in the PR. The CLI prints
+  the real next steps after you exit.
 - Edit only under `projectRoot`. Do not modify this `.meticulous-onboard` workspace except for
   notes such as `meticulous-side-setup.md`, and never commit it.
 - Never commit secrets (`.env` with private keys, project API tokens) into the repo. The

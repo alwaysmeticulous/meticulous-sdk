@@ -13,7 +13,7 @@ import {
   type OnboardContextJson,
 } from "./materialize-workspace";
 
-const METICULOUS_APP_URL = "https://app.meticulous.ai";
+export const METICULOUS_APP_URL = "https://app.meticulous.ai";
 
 /**
  * Assembles the onboard-context.json payload handed to the install agent, from

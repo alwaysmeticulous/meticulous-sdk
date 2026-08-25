@@ -1,6 +1,10 @@
 import type { TestRun } from "@alwaysmeticulous/api";
 import type { ChunkPathOverlap } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { executeWithRetry, initLogger } from "@alwaysmeticulous/common";
+import {
+  DEPLOYMENT_IN_PROGRESS_RETRY,
+  isDeploymentStillInProgress,
+} from "./deployment-in-progress";
 
 const POLL_FOR_BASE_TEST_RUN_INTERVAL_MS = 10_000;
 const POLL_FOR_BASE_TEST_RUN_MAX_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -84,7 +88,10 @@ export const pollWhileBaseNotFound = async ({
       await new Promise((resolve) =>
         setTimeout(resolve, POLL_FOR_BASE_TEST_RUN_INTERVAL_MS),
       );
-      const retryResult = await retryFn();
+      const retryResult = await pollOnce(retryFn, logger);
+      if (retryResult == null) {
+        continue;
+      }
       testRun = retryResult.testRun ?? null;
       baseNotFound = retryResult.baseNotFound;
       message = retryResult.message;
@@ -95,7 +102,7 @@ export const pollWhileBaseNotFound = async ({
 
     if (baseNotFound && !testRun) {
       logger.info(fallbackLogMessage);
-      const fallbackResult = await fallbackFn();
+      const fallbackResult = await runFallback(fallbackFn, logger);
       testRun = fallbackResult.testRun ?? null;
       message = fallbackResult.message;
       overlaps = fallbackResult.overlaps;
@@ -106,3 +113,45 @@ export const pollWhileBaseNotFound = async ({
 
   return { testRun, baseNotFound, message, overlaps, overlapsTruncated };
 };
+
+/**
+ * Runs one poll, absorbing the responses that mean the deployment is still
+ * being worked on elsewhere and returning `null` so the caller polls again.
+ *
+ * Coming back is the whole point of this loop, so an in-progress answer is not
+ * a failure — treating it as one would abandon a run the trigger is in the
+ * middle of creating. Everything else still throws: the loop's own deadline is
+ * the only thing that should end it early.
+ */
+const pollOnce = async (
+  retryFn: () => Promise<PollResult>,
+  logger: ReturnType<typeof initLogger>,
+): Promise<PollResult | null> => {
+  try {
+    return await retryFn();
+  } catch (error) {
+    if (!isDeploymentStillInProgress(error)) {
+      throw error;
+    }
+    logger.debug(
+      `Deployment is still being processed server-side; will poll again. ${String(error)}`,
+    );
+    return null;
+  }
+};
+
+/**
+ * Runs the fallback, which reaches the same endpoint the polls did and so can
+ * lose its response the same way.
+ *
+ * A poll that loses one simply comes round again, but the fallback is the last
+ * call this function makes: throwing here fails the command outright, having
+ * already spent the whole base window, and discards a run the trigger is most
+ * likely in the middle of creating. So it waits through a couple of losses
+ * instead, on the same schedule as the upload paths' own completion call.
+ */
+const runFallback = async (
+  fallbackFn: () => Promise<PollResult>,
+  logger: ReturnType<typeof initLogger>,
+): Promise<PollResult> =>
+  executeWithRetry(fallbackFn, { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger });

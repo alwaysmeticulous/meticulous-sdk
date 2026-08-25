@@ -1,5 +1,21 @@
 # @alwaysmeticulous/client
 
+## 2.332.0
+
+### Patch Changes
+
+- [#12700](https://github.com/alwaysmeticulous/meticulous/pull/12700) [`c403e95`](https://github.com/alwaysmeticulous/meticulous/commit/c403e9599fb890e205c15d08174a06b0644f1c94) Thanks [@sesajad](https://github.com/sesajad)! - Return the backend-minted `agenticRunId` for agentic session generation launches instead of the legacy workflow run id.
+
+- [#12665](https://github.com/alwaysmeticulous/meticulous/pull/12665) [`3624196`](https://github.com/alwaysmeticulous/meticulous/commit/362419699ae036afb7195cc0e47c972df2210b4d) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `takeBaseWorkflowDispatchLease`, which asks the backend whether this caller should be the one to dispatch a build of a base commit when several callers may be about to build the same one.
+
+- [#12808](https://github.com/alwaysmeticulous/meticulous/pull/12808) [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432) Thanks [@adrikoz](https://github.com/adrikoz)! - `meticulous onboard` now opens a browser sign-in when you are not logged in, instead of asking you to run `auth login` first. The OAuth page for that flow omits the agent-facing steps shown on the ordinary sign-in wall.
+
+- [#12808](https://github.com/alwaysmeticulous/meticulous/pull/12808) [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432) Thanks [@adrikoz](https://github.com/adrikoz)! - The OAuth callback success page no longer prints the "set Meticulous up for your coding agent" steps (install the CLI, add the MCP server, `npx skills add`) when the login came from `meticulous onboard`. That run installs those itself, so the steps contradicted the run in progress. The plain `auth login` flow is unchanged.
+
+- Updated dependencies [[`b7dde7f`](https://github.com/alwaysmeticulous/meticulous/commit/b7dde7f8f95bddb959fe548610762864dd67f63d), [`b7dde7f`](https://github.com/alwaysmeticulous/meticulous/commit/b7dde7f8f95bddb959fe548610762864dd67f63d), [`a6943e7`](https://github.com/alwaysmeticulous/meticulous/commit/a6943e7d1519193a2958a3129091f6bc80abe8a4), [`65a40b1`](https://github.com/alwaysmeticulous/meticulous/commit/65a40b11a270fd5acfad66d6418140dee1426f10)]:
+  - @alwaysmeticulous/api@2.332.0
+  - @alwaysmeticulous/common@2.332.0
+
 ## 2.331.2
 
 ### Patch Changes

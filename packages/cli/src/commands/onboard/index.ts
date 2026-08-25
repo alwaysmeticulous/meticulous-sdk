@@ -25,6 +25,7 @@ import { assertSupportedSsr, resolveSelectedApp } from "./resolve-app";
 import { resolveSelectedAppAbsolutePath } from "./discover-apps";
 import { resolveOnboardProject } from "./resolve-project";
 import { setupAgentIntegrations } from "./setup-agent-integrations";
+import { warnAboutInvalidCiYaml } from "./validate-ci-yaml";
 
 interface OnboardOptions {
   apiToken: string | undefined;
@@ -92,10 +93,10 @@ const handler = async (options: OnboardOptions): Promise<void> => {
   const prompt =
     options.prompt ?? defaultOnboardPrompt({ headless: options.headless });
 
-  // Skills/MCP are installed for every supported agent, so this is independent
-  // of the tool choice. Run it here, during the CLI stage, before the picker:
-  // the agent CLIs take over the terminal on launch, which would hide this.
-  context.agentIntegrationPaths = setupAgentIntegrations({ projectRoot });
+  // MCP setup and the optional skills install are independent of the tool
+  // choice and onboarding prompt. Run them here, before the picker: the agent
+  // CLIs take over the terminal on launch, which would hide the skills choice.
+  context.agentIntegrationPaths = await setupAgentIntegrations({ projectRoot });
   updateOnboardContext({ projectRoot, workspaceDir, context });
 
   if (options.printOnly) {
@@ -122,6 +123,7 @@ const handler = async (options: OnboardOptions): Promise<void> => {
     headless: options.headless,
     auto: options.auto,
   });
+  warnAboutInvalidCiYaml({ projectRoot });
   printNextSteps({
     tool,
     context,

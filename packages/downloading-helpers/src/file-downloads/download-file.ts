@@ -8,11 +8,15 @@ import { promisify } from "util";
 import { constants as zlibConstants, createGunzip } from "zlib";
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import cliProgress from "cli-progress";
 import extract from "extract-zip";
 import { InflateRaw } from "fast-zlib";
 import pLimit from "p-limit";
 import { Parser as TarParser, extract as tarExtract } from "tar";
+import type {
+  DownloadProgressBar,
+  TrackedDownloadStream,
+} from "./download-progress";
+import { createDownloadProgressBar } from "./download-progress";
 
 const promisifiedFinished = promisify(finished);
 
@@ -21,22 +25,6 @@ const promisifiedFinished = promisify(finished);
  * in the streaming pipeline, improving throughput for large (>1GB) files.
  */
 const STREAMING_HIGH_WATER_MARK = 256 * 1024;
-
-const shouldShowProgressBar = (): boolean => {
-  return process.env.METICULOUS_IS_CLOUD_REPLAY !== "true";
-};
-
-const formatBytes = (bytes: number): string => {
-  if (bytes === 0) {
-    return "0 B";
-  }
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
-};
-
-const MIN_BYTES_TO_SHOW_PROGRESS_BAR = 10_000;
 
 interface DownloadFileOptions {
   firstDataTimeoutInMs?: number;
@@ -78,44 +66,11 @@ export const downloadFile = async (
     10,
   );
 
-  // oxlint-disable-next-line typescript-eslint/no-redundant-type-constituents -- cli-progress types resolve under tsc; tsgolint false positive
-  let progressBar: cliProgress.SingleBar | null = null;
-  let downloadedBytes = 0;
-
-  if (
-    shouldShowProgressBar() &&
-    contentLength >= MIN_BYTES_TO_SHOW_PROGRESS_BAR
-  ) {
-    progressBar = new cliProgress.SingleBar(
-      {
-        format: `Downloading |{bar}| {percentage}% | {downloaded}/{totalSize}`,
-        hideCursor: true,
-        noTTYOutput: false,
-        notTTYSchedule: 5000,
-      },
-      cliProgress.Presets.shades_classic,
-    );
-    progressBar.start(contentLength, 0, {
-      downloaded: formatBytes(0),
-      totalSize: formatBytes(contentLength),
-    });
-  }
-
-  const progressTransform = new Transform({
-    transform(chunk, _encoding, callback) {
-      downloadedBytes += chunk.length;
-      if (progressBar) {
-        progressBar.update(downloadedBytes, {
-          downloaded: formatBytes(downloadedBytes),
-          totalSize: formatBytes(contentLength),
-        });
-      }
-      callback(null, chunk);
-    },
-  });
+  const progressBar = createDownloadProgressBar();
+  const progress = progressBar.trackStream(contentLength);
 
   const writer = createWriteStream(path);
-  (response.data as Stream).pipe(progressTransform).pipe(writer);
+  (response.data as Stream).pipe(progress.stream).pipe(writer);
   const timeoutId = setTimeout(() => {
     const error = `Download timed out after ${downloadCompleteTimeoutInMs}ms`;
     source.cancel(error);
@@ -127,12 +82,12 @@ export const downloadFile = async (
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-    progressBar?.stop();
+    progressBar.stop();
   } catch (err) {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-    progressBar?.stop();
+    progressBar.stop();
 
     await new Promise((resolve) => writer.close(resolve));
 
@@ -385,6 +340,12 @@ export interface StreamDownloadAndInflateTarOptions {
   totalTimeoutInMs?: number;
   maxRetries?: number;
   retryDelay?: number;
+  /**
+   * Bar to report compressed bytes into as they arrive. Pass the same bar to
+   * several concurrent calls to render them as one aggregate bar; the caller
+   * owns it and is responsible for stopping it.
+   */
+  progressBar?: DownloadProgressBar;
 }
 
 /**
@@ -443,6 +404,7 @@ export const streamDownloadAndInflateTar = async (
         ),
       );
     }, totalTimeoutInMs);
+    let progress: TrackedDownloadStream | undefined;
 
     try {
       const client = axios.create({ timeout: firstDataTimeoutInMs });
@@ -462,17 +424,24 @@ export const streamDownloadAndInflateTar = async (
         inflatedBytes: 0,
         inflateMs: 0,
       };
+      progress = opts.progressBar?.trackStream(
+        parseInt(String(response.headers["content-length"] ?? "0"), 10),
+      );
       await pipeline(
-        response.data as Readable,
-        createFastInflateRawStream(stats),
-        createWriteStream(outputTarFilePath, {
-          highWaterMark: STREAMING_HIGH_WATER_MARK,
-        }),
+        [
+          response.data as Readable,
+          ...(progress ? [progress.stream] : []),
+          createFastInflateRawStream(stats),
+          createWriteStream(outputTarFilePath, {
+            highWaterMark: STREAMING_HIGH_WATER_MARK,
+          }),
+        ],
         { signal: abortController.signal },
       );
 
       return stats;
     } catch (error) {
+      progress?.rollback();
       const wasAbortedBeforeCleanup = abortController.signal.aborted;
       const reasonBeforeCleanup = abortController.signal.reason;
       abortController.abort();

@@ -1,5 +1,38 @@
 # @alwaysmeticulous/cli
 
+## 2.332.0
+
+### Patch Changes
+
+- [#12808](https://github.com/alwaysmeticulous/meticulous/pull/12808) [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432) Thanks [@adrikoz](https://github.com/adrikoz)! - `meticulous onboard` no longer dispatches a local-simulation-verification specialist. After the agent exits, next steps tell the user to start the local app on the branch, click around, and confirm a session appears — not to run `meticulous simulate`. Those steps now carry the full project URLs for the tokens page and the sessions tab, and fall back to a complete `https://app.meticulous.ai` link when the project could not be resolved.
+
+- [#12636](https://github.com/alwaysmeticulous/meticulous/pull/12636) [`ea6ac92`](https://github.com/alwaysmeticulous/meticulous/commit/ea6ac92d466cfb9eb384276645a77dc3444c392e) Thanks [@adrikoz](https://github.com/adrikoz)! - Document the Git-first onboarding flow and bundle its provider setup guide with `meticulous onboard`.
+
+- [#12808](https://github.com/alwaysmeticulous/meticulous/pull/12808) [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432) Thanks [@adrikoz](https://github.com/adrikoz)! - `meticulous onboard` now opens a browser sign-in when you are not logged in, instead of asking you to run `auth login` first. The OAuth page for that flow omits the agent-facing steps shown on the ordinary sign-in wall.
+
+- [#12808](https://github.com/alwaysmeticulous/meticulous/pull/12808) [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432) Thanks [@adrikoz](https://github.com/adrikoz)! - `meticulous onboard` now explicitly installs the latest published
+  `@alwaysmeticulous/recorder-plugin` and `@alwaysmeticulous/sdk-bundles-api`
+  versions instead of allowing the install agent to infer a stale major range.
+
+- [#12808](https://github.com/alwaysmeticulous/meticulous/pull/12808) [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432) Thanks [@adrikoz](https://github.com/adrikoz)! - `meticulous onboard` now asks whether to download the optional Meticulous agent skills, explains how they help coding agents interact with Meticulous, and links to the agent setup guide. Declining does not change the onboarding agent or its prompt.
+
+- [#12808](https://github.com/alwaysmeticulous/meticulous/pull/12808) [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432) Thanks [@adrikoz](https://github.com/adrikoz)! - Onboarding now catches invalid CI YAML instead of letting it reach a pipeline. `meticulous onboard` re-parses the CI files that mention Meticulous (`.github/workflows/*.yml`, `.gitlab-ci.yml`, `bitbucket-pipelines.yml`) once the agent exits and warns with the file and line when one does not parse, and `met_onboard` plan validation parses every fenced YAML block in the assembled customer plan. The install and CI specialist instructions also carry a YAML checklist for the mistakes this tends to introduce, including the one that prompted the change: a `run:` command containing a colon, such as `run: echo 'nodeLinker: node-modules' > .yarnrc.yml`, must be written as a `run: |` block because inline quotes do not protect it.
+
+- Updated dependencies [[`c0d6adc`](https://github.com/alwaysmeticulous/meticulous/commit/c0d6adc226a0c6dba5379f987463e1c00a364637), [`c403e95`](https://github.com/alwaysmeticulous/meticulous/commit/c403e9599fb890e205c15d08174a06b0644f1c94), [`b7dde7f`](https://github.com/alwaysmeticulous/meticulous/commit/b7dde7f8f95bddb959fe548610762864dd67f63d), [`b7dde7f`](https://github.com/alwaysmeticulous/meticulous/commit/b7dde7f8f95bddb959fe548610762864dd67f63d), [`3624196`](https://github.com/alwaysmeticulous/meticulous/commit/362419699ae036afb7195cc0e47c972df2210b4d), [`a6943e7`](https://github.com/alwaysmeticulous/meticulous/commit/a6943e7d1519193a2958a3129091f6bc80abe8a4), [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432), [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432), [`672d6a5`](https://github.com/alwaysmeticulous/meticulous/commit/672d6a56c5855f211f4fe063c049c2d581e5df0b), [`17f9a02`](https://github.com/alwaysmeticulous/meticulous/commit/17f9a02440c6f7c83f8f6ba1901ce7332fd1c1a7), [`65a40b1`](https://github.com/alwaysmeticulous/meticulous/commit/65a40b11a270fd5acfad66d6418140dee1426f10)]:
+  - @alwaysmeticulous/remote-replay-launcher@2.332.0
+  - @alwaysmeticulous/client@2.332.0
+  - @alwaysmeticulous/api@2.332.0
+  - @alwaysmeticulous/common@2.332.0
+  - @alwaysmeticulous/downloading-helpers@2.332.0
+  - @alwaysmeticulous/debug-workspace@2.332.0
+  - @alwaysmeticulous/record@2.332.0
+  - @alwaysmeticulous/sdk-bundles-api@2.332.0
+  - @alwaysmeticulous/session-filters@2.332.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.332.0
+  - @alwaysmeticulous/sentry@2.332.0
+  - @alwaysmeticulous/tunnels-client@2.332.0
+  - @alwaysmeticulous/replay-debugger-ui@2.283.1
+
 ## 2.331.3
 
 ### Patch Changes

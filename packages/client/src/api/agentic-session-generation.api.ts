@@ -73,8 +73,8 @@ export interface CompleteAgenticSessionGenerationParams extends ProjectIdentifie
 }
 
 export interface CompleteAgenticSessionGenerationResponse {
-  /** The id of the launched agentic session generation workflow run. */
-  workflowRunId?: string;
+  /** The backend-minted id for the launched agentic session generation run. */
+  agenticRunId?: string;
   message?: string;
 }
 
@@ -233,7 +233,13 @@ export interface AgenticRunResultStep {
   sessionId?: string;
   /** Epoch timestamp when the first linked action began executing. */
   startTimestampMs?: number;
-  /** Epoch timestamp after the last linked action's resulting state was captured. */
+  /**
+   * Epoch timestamp of the frame the step's after evidence was captured from —
+   * the one a player must freeze on for `highlightRegion` to ring the element
+   * it was measured around. That is the last linked action's post-action
+   * capture, or the step's explicit `screenshotPath` when it cites one, since
+   * those are taken once the page has settled and can be seconds later.
+   */
   endTimestampMs?: number;
   /** Screenshot immediately before the first linked browser action. */
   beforeScreenshotPath?: string;

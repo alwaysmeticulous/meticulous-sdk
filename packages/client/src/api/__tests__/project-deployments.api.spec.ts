@@ -6,6 +6,8 @@ import {
   agentUploadContainerBuild,
   agentUploadGitDiffBuild,
   completeContainerUpload,
+  requestDeploymentSourceMapArtifactUpload,
+  triggerDeploymentSourceMapIngestion,
 } from "../project-deployments.api";
 
 describe("agent project-deployment client helpers", () => {
@@ -205,6 +207,51 @@ describe("completeContainerUpload", () => {
       }),
     ).rejects.toThrow(
       "Container image test-project/app:upload-1 not found in Harbor registry.",
+    );
+  });
+});
+
+describe("requestDeploymentSourceMapArtifactUpload", () => {
+  it("posts the object size and source-map hash to the deployment-bound endpoint", async () => {
+    const client = {
+      post: vi
+        .fn()
+        .mockResolvedValue({ data: { uploadUrl: "https://signed" } }),
+    };
+
+    await expect(
+      requestDeploymentSourceMapArtifactUpload({
+        client: client as unknown as MeticulousClient,
+        projectDeploymentId: "deployment-1",
+        sourceMapSha256: "a".repeat(64),
+        size: 123,
+      }),
+    ).resolves.toEqual({ uploadUrl: "https://signed" });
+
+    expect(client.post).toHaveBeenCalledWith(
+      "project-deployments/deployment-1/source-map-mapping-artifact-upload-url",
+      { sourceMapSha256: "a".repeat(64), size: 123 },
+    );
+  });
+});
+
+describe("triggerDeploymentSourceMapIngestion", () => {
+  it("posts to the authenticated deployment ingestion endpoint", async () => {
+    const client = {
+      post: vi.fn().mockResolvedValue({ data: { scheduled: true } }),
+    };
+
+    await expect(
+      triggerDeploymentSourceMapIngestion({
+        client: client as unknown as MeticulousClient,
+        deploymentUploadId: "upload-1",
+      }),
+    ).resolves.toEqual({ scheduled: true });
+
+    expect(client.post).toHaveBeenCalledWith(
+      "project-deployments/upload-1/ingest-source-maps",
+      {},
+      undefined,
     );
   });
 });

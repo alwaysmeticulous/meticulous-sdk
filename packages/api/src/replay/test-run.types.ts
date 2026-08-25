@@ -203,6 +203,15 @@ export interface TestRunDataLocations {
   coverageScreenshotReplaysByFilePr?: S3Location;
   coverageScreenshotReplaysByFileUnmapped?: S3Location;
   coverageByReplayPr?: S3Location;
+  /**
+   * `coverage-backend.json.gz`: which of the run's covered lines came from the
+   * app's server-side execution, keyed by repo file path — `coverage.json` is a
+   * union of both surfaces and carries no origin of its own. Only present for a
+   * run that collected backend coverage.
+   */
+  coverageBackend?: S3Location;
+  /** Per-replay breakdown of {@link TestRunDataLocations.coverageBackend}. */
+  coverageBackendByReplay?: S3Location;
   diversityByReplay?: S3Location;
   relevantReplayContexts: S3Location;
   appContainerLogs?: AppContainerLogsLocations;

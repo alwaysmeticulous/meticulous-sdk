@@ -1,5 +1,21 @@
 # @alwaysmeticulous/remote-replay-launcher
 
+## 2.332.0
+
+### Patch Changes
+
+- [#12802](https://github.com/alwaysmeticulous/meticulous/pull/12802) [`c0d6adc`](https://github.com/alwaysmeticulous/meticulous/commit/c0d6adc226a0c6dba5379f987463e1c00a364637) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Log the backend's skip message, rather than a successful launch line, when an Agent Review launch is skipped for exceeding the project's hourly rate limit.
+
+- [#12700](https://github.com/alwaysmeticulous/meticulous/pull/12700) [`c403e95`](https://github.com/alwaysmeticulous/meticulous/commit/c403e9599fb890e205c15d08174a06b0644f1c94) Thanks [@sesajad](https://github.com/sesajad)! - Return the backend-minted `agenticRunId` for agentic session generation launches instead of the legacy workflow run id.
+
+- [#12595](https://github.com/alwaysmeticulous/meticulous/pull/12595) [`672d6a5`](https://github.com/alwaysmeticulous/meticulous/commit/672d6a56c5855f211f4fe063c049c2d581e5df0b) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Keep waiting, rather than failing the command, when a gateway drops the response to a deployment trigger that is still running server-side — both when completing a container upload and when polling for a base test run.
+
+- Updated dependencies [[`c403e95`](https://github.com/alwaysmeticulous/meticulous/commit/c403e9599fb890e205c15d08174a06b0644f1c94), [`b7dde7f`](https://github.com/alwaysmeticulous/meticulous/commit/b7dde7f8f95bddb959fe548610762864dd67f63d), [`b7dde7f`](https://github.com/alwaysmeticulous/meticulous/commit/b7dde7f8f95bddb959fe548610762864dd67f63d), [`3624196`](https://github.com/alwaysmeticulous/meticulous/commit/362419699ae036afb7195cc0e47c972df2210b4d), [`a6943e7`](https://github.com/alwaysmeticulous/meticulous/commit/a6943e7d1519193a2958a3129091f6bc80abe8a4), [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432), [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432), [`65a40b1`](https://github.com/alwaysmeticulous/meticulous/commit/65a40b11a270fd5acfad66d6418140dee1426f10)]:
+  - @alwaysmeticulous/client@2.332.0
+  - @alwaysmeticulous/api@2.332.0
+  - @alwaysmeticulous/common@2.332.0
+  - @alwaysmeticulous/tunnels-client@2.332.0
+
 ## 2.331.2
 
 ### Patch Changes

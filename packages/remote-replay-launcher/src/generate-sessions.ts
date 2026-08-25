@@ -55,7 +55,7 @@ export interface GenerateSessionsOptions extends ProjectIdentifier {
 
 export interface GenerateSessionsResult {
   uploadId: string;
-  workflowRunId?: string | null;
+  agenticRunId?: string | null;
   message?: string;
 }
 
@@ -178,20 +178,24 @@ export const generateSessions = async ({
     extra: {
       uploadId,
       commitSha,
-      workflowRunId: result.workflowRunId,
+      agenticRunId: result.agenticRunId,
       ...(imageReference ? { imageReference } : {}),
     },
   });
 
-  logger.info(
-    `Agentic session generation launched. Upload ID: ${uploadId}${
-      result.workflowRunId ? `, workflow run: ${result.workflowRunId}` : ""
-    }`,
-  );
+  if (result.message && !result.agenticRunId) {
+    logger.info(result.message);
+  } else {
+    logger.info(
+      `Agentic session generation launched. Upload ID: ${uploadId}${
+        result.agenticRunId ? `, agentic run: ${result.agenticRunId}` : ""
+      }`,
+    );
+  }
 
   return {
     uploadId,
-    workflowRunId: result.workflowRunId ?? null,
+    agenticRunId: result.agenticRunId ?? null,
     ...(result.message ? { message: result.message } : {}),
   };
 };

@@ -25,6 +25,12 @@ export interface NetworkActivityDivergenceIndicator {
   beforeEventIndices?: number[] | undefined;
   afterEventIndices: number[];
   kind: "completed-requests" | "pending-requests";
+  /**
+   * Head timeline indices attached because a GraphQL-shaped console error
+   * pointed at a prior stale stub. Session repair may patch these even when
+   * match quality did not degrade vs base.
+   */
+  graphqlShapedConsoleErrorCauseEventIndices?: number[] | undefined;
 }
 
 /**

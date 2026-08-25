@@ -5,7 +5,6 @@
     "csp-setup",
     "false-positive-prevention",
     "feature-flag-setup",
-    "local-simulation-verification",
     "persisted-graphql-queries",
     "recorder-installation",
     "replay-fetch-retry-compatibility",

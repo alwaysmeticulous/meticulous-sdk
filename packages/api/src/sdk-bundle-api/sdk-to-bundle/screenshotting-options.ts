@@ -18,6 +18,7 @@ export interface ScreenshottingEnabledOptions {
 
   waitBeforeScreenshotsMs?: number;
   captureFullPage?: boolean;
+  captureScreenshotsOnNewScrollRegions?: boolean;
 
   /**
    * Configuration for capturing additional ("auxiliary") screenshots at

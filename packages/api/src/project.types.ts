@@ -49,6 +49,9 @@ export interface Project {
 export type ProjectSettingsScreenshottingOptions = Partial<
   Pick<
     ScreenshottingEnabledOptions,
-    "waitBeforeScreenshotsMs" | "captureFullPage" | "elementsToIgnore"
+    | "waitBeforeScreenshotsMs"
+    | "captureFullPage"
+    | "captureScreenshotsOnNewScrollRegions"
+    | "elementsToIgnore"
   >
 >;

@@ -2,6 +2,7 @@ import { execSync, spawnSync } from "child_process";
 import { existsSync } from "fs";
 import chalk from "chalk";
 import inquirer from "inquirer";
+import { METICULOUS_APP_URL } from "./build-context";
 import {
   GITHUB_ACTIONS_DOCS_URL,
   METICULOUS_DOCS_BASE_URL,
@@ -29,8 +30,8 @@ const ONBOARD_PROMPT_BASE =
   "(2) if `isMonorepo` is true but `selectedAppPath` is missing, ask which app to onboard " +
   "and wait; otherwise do not re-ask; " +
   "(3) dispatch every applicable specialist (recorder-installation, ci-setup, " +
-  "false-positive-prevention, local-simulation-verification, plus any conditional ones the " +
-  "reviewer flags) in a single parallel task message; " +
+  "false-positive-prevention, plus any conditional ones the reviewer flags) in a single " +
+  "parallel task message; " +
   "(4) post a short plan (recorder approach, ci change, each conditional fix and the file it " +
   "touches, anything needing meticulous-side setup, how you will split the prs, manual " +
   "follow-ups) and wait for the user to approve or amend it before editing any repo file; " +
@@ -51,12 +52,13 @@ const ONBOARD_PROMPT_BASE =
   "— see the reference docs section of CLAUDE.md. " +
   "this is a single pass: run the reviewer once and the specialists once, then apply and open " +
   "the pr. after applying do not re-dispatch the reviewer or specialists to double-check, and " +
-  "do not build, run, or `meticulous simulate` the app yourself — verification (local " +
-  "simulation, first test run) is a post-merge step for the customer and goes only in the pr " +
-  "next steps. confirm edits with static read-backs, not by executing the app. " +
-  "the cli has already added project-scoped meticulous skills (for claude code, codex, and " +
-  "cursor), mcp configuration, and a `.gitignore` entry. you must include every path in " +
-  "`onboard-context.json` → `agentIntegrationPaths` in the onboarding pr (skills + mcp). " +
+  "do not build, run, or `meticulous simulate` the app yourself — first test run is a " +
+  "post-merge step for the customer, not this run. confirm edits with static read-backs, not " +
+  "by executing the app. do not tell the user to simulate locally. " +
+  "the cli has already added project-scoped mcp configuration and a `.gitignore` entry, and " +
+  "meticulous skills only if the user chose to download them. include every path in " +
+  "`onboard-context.json` → `agentIntegrationPaths` that exists on disk in the onboarding pr " +
+  "(do not create missing skill paths). " +
   "the required final output is a pull request: create a new branch, commit your install " +
   "changes plus those agent integration files " +
   "(never the .meticulous-onboard workspace and never secrets), push to origin, and open a pr " +
@@ -281,6 +283,7 @@ export const printNextSteps = (options: {
     orgAndProject: string | null;
     meticulousSideSetupPath: string;
     meticulousTokensUrl: string | null;
+    meticulousSessionsUrl: string | null;
     secretsUrl: string | null;
     secretsUrlLabel: string | null;
     githubConfigureProjectsUrl: string | null;
@@ -298,20 +301,21 @@ export const printNextSteps = (options: {
 }): void => {
   const { tool, context } = options;
   const projectLabel = context.orgAndProject ?? "your Meticulous project";
-  const tokensUrl =
-    context.meticulousTokensUrl ??
-    "https://app.meticulous.ai (Project → Settings → Tokens)";
+  const tokensLocation = context.meticulousTokensUrl
+    ? chalk.cyan(context.meticulousTokensUrl)
+    : `${chalk.cyan(METICULOUS_APP_URL)} (your project → Settings → Tokens)`;
   const secretsLabel = context.secretsUrlLabel ?? "your CI secrets";
 
   const steps = [
     `In ${TOOL_LABEL[tool]}, authenticate the Meticulous MCP when prompted (browser OAuth).`,
-    `Grab the recording token and project API token from ${chalk.cyan(tokensUrl)}.`,
-    `Put the recording token in a build-time frontend env var (it is a public, read-only token), and put the API token in ${secretsLabel}${
+    `Get the recording token from ${tokensLocation} and put it in a build-time frontend env var (it is a public, read-only token).`,
+    `Get the project API token from ${tokensLocation} and store it in ${secretsLabel}${
       context.secretsUrl ? ` (${chalk.cyan(context.secretsUrl)})` : ""
     } for ${chalk.cyan(projectLabel)}.`,
     unresolvedVcsLinkStep(context),
     meticulousSideSetupStep(context.meticulousSideSetupPath),
-    "Merge the PR, then confirm sessions appear in the Meticulous dashboard.",
+    recordLocalSessionStep(context.meticulousSessionsUrl),
+    "Merge the PR once a session shows up.",
   ].filter((step): step is string => step !== null);
 
   console.log("");
@@ -330,6 +334,16 @@ const meticulousSideSetupStep = (setupPath: string): string | null => {
   return (
     `Send ${chalk.cyan(setupPath)} to your Meticulous contact (or support@meticulous.ai) — ` +
     "it lists setup this project needs on the Meticulous side."
+  );
+};
+
+const recordLocalSessionStep = (sessionsUrl: string | null): string => {
+  const where = sessionsUrl
+    ? chalk.cyan(sessionsUrl)
+    : `${chalk.cyan(METICULOUS_APP_URL)} (your project → Sessions)`;
+  return (
+    "On this branch, start your local app with the recording token set, click around, " +
+    `then confirm a session appears at ${where}.`
   );
 };
 

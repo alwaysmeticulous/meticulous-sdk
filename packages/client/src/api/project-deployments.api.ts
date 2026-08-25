@@ -65,6 +65,24 @@ export interface RequestGitDiffUploadResponse {
   uploadUrl: string;
 }
 
+export interface RequestDeploymentSourceMapArtifactUploadParams {
+  projectDeploymentId: string;
+  size: number;
+  sourceMapSha256?: string | undefined;
+}
+
+export interface RequestDeploymentSourceMapArtifactUploadResponse {
+  uploadUrl: string;
+}
+
+export interface TriggerDeploymentSourceMapIngestionParams extends ProjectIdentifier {
+  deploymentUploadId: string;
+}
+
+export interface TriggerDeploymentSourceMapIngestionResponse {
+  scheduled: boolean;
+}
+
 export interface CompleteAssetUploadParams extends ProjectIdentifier {
   uploadId: string;
   commitSha: string;
@@ -247,6 +265,43 @@ export const requestGitDiffUpload = async ({
     body,
     projectIdQuery(projectId),
   );
+  return data;
+};
+
+/**
+ * Requests a presigned URL for one deployment source-map artifact. The backend
+ * derives the object key from the authenticated deployment, so the worker only
+ * supplies the object's size and (for maps) its content hash.
+ */
+export const requestDeploymentSourceMapArtifactUpload = async ({
+  client,
+  projectDeploymentId,
+  ...body
+}: RequestDeploymentSourceMapArtifactUploadParams & {
+  client: MeticulousClient;
+}): Promise<RequestDeploymentSourceMapArtifactUploadResponse> => {
+  const { data } =
+    await client.post<RequestDeploymentSourceMapArtifactUploadResponse>(
+      `project-deployments/${projectDeploymentId}/source-map-mapping-artifact-upload-url`,
+      body,
+    );
+  return data;
+};
+
+/** Explicitly starts source-map ingestion for an uploaded deployment. */
+export const triggerDeploymentSourceMapIngestion = async ({
+  client,
+  deploymentUploadId,
+  projectId,
+}: TriggerDeploymentSourceMapIngestionParams & {
+  client: MeticulousClient;
+}): Promise<TriggerDeploymentSourceMapIngestionResponse> => {
+  const { data } =
+    await client.post<TriggerDeploymentSourceMapIngestionResponse>(
+      `project-deployments/${deploymentUploadId}/ingest-source-maps`,
+      {},
+      projectIdQuery(projectId),
+    );
   return data;
 };
 

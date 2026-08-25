@@ -134,7 +134,7 @@ export type FindTestRunForCustomChecksOptions =
  *     executing when the head run finishes: fetching snapshots at that point
  *     observes a partial — often empty — base side, and every check silently
  *     compares 0 sessions and records a vacuous verdict that can never be
- *     corrected (results are reported exactly once).
+ *     corrected (the first report for a run is the one stored).
  *
  * If you are NOT going to report results for this run — e.g. a dry run that just
  * tests your custom check script — set `skipRegisteringExpectedCustomChecks:

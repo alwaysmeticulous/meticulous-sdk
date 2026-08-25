@@ -20,6 +20,8 @@ vi.mock("@alwaysmeticulous/client", () => ({
   completeContainerUpload: vi.fn(),
   getApiToken: vi.fn((token) => token || "mocked-token"),
 }));
+// Only the logging is stubbed; the retry helper is kept real so the retry
+// behaviour around completeContainerUpload is genuinely exercised.
 vi.mock("@alwaysmeticulous/common", async (importOriginal) => ({
   ...(await importOriginal<typeof Common>()),
   initLogger: () => ({
@@ -239,6 +241,42 @@ describe("uploadContainer", () => {
     const result = await resultPromise;
 
     expect(result.testRun?.id).toBe("test-run-456");
+    expect(completeContainerUpload).toHaveBeenCalledTimes(2);
+
+    vi.useRealTimers();
+  });
+
+  it("waits and retries when the trigger is still running server-side", async () => {
+    // The gateway dropped the response while the trigger carried on. Failing
+    // here would abandon the run it is in the middle of creating.
+    vi.useFakeTimers();
+
+    (completeContainerUpload as any)
+      .mockRejectedValueOnce(
+        Object.assign(new Error("in progress"), { response: { status: 503 } }),
+      )
+      .mockResolvedValueOnce({
+        testRun: {
+          id: "test-run-789",
+          project: {
+            name: "test-project",
+            organization: { name: "test-org" },
+          },
+        },
+        baseNotFound: false,
+      });
+
+    const resultPromise = uploadContainer({
+      apiToken: "test-token",
+      localImageTag: "myapp:latest",
+      commitSha: "abc123def456",
+      waitForBase: false,
+    });
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    const result = await resultPromise;
+
+    expect(result.testRun?.id).toBe("test-run-789");
     expect(completeContainerUpload).toHaveBeenCalledTimes(2);
 
     vi.useRealTimers();

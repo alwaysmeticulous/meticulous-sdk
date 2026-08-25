@@ -155,7 +155,10 @@ export {
   makeRequest,
   resolveApiTokenWithOAuth,
 } from "./client";
-export { performOAuthLogin } from "./oauth/oauth-login";
+export {
+  CLI_LOGIN_INTENT_ONBOARD,
+  performOAuthLogin,
+} from "./oauth/oauth-login";
 export { performDeviceLogin } from "./oauth/oauth-device-login";
 export { getValidAccessToken } from "./oauth/oauth-refresh";
 export {
@@ -195,6 +198,9 @@ export {
   RequestGitDiffUploadParams,
   RequestGitDiffUploadResponse,
   requestGitDiffUpload,
+  RequestDeploymentSourceMapArtifactUploadParams,
+  RequestDeploymentSourceMapArtifactUploadResponse,
+  requestDeploymentSourceMapArtifactUpload,
   ChunkPathOverlap,
   CompleteAssetUploadParams,
   CompleteAssetUploadResponse,
@@ -233,6 +239,9 @@ export {
   AgentTriggerTestRunParams,
   AgentTriggerTestRunResponse,
   agentTriggerTestRun,
+  TriggerDeploymentSourceMapIngestionParams,
+  TriggerDeploymentSourceMapIngestionResponse,
+  triggerDeploymentSourceMapIngestion,
 } from "./api/project-deployments.api";
 export {
   RequestAgenticInstructionsUploadParams,

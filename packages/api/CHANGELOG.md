@@ -1,5 +1,23 @@
 # @alwaysmeticulous/api
 
+## 2.332.0
+
+### Minor Changes
+
+- [#12686](https://github.com/alwaysmeticulous/meticulous/pull/12686) [`a6943e7`](https://github.com/alwaysmeticulous/meticulous/commit/a6943e7d1519193a2958a3129091f6bc80abe8a4) Thanks [@calebgcc](https://github.com/calebgcc)! - Add an option to capture deterministic viewport screenshots after recorded page scrolls reveal new regions.
+
+### Patch Changes
+
+- [#12725](https://github.com/alwaysmeticulous/meticulous/pull/12725) [`b7dde7f`](https://github.com/alwaysmeticulous/meticulous/commit/b7dde7f8f95bddb959fe548610762864dd67f63d) Thanks [@dennysem](https://github.com/dennysem)! - Record where a test run's coverage came from. `coverage.json` is a union of the browser's coverage and the app's server-side coverage — `readMergedReplayCoverage` merges the two into one range list per file — so nothing downstream, the coverage page included, could tell a server-rendered line from a hydrated one. A run that collects backend coverage now also writes `coverage-backend.json` (backend-origin lines for the run, keyed by repo file path) and `coverage-backend-by-replay.json` (the same, per replay), exposed as the optional `coverageBackend` and `coverageBackendByReplay` locations on `GET`/`PUT test-runs/:id/data`.
+
+  Ranges are already intersected with that file's executed ranges in `coverage.json`, so the index joins straight onto the coverage the page renders. It says the backend executed a line, not that only the backend did: an isomorphic component that server-renders and then hydrates appears in both. Frontend-only lines are the complement — the executed lines the index omits.
+
+- [#12725](https://github.com/alwaysmeticulous/meticulous/pull/12725) [`b7dde7f`](https://github.com/alwaysmeticulous/meticulous/commit/b7dde7f8f95bddb959fe548610762864dd67f63d) Thanks [@dennysem](https://github.com/dennysem)! - Show which covered lines the backend touched on the coverage page. On a test run with backend coverage, admins (full and restricted) now get a "Backend coverage" option in the Sources tab's display menu, behind the usual "show more admin features" toggle: the file list narrows to the files the server executed some of, and those lines are highlighted in blue rather than the usual executed green. The option is not offered to other users, or on a run with no backend coverage.
+
+  Backed by a new nullable `backendCoverageBlobUrl` on `TestRunCoverage`, serving the run's `coverage-backend.json` index. It is deliberately outside the green/red axis: a highlighted line ran on the server, and may have run in the browser as well, so the color says _where_ code ran rather than _whether_ it ran.
+
+- [#12674](https://github.com/alwaysmeticulous/meticulous/pull/12674) [`65a40b1`](https://github.com/alwaysmeticulous/meticulous/commit/65a40b11a270fd5acfad66d6418140dee1426f10) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add optional `graphqlShapedConsoleErrorCauseEventIndices` on `NetworkActivityDivergenceIndicator` so session repair can patch stale GraphQL stubs that a console error pointed at, even when match quality did not degrade vs base.
+
 ## 2.327.0
 
 ### Minor Changes

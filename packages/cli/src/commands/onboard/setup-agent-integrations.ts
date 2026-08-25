@@ -2,9 +2,12 @@ import { spawnSync } from "child_process";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { delimiter, join } from "path";
+import { isInteractiveContext } from "@alwaysmeticulous/client";
 import chalk from "chalk";
+import inquirer from "inquirer";
 import { CliUserError } from "../../utils/cli-user-error";
 import { mergeCodexMcp } from "./codex-mcp";
+import { AGENTS_SETUP_DOCS_URL } from "./docs-urls";
 import {
   SKILLS_INSTALL_DIR_ROOTS,
   assertSafeSkillsInstallTargets,
@@ -48,14 +51,15 @@ export const AGENT_INTEGRATION_PATHS = [
   ".codex/config.toml",
 ] as const;
 
-export const setupAgentIntegrations = (options: {
+export const setupAgentIntegrations = async (options: {
   projectRoot: string;
-}): string[] => {
+}): Promise<string[]> => {
   console.log(chalk.bold("Setting up Meticulous agent integrations…"));
 
-  // Install skills for all supported agents so the onboarding PR is useful
-  // regardless of which tool teammates use later.
-  const skillsInstalled = installSkills(options.projectRoot);
+  const installMeticulousSkills = await confirmSkillsInstall();
+  const skillsInstalled = installMeticulousSkills
+    ? installSkills(options.projectRoot)
+    : false;
   installProjectMcp(options.projectRoot);
 
   const created = listExistingIntegrationPaths(
@@ -73,6 +77,37 @@ export const setupAgentIntegrations = (options: {
   }
   console.log("");
   return created;
+};
+
+export const confirmSkillsInstall = async (): Promise<boolean> => {
+  // Preserve existing behavior for headless/automated onboard runs, where
+  // there is no terminal in which to ask the user.
+  if (!isInteractiveContext()) {
+    return true;
+  }
+
+  console.log(
+    "  Meticulous skills allow coding agents to interact with Meticulous and run common workflows.",
+  );
+  console.log(`  Learn more: ${chalk.cyan(AGENTS_SETUP_DOCS_URL)}`);
+  console.log(
+    chalk.dim(
+      "  This is optional and does not change the onboarding agent or its prompt.",
+    ),
+  );
+
+  const { installSkills: shouldInstallSkills } = await inquirer.prompt<{
+    installSkills: boolean;
+  }>([
+    {
+      type: "confirm",
+      name: "installSkills",
+      message: "Download Meticulous skills into this repository?",
+      default: true,
+    },
+  ]);
+  console.log("");
+  return shouldInstallSkills;
 };
 
 export const installSkills = (projectRoot: string): boolean => {

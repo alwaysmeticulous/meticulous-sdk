@@ -16,10 +16,16 @@ import {
 import type { StoredOAuthTokens } from "./oauth-token-store";
 import { storeOAuthTokens } from "./oauth-token-store";
 
+/** Query value on `/cli-login` so the page can hide the agent-facing sign-in note. */
+export const CLI_LOGIN_INTENT_ONBOARD = "onboard";
+
 export const performOAuthLogin = async ({
   openBrowserAutomatically = true,
+  intent,
 }: {
   openBrowserAutomatically?: boolean;
+  /** Extra `intent` on the `/cli-login` URL. `onboard` hides the standard login steps. */
+  intent?: typeof CLI_LOGIN_INTENT_ONBOARD;
 } = {}): Promise<StoredOAuthTokens> => {
   const logger = initLogger();
 
@@ -27,13 +33,16 @@ export const performOAuthLogin = async ({
   const codeChallenge = generateCodeChallenge(codeVerifier);
   const state = generateState();
 
-  const callbackServer = await startCallbackServer();
+  const callbackServer = await startCallbackServer({
+    showAgentSetup: intent !== CLI_LOGIN_INTENT_ONBOARD,
+  });
   const redirectUri = `http://127.0.0.1:${callbackServer.port}/callback`;
 
   const authUrl = buildAuthorizationUrl({
     codeChallenge,
     state,
     redirectUri,
+    ...(intent ? { intent } : {}),
   });
 
   if (openBrowserAutomatically) {
@@ -68,14 +77,16 @@ export const performOAuthLogin = async ({
   return tokens;
 };
 
-const buildAuthorizationUrl = ({
+export const buildAuthorizationUrl = ({
   codeChallenge,
   state,
   redirectUri,
+  intent,
 }: {
   codeChallenge: string;
   state: string;
   redirectUri: string;
+  intent?: typeof CLI_LOGIN_INTENT_ONBOARD;
 }): string => {
   const params = new URLSearchParams({
     client_id: CLI_CLIENT_ID,
@@ -87,6 +98,9 @@ const buildAuthorizationUrl = ({
     state,
     issuer: KEYCLOAK_ISSUER_URL,
   });
+  if (intent) {
+    params.set("intent", intent);
+  }
 
   const webappBaseUrl = getWebappBaseUrl();
   return `${webappBaseUrl}/cli-login?${params.toString()}`;

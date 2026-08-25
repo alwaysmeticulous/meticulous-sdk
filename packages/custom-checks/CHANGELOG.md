@@ -1,5 +1,17 @@
 # @alwaysmeticulous/custom-checks
 
+## 2.332.0
+
+### Patch Changes
+
+- [#12782](https://github.com/alwaysmeticulous/meticulous/pull/12782) [`4ce2710`](https://github.com/alwaysmeticulous/meticulous/commit/4ce27109bea0e544019cc3b7b0b0abb72fea649a) Thanks [@phreppo](https://github.com/phreppo)! - Reporting custom check results for a test run that already has them now succeeds instead of failing, so re-running a CI job no longer leaves the workflow permanently failing. The first report is still the one stored — a repeat report never overwrites it.
+
+- Updated dependencies [[`c403e95`](https://github.com/alwaysmeticulous/meticulous/commit/c403e9599fb890e205c15d08174a06b0644f1c94), [`b7dde7f`](https://github.com/alwaysmeticulous/meticulous/commit/b7dde7f8f95bddb959fe548610762864dd67f63d), [`b7dde7f`](https://github.com/alwaysmeticulous/meticulous/commit/b7dde7f8f95bddb959fe548610762864dd67f63d), [`3624196`](https://github.com/alwaysmeticulous/meticulous/commit/362419699ae036afb7195cc0e47c972df2210b4d), [`a6943e7`](https://github.com/alwaysmeticulous/meticulous/commit/a6943e7d1519193a2958a3129091f6bc80abe8a4), [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432), [`2f7c1ef`](https://github.com/alwaysmeticulous/meticulous/commit/2f7c1ef0692096323d0e74587c8fb1f798c62432), [`17f9a02`](https://github.com/alwaysmeticulous/meticulous/commit/17f9a02440c6f7c83f8f6ba1901ce7332fd1c1a7), [`65a40b1`](https://github.com/alwaysmeticulous/meticulous/commit/65a40b11a270fd5acfad66d6418140dee1426f10)]:
+  - @alwaysmeticulous/client@2.332.0
+  - @alwaysmeticulous/api@2.332.0
+  - @alwaysmeticulous/common@2.332.0
+  - @alwaysmeticulous/downloading-helpers@2.332.0
+
 ## 2.331.2
 
 ### Patch Changes

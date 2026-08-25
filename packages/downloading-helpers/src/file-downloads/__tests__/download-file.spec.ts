@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, symlink, writeFile } from "fs/promises";
 import http from "http";
 import { tmpdir } from "os";
 import { join } from "path";
+import { Transform } from "stream";
 import { constants as zlibConstants } from "zlib";
 import type * as FsPromises from "fs/promises";
 import { DeflateRaw } from "fast-zlib";
@@ -14,6 +15,7 @@ import {
   streamDownloadAndExtractTarGz,
   streamDownloadAndInflateTar,
 } from "../download-file";
+import type { DownloadProgressBar } from "../download-progress";
 
 // Module-level toggle for the stall-on-write test below. Vitest can't spy on
 // fs/promises named exports in ESM mode, so we vi.mock the module once and
@@ -716,4 +718,72 @@ describe("streamDownloadAndInflateTar", () => {
       await close();
     }
   });
+
+  it("reports the wire bytes to a supplied progress bar, rolling back a failed attempt", async () => {
+    await writeFile(join(sourceDir, "big.txt"), "A".repeat(2 * 1024 * 1024));
+    const compressed = await createRawDeflatedTar(sourceDir);
+
+    let requestCount = 0;
+    const server = http.createServer((_req, res) => {
+      requestCount += 1;
+      res.writeHead(200, { "Content-Length": compressed.length.toString() });
+      if (requestCount === 1) {
+        res.write(
+          compressed.subarray(0, Math.floor(compressed.length / 2)),
+          () => res.destroy(),
+        );
+        return;
+      }
+      res.end(compressed);
+    });
+    const { url, close } = await listenOnEphemeralPort(server);
+    const progressBar = createRecordingProgressBar();
+
+    try {
+      await streamDownloadAndInflateTar(url, outputTarPath, {
+        retryDelay: 1,
+        progressBar: progressBar.bar,
+      });
+
+      expect(requestCount).toBeGreaterThan(1);
+      // Both attempts registered their content-length, but the failed one's
+      // contribution was rolled back, so the totals describe one download.
+      expect(progressBar.totalBytes).toBe(compressed.length);
+      expect(progressBar.downloadedBytes).toBe(compressed.length);
+    } finally {
+      await close();
+    }
+  });
 });
+
+const createRecordingProgressBar = (): {
+  bar: DownloadProgressBar;
+  totalBytes: number;
+  downloadedBytes: number;
+} => {
+  const recorder = {
+    totalBytes: 0,
+    downloadedBytes: 0,
+    bar: {
+      trackStream: (streamTotalBytes: number) => {
+        recorder.totalBytes += streamTotalBytes;
+        let streamDownloadedBytes = 0;
+        return {
+          stream: new Transform({
+            transform(chunk: Buffer, _encoding, callback) {
+              streamDownloadedBytes += chunk.length;
+              recorder.downloadedBytes += chunk.length;
+              callback(null, chunk);
+            },
+          }),
+          rollback: () => {
+            recorder.totalBytes -= streamTotalBytes;
+            recorder.downloadedBytes -= streamDownloadedBytes;
+          },
+        };
+      },
+      stop: () => undefined,
+    },
+  };
+  return recorder;
+};

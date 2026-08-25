@@ -37,4 +37,9 @@ export {
   type StreamDownloadAndInflateTarOptions,
   type InflateTarDownloadStats,
 } from "./file-downloads/download-file";
+export {
+  createDownloadProgressBar,
+  type DownloadProgressBar,
+  type TrackedDownloadStream,
+} from "./file-downloads/download-progress";
 export { getReplayDir } from "./scripts/replays";

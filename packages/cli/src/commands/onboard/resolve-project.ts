@@ -1,10 +1,13 @@
 import type { Project } from "@alwaysmeticulous/api";
 import {
+  CLI_LOGIN_INTENT_ONBOARD,
   createClientWithOAuth,
+  getAuthToken,
   getOAuthDefaultProject,
   getProject,
   isInteractiveContext,
   isOAuthJwt,
+  performOAuthLogin,
   resolveApiTokenWithOAuth,
   setOAuthDefaultProject,
 } from "@alwaysmeticulous/client";
@@ -20,15 +23,19 @@ import {
 /**
  * Resolves which Meticulous project this onboard run is for.
  *
+ * - Not logged in: interactive runs open a browser OAuth flow; otherwise errors.
  * - Interactive OAuth: searchable picker (type to filter, ↑/↓ to select).
  * - `--project` / sole accessible project / project-scoped API token: no prompt.
  * - Non-interactive OAuth with several projects: requires `--project`.
- * - Auth failure: returns null and continues with local git context only.
+ * - Project lookup failure after login: returns null and continues with local
+ *   git context only.
  */
 export const resolveOnboardProject = async (options: {
   apiToken: string | undefined;
   project: string | undefined;
 }): Promise<Project | null> => {
+  await ensureOnboardAuthenticated(options.apiToken);
+
   try {
     const apiToken = await resolveApiTokenWithOAuth({
       apiToken: options.apiToken,
@@ -68,6 +75,31 @@ export const resolveOnboardProject = async (options: {
     );
     return null;
   }
+};
+
+/**
+ * Makes sure onboard has a token before it tries to pick a project. Interactive
+ * runs open the same browser OAuth page as `auth login`, tagged so that page
+ * does not print the agent-facing sign-in steps.
+ */
+export const ensureOnboardAuthenticated = async (
+  apiToken: string | undefined,
+): Promise<void> => {
+  if (await getAuthToken(apiToken)) {
+    return;
+  }
+
+  if (!isInteractiveContext()) {
+    throw new CliUserError(
+      "`meticulous onboard` needs you to be logged in. Run it in an interactive " +
+        "terminal so it can open a browser, pass `--apiToken`, set " +
+        "METICULOUS_API_TOKEN, or run `meticulous auth login --device` first " +
+        "on a remote machine.",
+    );
+  }
+
+  console.log("Not logged in. Opening the browser to sign in to Meticulous…");
+  await performOAuthLogin({ intent: CLI_LOGIN_INTENT_ONBOARD });
 };
 
 const selectOAuthProjectId = async (options: {

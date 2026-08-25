@@ -26,6 +26,21 @@ npm install --save-dev @alwaysmeticulous/cli
 
 ## Quick Start
 
+To install Meticulous in an application repository, connect the repository to a
+Meticulous project first, then run:
+
+```bash
+npx @alwaysmeticulous/cli onboard --project="<ORGANIZATION>/<PROJECT>"
+```
+
+If you are not logged in, `onboard` opens a browser to sign in. On a remote
+machine, run `npx @alwaysmeticulous/cli auth login --device` first.
+
+`onboard` uses your local Claude Code or Codex account to prepare a pull request
+with the recorder and CI configuration. See the
+[Onboarding Guide](https://app.meticulous.ai/docs/onboarding-guide) for GitHub,
+GitLab, and Bitbucket connection instructions and the manual alternative.
+
 Sessions are recordings of user interactions with your application that Meticulous can replay to test for regressions.
 
 ### 1. Record a Session
@@ -61,6 +76,7 @@ Run `npx @alwaysmeticulous/cli --help` to see all available commands.
 
 Common commands:
 
+- `onboard` - Install the recorder and CI configuration using Claude Code or Codex
 - `record` - Record a new session
 - `simulate` - Simulate a recorded session locally
 - `run-all-tests` - Run all replay test cases

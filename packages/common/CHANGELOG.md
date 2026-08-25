@@ -1,5 +1,11 @@
 # @alwaysmeticulous/common
 
+## 2.332.0
+
+### Minor Changes
+
+- [#12686](https://github.com/alwaysmeticulous/meticulous/pull/12686) [`a6943e7`](https://github.com/alwaysmeticulous/meticulous/commit/a6943e7d1519193a2958a3129091f6bc80abe8a4) Thanks [@calebgcc](https://github.com/calebgcc)! - Add an option to capture deterministic viewport screenshots after recorded page scrolls reveal new regions.
+
 ## 2.326.0
 
 ### Minor Changes

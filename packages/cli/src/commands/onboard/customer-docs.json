@@ -5,6 +5,7 @@
     "recorder-getting-started.ts",
     "github-actions-v2.ts",
     "constants.ts",
+    "how-to/connect-git-provider.ts",
     "how-to/link-gitlab.ts",
     "how-to/link-bitbucket.ts",
     "cloud-replay.ts",

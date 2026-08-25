@@ -9,7 +9,11 @@ import {
   getRegistryAuth,
   completeContainerUpload,
 } from "@alwaysmeticulous/client";
-import { initLogger, logProgress } from "@alwaysmeticulous/common";
+import {
+  executeWithRetry,
+  initLogger,
+  logProgress,
+} from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import type Docker from "dockerode";
 import {
@@ -26,6 +30,10 @@ import {
   tagImage,
   verifyDockerConnection,
 } from "./docker-utils";
+import {
+  DEPLOYMENT_IN_PROGRESS_RETRY,
+  isDeploymentStillInProgress,
+} from "./deployment-in-progress";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 import type { CompanionAssetsOptions } from "./types";
 
@@ -224,18 +232,36 @@ export const uploadContainer = async ({
     try {
       return await completeContainerUpload(args);
     } catch (error) {
-      const logger = initLogger();
-      logger.error(
-        `Failed to complete container upload ${uploadId} for image ${imageReference} and commit ${commitSha}`,
-      );
-      if (error instanceof Error) {
-        logger.error(error.message);
+      // An in-progress answer is not a failure — whoever called this comes back
+      // for it — so don't report it as one. The retry below and the base poll
+      // loop both log their own, quieter, account of waiting.
+      if (!isDeploymentStillInProgress(error)) {
+        const logger = initLogger();
+        logger.error(
+          `Failed to complete container upload ${uploadId} for image ${imageReference} and commit ${commitSha}`,
+        );
+        if (error instanceof Error) {
+          logger.error(error.message);
+        }
       }
       throw error;
     }
   };
 
-  const completeResult = await completeUpload(completeContainerArgs);
+  // Same reasoning as the asset-upload path: this call runs the whole deployment
+  // trigger synchronously, so it can outlast the gateway's response timeout and
+  // lose its response while the trigger itself carries on. The endpoint is
+  // idempotent, so keep coming back on a longer schedule rather than failing an
+  // upload whose run is most likely already on its way.
+  //
+  // The polls in `pollWhileBaseNotFound` below reach the same endpoint but want
+  // no retry of their own: that loop is already coming back every ten seconds,
+  // so nesting a minute of waiting inside it would only slow it down. Its final
+  // fallback call is the exception, and handles itself.
+  const completeResult = await executeWithRetry(
+    () => completeUpload(completeContainerArgs),
+    { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger: initLogger() },
+  );
 
   const pollResult = await pollWhileBaseNotFound({
     initialResult: {
