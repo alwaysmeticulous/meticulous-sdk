@@ -55,7 +55,10 @@ pids
 lib-cov
 
 # Coverage directory used by tools like istanbul
-coverage
+# (anchored to package roots only — packages/backend-recorder-workerd/src/coverage
+# is real source code, not test-coverage output, and must stay tracked)
+/coverage
+/packages/*/coverage
 *.lcov
 
 # nyc test coverage
