@@ -1,5 +1,11 @@
 # @alwaysmeticulous/cli
 
+## 2.333.2
+
+### Patch Changes
+
+- [#12855](https://github.com/alwaysmeticulous/meticulous/pull/12855) [`78a8a53`](https://github.com/alwaysmeticulous/meticulous/commit/78a8a53bdc7bfcf1c06d1f29ed4eaeabf5e021a0) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Fix the published npm build failing because the onboard-template postbuild script could only read agent/doc templates from private packages not present in the public meticulous-sdk repo. The templates are now vendored into the CLI package itself and refreshed automatically whenever the package is built inside this monorepo.
+
 ## 2.333.1
 
 ### Patch Changes

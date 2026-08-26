@@ -6,6 +6,12 @@ const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outputDir = join(packageRoot, "dist", "commands", "onboard", "templates");
 const onboardSrc = join(packageRoot, "src", "commands", "onboard");
 const localTemplates = join(onboardSrc, "templates");
+// Tracked copy of the agents/docs subset below, checked into this package so
+// it can be built standalone in the public meticulous-sdk repo, which has no
+// packages/admin-cli or packages/webapp-frontend to read from directly.
+const vendoredAgents = join(localTemplates, "vendored", "agents");
+const vendoredDocs = join(localTemplates, "vendored", "docs");
+const vendoredDocsImports = join(localTemplates, "vendored", "docs-imports");
 const canonicalAgents = join(
   packageRoot,
   "..",
@@ -44,33 +50,64 @@ const { docFiles, docDirs, importFiles } = JSON.parse(
   readFileSync(join(onboardSrc, "customer-docs.json"), "utf8"),
 );
 
-const missing = customerAgentNames.filter(
-  (agentName) => !existsSync(join(canonicalAgents, `${agentName}.md`)),
-);
-if (missing.length > 0) {
-  throw new Error(
-    `Missing onboard agent template(s) in ${canonicalAgents}: ${missing.join(", ")}. ` +
-      `Update customer-agents.json if these agents were renamed or removed.`,
-  );
-}
+// Only present inside this monorepo, not in the public meticulous-sdk repo
+// that mirrors public_packages/. When absent, fall back to the vendored copy
+// below rather than validating against sources that can't exist there.
+const hasCanonicalSources =
+  existsSync(canonicalAgents) && existsSync(canonicalWebappFrontend);
 
-const missingDocs = [...docFiles, ...docDirs].filter(
-  (docPath) => !existsSync(join(canonicalDocs, docPath)),
-);
-if (missingDocs.length > 0) {
-  throw new Error(
-    `Missing onboard doc file(s) in ${canonicalDocs}: ${missingDocs.join(", ")}. ` +
-      `Update customer-docs.json if these docs were moved or renamed.`,
-  );
-}
+let agentsSrc = vendoredAgents;
+let docsSrc = vendoredDocs;
+let docsImportsSrc = vendoredDocsImports;
 
-const missingImports = importFiles.filter(
-  (importPath) => !existsSync(join(canonicalWebappFrontend, importPath)),
-);
-if (missingImports.length > 0) {
+if (hasCanonicalSources) {
+  agentsSrc = canonicalAgents;
+  docsSrc = canonicalDocs;
+  docsImportsSrc = canonicalWebappFrontend;
+
+  const missing = customerAgentNames.filter(
+    (agentName) => !existsSync(join(canonicalAgents, `${agentName}.md`)),
+  );
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing onboard agent template(s) in ${canonicalAgents}: ${missing.join(", ")}. ` +
+        `Update customer-agents.json if these agents were renamed or removed.`,
+    );
+  }
+
+  const missingDocs = [...docFiles, ...docDirs].filter(
+    (docPath) => !existsSync(join(canonicalDocs, docPath)),
+  );
+  if (missingDocs.length > 0) {
+    throw new Error(
+      `Missing onboard doc file(s) in ${canonicalDocs}: ${missingDocs.join(", ")}. ` +
+        `Update customer-docs.json if these docs were moved or renamed.`,
+    );
+  }
+
+  const missingImports = importFiles.filter(
+    (importPath) => !existsSync(join(canonicalWebappFrontend, importPath)),
+  );
+  if (missingImports.length > 0) {
+    throw new Error(
+      `Missing onboard doc import(s) in ${canonicalWebappFrontend}: ${missingImports.join(", ")}. ` +
+        `Update customer-docs.json if these modules were moved or renamed.`,
+    );
+  }
+
+  // Refresh the tracked vendored copy so it stays in sync with the canonical
+  // sources. Commit the resulting diff alongside whatever change prompted it -
+  // the meticulous-sdk build reads only this vendored copy, never the
+  // canonical private packages.
+  refreshVendoredCopy();
+} else if (
+  !existsSync(vendoredAgents) ||
+  !existsSync(vendoredDocs) ||
+  !existsSync(vendoredDocsImports)
+) {
   throw new Error(
-    `Missing onboard doc import(s) in ${canonicalWebappFrontend}: ${missingImports.join(", ")}. ` +
-      `Update customer-docs.json if these modules were moved or renamed.`,
+    `Vendored onboard templates are missing from ${localTemplates}/vendored. ` +
+      `Run this build inside the alwaysmeticulous/meticulous monorepo first to regenerate them.`,
   );
 }
 
@@ -81,7 +118,7 @@ cpSync(join(localTemplates, "settings.json"), join(outputDir, "settings.json"));
 
 for (const agentName of customerAgentNames) {
   cpSync(
-    join(canonicalAgents, `${agentName}.md`),
+    join(agentsSrc, `${agentName}.md`),
     join(outputDir, "agents", `${agentName}.md`),
   );
 }
@@ -89,10 +126,10 @@ for (const agentName of customerAgentNames) {
 for (const docPath of docFiles) {
   const dest = join(outputDir, "docs", docPath);
   mkdirSync(dirname(dest), { recursive: true });
-  cpSync(join(canonicalDocs, docPath), dest);
+  cpSync(join(docsSrc, docPath), dest);
 }
 for (const docDir of docDirs) {
-  cpSync(join(canonicalDocs, docDir), join(outputDir, "docs", docDir), {
+  cpSync(join(docsSrc, docDir), join(outputDir, "docs", docDir), {
     recursive: true,
   });
 }
@@ -102,5 +139,36 @@ for (const docDir of docDirs) {
 for (const importPath of importFiles) {
   const dest = join(outputDir, "docs-imports", importPath);
   mkdirSync(dirname(dest), { recursive: true });
-  cpSync(join(canonicalWebappFrontend, importPath), dest);
+  cpSync(join(docsImportsSrc, importPath), dest);
+}
+
+function refreshVendoredCopy() {
+  rmSync(vendoredAgents, { recursive: true, force: true });
+  mkdirSync(vendoredAgents, { recursive: true });
+  for (const agentName of customerAgentNames) {
+    cpSync(
+      join(canonicalAgents, `${agentName}.md`),
+      join(vendoredAgents, `${agentName}.md`),
+    );
+  }
+
+  rmSync(vendoredDocs, { recursive: true, force: true });
+  mkdirSync(vendoredDocs, { recursive: true });
+  for (const docPath of docFiles) {
+    const dest = join(vendoredDocs, docPath);
+    mkdirSync(dirname(dest), { recursive: true });
+    cpSync(join(canonicalDocs, docPath), dest);
+  }
+  for (const docDir of docDirs) {
+    cpSync(join(canonicalDocs, docDir), join(vendoredDocs, docDir), {
+      recursive: true,
+    });
+  }
+
+  rmSync(vendoredDocsImports, { recursive: true, force: true });
+  for (const importPath of importFiles) {
+    const dest = join(vendoredDocsImports, importPath);
+    mkdirSync(dirname(dest), { recursive: true });
+    cpSync(join(canonicalWebappFrontend, importPath), dest);
+  }
 }
