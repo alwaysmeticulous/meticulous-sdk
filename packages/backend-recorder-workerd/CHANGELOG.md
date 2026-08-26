@@ -1,5 +1,15 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.334.0
+
+### Patch Changes
+
+- [#12864](https://github.com/alwaysmeticulous/meticulous/pull/12864) [`eb44010`](https://github.com/alwaysmeticulous/meticulous/commit/eb4401080587c0bd6cbb87e10d72f3ec67e7f75e) Thanks [@dennysem](https://github.com/dennysem)! - Stop recording container health probes. A GET or HEAD to a conventional probe path (`/health`, `/healthz`, `/healthcheck`, `/health-check`, `/_health`, `/api/health`, `/api/healthz`, `/readyz`, `/livez`, `/ping`) that carries no `x-meticulous-session-id` never enters the capture context, so neither the inbound request nor the outgoing `fetch`, binding and KV calls it fans out to are reported. A Kubernetes probe or load balancer polls these for the lifetime of the pod with no session identity, so the spans could never be replayed and served only to add noise to ingestion's time-window attachment fallback.
+
+  A request that names its session is real app traffic whatever its path, so an app that serves `/api/health` as a page's data source keeps recording it — which also means this can only drop spans that ingestion's session-id match would have discarded anyway. Record mode only: a replay is unaffected.
+
+  The sidecar repeats the same verdict on the events it receives, dropping the inbound event and everything sharing its `requestId`. That is what lets the exclusion reach an app whose bundled shim predates this release: redeploying the sidecar Worker needs no change to the app, whereas the shim-side check only takes effect once the shim is bumped in the app's own bundle and the app is redeployed. Against an up-to-date shim it is a no-op, since no probe is ever reported.
+
 ## 2.333.1
 
 ### Patch Changes

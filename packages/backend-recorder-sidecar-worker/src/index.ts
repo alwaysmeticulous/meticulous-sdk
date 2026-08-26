@@ -1,5 +1,6 @@
 import {
   type CaptureEventsPayload,
+  HealthProbeEventFilter,
   SIDECAR_EVENTS_PATH,
   SIDECAR_PROTOCOL_VERSION,
   SIDECAR_PROTOCOL_VERSION_HEADER,
@@ -41,6 +42,13 @@ const FLUSH_PATH = "/v1/flush";
  * JSON, so this leaves ample headroom while still refusing anything pathological.
  */
 const MAX_PAYLOAD_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Per-isolate, so the straggler memory is as long-lived as the isolate and no longer. Nothing
+ * downstream depends on it: losing it on eviction only means a probe's late `waitUntil` events
+ * are recorded, exactly as they were before this filter existed.
+ */
+const healthProbeFilter = new HealthProbeEventFilter();
 
 /**
  * The Meticulous backend recorder sidecar, as a Cloudflare Worker.
@@ -139,14 +147,29 @@ export default {
       return new Response(null, { status: 204 });
     }
 
+    // Repeats the shim's health-probe verdict, so the exclusion reaches a deployment whose
+    // bundled shim predates it: redeploying this Worker leaves the app untouched, whereas the
+    // shim-side check needs a bundle bump and an app redeploy. An up-to-date shim never sends
+    // these, in which case the filter is a no-op.
+    const events = healthProbeFilter.filter(payload.events);
+    if (events.length === 0) {
+      log.info(`Dropped ${payload.events.length} health-probe event(s)`);
+      return new Response(null, { status: 204 });
+    }
+    if (events.length < payload.events.length) {
+      log.info(
+        `Dropped ${payload.events.length - events.length} health-probe event(s)`,
+      );
+    }
+
     // Which shard a batch lands on does not matter, so the cheapest available spread is used:
     // the first event's request id, which keeps one request's events together in one chunk.
-    const shard = pickShard(env, payload.events[0]?.requestId);
+    const shard = pickShard(env, events[0]?.requestId);
     const accepted = await sessionStub(env, shard).fetch(
       new Request("https://session.invalid/events", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload.events),
+        body: JSON.stringify(events),
       }),
     );
     // Answering 204 regardless would tell the shim the batch is durable when a storage error or an
@@ -154,11 +177,11 @@ export default {
     // make the loss visible is this status: it warns once on a non-2xx.
     if (!accepted.ok) {
       log.error(
-        `${shard} rejected ${payload.events.length} event(s) (HTTP ${accepted.status}) — they are lost`,
+        `${shard} rejected ${events.length} event(s) (HTTP ${accepted.status}) — they are lost`,
       );
       return json(500, { error: "failed to buffer events" });
     }
-    log.info(`Accepted ${payload.events.length} event(s) into ${shard}`);
+    log.info(`Accepted ${events.length} event(s) into ${shard}`);
     return new Response(null, { status: 204 });
   },
 };

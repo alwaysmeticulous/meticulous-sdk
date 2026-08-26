@@ -146,9 +146,9 @@ export const NETWORK_REQUESTS_SNAPSHOT_TYPE = "network-requests";
  * `data` of a built-in "network-requests" snapshot: a single xhr/fetch request
  * captured during the replay, with the stubbed response that was served.
  *
- * `requestBody`/`responseBody` may be truncated (large bodies are ellipsized
- * with an MD5 of the remainder, so body changes are still detectable); url,
- * method, status and headers are captured in full.
+ * `requestBody` may be truncated (large bodies are ellipsized with an MD5 of
+ * the remainder, so body changes are still detectable); url, method, status and
+ * headers are captured in full.
  */
 export interface NetworkRequestSnapshotData {
   url: string;
@@ -159,7 +159,6 @@ export interface NetworkRequestSnapshotData {
   /** Status of the response served, or null if the request was not matched. */
   status: number | null;
   responseHeaders: HarResponse["headers"];
-  responseBody?: string;
 
   /** Whether the request was matched to a recorded request and stubbed. */
   matched: boolean;

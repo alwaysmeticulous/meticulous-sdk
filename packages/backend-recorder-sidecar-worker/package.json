@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/backend-recorder-sidecar-worker",
-  "version": "2.333.1",
+  "version": "2.334.0",
   "type": "module",
   "description": "Meticulous backend recorder sidecar for Cloudflare Workers. Deploy it into your own Cloudflare account and point your app's Worker at it with a service binding to record backend sessions from a deployed Worker or Pages project.",
   "license": "ISC",

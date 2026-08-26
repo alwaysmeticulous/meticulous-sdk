@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/session-filters",
-  "version": "2.333.1",
+  "version": "2.334.0",
   "description": "Validation and matching for Meticulous session filters, shared between the CLI and the Meticulous backend",
   "license": "ISC",
   "main": "dist/index.js",

@@ -523,4 +523,52 @@ describe("the sidecar worker", () => {
       );
     expect(totalSpans).toBe(5);
   });
+  // The safety net beneath the shim's own check: redeploying this Worker leaves the app
+  // untouched, whereas the shim-side check needs a bundle bump and an app redeploy — so
+  // repeating the verdict here is what makes the exclusion reach an already-deployed app.
+  // Request ids are unique per test so the per-isolate straggler memory cannot leak between
+  // them.
+  it("drops a health probe's events instead of uploading them", async () => {
+    const response = await report([
+      event({
+        requestId: "probe-a",
+        url: "https://app.example/health",
+        frontendSessionId: undefined,
+      }),
+      event({
+        kind: "outbound",
+        requestId: "probe-a",
+        url: "https://api.example/ping",
+        frontendSessionId: undefined,
+      } as Partial<CaptureEvent>),
+    ]);
+    expect(response.status).toBe(204);
+
+    await namespace.runAlarms();
+
+    // Not even a metadata.json: the batch never reached the Durable Object.
+    expect(writes).toHaveLength(0);
+    expect(namespace.objects.size).toBe(0);
+  });
+
+  it("keeps a real request batched alongside a probe", async () => {
+    await report([
+      event({
+        requestId: "probe-b",
+        url: "https://app.example/healthz",
+        frontendSessionId: undefined,
+      }),
+      event({ requestId: "real-b", url: "https://app.example/page" }),
+    ]);
+    await namespace.runAlarms();
+
+    const chunk = writes.find((write) => !write.key.endsWith("metadata.json"));
+    if (chunk === undefined) {
+      throw new Error("expected one chunk upload");
+    }
+    const spans = (chunk.data as { spans: { frontendSessionId?: string }[] })
+      .spans;
+    expect(spans).toHaveLength(1);
+    expect(spans[0].frontendSessionId).toBe("fs-1");
+  });
 });

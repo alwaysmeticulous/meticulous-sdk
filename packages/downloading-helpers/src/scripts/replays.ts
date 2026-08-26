@@ -81,6 +81,9 @@ export const getOrFetchReplay = async (
  * - `timeline-only`: Download only the timeline data.
  * - `post-test-run-processing-files-only`: Download only the files that are needed for post-test-run processing
  * - `post-process-including-unmapped-ranges`: Download everything needed for post-process including unmapped ranges.
+ * - `post-process-including-css-coverage`: Same as post-test-run-processing-files-only, plus the
+ *   replay's mapped CSS coverage and — for replays that did not map their own — the raw CSS
+ *   coverage and snapshotted assets needed to map it here.
  * e.g mapped coverage and timeline data.
  */
 const DOWNLOAD_SCOPES = [
@@ -89,6 +92,7 @@ const DOWNLOAD_SCOPES = [
   "timeline-only",
   "post-test-run-processing-files-only",
   "post-process-including-unmapped-ranges",
+  "post-process-including-css-coverage",
 ] as const;
 
 export type DownloadScope = (typeof DOWNLOAD_SCOPES)[number];
@@ -101,6 +105,8 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<DownloadScope, RegExp> = {
     /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage)/,
   "post-process-including-unmapped-ranges":
     /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage|rawCoverage)/,
+  "post-process-including-css-coverage":
+    /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage|rawCoverage|cssCoverage|mappedCssCoverage|snapshottedAssets)/,
 };
 
 const shouldDownloadFile = (
@@ -129,6 +135,8 @@ export type ReplayFileType =
   | "rawPerScreenshotJsCoverage"
   | "mappedCoverage"
   | "mappedPerScreenshotJsCoverage"
+  | "cssCoverage"
+  | "mappedCssCoverage"
   | "playbackData"
   | "timeline"
   | "metadata"

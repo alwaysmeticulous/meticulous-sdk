@@ -7,6 +7,7 @@ import {
 } from "./context";
 import { runReplayWithCoverage } from "./coverage/replay-coverage";
 import { installFetchPatch } from "./fetch-patch";
+import { isHealthProbeRequest } from "./health-probe";
 import { installKvPatch } from "./kv-patch";
 import { warnOnce } from "./log";
 import { getOriginalFetch } from "./original-fetch";
@@ -149,6 +150,17 @@ export const runWithMeticulous = async (
   }
 
   if (transport === undefined) {
+    return invokeHandler();
+  }
+
+  // Never enter the capture context for a health probe, so neither the inbound request nor
+  // anything it fans out to is recorded. The fetch, binding and KV patches are all
+  // pass-throughs without a context, so this covers the whole subtree in one place.
+  if (
+    isHealthProbeRequest(request.method, request.url, (name) =>
+      request.headers.get(name),
+    )
+  ) {
     return invokeHandler();
   }
 

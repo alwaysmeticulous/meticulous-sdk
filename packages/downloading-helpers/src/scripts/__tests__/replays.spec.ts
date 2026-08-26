@@ -293,6 +293,64 @@ describe("getOrFetchReplayArchive — excludeFileTypes", () => {
   });
 });
 
+describe("getOrFetchReplayArchive — post-process-including-css-coverage scope", () => {
+  let dataDir: string;
+
+  beforeEach(() => {
+    dataDir = mkdtempSync(join(tmpdir(), "met-replays-cssscope-"));
+    vi.clearAllMocks();
+    (getReplay as Mock).mockResolvedValue({ version: "v3" });
+    (getReplayV3DownloadUrls as Mock).mockResolvedValue({
+      ...(buildDownloadUrls() as Record<string, unknown>),
+      cssCoverage: {
+        signedUrl: "https://example/cssCoverage",
+        filePath: "cssCoverage",
+      },
+      mappedCssCoverage: {
+        signedUrl: "https://example/mappedCssCoverage",
+        filePath: "mappedCssCoverage",
+      },
+    });
+    (downloadAndExtractFile as Mock).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  it("downloads both the raw and the replay-mapped CSS coverage", async () => {
+    await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive(
+        {} as never,
+        REPLAY_ID,
+        "post-process-including-css-coverage",
+      ),
+    );
+
+    const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
+      (call) => call[0] as string,
+    );
+    expect(downloadedKeys).toContain("https://example/cssCoverage");
+    expect(downloadedKeys).toContain("https://example/mappedCssCoverage");
+  });
+
+  it("leaves CSS coverage out of the narrower post-processing scopes", async () => {
+    await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive(
+        {} as never,
+        REPLAY_ID,
+        "post-test-run-processing-files-only",
+      ),
+    );
+
+    const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
+      (call) => call[0] as string,
+    );
+    expect(downloadedKeys).not.toContain("https://example/cssCoverage");
+    expect(downloadedKeys).not.toContain("https://example/mappedCssCoverage");
+  });
+});
+
 describe("getOrFetchReplayArchive — bestEffortFileTypes", () => {
   let dataDir: string;
 

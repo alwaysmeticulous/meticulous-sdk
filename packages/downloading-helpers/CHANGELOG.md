@@ -1,5 +1,16 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 2.334.0
+
+### Patch Changes
+
+- [#12694](https://github.com/alwaysmeticulous/meticulous/pull/12694) [`1163ef2`](https://github.com/alwaysmeticulous/meticulous/commit/1163ef2b5bfba9f62aaf65748f7e909d6a34ebda) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add a `post-process-including-css-coverage` download scope, plus the `cssCoverage` and `mappedCssCoverage` replay file types it downloads, so post-processing can map stylesheet coverage onto repository files.
+
+- Updated dependencies [[`a169be3`](https://github.com/alwaysmeticulous/meticulous/commit/a169be364e19cda80cd24b21181ab3c373ba59a0)]:
+  - @alwaysmeticulous/api@2.334.0
+  - @alwaysmeticulous/client@2.334.0
+  - @alwaysmeticulous/common@2.333.1
+
 ## 2.333.1
 
 ### Patch Changes

@@ -87,9 +87,11 @@ Uploads go to Meticulous' recorder-payloads bucket using unauthenticated Cognito
 
 What is captured, and what is redacted before it leaves your app, is decided by the shim rather than by this Worker: request bodies have secret-looking JSON fields replaced, and only `content-type` and the Meticulous session header are persisted. See the `@alwaysmeticulous/backend-recorder-workerd` README.
 
+The one thing this Worker decides for itself is **health probes**. It drops the events of any inbound request the shim would have declined to record — a `GET`/`HEAD` to a conventional probe path carrying no `x-meticulous-session-id` — along with every event sharing that request's id, so the probe's outbound calls and queries go with it. The shim already declines to report them, so against a matching version this is a no-op. It exists for the other case: recording-scope changes like this one otherwise reach a deployed app only when you bump the shim in your bundle and redeploy the app, whereas redeploying this Worker leaves your app untouched.
+
 ## Limitations
 
 - **Recording only.** Replaying a session against your app is served by a separate Meticulous replay sidecar during a test run; this Worker has no mock store and no replay routes.
-- **A deployed sidecar is versioned by you.** It writes the span format Meticulous' replay stores read, so keep it roughly in step with `@alwaysmeticulous/backend-recorder-workerd` rather than leaving one of the two years behind.
+- **A deployed sidecar is versioned by you.** It writes the span format Meticulous' replay stores read, so keep it roughly in step with `@alwaysmeticulous/backend-recorder-workerd` rather than leaving one of the two years behind. It is, though, the cheaper of the two to update — `npx wrangler deploy` in the sidecar's own directory needs no change to your app — so it is where changes to what gets recorded land first.
 - **A session spans at most 30 chunks or 10 minutes** before rolling over to a fresh one, matching the local sidecar. Frontend sessions are correlated across that boundary, so a rollover is not visible in the product.
 - **Three consecutive upload failures abandon the session** and leave an `abandoned.json` marker, so a truncated recording is never read as a complete one. Recording resumes under a fresh session five minutes later; the requests in between are not recorded.

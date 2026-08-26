@@ -44,6 +44,21 @@ export {
   readRequestBodyWithCap,
 } from "./body-capture";
 export { headersToRecord } from "./outbound-capture";
+/**
+ * Exported for the Node recorder, whose `health-probe.ts` adapts this to
+ * `http.IncomingMessage`. Which requests count as a health probe is a rule both surfaces
+ * have to agree on, so — like the provisional-session-id rules below — it has exactly one
+ * implementation.
+ */
+export { isHealthProbeRequest } from "./health-probe";
+/**
+ * Exported for both sidecar implementations — the deployed Worker
+ * (`@alwaysmeticulous/backend-recorder-sidecar-worker`) and the local Node one
+ * (`backend-recorder-js`'s `sidecar/server.ts`) — which repeat the shim's health-probe
+ * verdict on the events they receive, so the exclusion reaches a deployment whose bundled
+ * shim predates it.
+ */
+export { HealthProbeEventFilter } from "./health-probe-filter";
 export { redactRequestBody, STR_REDACTED } from "./redact-body";
 export type { CoverageMap, CoverageMapFile } from "./coverage/coverage.types";
 // __mcEnter / __mcHit are the entry points the Vite plugin's injected imports

@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.334.0
+
+### Minor Changes
+
+- [#12869](https://github.com/alwaysmeticulous/meticulous/pull/12869) [`a169be3`](https://github.com/alwaysmeticulous/meticulous/commit/a169be364e19cda80cd24b21181ab3c373ba59a0) Thanks [@phreppo](https://github.com/phreppo)! - Remove `responseBody` from `NetworkRequestSnapshotData`, the `data` shape of the built-in `network-requests` snapshot. Nothing in the check ever read it, and dropping it from the published type stops custom checks depending on response bodies before we stop capturing them. Replay still writes the field to the snapshot file, so a check that casts `snapshot.data` to its own interface keeps working unchanged; only code typing that data with the exported interface and reading `responseBody` needs updating. `requestBody` is unaffected — it still identifies GraphQL operations and distinguishes retried requests.
+
 ## 2.333.1
 
 ### Patch Changes

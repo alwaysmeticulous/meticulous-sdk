@@ -420,4 +420,51 @@ describe("withMeticulous provisional session ids", () => {
     expect(await response.text()).toBe("<html><body>none</body></html>");
     expect(receivedEvents).toHaveLength(0);
   });
+  it("records nothing for a health probe, including what it fans out to", async () => {
+    let handlerRan = false;
+    const handler = withMeticulous({
+      fetch: async () => {
+        handlerRan = true;
+        // A probe that does reach an upstream must not be recorded either: outside the
+        // capture context the fetch patch is a pure pass-through.
+        await fetch(`${upstreamUrl}/db-ping`, { method: "POST" });
+        return new Response("ok");
+      },
+    });
+
+    const ctx = makeCtx();
+    const response = await handler.fetch(
+      new Request("http://worker.local/health", {
+        headers: { "user-agent": "kube-probe/1.31" },
+      }),
+      { METICULOUS_SIDECAR_URL: sidecarUrl } as never,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(response.status).toBe(200);
+    expect(handlerRan).toBe(true);
+    expect(receivedEvents).toHaveLength(0);
+  });
+
+  it("still records a session-tagged request on a probe path", async () => {
+    const handler = withMeticulous({
+      fetch: (): Promise<Response> =>
+        Promise.resolve(new Response('{"ok":true}')),
+    });
+
+    const ctx = makeCtx();
+    await handler.fetch(
+      new Request("http://worker.local/api/health", {
+        headers: { "x-meticulous-session-id": "fs-health" },
+      }),
+      { METICULOUS_SIDECAR_URL: sidecarUrl } as never,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(eventsOfKind("inbound")).toMatchObject([
+      { frontendSessionId: "fs-health", url: "http://worker.local/api/health" },
+    ]);
+  });
 });
