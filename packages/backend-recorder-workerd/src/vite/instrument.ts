@@ -162,7 +162,16 @@ export const instrumentModule = ({
   const openFunctionBody = (body: AstNode): void => {
     // Immediately after the `{`, so a derived constructor's `super()` stays the
     // first *effective* statement and nothing observes `this` before it.
-    magic.appendLeft(body.start + 1, `const ${SINK}=${ENTER}();`);
+    // `typeof` (not a bare reference) because a customer can lift this
+    // function's source out of its module — e.g. `fn.toString()` serialized
+    // into a standalone inline `<script>` — and run it somewhere ${ENTER}
+    // was never imported. `typeof` is the one operator that tolerates an
+    // undeclared identifier; a bare `${ENTER}()` would throw a ReferenceError
+    // there and crash the customer's app instead of just losing coverage.
+    magic.appendLeft(
+      body.start + 1,
+      `const ${SINK}=typeof ${ENTER}==="function"?${ENTER}():undefined;`,
+    );
   };
 
   const markConciseArrowBody = (body: AstNode): void => {
@@ -170,7 +179,7 @@ export const instrumentModule = ({
     if (id === null) {
       return;
     }
-    magic.appendLeft(body.start, `(${HIT}(${id}),`);
+    magic.appendLeft(body.start, `(typeof ${HIT}==="function"&&${HIT}(${id}),`);
     magic.appendRight(body.end, ")");
   };
 

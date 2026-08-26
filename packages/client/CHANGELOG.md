@@ -1,5 +1,11 @@
 # @alwaysmeticulous/client
 
+## 2.333.0
+
+### Minor Changes
+
+- [#12825](https://github.com/alwaysmeticulous/meticulous/pull/12825) [`6836d5a`](https://github.com/alwaysmeticulous/meticulous/commit/6836d5a2afbf41c60a27fe4e07ff29121bc555cd) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add a `no-diff` agentic not-testable category, used when the commit under test has no pull request and so no changed behaviour to review.
+
 ## 2.332.0
 
 ### Patch Changes

@@ -161,6 +161,8 @@ export const AGENTIC_RUN_NOT_TESTABLE_CATEGORIES = [
   "backend-only",
   "docs-or-config",
   "no-reachable-ui",
+  /** The commit under test has no pull request, so there is no diff to review. */
+  "no-diff",
 ] as const;
 
 export type AgenticRunNotTestableCategory =

@@ -1,5 +1,11 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.333.0
+
+### Patch Changes
+
+- [#12828](https://github.com/alwaysmeticulous/meticulous/pull/12828) [`d177020`](https://github.com/alwaysmeticulous/meticulous/commit/d177020f79a3a74e4476eefa10be2fcc03c97428) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Fix a crash the coverage instrumentation could introduce into a customer's SSR app when a function's own source is extracted and re-executed outside its module — e.g. `fn.toString()` serialized into a standalone inline `<script>`, a common no-FOUC theme-init pattern. The instrumented function still called the imported `__mcEnter`/`__mcHit` bindings by bare reference, which threw `ReferenceError` once those functions ran in a scope where the enclosing module's `import` was never in scope. Every call site now goes through a `typeof` check first, which — unlike a bare reference — never throws on an identifier that isn't bound in the current scope, so an extracted fragment silently loses coverage attribution instead of crashing the app.
+
 ## 2.331.3
 
 ### Patch Changes

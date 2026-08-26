@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import * as vm from "vm";
 import { parse } from "acorn";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { instrumentModule } from "../vite/instrument";
@@ -262,6 +263,32 @@ export default config;
   it("emits a source map referencing the original file", () => {
     const result = instrument(`export function a() { const x = 1; return x; }`);
     expect(result!.map).toContain("src/app.ts");
+  });
+
+  it("does not throw when a function's own source is extracted and run without the module's import binding in scope (e.g. fn.toString() serialized into an inline <script>)", () => {
+    const result = instrument(`
+export function foucScript(key) {
+  const applied = key + "!";
+  return applied;
+}
+`);
+    // Drop the prepended `import {__mcEnter as __mcE$, ...} from "...";` line:
+    // this is exactly what happens when a customer's SSR framework calls
+    // `fn.toString()` on an already-instrumented function and serializes just
+    // the function body into a standalone inline <script> — the import that
+    // bound `__mcE$`/`__mcH$` never travels with it, so neither identifier is
+    // declared anywhere in the scope the extracted code actually runs in.
+    const withoutImport = result!.code
+      .replace(/^import.*\n/, "")
+      .replace(/^\s*export /, "");
+    // A fresh vm context has nothing in scope — no `__mcE$`/`__mcH$`, no
+    // module system — matching what a customer's browser sees when it
+    // executes the extracted source as a standalone inline <script>.
+    const reconstructed = vm.runInNewContext(`(${withoutImport})`) as (
+      key: string,
+    ) => string;
+    expect(() => reconstructed("hi")).not.toThrow();
+    expect(reconstructed("hi")).toBe("hi!");
   });
 });
 
