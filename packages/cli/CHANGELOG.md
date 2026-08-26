@@ -1,5 +1,26 @@
 # @alwaysmeticulous/cli
 
+## 2.333.1
+
+### Patch Changes
+
+- [#12849](https://github.com/alwaysmeticulous/meticulous/pull/12849) [`a275471`](https://github.com/alwaysmeticulous/meticulous/commit/a275471c200f7bc0c63a1002d65cdfdf7681b3df) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - No-op patch release of every public package.
+
+- Updated dependencies [[`a275471`](https://github.com/alwaysmeticulous/meticulous/commit/a275471c200f7bc0c63a1002d65cdfdf7681b3df)]:
+  - @alwaysmeticulous/api@2.333.1
+  - @alwaysmeticulous/client@2.333.1
+  - @alwaysmeticulous/common@2.333.1
+  - @alwaysmeticulous/debug-workspace@2.333.1
+  - @alwaysmeticulous/downloading-helpers@2.333.1
+  - @alwaysmeticulous/record@2.333.1
+  - @alwaysmeticulous/remote-replay-launcher@2.333.1
+  - @alwaysmeticulous/replay-debugger-ui@2.333.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.333.1
+  - @alwaysmeticulous/sdk-bundles-api@2.333.1
+  - @alwaysmeticulous/sentry@2.333.1
+  - @alwaysmeticulous/session-filters@2.333.1
+  - @alwaysmeticulous/tunnels-client@2.333.1
+
 ## 2.333.0
 
 ### Patch Changes
