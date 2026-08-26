@@ -95,6 +95,7 @@ export interface UploadAssetsAndTriggerTestRunOptions extends ProjectIdentifier 
   waitForBase: boolean;
   rewrites?: AssetUploadMetadata["rewrites"];
   createDeployment?: boolean;
+  debugContext?: TestRunTriggerDebugContext;
 }
 
 export interface UploadContainerAndTriggerTestRunOptions extends ProjectIdentifier {
@@ -113,4 +114,5 @@ export interface UploadContainerAndTriggerTestRunOptions extends ProjectIdentifi
   containerEnv?: ContainerEnvVariable[];
   containerHealthCheckEndpoint?: string;
   companionAssets?: CompanionAssetsOptions;
+  debugContext?: TestRunTriggerDebugContext;
 }

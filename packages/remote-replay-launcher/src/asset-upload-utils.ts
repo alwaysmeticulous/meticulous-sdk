@@ -8,6 +8,7 @@ import type {
   AssetUploadMetadata,
   DeploymentArchiveType,
   TestRun,
+  TestRunTriggerDebugContext,
 } from "@alwaysmeticulous/api";
 import type {
   ProjectIdentifier,
@@ -44,6 +45,7 @@ export interface UploadAssetsOptions extends ProjectIdentifier {
   waitForBase?: boolean;
   rewrites?: AssetUploadMetadata["rewrites"];
   createDeployment?: boolean;
+  debugContext?: TestRunTriggerDebugContext;
 }
 
 export interface UploadAssetsResult {
@@ -114,6 +116,7 @@ export const uploadAssetsFromTarStream = async (
     rewrites = [],
     createDeployment = true,
     projectId,
+    debugContext,
   } = opts;
 
   const { uploadId, multipartUploadInfo } = await uploadAssetBytesFromTarStream(
@@ -145,6 +148,7 @@ export const uploadAssetsFromTarStream = async (
     archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     multipartUploadInfo,
     ...(projectId ? { projectId } : {}),
+    ...(debugContext ? { debugContext } : {}),
   });
 
   return {
@@ -167,6 +171,7 @@ const completeUploadAndWaitForBase = async ({
   archiveType,
   multipartUploadInfo,
   projectId,
+  debugContext,
 }: ProjectIdentifier & {
   client: ReturnType<typeof createClient>;
   uploadId: string;
@@ -178,6 +183,7 @@ const completeUploadAndWaitForBase = async ({
   createDeployment: boolean;
   archiveType: DeploymentArchiveType;
   multipartUploadInfo?: MultiPartUploadInfo;
+  debugContext?: TestRunTriggerDebugContext;
 }): Promise<{
   testRun: TestRun | null;
   message?: string;
@@ -208,8 +214,15 @@ const completeUploadAndWaitForBase = async ({
   // existing test run immediately — so while the deployment is still in
   // progress we keep retrying on a longer schedule instead of failing a run
   // that very likely succeeded.
+  // Only on the first call: `debugContext` describes a decision the action made
+  // before it uploaded anything, so it is the same on every poll below, and the
+  // backend logs it each time it is sent.
   const initialResult = await executeWithRetry(
-    () => completeAssetUpload(completeAssetUploadArgs),
+    () =>
+      completeAssetUpload({
+        ...completeAssetUploadArgs,
+        ...(debugContext ? { debugContext } : {}),
+      }),
     { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger },
   );
   const { testRun, baseNotFound, message } = await pollWhileBaseNotFound({
@@ -325,6 +338,7 @@ const uploadAssetsStreaming = async ({
   rewrites = [],
   createDeployment = true,
   projectId,
+  debugContext,
 }: UploadAssetsOptions & {
   client: ReturnType<typeof createClient>;
   folderPath: string;
@@ -358,6 +372,7 @@ const uploadAssetsStreaming = async ({
     archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     multipartUploadInfo,
     ...(projectId ? { projectId } : {}),
+    ...(debugContext ? { debugContext } : {}),
   });
 
   return {
@@ -534,6 +549,7 @@ export const uploadAssetsFromZip = async ({
   createDeployment = true,
   deleteAfterUpload = false,
   projectId,
+  debugContext,
 }: UploadAssetsOptions & {
   zipPath: string;
   deleteAfterUpload?: boolean;
@@ -572,6 +588,7 @@ export const uploadAssetsFromZip = async ({
       createDeployment,
       archiveType: "zip",
       ...projectIdentifier,
+      ...(debugContext ? { debugContext } : {}),
     });
 
     return {

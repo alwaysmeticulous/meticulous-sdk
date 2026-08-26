@@ -147,6 +147,37 @@ describe("uploadContainer", () => {
     });
   });
 
+  it("reports how the caller resolved the base to the backend", async () => {
+    // Nothing downstream reads this, so nothing downstream breaks if it stops
+    // arriving — which is exactly why the only place a missing base can be
+    // explained afterwards needs a test of its own.
+    await uploadContainer({
+      apiToken: "test-token",
+      localImageTag: "myapp:latest",
+      commitSha: "abc123def456",
+      waitForBase: false,
+      debugContext: {
+        baseResolutionDetails: {
+          type: "triggered-new-workflow-run-successfully",
+          workflowId: "meticulous.yml",
+          msTaken: 1000,
+        },
+      },
+    });
+
+    expect(completeContainerUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        debugContext: {
+          baseResolutionDetails: {
+            type: "triggered-new-workflow-run-successfully",
+            workflowId: "meticulous.yml",
+            msTaken: 1000,
+          },
+        },
+      }),
+    );
+  });
+
   it("should handle Docker daemon not running", async () => {
     mockDockerClient.ping.mockRejectedValue(
       new Error("Cannot connect to Docker daemon"),

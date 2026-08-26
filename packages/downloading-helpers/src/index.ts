@@ -37,6 +37,7 @@ export {
   type StreamDownloadAndInflateTarOptions,
   type InflateTarDownloadStats,
 } from "./file-downloads/download-file";
+export { downloadAndUnzipJson } from "./file-downloads/download-and-unzip-json";
 export {
   createDownloadProgressBar,
   type DownloadProgressBar,

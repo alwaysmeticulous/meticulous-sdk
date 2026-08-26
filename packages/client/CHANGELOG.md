@@ -1,5 +1,15 @@
 # @alwaysmeticulous/client
 
+## 2.335.0
+
+### Minor Changes
+
+- [#12892](https://github.com/alwaysmeticulous/meticulous/pull/12892) [`62e6413`](https://github.com/alwaysmeticulous/meticulous/commit/62e6413d589fafce57a9ad82c70adebe845f533a) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional inclusive line ranges to Agent Review repository file reads.
+
+### Patch Changes
+
+- [#12905](https://github.com/alwaysmeticulous/meticulous/pull/12905) [`313c3fa`](https://github.com/alwaysmeticulous/meticulous/commit/313c3faf3ea263bd1226fa1fff63e6f0e538abdc) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Let the asset and container upload paths report how they resolved the base, so a run that ends up with no base can be explained from the backend logs rather than from the customer's CI log.
+
 ## 2.334.0
 
 ### Patch Changes

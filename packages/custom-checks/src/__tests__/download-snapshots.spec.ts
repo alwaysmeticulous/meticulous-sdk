@@ -1,11 +1,9 @@
-import { mkdir, writeFile } from "fs/promises";
-import { join } from "path";
-import { downloadAndExtractFile } from "@alwaysmeticulous/downloading-helpers";
+import { downloadAndUnzipJson } from "@alwaysmeticulous/downloading-helpers";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { downloadAndAssembleSnapshots } from "../download-snapshots";
 
 vi.mock("@alwaysmeticulous/downloading-helpers", () => ({
-  downloadAndExtractFile: vi.fn(),
+  downloadAndUnzipJson: vi.fn(),
 }));
 
 const SIGNED_BASE_URL = "https://cf.example/?Signature=sig&Key-Pair-Id=k";
@@ -15,22 +13,15 @@ const keyFromUrl = (url: string): string => new URL(url).pathname.slice(1);
 describe("downloadAndAssembleSnapshots", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Emulate the real helper: extract the (zip-wrapped) file into `extractDir`
-    // as a single `<type>.json` containing the stored snapshot array, with the
+    // Emulate the real helper: return the stored snapshot array, with the
     // file's key echoed into `data` so the test can assert per-file wiring.
-    (downloadAndExtractFile as Mock).mockImplementation(
-      async (url: string, _zipPath: string, extractDir: string) => {
-        const key = keyFromUrl(url);
-        const fileName = key.split("/").pop()!.replace(/\.gz$/, "");
-        await mkdir(extractDir, { recursive: true });
-        await writeFile(
-          join(extractDir, fileName),
-          JSON.stringify([
-            { stageDuringSession: "final-state", data: { fromKey: key } },
-          ]),
-        );
-        return [fileName];
-      },
+    (downloadAndUnzipJson as Mock).mockImplementation((url: string) =>
+      Promise.resolve([
+        {
+          stageDuringSession: "final-state",
+          data: { fromKey: keyFromUrl(url) },
+        },
+      ]),
     );
   });
 
@@ -74,7 +65,7 @@ describe("downloadAndAssembleSnapshots", () => {
 
     // Each file is fetched by setting the path on the signed base URL while
     // preserving the signature query string.
-    const requestedUrls = (downloadAndExtractFile as Mock).mock.calls.map(
+    const requestedUrls = (downloadAndUnzipJson as Mock).mock.calls.map(
       (call) => call[0] as string,
     );
     expect(requestedUrls).toEqual(
@@ -86,23 +77,14 @@ describe("downloadAndAssembleSnapshots", () => {
   });
 
   it("preserves a stored sessionDescription on each entry", async () => {
-    (downloadAndExtractFile as Mock).mockImplementation(
-      async (url: string, _zipPath: string, extractDir: string) => {
-        const key = keyFromUrl(url);
-        const fileName = key.split("/").pop()!.replace(/\.gz$/, "");
-        await mkdir(extractDir, { recursive: true });
-        await writeFile(
-          join(extractDir, fileName),
-          JSON.stringify([
-            {
-              stageDuringSession: "final-state",
-              data: { fromKey: key },
-              sessionDescription: "Added an item to the cart",
-            },
-          ]),
-        );
-        return [fileName];
-      },
+    (downloadAndUnzipJson as Mock).mockImplementation((url: string) =>
+      Promise.resolve([
+        {
+          stageDuringSession: "final-state",
+          data: { fromKey: keyFromUrl(url) },
+          sessionDescription: "Added an item to the cart",
+        },
+      ]),
     );
 
     const key =
@@ -131,11 +113,11 @@ describe("downloadAndAssembleSnapshots", () => {
     });
 
     expect(snapshots).toEqual([]);
-    expect(downloadAndExtractFile).not.toHaveBeenCalled();
+    expect(downloadAndUnzipJson).not.toHaveBeenCalled();
   });
 
-  it("throws if a downloaded file has no .json entry", async () => {
-    (downloadAndExtractFile as Mock).mockResolvedValue([]);
+  it("throws if a downloaded file does not contain a JSON array", async () => {
+    (downloadAndUnzipJson as Mock).mockResolvedValue({ notAnArray: true });
 
     await expect(
       downloadAndAssembleSnapshots({
@@ -148,6 +130,6 @@ describe("downloadAndAssembleSnapshots", () => {
           },
         ],
       }),
-    ).rejects.toThrow(/did not contain a .json entry/);
+    ).rejects.toThrow(/to contain a JSON array/);
   });
 });

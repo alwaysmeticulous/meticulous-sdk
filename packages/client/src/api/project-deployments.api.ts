@@ -5,6 +5,7 @@ import type {
   DownloadDeploymentResponse,
   SessionFilter,
   TestRun,
+  TestRunTriggerDebugContext,
 } from "@alwaysmeticulous/api";
 import { maybeEnrichFetchError } from "../errors";
 import type { MeticulousClient } from "../types/client.types";
@@ -92,6 +93,7 @@ export interface CompleteAssetUploadParams extends ProjectIdentifier {
   mustHaveBase: boolean;
   createDeployment?: boolean;
   multipartUploadInfo?: MultiPartUploadInfo;
+  debugContext?: TestRunTriggerDebugContext | undefined;
 }
 
 export interface ChunkPathOverlap {
@@ -125,6 +127,7 @@ export interface CompleteContainerUploadParams extends ProjectIdentifier {
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
   companionAssetsInfo?: CompanionAssetsInfo | undefined;
+  debugContext?: TestRunTriggerDebugContext | undefined;
 }
 
 export interface CompleteContainerUploadResponse {

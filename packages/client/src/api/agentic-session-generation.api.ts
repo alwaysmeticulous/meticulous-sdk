@@ -860,7 +860,11 @@ export interface GetAgenticRepoFileParams
   extends ProjectIdentifier, AgenticRepoLeaseRef {
   commitSha: string;
   path: string;
-  /** Hard cap on the returned file size in bytes. */
+  /** First source line to return (1-indexed, inclusive). Defaults to 1. */
+  startLine?: number;
+  /** Last source line to return (1-indexed, inclusive). Defaults to EOF. */
+  endLine?: number;
+  /** Hard cap on the returned content in bytes, applied after line selection. */
   maxBytes?: number;
 }
 
@@ -868,7 +872,7 @@ export interface GetAgenticRepoFileResponse {
   kind: "found" | "missing";
   /** UTF-8 decoded file contents; present only when `kind === "found"`. */
   content?: string;
-  /** `true` when the file exceeded `maxBytes` and `content` is partial. */
+  /** `true` when the selected content exceeded `maxBytes` and is partial. */
   truncated?: boolean;
   /** Total file size in bytes before any truncation. */
   sizeBytes?: number;

@@ -1,4 +1,8 @@
-import type { CompanionAssetsInfo, TestRun } from "@alwaysmeticulous/api";
+import type {
+  CompanionAssetsInfo,
+  TestRun,
+  TestRunTriggerDebugContext,
+} from "@alwaysmeticulous/api";
 import type {
   ContainerEnvVariable,
   ProjectIdentifier,
@@ -48,6 +52,7 @@ export interface UploadContainerOptions extends ProjectIdentifier {
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
   companionAssets?: CompanionAssetsOptions | undefined;
+  debugContext?: TestRunTriggerDebugContext;
 }
 
 export interface UploadContainerResult {
@@ -145,6 +150,7 @@ export const uploadContainer = async ({
   containerHealthCheckEndpoint,
   companionAssets,
   projectId,
+  debugContext,
 }: UploadContainerOptions): Promise<UploadContainerResult> => {
   const projectIdentifier = projectId ? { projectId } : {};
 
@@ -226,8 +232,16 @@ export const uploadContainer = async ({
     ...projectIdentifier,
   };
 
+  // Only on the first call: `debugContext` describes a decision the action made
+  // before it uploaded anything, so it is the same on every poll below, and the
+  // backend logs it each time it is sent.
+  const firstAttemptArgs = {
+    ...completeContainerArgs,
+    ...(debugContext ? { debugContext } : {}),
+  };
+
   const completeUpload = async (
-    args: typeof completeContainerArgs,
+    args: typeof firstAttemptArgs,
   ): ReturnType<typeof completeContainerUpload> => {
     try {
       return await completeContainerUpload(args);
@@ -259,7 +273,7 @@ export const uploadContainer = async ({
   // so nesting a minute of waiting inside it would only slow it down. Its final
   // fallback call is the exception, and handles itself.
   const completeResult = await executeWithRetry(
-    () => completeUpload(completeContainerArgs),
+    () => completeUpload(firstAttemptArgs),
     { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger: initLogger() },
   );
 

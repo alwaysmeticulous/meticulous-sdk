@@ -15,6 +15,7 @@ export const uploadContainerAndTriggerTestRun = async ({
   containerHealthCheckEndpoint,
   companionAssets,
   projectId,
+  debugContext,
 }: UploadContainerAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
   const logger = initLogger();
 
@@ -28,6 +29,7 @@ export const uploadContainerAndTriggerTestRun = async ({
     containerHealthCheckEndpoint,
     ...(companionAssets ? { companionAssets } : {}),
     ...(projectId ? { projectId } : {}),
+    ...(debugContext ? { debugContext } : {}),
   });
 
   if (result.testRun) {

@@ -1,12 +1,15 @@
-import { mkdtemp, readFile, rm } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
 import type { Snapshot } from "@alwaysmeticulous/api";
-import { downloadAndExtractFile } from "@alwaysmeticulous/downloading-helpers";
+import { downloadAndUnzipJson } from "@alwaysmeticulous/downloading-helpers";
 import pLimit from "p-limit";
 
-/** How many snapshot files to download and extract in parallel. */
+/** How many snapshot files to download and parse in parallel. */
 const DEFAULT_DOWNLOAD_CONCURRENCY = 20;
+
+/**
+ * A single test run's snapshot files run to hundreds of megabytes, so allow a
+ * longer budget than the download helper's default.
+ */
+const DOWNLOAD_TIMEOUT_MS = 120_000;
 
 /**
  * One custom check snapshot file to download. `key` is appended to the signed
@@ -46,61 +49,45 @@ export const downloadAndAssembleSnapshots = async ({
  * Downloads and parses a single snapshot file, tagging each entry with the
  * file's `type` and `sessionId`.
  *
- * Despite the `.json.gz` key the stored file is a zip archive (containing a
- * single `<type>.json` entry) like the other replay artifacts, so we reuse the
- * same download-and-extract helper via a throwaway temp dir.
+ * Despite the `.json.gz` key the stored file is a zip archive containing a
+ * single `<type>.json` entry, like the other replay artifacts. It is unzipped
+ * in memory rather than through a temp dir because a check runs hundreds of
+ * these concurrently inside a worker whose disk is shared with every other
+ * activity on the pod.
  */
 const downloadSnapshotFile = async (
   signedBaseUrl: string,
   file: CustomCheckSnapshotFileToDownload,
 ): Promise<Snapshot[]> => {
   const url = buildSnapshotFileUrl(signedBaseUrl, file.key);
-  const workDir = await mkdtemp(join(tmpdir(), "met-custom-check-snapshots-"));
-  try {
-    const zipPath = join(workDir, "snapshot.json.gz");
-    const extractDir = join(workDir, "extracted");
-    const entries = await downloadAndExtractFile(url, zipPath, extractDir);
-
-    const jsonEntry = entries.find((entry) => entry.endsWith(".json"));
-    if (jsonEntry == null) {
-      throw new Error(
-        `Custom check snapshot file "${file.key}" did not contain a .json entry (got: ${
-          entries.join(", ") || "<none>"
-        }).`,
-      );
-    }
-
-    const parsed: unknown = JSON.parse(
-      await readFile(join(extractDir, jsonEntry), "utf-8"),
+  const parsed = await downloadAndUnzipJson<unknown>(url, {
+    timeoutMs: DOWNLOAD_TIMEOUT_MS,
+  });
+  if (!Array.isArray(parsed)) {
+    throw new Error(
+      `Expected custom check snapshot file "${file.key}" to contain a JSON array, got ${typeof parsed}.`,
     );
-    if (!Array.isArray(parsed)) {
-      throw new Error(
-        `Expected custom check snapshot file "${file.key}" to contain a JSON array, got ${typeof parsed}.`,
-      );
-    }
-
-    return (
-      parsed as Array<{
-        stageDuringSession: string;
-        data: unknown;
-        versionNumber?: number;
-        sessionDescription?: string | null;
-      }>
-    ).map((snapshot) => ({
-      type: file.type,
-      sessionId: file.sessionId,
-      // Persisted at replay time (see CustomCheckSnapshot.sessionDescription);
-      // absent for sessions without a description.
-      sessionDescription: snapshot.sessionDescription ?? null,
-      stageDuringSession: snapshot.stageDuringSession,
-      data: snapshot.data,
-      // Default to 0 so built-in snapshots (written without a version) surface as
-      // the documented default rather than `undefined`.
-      versionNumber: snapshot.versionNumber ?? 0,
-    }));
-  } finally {
-    await rm(workDir, { recursive: true, force: true });
   }
+
+  return (
+    parsed as Array<{
+      stageDuringSession: string;
+      data: unknown;
+      versionNumber?: number;
+      sessionDescription?: string | null;
+    }>
+  ).map((snapshot) => ({
+    type: file.type,
+    sessionId: file.sessionId,
+    // Persisted at replay time (see CustomCheckSnapshot.sessionDescription);
+    // absent for sessions without a description.
+    sessionDescription: snapshot.sessionDescription ?? null,
+    stageDuringSession: snapshot.stageDuringSession,
+    data: snapshot.data,
+    // Default to 0 so built-in snapshots (written without a version) surface as
+    // the documented default rather than `undefined`.
+    versionNumber: snapshot.versionNumber ?? 0,
+  }));
 };
 
 /**

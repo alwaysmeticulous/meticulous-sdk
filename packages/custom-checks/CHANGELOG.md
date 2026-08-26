@@ -1,5 +1,15 @@
 # @alwaysmeticulous/custom-checks
 
+## 2.335.0
+
+### Patch Changes
+
+- [#12896](https://github.com/alwaysmeticulous/meticulous/pull/12896) [`15670d5`](https://github.com/alwaysmeticulous/meticulous/commit/15670d58a66e081400011c1599e88203bd830fc9) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Unzip custom check snapshots in memory instead of extracting them to a temp directory, so a check that fans out over hundreds of snapshot files no longer leaves that many extracted copies on disk. `downloadAndUnzipJson` moves to `@alwaysmeticulous/downloading-helpers` and is still re-exported from `@alwaysmeticulous/replay-utils`.
+
+- Updated dependencies [[`62e6413`](https://github.com/alwaysmeticulous/meticulous/commit/62e6413d589fafce57a9ad82c70adebe845f533a), [`15670d5`](https://github.com/alwaysmeticulous/meticulous/commit/15670d58a66e081400011c1599e88203bd830fc9), [`313c3fa`](https://github.com/alwaysmeticulous/meticulous/commit/313c3faf3ea263bd1226fa1fff63e6f0e538abdc)]:
+  - @alwaysmeticulous/client@2.335.0
+  - @alwaysmeticulous/downloading-helpers@2.335.0
+
 ## 2.334.0
 
 ### Patch Changes
