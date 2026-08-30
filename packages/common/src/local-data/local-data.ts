@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "async_hooks";
+import { tmpdir } from "os";
 import { join, normalize } from "path";
 import { initLogger } from "../logger/console-logger";
 
@@ -35,10 +36,36 @@ export const setMeticulousLocalDataDir: (
   }
 
   _localDataDir =
-    localDataDir ||
-    process.env["METICULOUS_DIR"] ||
-    normalize(join(process.env["HOME"] || process.cwd(), ".meticulous"));
+    localDataDir || process.env["METICULOUS_DIR"] || getDefaultLocalDataDir();
 };
+
+/**
+ * Serverless platforms mount the deployment read-only and expose only
+ * `os.tmpdir()` as writable, so rooting the data dir at `$HOME`/cwd there makes
+ * the very first `mkdir` fail with EROFS/ENOENT. The first thing to need the
+ * directory is the SDK bundle download in `fetchAsset`, so on those platforms
+ * that failure takes out recording and replay entirely rather than degrading
+ * them — and, since callers wrap init in a try/catch so it can never break a
+ * boot, it does so silently.
+ *
+ * The result must stay absolute: callers `require()` bundles from paths built on
+ * top of it, and `require()` reads a path starting with neither `.` nor `/` as a
+ * package name rather than a file.
+ */
+const getDefaultLocalDataDir = (): string => {
+  const root = hasReadOnlyDeploymentFilesystem()
+    ? tmpdir()
+    : process.env["HOME"] || process.cwd();
+  return normalize(join(root, ".meticulous"));
+};
+
+/**
+ * `AWS_LAMBDA_FUNCTION_NAME` covers raw Lambda and the platforms built on it
+ * (Netlify Functions, SAM); `VERCEL` is checked separately because Vercel does
+ * not guarantee the Lambda variables across its compute options.
+ */
+const hasReadOnlyDeploymentFilesystem = (): boolean =>
+  !!process.env["VERCEL"] || !!process.env["AWS_LAMBDA_FUNCTION_NAME"];
 
 /**
  * Runs `fn` with `getMeticulousLocalDataDir()` returning `dataDir` for the

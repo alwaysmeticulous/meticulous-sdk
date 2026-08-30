@@ -24,6 +24,7 @@ import {
 import {
   getOrFetchReplayArchive,
   type BestEffortFileType,
+  type DownloadScope,
   type ReplayFileType,
 } from "../replays";
 
@@ -296,6 +297,8 @@ describe("getOrFetchReplayArchive — excludeFileTypes", () => {
 describe("getOrFetchReplayArchive — post-process-including-css-coverage scope", () => {
   let dataDir: string;
 
+  const SNAPSHOT_ASSETS_URL = "https://example/snapshotted-assets";
+
   beforeEach(() => {
     dataDir = mkdtempSync(join(tmpdir(), "met-replays-cssscope-"));
     vi.clearAllMocks();
@@ -309,6 +312,12 @@ describe("getOrFetchReplayArchive — post-process-including-css-coverage scope"
       mappedCssCoverage: {
         signedUrl: "https://example/mappedCssCoverage",
         filePath: "mappedCssCoverage",
+      },
+      // Offered by the server so that the assertion below proves the scope
+      // declines it, rather than passing because there was nothing to fetch.
+      snapshottedAssets: {
+        signedUrl: SNAPSHOT_ASSETS_URL,
+        filePath: "snapshotted-assets.zip",
       },
     });
     (downloadAndExtractFile as Mock).mockResolvedValue(undefined);
@@ -332,6 +341,61 @@ describe("getOrFetchReplayArchive — post-process-including-css-coverage scope"
     );
     expect(downloadedKeys).toContain("https://example/cssCoverage");
     expect(downloadedKeys).toContain("https://example/mappedCssCoverage");
+  });
+
+  // Each scope needs its own data dir: a populated one carries a cache marker,
+  // which would short-circuit or widen the second run instead of exercising the
+  // scope under test.
+  const downloadedUrlsForScope = async (
+    scope: DownloadScope,
+  ): Promise<Set<string>> => {
+    const scopeDir = mkdtempSync(join(tmpdir(), "met-replays-scope-"));
+    (downloadAndExtractFile as Mock).mockClear();
+    try {
+      await runWithLocalDataDir(scopeDir, () =>
+        getOrFetchReplayArchive({} as never, REPLAY_ID, scope),
+      );
+      return new Set(
+        (downloadAndExtractFile as Mock).mock.calls.map(
+          (call) => call[0] as string,
+        ),
+      );
+    } finally {
+      rmSync(scopeDir, { recursive: true, force: true });
+    }
+  };
+
+  // Post-processing selects this scope *instead of* the unmapped-ranges one
+  // rather than in addition to it, so it has to remain a superset. Asserting
+  // the containment directly, rather than spot-checking `rawCoverage`, keeps
+  // that true if either scope's file list is edited.
+  it("stays a superset of the unmapped-ranges scope it is chosen instead of", async () => {
+    const unmappedRanges = await downloadedUrlsForScope(
+      "post-process-including-unmapped-ranges",
+    );
+    const cssCoverage = await downloadedUrlsForScope(
+      "post-process-including-css-coverage",
+    );
+
+    expect(unmappedRanges).toContain("https://example/rawCoverage");
+    expect([...unmappedRanges].filter((url) => !cssCoverage.has(url))).toEqual(
+      [],
+    );
+  });
+
+  it("does NOT download snapshotted assets", async () => {
+    await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive(
+        {} as never,
+        REPLAY_ID,
+        "post-process-including-css-coverage",
+      ),
+    );
+
+    const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
+      (call) => call[0] as string,
+    );
+    expect(downloadedKeys).not.toContain(SNAPSHOT_ASSETS_URL);
   });
 
   it("leaves CSS coverage out of the narrower post-processing scopes", async () => {

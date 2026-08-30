@@ -106,6 +106,11 @@ export interface CompleteAssetUploadResponse {
   testRun?: TestRun;
   baseNotFound?: boolean;
   /**
+   * Set when no test run was created solely because the `sessionFilter` passed
+   * on the trigger excluded every session that would otherwise have run.
+   */
+  allSessionsExcludedBySessionFilter?: boolean;
+  /**
    * When set alongside `baseNotFound`, the server is asking the client to
    * extend its default base-polling window by this many milliseconds.
    */

@@ -1,4 +1,5 @@
 import { requestCaptureContext, sidecarOriginOf } from "./context";
+import { isOrphanedDatadogAgentUrl } from "./datadog-agent";
 import { getOriginalFetch, setOriginalFetch } from "./original-fetch";
 import { captureOutboundCall } from "./outbound-capture";
 import { replayOutboundCall } from "./replay-fetch";
@@ -54,6 +55,16 @@ const patchedFetch: FetchFn = async (input, init) => {
   // Never intercept the shim's own traffic to the sidecar. Defence in depth: every
   // shim → sidecar call already goes through the unpatched fetch, or a service binding.
   if (request.url.startsWith(`${sidecarOriginOf(ctx)}/`)) {
+    return original(request);
+  }
+
+  // The app's own telemetry leaving for a Datadog agent or intake, with nothing to tie it to
+  // a session, is recorded as nothing at all. Record mode only, by construction: a replay
+  // context always carries a session id, so the rule could not fire there either way.
+  if (
+    ctx.mode === "record" &&
+    isOrphanedDatadogAgentUrl(request.url, ctx.frontendSessionId)
+  ) {
     return original(request);
   }
 

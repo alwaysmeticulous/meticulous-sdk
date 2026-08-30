@@ -1,5 +1,17 @@
 # @alwaysmeticulous/common
 
+## 2.336.0
+
+### Patch Changes
+
+- [#12959](https://github.com/alwaysmeticulous/meticulous/pull/12959) [`eae72ee`](https://github.com/alwaysmeticulous/meticulous/commit/eae72ee83b3e39a41ecef63fab4f9d9773a45f48) Thanks [@dennysem](https://github.com/dennysem)! - Default the local data dir to a directory under `os.tmpdir()` when running on a serverless platform, so the SDK works on Vercel and AWS Lambda without configuration.
+
+  `getMeticulousLocalDataDir()` previously defaulted to `$HOME/.meticulous`, falling back to `<cwd>/.meticulous`. Both sit inside the deployment on Vercel, Lambda and the platforms built on Lambda (Netlify Functions, SAM), where the filesystem is mounted read-only apart from `os.tmpdir()`. The first thing to need that directory is the SDK bundle download in `fetchAsset`, so the resulting `mkdir` failure took out backend recording entirely rather than degrading it — and because callers wrap recorder init in a try/catch so it can never break a boot, it did so silently: a successful boot and a completely broken one produced the same logs at the default log level.
+
+  The new default is used only when neither an explicit dir nor `METICULOUS_DIR` is set, and only when `VERCEL` or `AWS_LAMBDA_FUNCTION_NAME` is present in the environment, so nothing that already configures a data dir changes — including the cloud replay pods and the source-map workflow, which both set `METICULOUS_DIR` explicitly. `VERCEL` is checked separately from the Lambda variables because Vercel does not guarantee those across its compute options.
+
+  Note that a serverless `os.tmpdir()` is per-instance and ephemeral: it survives warm invocations, so the bundle is fetched once per execution environment rather than once per request, but every cold start pays that download. Setting `METICULOUS_PRELOADED_SNIPPETS_DIR` to a build-time copy of the bundles avoids it, as it already does for the cloud replay worker.
+
 ## 2.333.1
 
 ### Patch Changes

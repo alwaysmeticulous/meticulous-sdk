@@ -81,10 +81,14 @@ export const getOrFetchReplay = async (
  * - `timeline-only`: Download only the timeline data.
  * - `post-test-run-processing-files-only`: Download only the files that are needed for post-test-run processing
  * - `post-process-including-unmapped-ranges`: Download everything needed for post-process including unmapped ranges.
- * - `post-process-including-css-coverage`: Same as post-test-run-processing-files-only, plus the
- *   replay's mapped CSS coverage and — for replays that did not map their own — the raw CSS
- *   coverage and snapshotted assets needed to map it here.
- * e.g mapped coverage and timeline data.
+ * - `post-process-including-css-coverage`: Same as post-process-including-unmapped-ranges, plus
+ *   the replay's mapped CSS coverage and — for replays that did not map their own — the raw CSS
+ *   coverage, whose baked-in stylesheet text — where the artifact still carries any — is all
+ *   post-processing can map from. Deliberately excludes snapshotted assets: a coverage entry
+ *   whose text could not be read is dropped before it can carry ranges, so the snapshotted
+ *   stylesheet body is never the source; and a replay whose stylesheet source maps were
+ *   snapshotted also mapped its own CSS on the pod, which short-circuits the fallback before
+ *   it looks for a map.
  */
 const DOWNLOAD_SCOPES = [
   "everything",
@@ -106,7 +110,7 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<DownloadScope, RegExp> = {
   "post-process-including-unmapped-ranges":
     /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage|rawCoverage)/,
   "post-process-including-css-coverage":
-    /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage|rawCoverage|cssCoverage|mappedCssCoverage|snapshottedAssets)/,
+    /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage|rawCoverage|cssCoverage|mappedCssCoverage)/,
 };
 
 const shouldDownloadFile = (

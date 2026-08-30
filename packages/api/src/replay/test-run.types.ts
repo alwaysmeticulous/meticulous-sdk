@@ -48,6 +48,11 @@ export const isPrAuthorRelevance = (
  *   edited line (IsRelevant).
  * - `html_template_sibling_coverage`: the same signal for a changed HTML
  *   template (e.g. `foo.component.ts` for `foo.component.html`) (IsRelevant).
+ * - `mapped_sidecar_coverage`: the session's coverage-source replay covered a
+ *   changed sidecar file's *own* mapped lines — the file is in the coverage
+ *   index, so no sibling was needed — and covered no other edited file
+ *   (IsRelevant). Distinguished from `direct_coverage` so the sessions this
+ *   mechanism adds can be weighed against the spray it avoids.
  * - `relevant_side_effect`: a file matching the "relevant" patterns (server
  *   config, migration, infra) forced every session relevant (IsRelevant).
  * - `mark_all_maybe_relevant`: a change with no precise line coverage to anchor
@@ -70,6 +75,7 @@ export type SessionRelevanceReason =
   | "direct_coverage"
   | "stylesheet_sibling_coverage"
   | "html_template_sibling_coverage"
+  | "mapped_sidecar_coverage"
   | "relevant_side_effect"
   | "mark_all_maybe_relevant"
   | "no_coverage_or_not_chosen"

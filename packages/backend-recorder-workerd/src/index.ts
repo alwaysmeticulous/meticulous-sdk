@@ -52,6 +52,17 @@ export { headersToRecord } from "./outbound-capture";
  */
 export { isHealthProbeRequest } from "./health-probe";
 /**
+ * Exported for the Node recorder, whose `datadog-agent.ts` adapts these to the forked http and
+ * undici instrumentations' ignore hooks. Which destinations count as a Datadog agent is a rule
+ * both surfaces have to agree on, so — like the health-probe rule above — it has exactly one
+ * implementation.
+ */
+export {
+  isOrphanedDatadogAgentRequest,
+  isOrphanedDatadogAgentUrl,
+  type OutboundCallTarget,
+} from "./datadog-agent";
+/**
  * Exported for both sidecar implementations — the deployed Worker
  * (`@alwaysmeticulous/backend-recorder-sidecar-worker`) and the local Node one
  * (`backend-recorder-js`'s `sidecar/server.ts`) — which repeat the shim's health-probe

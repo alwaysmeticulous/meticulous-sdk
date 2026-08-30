@@ -1,16 +1,5 @@
 export interface ReplayableEvent {
   selector: string;
-  altSelectors?: {
-    /**
-     * Selector chain that doesn't use ids e.g. `div:nth-child(4) > div.app-jfa3aaj.main > div.app-container`
-     */
-    classesOnly: string;
-
-    /**
-     * Selector chain that only uses element name and n-th child e.g. `div:nth-child(4) > div:nth-child(1) > div:nth-child(2)`
-     */
-    traversal: string;
-  };
 
   /**
    * e.g. 'click' or 'focus'

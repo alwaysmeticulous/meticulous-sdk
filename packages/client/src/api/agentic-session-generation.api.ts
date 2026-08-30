@@ -202,6 +202,8 @@ export interface AgenticRunHighlightRegion {
   y: number;
   width: number;
   height: number;
+  /** Resolved element-child paths in rrweb's replay document. */
+  elementPaths?: number[][];
 }
 
 /**
@@ -243,6 +245,14 @@ export interface AgenticRunResultStep {
    * those are taken once the page has settled and can be seconds later.
    */
   endTimestampMs?: number;
+  /**
+   * Epoch timestamp the step's own actions finished at, present only when
+   * `endTimestampMs` was pushed out past them to reach an explicit
+   * verification screenshot. Everything between the two is a settle wait the
+   * step did not act during, so a player can play the action at its own pace
+   * and skip the wait rather than stretching one over the other.
+   */
+  actionEndTimestampMs?: number;
   /** Screenshot immediately before the first linked browser action. */
   beforeScreenshotPath?: string;
   /** Canonical route group for the pre-action screenshot. */
@@ -361,6 +371,26 @@ export interface AgenticRunSummary {
   takeaways: AgenticRunSummaryTakeaway[];
 }
 
+export type AgentReviewMemoryCandidateCategory =
+  | "app-structure"
+  | "navigation"
+  | "authentication"
+  | "test-data"
+  | "networking"
+  | "testing-pitfall";
+
+export type AgentReviewMemoryCandidateAudience = "planner" | "case-runner";
+
+/**
+ * A bounded, untrusted observation proposed by an Agent Review agent for
+ * possible inclusion in the project's persistent memory.
+ */
+export interface AgentReviewMemoryCandidate {
+  tip: string;
+  category: AgentReviewMemoryCandidateCategory;
+  audiences: AgentReviewMemoryCandidateAudience[];
+}
+
 /** Coarse metadata about how the agentic run itself executed. */
 export interface AgenticRunMetadata {
   /** ISO timestamp the worker started the run. */
@@ -475,6 +505,8 @@ export interface AgenticRunResultBlob {
   traces?: AgenticRunTraces;
   /** Agent-written takeaways grounded in completed cases. */
   summary?: AgenticRunSummary;
+  /** Untrusted project-memory observations proposed during this run. */
+  memoryCandidates?: AgentReviewMemoryCandidate[];
   /** Present when the agent determined no browser flow can exercise the change. */
   notTestable?: AgenticRunNotTestable;
 }
@@ -490,9 +522,13 @@ export interface ReportAgenticRunResultResponse {
   recorded?: boolean;
 }
 
+export type AgenticResultArtifactKind = "review" | "coverage" | "traces";
+
 export interface RequestAgenticResultUploadParams extends ProjectIdentifier {
   /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
   agenticRunId: string;
+  /** A typed result artifact. The server derives its S3 key from this value. */
+  kind: AgenticResultArtifactKind;
   /** Size in bytes of the blob about to be PUT, signed into the URL. */
   size: number;
 }
@@ -607,7 +643,7 @@ export const reportAgenticRunFailure = async ({
 
 /**
  * The throttled, last-value-wins JSON the worker overwrites at
- * `{prefix}/{projectId}/{runId}/progress.json` from the moment its plan exists
+ * `{prefix}/{projectId}/{runId}/review_progress.json` from the moment its plan exists
  * until it reports its terminal result (which stays authoritative).
  */
 export interface AgenticRunProgressSnapshot {

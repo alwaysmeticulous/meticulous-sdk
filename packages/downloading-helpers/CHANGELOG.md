@@ -1,5 +1,18 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 2.336.0
+
+### Patch Changes
+
+- [#12948](https://github.com/alwaysmeticulous/meticulous/pull/12948) [`994eae7`](https://github.com/alwaysmeticulous/meticulous/commit/994eae70963a05ec1c3af60b1454fe8d0884bcf7) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Stop fetching snapshotted assets under the `post-process-including-css-coverage` download scope. The scope exists so post-processing can map a replay's CSS coverage back to repo sources, and it pulled snapshotted assets to reach the stylesheets' `.map` files. That fallback is unreachable: stylesheet source maps are only snapshotted when a replay maps CSS to the repo, and such a replay also writes `mapped-css-coverage.json`, which post-processing prefers verbatim and which short-circuits the fallback before it looks for a map. The snapshotted CSS body is equally unreachable, since a coverage entry that could not be read carries no ranges to map in the first place.
+
+  The scope is otherwise unchanged, and remains a superset of `post-process-including-unmapped-ranges` — post-processing selects it _instead of_ that scope, so it keeps `rawCoverage` alongside the CSS artifacts. Raw CSS coverage also stays, so already-archived replays that baked stylesheet text into their artifact can still be mapped.
+
+- Updated dependencies [[`18b7686`](https://github.com/alwaysmeticulous/meticulous/commit/18b7686edfa667c07d6e4e93485f181ba4614f38), [`f17af6e`](https://github.com/alwaysmeticulous/meticulous/commit/f17af6e22eef995d432d1c4fabbc278e6ea32743), [`f4c8e15`](https://github.com/alwaysmeticulous/meticulous/commit/f4c8e15932d055ef966a3686c811f1f9b4ee56e1), [`eae72ee`](https://github.com/alwaysmeticulous/meticulous/commit/eae72ee83b3e39a41ecef63fab4f9d9773a45f48), [`1b407f1`](https://github.com/alwaysmeticulous/meticulous/commit/1b407f19cd41dc9ada905904facc2dc5e42eb321), [`37009f7`](https://github.com/alwaysmeticulous/meticulous/commit/37009f71b2f4b0d938ddb55d03826d1387f2a200)]:
+  - @alwaysmeticulous/client@2.336.0
+  - @alwaysmeticulous/api@2.336.0
+  - @alwaysmeticulous/common@2.336.0
+
 ## 2.335.0
 
 ### Patch Changes

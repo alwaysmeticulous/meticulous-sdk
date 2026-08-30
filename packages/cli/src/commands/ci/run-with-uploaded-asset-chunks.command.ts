@@ -14,6 +14,8 @@ import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { parseRewrites } from "../../command-utils/parse-rewrites";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { CliUserError } from "../../utils/cli-user-error";
+import { EXIT_CODES } from "../../utils/exit-codes";
 import {
   isOutOfDateClientError,
   OutOfDateCLIError,
@@ -220,6 +222,15 @@ const handler = async ({
     }
 
     if (!result.testRun) {
+      if (result.allSessionsExcludedBySessionFilter) {
+        // Distinct exit code: the build is fine, the filter simply matched
+        // nothing, which a pipeline may want to treat as a skip.
+        throw new CliUserError(
+          result.message ??
+            "--sessionFilter excluded every session that would otherwise have run.",
+          EXIT_CODES.ALL_SESSIONS_EXCLUDED_BY_SESSION_FILTER,
+        );
+      }
       throw new Error(
         result.message ?? "Asset chunks resolved but test run not created",
       );
@@ -309,6 +320,8 @@ export const ciRunWithUploadedAssetChunksCommand: CommandModule<
         " This is an advanced option: Meticulous automatically chooses sessions to execute." +
         " sessionFilter allows additional filtering on top of that." +
         " We recommend checking with a Meticulous engineer before using it." +
+        ` If the filter excludes every session, no test run is triggered and the command exits with code ${EXIT_CODES.ALL_SESSIONS_EXCLUDED_BY_SESSION_FILTER}` +
+        " (all other failures exit with 1), so a pipeline can tell that apart from a real failure." +
         " See https://app.meticulous.ai/docs/how-to/filter-sessions-by-start-url.",
     },
     waitForBase: {

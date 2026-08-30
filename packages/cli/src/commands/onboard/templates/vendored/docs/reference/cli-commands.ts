@@ -680,6 +680,9 @@ npx @alwaysmeticulous/cli ci run-with-uploaded-asset-chunks \\
 --sessionFilter="./session-filter.json"
 \`\`\`
 
+If the filter excludes every session, no test run is triggered and the command exits with code \`4\` rather than the
+generic \`1\`, so a pipeline can tell "nothing to test" apart from a real failure.
+
 ---
 
 #### \`--waitForBase\`
@@ -729,7 +732,7 @@ npx @alwaysmeticulous/cli ci run-with-uploaded-asset-chunks \\
 |------|---------|
 | 0 | Success |
 | 1 | Failure |
-| 2 | Error |
+| 4 | No test run triggered: \`--sessionFilter\` excluded every session that would otherwise have been replayed |
 
 ---
 

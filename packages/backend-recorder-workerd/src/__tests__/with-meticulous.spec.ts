@@ -447,6 +447,82 @@ describe("withMeticulous provisional session ids", () => {
     expect(receivedEvents).toHaveLength(0);
   });
 
+  /**
+   * The agent is addressed but never listened for: the rule is applied before the call leaves,
+   * so whether it connects is irrelevant — a call that got past the rule would be reported
+   * either way (with a `statusCode`, or with an `error`).
+   */
+  const AGENT_FLUSH_URL = "http://127.0.0.1:8126/v0.4/traces";
+
+  it("records nothing for an unattributable Datadog agent flush", async () => {
+    const handler = withMeticulous({
+      fetch: async () => {
+        // A tracer flushing on its own timer: the app's telemetry, with no session behind it.
+        await fetch(AGENT_FLUSH_URL, {
+          method: "PUT",
+          body: "msgpack-payload",
+        }).catch(() => undefined);
+        return new Response("ok");
+      },
+    });
+
+    const ctx = makeCtx();
+    await handler.fetch(
+      new Request("http://worker.local/page"),
+      { METICULOUS_SIDECAR_URL: sidecarUrl } as never,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(eventsOfKind("outbound")).toHaveLength(0);
+    // The inbound request itself is still recorded — only the flush is dropped.
+    expect(eventsOfKind("inbound")).toHaveLength(1);
+  });
+
+  it("still records a Datadog-shaped call a session made", async () => {
+    const handler = withMeticulous({
+      fetch: async () => {
+        await fetch(AGENT_FLUSH_URL, { method: "POST" }).catch(() => undefined);
+        return new Response("ok");
+      },
+    });
+
+    const ctx = makeCtx();
+    await handler.fetch(
+      new Request("http://worker.local/page", {
+        headers: { "x-meticulous-session-id": "fs-dd" },
+      }),
+      { METICULOUS_SIDECAR_URL: sidecarUrl } as never,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(eventsOfKind("outbound")).toMatchObject([
+      { frontendSessionId: "fs-dd", url: AGENT_FLUSH_URL },
+    ]);
+  });
+
+  it("still records a flush-shaped path on a port that is not the agent's", async () => {
+    const handler = withMeticulous({
+      fetch: async () => {
+        await fetch(`${upstreamUrl}/v0.4/traces`, { method: "POST" });
+        return new Response("ok");
+      },
+    });
+
+    const ctx = makeCtx();
+    await handler.fetch(
+      new Request("http://worker.local/page"),
+      { METICULOUS_SIDECAR_URL: sidecarUrl } as never,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(eventsOfKind("outbound")).toMatchObject([
+      { url: `${upstreamUrl}/v0.4/traces` },
+    ]);
+  });
+
   it("still records a session-tagged request on a probe path", async () => {
     const handler = withMeticulous({
       fetch: (): Promise<Response> =>

@@ -37,6 +37,11 @@ export interface RunWithUploadedAssetChunksOptions extends ProjectIdentifier {
 export interface RunWithUploadedAssetChunksResult {
   testRun: TestRun | null;
   message?: string;
+  /**
+   * Set when no test run was created solely because `sessionFilter` excluded
+   * every session that would otherwise have run.
+   */
+  allSessionsExcludedBySessionFilter?: boolean;
   overlaps?: ChunkPathOverlap[];
   overlapsTruncated?: boolean;
 }
@@ -130,6 +135,7 @@ export const runWithUploadedAssetChunks = async ({
     testRun,
     baseNotFound,
     message,
+    allSessionsExcludedBySessionFilter,
     overlaps: triggerOverlaps,
     overlapsTruncated: triggerOverlapsTruncated,
   } = await pollWhileBaseNotFound({
@@ -138,6 +144,8 @@ export const runWithUploadedAssetChunks = async ({
       baseNotFound: initialResult?.baseNotFound,
       extraBasePollTimeoutMs: initialResult?.extraBasePollTimeoutMs,
       message: initialResult?.message,
+      allSessionsExcludedBySessionFilter:
+        initialResult?.allSessionsExcludedBySessionFilter,
       overlaps: initialResult?.overlaps,
       overlapsTruncated: initialResult?.overlapsTruncated,
     },
@@ -178,6 +186,9 @@ export const runWithUploadedAssetChunks = async ({
   return {
     testRun: testRun ?? null,
     ...(message ? { message } : {}),
+    ...(allSessionsExcludedBySessionFilter
+      ? { allSessionsExcludedBySessionFilter: true }
+      : {}),
     ...resolvedOverlaps,
   };
 };

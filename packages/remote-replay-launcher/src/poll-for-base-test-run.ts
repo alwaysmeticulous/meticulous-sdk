@@ -18,6 +18,12 @@ type PollResult = {
    */
   extraBasePollTimeoutMs?: number | undefined;
   message?: string | undefined;
+  /**
+   * Set when the trigger created no test run solely because the session filter
+   * excluded every session. Tracked through the poll so the caller can report
+   * the distinct cause rather than a generic "no test run" failure.
+   */
+  allSessionsExcludedBySessionFilter?: boolean | undefined;
   overlaps?: ChunkPathOverlap[] | undefined;
   overlapsTruncated?: boolean | undefined;
 };
@@ -53,6 +59,8 @@ export const pollWhileBaseNotFound = async ({
   let testRun = initialResult.testRun ?? null;
   let baseNotFound = initialResult.baseNotFound;
   let message = initialResult.message;
+  let allSessionsExcludedBySessionFilter =
+    initialResult.allSessionsExcludedBySessionFilter;
   // Server-driven extension of the polling window (per-project feature flag).
   // Tracked across retries so a change in the server's answer takes effect.
   let extraBasePollTimeoutMs = initialResult.extraBasePollTimeoutMs;
@@ -95,6 +103,8 @@ export const pollWhileBaseNotFound = async ({
       testRun = retryResult.testRun ?? null;
       baseNotFound = retryResult.baseNotFound;
       message = retryResult.message;
+      allSessionsExcludedBySessionFilter =
+        retryResult.allSessionsExcludedBySessionFilter;
       extraBasePollTimeoutMs = retryResult.extraBasePollTimeoutMs;
       overlaps = retryResult.overlaps;
       overlapsTruncated = retryResult.overlapsTruncated;
@@ -105,13 +115,22 @@ export const pollWhileBaseNotFound = async ({
       const fallbackResult = await runFallback(fallbackFn, logger);
       testRun = fallbackResult.testRun ?? null;
       message = fallbackResult.message;
+      allSessionsExcludedBySessionFilter =
+        fallbackResult.allSessionsExcludedBySessionFilter;
       overlaps = fallbackResult.overlaps;
       overlapsTruncated = fallbackResult.overlapsTruncated;
       baseNotFound = fallbackResult.baseNotFound ?? false;
     }
   }
 
-  return { testRun, baseNotFound, message, overlaps, overlapsTruncated };
+  return {
+    testRun,
+    baseNotFound,
+    message,
+    allSessionsExcludedBySessionFilter,
+    overlaps,
+    overlapsTruncated,
+  };
 };
 
 /**

@@ -1,5 +1,15 @@
 # @alwaysmeticulous/api
 
+## 2.336.0
+
+### Minor Changes
+
+- [#12847](https://github.com/alwaysmeticulous/meticulous/pull/12847) [`f4c8e15`](https://github.com/alwaysmeticulous/meticulous/commit/f4c8e15932d055ef966a3686c811f1f9b4ee56e1) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Remove `ReplayableEvent.altSelectors`. It was only ever produced by the legacy select-element matcher, which has been retired in favour of `nodeIdentifier`-based matching; the recorder no longer records it.
+
+### Patch Changes
+
+- [#12978](https://github.com/alwaysmeticulous/meticulous/pull/12978) [`f17af6e`](https://github.com/alwaysmeticulous/meticulous/commit/f17af6e22eef995d432d1c4fabbc278e6ea32743) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `mapped_sidecar_coverage` to `SessionRelevanceReason`, recording that a session was selected because its coverage-source replay covered a changed sidecar file's own mapped lines (the file is in the coverage index, so no sibling was needed) and covered no other edited file.
+
 ## 2.334.0
 
 ### Minor Changes

@@ -1,5 +1,17 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.336.0
+
+### Patch Changes
+
+- [#12938](https://github.com/alwaysmeticulous/meticulous/pull/12938) [`e46c6cc`](https://github.com/alwaysmeticulous/meticulous/commit/e46c6ccd0995c4c5aa9cef2c2da2b821f1fe3554) Thanks [@dennysem](https://github.com/dennysem)! - Stop recording a tracer's flushes to a Datadog agent. An outbound call is no longer captured when it carries no frontend session id **and** is addressed to port `8126` (the agent's APM port) on one of the agent's own API paths — `/info`, `/v0.4/traces` and the rest of the `/v{n}.{n}/{traces,stats,config,pipeline_stats}` family, `/profiling/v1/input`, `/dogstatsd/v2/proxy`, `/tracer_flare/v1`, `/debugger/v{n}/…`, `/symdb/v{n}/…`, `/telemetry/proxy/…`, `/evp_proxy/…`, `/appsec/proxy/…`. `dd-trace` and its equivalents flush on a background timer for the lifetime of the process, so those calls sit outside every request's async context and can never be attributed to a session — recording them added a steady stream of unstamped CLIENT spans to ingestion's time-window attachment fallback, each carrying a msgpack payload of every span the process had buffered.
+
+  Both halves of the destination test are required, because either alone could drop a real call: an app is free to serve anything on port 8126, and a path shaped like `/v0.4/traces` on another port is the app's own endpoint. That pairing is what makes a fixed path list safe without knowing the agent's hostname, which is unrecognisable in practice (`localhost`, `datadog-agent`, a Kubernetes node IP). It also means an agent on a non-default `DD_TRACE_AGENT_PORT`, and agentless submission straight to a `datadoghq.com` intake, both keep being recorded.
+
+  A call made inside a request the browser or an SSR fan-out named is attributable app traffic and is still recorded whatever its destination, so this can only drop spans that ingestion's session-id match would have discarded anyway. Record mode only: a replay is unaffected.
+
+  The rule ships here so the Node recorder can share it; on that surface it is wired into the http and undici instrumentations' ignore hooks, which run before the span is created and before any body is read.
+
 ## 2.334.0
 
 ### Patch Changes
