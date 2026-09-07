@@ -424,10 +424,16 @@ importers:
 
   packages/recorder-plugin:
     dependencies:
+      '@jridgewell/sourcemap-codec':
+        specifier: ^1.5.0
+        version: 1.5.5
       unplugin:
         specifier: ^3.0.0
         version: 3.0.0
     devDependencies:
+      '@jridgewell/trace-mapping':
+        specifier: ^0.3.25
+        version: 0.3.31
       '@nuxt/kit':
         specifier: ^3.13.0
         version: 3.21.2

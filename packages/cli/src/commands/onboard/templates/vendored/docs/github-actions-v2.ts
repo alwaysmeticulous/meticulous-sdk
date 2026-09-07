@@ -6,6 +6,7 @@ import {
   ONBOARDING_GUIDE_URL,
 } from "src/lib/utils/internal-urls/docs-urls.utils";
 import {
+  GITHUB_ACTION_ENSURE_BASE_NAME,
   GITHUB_ACTION_UPLOAD_ASSETS_NAME,
   GITHUB_ACTION_UPLOAD_CONTAINER_NAME,
   METICULOUS_GITHUB_APP_INSTALL_URL,
@@ -78,6 +79,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Same workflow file as the upload step — ensure-base dispatches *this*
+      # workflow on the base branch. Run it before checkout/build so the base
+      # can start while this job continues. Needs no checkout.
+      - name: Ensure base tests exist
+        uses: ${GITHUB_ACTION_ENSURE_BASE_NAME}@v1
+        with:
+          api-token: \${{ secrets.METICULOUS_API_TOKEN }}
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -167,6 +176,8 @@ Name the secret \`METICULOUS_API_TOKEN\`, and paste in the API token you copied 
 
 To run Meticulous on CI add a new \`.github/workflows/meticulous.yaml\` file, or, if you already use GitHub Actions, you
 can add it as a job to an existing workflow. The workflow needs to run on both [pushes to your main branch and on pull requests](${BRANCHES_REQUIRED_TO_RUN_ON_URL}).
+
+Put \`ensure-base\` as the first step of the same \`test\` job that uploads — same workflow file, before checkout. It asks GitHub for the PR merge base and, if that commit has no test run yet, dispatches this workflow and returns immediately so the base can build in parallel. The upload step still waits only if the base is missing when it finishes.
 
 We offer two approaches to running Meticulous tests on CI. We recommend choosing the first approach that works for your app:
 
@@ -334,6 +345,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: ${GITHUB_ACTION_ENSURE_BASE_NAME}@v1
+        with:
+          api-token: \${{ secrets.METICULOUS_API_TOKEN_DASHBOARD }}
       - uses: actions/checkout@v4
         with:
           ref: \${{ env.METICULOUS_COMMIT_SHA }}
@@ -472,6 +486,7 @@ source-map publishing to the default branch or switch to \`upload-assets\` /
 ### GitHub Action Configuration Reference
 
 All available inputs are documented in the action definition files:
+- [\`ensure-base\`](https://github.com/alwaysmeticulous/report-diffs-action/blob/main/ensure-base/action.yml) - First step before upload: dispatch a missing base build so it runs in parallel with the PR build
 - [\`upload-assets\`](https://github.com/alwaysmeticulous/report-diffs-action/blob/main/upload-assets/action.yaml) - Upload static assets for testing (recommended for static sites)
 - [\`upload-container\`](https://github.com/alwaysmeticulous/report-diffs-action/blob/main/upload-container/action.yml) - Upload a container image for testing
 - [\`report-diffs-action\`](https://github.com/alwaysmeticulous/report-diffs-action/blob/main/action.yml) - Run tests in GitHub Actions runner (legacy)

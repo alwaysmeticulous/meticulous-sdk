@@ -450,15 +450,67 @@ export interface MeticulousPublicRecordApi {
   stopRecording(): void;
 }
 
+/**
+ * Result of {@link MeticulousPublicContextApi.getFlagOverride}.
+ *
+ * `overridden: false` means Meticulous has no opinion on this flag and your
+ * application should fall back to its own evaluation.
+ */
+export type FeatureFlagOverride =
+  | { overridden: false }
+  | { overridden: true; value: string | boolean };
+
 export interface MeticulousPublicContextApi {
   /**
-   * Call this method to record the value of a feature flag. If this method is called multiple times
-   * with the same label, the value will be overwritten.
+   * Record the value of a feature flag that your application actually used. If this
+   * method is called multiple times with the same label, the value will be overwritten.
+   *
+   * If you also call {@link getFlagOverride} in the same resolver, record the value you
+   * returned after applying the override — not a later snapshot from your flag SDK.
    */
   recordFeatureFlag(
     label: string,
     value: string | boolean,
   ): { success: boolean };
+
+  /**
+   * Ask Meticulous whether the current replay should force a particular value for a feature flag,
+   * *before* your application evaluates that flag itself. Unlike
+   * {@link recordFeatureFlag}, which stores a value your application has already computed, this
+   * method returns a value for your application to use.
+   *
+   * Call it at the top of whatever resolves flags in your app — a Statsig `checkGate` wrapper, a
+   * LaunchDarkly `variation` wrapper, or your own flag resolver — and use the returned value in
+   * preference to your normal evaluation when `overridden` is true. Then record that same
+   * resolved value with {@link recordFeatureFlag} before returning it. How you consume `value`
+   * depends on the helper you wrap:
+   *
+   * ```js
+   * const override = window.Meticulous?.context?.getFlagOverride?.(flagKey);
+   * const value = override?.overridden
+   *   ? Boolean(override.value) // on/off gate
+   *   : myOwnFlagEvaluation(flagKey);
+   * window.Meticulous?.context?.recordFeatureFlag?.(flagKey, value);
+   * return value;
+   * ```
+   *
+   * `Boolean()` is right for an on/off gate (`checkGate`). For a value-read
+   * (`getExperimentValue` / `variation`) return and record `override.value` as-is —
+   * `Boolean('control')` is `true` and would turn every variant on. For an equality-check
+   * (`isTreatment(name, expected)` / `editorExperiment(name, expected)`) compare instead
+   * (`override.value === expected`) and record `override.value`, not the comparison boolean;
+   * coercing or returning the string makes every expected value match, or type-mismatches
+   * callers that expect a boolean. Hook the helper your application actually calls.
+   *
+   * This lets Meticulous test code paths behind flags that were off (or did not exist) when the
+   * session was recorded, without you having to re-record sessions.
+   *
+   * Returns `{ overridden: false }` whenever Meticulous has no override for `label`, and always
+   * does so outside of a replay (for real users being recorded), so it is safe to call from
+   * production code. Use optional chaining as above so your app also works when the Meticulous
+   * recorder is not loaded at all.
+   */
+  getFlagOverride(label: string): FeatureFlagOverride;
 
   /**
    * Call this method to record some custom context about the session. For instance, you could use

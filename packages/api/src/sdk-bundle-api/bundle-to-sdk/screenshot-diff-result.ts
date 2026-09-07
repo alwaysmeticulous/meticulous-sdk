@@ -15,6 +15,26 @@ export type ScreenshotIdentifier =
   | ScreenshotAfterEvent
   | ScreenshotAuxiliary;
 
+/**
+ * Keys superfluous to identifying a particular logical screenshot in a
+ * particular replay; they just select a sub-variant or provide additional
+ * metadata.
+ */
+export type ScreenshotIdentifierVersionOrMetadataKeys =
+  | "variant"
+  | "logicVersion"
+  | "imageHash";
+
+/**
+ * Like {@link ScreenshotIdentifier} but just specifies the minimal data to
+ * identify a screenshot moment in a replay — doesn't specify which variant or
+ * auxiliary metadata.
+ */
+export type ScreenshotMomentIdentifier =
+  | Omit<ScreenshotAfterEvent, ScreenshotIdentifierVersionOrMetadataKeys>
+  | Omit<ScreenshotAuxiliary, ScreenshotIdentifierVersionOrMetadataKeys>
+  | Omit<EndStateScreenshot, ScreenshotIdentifierVersionOrMetadataKeys>;
+
 export interface LogicVersioned {
   /**
    * The version of the logic and environment used to generate the screenshot. This should be bumped

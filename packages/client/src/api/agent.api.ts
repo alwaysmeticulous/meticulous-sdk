@@ -106,6 +106,8 @@ export interface DiffsSummaryScreenshot {
   mismatchFraction: number | null;
   /** Present only when `includeDomDiffIds` is set. */
   domDiffIds?: string;
+  /** Present when `includeSimilarGroupId` is set. */
+  similarGroupId?: string;
   /**
    * Whether this screenshot is part of the selected representative subset in
    * legacy nested responses. Current responses use `selectionApplied` metadata.
@@ -136,6 +138,12 @@ export interface DiffsSummaryDiff {
   mismatchFraction?: number;
   /** Present only when `includeDomDiffIds` is set. */
   domDiffIds?: string;
+  /**
+   * Present when `includeSimilarGroupId` is set, or when filtering by
+   * `similarGroupId`. The Similar-group id (same value as the `group` query
+   * param on a shared gallery link).
+   */
+  similarGroupId?: string;
   /** Present only when `includeReviews` is set. */
   decision?: DiffDecisionState;
   /** Number of open review comments. Present with `includeReviews`. */
@@ -152,6 +160,18 @@ export interface DiffsSummaryOptions {
   includeMismatchFraction?: boolean;
   /** Include the `domDiffIds` field on each screenshot. Default false. */
   includeDomDiffIds?: boolean;
+  /**
+   * Include the `similarGroupId` field on each screenshot. Default false.
+   * Implied when {@link similarGroupId} is set.
+   */
+  includeSimilarGroupId?: boolean;
+  /**
+   * Return only differences in this Similar group (the `group` query param on
+   * a shared gallery link). Intersects with the `only*` filters. Always
+   * returns every matching difference — never subject to the representative
+   * subset cap.
+   */
+  similarGroupId?: string;
   /**
    * Return all screenshot diffs instead of only the selected representative
    * subset.
@@ -790,6 +810,12 @@ export const getTestRunDiffsSummary = async (
   if (options?.includeDomDiffIds) {
     params.includeDomDiffIds = "true";
   }
+  if (options?.includeSimilarGroupId || options?.similarGroupId) {
+    params.includeSimilarGroupId = "true";
+  }
+  if (options?.similarGroupId) {
+    params.similarGroupId = options.similarGroupId;
+  }
   if (options?.includeAllDiffs) {
     params.includeAllDiffs = "true";
   }
@@ -861,6 +887,9 @@ const normalizeDiffsSummaryResponse = (
             : {}),
           ...(screenshot.domDiffIds != null
             ? { domDiffIds: screenshot.domDiffIds }
+            : {}),
+          ...(screenshot.similarGroupId != null
+            ? { similarGroupId: screenshot.similarGroupId }
             : {}),
           ...(screenshot.isSelected != null
             ? { isSelected: screenshot.isSelected }

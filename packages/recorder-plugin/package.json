@@ -1,11 +1,12 @@
 {
   "name": "@alwaysmeticulous/recorder-plugin",
-  "version": "2.333.1",
+  "version": "2.337.0",
   "type": "module",
-  "description": "Meticulous recorder plugin for Vite, Webpack, Rspack, Rsbuild, and Nuxt that injects the recorder script into the HTML head.",
+  "description": "Meticulous plugin for Vite, Webpack, Rspack, Rsbuild, and Nuxt that injects the recorder script into the HTML head, plus a Vite plugin that emits CSS source maps for stylesheet coverage.",
   "license": "ISC",
   "exports": {
     ".": "./dist/index.js",
+    "./css-sourcemap": "./dist/css-sourcemap.js",
     "./vite": "./dist/vite.js",
     "./webpack": "./dist/webpack.js",
     "./rspack": "./dist/rspack.js",
@@ -38,6 +39,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@jridgewell/sourcemap-codec": "^1.5.0",
     "unplugin": "^3.0.0"
   },
   "peerDependencies": {
@@ -65,6 +67,7 @@
     }
   },
   "devDependencies": {
+    "@jridgewell/trace-mapping": "^0.3.25",
     "@nuxt/kit": "^3.13.0",
     "@rsbuild/core": "^1.7.0",
     "@rspack/core": "^1.0.0",

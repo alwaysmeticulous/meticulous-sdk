@@ -43,6 +43,11 @@ window.Meticulous?.context.recordUserId('user-123');
 window.Meticulous?.context.recordUserEmail('user@example.com');
 window.Meticulous?.context.recordFeatureFlag('myFlag', true);
 window.Meticulous?.context.recordCustomContext('userRole', 'admin');
+
+const override = window.Meticulous?.context?.getFlagOverride?.('myFlag');
+if (override?.overridden) {
+  // Prefer override.value in your resolver, then record that same value
+}
 \`\`\`
 
 ## Full API Reference

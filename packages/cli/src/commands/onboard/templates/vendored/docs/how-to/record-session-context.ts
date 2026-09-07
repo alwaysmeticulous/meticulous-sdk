@@ -26,7 +26,7 @@ If your project uses TypeScript, install
 interface as shown in the [TypeScript Types page](${TYPESCRIPT_TYPES_URL}); that gives
 every call below full type safety. You only need to do this once per project — the same
 augmentation covers \`recordUserId\`, \`recordUserEmail\`, \`recordFeatureFlag\`,
-\`recordCustomContext\`, and the rest of \`window.Meticulous\`.
+\`getFlagOverride\`, \`recordCustomContext\`, and the rest of \`window.Meticulous\`.
 
 ## Adding context to user sessions
 
@@ -63,8 +63,29 @@ window.Meticulous?.context.recordFeatureFlag('bigUiRefactor', true);
 window.Meticulous?.context.recordFeatureFlag('checkoutFlowStyle', 'v3');
 \`\`\`
 
-We recommend looping over the flags your app already evaluates rather than maintaining a
-hand-curated list — that way new flags are picked up automatically:
+Record the value your app **actually used** after any override. The usual place is the
+same helper that resolves the flag:
+
+\`\`\`js
+const resolveFlag = (flagKey) => {
+  const override = window.Meticulous?.context?.getFlagOverride?.(flagKey);
+  const value = override?.overridden
+    ? Boolean(override.value)
+    : flagsFromYourApp[flagKey] || false;
+  window.Meticulous?.context?.recordFeatureFlag?.(flagKey, value);
+  return value;
+};
+\`\`\`
+
+That keeps recording and overriding on one path. \`recordFeatureFlag\` only stores a value;
+it does not change what a replay sees. \`getFlagOverride\` is what lets Meticulous force a
+flag so a replay can exercise code that was off when the session was recorded. How you
+consume \`override.value\` depends on whether the helper is an on/off gate, a value-read,
+or an equality-check — see
+[Testing Feature Flags with Meticulous](${TESTING_FEATURE_FLAGS}).
+
+If you only want to record (and are not wrapping a resolver), you can still loop over the
+flags your app already evaluates:
 
 \`\`\`js
 // Use whichever flag map your app already has — an SDK snapshot
@@ -76,6 +97,10 @@ for (const [name, value] of Object.entries(flags)) {
 }
 \`\`\`
 
+Do **not** rely on that snapshot if you also call \`getFlagOverride\` in the resolver: the
+SDK will still report the recorded / stubbed value, not the forced one. Record inside the
+resolver instead.
+
 If your app uses **both** a client-side SDK *and* server-evaluated flags (whose resolved
 values reach the frontend via something like a \`features\` field on \`/me\`), it's worth
 looping over both — they each affect what the UI renders. Recording the same flag twice
@@ -85,9 +110,6 @@ A reasonable place to call this is wherever flags first become available (the SD
 initial-fetch callback, or the effect that resolves your flags API response). If your app
 re-evaluates flags after login or identity changes, recording there as well keeps the
 context accurate for sessions that started logged out.
-
-To learn how Meticulous *tests* the flags you record, see
-[Testing Feature Flags with Meticulous](${TESTING_FEATURE_FLAGS}).
 
 ### Recording custom context
 

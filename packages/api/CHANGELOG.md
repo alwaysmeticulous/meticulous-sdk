@@ -1,5 +1,15 @@
 # @alwaysmeticulous/api
 
+## 2.337.0
+
+### Minor Changes
+
+- [#13115](https://github.com/alwaysmeticulous/meticulous/pull/13115) [`77ad454`](https://github.com/alwaysmeticulous/meticulous/commit/77ad4548a97176b57bdd5a771a7cc32c2f6316a2) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add optional `flagVariant` on `TestCaseReplayOptions` so a test case can force a feature-flag map via `getFlagOverride` without applying that map to the rest of the run.
+
+### Patch Changes
+
+- [#12722](https://github.com/alwaysmeticulous/meticulous/pull/12722) [`75ff7b6`](https://github.com/alwaysmeticulous/meticulous/commit/75ff7b64134dd9e568ef99a73f7efa2dd285fde8) Thanks [@Que3216](https://github.com/Que3216)! - Export `ScreenshotMomentIdentifier` and `ScreenshotIdentifierVersionOrMetadataKeys` types for identifying screenshot moments without variant/metadata keys.
+
 ## 2.336.0
 
 ### Minor Changes

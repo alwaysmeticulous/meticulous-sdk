@@ -14,6 +14,8 @@ export {
   ScreenshotDiffResultDifference,
   ScreenshotDiffResultNoDifference,
   ScreenshotIdentifier,
+  ScreenshotIdentifierVersionOrMetadataKeys,
+  ScreenshotMomentIdentifier,
   ScreenshotVariant,
   SingleTryScreenshotDiffResult,
   ScreenshotDiffRetryResult,

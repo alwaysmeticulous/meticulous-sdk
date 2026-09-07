@@ -1,5 +1,24 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.337.0
+
+### Minor Changes
+
+- [#13088](https://github.com/alwaysmeticulous/meticulous/pull/13088) [`95e5fef`](https://github.com/alwaysmeticulous/meticulous/commit/95e5fefb57cb3e3a4aa7ae335c0b7aa4eea4b7a6) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `window.Meticulous.context.getFlagOverride(label)`, which lets an application ask Meticulous whether the current replay should force a particular value for one of its feature flags. It returns `{ overridden: false }` unless Meticulous has an override for that flag, and always does so for real users being recorded, so it is safe to call from production code.
+
+  This is the read counterpart to `recordFeatureFlag`: `recordFeatureFlag` stores a value the application has already evaluated and does not affect replay, whereas `getFlagOverride` returns a value for the application to use in place of its own evaluation. Applications call it at the top of whatever resolves flags for them — a Statsig `checkGate` wrapper, a LaunchDarkly `variation` wrapper, or a bespoke resolver — so that a replay can exercise code behind a flag that was off, or did not exist, when the session was recorded.
+
+  No replay behaviour changes until an override is configured for a replay: with no overrides every flag is reported as not overridden and applications evaluate their flags exactly as before.
+
+- [#12974](https://github.com/alwaysmeticulous/meticulous/pull/12974) [`7060e76`](https://github.com/alwaysmeticulous/meticulous/commit/7060e76260446b9820718495e196908a4bbc0672) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `METICULOUS_INLINE_IMAGES` to `MeticulousWindowConfig`. When set, the recorder passes rrweb's `inlineImages` option so image pixels are embedded into the recording; used by Agent Review recordings, whose ephemeral app hosts are gone by playback time.
+
+- [#13175](https://github.com/alwaysmeticulous/meticulous/pull/13175) [`d1680e8`](https://github.com/alwaysmeticulous/meticulous/commit/d1680e82c12012605250bd8ba6a7e171200f490f) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `METICULOUS_STYLESHEET_RESYNC` to `MeticulousWindowConfig`. When set, the recorder re-captures stylesheet contents that rrweb's own capture missed so CSS-in-JS apps replay styled; used by Agent Review recordings, whose videos otherwise render almost bare.
+
+### Patch Changes
+
+- Updated dependencies [[`75ff7b6`](https://github.com/alwaysmeticulous/meticulous/commit/75ff7b64134dd9e568ef99a73f7efa2dd285fde8), [`77ad454`](https://github.com/alwaysmeticulous/meticulous/commit/77ad4548a97176b57bdd5a771a7cc32c2f6316a2)]:
+  - @alwaysmeticulous/api@2.337.0
+
 ## 2.336.0
 
 ### Patch Changes

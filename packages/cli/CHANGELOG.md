@@ -1,5 +1,24 @@
 # @alwaysmeticulous/cli
 
+## 2.337.0
+
+### Patch Changes
+
+- [#13285](https://github.com/alwaysmeticulous/meticulous/pull/13285) [`3905911`](https://github.com/alwaysmeticulous/meticulous/commit/3905911d54a2b9f379603802759c28bff7875e81) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `similarGroupId` filter and field to agent test-run-diffs so a shared Similar-group gallery link can fetch the full set of related diffs.
+
+- Updated dependencies [[`75ff7b6`](https://github.com/alwaysmeticulous/meticulous/commit/75ff7b64134dd9e568ef99a73f7efa2dd285fde8), [`3891080`](https://github.com/alwaysmeticulous/meticulous/commit/38910800eb3a4c2a31a493cc3a3c587afb461350), [`29af649`](https://github.com/alwaysmeticulous/meticulous/commit/29af6499880586f90df5b364de5bbb2d7df05696), [`77ad454`](https://github.com/alwaysmeticulous/meticulous/commit/77ad4548a97176b57bdd5a771a7cc32c2f6316a2), [`95e5fef`](https://github.com/alwaysmeticulous/meticulous/commit/95e5fefb57cb3e3a4aa7ae335c0b7aa4eea4b7a6), [`7060e76`](https://github.com/alwaysmeticulous/meticulous/commit/7060e76260446b9820718495e196908a4bbc0672), [`3905911`](https://github.com/alwaysmeticulous/meticulous/commit/3905911d54a2b9f379603802759c28bff7875e81), [`d1680e8`](https://github.com/alwaysmeticulous/meticulous/commit/d1680e82c12012605250bd8ba6a7e171200f490f)]:
+  - @alwaysmeticulous/api@2.337.0
+  - @alwaysmeticulous/client@2.337.0
+  - @alwaysmeticulous/sdk-bundles-api@2.337.0
+  - @alwaysmeticulous/common@2.336.0
+  - @alwaysmeticulous/downloading-helpers@2.337.0
+  - @alwaysmeticulous/record@2.337.0
+  - @alwaysmeticulous/remote-replay-launcher@2.337.0
+  - @alwaysmeticulous/session-filters@2.337.0
+  - @alwaysmeticulous/debug-workspace@2.337.0
+  - @alwaysmeticulous/replay-debugger-ui@2.333.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.337.0
+
 ## 2.336.0
 
 ### Minor Changes

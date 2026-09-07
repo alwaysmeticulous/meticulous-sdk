@@ -269,6 +269,7 @@ export {
   AgenticRunStepKind,
   AgenticRunStepOutcome,
   AgenticRunMetadata,
+  AgenticRunModelUsage,
   AgenticRunTraceEventKind,
   AgenticRunTraceEvent,
   AgenticRunTraceUsage,

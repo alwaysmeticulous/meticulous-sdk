@@ -35,3 +35,6 @@ export const GITHUB_ACTION_UPLOAD_ASSETS_NAME =
 
 export const GITHUB_ACTION_UPLOAD_CONTAINER_NAME =
   "alwaysmeticulous/report-diffs-action/upload-container";
+
+export const GITHUB_ACTION_ENSURE_BASE_NAME =
+  "alwaysmeticulous/report-diffs-action/ensure-base";

@@ -1,5 +1,11 @@
 # @alwaysmeticulous/recorder-plugin
 
+## 2.337.0
+
+### Minor Changes
+
+- [#13210](https://github.com/alwaysmeticulous/meticulous/pull/13210) [`47f9ccf`](https://github.com/alwaysmeticulous/meticulous/commit/47f9ccf74c9bb847b460e5c62085123932fc7e8f) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add a `@alwaysmeticulous/recorder-plugin/css-sourcemap` Vite plugin that emits CSS source maps, so stylesheet coverage can be attributed back to the stylesheets in the repository.
+
 ## 2.333.1
 
 ### Patch Changes

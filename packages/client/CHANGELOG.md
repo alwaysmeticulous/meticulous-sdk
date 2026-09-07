@@ -1,5 +1,19 @@
 # @alwaysmeticulous/client
 
+## 2.337.0
+
+### Patch Changes
+
+- [#13213](https://github.com/alwaysmeticulous/meticulous/pull/13213) [`3891080`](https://github.com/alwaysmeticulous/meticulous/commit/38910800eb3a4c2a31a493cc3a3c587afb461350) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional `hasTestFlows` on `completeAgenticRunResult`.
+
+- [#13148](https://github.com/alwaysmeticulous/meticulous/pull/13148) [`29af649`](https://github.com/alwaysmeticulous/meticulous/commit/29af6499880586f90df5b364de5bbb2d7df05696) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Export `AgenticRunModelUsage` and persist optional per-model token buckets on `AgenticRunTraceUsage`.
+
+- [#13285](https://github.com/alwaysmeticulous/meticulous/pull/13285) [`3905911`](https://github.com/alwaysmeticulous/meticulous/commit/3905911d54a2b9f379603802759c28bff7875e81) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `similarGroupId` filter and field to agent test-run-diffs so a shared Similar-group gallery link can fetch the full set of related diffs.
+
+- Updated dependencies [[`75ff7b6`](https://github.com/alwaysmeticulous/meticulous/commit/75ff7b64134dd9e568ef99a73f7efa2dd285fde8), [`77ad454`](https://github.com/alwaysmeticulous/meticulous/commit/77ad4548a97176b57bdd5a771a7cc32c2f6316a2)]:
+  - @alwaysmeticulous/api@2.337.0
+  - @alwaysmeticulous/common@2.336.0
+
 ## 2.336.0
 
 ### Minor Changes

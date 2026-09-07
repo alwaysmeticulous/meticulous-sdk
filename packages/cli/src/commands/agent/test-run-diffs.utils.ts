@@ -7,6 +7,8 @@ import type {
 export interface DiffsSummaryColumns {
   /** Add the domDiffIds column. */
   includeDomDiffIds: boolean;
+  /** Add the similarGroupId column. */
+  includeSimilarGroupId: boolean;
   /** Add the base/head replay ID columns. */
   includeReplayIds: boolean;
   /** Add the mismatchFraction column. */
@@ -41,6 +43,7 @@ export const buildDiffsSummaryHeader = (
   const fields = ["replayDiffId", "screenshotName"];
   if (columns.includeMismatchFraction) fields.push("mismatchFraction");
   if (columns.includeDomDiffIds) fields.push("domDiffIds");
+  if (columns.includeSimilarGroupId) fields.push("similarGroupId");
   if (columns.includeReviews) fields.push("decision", "openComments");
   if (columns.includeReplayIds) fields.push("baseReplayId", "headReplayId");
   return fields;
@@ -55,6 +58,7 @@ export const formatDiffRow = (
   if (columns.includeMismatchFraction)
     fields.push(fmtMismatch(diff.mismatchFraction));
   if (columns.includeDomDiffIds) fields.push(diff.domDiffIds ?? "");
+  if (columns.includeSimilarGroupId) fields.push(diff.similarGroupId ?? "");
   if (columns.includeReviews)
     fields.push(diff.decision ?? "", diff.openComments ?? 0);
   if (columns.includeReplayIds)

@@ -56,6 +56,7 @@ export {
 export { ScreenshotDiffData } from "./replay-orchestrator/bundle-to-sdk/execute-replay";
 export {
   MeticulousPublicApi,
+  FeatureFlagOverride,
   MeticulousPressureObserver,
   MeticulousPressureObserverConstructor,
   MeticulousPressureRecord,

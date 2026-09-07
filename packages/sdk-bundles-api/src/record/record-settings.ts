@@ -6,7 +6,15 @@ export interface MeticulousWindowConfig {
   METICULOUS_RECORDING_TOKEN?: string;
   METICULOUS_UPLOAD_INTERVAL_MS?: number;
   METICULOUS_APP_COMMIT_HASH?: string;
+  METICULOUS_INLINE_IMAGES?: boolean;
   METICULOUS_SNAPSHOT_LINKED_STYLESHEETS?: boolean;
+
+  /**
+   * Re-capture stylesheet contents that rrweb's own capture missed, so
+   * CSS-in-JS apps replay styled. Adds the recovered CSS to the payload, so
+   * it is off unless a recording asks for it.
+   */
+  METICULOUS_STYLESHEET_RESYNC?: boolean;
   METICULOUS_FORCE_RECORDING?: boolean;
   METICULOUS_IS_PRODUCTION_ENVIRONMENT?: boolean;
   METICULOUS_NETWORK_RESPONSE_SANITIZERS?: NetworkResponseSanitizer[];

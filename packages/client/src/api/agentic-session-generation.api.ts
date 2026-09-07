@@ -392,6 +392,17 @@ export interface AgentReviewMemoryCandidate {
 }
 
 /** Coarse metadata about how the agentic run itself executed. */
+export interface AgenticRunModelUsage {
+  /** Provider/model identifier reported by the runtime for this billed usage. */
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
+  /** Provider-reported or locally estimated cost for this model, when known. */
+  costUsd?: number;
+}
+
 export interface AgenticRunMetadata {
   /** ISO timestamp the worker started the run. */
   startedAt?: string;
@@ -431,6 +442,8 @@ export interface AgenticRunTraceUsage {
   cacheReadInputTokens: number;
   cacheCreationInputTokens: number;
   totalCostUsd: number;
+  /** Per-model token buckets when the runtime reported more than one model. */
+  models?: AgenticRunModelUsage[];
 }
 
 export interface AgenticRunTrace {
@@ -565,6 +578,12 @@ export interface CompleteAgenticRunResultParams extends ProjectIdentifier {
   sessionIds: string[];
   /** Whether the run intentionally completed without browser-exercisable cases. */
   notTestable?: boolean;
+  /**
+   * Whether the run reported any case at all. Only used to tag the run's
+   * telemetry, so the coverage numbers measured asynchronously can be averaged
+   * over the runs that produced test flows.
+   */
+  hasTestFlows?: boolean;
 }
 
 /**

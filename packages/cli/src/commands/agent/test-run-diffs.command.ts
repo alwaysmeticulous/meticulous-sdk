@@ -36,6 +36,8 @@ interface Options {
   includeReviews: boolean;
   includeReviewDecisions: boolean;
   includeDomDiffIds: boolean;
+  includeSimilarGroupId: boolean;
+  similarGroupId: string | undefined;
   includeAllDiffs: boolean;
   onlyUnreviewed: boolean;
   onlyRejected: boolean;
@@ -62,6 +64,8 @@ const handler = async ({
   includeReviews,
   includeReviewDecisions,
   includeDomDiffIds,
+  includeSimilarGroupId,
+  similarGroupId,
   includeAllDiffs,
   onlyUnreviewed,
   onlyRejected,
@@ -85,6 +89,8 @@ const handler = async ({
         [includeReplayIds, "--includeReplayIds"],
         [includeMismatchFraction, "--includeMismatchFraction"],
         [includeDomDiffIds, "--includeDomDiffIds"],
+        [includeSimilarGroupId, "--includeSimilarGroupId"],
+        [similarGroupId != null && similarGroupId !== "", "--similarGroupId"],
         [includeAllDiffs, "--includeAllDiffs"],
         [orderByReplayDiffs, "--orderByReplayDiffs"],
         [includeReviews, "--includeReviews"],
@@ -171,8 +177,12 @@ const handler = async ({
 
   const includeReviewsResolved = includeReviews || includeReviewDecisions;
 
+  const includeSimilarGroupIdResolved =
+    includeSimilarGroupId || similarGroupId != null;
+
   const columns = {
     includeDomDiffIds,
+    includeSimilarGroupId: includeSimilarGroupIdResolved,
     includeReplayIds,
     includeMismatchFraction,
     includeReviews: includeReviewsResolved,
@@ -233,6 +243,10 @@ const handler = async ({
     includeReplayIds,
     includeMismatchFraction,
     includeDomDiffIds,
+    includeSimilarGroupId: includeSimilarGroupIdResolved,
+    ...(similarGroupId != null && similarGroupId !== ""
+      ? { similarGroupId }
+      : {}),
     includeAllDiffs,
     orderByReplayDiffs,
     includeReviews: includeReviewsResolved,
@@ -395,6 +409,17 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
       boolean: true,
       description:
         "Add a domDiffIds column with a comma-separated list of diff IDs, where each ID represents a distinct structural DOM change. This is used to determine the selected set and its priority order.",
+      default: false,
+    },
+    similarGroupId: {
+      string: true,
+      description:
+        "Output only screenshot diffs in the Similar group with this id (the group query param on a shared gallery link). Always outputs every matching difference — never subject to the representative-subset cap.",
+    },
+    includeSimilarGroupId: {
+      boolean: true,
+      description:
+        "Add a similarGroupId column with the Similar-group id for this screenshot (the same id as the group query param on a shared gallery link). Implied when --similarGroupId is set.",
       default: false,
     },
     orderByReplayDiffs: {
