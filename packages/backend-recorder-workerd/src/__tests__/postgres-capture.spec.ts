@@ -1,6 +1,7 @@
 import postgres from "postgres";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CaptureBuffer } from "../capture-buffer";
+import { deserializeCapturedResult } from "../captured-result-codec";
 import { type RequestCaptureContext, requestCaptureContext } from "../context";
 import type { CaptureEvent, PostgresQueryEvent } from "../protocol";
 import { withMeticulousPostgres } from "../postgres/with-meticulous-postgres";
@@ -132,10 +133,9 @@ describe("withMeticulousPostgres", () => {
     });
     // The five non-enumerable metadata fields survive; `state` (a live connection handle) and
     // each column's `parser` are dropped on purpose.
-    const result = JSON.parse(event.result?.body ?? "null") as Record<
-      string,
-      unknown
-    >;
+    const result = deserializeCapturedResult(
+      event.result?.body ?? "null",
+    ) as Record<string, unknown>;
     expect(result).toMatchObject({
       rows: [{ id: 42 }],
       count: 1,

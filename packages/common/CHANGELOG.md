@@ -1,5 +1,11 @@
 # @alwaysmeticulous/common
 
+## 2.338.0
+
+### Minor Changes
+
+- [#13380](https://github.com/alwaysmeticulous/meticulous/pull/13380) [`70c1858`](https://github.com/alwaysmeticulous/meticulous/commit/70c1858df2915bd3f19bb17b3976ac91b06aff85) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Support puppeteer-core 25's Chrome-for-Testing revision layout when resolving which Chrome build to install, alongside the existing 24.x layout. `ensureBrowser()` now throws instead of silently installing the latest stable Chrome when no pinned revision can be resolved. `record()` now awaits `executablePath()`, which puppeteer-core 25 returns as a `Promise`.
+
 ## 2.336.0
 
 ### Patch Changes

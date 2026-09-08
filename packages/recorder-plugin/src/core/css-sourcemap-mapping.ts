@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { decode, encode } from "@jridgewell/sourcemap-codec";
+import { locateImportRules } from "./css-sourcemap-import-locate";
 import type { PlacedStylesheet, RawSourceMap } from "./css-sourcemap-types";
 
 /**
@@ -49,6 +50,7 @@ export const buildConcatenatedSourcemap = (
     const { map } = stylesheet;
     const decoded = map == null ? null : decode(map.mappings);
 
+    const mappedLines = new Set<number>();
     if (map != null && decoded?.some((segments) => segments.length > 0)) {
       const remapped = map.sources.map((source, index) =>
         sourceIndex(
@@ -72,18 +74,48 @@ export const buildConcatenatedSourcemap = (
               segment[2],
               segment[3],
             ]);
+            mappedLines.add(index);
           }
         });
-      continue;
     }
 
-    // Without a preprocessor map the compiled CSS is line-for-line with its
-    // source, except where a plugin generated CSS the source never spelled out
-    // (Tailwind's utilities, for instance). Clamping keeps those attributed to
-    // the stylesheet that produced them instead of pointing past its end.
+    // Named imports still sit in the compiled CSS after Lightning reformats
+    // them. Locate their selectors and attribute those spans before the
+    // entry-file fill claims the rest as utilities.
+    const generatedBody = stylesheet.code
+      .split("\n")
+      .slice(skippedLines, skippedLines + span)
+      .join("\n");
+    const entryFile = id.split("?")[0] ?? id;
+    for (const hit of locateImportRules(
+      generatedBody,
+      locatableImports(id, entryFile, map),
+    )) {
+      const importIndex = sourceIndex(hit.absolutePath, hit.content);
+      for (let genLine = hit.startLine; genLine <= hit.endLine; genLine++) {
+        if (mappedLines.has(genLine)) {
+          continue;
+        }
+        addSegment(line + genLine, [
+          shift(genLine, 0),
+          importIndex,
+          hit.originalLine,
+          0,
+        ]);
+        mappedLines.add(genLine);
+      }
+    }
+
+    // Preprocessor maps can name every import and still map only a handful of
+    // generated positions. Fill the rest line-for-line to this stylesheet so
+    // those names do not leave the bulk of the asset unattributed. Clamping
+    // keeps generated utilities on the last source line instead of past EOF.
     const index = sourceIndex(id, stylesheet.code);
     const lastLine = Math.max(0, countLines(id) - 1);
     for (let i = 0; i < span; i++) {
+      if (mappedLines.has(i)) {
+        continue;
+      }
       addSegment(line + i, [
         shift(i, 0),
         index,
@@ -127,6 +159,53 @@ const isRawSourceMap = (value: unknown): value is RawSourceMap =>
   typeof (value as RawSourceMap).mappings === "string" &&
   Array.isArray((value as RawSourceMap).sources);
 
+const locatableImports = (
+  id: string,
+  entryFile: string,
+  map: RawSourceMap | null,
+) => {
+  if (map?.sourcesContent == null) {
+    return [];
+  }
+  const imports = [];
+  for (const [index, source] of map.sources.entries()) {
+    const content = map.sourcesContent[index];
+    if (source == null || content == null || content === "") {
+      continue;
+    }
+    const absolutePath = resolveSource(id, source);
+    if (!isLocatableImport(absolutePath, entryFile, source)) {
+      continue;
+    }
+    // Coverage is matched against the repo file. Tailwind's sourcesContent
+    // can be a rewritten copy with different line numbers.
+    imports.push({
+      absolutePath,
+      content: readExistingFile(absolutePath) ?? content,
+    });
+  }
+  return imports;
+};
+
+const isLocatableImport = (
+  absolutePath: string,
+  entryFile: string,
+  source: string,
+): boolean => {
+  if (
+    source.includes("?transform-only") ||
+    absolutePath.includes("?transform-only")
+  ) {
+    return false;
+  }
+  const file = absolutePath.split("?")[0] ?? absolutePath;
+  if (file === (entryFile.split("?")[0] ?? entryFile)) {
+    return false;
+  }
+  // Tailwind's own index.css is directives, not the generated utilities.
+  return !/(?:^|[/\\])node_modules[/\\]tailwindcss[/\\]/.test(file);
+};
+
 const resolveSource = (id: string, source: string): string => {
   if (source.startsWith("file://")) {
     try {
@@ -149,6 +228,14 @@ const resolveSource = (id: string, source: string): string => {
  * same form.
  */
 const toPosix = (value: string): string => value.split(path.sep).join("/");
+
+const readExistingFile = (file: string): string | null => {
+  try {
+    return fs.readFileSync(file.split("?")[0] ?? file, "utf8");
+  } catch {
+    return null;
+  }
+};
 
 const countLines = (file: string): number => {
   try {

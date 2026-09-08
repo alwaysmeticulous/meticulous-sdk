@@ -1,5 +1,26 @@
 # @alwaysmeticulous/cli
 
+## 2.338.0
+
+### Patch Changes
+
+- [#13380](https://github.com/alwaysmeticulous/meticulous/pull/13380) [`70c1858`](https://github.com/alwaysmeticulous/meticulous/commit/70c1858df2915bd3f19bb17b3976ac91b06aff85) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Load `puppeteer-core` via a runtime `import()` in the interactive replay debugger instead of a top-level import, since `puppeteer-core` >=25 publishes ESM-only. A top-level import would throw `ERR_REQUIRE_ESM` while command modules load on Node versions without unflagged `require(esm)` support, breaking the entire CLI rather than just that command.
+
+- Updated dependencies [[`70c1858`](https://github.com/alwaysmeticulous/meticulous/commit/70c1858df2915bd3f19bb17b3976ac91b06aff85), [`cfbf0fb`](https://github.com/alwaysmeticulous/meticulous/commit/cfbf0fb8b7d3f4b57ebb3eded1d804c5cdcf0fa0)]:
+  - @alwaysmeticulous/common@2.338.0
+  - @alwaysmeticulous/record@2.338.0
+  - @alwaysmeticulous/api@2.338.0
+  - @alwaysmeticulous/client@2.338.0
+  - @alwaysmeticulous/debug-workspace@2.338.0
+  - @alwaysmeticulous/downloading-helpers@2.338.0
+  - @alwaysmeticulous/remote-replay-launcher@2.338.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.338.0
+  - @alwaysmeticulous/sentry@2.338.0
+  - @alwaysmeticulous/tunnels-client@2.338.0
+  - @alwaysmeticulous/sdk-bundles-api@2.338.0
+  - @alwaysmeticulous/session-filters@2.338.0
+  - @alwaysmeticulous/replay-debugger-ui@2.333.1
+
 ## 2.337.1
 
 ### Patch Changes

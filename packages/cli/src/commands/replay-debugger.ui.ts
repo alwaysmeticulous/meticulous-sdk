@@ -6,7 +6,6 @@ import type {
   BeforeUserEventResult,
 } from "@alwaysmeticulous/sdk-bundles-api";
 import type { Browser, Page } from "puppeteer-core";
-import { launch } from "puppeteer-core";
 
 export interface ReplayDebuggerState {
   events: ReplayableEvent[];
@@ -109,6 +108,10 @@ export const openStepThroughDebuggerUI = async ({
   const executablePath = await ensureBrowser();
   const uiServer = await startUIServer();
 
+  // puppeteer-core >=25 publishes ESM-only, so a top-level import would throw
+  // ERR_REQUIRE_ESM while command modules load on Node <22.12 (the CLI's
+  // declared floor is 18) and take down the whole CLI, not just this command.
+  const { launch } = await import("puppeteer-core");
   const browser: Browser = await launch({
     executablePath,
     args: [`--window-size=600,1000`],

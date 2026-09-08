@@ -1,5 +1,13 @@
 # @alwaysmeticulous/recorder-plugin
 
+## 2.338.0
+
+### Patch Changes
+
+- [#13427](https://github.com/alwaysmeticulous/meticulous/pull/13427) [`baea888`](https://github.com/alwaysmeticulous/meticulous/commit/baea8889d49b6aa413dcbf6e2984ca3a4eafd64d) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Fill CSS asset lines that a sparse preprocessor source map left unmapped, so Tailwind's import-graph map no longer drops coverage for the rest of the stylesheet.
+
+- [#13431](https://github.com/alwaysmeticulous/meticulous/pull/13431) [`26c0b90`](https://github.com/alwaysmeticulous/meticulous/commit/26c0b904338859d62aa95b7f05540db0b2726150) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Locate Tailwind-named `@import`s inside the compiled CSS by their selectors, so imported stylesheets get file- and line-level coverage instead of clamping to the entry file.
+
 ## 2.337.1
 
 ### Patch Changes

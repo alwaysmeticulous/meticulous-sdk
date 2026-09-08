@@ -100,6 +100,94 @@ describe("buildConcatenatedSourcemap", () => {
         { column: 0, source: "src/next.css", line: 1 },
       ]);
     });
+
+    it("fills generated lines a sparse preprocessor map left blank", () => {
+      // Tailwind lists every @import in `sources` but only maps a few
+      // generated positions. The rest of the compiled CSS would otherwise
+      // have no coverage attribution.
+      const theme = placedStylesheet({
+        id: "/repo/src/styles.css",
+        code: ".entry{}\n.a{}\n.b{}\n.c{}",
+        map: {
+          version: 3,
+          sources: ["imported.css"],
+          mappings: encode([[[0, 0, 0, 0]], [], [], []]),
+        },
+        line: 0,
+        span: 4,
+      });
+
+      const lines = segmentsByLine(
+        buildConcatenatedSourcemap([theme], "app.css", "/repo"),
+      );
+
+      expect(lines).toEqual([
+        [{ column: 0, source: "src/imported.css", line: 0 }],
+        [{ column: 0, source: "src/styles.css", line: 1 }],
+        [{ column: 0, source: "src/styles.css", line: 2 }],
+        [{ column: 0, source: "src/styles.css", line: 3 }],
+      ]);
+    });
+
+    it("attributes named imports by locating their selectors in the compiled CSS", () => {
+      // Tailwind names every @import and ships sourcesContent, but leaves
+      // almost every generated line unmapped. The imported rules are still
+      // in the compiled CSS; utilities are not and stay on the entry.
+      const imported = ".card-title {\n  color: navy;\n}\n";
+      const theme = placedStylesheet({
+        id: "/repo/src/styles.css",
+        code: ".utility{display:flex}\n.card-title {\n  color: navy;\n}\n",
+        map: {
+          version: 3,
+          sources: ["styles.css", "cards.css"],
+          sourcesContent: ['@import "./cards.css";\n', imported],
+          mappings: encode([[[0, 0, 0, 0]], [], [], []]),
+        },
+        line: 0,
+        span: 4,
+      });
+
+      const lines = segmentsByLine(
+        buildConcatenatedSourcemap([theme], "app.css", "/repo"),
+      );
+
+      expect(lines).toEqual([
+        [{ column: 0, source: "src/styles.css", line: 0 }],
+        [{ column: 0, source: "src/cards.css", line: 0 }],
+        [{ column: 0, source: "src/cards.css", line: 0 }],
+        [{ column: 0, source: "src/cards.css", line: 0 }],
+      ]);
+    });
+
+    it("uses the repo file's line numbers when sourcesContent was rewritten", () => {
+      const dir = realpathSync(
+        mkdtempSync(join(tmpdir(), "css-sourcemap-repo-")),
+      );
+      const cards = join(dir, "cards.css");
+      writeFileSync(
+        cards,
+        "/* kept on disk only */\n.card-title {\n  color: navy;\n}\n",
+      );
+      const theme = placedStylesheet({
+        id: join(dir, "styles.css"),
+        code: ".utility{display:flex}\n.card-title {\n  color: navy;\n}\n",
+        map: {
+          version: 3,
+          sources: ["cards.css"],
+          sourcesContent: [".card-title {\n  color: navy;\n}\n"],
+          mappings: encode([[], [], [], []]),
+        },
+        line: 0,
+        span: 4,
+      });
+
+      const lines = segmentsByLine(
+        buildConcatenatedSourcemap([theme], "app.css", dir),
+      );
+      rmSync(dir, { recursive: true, force: true });
+
+      expect(lines[1]).toEqual([{ column: 0, source: "cards.css", line: 1 }]);
+    });
   });
 
   describe("when a stylesheet has no preprocessor map", () => {

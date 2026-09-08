@@ -112,21 +112,6 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
    * If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior replay, instead of against a URL.
    */
   simulationIdForAssets?: string | undefined;
-
-  /**
-   * When set, this test case's replay forces `overrides` via `getFlagOverride`.
-   * Absent on an ordinary unforced replay. The claim registry treats a
-   * `flagVariant` case as having its own target, so do not also set `appUrl`
-   * to the run URL — `getReplayTargetForTestCase` throws if both the case
-   * and the run supply an app URL.
-   */
-  flagVariant?: {
-    /** Stable within a run; `"pr-flags-on"` for the PR-detected map. */
-    key: string;
-    overrides: Record<string, string | boolean>;
-    /** `base` cases are screenshot sources and never become the session's result. */
-    side: "base" | "head";
-  };
 }
 
 /**

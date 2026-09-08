@@ -1,3 +1,4 @@
+import { serializeCapturedResult } from "../captured-result-codec";
 import { serializeCapturedError } from "../error-capture";
 
 /**
@@ -165,7 +166,9 @@ const serializeOneResult = (res: unknown): SerializedPostgresJsResult => {
 
 /**
  * Serializes a postgres.js result (or the array form a multi-statement / `simple` query resolves
- * to) to a JSON string for storage as a span attribute.
+ * to) to a JSON string for storage as a span attribute. Row values go through the codec rather
+ * than plain JSON, because postgres.js returns a `Date` for a `timestamptz` column and a
+ * `Uint8Array` for `bytea`.
  */
 export const serializePostgresJsResult = (result: unknown): string => {
   // A Result IS an Array, so an array-of-Results is only distinguishable by its elements. The
@@ -179,7 +182,7 @@ export const serializePostgresJsResult = (result: unknown): string => {
   const serialized = isMultiple
     ? (result as unknown[]).map(serializeOneResult)
     : serializeOneResult(result);
-  return JSON.stringify(serialized);
+  return serializeCapturedResult(serialized);
 };
 
 // A `Result` carries `command`/`count` own properties; a plain row object or scalar does not.

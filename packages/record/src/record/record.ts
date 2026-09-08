@@ -71,7 +71,7 @@ export const recordSession = async ({
     debugLogger.log("Puppeteer env:");
     debugLogger.logObject(puppeteerEnv);
 
-    const execPath = (puppeteer as any as PuppeteerNode).executablePath();
+    const execPath = await (puppeteer as any as PuppeteerNode).executablePath();
     debugLogger.log("Puppeteer browser:");
     debugLogger.log(execPath);
   }

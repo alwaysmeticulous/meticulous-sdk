@@ -1,5 +1,11 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.338.0
+
+### Patch Changes
+
+- [#13440](https://github.com/alwaysmeticulous/meticulous/pull/13440) [`01b8dff`](https://github.com/alwaysmeticulous/meticulous/commit/01b8dff89f117444e208667ce8da8aec75347b12) Thanks [@dennysem](https://github.com/dennysem)! - Preserve the JS types a database driver returns when a query result is recorded. Results were serialized with plain `JSON.stringify`, so a `Date` (every timestamp column) came back as a string at replay and app code formatting it threw, while a `BigInt` made the whole operation go uncaptured. Results now carry `Date`, `BigInt`, binary and non-finite numbers through a tagged encoding; recordings made before it still have their timestamps recovered by shape.
+
 ## 2.336.0
 
 ### Patch Changes

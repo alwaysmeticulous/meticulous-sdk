@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.338.0
+
+### Minor Changes
+
+- [#13417](https://github.com/alwaysmeticulous/meticulous/pull/13417) [`cfbf0fb`](https://github.com/alwaysmeticulous/meticulous/commit/cfbf0fb8b7d3f4b57ebb3eded1d804c5cdcf0fa0) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Remove unused `flagVariant` from `TestCaseReplayOptions`. Feature-flag forcing is session metadata on minted `_ff` rows, not a per-case option.
+
 ## 2.337.0
 
 ### Minor Changes

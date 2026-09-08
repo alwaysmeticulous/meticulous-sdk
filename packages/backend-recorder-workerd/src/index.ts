@@ -119,6 +119,10 @@ export {
   serializeCapturedError,
 } from "./error-capture";
 export {
+  deserializeCapturedResult,
+  serializeCapturedResult,
+} from "./captured-result-codec";
+export {
   isSupportedPostgresJsQuery,
   MAX_POSTGRES_JS_RESULT_SIZE,
   POSTGRES_JS_ERROR_ATTR,

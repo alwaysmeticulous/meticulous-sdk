@@ -237,10 +237,12 @@ that is plain CSS, a CSS module, Sass/SCSS, Less, or Tailwind. How precise that
 attribution is within a file depends on the stylesheet. CSS that reaches the
 bundle unchanged maps line for line. Anything a preprocessor rewrote maps
 approximately, because Vite discards preprocessor source maps in production
-builds. Tailwind `@import`s keep line-level maps: the plugin reads the
-transform map `@tailwindcss/vite` already builds (Vite's combiner would
-otherwise drop it). Generated utilities still attribute to the Tailwind entry
-or `tailwindcss/index.css`, not to the `className` that produced them.
+builds. Tailwind `@import`s keep file- and line-level maps for rules the plugin can
+still find in the compiled CSS: it reads the transform map
+`@tailwindcss/vite` already builds (Vite's combiner would otherwise drop it)
+and locates each named import's selectors inside that output. Generated
+utilities the map leaves blank still attribute to the Tailwind entry, not to
+the `className` that produced them.
 
 > [!IMPORTANT]
 > The plugin disables Vite's CSS minification, which is what makes the emitted

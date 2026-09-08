@@ -6,7 +6,6 @@ import {
   install,
   Browser,
   detectBrowserPlatform,
-  resolveBuildId,
   getInstalledBrowsers,
 } from "@puppeteer/browsers";
 import chalk from "chalk";
@@ -14,22 +13,43 @@ import chalk from "chalk";
 /**
  * Loads the puppeteer-core revisions, aka recommended browser versions
  */
+type PuppeteerRevisions = { chrome: string };
+
+// puppeteer-core 24.x only exposes the revisions through a build-specific deep
+// import (lib/cjs vs lib/esm). Those paths no longer exist in >=25, so they are
+// resolved at runtime rather than as import() literals; only the unbundled,
+// published SDK (pinned to 24.x) ever reaches this fallback. Bundlers that
+// include this file see an unresolvable dynamic require here and warn — the
+// webpack configs that bundle @alwaysmeticulous/common ignore that warning.
+const LEGACY_REVISIONS_SPECIFIERS = [
+  "puppeteer-core/lib/cjs/puppeteer/revisions.js",
+  "puppeteer-core/lib/esm/puppeteer/revisions.js",
+];
+
 async function loadPuppeteerRevisions(): Promise<
-  { chrome: string } | undefined
+  PuppeteerRevisions | undefined
 > {
+  // puppeteer-core >=25: a single ESM build at lib/puppeteer/.
   try {
-    const revisions =
-      await import("puppeteer-core/lib/cjs/puppeteer/revisions.js");
-    return revisions.PUPPETEER_REVISIONS;
-  } catch {
-    try {
-      const revisions =
-        await import("puppeteer-core/lib/esm/puppeteer/revisions.js");
+    const revisions = await import("puppeteer-core/lib/puppeteer/revisions.js");
+    if (revisions.PUPPETEER_REVISIONS?.chrome) {
       return revisions.PUPPETEER_REVISIONS;
+    }
+  } catch {
+    // fall through to the 24.x layouts
+  }
+  for (const specifier of LEGACY_REVISIONS_SPECIFIERS) {
+    try {
+      const revisions: { PUPPETEER_REVISIONS?: PuppeteerRevisions } =
+        await import(specifier);
+      if (revisions.PUPPETEER_REVISIONS?.chrome) {
+        return revisions.PUPPETEER_REVISIONS;
+      }
     } catch {
-      return undefined;
+      // try the next layout
     }
   }
+  return undefined;
 }
 
 const INSTALL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -265,8 +285,14 @@ export async function ensureBrowser(
     );
     buildId = expectedVersion;
   } else {
-    console.log(chalk.gray("Falling back to latest stable Chrome version"));
-    buildId = await resolveBuildId(browserType, platform, "stable");
+    throw new Error(
+      "Could not determine which Chrome build to install: puppeteer-core did not expose a " +
+        "recommended revision (checked both its >=25 and legacy <25 layouts). This usually " +
+        "means puppeteer-core's internal layout has changed again, or this Node version " +
+        "can't load its ESM build. Set METICULOUS_CHROME_BUILD_ID to pin a specific " +
+        "Chrome-for-Testing build id, or PUPPETEER_EXECUTABLE_PATH to use an " +
+        "already-installed Chrome.",
+    );
   }
   const baseOptions = {
     browser: browserType,
