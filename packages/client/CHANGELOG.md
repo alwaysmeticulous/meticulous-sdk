@@ -1,5 +1,15 @@
 # @alwaysmeticulous/client
 
+## 2.337.1
+
+### Patch Changes
+
+- [#13343](https://github.com/alwaysmeticulous/meticulous/pull/13343) [`376e029`](https://github.com/alwaysmeticulous/meticulous/commit/376e02973a67a487dd12e6e02c74897016f7b784) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Expose featured Agent Review flow media metadata on run summaries.
+
+- [#13351](https://github.com/alwaysmeticulous/meticulous/pull/13351) [`1320f6a`](https://github.com/alwaysmeticulous/meticulous/commit/1320f6a4a5a3d8c3287a4d8dde66e5d4166fedd9) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Export `AgenticRunMockDataProvenance` and persist optional worker-computed mock data provenance (recorded/modified/generated response counts plus the strict recorded-only recheck verdict) on `AgenticRunResultCase`.
+
+- [#13318](https://github.com/alwaysmeticulous/meticulous/pull/13318) [`1b49d0e`](https://github.com/alwaysmeticulous/meticulous/commit/1b49d0e737ac543546011131973c213b36fa6cdf) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - Retry asset uploads that S3 rejects with a `RequestTimeout`. S3 closes an upload connection it has not read from for 20 seconds and answers HTTP 400 with `<Code>RequestTimeout</Code>`; because 400 was treated as a client error, a single stalled socket — a GC pause, a slow corporate proxy — failed the whole upload instead of being retried. Other 400s remain fatal.
+
 ## 2.337.0
 
 ### Patch Changes

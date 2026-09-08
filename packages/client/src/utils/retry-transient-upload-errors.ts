@@ -14,6 +14,10 @@ export class UploadError extends Error {
 
 const TRANSIENT_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 
+// S3 returns 400 with this code when it read nothing from the socket within
+// a timeout, e.g. because of a struggling CI runner.
+const S3_REQUEST_TIMEOUT_CODE = "<Code>RequestTimeout</Code>";
+
 // Node networking errors that are safe to retry. Upload endpoints (e.g. S3)
 // occasionally reset connections under load; these show up here rather than
 // as HTTP errors. Excludes ECONNREFUSED and ENOTFOUND because those typically
@@ -29,7 +33,13 @@ const TRANSIENT_NETWORK_ERROR_CODES = new Set([
 
 export const isTransientUploadError = (error: unknown): boolean => {
   if (error instanceof UploadError) {
-    return TRANSIENT_STATUS_CODES.has(error.statusCode);
+    if (TRANSIENT_STATUS_CODES.has(error.statusCode)) {
+      return true;
+    }
+    return (
+      error.statusCode === 400 &&
+      error.responseBody.includes(S3_REQUEST_TIMEOUT_CODE)
+    );
   }
   if (error && typeof error === "object" && "code" in error) {
     const code = (error as { code: unknown }).code;

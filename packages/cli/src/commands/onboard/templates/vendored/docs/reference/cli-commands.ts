@@ -72,7 +72,7 @@ meticulous [command]
 | \`agent test-run-diffs\` | List replay diffs for a test run with summary | Agent/programmatic use |
 | \`agent diff-comments\` | Get review comments for a replay-diff screenshot | Agent/programmatic use |
 | \`agent reject-diff\` | Agent-reject a screenshot diff and comment why | Agent/programmatic use |
-| \`agent ignore-diff\` | Agent-ignore a screenshot diff and comment why | Agent/programmatic use |
+| \`agent ignore-diff\` | Agent-ignore a screenshot diff as unrelated to the change and comment why | Agent/programmatic use |
 | \`agent create-diff-comment\` | Start a review comment thread on a screenshot diff | Agent/programmatic use |
 | \`agent reply-to-diff-comment\` | Reply to a review comment thread | Agent/programmatic use |
 | \`agent dom-diff\` | Get the DOM diff for a replay-diff screenshot | Agent/programmatic use |

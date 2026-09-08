@@ -6,11 +6,14 @@ import {
   ONBOARDING_GUIDE_URL,
 } from "src/lib/utils/internal-urls/docs-urls.utils";
 import {
-  GITHUB_ACTION_ENSURE_BASE_NAME,
   GITHUB_ACTION_UPLOAD_ASSETS_NAME,
   GITHUB_ACTION_UPLOAD_CONTAINER_NAME,
   METICULOUS_GITHUB_APP_INSTALL_URL,
 } from "./constants";
+import {
+  workflowEnsureBaseAndCheckout,
+  workflowPreamble,
+} from "./github-actions-workflow";
 import { linkBitbucketInstructions } from "./how-to/link-bitbucket";
 import { linkGitLabInstructions } from "./how-to/link-gitlab";
 
@@ -34,63 +37,8 @@ This ensures assets are loaded from the correct test environment rather than the
 {% /callout_card %}
 `;
 
-const workflowTrigger = `
-# Important: The workflow needs to run both on pushes to your main branch and on
-# pull requests. It needs to run on your main branch because it'll use the results
-# from the base commit of the PR on the main branch to compare against.
-on:
-  push:
-    branches:
-      - main
-  pull_request: {}
-  # Important: We need the workflow to be triggered on workflow_dispatch events,
-  # so that Meticulous can run the workflow on the base commit to compare
-  # against if an existing workflow hasn't run. The meticulous-commit-sha input
-  # lets Meticulous ask for a specific commit (e.g. stacked PRs); without it,
-  # a dispatched run can only build whatever the branch currently points at.
-  workflow_dispatch:
-    inputs:
-      meticulous-commit-sha:
-        description: Commit Meticulous has asked this run to build. Defaults to the branch head.
-        required: false`;
-
 const workflowShared = `
-name: Meticulous
-${workflowTrigger}
-
-# Important: The workflow needs all the permissions below.
-# These permissions are mainly needed to post and update the status check and
-# feedback comment on your PR. Meticulous won't work without them.
-permissions:
-  actions: write
-  contents: read
-  issues: write
-  pull-requests: write
-  statuses: read
-
-env:
-  # Prefer the dispatched commit when set; otherwise the PR head. On pull_request github.sha is the merge commit,
-  # not the PR head SHA that Meticulous looks up.
-  METICULOUS_COMMIT_SHA: \${{ github.event.inputs['meticulous-commit-sha'] || (github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha) }}
-
-jobs:
-  test:
-    name: Meticulous
-    runs-on: ubuntu-latest
-
-    steps:
-      # Same workflow file as the upload step — ensure-base dispatches *this*
-      # workflow on the base branch. Run it before checkout/build so the base
-      # can start while this job continues. Needs no checkout.
-      - name: Ensure base tests exist
-        uses: ${GITHUB_ACTION_ENSURE_BASE_NAME}@v1
-        with:
-          api-token: \${{ secrets.METICULOUS_API_TOKEN }}
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: \${{ env.METICULOUS_COMMIT_SHA }}
+${workflowPreamble}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -177,7 +125,7 @@ Name the secret \`METICULOUS_API_TOKEN\`, and paste in the API token you copied 
 To run Meticulous on CI add a new \`.github/workflows/meticulous.yaml\` file, or, if you already use GitHub Actions, you
 can add it as a job to an existing workflow. The workflow needs to run on both [pushes to your main branch and on pull requests](${BRANCHES_REQUIRED_TO_RUN_ON_URL}).
 
-Put \`ensure-base\` as the first step of the same \`test\` job that uploads — same workflow file, before checkout. It asks GitHub for the PR merge base and, if that commit has no test run yet, dispatches this workflow and returns immediately so the base can build in parallel. The upload step still waits only if the base is missing when it finishes.
+Put \`ensure-base\` as the first step of the same \`test\` job that uploads — same workflow file, before checkout. Pass the same \`ref\` as checkout (\`METICULOUS_COMMIT_SHA\` in this example). It works out the commit the upload step will compare against and, if that commit has no test run yet, dispatches this workflow and returns immediately so the base can build in parallel. The upload step still waits only if the base is missing when it finishes. Omit \`ref\` only if checkout uses \`github.sha\`.
 
 We offer two approaches to running Meticulous tests on CI. We recommend choosing the first approach that works for your app:
 
@@ -345,12 +293,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: ${GITHUB_ACTION_ENSURE_BASE_NAME}@v1
-        with:
-          api-token: \${{ secrets.METICULOUS_API_TOKEN_DASHBOARD }}
-      - uses: actions/checkout@v4
-        with:
-          ref: \${{ env.METICULOUS_COMMIT_SHA }}
+${workflowEnsureBaseAndCheckout(`\${{ secrets.METICULOUS_API_TOKEN_DASHBOARD }}`)}
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -422,6 +365,11 @@ example workflow above:
         run: pnpm build -- --sourcemap
 \`\`\`
 
+\`--sourcemap\` covers JavaScript only — Vite emits no CSS source maps for production builds at all. If you also want
+coverage attributed to your stylesheets, add \`@alwaysmeticulous/recorder-plugin/css-sourcemap\` to your Vite config, as
+described in the
+[Viewing source coverage information in Meticulous guide](${ENABLE_SOURCE_COVERAGE_URL}).
+
 **Create React App** — set \`GENERATE_SOURCEMAP=true\`:
 
 \`\`\`yaml
@@ -486,7 +434,7 @@ source-map publishing to the default branch or switch to \`upload-assets\` /
 ### GitHub Action Configuration Reference
 
 All available inputs are documented in the action definition files:
-- [\`ensure-base\`](https://github.com/alwaysmeticulous/report-diffs-action/blob/main/ensure-base/action.yml) - First step before upload: dispatch a missing base build so it runs in parallel with the PR build
+- [\`ensure-base\`](https://github.com/alwaysmeticulous/report-diffs-action/blob/main/ensure-base/action.yml) - First step before upload: dispatch a missing base build so it runs in parallel with the PR build. Pass the same \`ref\` as checkout.
 - [\`upload-assets\`](https://github.com/alwaysmeticulous/report-diffs-action/blob/main/upload-assets/action.yaml) - Upload static assets for testing (recommended for static sites)
 - [\`upload-container\`](https://github.com/alwaysmeticulous/report-diffs-action/blob/main/upload-container/action.yml) - Upload a container image for testing
 - [\`report-diffs-action\`](https://github.com/alwaysmeticulous/report-diffs-action/blob/main/action.yml) - Run tests in GitHub Actions runner (legacy)
@@ -725,6 +673,11 @@ build:
     - pnpm install --frozen-lockfile
     - pnpm build -- --sourcemap
 \`\`\`
+
+\`--sourcemap\` covers JavaScript only — Vite emits no CSS source maps for production builds at all. If you also want
+coverage attributed to your stylesheets, add \`@alwaysmeticulous/recorder-plugin/css-sourcemap\` to your Vite config, as
+described in the
+[Viewing source coverage information in Meticulous guide](${ENABLE_SOURCE_COVERAGE_URL}).
 
 **Create React App** — set \`GENERATE_SOURCEMAP=true\`:
 

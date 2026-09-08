@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { encode } from "@jridgewell/sourcemap-codec";
 import { originalPositionFor, TraceMap } from "@jridgewell/trace-mapping";
 import { build, type Plugin, type Rollup } from "vite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -850,6 +851,65 @@ describe("CSS sourcemap plugin integration", () => {
       expect(
         JSON.parse(readFileSync(join(assetsDir(), linkedAsset ?? ""), "utf8")),
       ).toMatchObject({ sources: ["src/linked.css"] });
+    });
+  });
+
+  describe("when @tailwindcss/vite inlines imported stylesheets", () => {
+    it("emits the import graph Vite's combined map would drop", async () => {
+      write("src/hero.css", ".hero {\n  color: red;\n}\n");
+      write(
+        "src/styles.css",
+        '@import "tailwindcss";\n.page {\n  color: blue;\n}\n',
+      );
+      write("src/main.ts", 'import "./styles.css";\n');
+
+      const hero = join(dir, "src/hero.css");
+      const strippedHero = hero.startsWith("/") ? hero.slice(1) : hero;
+      const fakeTailwind: Plugin = {
+        name: "@tailwindcss/vite:generate:build",
+        enforce: "pre",
+        transform(code, id) {
+          const file = id.split("?")[0] ?? id;
+          if (!file.endsWith("styles.css")) {
+            return null;
+          }
+          const combined = `${readFileSync(hero, "utf8")}.page {\n  color: blue;\n}\n`;
+          return {
+            code: combined,
+            map: {
+              version: 3,
+              sources: [strippedHero, file],
+              mappings: encode([
+                [[0, 0, 0, 0]],
+                [[0, 0, 1, 0]],
+                [[0, 0, 2, 0]],
+                [[0, 1, 1, 0]],
+                [[0, 1, 2, 0]],
+              ]),
+            },
+          };
+        },
+      };
+
+      await runBuild(undefined, { plugins: [fakeTailwind] });
+
+      const { css, fileName } = readCssAsset();
+      const map = readMap(fileName);
+      expect(map.sources).toEqual(
+        expect.arrayContaining(["src/hero.css", "src/styles.css"]),
+      );
+
+      const tracer = new TraceMap(map);
+      const heroLine =
+        css.split("\n").findIndex((line) => line.includes(".hero")) + 1;
+      const pageLine =
+        css.split("\n").findIndex((line) => line.includes(".page")) + 1;
+      expect(
+        originalPositionFor(tracer, { line: heroLine, column: 0 }).source,
+      ).toBe("src/hero.css");
+      expect(
+        originalPositionFor(tracer, { line: pageLine, column: 0 }).source,
+      ).toBe("src/styles.css");
     });
   });
 });

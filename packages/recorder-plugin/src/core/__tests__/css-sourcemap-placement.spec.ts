@@ -123,6 +123,31 @@ describe("locateStylesheets", () => {
       ]);
     });
 
+    it("locates a Tailwind-sized stylesheet without compiling it as a regular expression", () => {
+      // Tailwind's @layer properties block is full of grouping characters. The
+      // previous implementation compiled the whole captured file into one
+      // pattern, which V8 rejected as an invalid regular expression.
+      const layer =
+        `/*! tailwindcss v4.3.3 | MIT License | https://tailwindcss.com */
+@layer properties {
+  @supports (((-webkit-hyphens: none)) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color: rgb(from red r g b)))) {
+    *, :before, :after, ::backdrop {
+      --tw-rotate-x: initial;
+      --tw-rotate-y: initial;
+      --tw-rotate-z: initial;
+    }
+  }
+}
+`.repeat(40);
+      const captured = `${layer}.hero{background:url(__VITE_ASSET__a1b2c3__)}`;
+      const css = `${layer}.hero{background:url(/assets/hero-D4t9.png)}`;
+      const compiled = compiledMap(["/src/tailwind.css", captured]);
+
+      expect(locateStylesheets(css, compiled)).toMatchObject([
+        { id: "/src/tailwind.css", line: 0, column: 0 },
+      ]);
+    });
+
     it("does not let the pattern run past the url() it belongs to", () => {
       const compiled = compiledMap(
         ["/src/a.css", ".a{background:url(__VITE_ASSET__aaa__)}"],

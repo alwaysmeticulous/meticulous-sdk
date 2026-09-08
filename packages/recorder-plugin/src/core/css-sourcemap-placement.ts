@@ -294,59 +294,128 @@ const findUnclaimedRegion = (
   needle: string,
   claimed: readonly AssetRegion[],
 ): AssetRegion | null => {
-  const pattern = buildNeedlePattern(needle);
+  ASSET_PLACEHOLDER.lastIndex = 0;
+  const hasPlaceholder = ASSET_PLACEHOLDER.test(needle);
+  ASSET_PLACEHOLDER.lastIndex = 0;
 
-  if (pattern == null) {
-    let start = css.indexOf(needle);
-    while (start !== -1) {
-      const region = { start, end: start + needle.length };
-      if (!overlapsClaimed(region, claimed)) {
-        return region;
-      }
-      start = css.indexOf(needle, start + 1);
+  let from = 0;
+  while (from <= css.length) {
+    const region = hasPlaceholder
+      ? matchPlaceholderNeedle(css, needle, from)
+      : matchExactNeedle(css, needle, from);
+    if (region == null) {
+      return null;
     }
-    return null;
-  }
-
-  let match = pattern.exec(css);
-  while (match != null) {
-    const region = { start: match.index, end: match.index + match[0].length };
     if (!overlapsClaimed(region, claimed)) {
       return region;
     }
-    pattern.lastIndex = match.index + 1;
-    match = pattern.exec(css);
+    from = region.start + 1;
   }
   return null;
 };
 
+const matchExactNeedle = (
+  css: string,
+  needle: string,
+  from: number,
+): AssetRegion | null => {
+  const start = css.indexOf(needle, from);
+  if (start === -1) {
+    return null;
+  }
+  return { start, end: start + needle.length };
+};
+
 /**
- * Builds a pattern for a stylesheet whose CSS still contains asset
- * placeholders, or returns null when a plain substring search will do.
+ * Finds a stylesheet whose captured CSS still contains asset placeholders.
  *
  * A `url()` reference is a placeholder at the point this plugin captures the
  * stylesheet, and `vite:css-post` substitutes the real hashed URL afterwards.
- * Searching for the captured text verbatim would therefore never find a
- * stylesheet that references an image or font.
+ * The substituted URL never contains a quote, a closing paren, or a newline,
+ * so the gap between the surrounding literals cannot run past the `url()` it
+ * belongs to.
+ *
+ * This is a string search rather than a compiled regular expression: a
+ * Tailwind-generated stylesheet can be large enough, and full of grouping
+ * characters, that turning the whole file into a pattern throws
+ * `Invalid regular expression`.
  */
-const buildNeedlePattern = (needle: string): RegExp | null => {
+const matchPlaceholderNeedle = (
+  css: string,
+  needle: string,
+  from: number,
+): AssetRegion | null => {
   ASSET_PLACEHOLDER.lastIndex = 0;
-  if (!ASSET_PLACEHOLDER.test(needle)) {
-    return null;
+  const parts = needle.split(ASSET_PLACEHOLDER);
+  const prefix = parts[0] ?? "";
+
+  let searchFrom = from;
+  while (searchFrom <= css.length) {
+    let start: number;
+    let pos: number;
+    if (prefix === "") {
+      start = searchFrom;
+      pos = searchFrom;
+    } else {
+      start = css.indexOf(prefix, searchFrom);
+      if (start === -1) {
+        return null;
+      }
+      pos = start + prefix.length;
+    }
+
+    let ok = true;
+    for (let i = 1; i < parts.length; i++) {
+      const next = parts[i] ?? "";
+      const after = consumePlaceholderGap(css, pos, next);
+      if (after === -1) {
+        ok = false;
+        break;
+      }
+      pos = after;
+    }
+
+    if (ok) {
+      return { start, end: pos };
+    }
+    if (prefix === "") {
+      return null;
+    }
+    searchFrom = start + 1;
   }
-
-  const source = needle
-    .split(ASSET_PLACEHOLDER)
-    .map(escapeForRegExp)
-    // A substituted URL never contains a quote, a closing paren, or a newline,
-    // so this cannot run past the end of the `url()` it belongs to.
-    .join(`[^"')\\n]*`);
-
-  return new RegExp(source, "g");
+  return null;
 };
 
-const escapeForRegExp = (value: string): string =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const consumePlaceholderGap = (
+  css: string,
+  pos: number,
+  next: string,
+): number => {
+  if (next === "") {
+    while (pos < css.length && !isUrlUnsafe(css[pos] ?? "")) {
+      pos++;
+    }
+    return pos;
+  }
+
+  const found = css.indexOf(next, pos);
+  if (found === -1 || !isUrlSafeRange(css, pos, found)) {
+    return -1;
+  }
+  return found + next.length;
+};
+
+const isUrlUnsafe = (char: string): boolean =>
+  char === '"' || char === "'" || char === ")" || char === "\n";
+
+const isUrlSafeRange = (css: string, from: number, to: number): boolean => {
+  for (let i = from; i < to; i++) {
+    if (isUrlUnsafe(css[i] ?? "")) {
+      return false;
+    }
+  }
+  return true;
+};
 
 const overlapsClaimed = (
   region: AssetRegion,

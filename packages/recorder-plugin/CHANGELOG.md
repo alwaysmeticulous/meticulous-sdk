@@ -1,5 +1,13 @@
 # @alwaysmeticulous/recorder-plugin
 
+## 2.337.1
+
+### Patch Changes
+
+- [#13391](https://github.com/alwaysmeticulous/meticulous/pull/13391) [`118cfca`](https://github.com/alwaysmeticulous/meticulous/commit/118cfca6bd36712bb99a7208fbe7742ff03e4a86) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Keep Tailwind's CSS source map through the Vite build so `@import`ed stylesheets get line-level coverage instead of collapsing onto the entry file.
+
+- [#13383](https://github.com/alwaysmeticulous/meticulous/pull/13383) [`77bf677`](https://github.com/alwaysmeticulous/meticulous/commit/77bf6773c958845b5c9a757dcd4bc4900df54695) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Locate stylesheets that contain Vite asset placeholders with a string search instead of compiling the captured CSS into a regular expression, so large Tailwind stylesheets no longer crash the build.
+
 ## 2.337.0
 
 ### Minor Changes

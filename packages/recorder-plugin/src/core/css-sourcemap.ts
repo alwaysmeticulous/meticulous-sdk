@@ -5,6 +5,10 @@ import {
   readCombinedSourcemap,
 } from "./css-sourcemap-mapping";
 import {
+  interceptTailwindSourcemaps,
+  lookupPreprocessorMap,
+} from "./css-sourcemap-tailwind";
+import {
   groupStylesheetsByAsset,
   isEntirelyHoistedAtRules,
   locateStylesheets,
@@ -12,6 +16,7 @@ import {
 import type {
   CompiledStylesheet,
   PlacedStylesheet,
+  RawSourceMap,
 } from "./css-sourcemap-types";
 
 const PLUGIN_NAME = "@alwaysmeticulous/recorder-plugin:css-sourcemap";
@@ -71,6 +76,7 @@ export const cssSourcemapPlugin = (
   }
 
   const compiled = new Map<string, CompiledStylesheet>();
+  const preprocessorMaps = new Map<string, RawSourceMap>();
   let root = options.root;
   let cssMinified = false;
 
@@ -78,13 +84,19 @@ export const cssSourcemapPlugin = (
     name: `${PLUGIN_NAME}:capture`,
     apply: "build",
 
-    config: () => (disableCssMinify ? { build: { cssMinify: false } } : {}),
+    config: () => ({
+      // `@tailwindcss/vite` only calls `compiler.buildSourceMap()` when this
+      // is on. The plugin is meant for the coverage build, not production.
+      css: { devSourcemap: true },
+      ...(disableCssMinify ? { build: { cssMinify: false } } : {}),
+    }),
 
     configResolved(config) {
       root ??= config.root;
       // Read back rather than assuming `disableCssMinify` won this, since the
       // resolved config is what the build actually runs with.
       cssMinified = config.build.cssMinify !== false;
+      interceptTailwindSourcemaps(config.plugins, preprocessorMaps);
     },
 
     // Deliberately left at the default plugin order. This has to run after
@@ -104,7 +116,9 @@ export const cssSourcemapPlugin = (
       compiled.set(id, {
         sourcePath: id.split("?")[0] ?? id,
         code,
-        map: readCombinedSourcemap(() => this.getCombinedSourcemap()),
+        map:
+          lookupPreprocessorMap(preprocessorMaps, id) ??
+          readCombinedSourcemap(() => this.getCombinedSourcemap()),
       });
 
       return null;
@@ -164,7 +178,16 @@ export const cssSourcemapPlugin = (
         // all of them would let a stylesheet in one chunk claim the region of
         // an identical one in another, and the loser's coverage with it.
         const owned = stylesheetsByAsset.get(fileName);
-        const placed = locateStylesheets(css, owned ?? compiled);
+        let placed: PlacedStylesheet[];
+        try {
+          placed = locateStylesheets(css, owned ?? compiled);
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : String(error);
+          this.warn(
+            `Could not build a CSS source map for ${fileName}: ${detail}`,
+          );
+          continue;
+        }
 
         if (placed.length === 0) {
           this.warn(

@@ -92,6 +92,37 @@ describe("retryTransientUploadErrors", () => {
     expect(result).toBe("ok");
   });
 
+  it("retries on a 400 RequestTimeout from S3", async () => {
+    const body =
+      '<?xml version="1.0" encoding="UTF-8"?><Error><Code>RequestTimeout</Code><Message>Your socket connection to the server was not read from or written to within the timeout period. Idle connections will be closed.</Message><RequestId>84D4FA0FCFBC0163</RequestId></Error>';
+    let attempts = 0;
+    const operation = () => {
+      attempts++;
+      if (attempts < 3) {
+        throw new UploadError(400, body);
+      }
+      return "ok";
+    };
+
+    const result = await retryTransientUploadErrors(operation, {
+      sleep: noSleep,
+    });
+
+    expect(result).toBe("ok");
+    expect(attempts).toBe(3);
+  });
+
+  it("does not retry other 400s, such as an entity-size mismatch", async () => {
+    const operation = vi.fn(() => {
+      throw new UploadError(400, "<Code>EntityTooSmall</Code>");
+    });
+
+    await expect(
+      retryTransientUploadErrors(operation, { sleep: noSleep }),
+    ).rejects.toBeInstanceOf(UploadError);
+    expect(operation).toHaveBeenCalledTimes(1);
+  });
+
   it("does not retry on 4xx client errors (e.g. 403 Forbidden)", async () => {
     const operation = vi.fn(() => {
       throw new UploadError(403, "<Code>AccessDenied</Code>");

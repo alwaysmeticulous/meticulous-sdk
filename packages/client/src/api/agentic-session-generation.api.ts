@@ -323,6 +323,39 @@ export interface AgenticRunResultStep {
  */
 export type AgenticCaseProvenance = "new" | "reused" | "repaired";
 
+/**
+ * Where the mocked API responses backing a case's reported run came from.
+ * Computed by the worker by diffing what mock.ts served against the recorded
+ * exchanges it loaded — never declared by the agent. Present only on runs that
+ * used local mocks and served at least one mocked response.
+ */
+export interface AgenticRunMockDataProvenance {
+  /** Responses byte-equivalent (JSON-normalized) to a loaded recording. */
+  recorded: number;
+  /** Responses adapted from a loaded recording of the same endpoint. */
+  modified: number;
+  /** Synthetic responses with no loaded recording of the endpoint at all. */
+  generated: number;
+  /**
+   * Result of the automatic strict recheck the worker runs when a case fails
+   * while relying on modified/generated data: the test is re-run serving only
+   * unaltered recorded responses. Present only on `fail` cases that used
+   * synthetic data.
+   */
+  strictRecheck?: {
+    /** Whether the recheck run executed at all. */
+    performed: boolean;
+    /**
+     * Whether the failure reproduced on recorded-only data. Absent when the
+     * recheck could not settle the question (e.g. required requests had no
+     * recorded mock in strict mode).
+     */
+    reproduced?: boolean;
+    /** Why the recheck did not run or could not settle the question. */
+    note?: string;
+  };
+}
+
 export interface AgenticRunResultCase {
   /** Short human-readable name of the flow, unique within this run. */
   title: string;
@@ -348,6 +381,12 @@ export interface AgenticRunResultCase {
   outcomeSummary?: string;
   /** Evidence-backed explanation of the underlying cause, when established. */
   diagnosis?: string;
+  /**
+   * Worker-computed provenance of the mocked API data behind the reported run.
+   * A pass backed by `generated` data is a weaker claim than one backed by
+   * `recorded` data; a fail is annotated with the strict recheck's verdict.
+   */
+  mockDataProvenance?: AgenticRunMockDataProvenance;
   /** Sessions recorded while running this case. */
   sessionIds: string[];
   /** Why this case was worth testing, e.g. which changed code it targets. */
@@ -366,9 +405,23 @@ export interface AgenticRunSummaryTakeaway {
   text: string;
 }
 
+/** Durable media generated for the summary's highest-priority flow. */
+export interface AgenticRunFeaturedFlowMedia {
+  /** Unguessable capability checked by the public media endpoint. */
+  token: string;
+  /** Workdir-relative artifact paths uploaded beside the result blob. */
+  gifPath: string;
+  mp4Path: string;
+}
+
 /** Agent-written summary of the completed run. */
 export interface AgenticRunSummary {
   takeaways: AgenticRunSummaryTakeaway[];
+  /**
+   * Best-effort guided playback for the first takeaway. Absent for old blobs,
+   * summaries without takeaways, missing recordings, and encoding failures.
+   */
+  featuredFlowMedia?: AgenticRunFeaturedFlowMedia;
 }
 
 export type AgentReviewMemoryCandidateCategory =
@@ -1076,9 +1129,16 @@ export interface ListAgenticRepoSourceFilesParams
 export interface ListAgenticRepoSourceFilesResponse {
   /** Repo-relative paths eligible for source-map coverage. */
   paths: string[];
-  /** `true` when paths were filtered from only a bounded tree prefix. */
+  /** `true` when the response or bounded tree scan hit a safety limit. */
   truncated: boolean;
 }
+
+/**
+ * The backend route deliberately waits up to 150s for mirror readiness and the
+ * repo-server source listing. Stay above that deadline so its timeout response
+ * reaches the worker before this client aborts, with transport headroom.
+ */
+const LIST_AGENTIC_REPO_SOURCE_FILES_TIMEOUT_MS = 165_000;
 
 /** Lists source-map coverage candidates in the project's repo. */
 export const listAgenticRepoSourceFiles = async ({
@@ -1091,7 +1151,10 @@ export const listAgenticRepoSourceFiles = async ({
   const { data } = await client.post<ListAgenticRepoSourceFilesResponse>(
     "agentic-session-generation/repo/source-files",
     body,
-    projectIdQuery(projectId),
+    {
+      ...projectIdQuery(projectId),
+      timeout: LIST_AGENTIC_REPO_SOURCE_FILES_TIMEOUT_MS,
+    },
   );
   return data;
 };
