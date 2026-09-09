@@ -75,20 +75,16 @@ CssSourcemapPlugin({ root: path.resolve(__dirname, "../..") });
 
 #### How precise is the attribution?
 
-Every stylesheet in the bundle is attributed to the file it came from, whether that is plain CSS, a CSS module, Sass/SCSS, Less,
-or Tailwind. How precise that attribution is *within* a file depends on the stylesheet:
+Every stylesheet is attributed to the file it came from. Line-level accuracy depends on the stylesheet:
 
-1. CSS that reaches the bundle unchanged, in its own file, maps line for line.
-2. Anything a preprocessor rewrote (Sass/SCSS, Less) maps approximately, because Vite discards preprocessor source maps in
-production builds.
-3. Tailwind \`@import\`s keep file- and line-level maps for rules the plugin can still find in the compiled CSS: it reads the
-transform map \`@tailwindcss/vite\` already builds (Vite's combiner would otherwise drop it) and locates each named import's
-selectors inside that output. Generated utilities the map leaves blank still attribute to the Tailwind entry, not to the
-\`className\` that produced them.
-4. Rules below an \`@import\` get the right file but shifted line numbers, because the stylesheet is recorded after Vite has inlined
-the import.
+1. Plain CSS in its own file maps line for line.
+2. Sass/SCSS and Less map approximately — Vite drops preprocessor maps in production.
+3. Tailwind \`@import\`s map to the imported file and line for rules the plugin can still find in the compiled CSS. Generated
+utilities stay on the Tailwind entry, not on the \`className\` that produced them.
+4. A non-Tailwind \`@import\` that Vite inlines still gets the right file, but line numbers below the import can shift.
 
-File-level attribution is enough for Meticulous to tell you which stylesheet a change touched, which is what the coverage needs.
+File-level attribution is enough to see which stylesheet a change touched. Tailwind imported rules also get line-level maps;
+utilities do not.
 
 #### The tradeoff: CSS minification
 
