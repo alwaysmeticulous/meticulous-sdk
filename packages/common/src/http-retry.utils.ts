@@ -9,6 +9,7 @@ export interface RetryOptions {
   maxRetryDelay?: number;
   shouldRetry?: (error: any) => boolean;
   logger?: log.Logger;
+  operationDescription?: string;
 }
 
 const DEFAULT_MAX_RETRIES = 3;
@@ -135,6 +136,7 @@ export const executeWithRetry = async <T>(
     maxRetryDelay = DEFAULT_MAX_RETRY_DELAY_MS,
     shouldRetry = defaultShouldRetry,
     logger,
+    operationDescription,
   } = options;
 
   let lastError: any;
@@ -155,7 +157,7 @@ export const executeWithRetry = async <T>(
           logger.warn(
             `Operation failed, retrying in ${Math.round(delay)}ms (attempt ${
               attempt + 2
-            } of ${maxRetries + 1}): ${describeRetriedError(error)}`,
+            } of ${maxRetries + 1}): ${operationDescription ? `${operationDescription}: ` : ""}${describeRetriedError(error)}`,
           );
         }
         await new Promise((resolve) => setTimeout(resolve, delay));

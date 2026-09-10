@@ -1,11 +1,15 @@
 import { asterixOut } from "./asterix-out";
 
-export const redactUrl = (url: string) => {
+export interface RedactUrlOptions {
+  baseDomain?: string;
+}
+
+export const redactUrl = (url: string, options?: RedactUrlOptions) => {
   try {
     const parsedUrl = new URL(url);
     parsedUrl.password = asterixOut(parsedUrl.password);
     parsedUrl.username = asterixOut(parsedUrl.username);
-    parsedUrl.hostname = "redacted.com";
+    parsedUrl.hostname = options?.baseDomain ?? "redacted.com";
     if (parsedUrl.hash.length > 0) {
       parsedUrl.hash = "redactedHash";
     }
@@ -14,9 +18,9 @@ export const redactUrl = (url: string) => {
     }
     if (parsedUrl.searchParams.size > 0) {
       const numParams = parsedUrl.searchParams.size;
-      parsedUrl.searchParams.forEach((key) => {
+      for (const key of [...parsedUrl.searchParams.keys()]) {
         parsedUrl.searchParams.delete(key);
-      });
+      }
 
       for (let i = 0; i < numParams; i++) {
         parsedUrl.searchParams.set(`redactedParam${i + 1}`, "redacted");

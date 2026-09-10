@@ -24,6 +24,7 @@ type PollResult = {
    * the distinct cause rather than a generic "no test run" failure.
    */
   allSessionsExcludedBySessionFilter?: boolean | undefined;
+  commentsDisabledForAuthor?: boolean | undefined;
   overlaps?: ChunkPathOverlap[] | undefined;
   overlapsTruncated?: boolean | undefined;
 };
@@ -61,6 +62,7 @@ export const pollWhileBaseNotFound = async ({
   let message = initialResult.message;
   let allSessionsExcludedBySessionFilter =
     initialResult.allSessionsExcludedBySessionFilter;
+  let commentsDisabledForAuthor = initialResult.commentsDisabledForAuthor;
   // Server-driven extension of the polling window (per-project feature flag).
   // Tracked across retries so a change in the server's answer takes effect.
   let extraBasePollTimeoutMs = initialResult.extraBasePollTimeoutMs;
@@ -105,6 +107,7 @@ export const pollWhileBaseNotFound = async ({
       message = retryResult.message;
       allSessionsExcludedBySessionFilter =
         retryResult.allSessionsExcludedBySessionFilter;
+      commentsDisabledForAuthor = retryResult.commentsDisabledForAuthor;
       extraBasePollTimeoutMs = retryResult.extraBasePollTimeoutMs;
       overlaps = retryResult.overlaps;
       overlapsTruncated = retryResult.overlapsTruncated;
@@ -117,6 +120,7 @@ export const pollWhileBaseNotFound = async ({
       message = fallbackResult.message;
       allSessionsExcludedBySessionFilter =
         fallbackResult.allSessionsExcludedBySessionFilter;
+      commentsDisabledForAuthor = fallbackResult.commentsDisabledForAuthor;
       overlaps = fallbackResult.overlaps;
       overlapsTruncated = fallbackResult.overlapsTruncated;
       baseNotFound = fallbackResult.baseNotFound ?? false;
@@ -128,6 +132,7 @@ export const pollWhileBaseNotFound = async ({
     baseNotFound,
     message,
     allSessionsExcludedBySessionFilter,
+    commentsDisabledForAuthor,
     overlaps,
     overlapsTruncated,
   };

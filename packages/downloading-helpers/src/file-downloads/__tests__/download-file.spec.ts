@@ -1,5 +1,5 @@
 import { existsSync } from "fs";
-import { mkdir, readFile, rm, symlink, writeFile } from "fs/promises";
+import { mkdir, readdir, readFile, rm, symlink, writeFile } from "fs/promises";
 import http from "http";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -7,9 +7,11 @@ import { Transform } from "stream";
 import { constants as zlibConstants } from "zlib";
 import type * as FsPromises from "fs/promises";
 import { DeflateRaw } from "fast-zlib";
+import JSZip from "jszip";
 import { create as tarCreate } from "tar";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  downloadAndExtractFile,
   downloadFile,
   streamDownloadAndExtractTar,
   streamDownloadAndExtractTarGz,
@@ -204,6 +206,92 @@ const createRawDeflatedTar = async (
 
   return Buffer.concat(chunks);
 };
+
+describe("downloadAndExtractFile", () => {
+  let base: string;
+  let zipPath: string;
+  let extractDir: string;
+
+  beforeEach(async () => {
+    base = join(tmpdir(), `test-download-extract-${Date.now()}`);
+    zipPath = join(base, "archive.zip");
+    extractDir = join(base, "extract");
+    await mkdir(base, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(base, { recursive: true, force: true }).catch(() => undefined);
+  });
+
+  const serveZip = async (
+    populate: (zip: JSZip) => void,
+  ): Promise<{ url: string; close: () => Promise<void> }> => {
+    const zip = new JSZip();
+    populate(zip);
+    const bytes = await zip.generateAsync({ type: "nodebuffer" });
+    return listenOnEphemeralPort(
+      http.createServer((_req, res) => {
+        res.end(bytes);
+      }),
+    );
+  };
+
+  const countExtracted = async (): Promise<number> =>
+    (await readdir(extractDir).catch(() => [])).length;
+
+  it("extracts the archive and removes the downloaded zip", async () => {
+    const { url, close } = await serveZip((zip) => {
+      zip.file("hello.txt", "Hello World");
+      zip.file("data.json", '{"key":"value"}');
+    });
+
+    try {
+      const entries = await downloadAndExtractFile(url, zipPath, extractDir);
+
+      expect(entries.sort()).toEqual(["data.json", "hello.txt"]);
+      expect(await readFile(join(extractDir, "hello.txt"), "utf-8")).toBe(
+        "Hello World",
+      );
+      expect(existsSync(zipPath)).toBe(false);
+    } finally {
+      await close();
+    }
+  });
+
+  it("stops the extraction on timeout, and only removes the zip once it has", async () => {
+    // Enough entries that a 1ms budget cannot cover them, so the abort has to
+    // land partway through.
+    const entryCount = 2000;
+    const { url, close } = await serveZip((zip) => {
+      for (let i = 0; i < entryCount; i++) {
+        zip.file(`entry-${i}.txt`, `contents ${i}`);
+      }
+    });
+
+    try {
+      await expect(
+        downloadAndExtractFile(url, zipPath, extractDir, 1),
+      ).rejects.toThrow("Zip extraction timed out after 1ms");
+
+      // The archive outlives the rejection: it is removed only once the
+      // extraction has actually stopped reading it.
+      const deadline = Date.now() + 5_000;
+      while (existsSync(zipPath) && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(existsSync(zipPath)).toBe(false);
+
+      // Nothing is still being written by then, and the abort stopped the
+      // extraction well short of the whole archive.
+      const extractedWhenArchiveRemoved = await countExtracted();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(await countExtracted()).toBe(extractedWhenArchiveRemoved);
+      expect(extractedWhenArchiveRemoved).toBeLessThan(entryCount);
+    } finally {
+      await close();
+    }
+  });
+});
 
 describe("streamDownloadAndExtractTar", () => {
   let sourceDir: string;

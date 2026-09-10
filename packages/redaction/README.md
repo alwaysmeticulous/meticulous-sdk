@@ -67,6 +67,23 @@ const redacted2 = redactString("test@example.com"); // returns "----@-------.com
 
 See [redactString.spec.ts](src/generic/__tests__/redact-string.spec.ts) for more examples.
 
+### redactUrl
+
+`redactUrl` replaces the hostname, path, query, hash, and userinfo. By default the hostname
+becomes `redacted.com`; pass `baseDomain` to choose a different replacement hostname:
+
+```ts
+import { redactUrl } from "@alwaysmeticulous/redaction";
+
+redactUrl("https://customer.example/private/path");
+// => "https://redacted.com/redacted/redacted"
+
+redactUrl("https://customer.example/private/path", {
+  baseDomain: "redacted.meticulous.ai",
+});
+// => "https://redacted.meticulous.ai/redacted/redacted"
+```
+
 ### NestedFieldsRedactor
 
 NestedFieldsRedactor allows you to specify a redaction policy for each distinct field name (for example 'ssn' or 'email'). It'll then recursively apply this redaction policy across all nested fields inside an object. Type safety

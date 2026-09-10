@@ -251,6 +251,13 @@ const runContainerUpload = async ({
     });
 
     if (!result.testRun) {
+      if (result.commentsDisabledForAuthor) {
+        logger.info(
+          result.message ??
+            "Test run skipped because CI comments and checks are disabled for this pull request author.",
+        );
+        return null;
+      }
       throw new Error(
         `${result.message ?? "Container upload complete but test run not created"}`,
       );

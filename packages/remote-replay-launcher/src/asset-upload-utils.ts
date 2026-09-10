@@ -53,6 +53,7 @@ export interface UploadAssetsResult {
   archiveType: DeploymentArchiveType;
   testRun?: TestRun | null;
   message?: string;
+  commentsDisabledForAuthor?: boolean;
 }
 
 /**
@@ -136,26 +137,28 @@ export const uploadAssetsFromTarStream = async (
     });
   }
 
-  const { testRun, message } = await completeUploadAndWaitForBase({
-    client,
-    uploadId,
-    commitSha,
-    baseSha,
-    hasGitDiff: !!gitDiffOutput,
-    waitForBase,
-    rewrites,
-    createDeployment,
-    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
-    multipartUploadInfo,
-    ...(projectId ? { projectId } : {}),
-    ...(debugContext ? { debugContext } : {}),
-  });
+  const { testRun, message, commentsDisabledForAuthor } =
+    await completeUploadAndWaitForBase({
+      client,
+      uploadId,
+      commitSha,
+      baseSha,
+      hasGitDiff: !!gitDiffOutput,
+      waitForBase,
+      rewrites,
+      createDeployment,
+      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+      multipartUploadInfo,
+      ...(projectId ? { projectId } : {}),
+      ...(debugContext ? { debugContext } : {}),
+    });
 
   return {
     uploadId,
     archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     testRun,
     ...(message ? { message } : {}),
+    ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
   };
 };
 
@@ -187,6 +190,7 @@ const completeUploadAndWaitForBase = async ({
 }): Promise<{
   testRun: TestRun | null;
   message?: string;
+  commentsDisabledForAuthor?: boolean;
 }> => {
   const logger = initLogger();
 
@@ -225,20 +229,22 @@ const completeUploadAndWaitForBase = async ({
       }),
     { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger },
   );
-  const { testRun, baseNotFound, message } = await pollWhileBaseNotFound({
-    initialResult: {
-      testRun: initialResult?.testRun ?? null,
-      baseNotFound: initialResult?.baseNotFound,
-      extraBasePollTimeoutMs: initialResult?.extraBasePollTimeoutMs,
-      message: initialResult?.message,
-    },
-    retryFn: () => triggerRunOnDeployment(completeAssetUploadArgs),
-    fallbackFn: () =>
-      triggerRunOnDeployment({
-        ...completeAssetUploadArgs,
-        mustHaveBase: false,
-      }),
-  });
+  const { testRun, baseNotFound, message, commentsDisabledForAuthor } =
+    await pollWhileBaseNotFound({
+      initialResult: {
+        testRun: initialResult?.testRun ?? null,
+        baseNotFound: initialResult?.baseNotFound,
+        extraBasePollTimeoutMs: initialResult?.extraBasePollTimeoutMs,
+        message: initialResult?.message,
+        commentsDisabledForAuthor: initialResult?.commentsDisabledForAuthor,
+      },
+      retryFn: () => triggerRunOnDeployment(completeAssetUploadArgs),
+      fallbackFn: () =>
+        triggerRunOnDeployment({
+          ...completeAssetUploadArgs,
+          mustHaveBase: false,
+        }),
+    });
 
   Sentry.captureMessage("Deployment assets marked as uploaded", {
     level: "debug",
@@ -254,6 +260,7 @@ const completeUploadAndWaitForBase = async ({
   return {
     testRun: testRun ?? null,
     ...(message ? { message } : {}),
+    ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
   };
 };
 
@@ -360,26 +367,28 @@ const uploadAssetsStreaming = async ({
     });
   }
 
-  const { testRun, message } = await completeUploadAndWaitForBase({
-    client,
-    uploadId,
-    commitSha,
-    baseSha,
-    hasGitDiff: !!gitDiffOutput,
-    waitForBase,
-    rewrites,
-    createDeployment,
-    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
-    multipartUploadInfo,
-    ...(projectId ? { projectId } : {}),
-    ...(debugContext ? { debugContext } : {}),
-  });
+  const { testRun, message, commentsDisabledForAuthor } =
+    await completeUploadAndWaitForBase({
+      client,
+      uploadId,
+      commitSha,
+      baseSha,
+      hasGitDiff: !!gitDiffOutput,
+      waitForBase,
+      rewrites,
+      createDeployment,
+      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+      multipartUploadInfo,
+      ...(projectId ? { projectId } : {}),
+      ...(debugContext ? { debugContext } : {}),
+    });
 
   return {
     uploadId,
     archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     testRun,
     ...(message ? { message } : {}),
+    ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
   };
 };
 
@@ -577,25 +586,27 @@ export const uploadAssetsFromZip = async ({
       });
     }
 
-    const { testRun, message } = await completeUploadAndWaitForBase({
-      client,
-      uploadId,
-      commitSha,
-      baseSha,
-      hasGitDiff: !!gitDiffOutput,
-      waitForBase,
-      rewrites,
-      createDeployment,
-      archiveType: "zip",
-      ...projectIdentifier,
-      ...(debugContext ? { debugContext } : {}),
-    });
+    const { testRun, message, commentsDisabledForAuthor } =
+      await completeUploadAndWaitForBase({
+        client,
+        uploadId,
+        commitSha,
+        baseSha,
+        hasGitDiff: !!gitDiffOutput,
+        waitForBase,
+        rewrites,
+        createDeployment,
+        archiveType: "zip",
+        ...projectIdentifier,
+        ...(debugContext ? { debugContext } : {}),
+      });
 
     return {
       uploadId,
       archiveType: "zip",
       testRun,
       ...(message ? { message } : {}),
+      ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
     };
   } finally {
     if (deleteAfterUpload) {

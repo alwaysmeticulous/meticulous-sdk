@@ -231,6 +231,13 @@ const handler = async ({
           EXIT_CODES.ALL_SESSIONS_EXCLUDED_BY_SESSION_FILTER,
         );
       }
+      if (result.commentsDisabledForAuthor) {
+        logger.info(
+          result.message ??
+            "Test run skipped because CI comments and checks are disabled for this pull request author.",
+        );
+        return;
+      }
       throw new Error(
         result.message ?? "Asset chunks resolved but test run not created",
       );

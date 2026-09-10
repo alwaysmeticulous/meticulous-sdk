@@ -1,5 +1,16 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.339.0
+
+### Minor Changes
+
+- [#13621](https://github.com/alwaysmeticulous/meticulous/pull/13621) [`b2366ba`](https://github.com/alwaysmeticulous/meticulous/commit/b2366baa5b4aa8216b2aad5f9c5ed2e26e985e3f) Thanks [@dennysem](https://github.com/dennysem)! - `meticulous crawl` now accepts several start URLs: repeat `--startUrl`, or give it several values, to crawl a list of URLs in order. They are crawled in the same browser, so a single manual login covers the whole list, and each URL is opened by a full page load so that it records a session of its own. `--crawlingTimeoutSeconds` is the total budget, shared out between the URLs.
+
+### Patch Changes
+
+- Updated dependencies [[`a2982b2`](https://github.com/alwaysmeticulous/meticulous/commit/a2982b20132375ce8297ecb2c721c8318bbebd34)]:
+  - @alwaysmeticulous/api@2.339.0
+
 ## 2.338.0
 
 ### Patch Changes

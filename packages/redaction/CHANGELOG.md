@@ -1,5 +1,11 @@
 # @alwaysmeticulous/redaction
 
+## 2.339.0
+
+### Minor Changes
+
+- [#13331](https://github.com/alwaysmeticulous/meticulous/pull/13331) [`ee156df`](https://github.com/alwaysmeticulous/meticulous/commit/ee156dfbf8297c13e31f3161981be4b219e0dde8) Thanks [@Que3216](https://github.com/Que3216)! - Allow URL redaction callers to choose the replacement base domain, and correctly replace query parameters when redacting URLs.
+
 ## 2.333.1
 
 ### Patch Changes

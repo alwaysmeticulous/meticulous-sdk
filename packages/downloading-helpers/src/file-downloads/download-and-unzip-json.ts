@@ -1,6 +1,6 @@
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import JSZip from "jszip";
+import { unzipSingleEntryToJson } from "./unzip-single-entry";
 
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 60_000;
 
@@ -28,16 +28,15 @@ export const downloadAndUnzipJson = async <T>(
     maxContentLength: Infinity,
   });
 
-  const zip = await JSZip.loadAsync(response.data);
-  const entries = Object.keys(zip.files);
-  if (entries.length !== 1) {
-    throw new Error(
-      `Expected downloaded archive to contain exactly one file, but found: ${entries.join(
-        ", ",
-      )}`,
-    );
-  }
+  return unzipSingleEntryToJson<T>(
+    new Uint8Array(response.data),
+    // Not the URL itself: these are usually presigned, and the name ends up in
+    // error messages.
+    archiveNameFromUrl(downloadUrl),
+  );
+};
 
-  const fileContent = await zip.files[entries[0]].async("string");
-  return JSON.parse(fileContent) as T;
+const archiveNameFromUrl = (downloadUrl: string): string => {
+  const path = downloadUrl.split("?")[0];
+  return path.slice(path.lastIndexOf("/") + 1) || "downloaded archive";
 };

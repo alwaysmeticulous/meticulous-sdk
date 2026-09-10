@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.339.0
+
+### Patch Changes
+
+- [#13591](https://github.com/alwaysmeticulous/meticulous/pull/13591) [`a2982b2`](https://github.com/alwaysmeticulous/meticulous/commit/a2982b20132375ce8297ecb2c721c8318bbebd34) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Treat a backend `commentsDisabledForAuthor` response as a successful skip rather than a failed trigger. Asset and container uploads still persist; the CLI and launcher log the skip and exit 0 instead of throwing when no test run is created for a PR author who will not receive CI comments.
+
 ## 2.338.0
 
 ### Minor Changes

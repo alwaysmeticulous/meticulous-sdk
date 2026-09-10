@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getErrorCode } from "../src/error-code.utils";
 import {
   computeRetryDelayMs,
   defaultShouldRetry,
+  executeWithRetry,
   getRetryAfterMs,
 } from "../src/http-retry.utils";
 
@@ -159,5 +160,35 @@ describe("computeRetryDelayMs", () => {
       () => 1,
     );
     expect(delay).toBe(30_000);
+  });
+});
+
+describe("executeWithRetry", () => {
+  it("includes the operation description in retry logs", async () => {
+    const error = Object.assign(new Error("HTTP 429: Too Many Requests"), {
+      response: { status: 429 },
+    });
+    const warn = vi.fn();
+
+    await expect(
+      executeWithRetry(
+        async () => {
+          throw error;
+        },
+        {
+          maxRetries: 1,
+          retryDelay: 0,
+          logger: { warn } as never,
+          operationDescription:
+            "POST /api/agentic-session-generation/repo/search",
+        },
+      ),
+    ).rejects.toBe(error);
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "POST /api/agentic-session-generation/repo/search: HTTP 429: Too Many Requests",
+      ),
+    );
   });
 });

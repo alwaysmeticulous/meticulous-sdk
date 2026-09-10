@@ -54,13 +54,19 @@ describe("isProvisionalSessionIdCandidate", () => {
     ).toBe(false);
   });
 
-  it("declines a subframe — the top frame owns the session", () => {
+  it("mints for a subframe, which may own its own session", () => {
     expect(
       isProvisionalSessionIdCandidate(
         "GET",
         headers({ "sec-fetch-dest": "iframe" }),
       ),
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      isProvisionalSessionIdCandidate(
+        "GET",
+        headers({ "sec-fetch-dest": "frame" }),
+      ),
+    ).toBe(true);
   });
 
   it("falls back to Accept when Sec-Fetch-Dest is absent", () => {

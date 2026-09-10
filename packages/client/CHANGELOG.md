@@ -1,5 +1,27 @@
 # @alwaysmeticulous/client
 
+## 2.339.0
+
+### Minor Changes
+
+- [#13515](https://github.com/alwaysmeticulous/meticulous/pull/13515) [`9ca4bfd`](https://github.com/alwaysmeticulous/meticulous/commit/9ca4bfdcf93de1d2a2fa77b8601fbb5b264dc37a) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `getDiscoveryRepoFiles`, wrapping `POST session-transform-discovery/repo/files`. The discovery worker previously fetched one file per HTTP call; this batch helper takes up to 500 paths and returns found/missing/skipped entries from repo-server `POST /v1/git/files`.
+
+- [#13522](https://github.com/alwaysmeticulous/meticulous/pull/13522) [`08a3c37`](https://github.com/alwaysmeticulous/meticulous/commit/08a3c37d222a72174fd710f1b20ad073a45bf7e6) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add a bulk mode to `getAgenticFileChanges`: omit `path` or pass `paths[]` to receive `{ files: { path, diff }[] }` from one `POST repo/file-changes` call. A single `path` still returns today's `{ diff }` payload.
+
+### Patch Changes
+
+- [#13591](https://github.com/alwaysmeticulous/meticulous/pull/13591) [`a2982b2`](https://github.com/alwaysmeticulous/meticulous/commit/a2982b20132375ce8297ecb2c721c8318bbebd34) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Treat a backend `commentsDisabledForAuthor` response as a successful skip rather than a failed trigger. Asset and container uploads still persist; the CLI and launcher log the skip and exit 0 instead of throwing when no test run is created for a PR author who will not receive CI comments.
+
+- [#13295](https://github.com/alwaysmeticulous/meticulous/pull/13295) [`38b4c9e`](https://github.com/alwaysmeticulous/meticulous/commit/38b4c9ee01e85e0049a0a4d85fe89d8ee7c4d96c) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent complete-base-run` no longer asks for a selected session another test run has already replayed on the same build with the same replay configuration. The response carries a new `reusedSessionCount` saying how many were reused, and the command reports it: their coverage joins the run's total once the run has been post-processed, which the command schedules itself when no chunk workflow is left to do it. A session another run is replaying right now is likewise left to it, counted separately by `inFlightElsewhereSessionCount` — it becomes reused when that run finishes, so it is still worth waiting for rather than beyond recovering.
+
+- [#13493](https://github.com/alwaysmeticulous/meticulous/pull/13493) [`542651c`](https://github.com/alwaysmeticulous/meticulous/commit/542651c722e1da6efb8e2e78b5a3030317c8f54c) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent trigger-test-run --deploymentId` and the underlying `agentUploadGitDiffBuild` / `agentTriggerTestRun` client calls now reject a `deploymentId`, `commitSha`, or `baseSha` that isn't a single opaque token (no whitespace, `/`, `\`, or `:`) before making any request. This catches the case where a script or agent captures a failed `agent upload-build` call's error output (or a file path) instead of its actual `deploymentId`, and passes that text straight through — previously this silently reached the backend as a deployment lookup key, surfacing only as a confusing "Deployment ... not found" error.
+
+- [#13326](https://github.com/alwaysmeticulous/meticulous/pull/13326) [`40c22ee`](https://github.com/alwaysmeticulous/meticulous/commit/40c22ee73e7db27d0d44a46e300cc88e2564ab8f) Thanks [@Que3216](https://github.com/Que3216)! - Recognize workflow credentials in the agent `whoami` command.
+
+- Updated dependencies [[`a2982b2`](https://github.com/alwaysmeticulous/meticulous/commit/a2982b20132375ce8297ecb2c721c8318bbebd34)]:
+  - @alwaysmeticulous/api@2.339.0
+  - @alwaysmeticulous/common@2.338.0
+
 ## 2.338.0
 
 ### Patch Changes

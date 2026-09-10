@@ -8,7 +8,6 @@ import { promisify } from "util";
 import { constants as zlibConstants, createGunzip } from "zlib";
 import axios from "axios";
 import axiosRetry from "axios-retry";
-import extract from "extract-zip";
 import { InflateRaw } from "fast-zlib";
 import pLimit from "p-limit";
 import { Parser as TarParser, extract as tarExtract } from "tar";
@@ -17,6 +16,7 @@ import type {
   TrackedDownloadStream,
 } from "./download-progress";
 import { createDownloadProgressBar } from "./download-progress";
+import { safeExtractZip } from "./safe-extract-zip";
 
 const promisifiedFinished = promisify(finished);
 
@@ -141,29 +141,39 @@ export const downloadAndExtractFile: (
   await downloadFile(fileUrl, tmpZipFilePath);
   const entries: string[] = [];
 
+  const abortController = new AbortController();
+  const extractPromise = safeExtractZip(tmpZipFilePath, {
+    dir: extractPath,
+    onEntry: (entry) => entries.push(entry.fileName),
+    signal: abortController.signal,
+  });
+  // The archive is deleted once extraction has stopped reading it, not when we
+  // stop waiting for it. Deleting it on a timeout would race yauzl's own close
+  // of the same file, and the entries still in flight would keep landing in
+  // `extractPath` under a caller that has already been told this failed —
+  // hence the abort, which stops the extraction rather than orphaning it.
+  const removeArchive = extractPromise
+    .catch(() => undefined)
+    .then(() => rm(tmpZipFilePath, { force: true }))
+    .catch(() => undefined);
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(
-        () =>
+    await Promise.race([
+      extractPromise,
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          abortController.abort();
           reject(
             new Error(`Zip extraction timed out after ${extractTimeoutInMs}ms`),
-          ),
-        extractTimeoutInMs,
-      );
-    });
-    try {
-      const extractPromise = extract(tmpZipFilePath, {
-        dir: extractPath,
-        onEntry: (entry) => entries.push(entry.fileName),
-      });
-      await Promise.race([extractPromise, timeoutPromise]);
-    } finally {
-      clearTimeout(timeoutId!);
-    }
+          );
+        }, extractTimeoutInMs);
+      }),
+    ]);
   } finally {
-    await rm(tmpZipFilePath);
+    clearTimeout(timeoutId);
   }
+  await removeArchive;
 
   return entries;
 };

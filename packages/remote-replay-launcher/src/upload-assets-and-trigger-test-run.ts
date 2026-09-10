@@ -50,6 +50,11 @@ export const uploadAssetsAndTriggerTestRun = async ({
     const projectName = encodeURIComponent(result.testRun.project.name);
     const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${result.testRun.id}`;
     logger.info(`Test run triggered: ${testRunUrl}`);
+  } else if (result.commentsDisabledForAuthor) {
+    logger.info(
+      result.message ??
+        "Test run skipped because CI comments and checks are disabled for this pull request author.",
+    );
   } else {
     throw new Error(`${result.message ?? "Test run was not created"}`);
   }

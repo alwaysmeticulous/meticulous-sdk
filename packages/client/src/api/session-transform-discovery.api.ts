@@ -2,6 +2,7 @@ import type { MeticulousClient } from "../types/client.types";
 import type {
   AcquireAgenticRepoLeaseParams,
   AcquireAgenticRepoLeaseResponse,
+  AgenticRepoLeaseRef,
   AgenticRepoLeaseStatusResponse,
   GetAgenticRepoFileParams,
   GetAgenticRepoFileResponse,
@@ -15,7 +16,40 @@ import type {
   SearchAgenticRepoCodeParams,
   SearchAgenticRepoCodeResponse,
 } from "./agentic-session-generation.api";
-import { projectIdQuery } from "./project-deployments.api";
+import {
+  projectIdQuery,
+  type ProjectIdentifier,
+} from "./project-deployments.api";
+
+export interface GetDiscoveryRepoFilesParams
+  extends ProjectIdentifier, AgenticRepoLeaseRef {
+  commitSha: string;
+  paths: string[];
+  /** Per-file truncation cap. Repo-server clamps to 5 MiB. */
+  maxBytesPerFile?: number;
+  /** Aggregate encoded-payload cap. Repo-server clamps to 25 MiB. */
+  maxTotalBytes?: number;
+}
+
+export interface DiscoveryRepoFileEntry {
+  path: string;
+  kind: "found" | "missing" | "skipped";
+  /** UTF-8 decoded file contents; present only when `kind === "found"`. */
+  content?: string;
+  /** `true` when the selected content exceeded the per-file byte cap. */
+  truncated?: boolean;
+  /** Total blob size in bytes before any truncation. */
+  sizeBytes?: number;
+}
+
+export interface GetDiscoveryRepoFilesResponse {
+  files: DiscoveryRepoFileEntry[];
+  /** `true` when trailing paths were skipped because the aggregate byte cap tripped. */
+  totalBytesCapReached: boolean;
+}
+
+/** Maximum paths accepted by {@link getDiscoveryRepoFiles} in one request. */
+export const MAX_DISCOVERY_REPO_FILES_PATHS = 500;
 
 /**
  * Repo-server source access for the weekly session-mutation
@@ -35,6 +69,21 @@ export const getDiscoveryRepoFile = async ({
 }): Promise<GetAgenticRepoFileResponse> => {
   const { data } = await client.post<GetAgenticRepoFileResponse>(
     "session-transform-discovery/repo/file",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export const getDiscoveryRepoFiles = async ({
+  client,
+  projectId,
+  ...body
+}: GetDiscoveryRepoFilesParams & {
+  client: MeticulousClient;
+}): Promise<GetDiscoveryRepoFilesResponse> => {
+  const { data } = await client.post<GetDiscoveryRepoFilesResponse>(
+    "session-transform-discovery/repo/files",
     body,
     projectIdQuery(projectId),
   );

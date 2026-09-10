@@ -1,5 +1,26 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 2.339.0
+
+### Patch Changes
+
+- [#13505](https://github.com/alwaysmeticulous/meticulous/pull/13505) [`6e22139`](https://github.com/alwaysmeticulous/meticulous/commit/6e22139271738aa79acc1f3e470e1d57fe40191f) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Replace `extract-zip` with a built-in `safeExtractZip` (exported) that skips symlink entries, resolves every entry against the real target directory and opens files with `O_NOFOLLOW`. `extract-zip` 2.0.1 creates symlinks from archive entries without validating their target (CVE-2026-56876), so a crafted archive could write outside the extraction directory through a planted symlink; no fixed release exists upstream.
+
+  This changes what `downloadAndExtractFile` writes and returns for archives that contain more than plain files and directories:
+  - **Symlink entries are never created**, and are absent from both the returned entry list and `onEntry`. Archives produced by `archiver` dereference symlinks, so our own archives are unaffected, but a hand-made archive that relies on a symlink will be missing that path. Each skipped entry is logged as a warning and reported to the new optional `onSkippedEntry` callback.
+  - **`__MACOSX/` AppleDouble metadata is skipped**, matching `extract-zip`'s behaviour. Finder-compressed archives no longer leave `._`-prefixed files in the extracted output.
+  - `onEntry` now also receives `isDirectory`, so callers expecting a single file entry can ignore directory entries.
+  - A new optional `signal` stops an extraction, at the next entry and mid-stream for the entry being written. `downloadAndExtractFile` uses it to actually stop an extraction that has hit its timeout, rather than deleting the archive from under one that is still reading it.
+
+- [#13535](https://github.com/alwaysmeticulous/meticulous/pull/13535) [`cf34f0f`](https://github.com/alwaysmeticulous/meticulous/commit/cf34f0f53c47071cba7414889ab3076c9bb4c555) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `unzipSingleEntry`, `unzipSingleEntryToString` and `unzipSingleEntryToJson`, which read the one file entry out of an in-memory zip archive without touching the filesystem. `downloadAndUnzipJson` now uses them, so `jszip` is no longer a runtime dependency of this package.
+
+  Entries `safeExtractZip` would not write — directories, symlinks and `__MACOSX/` AppleDouble metadata — are ignored rather than counted, so an archive holding a folder plus its file, or one zipped up by Finder, still reads as single-entry.
+
+- Updated dependencies [[`a2982b2`](https://github.com/alwaysmeticulous/meticulous/commit/a2982b20132375ce8297ecb2c721c8318bbebd34), [`38b4c9e`](https://github.com/alwaysmeticulous/meticulous/commit/38b4c9ee01e85e0049a0a4d85fe89d8ee7c4d96c), [`9ca4bfd`](https://github.com/alwaysmeticulous/meticulous/commit/9ca4bfdcf93de1d2a2fa77b8601fbb5b264dc37a), [`08a3c37`](https://github.com/alwaysmeticulous/meticulous/commit/08a3c37d222a72174fd710f1b20ad073a45bf7e6), [`542651c`](https://github.com/alwaysmeticulous/meticulous/commit/542651c722e1da6efb8e2e78b5a3030317c8f54c), [`40c22ee`](https://github.com/alwaysmeticulous/meticulous/commit/40c22ee73e7db27d0d44a46e300cc88e2564ab8f)]:
+  - @alwaysmeticulous/api@2.339.0
+  - @alwaysmeticulous/client@2.339.0
+  - @alwaysmeticulous/common@2.338.0
+
 ## 2.338.0
 
 ### Patch Changes

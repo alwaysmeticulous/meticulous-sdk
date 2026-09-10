@@ -414,6 +414,24 @@ export interface CompleteBaseRunResponse {
   sessionsScheduled: number;
   /** Distinct sessions in the run's selected set. */
   configuredSessionCount: number;
+  /**
+   * Configured sessions this run never replayed because another run already
+   * had a replay for them on the same build with the same replay settings.
+   * Their coverage counts towards this run's total once the run's
+   * post-processing has folded it in; until then they are part of
+   * {@link unexecutedSessionCount}.
+   */
+  reusedSessionCount: number;
+  /**
+   * Configured sessions another test run is replaying right now, on the same
+   * build with the same replay settings. This run leaves them to that one
+   * rather than replaying the same session twice, so they are not scheduled
+   * here — but they are not {@link unobtainableSessionCount} either: they gain
+   * a result when the other run finishes, and become
+   * {@link reusedSessionCount}. Until then they are part of
+   * {@link unexecutedSessionCount}.
+   */
+  inFlightElsewhereSessionCount: number;
 }
 
 export interface TestRunJsCoverageResponse {
@@ -1144,7 +1162,11 @@ export const getScreenshotDomDiff = async (
 // ---------------------------------------------------------------------------
 
 export interface AgentWhoamiResponse {
-  authenticatedVia: "oauth" | "project-api-token" | "test-run-token";
+  authenticatedVia:
+    | "oauth"
+    | "project-api-token"
+    | "test-run-token"
+    | "workflow-token";
   email?: string;
   firstName?: string;
   lastName?: string;

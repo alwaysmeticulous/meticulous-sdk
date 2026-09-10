@@ -14,7 +14,15 @@ describe("redactUrl", () => {
         "https://user:password@example.com/path1/path2/index.html?param=value&param2=value2#hash",
       ),
     ).toMatchInlineSnapshot(
-      `"https://****:********@redacted.com/redacted/redacted/redacted?param=value&param2=value2&redactedParam1=redacted&redactedParam2=redacted#redactedHash"`,
+      `"https://****:********@redacted.com/redacted/redacted/redacted?redactedParam1=redacted&redactedParam2=redacted#redactedHash"`,
     );
+  });
+
+  it("uses a custom base domain", () => {
+    expect(
+      redactUrl("https://example.com/path", {
+        baseDomain: "redacted.meticulous.ai",
+      }),
+    ).toBe("https://redacted.meticulous.ai/redacted");
   });
 });

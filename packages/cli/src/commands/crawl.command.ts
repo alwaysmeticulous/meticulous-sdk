@@ -21,7 +21,7 @@ const TIME_TO_WAIT_FOR_UPLOADS_MS = 20_000;
 
 interface Options {
   apiToken: string | null | undefined;
-  startUrl: string;
+  startUrl: string[];
   crawlingTimeoutSeconds: number;
   maxNumSessions: number;
   skipTestRun: boolean;
@@ -35,6 +35,12 @@ const handler = async ({
   skipTestRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
+
+  const startUrls = parseStartUrls(startUrl);
+  if (startUrls.length === 0) {
+    logger.error("No valid start URLs provided. Exiting.");
+    process.exit(1);
+  }
 
   // Resolve the full auth chain (explicit token → OAuth → env var → legacy
   // config file), triggering an interactive browser login when nothing is
@@ -59,7 +65,9 @@ const handler = async ({
   }
 
   logger.info(
-    `Crawling ${startUrl}, recording sessions into project ${project.organization.name}/${project.name}...`,
+    `Crawling ${
+      startUrls.length === 1 ? startUrls[0] : `${startUrls.length} URLs`
+    }, recording sessions into project ${project.organization.name}/${project.name}...`,
   );
 
   const onReadyForManualLogin = () => {
@@ -79,7 +87,10 @@ const handler = async ({
   const { sessionIds, uniqueUrlCount } = await runCrawl({
     apiToken: resolvedApiToken,
     projectId,
-    startUrl,
+    // `startUrl` is sent alongside `startUrls` so that a crawler bundle predating
+    // the list still crawls, rather than failing on a missing option.
+    startUrl: startUrls[0],
+    startUrls,
     crawlingTimeoutSeconds,
     maxNumSessions,
     onReadyForManualLogin,
@@ -108,7 +119,7 @@ const handler = async ({
   const testRun = await createCrawlerTestRun({
     client,
     sessionIds,
-    appUrl: startUrl,
+    appUrl: startUrls[0],
     projectId,
   });
 
@@ -131,6 +142,25 @@ const handler = async ({
   process.exit(0);
 };
 
+/**
+ * Drops duplicates, which would otherwise each burn part of the crawling budget,
+ * and rejects anything that isn't a URL up front rather than several minutes into
+ * a crawl.
+ */
+const parseStartUrls = (startUrls: string[]): string[] => {
+  const logger = initLogger();
+  const valid = startUrls.filter((url) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      logger.error(`Skipping '${url}': not a valid URL.`);
+      return false;
+    }
+  });
+  return [...new Set(valid)];
+};
+
 const runCrawl = async (options: RunCrawlOptions): Promise<RunCrawlResult> => {
   const bundleLocation = await fetchAsset(RUN_CRAWL_BUNDLE_PATH);
 
@@ -142,19 +172,25 @@ export const crawlCommand: CommandModule<unknown, Options> = {
   command: "crawl",
   describe:
     "Crawl your app to record sessions and create a Meticulous test run. " +
-    "Opens a browser at the given start URL and lets you log in manually before crawling starts.",
+    "Opens a browser at the given start URL and lets you log in manually before crawling starts. " +
+    "Pass --startUrl more than once to crawl a list of URLs in the same browser, and so behind the same login.",
   builder: {
     apiToken: OPTIONS.apiToken,
     startUrl: {
       string: true,
+      array: true,
       description:
-        "The URL to start crawling from, e.g. https://app.example.com",
+        "A URL to crawl, e.g. https://app.example.com. Repeat the flag, or give it " +
+        "several values, to crawl a list of URLs: they are crawled in order in the " +
+        "same browser, so you only log in once, and each one is loaded afresh so that " +
+        "it records a session of its own.",
       demandOption: true,
     },
     crawlingTimeoutSeconds: {
       number: true,
       description:
-        "The maximum time in seconds to spend crawling (time spent logging in doesn't count)",
+        "The maximum total time in seconds to spend crawling, shared out between the " +
+        "start URLs (time spent logging in doesn't count)",
       default: 120,
     },
     maxNumSessions: {

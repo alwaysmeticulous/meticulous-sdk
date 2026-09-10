@@ -1045,11 +1045,32 @@ export const searchAgenticRepoCode = async ({
   return data;
 };
 
-export interface GetAgenticFileChangesParams
+export interface GetAgenticFileChangesSingleParams
   extends ProjectIdentifier, AgenticRepoLeaseRef {
   commitSha: string;
   /** Repo-relative path of the file whose changes to return. */
   path: string;
+}
+
+export interface GetAgenticFileChangesBulkParams
+  extends ProjectIdentifier, AgenticRepoLeaseRef {
+  commitSha: string;
+  /**
+   * Bulk subset. Omit both `path` and `paths` to return every changed file.
+   */
+  paths?: string[];
+}
+
+export type GetAgenticFileChangesParams =
+  | GetAgenticFileChangesSingleParams
+  | GetAgenticFileChangesBulkParams;
+
+export interface GetAgenticFileChange {
+  path: string;
+  /**
+   * The file's unified-diff hunks. Empty string when the file is unchanged.
+   */
+  diff: string;
 }
 
 export interface GetAgenticFileChangesResponse {
@@ -1061,25 +1082,43 @@ export interface GetAgenticFileChangesResponse {
   diff: string | null;
 }
 
+export interface GetAgenticFileChangesBulkResponse {
+  /**
+   * One entry per requested path (or every changed file when `paths` is
+   * omitted). `null` when no PR/diff is available or source access is
+   * disabled. Unchanged requested paths have `diff: ""`.
+   */
+  files: GetAgenticFileChange[] | null;
+}
+
 /**
- * Returns how a single file changed in the PR under test (unified-diff hunks).
- * The worker uses this to compute edit-coverage; the agent uses it to see what
- * changed in a file it is about to exercise.
+ * Returns how files changed in the PR under test (unified-diff hunks). A
+ * single `path` keeps today's `{ diff }` payload for the agent `fileChanges`
+ * tool. `paths[]` or omit both returns `{ files }` from one cached whole-PR
+ * diff.
  */
-export const getAgenticFileChanges = async ({
+export function getAgenticFileChanges(
+  params: GetAgenticFileChangesSingleParams & { client: MeticulousClient },
+): Promise<GetAgenticFileChangesResponse>;
+export function getAgenticFileChanges(
+  params: GetAgenticFileChangesBulkParams & { client: MeticulousClient },
+): Promise<GetAgenticFileChangesBulkResponse>;
+export async function getAgenticFileChanges({
   client,
   projectId,
   ...body
 }: GetAgenticFileChangesParams & {
   client: MeticulousClient;
-}): Promise<GetAgenticFileChangesResponse> => {
-  const { data } = await client.post<GetAgenticFileChangesResponse>(
+}): Promise<GetAgenticFileChangesResponse | GetAgenticFileChangesBulkResponse> {
+  const { data } = await client.post<
+    GetAgenticFileChangesResponse | GetAgenticFileChangesBulkResponse
+  >(
     "agentic-session-generation/repo/file-changes",
     body,
     projectIdQuery(projectId),
   );
   return data;
-};
+}
 
 export interface ListAgenticRepoTreeParams
   extends ProjectIdentifier, AgenticRepoLeaseRef {

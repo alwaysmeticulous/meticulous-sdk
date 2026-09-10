@@ -175,6 +175,7 @@ export const makeRequest = async <T>(
     {
       shouldRetry: defaultShouldRetry,
       logger,
+      operationDescription: `${requestInit.method ?? "GET"} ${new URL(finalUrl).pathname}`,
     },
   );
 };

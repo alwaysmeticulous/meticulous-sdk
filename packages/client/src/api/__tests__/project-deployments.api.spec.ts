@@ -110,6 +110,30 @@ describe("agent project-deployment client helpers", () => {
       });
     });
 
+    it("throws (without posting) when deploymentId contains whitespace, instead of forwarding a captured error message", async () => {
+      await expect(
+        agentUploadGitDiffBuild({
+          client: asClient(),
+          deploymentId: "Directory does not exist: /Users/example/app/build",
+          baseSha: "base-1",
+          size: 123,
+        }),
+      ).rejects.toThrow(/must be a single opaque token/);
+      expect(client.post).not.toHaveBeenCalled();
+    });
+
+    it("throws (without posting) when commitSha contains whitespace", async () => {
+      await expect(
+        agentUploadGitDiffBuild({
+          client: asClient(),
+          commitSha: "not a real sha",
+          baseSha: "base-1",
+          size: 123,
+        }),
+      ).rejects.toThrow(/must be a single opaque token/);
+      expect(client.post).not.toHaveBeenCalled();
+    });
+
     it("posts commitSha instead of deploymentId when identifying the deployment by commit", async () => {
       client.post.mockResolvedValue({
         data: { uploadUrl: "https://signed", deploymentId: "dep-resolved" },
@@ -171,6 +195,28 @@ describe("agent project-deployment client helpers", () => {
         },
         undefined,
       ]);
+    });
+
+    it("throws (without posting) when deploymentId contains whitespace, instead of forwarding a captured error message", async () => {
+      await expect(
+        agentTriggerTestRun({
+          client: asClient(),
+          deploymentId: "Directory does not exist: /Users/example/app/build",
+          baseSha: "base-1",
+        }),
+      ).rejects.toThrow(/must be a single opaque token/);
+      expect(client.post).not.toHaveBeenCalled();
+    });
+
+    it("throws (without posting) when baseSha contains a colon", async () => {
+      await expect(
+        agentTriggerTestRun({
+          client: asClient(),
+          deploymentId: "dep-1",
+          baseSha: "base:1",
+        }),
+      ).rejects.toThrow(/must be a single opaque token/);
+      expect(client.post).not.toHaveBeenCalled();
     });
   });
 });

@@ -84,7 +84,8 @@ export const whoamiCommand: CommandModule<unknown, Options> = {
 
     if (
       whoami.authenticatedVia === "project-api-token" ||
-      whoami.authenticatedVia === "test-run-token"
+      whoami.authenticatedVia === "test-run-token" ||
+      whoami.authenticatedVia === "workflow-token"
     ) {
       printPinnedTokenWhoami(whoami, json);
       return;
@@ -113,7 +114,9 @@ const printPinnedTokenWhoami = (
   const label =
     whoami.authenticatedVia === "test-run-token"
       ? "test-run API token"
-      : "project API token";
+      : whoami.authenticatedVia === "workflow-token"
+        ? "workflow API token"
+        : "project API token";
   if (json) {
     printJson({
       authenticatedVia: whoami.authenticatedVia,

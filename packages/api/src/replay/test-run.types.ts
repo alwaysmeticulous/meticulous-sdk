@@ -336,4 +336,5 @@ export interface ExecuteSecureTunnelTestRunResponse {
   testRun?: TestRun;
   deploymentId: string;
   message?: string;
+  commentsDisabledForAuthor?: boolean;
 }

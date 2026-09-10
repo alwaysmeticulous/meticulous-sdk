@@ -71,10 +71,11 @@ export const mintProvisionalSessionId = (): string => {
 };
 
 /**
- * Whether to mint for this inbound request. Deliberately narrow: an id nothing adopts is
- * worse than no id at all, because a span stamped with a session that never materialises is
- * excluded from the time-window fallback that would otherwise have caught it. So we mint only
- * for what is plausibly a browser navigating to a page.
+ * Whether to mint for this inbound request. Narrow on purpose — only what is plausibly a
+ * browser loading a page, so an API response never carries an id no document could adopt.
+ * Narrowness is a matter of not publishing noise rather than of avoiding harm: ingestion
+ * treats a backend-origin id that no session adopted as unstamped
+ * (`hasDisqualifyingSessionId`), so an unadopted mint is a no-op, not a regression.
  *
  * The caller decides separately whether minting is enabled at all.
  */
@@ -95,9 +96,22 @@ export const isProvisionalSessionIdCandidate = (
 
 /**
  * `Sec-Fetch-Dest` is the exact signal and every current browser sends it: `document` for a
- * navigation, `empty` for an in-page fetch (so a Next.js RSC navigation, which is a fetch, is
- * correctly excluded), `iframe` for a subframe — excluded too, since the top frame owns the
- * session and an iframe recorder reports into it.
+ * top-level navigation, `iframe`/`frame` for a subframe one, and `empty` for an in-page fetch
+ * (so a Next.js RSC navigation, which is a fetch, is correctly excluded).
+ *
+ * A subframe navigation qualifies because a subframe does not reliably fold into the top
+ * frame's session. The frontend recorder forwards a subframe's payload to the top frame and
+ * skips its own upload only when the top frame answers with a matching recording-token prefix
+ * (`tryForwardToTopFrame` in packages/recorder); where it does not — a cross-origin frame whose
+ * parent runs no recorder — that frame records a session of its own, and the SSR render behind
+ * it is precisely what minting exists to attribute. And even when the subframe does defer, the
+ * forwarding carries frontend data only: backend spans are attributed by the id stamped here,
+ * so without a mint that render is attributable to nobody either way.
+ *
+ * Nothing in the request distinguishes the two, and the server cannot know: the deciding
+ * handshake happens in the browser, after this response. Minting for both is what makes the
+ * owning case work and costs nothing in the deferring case, where the id is simply never
+ * adopted (see the note above).
  *
  * Absent, the caller is an older browser or not a browser at all (curl, a health check, a
  * crawler), and `Accept` is the only hint left.
@@ -105,7 +119,7 @@ export const isProvisionalSessionIdCandidate = (
 const isDocumentNavigation = (getHeader: HeaderReader): boolean => {
   const dest = getHeader("sec-fetch-dest");
   if (typeof dest === "string") {
-    return dest === "document";
+    return dest === "document" || dest === "iframe" || dest === "frame";
   }
   const accept = getHeader("accept");
   return typeof accept === "string" && accept.includes("text/html");

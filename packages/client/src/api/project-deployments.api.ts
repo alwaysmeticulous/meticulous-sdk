@@ -9,6 +9,7 @@ import type {
 } from "@alwaysmeticulous/api";
 import { maybeEnrichFetchError } from "../errors";
 import type { MeticulousClient } from "../types/client.types";
+import { assertOpaqueId } from "../utils/opaque-id";
 
 /**
  * Identifies a project for OAuth callers, whose token does not by itself
@@ -111,6 +112,11 @@ export interface CompleteAssetUploadResponse {
    */
   allSessionsExcludedBySessionFilter?: boolean;
   /**
+   * Set when no test run was created because comments and checks are disabled
+   * for the pull request author.
+   */
+  commentsDisabledForAuthor?: boolean;
+  /**
    * When set alongside `baseNotFound`, the server is asking the client to
    * extend its default base-polling window by this many milliseconds.
    */
@@ -139,6 +145,7 @@ export interface CompleteContainerUploadResponse {
   testRun?: TestRun;
   message?: string;
   baseNotFound?: boolean;
+  commentsDisabledForAuthor?: boolean;
   /**
    * When set alongside `baseNotFound`, the server is asking the client to
    * extend its default base-polling window by this many milliseconds.
@@ -203,6 +210,23 @@ const rejectLegacyProjectId = (body: object): void => {
         "instead (a project id, `organization/name` slug, or unique project " +
         "name), or omit it to use your default project.",
     );
+  }
+};
+
+// Exact-match lookup keys server-side; rejected client-side when malformed so
+// a leaked error message or file path fails here, not as a server "not found".
+const REQUEST_IDENTIFIER_FIELDS = [
+  "deploymentId",
+  "commitSha",
+  "baseSha",
+] as const;
+
+const assertRequestIdentifiersAreOpaque = (body: object): void => {
+  for (const field of REQUEST_IDENTIFIER_FIELDS) {
+    const value = (body as Record<string, unknown>)[field];
+    if (typeof value === "string") {
+      assertOpaqueId(field, value);
+    }
   }
 };
 
@@ -633,6 +657,7 @@ export const agentUploadGitDiffBuild = async ({
   client: MeticulousClient;
 }): Promise<AgentUploadGitDiffBuildResponse> => {
   rejectLegacyProjectId(body);
+  assertRequestIdentifiersAreOpaque(body);
   const { data } = await client.post<AgentUploadGitDiffBuildResponse>(
     "agent/upload-build/git-diff",
     body,
@@ -687,6 +712,7 @@ export const agentTriggerTestRun = async ({
   client: MeticulousClient;
 }): Promise<AgentTriggerTestRunResponse> => {
   rejectLegacyProjectId(body);
+  assertRequestIdentifiersAreOpaque(body);
   const { data } = await client.post<AgentTriggerTestRunResponse>(
     "agent/trigger-test-run",
     body,

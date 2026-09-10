@@ -846,7 +846,9 @@ npx @alwaysmeticulous/cli simulate \\
 
 ## crawl
 
-Crawl your app from a start URL to record sessions and create a test run from them. Opens a local headed browser at the start URL and pauses so you can manually log in before crawling starts — useful for bootstrapping session coverage on apps that require a login.
+Crawl your app from one or more start URLs to record sessions and create a test run from them. Opens a local headed browser at the first start URL and pauses so you can manually log in before crawling starts — useful for bootstrapping session coverage on apps that require a login.
+
+Passing several start URLs crawls each of them in turn in the same browser, so a single login covers the whole list, and each URL is opened by a full page load so that it records a session of its own.
 
 {% callout type="warning" %}
 Recording starts as soon as the browser opens, so the login flow (including any credentials you type) is recorded as part of the first session.
@@ -865,12 +867,17 @@ npx @alwaysmeticulous/cli crawl \\
 
 #### \`--startUrl\`
 
-**Type**: String
-**Description**: The URL to start crawling from
+**Type**: String (repeatable)
+**Description**: A URL to crawl. Repeat the flag, or give it several values, to crawl a list of URLs in order — they share one browser (and so one login), and each is loaded afresh so that it records its own session
 
 **Example**:
 \`\`\`bash
 --startUrl="https://app.example.com"
+
+# Several URLs behind one login
+--startUrl="https://app.example.com/dashboard" \\
+  --startUrl="https://app.example.com/settings" \\
+  --startUrl="https://app.example.com/billing"
 \`\`\`
 
 ---
@@ -888,7 +895,7 @@ npx @alwaysmeticulous/cli crawl \\
 #### \`--crawlingTimeoutSeconds\`
 
 **Type**: Number
-**Description**: The maximum time in seconds to spend crawling (time spent logging in doesn't count)
+**Description**: The maximum total time in seconds to spend crawling, shared out between the start URLs — each remaining URL gets an equal share of the time left, so one that finishes early hands its unused budget to the ones after it (time spent logging in doesn't count)
 **Default**: 120
 
 ---
@@ -923,6 +930,14 @@ npx @alwaysmeticulous/cli crawl \\
   --startUrl="https://app.example.com" \\
   --crawlingTimeoutSeconds=600 \\
   --skipTestRun
+
+# A list of URLs behind one login, 10 minutes shared between them
+npx @alwaysmeticulous/cli crawl \\
+  --apiToken="<token>" \\
+  --startUrl="https://app.example.com/dashboard" \\
+  --startUrl="https://app.example.com/settings" \\
+  --startUrl="https://app.example.com/billing" \\
+  --crawlingTimeoutSeconds=600
 \`\`\`
 
 When the browser opens, log in if your app requires it, then press Enter in the terminal to start crawling. Once the crawl finishes the CLI prints the URL of the created test run.

@@ -39,6 +39,16 @@ export {
 } from "./file-downloads/download-file";
 export { downloadAndUnzipJson } from "./file-downloads/download-and-unzip-json";
 export {
+  unzipSingleEntry,
+  unzipSingleEntryToJson,
+  unzipSingleEntryToString,
+} from "./file-downloads/unzip-single-entry";
+export {
+  safeExtractZip,
+  type SafeExtractZipOptions,
+  type SkippedZipEntryReason,
+} from "./file-downloads/safe-extract-zip";
+export {
   createDownloadProgressBar,
   type DownloadProgressBar,
   type TrackedDownloadStream,

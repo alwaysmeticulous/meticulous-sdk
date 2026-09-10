@@ -355,15 +355,9 @@ importers:
       cli-progress:
         specifier: ^3.12.0
         version: 3.12.0
-      extract-zip:
-        specifier: ^2.0.1
-        version: 2.0.1
       fast-zlib:
         specifier: ^2.0.1
         version: 2.0.1
-      jszip:
-        specifier: ^3.10.1
-        version: 3.10.1
       luxon:
         specifier: ^3.2.1
         version: 3.7.2
@@ -376,6 +370,9 @@ importers:
       tar:
         specifier: ^7.5.22
         version: 7.5.22
+      yauzl:
+        specifier: ^3.4.0
+        version: 3.4.0
     devDependencies:
       '@types/cli-progress':
         specifier: ^3.11.6
@@ -386,6 +383,12 @@ importers:
       '@types/proper-lockfile':
         specifier: ^4.1.2
         version: 4.1.4
+      '@types/yauzl':
+        specifier: ^3.4.0
+        version: 3.4.0
+      jszip:
+        specifier: ^3.10.1
+        version: 3.10.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.4(@opentelemetry/api@1.9.0)(@types/node@20.19.27)(vite@7.3.2(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.2)(yaml@2.9.0))
@@ -2802,6 +2805,9 @@ packages:
 
   '@types/yauzl@2.10.3':
     resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
+
+  '@types/yauzl@3.4.0':
+    resolution: {integrity: sha512-NRPn5w6h8dhcnmx3YIRQcqMywY/+nND/uOkJessedcrowO3C0AssHp3tMJpxKAwOhFOo0OV1y9VtsC5hbKKBAw==}
 
   '@typescript-eslint/eslint-plugin@8.58.2':
     resolution: {integrity: sha512-aC2qc5thQahutKjP+cl8cgN9DWe3ZUqVko30CMSZHnFEHyhOYoZSzkGtAI2mcwZ38xeImDucI4dnqsHiOYuuCw==}
@@ -6178,6 +6184,10 @@ packages:
   yauzl@2.10.0:
     resolution: {integrity: sha512-p4a9I6X6nu6IhoGmBqAcbJy1mlC4j27vEPZX9F4L4/vZT3Lyq1VkFHw/V/PUcB9Buo+DG3iHkT0x3Qya58zc3g==}
 
+  yauzl@3.4.0:
+    resolution: {integrity: sha512-jIH9yLR9wqr0wOS0TpBvo/g/2UgZH5qePVbjgRliiF0BYvOZyaBknKsF+x9Iht0O6sqgnB93rCICdOZFecJuDw==}
+    engines: {node: '>=12'}
+
   yn@3.1.1:
     resolution: {integrity: sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==}
     engines: {node: '>=6'}
@@ -8440,6 +8450,10 @@ snapshots:
     dependencies:
       '@types/node': 20.19.27
     optional: true
+
+  '@types/yauzl@3.4.0':
+    dependencies:
+      '@types/node': 20.19.27
 
   '@typescript-eslint/eslint-plugin@8.58.2(@typescript-eslint/parser@8.58.2(eslint@10.2.0(jiti@2.6.1))(typescript@5.9.3))(eslint@10.2.0(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
@@ -12328,6 +12342,10 @@ snapshots:
     dependencies:
       buffer-crc32: 0.2.13
       fd-slicer: 1.1.0
+
+  yauzl@3.4.0:
+    dependencies:
+      pend: 1.2.0
 
   yn@3.1.1: {}
 

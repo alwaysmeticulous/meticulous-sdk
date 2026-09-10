@@ -174,6 +174,7 @@ export type {
   RequestConfig,
 } from "./types/client.types";
 export { getProxyAgent } from "./utils/get-proxy-agent";
+export { isOpaqueId, assertOpaqueId } from "./utils/opaque-id";
 export {
   PutFileToSignedUrlOptions,
   putFileToSignedUrl,
@@ -312,7 +313,11 @@ export {
   AgenticRepoSearchMatch,
   searchAgenticRepoCode,
   GetAgenticFileChangesParams,
+  GetAgenticFileChangesSingleParams,
+  GetAgenticFileChangesBulkParams,
+  GetAgenticFileChange,
   GetAgenticFileChangesResponse,
+  GetAgenticFileChangesBulkResponse,
   getAgenticFileChanges,
   ListAgenticRepoTreeParams,
   ListAgenticRepoTreeResponse,
@@ -358,6 +363,11 @@ export {
 } from "./api/agentic-session-generation.api";
 export {
   getDiscoveryRepoFile,
+  getDiscoveryRepoFiles,
+  MAX_DISCOVERY_REPO_FILES_PATHS,
+  DiscoveryRepoFileEntry,
+  GetDiscoveryRepoFilesParams,
+  GetDiscoveryRepoFilesResponse,
   searchDiscoveryRepoCode,
   listDiscoveryRepoTree,
   acquireDiscoveryRepoLease,

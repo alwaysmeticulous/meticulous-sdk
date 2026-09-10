@@ -74,46 +74,84 @@ const handler = async ({
       .testRunId;
   const result = await requestCompletion(client, resolvedTestRunId);
 
-  // Summary on stderr regardless of --json (which only changes stdout).
-  // `sessionsScheduled === 0` alone doesn't mean "nothing to do" — it's also
-  // what a call sees while earlier-scheduled work is still in flight, so that
-  // case gets its own message rather than falsely claiming completion.
-  if (result.sessionsScheduled > 0) {
-    logNotice(
-      `Scheduled ${result.sessionsScheduled} of test run ${resolvedTestRunId}'s ${result.configuredSessionCount} selected sessions for replay.`,
-    );
-  } else if (result.unexecutedSessionCount === 0) {
-    logNotice(
-      `Test run ${resolvedTestRunId} has already replayed all ${result.configuredSessionCount} of its selected sessions; nothing to do.`,
-    );
-  } else if (result.unexecutedSessionCount > result.unobtainableSessionCount) {
-    logNotice(
-      `Test run ${resolvedTestRunId} has nothing further to schedule right now, but ${result.unexecutedSessionCount} of its ${result.configuredSessionCount} selected sessions still lack a result — likely still in flight from an earlier call.`,
-    );
-  } else {
-    logNotice(
-      `Test run ${resolvedTestRunId} has ${result.unobtainableSessionCount} of its ${result.configuredSessionCount} selected sessions that can no longer be replayed on it, and nothing left to schedule.`,
-    );
-  }
+  logSchedulingSummary(resolvedTestRunId, result);
 
   // Wait by default, so the run this returns is one nothing more can be
   // scheduled for — the point of completing it.
-  let { status, unexecutedSessionCount, unobtainableSessionCount } = result;
+  let final: CompleteBaseRunResponse = result;
   if (!dontWaitForTestRunToComplete && !hasReplayedAllItCan(result)) {
-    ({ status, unexecutedSessionCount, unobtainableSessionCount } =
-      await waitForBaseRunCompletion(client, resolvedTestRunId, result));
+    final = await waitForBaseRunCompletion(client, resolvedTestRunId, result);
   }
+
+  // Reported after the wait, from its final numbers: a session claimed
+  // elsewhere at the first request becomes reused once that run finishes, so
+  // the counts the first response carried can understate what actually
+  // happened by the time the command returns.
+  logRegistrySummary(final);
 
   const output = {
     ...result,
-    status,
-    unexecutedSessionCount,
-    unobtainableSessionCount,
+    status: final.status,
+    unexecutedSessionCount: final.unexecutedSessionCount,
+    unobtainableSessionCount: final.unobtainableSessionCount,
+    reusedSessionCount: final.reusedSessionCount,
+    inFlightElsewhereSessionCount: final.inFlightElsewhereSessionCount,
   };
   if (json) {
     printJson(output);
   } else {
     printKeyValueLines(output);
+  }
+};
+
+/**
+ * What this call scheduled, on stderr regardless of `--json` (which only
+ * changes stdout).
+ *
+ * `sessionsScheduled === 0` alone doesn't mean "nothing to do" — it's also
+ * what a call sees while earlier-scheduled work is still in flight, so that
+ * case gets its own message rather than falsely claiming completion. Sessions
+ * another run is replaying are called out separately: they are neither this
+ * run's to schedule nor beyond recovering, and describing them as work "from
+ * an earlier call" points the reader at the wrong run.
+ */
+const logSchedulingSummary = (
+  testRunId: string,
+  result: CompleteBaseRunResponse,
+): void => {
+  if (result.sessionsScheduled > 0) {
+    logNotice(
+      `Scheduled ${result.sessionsScheduled} of test run ${testRunId}'s ${result.configuredSessionCount} selected sessions for replay.`,
+    );
+    return;
+  }
+  if (result.unexecutedSessionCount === 0) {
+    logNotice(
+      `Test run ${testRunId} has already replayed all ${result.configuredSessionCount} of its selected sessions; nothing to do.`,
+    );
+    return;
+  }
+  if (result.unexecutedSessionCount > result.unobtainableSessionCount) {
+    const awaitedElsewhere =
+      result.inFlightElsewhereSessionCount > 0
+        ? ` ${result.inFlightElsewhereSessionCount} of them are being replayed right now by another test run on the same build, and will count towards this run when it finishes; the rest are`
+        : " They are";
+    logNotice(
+      `Test run ${testRunId} has nothing further to schedule right now, but ${result.unexecutedSessionCount} of its ${result.configuredSessionCount} selected sessions still lack a result.${awaitedElsewhere} likely still in flight from an earlier call.`,
+    );
+    return;
+  }
+  logNotice(
+    `Test run ${testRunId} has ${result.unobtainableSessionCount} of its ${result.configuredSessionCount} selected sessions that can no longer be replayed on it, and nothing left to schedule.`,
+  );
+};
+
+/** What the registry saved this run, from the command's final numbers. */
+const logRegistrySummary = (result: CompleteBaseRunResponse): void => {
+  if (result.reusedSessionCount > 0) {
+    logNotice(
+      `${result.reusedSessionCount} of those sessions were already replayed on this build by another test run; their coverage counts towards this run once it has been post-processed.`,
+    );
   }
 };
 
@@ -166,6 +204,14 @@ const assertCoverageCanStillBecomeServable = (
  * configured set, `resultData.results` is folded live as chunks complete (see
  * `TestRunService.getResults`), so diffing the two session-ID sets is exactly
  * `unexecutedSessionCount` without needing the write endpoint at all.
+ *
+ * With one deliberate exception: a session another run's replay stands in for
+ * gains no result here, so it keeps counting as unexecuted even once its
+ * coverage has been folded in. Whether the fold has happened is a registry
+ * comparison only the backend can make, so this over-counts until the coarser
+ * {@link RESCHEDULE_INTERVAL_MS} write-path call replaces the number with the
+ * authoritative one — which is why the loop re-tests its condition straight
+ * after that call rather than sleeping again first.
  */
 const countUnexecutedSessions = (testRun: TestRun): number => {
   const resultSessionIds = new Set(
@@ -216,14 +262,14 @@ const waitForBaseRunCompletion = async (
   client: MeticulousClient,
   testRunId: string,
   initial: CompleteBaseRunResponse,
-): Promise<
-  Pick<
-    CompleteBaseRunResponse,
-    "status" | "unexecutedSessionCount" | "unobtainableSessionCount"
-  >
-> => {
+): Promise<CompleteBaseRunResponse> => {
   logProgress(`Waiting for test run ${testRunId} to finish replaying...`);
-  let { unexecutedSessionCount, unobtainableSessionCount } = initial;
+  // The whole response, not just the fields the loop tests: a session claimed
+  // elsewhere at the initial request becomes reused on a later write-path
+  // call, so the registry counts move while we wait and the caller's output
+  // must report where they ended up, not where they started.
+  let latest = initial;
+  let { unexecutedSessionCount } = initial;
   let status: TestRunStatus = initial.status;
   let lastRescheduledAtMs = performance.now();
   const deadline = performance.now() + POLL_TIMEOUT_MS;
@@ -231,16 +277,16 @@ const waitForBaseRunCompletion = async (
     !hasReplayedAllItCan({
       status,
       unexecutedSessionCount,
-      unobtainableSessionCount,
+      unobtainableSessionCount: latest.unobtainableSessionCount,
     })
   ) {
     if (performance.now() >= deadline) {
       logNotice(
-        unexecutedSessionCount > unobtainableSessionCount
-          ? `Test run ${testRunId} still has ${unexecutedSessionCount - unobtainableSessionCount} session(s) that could still replay but have no result after ${Math.round(POLL_TIMEOUT_MS / 60_000)} minutes. It may still be running — check back later, or re-run this command to keep waiting.`
+        unexecutedSessionCount > latest.unobtainableSessionCount
+          ? `Test run ${testRunId} still has ${unexecutedSessionCount - latest.unobtainableSessionCount} session(s) that could still replay but have no result after ${Math.round(POLL_TIMEOUT_MS / 60_000)} minutes. It may still be running — check back later, or re-run this command to keep waiting.`
           : `Test run ${testRunId} has replayed everything it can, but its coverage still hasn't finished being recomputed for the full set after ${Math.round(POLL_TIMEOUT_MS / 60_000)} minutes (status: ${status}). Check back later, or re-run this command to keep waiting.`,
       );
-      return { status, unexecutedSessionCount, unobtainableSessionCount };
+      return { ...latest, status, unexecutedSessionCount };
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     const testRun = await getTestRun({ client, testRunId });
@@ -252,11 +298,11 @@ const waitForBaseRunCompletion = async (
     const now = performance.now();
     if (now - lastRescheduledAtMs >= RESCHEDULE_INTERVAL_MS) {
       lastRescheduledAtMs = now;
-      ({ unexecutedSessionCount, unobtainableSessionCount, status } =
-        await requestCompletion(client, testRunId));
+      latest = await requestCompletion(client, testRunId);
+      ({ unexecutedSessionCount, status } = latest);
     }
   }
-  return { status, unexecutedSessionCount, unobtainableSessionCount };
+  return { ...latest, status, unexecutedSessionCount };
 };
 
 /**
@@ -300,7 +346,7 @@ const printKeyValueLines = (result: CompleteBaseRunResponse): void => {
 export const completeBaseRunCommand: CommandModule<unknown, Options> = {
   command: "complete-base-run",
   describe:
-    "Replay the selected sessions which a base run has not run yet. Outputs testRunId, status, unexecutedSessionCount, unobtainableSessionCount, sessionsScheduled and configuredSessionCount, one per line. A base run (in particular associated with a main branch commit) runs sessions on demand for whichever PRs compare against it, so only part of its selected set has run at any point. Useful when a run needs to stand for its whole commit rather than one PR's slice — 'agent js-coverage', for instance, refuses an incomplete base run. Waits up to 10 minutes for nothing more to be schedulable (unexecutedSessionCount down to unobtainableSessionCount, the sessions that can never gain a result), returning whatever it has if that isn't reached by then; pass --dontWaitForTestRunToComplete to return as soon as the work is scheduled. Running it twice is a no-op, not an error.",
+    "Replay the selected sessions which a base run has not run yet. Outputs testRunId, status, unexecutedSessionCount, unobtainableSessionCount, sessionsScheduled, configuredSessionCount, reusedSessionCount and inFlightElsewhereSessionCount, one per line. A base run (in particular associated with a main branch commit) runs sessions on demand for whichever PRs compare against it, so only part of its selected set has run at any point. Useful when a run needs to stand for its whole commit rather than one PR's slice — 'agent js-coverage', for instance, refuses an incomplete base run. A session another run already replayed on the same build with the same replay settings is not replayed again: reusedSessionCount reports how many, and their coverage joins this run's total when it is post-processed. A session another run is replaying right now is likewise left to it, counted by inFlightElsewhereSessionCount; it becomes reused when that run finishes. Waits up to 10 minutes for nothing more to be schedulable (unexecutedSessionCount down to unobtainableSessionCount, the sessions that can never gain a result), returning whatever it has if that isn't reached by then; pass --dontWaitForTestRunToComplete to return as soon as the work is scheduled. Running it twice is a no-op, not an error.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     testRunId: {

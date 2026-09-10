@@ -1,10 +1,41 @@
 import { describe, expect, test } from "vitest";
 import {
+  assertValidDeploymentIdArg,
   parseMaxDurationSecondsArg,
   shouldRejectMaxDurationWithoutSessionIds,
   shouldSkipAsNothingToTest,
   shouldWarnOfHeadDrift,
 } from "./trigger-test-run.command";
+
+describe("assertValidDeploymentIdArg", () => {
+  test("does not throw when omitted", () => {
+    expect(() => assertValidDeploymentIdArg(undefined)).not.toThrow();
+  });
+
+  test("does not throw for a well-formed deployment id", () => {
+    expect(() => assertValidDeploymentIdArg("dep-abc123")).not.toThrow();
+  });
+
+  test("throws for an error message captured from a failed 'agent upload-build' call", () => {
+    expect(() =>
+      assertValidDeploymentIdArg(
+        "Directory does not exist: /Users/example/app/build",
+      ),
+    ).toThrow(/is not a deployment id/);
+  });
+
+  test("throws for a bare file path", () => {
+    expect(() =>
+      assertValidDeploymentIdArg("/Users/example/app/build"),
+    ).toThrow(/is not a deployment id/);
+  });
+
+  test("throws for an empty string", () => {
+    expect(() => assertValidDeploymentIdArg("")).toThrow(
+      /is not a deployment id/,
+    );
+  });
+});
 
 describe("shouldSkipAsNothingToTest", () => {
   test("skips in --commitSha mode when base equals head with no diff", () => {

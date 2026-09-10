@@ -59,6 +59,7 @@ export interface UploadContainerResult {
   uploadId: string;
   testRun?: TestRun | null;
   message?: string;
+  commentsDisabledForAuthor?: boolean;
 }
 
 export interface PushContainerImageResult {
@@ -283,6 +284,7 @@ export const uploadContainer = async ({
       baseNotFound: waitForBase ? completeResult.baseNotFound : false,
       extraBasePollTimeoutMs: completeResult.extraBasePollTimeoutMs,
       message: completeResult.message,
+      commentsDisabledForAuthor: completeResult.commentsDisabledForAuthor,
     },
     retryFn: () =>
       completeUpload({
@@ -303,6 +305,7 @@ export const uploadContainer = async ({
   const testRun = pollResult.testRun ?? null;
   const baseNotFound = pollResult.baseNotFound;
   const message = pollResult.message;
+  const commentsDisabledForAuthor = pollResult.commentsDisabledForAuthor;
 
   if (testRun) {
     const organizationName = encodeURIComponent(
@@ -330,5 +333,6 @@ export const uploadContainer = async ({
     uploadId,
     testRun,
     ...(message ? { message } : {}),
+    ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
   };
 };

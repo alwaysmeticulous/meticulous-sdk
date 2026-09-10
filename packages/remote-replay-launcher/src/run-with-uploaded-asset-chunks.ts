@@ -42,6 +42,7 @@ export interface RunWithUploadedAssetChunksResult {
    * every session that would otherwise have run.
    */
   allSessionsExcludedBySessionFilter?: boolean;
+  commentsDisabledForAuthor?: boolean;
   overlaps?: ChunkPathOverlap[];
   overlapsTruncated?: boolean;
 }
@@ -136,6 +137,7 @@ export const runWithUploadedAssetChunks = async ({
     baseNotFound,
     message,
     allSessionsExcludedBySessionFilter,
+    commentsDisabledForAuthor,
     overlaps: triggerOverlaps,
     overlapsTruncated: triggerOverlapsTruncated,
   } = await pollWhileBaseNotFound({
@@ -146,6 +148,7 @@ export const runWithUploadedAssetChunks = async ({
       message: initialResult?.message,
       allSessionsExcludedBySessionFilter:
         initialResult?.allSessionsExcludedBySessionFilter,
+      commentsDisabledForAuthor: initialResult?.commentsDisabledForAuthor,
       overlaps: initialResult?.overlaps,
       overlapsTruncated: initialResult?.overlapsTruncated,
     },
@@ -189,6 +192,7 @@ export const runWithUploadedAssetChunks = async ({
     ...(allSessionsExcludedBySessionFilter
       ? { allSessionsExcludedBySessionFilter: true }
       : {}),
+    ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
     ...resolvedOverlaps,
   };
 };

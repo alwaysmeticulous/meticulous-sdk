@@ -139,6 +139,14 @@ export const executeRemoteTestRun = async ({
     ...(debugContext ? { debugContext } : {}),
   });
   if (!response.testRun) {
+    if (response.commentsDisabledForAuthor) {
+      logger.info(
+        response.message ??
+          "Test run skipped because CI comments and checks are disabled for this pull request author.",
+      );
+      tunnel.close();
+      return { testRun: null };
+    }
     throw new Error(`${response.message ?? "Test run was not created"}`);
   }
 

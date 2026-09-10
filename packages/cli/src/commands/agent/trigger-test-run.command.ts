@@ -1,5 +1,6 @@
 import {
   createClientWithOAuth,
+  isOpaqueId,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { logNotice, logProgress } from "@alwaysmeticulous/common";
@@ -32,6 +33,19 @@ interface Options {
   dryRun?: boolean;
   project?: string | undefined;
 }
+
+// Whitespace or path separators mean a failed `agent upload-build`'s error
+// output (or a path) was captured and passed through as the id.
+export const assertValidDeploymentIdArg = (
+  deploymentId: string | undefined,
+): void => {
+  if (deploymentId == null || isOpaqueId(deploymentId)) {
+    return;
+  }
+  throw new CliUserError(
+    `--deploymentId "${deploymentId}" is not a deployment id. This usually means a previous 'agent upload-build' call failed and its error output was passed through — check that it succeeded and printed a deploymentId.`,
+  );
+};
 
 /**
  * Whether the "nothing to test" short-circuit should fire: base equals head
@@ -135,6 +149,7 @@ const handler = async ({
   dryRun,
   project,
 }: Options): Promise<void> => {
+  assertValidDeploymentIdArg(deploymentId);
   if (deploymentId && commitSha_) {
     throw new CliUserError(
       "--deploymentId and --commitSha are mutually exclusive. Pass --deploymentId for a build from 'agent upload-build', " +

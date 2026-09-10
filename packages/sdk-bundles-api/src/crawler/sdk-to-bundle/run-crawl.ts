@@ -14,13 +14,26 @@ export interface RunCrawlOptions {
   projectId?: string | null | undefined;
 
   /**
-   * The URL to start crawling from, e.g. https://app.example.com
+   * The first URL to start crawling from, e.g. https://app.example.com
+   *
+   * Always the first entry of {@link startUrls}: it is kept as its own field so that
+   * bundles predating that option still crawl when given a newer CLI's options.
    */
   startUrl: string;
 
   /**
-   * The maximum time in seconds to spend crawling. Time spent on a manual
-   * login does not count towards this.
+   * The URLs to crawl, in the order they should be crawled. They share one browser,
+   * so a single manual login covers all of them, and each is opened as a fresh page
+   * load so that it records a session of its own.
+   *
+   * Optional so that a CLI predating this option, which sends only {@link startUrl},
+   * keeps working.
+   */
+  startUrls?: string[] | undefined;
+
+  /**
+   * The maximum time in seconds to spend crawling, shared across all of
+   * {@link startUrls}. Time spent on a manual login does not count towards this.
    */
   crawlingTimeoutSeconds: number;
 

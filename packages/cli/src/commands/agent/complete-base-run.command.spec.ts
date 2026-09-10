@@ -83,12 +83,16 @@ const completionFixture = ({
   unexecutedSessionCount = 0,
   unobtainableSessionCount = 0,
   configuredSessionCount = CONFIGURED_SESSION_IDS.length,
+  reusedSessionCount = 0,
+  inFlightElsewhereSessionCount = 0,
 }: {
   status: string;
   sessionsScheduled?: number;
   unexecutedSessionCount?: number;
   unobtainableSessionCount?: number;
   configuredSessionCount?: number;
+  reusedSessionCount?: number;
+  inFlightElsewhereSessionCount?: number;
 }): CompleteBaseRunResponse =>
   ({
     testRunId: "tr-base",
@@ -97,6 +101,8 @@ const completionFixture = ({
     configuredSessionCount,
     unexecutedSessionCount,
     unobtainableSessionCount,
+    reusedSessionCount,
+    inFlightElsewhereSessionCount,
   }) as CompleteBaseRunResponse;
 
 describe("complete-base-run handler", () => {
@@ -180,6 +186,70 @@ describe("complete-base-run handler", () => {
     );
     expect(mocks.logNotice).not.toHaveBeenCalledWith(
       expect.stringMatching(/already replayed all/),
+    );
+  });
+
+  // A session another run is mid-replay on is neither this run's to schedule
+  // nor beyond recovering. Describing it as work "still in flight from an
+  // earlier call" points the reader at the wrong run — and at a wait this run
+  // cannot shorten.
+  it("attributes a remainder in flight on another run to that run", async () => {
+    mocks.completeBaseRun.mockResolvedValue(
+      completionFixture({
+        status: "Partial",
+        unexecutedSessionCount: 2,
+        inFlightElsewhereSessionCount: 1,
+      }),
+    );
+
+    await runHandler({ dontWaitForTestRunToComplete: true });
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /1 of them are being replayed right now by another test run/,
+      ),
+    );
+  });
+
+  // A session claimed elsewhere at the first request becomes reusable once
+  // that run finishes, which only the coarser write-path call inside the wait
+  // observes. Reporting the initial 0 would tell the caller no reuse happened
+  // on the very run whose coverage it just folded in.
+  it("reports the reuse count the wait ended on, not the one it started with", async () => {
+    mocks.completeBaseRun
+      .mockResolvedValueOnce(
+        completionFixture({
+          status: "Partial",
+          unexecutedSessionCount: 2,
+          inFlightElsewhereSessionCount: 2,
+        }),
+      )
+      .mockResolvedValue(
+        completionFixture({ status: "Success", reusedSessionCount: 2 }),
+      );
+    // A reused session never gains a result on this run, so the read-only
+    // poll can't be what ends the wait: it keeps counting them as unexecuted
+    // until the coarser write-path call replaces the number.
+    mocks.getTestRun.mockResolvedValue(
+      testRunFixture({ status: "Partial", executedSessionIds: ["sess-1"] }),
+    );
+
+    vi.useFakeTimers();
+    try {
+      const handled = runHandler({
+        dontWaitForTestRunToComplete: false,
+        json: true,
+      });
+      await vi.runAllTimersAsync();
+      await handled;
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringMatching(/^2 of those sessions were already replayed/),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('"reusedSessionCount": 2'),
     );
   });
 

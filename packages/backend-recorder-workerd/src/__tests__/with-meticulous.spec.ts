@@ -364,6 +364,27 @@ describe("withMeticulous provisional session ids", () => {
     expect(response.headers.get("server-timing")).toBeNull();
   });
 
+  it("mints for a subframe navigation, whose recorder may own its own session", async () => {
+    const ctx = makeCtx();
+    const response = await documentHandler().fetch(
+      navigate({ "sec-fetch-dest": "iframe" }),
+      { METICULOUS_SIDECAR_URL: sidecarUrl } as never,
+      ctx,
+    );
+    await ctx.drain();
+
+    const [inbound] = eventsOfKind("inbound");
+    expect(inbound).toMatchObject({ sessionIdOrigin: "backend" });
+    expect(response.headers.get("server-timing")).toBe(
+      `metsession;desc="${inbound.frontendSessionId}"`,
+    );
+    // The render's outbound call is attributed too — the whole reason to mint for a frame
+    // whose parent may not be recording it.
+    expect(eventsOfKind("outbound")[0].frontendSessionId).toBe(
+      inbound.frontendSessionId,
+    );
+  });
+
   it("declines an in-page fetch, which is how an RSC navigation arrives", async () => {
     const ctx = makeCtx();
     const response = await documentHandler().fetch(

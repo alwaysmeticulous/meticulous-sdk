@@ -107,7 +107,9 @@ A browser cannot put a custom header on a top-level navigation, and on the navig
 
 The shim closes that gap from the other end: for such a request it **mints the session id itself**, records the whole request under it, and publishes it to the page, which adopts it instead of minting its own. The entire page load then sits under one session id.
 
-**When it mints.** Only for what is plausibly a browser navigating to a page: a `GET`/`HEAD` with `Sec-Fetch-Dest: document` (or, absent that header, an `Accept` containing `text/html`) and no inbound `x-meticulous-session-id`. An in-page `fetch`, an RSC navigation, an iframe, a health check and a crawler all decline. It only ever happens while recording, so a deployed worker with no sidecar configured is untouched.
+**When it mints.** Only for what is plausibly a browser loading a page: a `GET`/`HEAD` with `Sec-Fetch-Dest: document`, `iframe` or `frame` (or, absent that header, an `Accept` containing `text/html`) and no inbound `x-meticulous-session-id`. An in-page `fetch`, an RSC navigation, a health check and a crawler all decline. It only ever happens while recording, so a deployed worker with no sidecar configured is untouched.
+
+A subframe is included because it does not reliably fold into the top frame's session: the frontend recorder forwards a subframe's data to the top frame and suppresses its own session only when the top frame is recording under the same token, so a cross-origin frame whose parent has no recorder is a session in its own right — and its render needs the id as much as a top-level one does. Where the subframe _does_ defer, nothing adopts the id, and an id nothing adopts costs nothing: minted ids carry `meticulous.session_id_origin: "backend"`, and ingestion counts one that no session adopted as unstamped rather than as a stamp.
 
 **How the page learns it.** Two channels, either sufficient:
 

@@ -1,5 +1,11 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.339.0
+
+### Minor Changes
+
+- [#13588](https://github.com/alwaysmeticulous/meticulous/pull/13588) [`bfd8bb6`](https://github.com/alwaysmeticulous/meticulous/commit/bfd8bb6846772d88728afd56c62cb1e13a88322e) Thanks [@dennysem](https://github.com/dennysem)! - Mint a provisional session id for subframe navigations (`Sec-Fetch-Dest: iframe` / `frame`), not only top-level ones. A subframe only folds into the top frame's session when the top frame records under the same token, so a cross-origin frame whose parent has no recorder is a session of its own and its server-side render was left unattributed. Where a subframe does defer, nothing adopts the id and ingestion counts it as unstamped, so the extra mint costs nothing.
+
 ## 2.338.0
 
 ### Patch Changes

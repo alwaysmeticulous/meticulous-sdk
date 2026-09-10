@@ -47,6 +47,25 @@ describe("pollWhileBaseNotFound", () => {
     expect(retryFn.mock.calls.length).toBeLessThanOrEqual(31);
   });
 
+  it("preserves a comments-disabled skip without polling", async () => {
+    const retryFn = vi.fn();
+    const fallbackFn = vi.fn();
+
+    const result = await pollWhileBaseNotFound({
+      initialResult: {
+        testRun: null,
+        baseNotFound: false,
+        commentsDisabledForAuthor: true,
+      },
+      retryFn,
+      fallbackFn,
+    });
+
+    expect(result.commentsDisabledForAuthor).toBe(true);
+    expect(retryFn).not.toHaveBeenCalled();
+    expect(fallbackFn).not.toHaveBeenCalled();
+  });
+
   it("keeps polling for the server-provided extraBasePollTimeoutMs", async () => {
     const retryFn = vi.fn().mockResolvedValue({
       testRun: null,

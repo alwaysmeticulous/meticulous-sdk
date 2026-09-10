@@ -2,6 +2,7 @@ import { describe, expect, it, vi, type Mock } from "vitest";
 import type { MeticulousClient } from "../../types/client.types";
 import {
   completeAgenticSessionGeneration,
+  getAgenticFileChanges,
   listAgenticRepoSourceFiles,
 } from "../agentic-session-generation.api";
 
@@ -57,6 +58,92 @@ describe("completeAgenticSessionGeneration", () => {
         },
       },
     });
+  });
+});
+
+describe("getAgenticFileChanges", () => {
+  it("posts a single path and returns { diff }", async () => {
+    const client = {
+      post: vi
+        .fn()
+        .mockResolvedValue({ data: { diff: "@@ -1 +1 @@\n-a\n+b" } }),
+    } as unknown as { post: Mock };
+
+    await expect(
+      getAgenticFileChanges({
+        client: client as unknown as MeticulousClient,
+        projectId: "project",
+        commitSha: "commit",
+        path: "src/a.ts",
+      }),
+    ).resolves.toEqual({ diff: "@@ -1 +1 @@\n-a\n+b" });
+
+    expect(client.post).toHaveBeenCalledWith(
+      "agentic-session-generation/repo/file-changes",
+      { commitSha: "commit", path: "src/a.ts" },
+      { params: { projectId: "project" } },
+    );
+  });
+
+  it("posts paths[] and returns { files }", async () => {
+    const response = {
+      files: [
+        { path: "src/a.ts", diff: "@@ a" },
+        { path: "src/missing.ts", diff: "" },
+      ],
+    };
+    const client = {
+      post: vi.fn().mockResolvedValue({ data: response }),
+    } as unknown as { post: Mock };
+
+    await expect(
+      getAgenticFileChanges({
+        client: client as unknown as MeticulousClient,
+        projectId: "project",
+        commitSha: "commit",
+        paths: ["src/a.ts", "src/missing.ts"],
+      }),
+    ).resolves.toEqual(response);
+
+    expect(client.post).toHaveBeenCalledWith(
+      "agentic-session-generation/repo/file-changes",
+      { commitSha: "commit", paths: ["src/a.ts", "src/missing.ts"] },
+      { params: { projectId: "project" } },
+    );
+  });
+
+  it("omits path and paths to request every changed file", async () => {
+    const response = { files: [{ path: "src/a.ts", diff: "@@ a" }] };
+    const client = {
+      post: vi.fn().mockResolvedValue({ data: response }),
+    } as unknown as { post: Mock };
+
+    await expect(
+      getAgenticFileChanges({
+        client: client as unknown as MeticulousClient,
+        projectId: "project",
+        commitSha: "commit",
+      }),
+    ).resolves.toEqual(response);
+
+    expect(client.post).toHaveBeenCalledWith(
+      "agentic-session-generation/repo/file-changes",
+      { commitSha: "commit" },
+      { params: { projectId: "project" } },
+    );
+  });
+
+  it("returns files: null when the backend has no PR/diff", async () => {
+    const client = {
+      post: vi.fn().mockResolvedValue({ data: { files: null } }),
+    } as unknown as { post: Mock };
+
+    await expect(
+      getAgenticFileChanges({
+        client: client as unknown as MeticulousClient,
+        commitSha: "commit",
+      }),
+    ).resolves.toEqual({ files: null });
   });
 });
 
