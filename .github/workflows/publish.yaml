@@ -64,3 +64,17 @@ jobs:
             echo "Publishing $name@$version"
             pnpm publish "$dir" --access public --no-git-checks --provenance
           done
+
+      - name: Notify Slack on failure
+        if: ${{ failure() }}
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          payload=$(jq -n \
+            --arg text "NPM publish failed for ${{ github.repository }} on ${{ github.ref_name }}. <$RUN_URL|View workflow run>." \
+            '{text: $text}')
+          curl --fail --show-error --silent \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            "$SLACK_WEBHOOK"
