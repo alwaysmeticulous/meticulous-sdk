@@ -54,7 +54,7 @@ meticulous [command]
 | \`crawl\` | Crawl your app to record sessions and create a test run | Bootstrapping session coverage |
 | \`auth login\` | Force a fresh browser login and select a project | Authentication |
 | \`auth whoami\` | Show current user | Authentication check |
-| \`auth logout\` | Clear stored tokens | Authentication |
+| \`auth logout\` | Revoke and clear stored tokens | Authentication |
 | \`auth get-project\` | Print your default project | Authentication |
 | \`auth set-project\` | Choose your default project | Authentication |
 | \`auth list-projects\` | List the projects you can access | Authentication |

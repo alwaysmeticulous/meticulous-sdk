@@ -1,5 +1,20 @@
 # @alwaysmeticulous/cli
 
+## 2.340.0
+
+### Minor Changes
+
+- [#13716](https://github.com/alwaysmeticulous/meticulous/pull/13716) [`15e4af3`](https://github.com/alwaysmeticulous/meticulous/commit/15e4af301761667ecd8a35910c4684013fdaa0ec) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous auth logout` now revokes the stored refresh token at the identity provider before deleting it locally, so the session behind it can no longer be refreshed. Revocation is best-effort: logout still completes when the identity provider is unreachable, with a warning that the session stays valid until it expires. `@alwaysmeticulous/client` exports the new `revokeOAuthRefreshToken` helper.
+
+### Patch Changes
+
+- Updated dependencies [[`15e4af3`](https://github.com/alwaysmeticulous/meticulous/commit/15e4af301761667ecd8a35910c4684013fdaa0ec), [`0063737`](https://github.com/alwaysmeticulous/meticulous/commit/006373729256fa9e9a9a69acb949aba3aacc4cf7)]:
+  - @alwaysmeticulous/client@2.340.0
+  - @alwaysmeticulous/debug-workspace@2.340.0
+  - @alwaysmeticulous/downloading-helpers@2.340.0
+  - @alwaysmeticulous/remote-replay-launcher@2.340.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.340.0
+
 ## 2.339.0
 
 ### Minor Changes

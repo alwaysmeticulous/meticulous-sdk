@@ -72,7 +72,7 @@
     "@rsbuild/core": "^1.7.0",
     "@rspack/core": "^1.0.0",
     "tsdown": "^0.21.7",
-    "vite": "^7.3.2",
+    "vite": "^7.3.6",
     "vitest": "catalog:",
     "webpack": "^5.106.1"
   },

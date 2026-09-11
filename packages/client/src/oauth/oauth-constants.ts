@@ -11,16 +11,21 @@ const WELL_KNOWN_PATH = "/.well-known/openid-configuration";
 interface OidcConfiguration {
   token_endpoint: string;
   device_authorization_endpoint?: string;
+  revocation_endpoint?: string;
 }
 
 let cachedOidcConfiguration: OidcConfiguration | null = null;
 
-const getOidcConfiguration = async (): Promise<OidcConfiguration> => {
+const getOidcConfiguration = async (
+  signal?: AbortSignal,
+): Promise<OidcConfiguration> => {
   if (cachedOidcConfiguration) {
     return cachedOidcConfiguration;
   }
 
-  const response = await fetch(`${KEYCLOAK_ISSUER_URL}${WELL_KNOWN_PATH}`);
+  const response = await fetch(`${KEYCLOAK_ISSUER_URL}${WELL_KNOWN_PATH}`, {
+    signal: signal ?? null,
+  });
   if (!response.ok) {
     throw new Error(
       `Failed to fetch OpenID configuration: ${response.status} ${response.statusText}`,
@@ -51,6 +56,18 @@ export const getDeviceAuthorizationEndpoint = async (): Promise<string> => {
     );
   }
   return config.device_authorization_endpoint;
+};
+
+export const getRevocationEndpoint = async (
+  signal?: AbortSignal,
+): Promise<string> => {
+  const config = await getOidcConfiguration(signal);
+  if (!config.revocation_endpoint) {
+    throw new Error(
+      `OpenID configuration missing revocation_endpoint (${KEYCLOAK_ISSUER_URL}).`,
+    );
+  }
+  return config.revocation_endpoint;
 };
 
 const DEFAULT_WEBAPP_BASE_URL = "https://app.meticulous.ai";

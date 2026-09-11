@@ -173,6 +173,60 @@ export const getLatestTestRunResults = async ({
   return (data as TestRun | null) ?? null;
 };
 
+/**
+ * Shared listing args for `POST /api/test-runs/search`, matching GraphQL
+ * `testRunsForProject` except built-in-check issue filters (which that query
+ * supports and this listing does not). The backend rejects `limit` above 200.
+ *
+ * `projectId` is optional with a project or curate-diffs workflow token (the
+ * token pins the project) and required for OAuth / cross-project tokens.
+ */
+export interface SearchTestRunsOptions {
+  client: MeticulousClient;
+  projectId?: string;
+  offset: number;
+  limit: number;
+  prOnly: boolean;
+  withDiffsOnly: boolean;
+  completedWithoutExecutionErrorsOnly: boolean;
+  searchQuery?: string;
+  latestPerPullRequest?: boolean;
+}
+
+/**
+ * Lists a project's test runs. Backed by `POST /api/test-runs/search`, which
+ * takes its filters as a JSON body so booleans stay booleans.
+ */
+export const searchTestRuns = async ({
+  client,
+  projectId,
+  offset,
+  limit,
+  prOnly,
+  withDiffsOnly,
+  completedWithoutExecutionErrorsOnly,
+  searchQuery,
+  latestPerPullRequest,
+}: SearchTestRunsOptions): Promise<TestRun[]> => {
+  const { data } = await client
+    .post<TestRun[]>("test-runs/search", {
+      ...(projectId ? { projectId } : {}),
+      offset,
+      limit,
+      prOnly,
+      withDiffsOnly,
+      completedWithoutExecutionErrorsOnly,
+      ...(searchQuery != null ? { searchQuery } : {}),
+      ...(latestPerPullRequest != null ? { latestPerPullRequest } : {}),
+      clientVersion: String(TEST_RUN_STATUS_CLIENT_VERSION),
+    })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+
+  return data;
+};
+
 export const getTestRunReplayDiffs = async ({
   client,
   testRunId,

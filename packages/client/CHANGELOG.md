@@ -1,5 +1,13 @@
 # @alwaysmeticulous/client
 
+## 2.340.0
+
+### Minor Changes
+
+- [#13716](https://github.com/alwaysmeticulous/meticulous/pull/13716) [`15e4af3`](https://github.com/alwaysmeticulous/meticulous/commit/15e4af301761667ecd8a35910c4684013fdaa0ec) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous auth logout` now revokes the stored refresh token at the identity provider before deleting it locally, so the session behind it can no longer be refreshed. Revocation is best-effort: logout still completes when the identity provider is unreachable, with a warning that the session stays valid until it expires. `@alwaysmeticulous/client` exports the new `revokeOAuthRefreshToken` helper.
+
+- [#13615](https://github.com/alwaysmeticulous/meticulous/pull/13615) [`0063737`](https://github.com/alwaysmeticulous/meticulous/commit/006373729256fa9e9a9a69acb949aba3aacc4cf7) Thanks [@Que3216](https://github.com/Que3216)! - Add `searchTestRuns`, wrapping `POST /api/test-runs/search`. The listing takes the same filters as GraphQL `testRunsForProject` except built-in-check issue filters, and the backend caps `limit` at 200. Curate-diffs workflow tokens may call this route.
+
 ## 2.339.0
 
 ### Minor Changes

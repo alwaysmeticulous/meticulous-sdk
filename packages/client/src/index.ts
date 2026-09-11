@@ -129,6 +129,8 @@ export {
   getTestRunReplayDiffs,
   GetLatestTestRunOptions,
   getLatestTestRunResults,
+  SearchTestRunsOptions,
+  searchTestRuns,
   TestRun,
   emitTelemetry,
 } from "./api/test-run.api";
@@ -161,6 +163,10 @@ export {
 } from "./oauth/oauth-login";
 export { performDeviceLogin } from "./oauth/oauth-device-login";
 export { getValidAccessToken } from "./oauth/oauth-refresh";
+export {
+  type OAuthRevocationResult,
+  revokeOAuthRefreshToken,
+} from "./oauth/oauth-revoke";
 export {
   clearOAuthTokens,
   getStoredOAuthTokens,
