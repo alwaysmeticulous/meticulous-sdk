@@ -5,35 +5,46 @@ import type {
 import { shouldDefaultToExecutedRanges } from "@alwaysmeticulous/client";
 import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
 
-// The per-file range/percentage columns, emitted (after `repoFilePath`) in this
-// fixed order. `executableRanges`/`uncoveredRanges`/`coveragePercentage` rely on
+// The per-file range/count/percentage columns, emitted (after `repoFilePath`)
+// in this fixed order. Everything except `executedRanges` relies on
 // executable-line data we only have for whole test runs.
 export type CoverageColumn =
   | "executedRanges"
   | "executableRanges"
   | "uncoveredRanges"
+  | "executedLines"
+  | "executableLines"
+  | "uncoveredLines"
   | "coveragePercentage";
 
 // Single source of truth mapping each column to the request flag that asks for
-// it, so the printed columns and the request payload can't drift apart.
+// it, so the printed columns and the request payload can't drift apart. The
+// three line-count columns share one flag — they are the same counts over the
+// same lines, always wanted together, and splitting them would triple the flag
+// surface without shrinking the payload.
 export const COVERAGE_COLUMN_FLAG: Record<
   CoverageColumn,
   | "includeExecutedRanges"
   | "includeExecutableRanges"
   | "includeUncoveredRanges"
+  | "includeLineCounts"
   | "includeCoveragePercentage"
 > = {
   executedRanges: "includeExecutedRanges",
   executableRanges: "includeExecutableRanges",
   uncoveredRanges: "includeUncoveredRanges",
+  executedLines: "includeLineCounts",
+  executableLines: "includeLineCounts",
+  uncoveredLines: "includeLineCounts",
   coveragePercentage: "includeCoveragePercentage",
 };
 
-// The four column-selection flags exposed by js-coverage.
+// The column-selection flags exposed by js-coverage.
 export interface CoverageColumnSelection {
   includeExecutedRanges: boolean;
   includeExecutableRanges: boolean;
   includeUncoveredRanges: boolean;
+  includeLineCounts: boolean;
   includeCoveragePercentage: boolean;
 }
 
@@ -53,6 +64,9 @@ export const determineColumns = (
   }
   if (selection.includeUncoveredRanges) {
     columns.push("uncoveredRanges");
+  }
+  if (selection.includeLineCounts) {
+    columns.push("executedLines", "executableLines", "uncoveredLines");
   }
   if (selection.includeCoveragePercentage) {
     columns.push("coveragePercentage");
@@ -85,12 +99,25 @@ export const coverageColumnValue = (
       return file.executableRanges ?? [];
     case "uncoveredRanges":
       return file.uncoveredRanges ?? [];
+    case "executedLines":
+      return file.executedLines ?? 0;
+    case "executableLines":
+      return file.executableLines ?? 0;
+    case "uncoveredLines":
+      return file.uncoveredLines ?? 0;
     case "coveragePercentage":
       return file.coveragePercentage ?? null;
     default:
       return assertNever(column);
   }
 };
+
+// Whether a column's numeric value is a line count rather than a percentage —
+// counts print as integers, percentages to one decimal place.
+const isLineCountColumn = (column: CoverageColumn): boolean =>
+  column === "executedLines" ||
+  column === "executableLines" ||
+  column === "uncoveredLines";
 
 // The TSV rendering of a column: the same structured value as the JSON output,
 // formatted as a string (ranges joined, percentage to 1dp, absent percentage as
@@ -102,7 +129,7 @@ export const formatCoverageColumn = (
 ): string => {
   const value = coverageColumnValue(file, column);
   if (typeof value === "number") {
-    return value.toFixed(1);
+    return isLineCountColumn(column) ? String(value) : value.toFixed(1);
   }
   if (value == null) {
     return "n/a";

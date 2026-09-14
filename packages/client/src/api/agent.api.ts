@@ -455,8 +455,28 @@ export interface TestRunJsCoverageResponse {
  *   (executed/executable/uncovered ranges, coverage percentage), files with no
  *   value in any requested column dropped unless `includeAllFiles`, plus
  *   `prDiffOnly`/`globFilter`. At least one column must be requested.
+ * - v3: a request naming no `limit` is paginated to the backend's default page
+ *   size rather than returning every row. Only the *default* changed, so v3 is
+ *   what opts a client in: a v2 client keeps receiving the whole set, and
+ *   either version may pass `limit`/`offset` explicitly (`limit: 0` = no
+ *   limit). Also adds `includeLineCounts`, `orderBy`/`order`, and a repeatable
+ *   `globFilter`.
  */
-export const TESTRUN_JS_COVERAGE_CLIENT_VERSION = 2;
+export const TESTRUN_JS_COVERAGE_CLIENT_VERSION = 3;
+
+/**
+ * The contract version this client speaks for
+ * `GET replay-diffs/:id/js-coverage-diff`. Its own constant rather than
+ * {@link TESTRUN_JS_COVERAGE_CLIENT_VERSION}: that versions the test-run
+ * coverage response's shape and columns, and this route shares none of it.
+ *
+ * - v0 (no clientVersion sent): every differing file, as before. What every
+ *   published CLI sends, so it keeps the unpaged behaviour it was written for.
+ * - v1: a request naming no `limit` is paginated to the backend's default page
+ *   size, and the response carries `totalFiles`. Only the *default* changed —
+ *   either version may pass `limit`/`offset` explicitly (`limit: 0` = all).
+ */
+export const REPLAY_DIFF_JS_COVERAGE_DIFF_CLIENT_VERSION = 1;
 
 /** Which columns/rows the V2 test-run coverage response should carry. */
 export interface TestRunJsCoverageOptions {
@@ -465,14 +485,34 @@ export interface TestRunJsCoverageOptions {
    * dropped unless a requested column has a value for it).
    */
   includeAllFiles?: boolean;
-  /** Keep only repo file paths matching this gitignore-style glob. */
-  globFilter?: string;
+  /**
+   * Keep only repo file paths matching any of these gitignore-style globs.
+   * A bare string is accepted for backwards compatibility.
+   */
+  globFilter?: string | string[];
   includeExecutedRanges?: boolean;
   includeExecutableRanges?: boolean;
   includeUncoveredRanges?: boolean;
+  /**
+   * Add `executedLines`/`executableLines`/`uncoveredLines` counts — the same
+   * lines the ranges describe, counted, and orders of magnitude smaller.
+   */
+  includeLineCounts?: boolean;
   includeCoveragePercentage?: boolean;
   /** Scope coverage to the PR diff (coverage.pr.json) instead of the whole run. */
   prDiffOnly?: boolean;
+  /** Order rows by this field; defaults to `repoFilePath`. */
+  orderBy?: CoverageOrderByField;
+  /**
+   * Sort direction. Defaults to ascending for `repoFilePath` and descending
+   * for the numeric fields, so ordering by one of those surfaces the files
+   * worth looking at first.
+   */
+  order?: "asc" | "desc";
+  /** Maximum rows; `0` means no limit. Omitted means the backend's default page. */
+  limit?: number;
+  /** Rows to skip before `limit`. */
+  offset?: number;
   /**
    * Additional test run IDs whose coverage is unioned with `testRunId`'s —
    * e.g. to show a run's normal coverage plus the coverage of a few extra
@@ -493,13 +533,37 @@ export interface TestRunCoverageFile {
   executableRanges?: CompactRange[];
   /** executable − executed. */
   uncoveredRanges?: CompactRange[];
+  /** The same lines `executedRanges` describes, counted (`includeLineCounts`). */
+  executedLines?: number;
+  /** The same lines `executableRanges` describes, counted (`includeLineCounts`). */
+  executableLines?: number;
+  /** `executableLines - executedLines` (`includeLineCounts`). */
+  uncoveredLines?: number;
   /** `100 × |executed| / |executable|`, in 0–100; `null` when no executable lines. */
   coveragePercentage?: number | null;
 }
 
 export interface TestRunJsCoverageResponseV2 {
   files: TestRunCoverageFile[];
+  notes?: AgentResponseNotes;
+  /**
+   * How many files matched before `limit`/`offset` were applied, so a caller
+   * can tell a page from the whole set. Equal to `files.length` when nothing
+   * was paginated away.
+   */
+  totalFiles: number;
 }
+
+/**
+ * Free-text caveats about an otherwise-normal response, written by the backend
+ * and relayed to stderr by the CLI (`logResponseNotes`) — e.g. that a base
+ * run's coverage is real but covers fewer sessions than its selected set.
+ *
+ * Always optional, and never load-bearing: anything a caller must act on is in
+ * the response body proper or is an error. A response with nothing to remark on
+ * omits the field, so an older CLI simply prints nothing.
+ */
+export type AgentResponseNotes = string[];
 
 /**
  * Whether `executedRanges` should be requested/printed when the caller didn't
@@ -514,6 +578,7 @@ export const shouldDefaultToExecutedRanges = (
     | "includeExecutedRanges"
     | "includeExecutableRanges"
     | "includeUncoveredRanges"
+    | "includeLineCounts"
     | "includeCoveragePercentage"
   >,
 ): boolean =>
@@ -521,8 +586,20 @@ export const shouldDefaultToExecutedRanges = (
   !(
     columnFlags.includeExecutableRanges ||
     columnFlags.includeUncoveredRanges ||
+    columnFlags.includeLineCounts ||
     columnFlags.includeCoveragePercentage
   );
+
+/** The per-file fields a coverage request can be ordered by. */
+export const COVERAGE_ORDER_BY_FIELDS = [
+  "repoFilePath",
+  "executedLines",
+  "executableLines",
+  "uncoveredLines",
+  "coveragePercentage",
+] as const;
+
+export type CoverageOrderByField = (typeof COVERAGE_ORDER_BY_FIELDS)[number];
 
 /**
  * Which columns/rows the project coverage response should carry. A subset of
@@ -534,11 +611,16 @@ export const shouldDefaultToExecutedRanges = (
 export interface ProjectJsCoverageOptions {
   project?: string;
   includeAllFiles?: boolean;
-  globFilter?: string;
+  globFilter?: string | string[];
   includeExecutedRanges?: boolean;
   includeExecutableRanges?: boolean;
   includeUncoveredRanges?: boolean;
+  includeLineCounts?: boolean;
   includeCoveragePercentage?: boolean;
+  orderBy?: CoverageOrderByField;
+  order?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
 }
 
 export interface ProjectJsCoverageResponse {
@@ -556,6 +638,65 @@ export interface ProjectJsCoverageResponse {
    */
   commitSha?: string;
   files: TestRunCoverageFile[];
+  notes?: AgentResponseNotes;
+  /** As {@link TestRunJsCoverageResponseV2.totalFiles}; `0` when no run resolved. */
+  totalFiles: number;
+}
+
+/**
+ * A test run's aggregate coverage, over every file the run has coverage for.
+ *
+ * Use this rather than summing {@link TestRunCoverageFile} rows: the per-file
+ * response drops files with no value in the requested columns, so an aggregate
+ * built from those rows leaves the zero-coverage files out of its own
+ * denominator and overstates coverage. These are the numbers the webapp's
+ * coverage view shows.
+ */
+export interface TestRunJsCoverageSummaryResponse {
+  testRunId: string;
+  /** The run's own commit. */
+  commitSha: string;
+  /**
+   * The commit the source maps were built at, which the coverage line numbers
+   * reference — on a PR run the merge commit, not `commitSha`.
+   */
+  executionSha: string;
+  /** Files the run has coverage rows for, zero-coverage files included. */
+  files: number;
+  /**
+   * Files whose source could not be parsed, so every line in them counts as
+   * executable. Absent when none failed.
+   */
+  filesFailedToParse?: number;
+  executedLines: number;
+  /**
+   * Statically-classified executable lines unioned with the executed lines,
+   * summed over every file — the same definition as the per-file
+   * `executableRanges` column.
+   */
+  executableLines: number;
+  /** `executableLines - executedLines`. */
+  uncoveredLines: number;
+  /**
+   * `100 × executedLines / executableLines`, or `null` when the run has no
+   * executable lines at all.
+   */
+  coveragePercentage: number | null;
+  /**
+   * The optimistic end of the range the webapp displays: the same percentage
+   * with the assumed-executable lines of files that failed to parse excluded
+   * from the denominator. Absent when no file failed to parse (it would equal
+   * `coveragePercentage`), and when the discount leaves nothing to divide by.
+   */
+  coveragePercentageMax?: number;
+}
+
+export interface ProjectJsCoverageSummaryResponse {
+  /**
+   * Totals for the project's latest successful test run, or `null` when the
+   * project has no such run.
+   */
+  summary: TestRunJsCoverageSummaryResponse | null;
 }
 
 export interface ReplayJsCoverageResponse {
@@ -575,6 +716,123 @@ export interface CoverageFileDiff {
   headRanges: CompactRange[];
 }
 
+/**
+ * How a head run's coverage differs from a base run's, over executed lines.
+ *
+ * `uniqueLinesAdded`/`regressedLines` are the two directions of the symmetric
+ * difference, so `headExecutedLines - baseExecutedLines` always equals
+ * `uniqueLinesAdded - regressedLines`.
+ */
+export interface CoverageDiffDelta {
+  /** Files whose executed lines differ at all. */
+  files: number;
+  filesAdded: number;
+  filesRemoved: number;
+  filesModified: number;
+  baseExecutedLines: number;
+  headExecutedLines: number;
+  /** Lines executed at head that base never executed. */
+  uniqueLinesAdded: number;
+  /** Lines base executed that head no longer does. */
+  regressedLines: number;
+}
+
+/**
+ * Whole-test-run coverage diff: a head run against the base run it was compared
+ * against.
+ *
+ * The two sides are different commits whenever the change altered anything, so
+ * the same line-shift caveat as {@link ReplayDiffJsCoverageDiffResponse}
+ * applies — see {@link TestRunJsCoverageDiffResponse.baseExecutionSha}. In a
+ * file the change edited, a `modified` entry may be the lines having moved
+ * rather than its coverage having changed; `added`/`removed` entries are
+ * unaffected.
+ */
+export interface TestRunJsCoverageDiffResponse {
+  /** The run the diff is for (the head side). */
+  testRunId: string;
+  /** The run it compares against — `testRunId`'s own base run. */
+  baseTestRunId: string;
+  /** The commit the head side's line numbers reference. */
+  executionSha: string;
+  /**
+   * The commit the base side's line numbers reference. Differs from
+   * `executionSha` for any run whose change actually altered something, so a
+   * file the change edited has its lines shifted and its ranges differ whether
+   * or not its coverage did. Only edited files are affected — every other file
+   * has identical line numbers on both sides — and `filesAdded`/`filesRemoved`
+   * never are, since whether a file executed anything doesn't depend on where
+   * its lines sit.
+   */
+  baseExecutionSha: string;
+  /**
+   * Per-file executed-line differences; files that match exactly are absent.
+   * A page of them, ordered by repo path. Absent entirely when `summaryOnly`
+   * was requested.
+   */
+  diff?: CoverageFileDiff[];
+  /**
+   * Differing files before `limit`/`offset`, so a page can be told from the
+   * whole set. Absent alongside `diff` when `summaryOnly` was requested.
+   */
+  totalFiles?: number;
+  /** Aggregate difference, over every file — not only the ones in `diff`. */
+  delta: CoverageDiffDelta;
+  notes?: AgentResponseNotes;
+}
+
+export interface TestRunJsCoverageDiffOptions {
+  globFilter?: string | string[];
+  /**
+   * Ask for `delta` alone, leaving `diff` off the response. The per-file list
+   * is the bulk of this response on a large repo, and it isn't computed at all
+   * when this is set.
+   */
+  summaryOnly?: boolean;
+  /**
+   * Page of the per-file diff. Absent means the backend's default page size;
+   * `0` means every differing file.
+   */
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * How a test run's coverage differs from that of the base run it was compared
+ * against, so the base is not a
+ * parameter. Rejected for a base run, which has no base of its own.
+ */
+export const getTestRunJsCoverageDiff = async (
+  client: MeticulousClient,
+  testRunId: string,
+  options?: TestRunJsCoverageDiffOptions,
+): Promise<TestRunJsCoverageDiffResponse> => {
+  const params: Record<string, string | string[]> = {};
+  const globs = (
+    typeof options?.globFilter === "string"
+      ? [options.globFilter]
+      : (options?.globFilter ?? [])
+  ).filter((glob) => glob !== "");
+  if (globs.length > 0) {
+    params.globFilter = globs;
+  }
+  if (options?.summaryOnly) {
+    params.summaryOnly = "true";
+  }
+  if (options?.limit != null) {
+    params.limit = String(options.limit);
+  }
+  if (options?.offset != null) {
+    params.offset = String(options.offset);
+  }
+  const { data } = await client
+    .get(`agent/test-runs/${testRunId}/js-coverage-diff`, { params })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
 export interface ReplayDiffJsCoverageDiffResponse {
   /**
    * Base/head executed line ranges and their diff, all keyed by repo-relative
@@ -592,6 +850,21 @@ export interface ReplayDiffJsCoverageDiffResponse {
    * assume every `diff.filePath` is present in both arrays.
    */
   diff: CoverageFileDiff[];
+  /**
+   * Differing files before `limit`/`offset`, so a page can be told from the
+   * whole diff. Absent from an older backend that doesn't page this route.
+   * Only `diff` is paged; `base`/`head` carry no page of their own.
+   */
+  totalFiles?: number;
+  /**
+   * Status breakdown over the whole diff, not the returned page. Absent from an
+   * older backend, in which case the returned rows are the whole diff and can
+   * be counted directly.
+   */
+  filesAdded?: number;
+  filesRemoved?: number;
+  filesModified?: number;
+  notes?: AgentResponseNotes;
 }
 
 // ---------------------------------------------------------------------------
@@ -1292,7 +1565,7 @@ export const getTestRunJsCoverage = async (
   testRunId: string,
   options?: TestRunJsCoverageOptions,
 ): Promise<TestRunJsCoverageResponseV2> => {
-  const params: Record<string, string> = {
+  const params: Record<string, string | string[]> = {
     clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
   };
   // The V2 endpoint requires at least one column and 400s otherwise; default
@@ -1302,21 +1575,8 @@ export const getTestRunJsCoverage = async (
   if (options?.includeAllFiles) {
     params.includeAllFiles = "true";
   }
-  if (options?.globFilter != null && options.globFilter !== "") {
-    params.globFilter = options.globFilter;
-  }
-  if (includeExecutedRanges) {
-    params.includeExecutedRanges = "true";
-  }
-  if (options?.includeExecutableRanges) {
-    params.includeExecutableRanges = "true";
-  }
-  if (options?.includeUncoveredRanges) {
-    params.includeUncoveredRanges = "true";
-  }
-  if (options?.includeCoveragePercentage) {
-    params.includeCoveragePercentage = "true";
-  }
+  appendCoverageColumnParams(params, options, includeExecutedRanges);
+  appendCoverageOrderingParams(params, options);
   if (options?.prDiffOnly) {
     params.prDiffOnly = "true";
   }
@@ -1342,7 +1602,7 @@ export const getProjectJsCoverage = async (
   client: MeticulousClient,
   options?: ProjectJsCoverageOptions,
 ): Promise<ProjectJsCoverageResponse> => {
-  const params: Record<string, string> = {
+  const params: Record<string, string | string[]> = {
     clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
   };
   const includeExecutedRanges = shouldDefaultToExecutedRanges(options ?? {});
@@ -1352,8 +1612,33 @@ export const getProjectJsCoverage = async (
   if (options?.includeAllFiles) {
     params.includeAllFiles = "true";
   }
-  if (options?.globFilter != null && options.globFilter !== "") {
-    params.globFilter = options.globFilter;
+  appendCoverageColumnParams(params, options, includeExecutedRanges);
+  appendCoverageOrderingParams(params, options);
+  const { data } = await client
+    .get("agent/projects/js-coverage", { params })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+/**
+ * The `globFilter` and column params shared by the test-run and project
+ * coverage requests. `globFilter` goes over as an array, which the client
+ * serializes as a repeated param.
+ */
+const appendCoverageColumnParams = (
+  params: Record<string, string | string[]>,
+  options: ProjectJsCoverageOptions | TestRunJsCoverageOptions | undefined,
+  includeExecutedRanges: boolean,
+): void => {
+  const globs = (
+    typeof options?.globFilter === "string"
+      ? [options.globFilter]
+      : (options?.globFilter ?? [])
+  ).filter((glob) => glob !== "");
+  if (globs.length > 0) {
+    params.globFilter = globs;
   }
   if (includeExecutedRanges) {
     params.includeExecutedRanges = "true";
@@ -1364,11 +1649,69 @@ export const getProjectJsCoverage = async (
   if (options?.includeUncoveredRanges) {
     params.includeUncoveredRanges = "true";
   }
+  if (options?.includeLineCounts) {
+    params.includeLineCounts = "true";
+  }
   if (options?.includeCoveragePercentage) {
     params.includeCoveragePercentage = "true";
   }
+};
+
+// `limit` is sent whenever given, 0 included — that is how a caller asks for
+// every row now that a v3 request with no limit is paginated by default.
+const appendCoverageOrderingParams = (
+  params: Record<string, string | string[]>,
+  options: ProjectJsCoverageOptions | TestRunJsCoverageOptions | undefined,
+): void => {
+  if (options?.orderBy != null) {
+    params.orderBy = options.orderBy;
+  }
+  if (options?.order != null) {
+    params.order = options.order;
+  }
+  if (options?.limit != null) {
+    params.limit = String(options.limit);
+  }
+  if (options?.offset != null) {
+    params.offset = String(options.offset);
+  }
+};
+
+// The run's aggregate coverage totals. A separate endpoint rather than a mode
+// on js-coverage: it takes none of that endpoint's columns/filters (an
+// aggregate over a filtered subset of files is exactly the mistake it exists to
+// prevent) and reads the much smaller precomputed coverage-stats artifact. Only
+// `unionTestRunIds` changes the numbers, validated as on the per-file path.
+export const getTestRunJsCoverageSummary = async (
+  client: MeticulousClient,
+  testRunId: string,
+  options?: { unionTestRunIds?: string[] },
+): Promise<TestRunJsCoverageSummaryResponse> => {
+  const params: Record<string, string> = {};
+  if (options?.unionTestRunIds != null && options.unionTestRunIds.length > 0) {
+    params.unionTestRunIds = options.unionTestRunIds.join(",");
+  }
   const { data } = await client
-    .get("agent/projects/js-coverage", { params })
+    .get(`agent/test-runs/${testRunId}/js-coverage-summary`, { params })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+// The aggregate counterpart of getProjectJsCoverage: totals for the project's
+// latest successful test run, resolved server-side. `summary` is null when the
+// project has no such run.
+export const getProjectJsCoverageSummary = async (
+  client: MeticulousClient,
+  options?: { project?: string | undefined },
+): Promise<ProjectJsCoverageSummaryResponse> => {
+  const params: Record<string, string> = {};
+  if (options?.project != null && options.project !== "") {
+    params.project = options.project;
+  }
+  const { data } = await client
+    .get("agent/projects/js-coverage-summary", { params })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
@@ -1394,22 +1737,27 @@ export const getReplayJsCoverage = async (
     testRunId?: string | undefined;
     // Return every file; by default files with no executed ranges are dropped.
     includeAllFiles?: boolean | undefined;
-    globFilter?: string | undefined;
+    globFilter?: string | string[] | undefined;
   },
 ): Promise<ReplayJsCoverageResponse> => {
   const path =
     screenshotName != null
       ? `agent/replays/${replayId}/screenshots/${encodeURIComponent(screenshotName)}/js-coverage`
       : `agent/replays/${replayId}/js-coverage`;
-  const params: Record<string, string> = {};
+  const params: Record<string, string | string[]> = {};
   if (options?.testRunId != null) {
     params.testRunId = options.testRunId;
   }
   if (options?.includeAllFiles) {
     params.includeAllFiles = "true";
   }
-  if (options?.globFilter != null && options.globFilter !== "") {
-    params.globFilter = options.globFilter;
+  const globs = (
+    typeof options?.globFilter === "string"
+      ? [options.globFilter]
+      : (options?.globFilter ?? [])
+  ).filter((glob) => glob !== "");
+  if (globs.length > 0) {
+    params.globFilter = globs;
   }
   const { data } = await client.get(path, { params }).catch((error) => {
     throw maybeEnrichFetchError(error);
@@ -1429,19 +1777,35 @@ export const getReplayDiffJsCoverage = async (
   screenshotName?: string,
   options?: {
     includeAllFiles?: boolean | undefined;
-    globFilter?: string | undefined;
+    globFilter?: string | string[] | undefined;
+    /** Page of the per-file diff; `0` for every differing file. */
+    limit?: number | undefined;
+    offset?: number | undefined;
   },
 ): Promise<ReplayDiffJsCoverageDiffResponse> => {
   const path =
     screenshotName != null
       ? `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/js-coverage-diff`
       : `agent/replay-diffs/${replayDiffId}/js-coverage-diff`;
-  const params: Record<string, string> = {};
+  const params: Record<string, string | string[]> = {
+    clientVersion: String(REPLAY_DIFF_JS_COVERAGE_DIFF_CLIENT_VERSION),
+  };
   if (options?.includeAllFiles) {
     params.includeAllFiles = "true";
   }
-  if (options?.globFilter != null && options.globFilter !== "") {
-    params.globFilter = options.globFilter;
+  if (options?.limit != null) {
+    params.limit = String(options.limit);
+  }
+  if (options?.offset != null) {
+    params.offset = String(options.offset);
+  }
+  const globs = (
+    typeof options?.globFilter === "string"
+      ? [options.globFilter]
+      : (options?.globFilter ?? [])
+  ).filter((glob) => glob !== "");
+  if (globs.length > 0) {
+    params.globFilter = globs;
   }
   const { data } = await client.get(path, { params }).catch((error) => {
     throw maybeEnrichFetchError(error);
@@ -1565,6 +1929,7 @@ export interface SessionListItem {
 export interface SessionsResponse {
   /** The project's most recently recorded sessions, newest first. */
   sessions: SessionListItem[];
+  notes?: AgentResponseNotes;
 }
 
 // Lists the project's most recently created sessions, newest first.

@@ -168,8 +168,12 @@ export interface TestRunBitbucketPushContext {
   /** Commit hash after the push event */
   afterSha: string;
 
-  /** Git ref for the branch (/refs/heads/<branch>) */
-  ref: string;
+  /**
+   * Git ref for the branch (/refs/heads/<branch>). Absent when the commit is
+   * no longer any branch's tip and is not on main, which Bitbucket Cloud
+   * cannot resolve to a branch.
+   */
+  ref?: string;
 }
 
 export interface TestRunCustomTriggerContext {

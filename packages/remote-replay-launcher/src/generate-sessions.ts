@@ -6,27 +6,13 @@ import type {
 } from "@alwaysmeticulous/client";
 import {
   completeAgenticSessionGeneration,
-  agentUploadAssetBuild,
   createClient,
   getApiToken,
-  getRegistryAuth,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
-import type Docker from "dockerode";
-import {
-  uploadAgenticInstructionsToS3,
-  uploadAssetBytesFromDirectory,
-} from "./asset-upload-utils";
-import { UPLOAD_ARCHIVE_FILE_FORMAT } from "./upload-utils/multipart-compressing-uploader";
-import { resolve } from "path";
-import {
-  getDockerClient,
-  getImageInfo,
-  pushImage,
-  tagImage,
-  verifyDockerConnection,
-} from "./docker-utils";
+import { uploadAgenticInstructionsToS3 } from "./asset-upload-utils";
+import { uploadBuild } from "./upload-build";
 
 export interface GenerateSessionsOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
@@ -41,11 +27,6 @@ export interface GenerateSessionsOptions extends ProjectIdentifier {
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
   backend?: AgenticAssetsBackend | undefined;
-  /**
-   * Extra HTTPS origins the agent's browser may call besides the app origin.
-   * Only supported with uploaded assets (not `--localImageTag`).
-   */
-  trustedOrigins?: string[] | undefined;
   /**
    * Port to serve uploaded frontend assets on. Only supported with uploaded
    * assets (not `--localImageTag`). Defaults to 8000 on the worker when omitted.
@@ -77,7 +58,6 @@ export const generateSessions = async ({
   containerEnv,
   containerHealthCheckEndpoint,
   backend,
-  trustedOrigins,
   appPort,
   projectId,
 }: GenerateSessionsOptions): Promise<GenerateSessionsResult> => {
@@ -100,9 +80,6 @@ export const generateSessions = async ({
   if (backend && localImageTag) {
     throw new Error("backend is only supported with uploaded assets.");
   }
-  if (trustedOrigins?.length && localImageTag) {
-    throw new Error("trustedOrigins is only supported with uploaded assets.");
-  }
   if (appPort != null && localImageTag) {
     throw new Error("appPort is only supported with uploaded assets.");
   }
@@ -110,27 +87,24 @@ export const generateSessions = async ({
   let uploadId: string;
   let imageReference: string | undefined;
   if (localImageTag) {
-    const uploadedContainer = await uploadContainer({
-      client,
+    const uploadedContainer = await uploadBuild({
+      apiToken,
+      commitSha,
       localImageTag,
-      projectIdentifier,
+      containerPort,
+      containerEnv,
+      containerHealthCheckEndpoint,
+      ...projectIdentifier,
     });
     uploadId = uploadedContainer.uploadId;
     imageReference = uploadedContainer.imageReference;
   } else if (assetsDirectory) {
-    const uploadedAssets = await uploadAssetBytesFromDirectory({
-      client,
-      folderPath: resolve(assetsDirectory),
-      ...projectIdentifier,
-    });
-    await agentUploadAssetBuild({
-      client,
-      uploadId: uploadedAssets.uploadId,
+    const uploadedAssets = await uploadBuild({
+      apiToken,
       commitSha,
+      appDirectory: assetsDirectory,
       rewrites: [],
-      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
-      multipartUploadInfo: uploadedAssets.multipartUploadInfo,
-      ...(projectId ? { project: projectId } : {}),
+      ...projectIdentifier,
     });
     uploadId = uploadedAssets.uploadId;
   } else {
@@ -167,7 +141,6 @@ export const generateSessions = async ({
           type: "assets",
           assetsUploadId: uploadId,
           ...(backend ? { backend } : {}),
-          ...(trustedOrigins?.length ? { trustedOrigins } : {}),
           ...(appPort != null ? { appPort } : {}),
         },
     ...projectIdentifier,
@@ -198,46 +171,4 @@ export const generateSessions = async ({
     agenticRunId: result.agenticRunId ?? null,
     ...(result.message ? { message: result.message } : {}),
   };
-};
-
-const uploadContainer = async ({
-  client,
-  localImageTag,
-  projectIdentifier,
-}: {
-  client: ReturnType<typeof createClient>;
-  localImageTag: string;
-  projectIdentifier: ProjectIdentifier;
-}): Promise<{ uploadId: string; imageReference: string }> => {
-  const logger = initLogger();
-  const docker = getDockerClient();
-
-  logger.info("Verifying Docker connection...");
-  await verifyDockerConnection(docker);
-  const imageInfo = await getImageInfo(docker, localImageTag);
-  if (!imageInfo) {
-    throw new Error(
-      `Docker image '${localImageTag}' not found locally. Please build the image first.`,
-    );
-  }
-
-  const registryAuth = await getRegistryAuth({
-    client,
-    ...projectIdentifier,
-  });
-  const {
-    uploadId,
-    imageReference,
-    registryUrl,
-    robotAccountName,
-    robotAccountSecret,
-  } = registryAuth;
-  await tagImage(docker, localImageTag, imageReference);
-  const authconfig: Docker.AuthConfig = {
-    username: robotAccountName,
-    password: robotAccountSecret,
-    serveraddress: registryUrl,
-  };
-  await pushImage(docker, imageReference, authconfig);
-  return { uploadId, imageReference };
 };

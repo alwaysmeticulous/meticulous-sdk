@@ -1,5 +1,22 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.341.0
+
+### Patch Changes
+
+- [#13832](https://github.com/alwaysmeticulous/meticulous/pull/13832) [`ca6a026`](https://github.com/alwaysmeticulous/meticulous/commit/ca6a026588591018ce2a7003f706e39e444f9b48) Thanks [@dennysem](https://github.com/dennysem)! - Backend recorder span redaction hooks now receive the `jsonPath` of the string they are redacting, alongside the value: `(value, jsonPath) => string`. Existing single-argument hooks keep working unchanged.
+
+  Many redactable strings are serialized JSON — database query arguments and results, and request and response bodies — and a hook that could only see the value had to treat all of them as plain text. Rewriting serialized JSON with text substitutions risks emitting something that no longer parses, which stops database mocks matching on their arguments at replay time and silently falls back to looser matching. With the path available, a hook can recognise those attributes and parse/redact/re-serialize them instead. The redaction guide documents that pattern.
+
+- [#13819](https://github.com/alwaysmeticulous/meticulous/pull/13819) [`cd6d2fe`](https://github.com/alwaysmeticulous/meticulous/commit/cd6d2fed872a47b3687b52edbe245ce82bd708e4) Thanks [@dennysem](https://github.com/dennysem)! - `meticulous crawl` takes a new `--explorationMode=depth`, for when the default crawl leaves a page before it has really used it.
+
+  Depth exploration exercises each page before moving on. It scrolls the whole page — the window, or the app shell's scrolling container when the document itself doesn't scroll — a viewport at a time, pausing for what each step brings into view, so that everything rendered lazily below the fold is recorded and is there to be clicked on. It then works through the page's own controls first, leaving tabs, navigation menus, and anything that has already navigated until last, and when a click does leave the page it goes back and carries on where it left off. It also clicks more of each set of repeated elements than the default mode does.
+
+  The default mode is unchanged: it still follows links outwards as soon as a page's clickables are exhausted, covering as many pages as the time budget allows.
+
+- Updated dependencies [[`2bfaf4c`](https://github.com/alwaysmeticulous/meticulous/commit/2bfaf4caf2ad48bdf96c5863a7a50594e022c263), [`7ba9937`](https://github.com/alwaysmeticulous/meticulous/commit/7ba9937936ffa87430ea6720f0730c4fa02e1ae3), [`52fd8cd`](https://github.com/alwaysmeticulous/meticulous/commit/52fd8cd2b11aab937f788df9e721fb0749f1452f), [`9bd77d4`](https://github.com/alwaysmeticulous/meticulous/commit/9bd77d4f8d2a7f4eb278d3b38d11adfa28b8fc5b)]:
+  - @alwaysmeticulous/api@2.341.0
+
 ## 2.339.0
 
 ### Minor Changes

@@ -186,21 +186,52 @@ describe("sessions command", () => {
     expect(noticeText()).toContain("No recorded sessions found");
   });
 
-  it("prints the returned session count on stderr (both TSV and JSON modes)", async () => {
+  // The sentence is the backend's (`agent.pagination.utils.ts`, tested there),
+  // since it knows whether another page exists without counting the set —
+  // counting sessions costs seconds on a large project. This command relays it.
+  it("relays the backend's paging notice on stderr (both TSV and JSON modes)", async () => {
+    mocks.getSessions.mockResolvedValue({
+      sessions: SESSIONS,
+      notes: ["sessions 1-2; use --offset and/or --limit to view more"],
+    });
+
     await runHandler({ json: false });
-    expect(noticeText()).toContain("2 session(s)");
+    expect(noticeText()).toContain(
+      "sessions 1-2; use --offset and/or --limit to view more",
+    );
 
     vi.clearAllMocks();
     mocks.createClientWithOAuth.mockResolvedValue({});
-    mocks.getSessions.mockResolvedValue({ sessions: SESSIONS });
+    mocks.getSessions.mockResolvedValue({
+      sessions: SESSIONS,
+      notes: ["sessions 1-2; use --offset and/or --limit to view more"],
+    });
     await runHandler({ json: true });
-    expect(noticeText()).toContain("2 session(s)");
+    expect(noticeText()).toContain(
+      "sessions 1-2; use --offset and/or --limit to view more",
+    );
   });
 
-  it("hints that more may be available when the page fills the limit", async () => {
-    await runHandler({ json: false, limit: 2 });
+  // The project hint is this command's own, not the backend's: it is about
+  // which project was searched, not about paging.
+  it("keeps its project hint for an empty first page", async () => {
+    mocks.getSessions.mockResolvedValue({ sessions: [] });
 
-    expect(noticeText()).toMatch(/2 session\(s\).*limit reached.*--offset/);
+    await runHandler({ json: false });
+
+    expect(noticeText()).toContain("No recorded sessions found");
+  });
+
+  it("leaves an empty later page to the backend's notice", async () => {
+    mocks.getSessions.mockResolvedValue({
+      sessions: [],
+      notes: ["no sessions at offset 500; use a smaller --offset"],
+    });
+
+    await runHandler({ json: false, offset: 500 });
+
+    expect(noticeText()).toContain("no sessions at offset 500");
+    expect(noticeText()).not.toContain("No recorded sessions found");
   });
 
   it("passes all filter/pagination options through to the client call", async () => {

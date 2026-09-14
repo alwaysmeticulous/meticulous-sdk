@@ -158,9 +158,22 @@ export const makeRequest = async <T>(
   if (config.params) {
     const urlWithParams = new URL(finalUrl);
     Object.entries(config.params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        urlWithParams.searchParams.append(key, String(value));
+      if (value === undefined || value === null) {
+        return;
       }
+      // An array becomes a repeated param (`?glob=a&glob=b`), which is how
+      // NestJS hands the endpoint an array. Stringifying it instead would
+      // comma-join silently, and a comma is legal inside the values (file
+      // globs, most obviously).
+      if (Array.isArray(value)) {
+        value.forEach((item) => {
+          if (item !== undefined && item !== null) {
+            urlWithParams.searchParams.append(key, String(item));
+          }
+        });
+        return;
+      }
+      urlWithParams.searchParams.append(key, String(value));
     });
     finalUrl = urlWithParams.toString();
   }
@@ -170,14 +183,19 @@ export const makeRequest = async <T>(
     headers: finalHeaders,
   };
 
-  return await executeWithRetry(
-    () => makeSingleRequest(finalUrl, requestInit, config.timeout),
-    {
-      shouldRetry: defaultShouldRetry,
-      logger,
-      operationDescription: `${requestInit.method ?? "GET"} ${new URL(finalUrl).pathname}`,
-    },
-  );
+  const attempt = () =>
+    makeSingleRequest<T>(finalUrl, requestInit, config.timeout);
+
+  if (config.retry === false) {
+    return await attempt();
+  }
+
+  return await executeWithRetry(attempt, {
+    shouldRetry: defaultShouldRetry,
+    logger,
+    operationDescription: `${requestInit.method ?? "GET"} ${new URL(finalUrl).pathname}`,
+    ...config.retry,
+  });
 };
 
 /**

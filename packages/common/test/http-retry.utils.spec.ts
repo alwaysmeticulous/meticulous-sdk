@@ -5,6 +5,7 @@ import {
   defaultShouldRetry,
   executeWithRetry,
   getRetryAfterMs,
+  isLostConnectionError,
 } from "../src/http-retry.utils";
 
 describe("getErrorCode", () => {
@@ -90,6 +91,23 @@ describe("defaultShouldRetry", () => {
   it("does not retry other 4xx responses", () => {
     expect(defaultShouldRetry({ response: { status: 400 } })).toBe(false);
     expect(defaultShouldRetry({ response: { status: 404 } })).toBe(false);
+  });
+});
+
+describe("isLostConnectionError", () => {
+  it("recognises an aborted request and a severed socket", () => {
+    expect(isLostConnectionError({ name: "AbortError" })).toBe(true);
+
+    const error = new TypeError("fetch failed");
+    (error as TypeError & { cause?: unknown }).cause = {
+      code: "UND_ERR_SOCKET",
+    };
+    expect(isLostConnectionError(error)).toBe(true);
+  });
+
+  it("does not treat a completed response as a lost connection", () => {
+    expect(isLostConnectionError({ response: { status: 503 } })).toBe(false);
+    expect(isLostConnectionError(new Error("boom"))).toBe(false);
   });
 });
 

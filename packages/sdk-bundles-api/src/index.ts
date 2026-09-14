@@ -70,6 +70,7 @@ export {
 } from "./window-api/public-window-api";
 export { MeticulousPrivateApi } from "./window-api/private-window-api";
 export {
+  CrawlExplorationMode,
   RunCrawlOptions,
   RunCrawlResult,
 } from "./crawler/sdk-to-bundle/run-crawl";

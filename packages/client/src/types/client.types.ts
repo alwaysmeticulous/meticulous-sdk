@@ -1,9 +1,16 @@
+import type { RetryOptions } from "@alwaysmeticulous/common";
+
 export interface RequestConfig<D> {
   headers?: Record<string, string>;
   params?: Record<string, any>;
   timeout?: number;
   signal?: AbortSignal;
   data?: D;
+  /**
+   * Overrides the client's own retry schedule, or disables it with `false`
+   * when the caller already retries the request itself.
+   */
+  retry?: false | RetryOptions;
 }
 
 export interface Response<T = any> {

@@ -153,3 +153,47 @@ describe("buildClient token resolution", () => {
     );
   });
 });
+
+describe("buildClient query params", () => {
+  const urlOfLastCall = (): string =>
+    meticulousFetch.mock.calls.at(-1)?.[0] as string;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    meticulousFetch.mockResolvedValue(okResponse());
+  });
+
+  it("serializes a scalar param once", async () => {
+    const client = buildClient("token-abc", { debug: () => {} } as never);
+    await client.get("agent/thing", { params: { globFilter: "src/**" } });
+    expect(new URL(urlOfLastCall()).searchParams.getAll("globFilter")).toEqual([
+      "src/**",
+    ]);
+  });
+
+  // An array must become a repeated param, not a comma-joined string:
+  // `String(["a","b"])` is `"a,b"`, and a comma is legal inside these values
+  // (file globs, most obviously), so joining would silently corrupt them.
+  it("serializes an array as a repeated param", async () => {
+    const client = buildClient("token-abc", { debug: () => {} } as never);
+    await client.get("agent/thing", {
+      params: { globFilter: ["src/**", "libs/x,y/**"] },
+    });
+    expect(new URL(urlOfLastCall()).searchParams.getAll("globFilter")).toEqual([
+      "src/**",
+      "libs/x,y/**",
+    ]);
+  });
+
+  it("omits an empty array", async () => {
+    const client = buildClient("token-abc", { debug: () => {} } as never);
+    await client.get("agent/thing", { params: { globFilter: [] } });
+    expect(new URL(urlOfLastCall()).searchParams.has("globFilter")).toBe(false);
+  });
+
+  it("keeps a zero, which is a meaningful value rather than an absent one", async () => {
+    const client = buildClient("token-abc", { debug: () => {} } as never);
+    await client.get("agent/thing", { params: { limit: "0" } });
+    expect(new URL(urlOfLastCall()).searchParams.get("limit")).toBe("0");
+  });
+});

@@ -1,5 +1,23 @@
 export { Organization } from "./organization.types";
 export { Project, ProjectSettingsScreenshottingOptions } from "./project.types";
+export { TEST_RUN_EVENT_TYPES } from "./agent-stats.types";
+export type {
+  BulkStatsPagination,
+  PrNumbersByBugPreventionCategory,
+  ProjectDailyPrStats,
+  ProjectDailyRunTimeStats,
+  ProjectDailyStatsItem,
+  ProjectDailyStatsResponse,
+  TestRunEventActor,
+  TestRunEventDiffReportType,
+  TestRunEventStatsItem,
+  TestRunEventStatsPagination,
+  TestRunEventStatsResponse,
+  TestRunEventType,
+  TestRunStatsApprover,
+  TestRunStatsItem,
+  TestRunStatsResponse,
+} from "./agent-stats.types";
 export {
   EndStateScreenshot,
   ScreenshotAfterEvent,

@@ -1,3 +1,14 @@
+/**
+ * How the crawler spends its time on each page it reaches.
+ *
+ * - `default`: follow links outwards as soon as the page's clickables are
+ *   exhausted, covering as many pages as the time budget allows.
+ * - `depth`: exercise each page before moving on — scroll through it to render
+ *   everything below the fold, and prefer the elements that keep us on the page
+ *   (returning to it when a click does navigate away).
+ */
+export type CrawlExplorationMode = "default" | "depth";
+
 export interface RunCrawlOptions {
   /**
    * The API token of the project to record sessions into. If not provided
@@ -41,6 +52,13 @@ export interface RunCrawlOptions {
    * The maximum number of sessions to record.
    */
   maxNumSessions: number;
+
+  /**
+   * How to explore each page reached by the crawl. Defaults to `default`.
+   *
+   * Optional so that a CLI predating this option keeps working.
+   */
+  explorationMode?: CrawlExplorationMode | undefined;
 
   /**
    * If present the crawler pauses after opening the start URL in the browser,

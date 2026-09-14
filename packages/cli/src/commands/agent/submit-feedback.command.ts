@@ -7,6 +7,7 @@ import { logNotice, logProgress } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { requireArgument } from "./argument-validation.utils";
 
 const OUTCOMES = ["helped", "neutral", "hindered"] as const;
 
@@ -33,6 +34,7 @@ const handler = async ({
   json,
   project,
 }: Options): Promise<void> => {
+  requireArgument("message", message);
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,

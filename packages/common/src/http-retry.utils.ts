@@ -44,12 +44,21 @@ const RETRYABLE_NETWORK_ERROR_CODES = new Set([
   "ERR_SSL_WRONG_VERSION_NUMBER",
 ]);
 
-export const defaultShouldRetry = (error: any): boolean => {
-  if (error.name === "AbortError") {
+/**
+ * Whether the request never got an answer: the client's own deadline fired, or
+ * the connection failed or was severed before a response arrived. Distinct from
+ * a request that completed and came back with an error status.
+ */
+export const isLostConnectionError = (error: any): boolean => {
+  if (error?.name === "AbortError") {
     return true;
   }
   const errorCode = getErrorCode(error);
-  if (errorCode != null && RETRYABLE_NETWORK_ERROR_CODES.has(errorCode)) {
+  return errorCode != null && RETRYABLE_NETWORK_ERROR_CODES.has(errorCode);
+};
+
+export const defaultShouldRetry = (error: any): boolean => {
+  if (isLostConnectionError(error)) {
     return true;
   }
   const status: unknown = error.response?.status;

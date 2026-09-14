@@ -36,6 +36,7 @@ import {
 } from "./docker-utils";
 import {
   DEPLOYMENT_IN_PROGRESS_RETRY,
+  WAIT_ON_THE_SLOW_SCHEDULE,
   isDeploymentStillInProgress,
 } from "./deployment-in-progress";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
@@ -223,6 +224,7 @@ export const uploadContainer = async ({
     client,
     uploadId,
     commitSha,
+    ...WAIT_ON_THE_SLOW_SCHEDULE,
     ...(baseSha ? { baseSha } : {}),
     ...(gitDiffOutput ? { hasGitDiff: true } : {}),
     mustHaveBase: waitForBase,
@@ -263,16 +265,8 @@ export const uploadContainer = async ({
     }
   };
 
-  // Same reasoning as the asset-upload path: this call runs the whole deployment
-  // trigger synchronously, so it can outlast the gateway's response timeout and
-  // lose its response while the trigger itself carries on. The endpoint is
-  // idempotent, so keep coming back on a longer schedule rather than failing an
-  // upload whose run is most likely already on its way.
-  //
-  // The polls in `pollWhileBaseNotFound` below reach the same endpoint but want
-  // no retry of their own: that loop is already coming back every ten seconds,
-  // so nesting a minute of waiting inside it would only slow it down. Its final
-  // fallback call is the exception, and handles itself.
+  // Same as the asset-upload path: keep coming back on the slow schedule. The
+  // base-poll loop already retries on its own cadence.
   const completeResult = await executeWithRetry(
     () => completeUpload(firstAttemptArgs),
     { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger: initLogger() },

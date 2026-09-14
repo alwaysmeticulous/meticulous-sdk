@@ -42,11 +42,6 @@ export interface AgenticAssetsAppTarget {
   assetsUploadId: string;
   backend?: AgenticAssetsBackend | undefined;
   /**
-   * Extra HTTPS origins the agent's browser may call besides the app origin
-   * (e.g. absolute cross-origin API or auth hosts). Assets targets only.
-   */
-  trustedOrigins?: string[] | undefined;
-  /**
    * Port to serve the uploaded frontend on. Assets targets only; the worker
    * defaults to 8000 when omitted.
    */
@@ -787,6 +782,34 @@ export const isAgenticRunCancelled = async ({
         agenticRunId,
       },
     },
+  );
+  return data;
+};
+
+export interface ReserveAgenticTotpSlotParams extends ProjectIdentifier {
+  /** The agentic run whose workflow token is making the reservation. */
+  agenticRunId: string;
+}
+
+export type ReserveAgenticTotpSlotResponse =
+  | { reserved: true }
+  | { reserved: false; retryAfterMs: number };
+
+/**
+ * Reserves the project's next TOTP submission window. A used slot expires on
+ * its own because releasing it would allow another worker to reuse the code.
+ */
+export const reserveAgenticTotpSlot = async ({
+  client,
+  projectId,
+  ...body
+}: ReserveAgenticTotpSlotParams & {
+  client: MeticulousClient;
+}): Promise<ReserveAgenticTotpSlotResponse> => {
+  const { data } = await client.post<ReserveAgenticTotpSlotResponse>(
+    "agentic-session-generation/totp-slot",
+    body,
+    projectIdQuery(projectId),
   );
   return data;
 };

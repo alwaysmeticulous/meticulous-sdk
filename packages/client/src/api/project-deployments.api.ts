@@ -8,7 +8,7 @@ import type {
   TestRunTriggerDebugContext,
 } from "@alwaysmeticulous/api";
 import { maybeEnrichFetchError } from "../errors";
-import type { MeticulousClient } from "../types/client.types";
+import type { MeticulousClient, RequestConfig } from "../types/client.types";
 import { assertOpaqueId } from "../utils/opaque-id";
 
 /**
@@ -177,6 +177,21 @@ export const projectIdQuery = (
 ): { params: { projectId: string } } | undefined =>
   projectId ? { params: { projectId } } : undefined;
 
+export interface TriggerCallOptions {
+  retry?: RequestConfig<unknown>["retry"];
+}
+
+const triggerRequestConfig = (
+  projectId: string | undefined,
+  { retry }: TriggerCallOptions,
+): RequestConfig<unknown> | undefined => {
+  const config = {
+    ...projectIdQuery(projectId),
+    ...(retry === undefined ? {} : { retry }),
+  };
+  return Object.keys(config).length > 0 ? config : undefined;
+};
+
 /**
  * Identifies (or overrides) a project for OAuth callers of the `agent/*`
  * namespace. Unlike {@link ProjectIdentifier}, `project` is resolved flexibly
@@ -340,14 +355,16 @@ export const triggerDeploymentSourceMapIngestion = async ({
 export const triggerRunOnDeployment = async ({
   client,
   projectId,
+  retry,
   ...body
-}: CompleteAssetUploadParams & {
-  client: MeticulousClient;
-}): Promise<CompleteAssetUploadResponse> => {
+}: CompleteAssetUploadParams &
+  TriggerCallOptions & {
+    client: MeticulousClient;
+  }): Promise<CompleteAssetUploadResponse> => {
   const { data } = await client.post<CompleteAssetUploadResponse>(
     "project-deployments/trigger-run",
     body,
-    projectIdQuery(projectId),
+    triggerRequestConfig(projectId, { retry }),
   );
   return data;
 };
@@ -355,14 +372,16 @@ export const triggerRunOnDeployment = async ({
 export const completeAssetUpload = async ({
   client,
   projectId,
+  retry,
   ...body
-}: CompleteAssetUploadParams & {
-  client: MeticulousClient;
-}): Promise<CompleteAssetUploadResponse> => {
+}: CompleteAssetUploadParams &
+  TriggerCallOptions & {
+    client: MeticulousClient;
+  }): Promise<CompleteAssetUploadResponse> => {
   const { data } = await client.post<CompleteAssetUploadResponse>(
     "project-deployments/complete-asset-upload-and-maybe-trigger-run",
     body,
-    projectIdQuery(projectId),
+    triggerRequestConfig(projectId, { retry }),
   );
   return data;
 };
@@ -370,15 +389,17 @@ export const completeAssetUpload = async ({
 export const completeContainerUpload = async ({
   client,
   projectId,
+  retry,
   ...body
-}: CompleteContainerUploadParams & {
-  client: MeticulousClient;
-}): Promise<CompleteContainerUploadResponse> => {
+}: CompleteContainerUploadParams &
+  TriggerCallOptions & {
+    client: MeticulousClient;
+  }): Promise<CompleteContainerUploadResponse> => {
   try {
     const { data } = await client.post<CompleteContainerUploadResponse>(
       "project-deployments/complete-container-upload",
       body,
-      projectIdQuery(projectId),
+      triggerRequestConfig(projectId, { retry }),
     );
     return data;
   } catch (error) {
@@ -491,14 +512,16 @@ export const createRunWithUploadedAssetChunks = async ({
 export const triggerRunWithUploadedAssetChunks = async ({
   client,
   projectId,
+  retry,
   ...body
-}: TriggerRunWithUploadedAssetChunksParams & {
-  client: MeticulousClient;
-}): Promise<CompleteAssetUploadResponse> => {
+}: TriggerRunWithUploadedAssetChunksParams &
+  TriggerCallOptions & {
+    client: MeticulousClient;
+  }): Promise<CompleteAssetUploadResponse> => {
   const { data } = await client.post<CompleteAssetUploadResponse>(
     "project-deployments/trigger-run-with-uploaded-asset-chunks",
     body,
-    projectIdQuery(projectId),
+    triggerRequestConfig(projectId, { retry }),
   );
   return data;
 };

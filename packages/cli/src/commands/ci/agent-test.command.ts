@@ -45,7 +45,6 @@ interface Options {
   assetsUploadId?: string | undefined;
   backendUrl?: string | undefined;
   backendProxyPaths?: string[] | undefined;
-  trustedOrigins?: string[] | undefined;
   appPort?: number | undefined;
   instructionsFile?: string | undefined;
   enableLocalMocks?: boolean | undefined;
@@ -64,7 +63,6 @@ const handler = async ({
   assetsUploadId,
   backendUrl,
   backendProxyPaths,
-  trustedOrigins,
   appPort,
   instructionsFile,
   enableLocalMocks,
@@ -89,9 +87,6 @@ const handler = async ({
   }
   if (enableLocalMocks && backendUrl) {
     throw new Error("--enableLocalMocks cannot be combined with --backendUrl.");
-  }
-  if (trustedOrigins?.length && localImageTag) {
-    throw new Error("--trustedOrigins is only supported with uploaded assets.");
   }
   if (appPort != null && localImageTag) {
     throw new Error("--appPort is only supported with uploaded assets.");
@@ -118,7 +113,6 @@ const handler = async ({
       assetsDir,
       assetsUploadId,
       backendUrl,
-      trustedOrigins,
       appPort,
       enableLocalMocks,
     },
@@ -152,7 +146,6 @@ const handler = async ({
             },
           }
         : {}),
-      ...(trustedOrigins?.length ? { trustedOrigins } : {}),
       ...(appPort != null ? { appPort } : {}),
       ...projectIdentifier,
     });
@@ -205,16 +198,6 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
       default: ["/api"],
       description:
         "Same-origin path prefixes to reverse proxy to the staging backend.",
-    },
-    trustedOrigins: {
-      array: true,
-      string: true,
-      description:
-        "HTTPS origins the agent's browser may call besides the app origin, " +
-        "e.g. --trustedOrigins https://auth.example.com --trustedOrigins https://api.example.com. " +
-        "Use when the uploaded frontend makes absolute cross-origin requests. " +
-        "Each value must be an https origin (no path, query, or credentials). " +
-        "Only supported with uploaded assets.",
     },
     appPort: {
       number: true,

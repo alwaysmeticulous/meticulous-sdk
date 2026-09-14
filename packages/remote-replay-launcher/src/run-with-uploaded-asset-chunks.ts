@@ -13,9 +13,13 @@ import {
   createRunWithUploadedAssetChunks,
   triggerRunWithUploadedAssetChunks,
 } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { executeWithRetry, initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { uploadGitDiffToS3 } from "./asset-upload-utils";
+import {
+  DEPLOYMENT_IN_PROGRESS_RETRY,
+  WAIT_ON_THE_SLOW_SCHEDULE,
+} from "./deployment-in-progress";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 
 export interface RunWithUploadedAssetChunksOptions extends ProjectIdentifier {
@@ -111,6 +115,7 @@ export const runWithUploadedAssetChunks = async ({
     client,
     sourceDeploymentId,
     commitSha,
+    ...WAIT_ON_THE_SLOW_SCHEDULE,
     ...(baseSha ? { baseSha } : {}),
     ...(gitDiffOutput ? { hasGitDiff: true } : {}),
     mustHaveBase: waitForBase,
@@ -131,7 +136,10 @@ export const runWithUploadedAssetChunks = async ({
         })
     : () => triggerRunWithUploadedAssetChunks({ ...args, mustHaveBase: false });
 
-  const initialResult = await triggerRunWithUploadedAssetChunks(args);
+  const initialResult = await executeWithRetry(
+    () => triggerRunWithUploadedAssetChunks(args),
+    { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger },
+  );
   const {
     testRun,
     baseNotFound,

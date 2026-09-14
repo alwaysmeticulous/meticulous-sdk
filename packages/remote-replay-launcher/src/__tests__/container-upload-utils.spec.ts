@@ -144,6 +144,7 @@ describe("uploadContainer", () => {
       uploadId: "upload-123",
       commitSha: "abc123def456",
       mustHaveBase: false,
+      retry: false,
     });
   });
 

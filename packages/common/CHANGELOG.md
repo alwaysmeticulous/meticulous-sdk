@@ -1,5 +1,22 @@
 # @alwaysmeticulous/common
 
+## 2.341.0
+
+### Patch Changes
+
+- [#13702](https://github.com/alwaysmeticulous/meticulous/pull/13702) [`03e7e22`](https://github.com/alwaysmeticulous/meticulous/commit/03e7e22f534d2b1ca7b1dcd3cb66fa73e7637ae8) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Keep waiting for a test run when the trigger call loses its connection, rather
+  than failing the upload. A slow trigger is usually ended by the edge severing
+  the connection at its own response deadline, which surfaces as a socket error
+  or an aborted request with no status code to read — so the retry that exists
+  for gateway timeouts never fired, and CI reported a failure for a test run the
+  backend went on to create.
+
+  The wait is now paced by one schedule instead of two nested ones: trigger calls
+  opt out of the client's own quick retries, which previously ran inside each of
+  the slow schedule's attempts and exhausted it before it had waited at all.
+  Callers can control this per request via `RequestConfig.retry`. The chunked
+  asset-upload path, which had no slow schedule at all, now shares it too.
+
 ## 2.338.0
 
 ### Minor Changes

@@ -3,7 +3,11 @@ export { uploadAssetsAndTriggerTestRun } from "./upload-assets-and-trigger-test-
 export { uploadAssets, uploadAssetsFromZip } from "./asset-upload-utils";
 export { uploadContainerAndTriggerTestRun } from "./upload-container-and-trigger-test-run";
 export { uploadContainer } from "./upload-container";
-export { uploadBuild, UploadBuildOptions } from "./upload-build";
+export {
+  uploadBuild,
+  UploadBuildOptions,
+  UploadBuildResult,
+} from "./upload-build";
 export {
   triggerTestRun,
   TriggerTestRunOptions,

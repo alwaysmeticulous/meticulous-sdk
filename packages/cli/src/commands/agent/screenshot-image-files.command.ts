@@ -12,6 +12,7 @@ import { downloadFile } from "@alwaysmeticulous/downloading-helpers";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { requireIdArgument } from "./argument-validation.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -67,6 +68,8 @@ const handler = async ({
   json,
 }: Options): Promise<void> => {
   initLogger();
+  requireIdArgument("replayDiffId", replayDiffId);
+  requireIdArgument("screenshotName", screenshotName);
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,

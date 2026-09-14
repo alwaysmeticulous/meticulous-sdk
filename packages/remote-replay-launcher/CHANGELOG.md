@@ -1,5 +1,31 @@
 # @alwaysmeticulous/remote-replay-launcher
 
+## 2.341.0
+
+### Patch Changes
+
+- [#13752](https://github.com/alwaysmeticulous/meticulous/pull/13752) [`8a34ddd`](https://github.com/alwaysmeticulous/meticulous/commit/8a34ddd7c4c02e0fdd0bab6aee9019c60467db9f) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Register uploaded container builds before launching Agent Review so generated
+  sessions can be replayed against the same deployment.
+
+- [#13702](https://github.com/alwaysmeticulous/meticulous/pull/13702) [`03e7e22`](https://github.com/alwaysmeticulous/meticulous/commit/03e7e22f534d2b1ca7b1dcd3cb66fa73e7637ae8) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Keep waiting for a test run when the trigger call loses its connection, rather
+  than failing the upload. A slow trigger is usually ended by the edge severing
+  the connection at its own response deadline, which surfaces as a socket error
+  or an aborted request with no status code to read — so the retry that exists
+  for gateway timeouts never fired, and CI reported a failure for a test run the
+  backend went on to create.
+
+  The wait is now paced by one schedule instead of two nested ones: trigger calls
+  opt out of the client's own quick retries, which previously ran inside each of
+  the slow schedule's attempts and exhausted it before it had waited at all.
+  Callers can control this per request via `RequestConfig.retry`. The chunked
+  asset-upload path, which had no slow schedule at all, now shares it too.
+
+- Updated dependencies [[`2bfaf4c`](https://github.com/alwaysmeticulous/meticulous/commit/2bfaf4caf2ad48bdf96c5863a7a50594e022c263), [`2bfaf4c`](https://github.com/alwaysmeticulous/meticulous/commit/2bfaf4caf2ad48bdf96c5863a7a50594e022c263), [`7ba9937`](https://github.com/alwaysmeticulous/meticulous/commit/7ba9937936ffa87430ea6720f0730c4fa02e1ae3), [`3c56cba`](https://github.com/alwaysmeticulous/meticulous/commit/3c56cba67e47a7aab19e8770c262db9bfb2e5fdf), [`52fd8cd`](https://github.com/alwaysmeticulous/meticulous/commit/52fd8cd2b11aab937f788df9e721fb0749f1452f), [`03e7e22`](https://github.com/alwaysmeticulous/meticulous/commit/03e7e22f534d2b1ca7b1dcd3cb66fa73e7637ae8), [`9bd77d4`](https://github.com/alwaysmeticulous/meticulous/commit/9bd77d4f8d2a7f4eb278d3b38d11adfa28b8fc5b)]:
+  - @alwaysmeticulous/client@2.341.0
+  - @alwaysmeticulous/api@2.341.0
+  - @alwaysmeticulous/common@2.341.0
+  - @alwaysmeticulous/tunnels-client@2.341.0
+
 ## 2.340.0
 
 ### Patch Changes

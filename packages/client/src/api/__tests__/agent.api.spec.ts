@@ -697,9 +697,61 @@ describe("getProjectJsCoverage", () => {
     expect(paramsFromLastCall()).toEqual({
       clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
       project: "org/project",
-      globFilter: "src/**",
+      // Always sent as an array now that the glob is repeatable, which the
+      // client serializes as a repeated query param.
+      globFilter: ["src/**"],
       includeCoveragePercentage: "true",
     });
+  });
+
+  it("sends several globs as a repeated param", async () => {
+    await getProjectJsCoverage(asClient(), {
+      globFilter: ["src/**", "libs/**"],
+      includeExecutedRanges: true,
+    });
+
+    expect(paramsFromLastCall()).toEqual(
+      expect.objectContaining({ globFilter: ["src/**", "libs/**"] }),
+    );
+  });
+
+  it("forwards the line-count, ordering and paging options", async () => {
+    await getProjectJsCoverage(asClient(), {
+      includeLineCounts: true,
+      orderBy: "uncoveredLines",
+      order: "asc",
+      limit: 25,
+      offset: 50,
+    });
+
+    expect(paramsFromLastCall()).toEqual(
+      expect.objectContaining({
+        includeLineCounts: "true",
+        orderBy: "uncoveredLines",
+        order: "asc",
+        limit: "25",
+        offset: "50",
+      }),
+    );
+  });
+
+  // 0 is how a caller asks for every row now that a v3 request with no limit
+  // is paginated, so it must not be dropped as falsy.
+  it("sends an explicit limit of 0", async () => {
+    await getProjectJsCoverage(asClient(), {
+      includeExecutedRanges: true,
+      limit: 0,
+    });
+
+    expect(paramsFromLastCall()).toEqual(
+      expect.objectContaining({ limit: "0" }),
+    );
+  });
+
+  it("omits limit entirely when none is given, leaving the backend default", async () => {
+    await getProjectJsCoverage(asClient(), { includeExecutedRanges: true });
+
+    expect(paramsFromLastCall()).not.toHaveProperty("limit");
   });
 
   it("returns the resolved testRunId and files", async () => {

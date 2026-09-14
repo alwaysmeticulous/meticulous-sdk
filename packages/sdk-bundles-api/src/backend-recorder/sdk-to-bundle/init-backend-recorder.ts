@@ -1,8 +1,16 @@
 /**
  * Transforms one redactable string from a completed backend span before that span is saved.
  * Hooks run in array order and must return a string.
+ *
+ * `jsonPath` locates the string within the serialized span, so a hook can tell a database
+ * query's serialized arguments from a URL or a header value and redact each appropriately —
+ * rewriting serialized JSON with text substitutions risks emitting something that no longer
+ * parses, which silently breaks mock matching at replay time.
  */
-export type BackendRecorderSpanRedactionHook = (value: string) => string;
+export type BackendRecorderSpanRedactionHook = (
+  value: string,
+  jsonPath: readonly string[],
+) => string;
 
 export interface BackendRecorderConfig {
   /** Enable/disable the recorder. Defaults to `true`. */

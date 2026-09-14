@@ -8,6 +8,7 @@ import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { appendProjectSelectionHint } from "../../utils/project-selection-hint";
+import { logResponseNotes } from "./response-notes.utils";
 
 // Mirror of the server-side MAX_SESSIONS_LIMIT (webapp-backend's
 // agent.types.ts) — public_packages/cli can't depend on webapp-backend, so
@@ -65,7 +66,7 @@ const handler = async ({
   // `project` is a one-off override (resolved flexibly server-side); when
   // omitted, project-scoped tokens use their own project and OAuth tokens
   // fall back to the caller's stored default (`meticulous auth set-project`).
-  const { sessions } = await getSessions(client, {
+  const response = await getSessions(client, {
     project,
     createdSince,
     createdUntil,
@@ -82,6 +83,7 @@ const handler = async ({
     limit,
     offset,
   });
+  const { sessions } = response;
 
   if (json) {
     printJson(sessions);
@@ -161,7 +163,7 @@ const handler = async ({
   // Count on stderr regardless of --json (stdout stays clean for piping), so a
   // full page (== limit, likely more via --offset) is easy to tell from a
   // partial one.
-  if (sessions.length === 0) {
+  if (sessions.length === 0 && (offset ?? 0) === 0) {
     logNotice(
       await appendProjectSelectionHint(
         "No recorded sessions found for this project.",
@@ -171,14 +173,10 @@ const handler = async ({
     );
     return;
   }
-  const effectiveLimit = limit ?? DEFAULT_SESSIONS_LIMIT;
-  logNotice(
-    `${sessions.length} session(s)${
-      sessions.length >= effectiveLimit
-        ? " — limit reached, more may be available via --offset"
-        : ""
-    }.`,
-  );
+  // The paging notice is written by the backend, which knows whether another
+  // page exists without counting the set, and relayed here verbatim — see
+  // `agent.pagination.utils.ts`.
+  logResponseNotes(response);
 };
 
 export const sessionsCommand: CommandModule<unknown, Options> = {

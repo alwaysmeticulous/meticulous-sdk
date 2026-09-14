@@ -73,54 +73,6 @@ const runHandler = (args: Record<string, unknown>) =>
     }
   ).handler(args);
 
-describe("ci agent-test --trustedOrigins", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("parses repeated --trustedOrigins into a string array", async () => {
-    const parsed = await parseAgentTest([
-      "--assetsDir",
-      "dist",
-      "--trustedOrigins",
-      "https://auth.example.com",
-      "--trustedOrigins",
-      "https://api.example.com",
-      "--dryRun",
-    ]);
-
-    expect(parsed?.["trustedOrigins"]).toEqual([
-      "https://auth.example.com",
-      "https://api.example.com",
-    ]);
-  });
-
-  it("passes trustedOrigins through to generateSessions", async () => {
-    await runHandler({
-      assetsDir: "dist",
-      trustedOrigins: ["https://auth.example.com", "https://api.example.com"],
-    });
-
-    expect(mocks.generateSessions).toHaveBeenCalledTimes(1);
-    expect(mocks.generateSessions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        trustedOrigins: ["https://auth.example.com", "https://api.example.com"],
-      }),
-    );
-  });
-
-  it("rejects --trustedOrigins with --localImageTag", async () => {
-    await expect(
-      runHandler({
-        localImageTag: "app:latest",
-        trustedOrigins: ["https://auth.example.com"],
-      }),
-    ).rejects.toThrow(/only supported with uploaded assets/);
-
-    expect(mocks.generateSessions).not.toHaveBeenCalled();
-  });
-});
-
 describe("ci agent-test login options", () => {
   beforeEach(() => {
     vi.clearAllMocks();

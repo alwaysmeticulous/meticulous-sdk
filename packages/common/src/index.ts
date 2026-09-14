@@ -37,6 +37,7 @@ export {
 export {
   executeWithRetry,
   defaultShouldRetry,
+  isLostConnectionError,
   getRetryAfterMs,
   computeRetryDelayMs,
   type RetryOptions,

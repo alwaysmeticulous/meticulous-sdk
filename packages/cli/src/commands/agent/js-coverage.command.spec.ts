@@ -7,7 +7,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import yargs, { type Options as YargsOptions } from "yargs";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
+  COVERAGE_COLUMN_FLAG,
+  formatCoverageColumn,
+} from "./coverage-columns.util";
+import { formatCoverageSummary } from "./coverage-summary.util";
+import {
   assertLatestForProjectCompatible,
+  assertSummaryCompatible,
   assertTestRunCoverageResolvable,
   assertTestRunOnlyFlagsUnsetForReplay,
   buildProjectCoverageRequestOptions,
@@ -44,9 +50,15 @@ const baseOptions = (overrides: Partial<Options> = {}): Options => ({
   includeExecutedRanges: false,
   includeExecutableRanges: false,
   includeUncoveredRanges: false,
+  includeLineCounts: false,
   includeCoveragePercentage: false,
+  orderBy: undefined,
+  order: undefined,
+  limit: undefined,
+  offset: undefined,
   includeAllFiles: false,
   prDiffOnly: false,
+  summary: false,
   globFilter: undefined,
   headPlusTestRunIds: undefined,
   testRunIds: undefined,
@@ -126,6 +138,172 @@ describe("assertTestRunCoverageResolvable", () => {
   });
 });
 
+describe("--summary", () => {
+  it("allows run selection, --json and --dontWaitForTestRunToComplete", () => {
+    expect(() =>
+      assertSummaryCompatible(
+        baseOptions({
+          summary: true,
+          testRunIds: "tr-1,tr-2",
+          project: "org/project",
+          dontWaitForTestRunToComplete: true,
+          json: true,
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it("allows --latestForProject", () => {
+    expect(() =>
+      assertSummaryCompatible(
+        baseOptions({ summary: true, latestForProject: true }),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertLatestForProjectCompatible(
+        baseOptions({ summary: true, latestForProject: true }),
+      ),
+    ).not.toThrow();
+  });
+
+  it("rejects the column flags", () => {
+    expect(() =>
+      assertSummaryCompatible(
+        baseOptions({
+          summary: true,
+          includeExecutedRanges: true,
+          includeCoveragePercentage: true,
+        }),
+      ),
+    ).toThrow(/--includeExecutedRanges, --includeCoveragePercentage/);
+  });
+
+  it("rejects the row filters, whose subsetting is what the summary avoids", () => {
+    expect(() =>
+      assertSummaryCompatible(
+        baseOptions({
+          summary: true,
+          includeAllFiles: true,
+          globFilter: ["src/**"],
+          prDiffOnly: true,
+        }),
+      ),
+    ).toThrow(/--includeAllFiles, --globFilter, --prDiffOnly/);
+  });
+
+  it("rejects a single replay, which has no executable-line data", () => {
+    expect(() =>
+      assertSummaryCompatible(baseOptions({ summary: true, replayId: "r-1" })),
+    ).toThrow(/--replayId/);
+  });
+
+  it("rejects the line-counts column", () => {
+    expect(() =>
+      assertSummaryCompatible(
+        baseOptions({ summary: true, includeLineCounts: true }),
+      ),
+    ).toThrow(/--includeLineCounts/);
+  });
+
+  // The summary is one row of totals, so there is nothing to order or page.
+  it("rejects the ordering and paging options", () => {
+    expect(() =>
+      assertSummaryCompatible(
+        baseOptions({
+          summary: true,
+          orderBy: "executedLines",
+          order: "asc",
+          limit: 10,
+          offset: 20,
+        }),
+      ),
+    ).toThrow(/--orderBy, --order, --limit, --offset/);
+  });
+
+  // A zero is still a value the caller passed, and would still be ignored
+  // alongside --summary, so it is rejected rather than treated as unset. (The
+  // option coercers reject a zero `--limit` outright; this guards the
+  // combination independently of them.)
+  it("rejects an explicit zero limit or offset", () => {
+    expect(() =>
+      assertSummaryCompatible(baseOptions({ summary: true, limit: 0 })),
+    ).toThrow(/--limit/);
+    expect(() =>
+      assertSummaryCompatible(baseOptions({ summary: true, offset: 0 })),
+    ).toThrow(/--offset/);
+  });
+
+  it("does nothing when --summary is not set", () => {
+    expect(() =>
+      assertSummaryCompatible(
+        baseOptions({ includeExecutedRanges: true, globFilter: ["src/**"] }),
+      ),
+    ).not.toThrow();
+  });
+});
+
+describe("formatCoverageSummary", () => {
+  const summary = {
+    testRunId: "tr-1",
+    commitSha: "abc123",
+    executionSha: "def456",
+    files: 8214,
+    executedLines: 96388,
+    executableLines: 135281,
+    uncoveredLines: 38893,
+    coveragePercentage: 71.25016,
+  };
+
+  it("emits key:\\tvalue lines in field order, percentage to one decimal", () => {
+    expect(formatCoverageSummary(summary)).toEqual([
+      "testRunId:\ttr-1",
+      "commitSha:\tabc123",
+      "executionSha:\tdef456",
+      "files:\t8214",
+      "executedLines:\t96388",
+      "executableLines:\t135281",
+      "uncoveredLines:\t38893",
+      "coveragePercentage:\t71.3",
+    ]);
+  });
+
+  it("emits the parse-failure fields when present", () => {
+    expect(
+      formatCoverageSummary({
+        ...summary,
+        filesFailedToParse: 137,
+        coveragePercentageMax: 73.4712,
+      }),
+    ).toEqual([
+      "testRunId:\ttr-1",
+      "commitSha:\tabc123",
+      "executionSha:\tdef456",
+      "files:\t8214",
+      "filesFailedToParse:\t137",
+      "executedLines:\t96388",
+      "executableLines:\t135281",
+      "uncoveredLines:\t38893",
+      "coveragePercentage:\t71.3",
+      "coveragePercentageMax:\t73.5",
+    ]);
+  });
+
+  it("omits the percentage line entirely when there are no executable lines", () => {
+    const lines = formatCoverageSummary({
+      ...summary,
+      files: 0,
+      executedLines: 0,
+      executableLines: 0,
+      uncoveredLines: 0,
+      coveragePercentage: null,
+    });
+    expect(lines).toContain("files:\t0");
+    expect(lines.some((line) => line.startsWith("coveragePercentage:"))).toBe(
+      false,
+    );
+  });
+});
+
 describe("--latestForProject", () => {
   it("allows project selection and coverage output options", () => {
     expect(() =>
@@ -134,7 +312,7 @@ describe("--latestForProject", () => {
           latestForProject: true,
           project: "org/project",
           includeCoveragePercentage: true,
-          globFilter: "src/**",
+          globFilter: ["src/**"],
         }),
       ),
     ).not.toThrow();
@@ -271,7 +449,7 @@ describe("assertTestRunOnlyFlagsUnsetForReplay", () => {
         baseOptions({
           includeExecutedRanges: true,
           includeAllFiles: true,
-          globFilter: "src/**",
+          globFilter: ["src/**"],
         }),
       ),
     ).not.toThrow();
@@ -433,6 +611,7 @@ describe("printProjectCoverage", () => {
           coveragePercentage: 40,
         },
       ],
+      totalFiles: 1,
     };
     await printProjectCoverage(
       client,
@@ -451,7 +630,7 @@ describe("printProjectCoverage", () => {
     await printProjectCoverage(
       client,
       undefined,
-      { testRunId: null, files: [] },
+      { testRunId: null, files: [], totalFiles: 0 },
       ["executedRanges"],
       true,
     );
@@ -465,7 +644,7 @@ describe("printProjectCoverage", () => {
     await printProjectCoverage(
       client,
       undefined,
-      { testRunId: "tr-9", commitSha: "abc123", files: [] },
+      { testRunId: "tr-9", commitSha: "abc123", files: [], totalFiles: 0 },
       ["executedRanges"],
       false,
     );
@@ -478,13 +657,51 @@ describe("printProjectCoverage", () => {
     await printProjectCoverage(
       client,
       undefined,
-      { testRunId: "tr-9", files: [] },
+      { testRunId: "tr-9", files: [], totalFiles: 0 },
       ["executedRanges"],
       false,
     );
     expect(mocks.logNotice).toHaveBeenCalledWith(
       "Resolved project coverage to test run tr-9",
     );
+  });
+
+  // The backend now serves a base run whose selected set hasn't fully replayed
+  // rather than refusing it, and states the shortfall in `notes`. Relayed
+  // verbatim: keeping a second copy of the wording here is how the CLI and MCP
+  // surfaces drift apart.
+  it("relays the backend's notes to stderr", async () => {
+    await printProjectCoverage(
+      client,
+      undefined,
+      {
+        testRunId: "tr-9",
+        files: [],
+        totalFiles: 0,
+        notes: ["Note: 2 of its 40 selected sessions have not run."],
+      },
+      ["executedRanges"],
+      false,
+    );
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      "Note: 2 of its 40 selected sessions have not run.",
+    );
+  });
+
+  it("logs nothing extra when there are no notes", async () => {
+    mocks.logNotice.mockClear();
+
+    await printProjectCoverage(
+      client,
+      undefined,
+      { testRunId: "tr-9", files: [], totalFiles: 0 },
+      ["executedRanges"],
+      false,
+    );
+
+    // Just the one it always logs: the resolved run. The file count now
+    // arrives as a backend note, and a response with none says nothing.
+    expect(mocks.logNotice).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -507,5 +724,148 @@ describe("isAmbiguousTestRunError", () => {
 
   it("is false for a non-fetch error", () => {
     expect(isAmbiguousTestRunError(new Error("boom"))).toBeFalsy();
+  });
+});
+
+describe("line-count columns", () => {
+  it("emits all three columns from the one flag, after the ranges", () => {
+    expect(determineColumns(baseOptions({ includeLineCounts: true }))).toEqual([
+      "executedLines",
+      "executableLines",
+      "uncoveredLines",
+    ]);
+  });
+
+  it("does not fall back to executedRanges when only counts are asked for", () => {
+    expect(
+      determineColumns(baseOptions({ includeLineCounts: true })),
+    ).not.toContain("executedRanges");
+  });
+
+  it("keeps the fixed order alongside the other columns", () => {
+    expect(
+      determineColumns(
+        baseOptions({
+          includeCoveragePercentage: true,
+          includeLineCounts: true,
+          includeExecutedRanges: true,
+        }),
+      ),
+    ).toEqual([
+      "executedRanges",
+      "executedLines",
+      "executableLines",
+      "uncoveredLines",
+      "coveragePercentage",
+    ]);
+  });
+
+  // Counts are integers; only the percentage gets a decimal place.
+  it("formats counts as integers and the percentage to one decimal", () => {
+    const file: TestRunCoverageFile = {
+      repoFilePath: "src/a.ts",
+      executedLines: 3,
+      executableLines: 7,
+      uncoveredLines: 4,
+      coveragePercentage: 42.857,
+    };
+    expect(formatCoverageColumn(file, "executedLines")).toBe("3");
+    expect(formatCoverageColumn(file, "uncoveredLines")).toBe("4");
+    expect(formatCoverageColumn(file, "coveragePercentage")).toBe("42.9");
+  });
+
+  it("maps every count column to the single includeLineCounts request flag", () => {
+    expect(COVERAGE_COLUMN_FLAG.executedLines).toBe("includeLineCounts");
+    expect(COVERAGE_COLUMN_FLAG.executableLines).toBe("includeLineCounts");
+    expect(COVERAGE_COLUMN_FLAG.uncoveredLines).toBe("includeLineCounts");
+  });
+});
+
+describe("ordering and paging options", () => {
+  it("sends them only when set, so an absent limit means the server default", () => {
+    const options = baseOptions({
+      latestForProject: true,
+      includeLineCounts: true,
+    });
+    const request = buildProjectCoverageRequestOptions(
+      options,
+      determineColumns(options),
+    );
+    expect(request).not.toHaveProperty("orderBy");
+    expect(request).not.toHaveProperty("order");
+    expect(request).not.toHaveProperty("limit");
+    expect(request).not.toHaveProperty("offset");
+  });
+
+  it("passes them through when set", () => {
+    const options = baseOptions({
+      latestForProject: true,
+      includeLineCounts: true,
+      orderBy: "uncoveredLines",
+      order: "asc",
+      limit: 25,
+      offset: 50,
+    });
+    expect(
+      buildProjectCoverageRequestOptions(options, determineColumns(options)),
+    ).toEqual(
+      expect.objectContaining({
+        orderBy: "uncoveredLines",
+        order: "asc",
+        limit: 25,
+        offset: 50,
+        includeLineCounts: true,
+      }),
+    );
+  });
+
+  // limit 0 is how a caller asks for everything, so it must not be dropped as
+  // falsy on the way out.
+  it("sends an explicit limit of 0", () => {
+    const options = baseOptions({ latestForProject: true, limit: 0 });
+    expect(
+      buildProjectCoverageRequestOptions(options, determineColumns(options)),
+    ).toEqual(expect.objectContaining({ limit: 0 }));
+  });
+
+  it("passes several globs through as an array", () => {
+    const options = baseOptions({
+      latestForProject: true,
+      globFilter: ["src/**", "libs/**"],
+    });
+    expect(
+      buildProjectCoverageRequestOptions(options, determineColumns(options)),
+    ).toEqual(expect.objectContaining({ globFilter: ["src/**", "libs/**"] }));
+  });
+
+  it("rejects the whole-test-run-only options for a single replay", () => {
+    expect(() =>
+      assertTestRunOnlyFlagsUnsetForReplay(
+        baseOptions({
+          replayId: "r-1",
+          includeLineCounts: true,
+          orderBy: "uncoveredLines",
+          limit: 10,
+          offset: 5,
+        }),
+      ),
+    ).toThrow(/--includeLineCounts, --orderBy, --limit, --offset/);
+  });
+
+  // --limit deliberately has no yargs default: one would make every
+  // invocation look like it had passed the flag, so a replay request could
+  // never be told apart from an explicit --limit (the same trap
+  // --latestForProject's own checks document).
+  it("leaves limit and offset unset when the flags are not passed", () => {
+    const parsed = yargs([])
+      .command(
+        jsCoverageCommand.command as string,
+        jsCoverageCommand.describe as string,
+        jsCoverageCommand.builder as Record<string, YargsOptions>,
+      )
+      .parse("js-coverage") as Record<string, unknown>;
+    expect(parsed.limit).toBeUndefined();
+    expect(parsed.offset).toBeUndefined();
+    expect(parsed.includeLineCounts).toBe(false);
   });
 });

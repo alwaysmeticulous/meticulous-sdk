@@ -41,14 +41,20 @@ export interface UploadBuildOptions extends ProjectIdentifier {
   containerHealthCheckEndpoint?: string | undefined;
 }
 
+export interface UploadBuildResult extends AgentUploadBuildResponse {
+  uploadId: string;
+  imageReference?: string;
+}
+
 /**
  * Uploads a build (static assets or a Docker container, auto-detected from the
  * inputs) and registers a reusable deployment WITHOUT triggering a test run.
- * Returns the `deploymentId` to hand to {@link triggerTestRun}.
+ * Returns the `deploymentId` to hand to {@link triggerTestRun} and the upload
+ * ID for callers that also need to reference the uploaded app.
  */
 export const uploadBuild = async (
   options: UploadBuildOptions,
-): Promise<AgentUploadBuildResponse> => {
+): Promise<UploadBuildResult> => {
   // Validate the build inputs here too (not only in the CLI), so direct SDK
   // callers can't silently upload a container when they also passed assets.
   const hasContainer = Boolean(options.localImageTag);
@@ -84,16 +90,16 @@ const uploadContainerBuild = async ({
   containerEnv,
   containerHealthCheckEndpoint,
   projectId,
-}: UploadBuildOptions): Promise<AgentUploadBuildResponse> => {
+}: UploadBuildOptions): Promise<UploadBuildResult> => {
   if (!localImageTag) {
     throw new Error("Expected localImageTag for a container build");
   }
-  const { client, uploadId } = await pushContainerImage({
+  const { client, uploadId, imageReference } = await pushContainerImage({
     apiToken,
     localImageTag,
     projectId,
   });
-  return agentUploadContainerBuild({
+  const deployment = await agentUploadContainerBuild({
     client,
     uploadId,
     commitSha,
@@ -106,6 +112,7 @@ const uploadContainerBuild = async ({
     // `project` override, unlike the project-deployment calls above.
     ...(projectId ? { project: projectId } : {}),
   });
+  return { ...deployment, uploadId, imageReference };
 };
 
 const uploadAssetBuild = async ({
@@ -115,7 +122,7 @@ const uploadAssetBuild = async ({
   appZip,
   rewrites,
   projectId,
-}: UploadBuildOptions): Promise<AgentUploadBuildResponse> => {
+}: UploadBuildOptions): Promise<UploadBuildResult> => {
   if (!appDirectory && !appZip) {
     throw new Error(
       "Expected either appDirectory, appZip or localImageTag to be provided",
@@ -152,7 +159,7 @@ const uploadAssetBuild = async ({
     archiveType = "zip";
   }
 
-  return agentUploadAssetBuild({
+  const deployment = await agentUploadAssetBuild({
     client,
     uploadId,
     commitSha,
@@ -163,4 +170,5 @@ const uploadAssetBuild = async ({
     // override, unlike the project-deployment calls above.
     ...(projectId ? { project: projectId } : {}),
   });
+  return { ...deployment, uploadId };
 };

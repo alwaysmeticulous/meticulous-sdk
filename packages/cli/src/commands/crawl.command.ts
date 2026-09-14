@@ -7,6 +7,7 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import type {
+  CrawlExplorationMode,
   RunCrawlOptions,
   RunCrawlResult,
 } from "@alwaysmeticulous/sdk-bundles-api";
@@ -24,6 +25,7 @@ interface Options {
   startUrl: string[];
   crawlingTimeoutSeconds: number;
   maxNumSessions: number;
+  explorationMode: CrawlExplorationMode;
   skipTestRun: boolean;
 }
 
@@ -32,6 +34,7 @@ const handler = async ({
   startUrl,
   crawlingTimeoutSeconds,
   maxNumSessions,
+  explorationMode,
   skipTestRun,
 }: Options): Promise<void> => {
   const logger = initLogger();
@@ -93,6 +96,7 @@ const handler = async ({
     startUrls,
     crawlingTimeoutSeconds,
     maxNumSessions,
+    explorationMode,
     onReadyForManualLogin,
     logLevel: logger.getLevel(),
   });
@@ -197,6 +201,17 @@ export const crawlCommand: CommandModule<unknown, Options> = {
       number: true,
       description: "The maximum number of sessions to record",
       default: 200,
+    },
+    explorationMode: {
+      description:
+        "How much of each page to explore before moving on. 'default' follows " +
+        "links outwards as soon as a page's buttons have been clicked, covering " +
+        "as many pages as the time budget allows. 'depth' exercises each page " +
+        "first: it scrolls through the whole page, so that everything rendered " +
+        "lazily below the fold is recorded, and prefers the controls that keep it " +
+        "on the page, returning to the page whenever a click does navigate away.",
+      choices: ["default", "depth"] as const,
+      default: "default" as const,
     },
     skipTestRun: {
       boolean: true,

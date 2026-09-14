@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   getTestRunForCommit: vi.fn(),
   getTestRunJsCoverage: vi.fn(),
   getProjectJsCoverage: vi.fn(),
+  getTestRunJsCoverageSummary: vi.fn(),
+  getProjectJsCoverageSummary: vi.fn(),
   getReplayJsCoverage: vi.fn(),
   isFetchError: vi.fn(),
   logNotice: vi.fn(),
@@ -32,6 +34,8 @@ vi.mock("@alwaysmeticulous/client", async (importOriginal) => ({
   getTestRunForCommit: mocks.getTestRunForCommit,
   getTestRunJsCoverage: mocks.getTestRunJsCoverage,
   getProjectJsCoverage: mocks.getProjectJsCoverage,
+  getTestRunJsCoverageSummary: mocks.getTestRunJsCoverageSummary,
+  getProjectJsCoverageSummary: mocks.getProjectJsCoverageSummary,
   getReplayJsCoverage: mocks.getReplayJsCoverage,
   isFetchError: mocks.isFetchError,
 }));
@@ -66,7 +70,13 @@ const runHandler = (overrides: Record<string, unknown> = {}) =>
     includeExecutedRanges: false,
     includeExecutableRanges: false,
     includeUncoveredRanges: false,
+    includeLineCounts: false,
     includeCoveragePercentage: false,
+    orderBy: undefined,
+    order: undefined,
+    limit: undefined,
+    offset: undefined,
+    summary: false,
     dontWaitForTestRunToComplete: false,
     json: false,
     ...overrides,
@@ -330,5 +340,162 @@ describe("js-coverage handler resolving a commit to a base run", () => {
     await expect(runHandler({ testRunId: undefined })).rejects.toThrow(
       /tr-base is a base run/,
     );
+  });
+});
+
+describe("js-coverage handler with --summary", () => {
+  const summary = {
+    testRunId: "tr-1",
+    commitSha: "abc123",
+    executionSha: "abc123",
+    files: 3,
+    executedLines: 10,
+    executableLines: 20,
+    uncoveredLines: 10,
+    coveragePercentage: 50,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createClientWithOAuth.mockResolvedValue({});
+    mocks.getTestRun.mockResolvedValue({ status: "Success" });
+    mocks.getTestRunJsCoverageSummary.mockResolvedValue(summary);
+    mocks.getProjectJsCoverageSummary.mockResolvedValue({ summary });
+    mocks.isFetchError.mockImplementation(
+      (error: unknown) =>
+        typeof error === "object" && error != null && "response" in error,
+    );
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  it("fetches the summary and never the per-file coverage", async () => {
+    await runHandler({ summary: true });
+    expect(mocks.getTestRunJsCoverageSummary).toHaveBeenCalledWith({}, "tr-1", {
+      unionTestRunIds: [],
+    });
+    expect(mocks.getTestRunJsCoverage).not.toHaveBeenCalled();
+  });
+
+  it("passes the runs to union in", async () => {
+    await runHandler({
+      summary: true,
+      testRunId: undefined,
+      testRunIds: "tr-1,tr-2,tr-3",
+    });
+    expect(mocks.getTestRunJsCoverageSummary).toHaveBeenCalledWith({}, "tr-1", {
+      unionTestRunIds: ["tr-2", "tr-3"],
+    });
+  });
+
+  it("prints key:value lines in human mode", async () => {
+    await runHandler({ summary: true });
+    const lines = vi.mocked(console.log).mock.calls.map(([line]) => line);
+    expect(lines).toContain("testRunId:\ttr-1");
+    expect(lines).toContain("coveragePercentage:\t50.0");
+  });
+
+  it("prints one JSON object with --json", async () => {
+    await runHandler({ summary: true, json: true });
+    const [[printed]] = vi.mocked(console.log).mock.calls;
+    expect(JSON.parse(printed as string)).toEqual(summary);
+  });
+
+  it("resolves the project's latest run with --latestForProject", async () => {
+    await runHandler({
+      summary: true,
+      testRunId: undefined,
+      latestForProject: true,
+      project: "org/project",
+    });
+    expect(mocks.getProjectJsCoverageSummary).toHaveBeenCalledWith(
+      {},
+      {
+        project: "org/project",
+      },
+    );
+    expect(mocks.getTestRunJsCoverageSummary).not.toHaveBeenCalled();
+  });
+
+  // A zeroed summary would read as "this commit covers nothing", so there is no
+  // empty-shape equivalent of the per-file empty list: JSON gets an explicit
+  // null and human output nothing, with the reason on stderr.
+  it("prints null rather than zeroed totals when the run has not finished", async () => {
+    mocks.getTestRun.mockResolvedValue({ status: "Running" });
+    await runHandler({
+      summary: true,
+      dontWaitForTestRunToComplete: true,
+      json: true,
+    });
+    expect(mocks.getTestRunJsCoverageSummary).not.toHaveBeenCalled();
+    expect(vi.mocked(console.log).mock.calls).toEqual([["null"]]);
+  });
+
+  it("prints nothing when the project has no successful run", async () => {
+    mocks.getProjectJsCoverageSummary.mockResolvedValue({ summary: null });
+    await runHandler({
+      summary: true,
+      testRunId: undefined,
+      latestForProject: true,
+    });
+    expect(vi.mocked(console.log)).not.toHaveBeenCalled();
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      expect.stringMatching(/No successful test run with coverage/),
+    );
+  });
+
+  it("maps the backend's incomplete-base-run refusal to a CliUserError", async () => {
+    mocks.getTestRunJsCoverageSummary.mockRejectedValue(
+      rejectionError(
+        "incomplete-base-run",
+        "Test run tr-1 is a base run other test runs compare against: 2 of its 3 have not run. Replay the rest with complete-base-run and ask again.",
+      ),
+    );
+    await expect(runHandler({ summary: true })).rejects.toBeInstanceOf(
+      CliUserError,
+    );
+  });
+
+  it("rejects a column flag alongside it", async () => {
+    await expect(
+      runHandler({ summary: true, includeUncoveredRanges: true }),
+    ).rejects.toThrow(/--summary cannot be combined with/);
+  });
+});
+
+describe("js-coverage pagination notice", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createClientWithOAuth.mockResolvedValue({});
+    mocks.getTestRun.mockResolvedValue({ status: "Success" });
+    mocks.isFetchError.mockReturnValue(false);
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  // The sentence itself is the backend's (`agent.pagination.utils.ts`, tested
+  // there): one generator for both surfaces, since two copies drifted twice.
+  // What this command owes is relaying it to stderr, whatever it says.
+  it("relays the backend's paging notice to stderr", async () => {
+    mocks.getTestRunJsCoverage.mockResolvedValue({
+      files: [{ repoFilePath: "src/a.ts", executedRanges: [[1, 2]] }],
+      totalFiles: 400,
+      notes: ["files 101-101 of 400; use --offset and/or --limit to view more"],
+    });
+
+    await runHandler({ limit: 1, offset: 100 });
+
+    expect(mocks.logNotice).toHaveBeenCalledWith(
+      "files 101-101 of 400; use --offset and/or --limit to view more",
+    );
+  });
+
+  it("says nothing about paging when the response carries no note", async () => {
+    mocks.getTestRunJsCoverage.mockResolvedValue({
+      files: [{ repoFilePath: "src/a.ts", executedRanges: [[1, 2]] }],
+      totalFiles: 1,
+    });
+
+    await runHandler();
+
+    expect(mocks.logNotice).not.toHaveBeenCalled();
   });
 });

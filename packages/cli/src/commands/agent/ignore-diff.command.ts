@@ -3,6 +3,10 @@ import { initLogger } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import {
+  requireArgument,
+  requireIdArgument,
+} from "./argument-validation.utils";
 import { diffCommentCoordinateOptions } from "./diff-comment-write.utils";
 
 interface Options {
@@ -25,6 +29,9 @@ const handler = async ({
   json,
 }: Options): Promise<void> => {
   initLogger();
+  requireIdArgument("replayDiffId", replayDiffId);
+  requireIdArgument("screenshotName", screenshotName);
+  requireArgument("reason", reason);
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,

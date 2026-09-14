@@ -30,7 +30,10 @@ import {
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
 import { executeWithRetry, initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
-import { DEPLOYMENT_IN_PROGRESS_RETRY } from "./deployment-in-progress";
+import {
+  DEPLOYMENT_IN_PROGRESS_RETRY,
+  WAIT_ON_THE_SLOW_SCHEDULE,
+} from "./deployment-in-progress";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 import {
   MultipartCompressingUploader,
@@ -208,23 +211,14 @@ const completeUploadAndWaitForBase = async ({
     ...(projectId ? { projectId } : {}),
   };
 
-  // `completeAssetUpload` runs the whole deployment trigger synchronously on
-  // the backend, which can outlast the gateway's response timeout: CloudFront
-  // returns a 504 after 30s while the backend keeps working and eventually
-  // commits the deployment and test run. The client's built-in retries are
-  // quick attempts that all fall inside that same window, so they exhaust
-  // (~2 minutes) before a slow original has committed. The endpoint is
-  // idempotent — a retry that finds the committed deployment returns the
-  // existing test run immediately — so while the deployment is still in
-  // progress we keep retrying on a longer schedule instead of failing a run
-  // that very likely succeeded.
-  // Only on the first call: `debugContext` describes a decision the action made
-  // before it uploaded anything, so it is the same on every poll below, and the
-  // backend logs it each time it is sent.
+  // The trigger can outlast the edge timeout; keep coming back on the slow
+  // schedule instead of failing a run the backend is still creating.
+  // `debugContext` only on the first call — it's the same on every poll.
   const initialResult = await executeWithRetry(
     () =>
       completeAssetUpload({
         ...completeAssetUploadArgs,
+        ...WAIT_ON_THE_SLOW_SCHEDULE,
         ...(debugContext ? { debugContext } : {}),
       }),
     { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger },
@@ -238,10 +232,15 @@ const completeUploadAndWaitForBase = async ({
         message: initialResult?.message,
         commentsDisabledForAuthor: initialResult?.commentsDisabledForAuthor,
       },
-      retryFn: () => triggerRunOnDeployment(completeAssetUploadArgs),
+      retryFn: () =>
+        triggerRunOnDeployment({
+          ...completeAssetUploadArgs,
+          ...WAIT_ON_THE_SLOW_SCHEDULE,
+        }),
       fallbackFn: () =>
         triggerRunOnDeployment({
           ...completeAssetUploadArgs,
+          ...WAIT_ON_THE_SLOW_SCHEDULE,
           mustHaveBase: false,
         }),
     });

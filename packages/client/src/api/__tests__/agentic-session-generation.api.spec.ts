@@ -4,6 +4,7 @@ import {
   completeAgenticSessionGeneration,
   getAgenticFileChanges,
   listAgenticRepoSourceFiles,
+  reserveAgenticTotpSlot,
 } from "../agentic-session-generation.api";
 
 describe("completeAgenticSessionGeneration", () => {
@@ -58,6 +59,30 @@ describe("completeAgenticSessionGeneration", () => {
         },
       },
     });
+  });
+});
+
+describe("reserveAgenticTotpSlot", () => {
+  it("posts the run identity without any login credentials", async () => {
+    const client = {
+      post: vi.fn().mockResolvedValue({
+        data: { reserved: false, retryAfterMs: 12_345 },
+      }),
+    } as unknown as { post: Mock };
+
+    await expect(
+      reserveAgenticTotpSlot({
+        client: client as unknown as MeticulousClient,
+        projectId: "project",
+        agenticRunId: "run",
+      }),
+    ).resolves.toEqual({ reserved: false, retryAfterMs: 12_345 });
+
+    expect(client.post).toHaveBeenCalledWith(
+      "agentic-session-generation/totp-slot",
+      { agenticRunId: "run" },
+      { params: { projectId: "project" } },
+    );
   });
 });
 

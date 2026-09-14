@@ -82,8 +82,11 @@ meticulous [command]
 | \`agent test-run-check\` | Get a builtin or custom non-visual check report for a test run, or list available check IDs with \`--availableIds\` | Agent/programmatic use |
 | \`agent test-run-for-commit\` | Look up the latest test run for a commit (defaults to git HEAD) | Agent/programmatic use |
 | \`agent sessions\` | List a project's most recently recorded sessions, newest first | Agent/programmatic use |
-| \`agent js-coverage\` | Get JS coverage for a replay or a whole test run | Agent/programmatic use |
-| \`agent js-coverage-diff\` | Get the JS coverage diff (base vs head) for a replay diff | Agent/programmatic use |
+| \`agent test-run-stats\` | Export reporting statistics for a project's test runs | Agent/programmatic use |
+| \`agent project-daily-stats\` | Export daily project reporting statistics | Agent/programmatic use |
+| \`agent test-run-event-stats\` | Export a project's test-run reporting events | Agent/programmatic use |
+| \`agent js-coverage\` | Get JS coverage for a replay or a whole test run, per file or as aggregate totals | Agent/programmatic use |
+| \`agent js-coverage-diff\` | Get the JS coverage diff (base vs head) for a replay diff, or between two whole test runs | Agent/programmatic use |
 | \`agent upload-build\` | Upload a build (static assets or container) and capture a deployment ID | Agent/programmatic use |
 | \`agent trigger-test-run\` | Trigger a test run against an uploaded build | Agent/programmatic use |
 | \`agent complete-base-run\` | Replay the selected sessions a base run has not run yet | Agent/programmatic use |
@@ -323,7 +326,7 @@ Provide exactly one target:
 - \`--assetsUploadId\` — an existing uploaded-assets build.
 - \`--localImageTag\` — a locally built Docker image.
 
-Use \`--instructionsFile\` to give the agent routes and flows to exercise. With an uploaded frontend, \`--backendUrl\` proxies configured relative paths (\`--backendProxyPaths\`, default \`/api\`) to a public HTTPS staging backend. It cannot be combined with \`--enableLocalMocks\`. If the frontend calls other hosts with absolute URLs, pass them as repeatable \`--trustedOrigins https://…\` values (HTTPS origins only; uploaded assets only). Those hosts must allow CORS from the app origin (\`http://localhost:8000\` by default, overridable with \`--appPort\`); cookie sessions need \`SameSite=None; Secure\`.
+Use \`--instructionsFile\` to give the agent routes and flows to exercise. With an uploaded frontend, \`--backendUrl\` proxies configured relative paths (\`--backendProxyPaths\`, default \`/api\`) to a public HTTPS staging backend. It cannot be combined with \`--enableLocalMocks\`. For absolute cross-origin requests, contact Meticulous to add the required egress policy for your project.
 
 For a pull request workflow, pass \`github.event.pull_request.head.sha || github.sha\` as \`--commitSha\`, rather than only \`github.sha\`. Use \`--dryRun\` to validate options without launching an agent.
 

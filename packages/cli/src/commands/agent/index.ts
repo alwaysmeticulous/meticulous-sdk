@@ -11,6 +11,11 @@ import { submitFeedbackCommand } from "./submit-feedback.command";
 import { testRunCheckCommand } from "./test-run-check.command";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
 import { testRunForCommitCommand } from "./test-run-for-commit.command";
+import {
+  projectDailyStatsCommand,
+  testRunEventStatsCommand,
+  testRunStatsCommand,
+} from "./stats.command";
 import { timelineDiffCommand } from "./timeline.command";
 import { triggerTestRunCommand } from "./trigger-test-run.command";
 import { uploadBuildCommand } from "./upload-build.command";
@@ -40,6 +45,9 @@ export const agentCommand: CommandModule = {
       .command(jsCoverageCommand)
       .command(jsCoverageDiffCommand)
       .command(sessionsCommand)
+      .command(testRunStatsCommand)
+      .command(projectDailyStatsCommand)
+      .command(testRunEventStatsCommand)
       .command(uploadBuildCommand)
       .command(triggerTestRunCommand)
       .command(completeBaseRunCommand)

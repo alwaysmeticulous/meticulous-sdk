@@ -1,5 +1,56 @@
 # @alwaysmeticulous/cli
 
+## 2.341.0
+
+### Minor Changes
+
+- [#13819](https://github.com/alwaysmeticulous/meticulous/pull/13819) [`cd6d2fe`](https://github.com/alwaysmeticulous/meticulous/commit/cd6d2fed872a47b3687b52edbe245ce82bd708e4) Thanks [@dennysem](https://github.com/dennysem)! - `meticulous crawl` takes a new `--explorationMode=depth`, for when the default crawl leaves a page before it has really used it.
+
+  Depth exploration exercises each page before moving on. It scrolls the whole page — the window, or the app shell's scrolling container when the document itself doesn't scroll — a viewport at a time, pausing for what each step brings into view, so that everything rendered lazily below the fold is recorded and is there to be clicked on. It then works through the page's own controls first, leaving tabs, navigation menus, and anything that has already navigated until last, and when a click does leave the page it goes back and carries on where it left off. It also clicks more of each set of repeated elements than the default mode does.
+
+  The default mode is unchanged: it still follows links outwards as soon as a page's clickables are exhausted, covering as many pages as the time budget allows.
+
+- [#13700](https://github.com/alwaysmeticulous/meticulous/pull/13700) [`9bd77d4`](https://github.com/alwaysmeticulous/meticulous/commit/9bd77d4f8d2a7f4eb278d3b38d11adfa28b8fc5b) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `test_run_completed` to test-run event stats, with a `testRun` snapshot matching `stats/test-runs`.
+
+### Patch Changes
+
+- [#13825](https://github.com/alwaysmeticulous/meticulous/pull/13825) [`a07b947`](https://github.com/alwaysmeticulous/meticulous/commit/a07b9474b0de3f732c71bb9344030cdb1f62faf0) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent` commands now say which argument was wrong when a required one arrives empty or carrying two values at once. `demandOption` only asserts that a flag was named, so `--screenshotName --json`, or an unquoted shell variable that expanded to nothing (or to two words), reached the handler as `""` or as one value containing a space, and was then interpolated straight into a request path — the caller's first sight of the mistake was a 404 for a URL they never wrote. Affects `dom-diff`, `image-urls`, `image-files`, `timeline-diff`, `diff-comments`, `create-diff-comment`, `reply-to-diff-comment`, `ignore-diff`, `reject-diff` and `submit-feedback`.
+
+- [#13451](https://github.com/alwaysmeticulous/meticulous/pull/13451) [`2bfaf4c`](https://github.com/alwaysmeticulous/meticulous/commit/2bfaf4caf2ad48bdf96c5863a7a50594e022c263) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Make `agent js-coverage` usable on a large repo: `--summary` for the run's aggregate totals, `--includeLineCounts` for per-file counts instead of ranges, server-side `--orderBy`/`--limit`/`--offset`, and a repeatable `--globFilter`. `agent js-coverage-diff` now also diffs two whole test runs, with `--summary` for the aggregate difference.
+
+  Every paged command now reports which rows you got in the same shape, e.g. `files 101-200 of 4000; use --offset and/or --limit to view more, or --limit=0 for all`. `agent sessions` reports its page the same way (`sessions 1-100; use --offset and/or --limit to view more`) instead of a bare count, and says when an `--offset` lands past the end rather than reporting the project as having no sessions. `agent test-run-stats`, `project-daily-stats` and `test-run-event-stats` use the same shape, naming the exact `--offset` or `--cursor` to repeat the call with.
+
+  `--orderBy` on a numeric column now also decides which files are eligible, so `--orderBy=uncoveredLines --limit=50` really is the fifty least-covered files — previously the files with nothing executed at all were dropped before ordering. `js-coverage-diff` relays the backend's structural refusals (the run is a base run, or has no base to compare against) as plain errors, and its `--summary` reports an unfinished run as `null` rather than an empty file list.
+
+- [#13451](https://github.com/alwaysmeticulous/meticulous/pull/13451) [`2bfaf4c`](https://github.com/alwaysmeticulous/meticulous/commit/2bfaf4caf2ad48bdf96c5863a7a50594e022c263) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Every paged `agent` command now reports which rows you got in one shape, written once by the backend rather than separately by each surface: `files 1-100 of 4000 with coverage; use --offset and/or --limit to view more`, and the same for `sessions`, `test-run-stats`, `project-daily-stats` and `test-run-event-stats` (which names the `--cursor` to continue with, being the one value you cannot derive yourself).
+
+  Whether another page exists is now always stated — silence about paging means you have everything. A total is included wherever the endpoint can count cheaply; `sessions` reports none, since counting a large project's sessions costs more than the page itself.
+
+  `--limit=0` is gone: there is no unlimited mode on any command. `--limit` is bounded per command (coverage and sessions cap at 1000) and defaults to 100 everywhere. When you need more than a page, narrow the question instead — `--summary`, `--orderBy`, `--globFilter`.
+
+- [#13832](https://github.com/alwaysmeticulous/meticulous/pull/13832) [`ca6a026`](https://github.com/alwaysmeticulous/meticulous/commit/ca6a026588591018ce2a7003f706e39e444f9b48) Thanks [@dennysem](https://github.com/dennysem)! - Backend recorder span redaction hooks now receive the `jsonPath` of the string they are redacting, alongside the value: `(value, jsonPath) => string`. Existing single-argument hooks keep working unchanged.
+
+  Many redactable strings are serialized JSON — database query arguments and results, and request and response bodies — and a hook that could only see the value had to treat all of them as plain text. Rewriting serialized JSON with text substitutions risks emitting something that no longer parses, which stops database mocks matching on their arguments at replay time and silently falls back to looser matching. With the path available, a hook can recognise those attributes and parse/redact/re-serialize them instead. The redaction guide documents that pattern.
+
+- [#13671](https://github.com/alwaysmeticulous/meticulous/pull/13671) [`3c56cba`](https://github.com/alwaysmeticulous/meticulous/commit/3c56cba67e47a7aab19e8770c262db9bfb2e5fdf) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Serve a base run's coverage with a caveat rather than refusing it when the run hasn't replayed its whole selected set. Coverage responses may now carry `notes`, which the CLI relays to stderr.
+
+- [#13587](https://github.com/alwaysmeticulous/meticulous/pull/13587) [`52fd8cd`](https://github.com/alwaysmeticulous/meticulous/commit/52fd8cd2b11aab937f788df9e721fb0749f1452f) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Expose test-run, daily-project, and test-run-event reporting statistics through the Meticulous client and the new `meticulous agent test-run-stats`, `project-daily-stats`, and `test-run-event-stats` commands.
+
+- Updated dependencies [[`2bfaf4c`](https://github.com/alwaysmeticulous/meticulous/commit/2bfaf4caf2ad48bdf96c5863a7a50594e022c263), [`2bfaf4c`](https://github.com/alwaysmeticulous/meticulous/commit/2bfaf4caf2ad48bdf96c5863a7a50594e022c263), [`ca6a026`](https://github.com/alwaysmeticulous/meticulous/commit/ca6a026588591018ce2a7003f706e39e444f9b48), [`7ba9937`](https://github.com/alwaysmeticulous/meticulous/commit/7ba9937936ffa87430ea6720f0730c4fa02e1ae3), [`3c56cba`](https://github.com/alwaysmeticulous/meticulous/commit/3c56cba67e47a7aab19e8770c262db9bfb2e5fdf), [`cd6d2fe`](https://github.com/alwaysmeticulous/meticulous/commit/cd6d2fed872a47b3687b52edbe245ce82bd708e4), [`52fd8cd`](https://github.com/alwaysmeticulous/meticulous/commit/52fd8cd2b11aab937f788df9e721fb0749f1452f), [`8a34ddd`](https://github.com/alwaysmeticulous/meticulous/commit/8a34ddd7c4c02e0fdd0bab6aee9019c60467db9f), [`03e7e22`](https://github.com/alwaysmeticulous/meticulous/commit/03e7e22f534d2b1ca7b1dcd3cb66fa73e7637ae8), [`9bd77d4`](https://github.com/alwaysmeticulous/meticulous/commit/9bd77d4f8d2a7f4eb278d3b38d11adfa28b8fc5b)]:
+  - @alwaysmeticulous/client@2.341.0
+  - @alwaysmeticulous/api@2.341.0
+  - @alwaysmeticulous/sdk-bundles-api@2.341.0
+  - @alwaysmeticulous/remote-replay-launcher@2.341.0
+  - @alwaysmeticulous/common@2.341.0
+  - @alwaysmeticulous/debug-workspace@2.341.0
+  - @alwaysmeticulous/downloading-helpers@2.341.0
+  - @alwaysmeticulous/record@2.341.0
+  - @alwaysmeticulous/session-filters@2.341.0
+  - @alwaysmeticulous/replay-debugger-ui@2.333.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.341.0
+  - @alwaysmeticulous/sentry@2.341.0
+  - @alwaysmeticulous/tunnels-client@2.341.0
+
 ## 2.340.0
 
 ### Minor Changes

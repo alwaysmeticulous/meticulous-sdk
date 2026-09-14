@@ -6,6 +6,10 @@ import { initLogger } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import {
+  requireArgument,
+  requireIdArgument,
+} from "./argument-validation.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -21,6 +25,8 @@ const handler = async ({
   json,
 }: Options): Promise<void> => {
   initLogger();
+  requireIdArgument("commentId", commentId);
+  requireArgument("text", text);
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,

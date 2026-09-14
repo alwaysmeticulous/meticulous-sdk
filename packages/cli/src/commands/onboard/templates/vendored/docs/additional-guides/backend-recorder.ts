@@ -215,7 +215,7 @@ ${BOOK_A_CALL_TIP}
 | \`exportMode\` | \`"local" \\| "s3"\` | Where to export recorded spans. Defaults to \`"s3"\`, which uploads to Meticulous. Use \`"local"\` to write sessions to disk for debugging. |
 | \`localOutputDir\` | \`string\` | Directory for local exports. Only used when \`exportMode\` is \`"local"\`. |
 | \`flushIntervalMs\` | \`number\` | How often to flush spans, in milliseconds. |
-| \`spanRedactionHooks\` | \`((value: string) => string)[]\` | Ordered record-time hooks that transform redactable span strings before they are uploaded. Node.js only. |
+| \`spanRedactionHooks\` | \`((value: string, jsonPath: readonly string[]) => string)[]\` | Ordered record-time hooks that transform redactable span strings before they are uploaded. Node.js only. |
 
 A common pattern is to record only in the environments you care about:
 
@@ -232,7 +232,7 @@ await initBackendRecorder({
 ### Redacting recorded backend data
 
 Use \`spanRedactionHooks\` to replace sensitive values before completed spans are saved or uploaded. Each hook receives every
-redactable string and must return a string. Hooks run in the order they are provided:
+redactable string plus the \`jsonPath\` locating it within the span, and must return a string. Hooks run in the order they are provided:
 
 {% code_with_project_selector %}
 \`\`\`ts
@@ -240,13 +240,23 @@ await initBackendRecorder({
   meticulousProjectName: "{% project_name /%}",
   recordingToken: "{% project_recording_token /%}",
   spanRedactionHooks: [
-    (value) =>
-      value.replace(
-        /api_key=[A-Za-z0-9_-]+/g,
-        "api_key=[REDACTED_API_KEY]",
-      ),
+    (value, jsonPath) =>
+      jsonPath.at(-1) === "meticulous.prisma.args"
+        ? redactJsonLeaves(value)
+        : value.replace(
+            /api_key=[A-Za-z0-9_-]+/g,
+            "api_key=[REDACTED_API_KEY]",
+          ),
   ],
 });
+
+// Only a string leaf can hold a secret: a where: { apiKey: { ... } } relation
+// filter shares the name but is structure, so the type check leaves it intact.
+function redactJsonLeaves(json: string): string {
+  return JSON.stringify(JSON.parse(json), (key, value) =>
+    key === "apiKey" && typeof value === "string" ? "[REDACTED]" : value,
+  );
+}
 \`\`\`
 {% /code_with_project_selector %}
 
@@ -258,6 +268,13 @@ Hooks run only while recording. If a hook throws or returns a non-string, Meticu
 without redaction. Replacing backend-generated request data can also change a replay match key; use stable replacements and verify that
 the corresponding input will have the same value during replay. This programmatic option applies to the Node.js recorder and is not
 available to the Cloudflare Workers sidecar.
+
+Many redactable strings are serialized JSON — database query arguments and results, and request and response bodies. Rewriting those with
+text substitutions risks emitting something that no longer parses: a pattern matching \`"apiKey":\` followed by an unquoted run will
+consume the \`{\` of an object value, and replacing a number or boolean with an unquoted placeholder is invalid JSON too. Meticulous
+matches database mocks on the serialized arguments, so a recording that no longer parses stops matching exactly and falls back to looser
+tiers, which can serve another query's result. Prefer parsing the JSON, redacting the leaf values, and re-serializing — use \`jsonPath\`
+to recognise those attributes — and return the input unchanged when a hook redacts nothing, so unaffected bodies keep their exact bytes.
 
 ## 4. Flush spans on shutdown
 

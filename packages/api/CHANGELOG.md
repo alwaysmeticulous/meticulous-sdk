@@ -1,5 +1,23 @@
 # @alwaysmeticulous/api
 
+## 2.341.0
+
+### Minor Changes
+
+- [#13700](https://github.com/alwaysmeticulous/meticulous/pull/13700) [`9bd77d4`](https://github.com/alwaysmeticulous/meticulous/commit/9bd77d4f8d2a7f4eb278d3b38d11adfa28b8fc5b) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `test_run_completed` to test-run event stats, with a `testRun` snapshot matching `stats/test-runs`.
+
+### Patch Changes
+
+- [#13451](https://github.com/alwaysmeticulous/meticulous/pull/13451) [`2bfaf4c`](https://github.com/alwaysmeticulous/meticulous/commit/2bfaf4caf2ad48bdf96c5863a7a50594e022c263) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Every paged `agent` command now reports which rows you got in one shape, written once by the backend rather than separately by each surface: `files 1-100 of 4000 with coverage; use --offset and/or --limit to view more`, and the same for `sessions`, `test-run-stats`, `project-daily-stats` and `test-run-event-stats` (which names the `--cursor` to continue with, being the one value you cannot derive yourself).
+
+  Whether another page exists is now always stated — silence about paging means you have everything. A total is included wherever the endpoint can count cheaply; `sessions` reports none, since counting a large project's sessions costs more than the page itself.
+
+  `--limit=0` is gone: there is no unlimited mode on any command. `--limit` is bounded per command (coverage and sessions cap at 1000) and defaults to 100 everywhere. When you need more than a page, narrow the question instead — `--summary`, `--orderBy`, `--globFilter`.
+
+- [#13804](https://github.com/alwaysmeticulous/meticulous/pull/13804) [`7ba9937`](https://github.com/alwaysmeticulous/meticulous/commit/7ba9937936ffa87430ea6720f0730c4fa02e1ae3) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `TestRunBitbucketPushContext.ref` is now optional: a pushed commit that a later push moved the branch tip past cannot be resolved to a branch on Bitbucket Cloud, and such runs now report no ref rather than failing to trigger.
+
+- [#13587](https://github.com/alwaysmeticulous/meticulous/pull/13587) [`52fd8cd`](https://github.com/alwaysmeticulous/meticulous/commit/52fd8cd2b11aab937f788df9e721fb0749f1452f) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Expose test-run, daily-project, and test-run-event reporting statistics through the Meticulous client and the new `meticulous agent test-run-stats`, `project-daily-stats`, and `test-run-event-stats` commands.
+
 ## 2.339.0
 
 ### Patch Changes

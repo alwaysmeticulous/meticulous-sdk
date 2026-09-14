@@ -162,12 +162,22 @@ const logRegistrySummary = (result: CompleteBaseRunResponse): void => {
  *
  * `unexecutedSessionCount` reaching `unobtainableSessionCount` is the
  * scheduling half: nothing is left that replaying could still supply.
- * `isTestRunComplete` — a usable `Success`/`Failure` verdict, matching the
- * backend's own gate — is the artifact half: results land per-chunk as soon as
- * replays finish, but the coverage `js-coverage` serves is only rewritten by a
- * later, separate post-process step, which is also what settles a pool's
- * status. Without it, a pool that has just been appended to looks done while
- * the artifact still describes the old subset.
+ * `isTestRunComplete` — a usable `Success`/`Failure` verdict — is the artifact
+ * half: results land per-chunk as soon as replays finish, but coverage is only
+ * rewritten by the post-process that ends each chunk workflow, which is also
+ * what settles a pool's status. Without it, a pool that has just been appended
+ * to looks done while the artifact still describes the old subset.
+ *
+ * Deliberately stricter than the backend's coverage gate, which it used to
+ * mirror. That gate now serves a pool whose remaining sessions are covered by
+ * another run's replay, caveat attached, and never waits for them — but this
+ * command's contract is that the sessions have actually been replayed *here*,
+ * which is what the caller asked for by running it rather than reading the
+ * coverage they already had. The two therefore settle at different points, and
+ * this one waits longer on purpose. It still terminates: `completeBaseRun`
+ * schedules every inherited session that isn't a registry reuse or in flight
+ * elsewhere, and the registry ones drop out of `unexecutedSessionCount` as soon
+ * as a post-process folds them.
  *
  * Note this says nothing about whether the result is *good enough* for any
  * particular consumer — whether a remainder that can never be replayed is a
