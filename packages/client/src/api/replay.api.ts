@@ -38,6 +38,7 @@ export const getReplayDownloadUrl: (
 };
 
 export type ReplayV3UploadLocations = Record<string, S3Location> & {
+  chromeDiagnostics?: S3Location;
   screenshots: Record<string, { image: S3Location; metadata?: S3Location }>;
   diffs?: Record<
     string,
@@ -65,6 +66,8 @@ export type ReplayV3UploadLocations = Record<string, S3Location> & {
 export interface GetReplayV3DownloadUrlsOptions {
   includeScreenshots?: boolean;
   includeDiffs?: boolean;
+  /** Include crash diagnostics, including replays with no normal artifacts. */
+  includeChromeDiagnostics?: boolean;
   /**
    * Include the replay's app-container logs, when it has any. Opt-in because
    * the server has to check S3 for the artifact's existence, which the rest of
@@ -91,6 +94,9 @@ export const getReplayV3DownloadUrls: (
   }
   if (options?.includeAppContainerLogs === true) {
     params["includeAppContainerLogs"] = "true";
+  }
+  if (options?.includeChromeDiagnostics === true) {
+    params["includeChromeDiagnostics"] = "true";
   }
 
   const { data } = await client

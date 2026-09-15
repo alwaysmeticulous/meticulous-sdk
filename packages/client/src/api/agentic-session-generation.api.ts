@@ -583,7 +583,11 @@ export interface ReportAgenticRunResultResponse {
   recorded?: boolean;
 }
 
-export type AgenticResultArtifactKind = "review" | "coverage" | "traces";
+export type AgenticResultArtifactKind =
+  | "review"
+  | "coverage"
+  | "traces"
+  | "plan";
 
 export interface RequestAgenticResultUploadParams extends ProjectIdentifier {
   /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */

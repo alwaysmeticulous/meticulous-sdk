@@ -39,7 +39,10 @@ import {
   WAIT_ON_THE_SLOW_SCHEDULE,
   isDeploymentStillInProgress,
 } from "./deployment-in-progress";
-import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
+import {
+  DEFAULT_MISSING_BASE_FALLBACK_LOG,
+  pollWhileBaseNotFound,
+} from "./poll-for-base-test-run";
 import type { CompanionAssetsOptions } from "./types";
 
 export interface UploadContainerOptions extends ProjectIdentifier {
@@ -286,9 +289,7 @@ export const uploadContainer = async ({
         mustHaveBase: true,
       }),
     fallbackFn: () => {
-      logProgress(
-        "No base test run found. Creating the test run without a base; no sessions will be executed.",
-      );
+      logProgress(DEFAULT_MISSING_BASE_FALLBACK_LOG);
       return completeUpload({
         ...completeContainerArgs,
         mustHaveBase: false,

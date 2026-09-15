@@ -116,7 +116,7 @@ const handler = async ({
 export const uploadBuildCommand: CommandModule<unknown, Options> = {
   command: "upload-build",
   describe:
-    "Upload a build (static assets or a Docker container) and register a reusable deployment, without triggering a test run. Outputs the deploymentId (or JSON with --json).",
+    "Upload a build (static assets or a Docker container) and register an ephemeral deployment, without triggering a test run. Outputs the deploymentId to use when triggering (or JSON with --json); the upload is not discoverable later by commit SHA.",
   builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: {

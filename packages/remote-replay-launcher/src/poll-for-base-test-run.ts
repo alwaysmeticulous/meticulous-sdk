@@ -32,26 +32,30 @@ type PollResult = {
 /**
  * Polls by repeatedly calling `retryFn` until a test run is found or the timeout is reached.
  * If the timeout is reached without finding a test run, calls `fallbackFn` (typically with
- * mustHaveBase: false) to create the test run without a base. For user-visible PR runs the
- * backend will conclude that run as `Skipped` without executing sessions.
+ * mustHaveBase: false) to create the test run without a base. User-visible PR runs on a
+ * project older than three months, or one that already has a golden set, conclude as
+ * `Skipped`; a younger project with an empty golden set still executes sessions.
  */
+export const DEFAULT_MISSING_BASE_FALLBACK_LOG =
+  "No base test run found. Creating the test run without a base. Sessions still execute on a project created in the last three months that has no golden set; otherwise a user-visible PR run is skipped.";
+
 export const pollWhileBaseNotFound = async ({
   initialResult,
   retryFn,
   fallbackFn,
-  fallbackLogMessage = "Base test run not found. Creating the test run without a base; no sessions will be executed.",
+  fallbackLogMessage = DEFAULT_MISSING_BASE_FALLBACK_LOG,
 }: {
   initialResult: PollResult;
   retryFn: () => Promise<PollResult>;
   fallbackFn: () => Promise<PollResult>;
   /**
-   * Logged just before `fallbackFn` runs. The default states that the test run
-   * is created without a base and that no sessions will be executed (user-visible
-   * PR runs conclude as `Skipped`). Main-branch / session-pool base runs can still
-   * execute; callers on those paths may override this message. Callers whose
-   * fallback does not create a base-less run (e.g. versionLookup manifests, which
-   * fail instead) should override this so the log doesn't misreport a hard
-   * failure as success.
+   * Logged just before `fallbackFn` runs. The default describes a base-less
+   * create: later PR runs on older projects, or projects that already have a
+   * golden set, skip; projects created in the last three months with an empty
+   * golden set still execute.
+   * Callers whose fallback does not create a base-less run (e.g. versionLookup
+   * manifests, which fail instead) should override this so the log doesn't
+   * misreport a hard failure as success.
    */
   fallbackLogMessage?: string;
 }): Promise<PollResult> => {

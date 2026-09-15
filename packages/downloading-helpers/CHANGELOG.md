@@ -1,5 +1,14 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 2.341.1
+
+### Patch Changes
+
+- [#13708](https://github.com/alwaysmeticulous/meticulous/pull/13708) [`6ac587a`](https://github.com/alwaysmeticulous/meticulous/commit/6ac587aa229ac754ae3200b0a25452673abfe8fb) Thanks [@calebgcc](https://github.com/calebgcc)! - Include Chrome crash diagnostics when downloading replay artifacts, including failed replays without other artifacts.
+
+- Updated dependencies [[`93b3323`](https://github.com/alwaysmeticulous/meticulous/commit/93b33234401b5b7d32b172df70a3ae09dfd9590f), [`bfed1ae`](https://github.com/alwaysmeticulous/meticulous/commit/bfed1aeec9b065d6ee1de5227cf3f47fefe44279), [`6ac587a`](https://github.com/alwaysmeticulous/meticulous/commit/6ac587aa229ac754ae3200b0a25452673abfe8fb)]:
+  - @alwaysmeticulous/client@2.341.1
+
 ## 2.341.0
 
 ### Patch Changes

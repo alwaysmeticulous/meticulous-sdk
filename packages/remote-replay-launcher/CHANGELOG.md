@@ -1,5 +1,21 @@
 # @alwaysmeticulous/remote-replay-launcher
 
+## 2.341.1
+
+### Patch Changes
+
+- [#13821](https://github.com/alwaysmeticulous/meticulous/pull/13821) [`93b3323`](https://github.com/alwaysmeticulous/meticulous/commit/93b33234401b5b7d32b172df70a3ae09dfd9590f) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agent-uploaded asset and container builds are now ephemeral. Use the
+  `deploymentId` returned by `agent upload-build` to trigger or re-trigger that
+  build; later `commitSha` lookups only discover persistent deployments uploaded
+  by CI.
+
+- [#13772](https://github.com/alwaysmeticulous/meticulous/pull/13772) [`7c814e0`](https://github.com/alwaysmeticulous/meticulous/commit/7c814e0b024b29d1e5503565eb25ab4bebbb3601) Thanks [@linpengzhang](https://github.com/linpengzhang)! - When no base test run is found, the fallback log no longer says sessions will not
+  execute. First-CI PR runs on a project created in the last three months with an
+  empty golden set still simulate; later PR runs, or projects that already have a
+  golden set, still skip.
+- Updated dependencies [[`93b3323`](https://github.com/alwaysmeticulous/meticulous/commit/93b33234401b5b7d32b172df70a3ae09dfd9590f), [`bfed1ae`](https://github.com/alwaysmeticulous/meticulous/commit/bfed1aeec9b065d6ee1de5227cf3f47fefe44279), [`6ac587a`](https://github.com/alwaysmeticulous/meticulous/commit/6ac587aa229ac754ae3200b0a25452673abfe8fb)]:
+  - @alwaysmeticulous/client@2.341.1
+
 ## 2.341.0
 
 ### Patch Changes

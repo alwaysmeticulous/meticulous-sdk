@@ -48,9 +48,10 @@ export interface UploadBuildResult extends AgentUploadBuildResponse {
 
 /**
  * Uploads a build (static assets or a Docker container, auto-detected from the
- * inputs) and registers a reusable deployment WITHOUT triggering a test run.
- * Returns the `deploymentId` to hand to {@link triggerTestRun} and the upload
- * ID for callers that also need to reference the uploaded app.
+ * inputs) and registers an ephemeral deployment WITHOUT triggering a test run.
+ * Returns the `deploymentId` to hand to {@link triggerTestRun}; local uploads
+ * are not discoverable later by commit SHA. Also returns the upload ID for
+ * callers that need to reference the uploaded app.
  */
 export const uploadBuild = async (
   options: UploadBuildOptions,

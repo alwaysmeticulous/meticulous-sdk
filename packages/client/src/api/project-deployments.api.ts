@@ -584,8 +584,9 @@ export const getContainerDeployment = async ({
 
 // ===========================================================================
 // Agent namespace: split "upload a build" from "trigger a test run".
-// `uploadBuild` registers a reusable deployment without triggering; the
-// returned `deploymentId` is then passed to `triggerTestRun`.
+// `uploadBuild` registers an ephemeral deployment without triggering; the
+// returned `deploymentId` is then passed to `triggerTestRun`. Local uploads
+// are deliberately excluded from later commitSha-based discovery.
 // ===========================================================================
 
 export type ProjectDeploymentSource = "assetUpload" | "containerUpload";

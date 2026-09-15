@@ -1,4 +1,6 @@
+import type * as MeticulousClientModule from "@alwaysmeticulous/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import yargs, { type Options as YargsOptions } from "yargs";
 import { sessionsCommand } from "./sessions.command";
 
 // Make wrapHandler a passthrough so handler errors propagate directly to tests
@@ -25,7 +27,11 @@ vi.mock("@alwaysmeticulous/common", () => ({
   logNotice: mocks.logNotice,
 }));
 
-vi.mock("@alwaysmeticulous/client", () => ({
+// Partial: `SESSIONS_ORDER_BY_FIELDS` is the real export the command hands to
+// yargs as `choices`, so the argv-parsing tests below reject exactly what the
+// published CLI rejects. A local copy would let the two drift silently.
+vi.mock("@alwaysmeticulous/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof MeticulousClientModule>()),
   createClientWithOAuth: mocks.createClientWithOAuth,
   getSessions: mocks.getSessions,
 }));
@@ -41,11 +47,14 @@ const runHandler = (
     recordedBy?: string;
     excludeSyntheticSessions?: boolean;
     visitedUrlFilter?: string;
+    selectedSet?: string | boolean;
     includeDurationSeconds?: boolean;
     includeNumberUserEvents?: boolean;
     includeNumberUrlsVisited?: boolean;
     includeStartUrl?: boolean;
     includeAbandonedReason?: boolean;
+    includeSelectedSince?: boolean;
+    orderBy?: "createdAt" | "rank";
     limit?: number;
     offset?: number;
   } = {},
@@ -73,6 +82,7 @@ const SESSIONS = [
     durationSeconds: 42,
     numberUserEvents: 7,
     numberUrlsVisited: 2,
+    selectedSince: "2026-07-05T00:00:00.000Z",
   },
   {
     id: "session-2_p1704825600000",
@@ -244,11 +254,14 @@ describe("sessions command", () => {
       recordedBy: "a@b.com",
       excludeSyntheticSessions: true,
       visitedUrlFilter: "*/checkout*",
+      selectedSet: "2026-07-08",
       includeDurationSeconds: true,
       includeNumberUserEvents: true,
       includeNumberUrlsVisited: true,
       includeStartUrl: true,
       includeAbandonedReason: true,
+      includeSelectedSince: true,
+      orderBy: "rank",
       limit: 25,
       offset: 50,
     });
@@ -264,11 +277,14 @@ describe("sessions command", () => {
         recordedBy: "a@b.com",
         excludeSyntheticSessions: true,
         visitedUrlFilter: "*/checkout*",
+        selectedSet: "2026-07-08",
         includeDurationSeconds: true,
         includeNumberUserEvents: true,
         includeNumberUrlsVisited: true,
         includeStartUrl: true,
         includeAbandonedReason: true,
+        includeSelectedSince: true,
+        orderBy: "rank",
         limit: 25,
         offset: 50,
       },
@@ -289,15 +305,165 @@ describe("sessions command", () => {
         recordedBy: undefined,
         excludeSyntheticSessions: undefined,
         visitedUrlFilter: undefined,
+        selectedSet: undefined,
         includeDurationSeconds: undefined,
         includeNumberUserEvents: undefined,
         includeNumberUrlsVisited: undefined,
         includeStartUrl: undefined,
         includeAbandonedReason: undefined,
+        includeSelectedSince: undefined,
         limit: undefined,
         offset: undefined,
       },
     );
+  });
+
+  it("sends a bare --selectedSet as the current set", async () => {
+    // yargs gives "" for a value-less string option.
+    await runHandler({ selectedSet: "" });
+
+    expect(mocks.getSessions).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ selectedSet: true }),
+    );
+  });
+
+  it("appends the selectedSince column, passing an undatable entrance's reason through", async () => {
+    mocks.getSessions.mockResolvedValueOnce({
+      sessions: [
+        SESSIONS[0],
+        { ...SESSIONS[1], selectedSince: "unknown:scan-budget-exhausted" },
+      ],
+    });
+
+    await runHandler({
+      json: false,
+      selectedSet: "",
+      includeSelectedSince: true,
+    });
+
+    const lines = stdoutText().split("\n");
+    expect(lines[0]).toBe(
+      [
+        "id",
+        "createdAt",
+        "recordedAt",
+        "recordedBy",
+        "status",
+        "selectedSince",
+      ].join("\t"),
+    );
+    expect(lines[1].endsWith("\t2026-07-05T00:00:00.000Z")).toBe(true);
+    expect(lines[2].endsWith("\tunknown:scan-budget-exhausted")).toBe(true);
+  });
+
+  it("leaves the selectedSince column empty when the API omits it", async () => {
+    // A backend that predates the sentinels omits the field rather than
+    // explaining itself, so the column still has to tolerate a missing value.
+    await runHandler({
+      json: false,
+      selectedSet: "",
+      includeSelectedSince: true,
+    });
+
+    expect(stdoutText().split("\n")[2].endsWith("\tpatched\t")).toBe(true);
+  });
+
+  it("passes --orderBy=rank through alongside --selectedSet", async () => {
+    await runHandler({ selectedSet: "", orderBy: "rank" });
+
+    expect(mocks.getSessions).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ selectedSet: true, orderBy: "rank" }),
+    );
+  });
+
+  it("rejects --orderBy=rank without --selectedSet, without calling the API", async () => {
+    await expect(runHandler({ orderBy: "rank" })).rejects.toThrow(
+      /--orderBy=rank requires --selectedSet/,
+    );
+    expect(mocks.getSessions).not.toHaveBeenCalled();
+  });
+
+  it("allows --orderBy=createdAt without --selectedSet", async () => {
+    await runHandler({ orderBy: "createdAt" });
+
+    expect(mocks.getSessions).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ orderBy: "createdAt", selectedSet: undefined }),
+    );
+  });
+
+  // Every spelling yargs can produce for an option that takes its value
+  // optionally — see `normalizeSelectedSet`. Each of the three beyond the bare
+  // flag used to reach the server's ISO-8601 parser and come back a 400.
+  it.each([
+    ["", true],
+    ["true", true],
+    ["TRUE", true],
+    ["current", "current"],
+    ["2026-07-08", "2026-07-08"],
+    ["false", undefined],
+    [false, undefined],
+    [true, true],
+  ] as const)(
+    "normalizes --selectedSet %o to %o on the wire",
+    async (selectedSet, expected) => {
+      await runHandler({ selectedSet });
+
+      expect(mocks.getSessions).toHaveBeenCalledWith(
+        {},
+        expect.objectContaining({ selectedSet: expected }),
+      );
+    },
+  );
+
+  it("treats --no-selectedSet as not asked for, so --orderBy=rank is still rejected", async () => {
+    await expect(
+      runHandler({ selectedSet: false, orderBy: "rank" }),
+    ).rejects.toThrow(/--orderBy=rank requires --selectedSet/);
+    expect(mocks.getSessions).not.toHaveBeenCalled();
+  });
+
+  it("rejects --includeSelectedSince without --selectedSet, without calling the API", async () => {
+    await expect(runHandler({ includeSelectedSince: true })).rejects.toThrow(
+      /--includeSelectedSince requires --selectedSet/,
+    );
+    expect(mocks.getSessions).not.toHaveBeenCalled();
+  });
+
+  // The handler tests above inject option values directly, so they cannot see
+  // what yargs actually produces from an argv. `--selectedSet` takes its value
+  // optionally, which is where the interesting spellings come from.
+  describe("yargs parsing layer", () => {
+    const parse = (argv: string[]) =>
+      yargs(argv)
+        .options(sessionsCommand.builder as Record<string, YargsOptions>)
+        .fail((msg) => {
+          throw new Error(msg);
+        })
+        .parse() as Record<string, unknown>;
+
+    it.each([
+      [["--selectedSet"], ""],
+      [["--selectedSet", "2026-07-08"], "2026-07-08"],
+      [["--selectedSet=2026-07-08"], "2026-07-08"],
+      [["--selectedSet", "true"], "true"],
+      [["--selectedSet=false"], "false"],
+      [["--no-selectedSet"], false],
+    ] as const)("parses %o to selectedSet %o", (argv, expected) => {
+      expect(parse([...argv]).selectedSet).toBe(expected);
+    });
+
+    it("keeps --selectedSet bare when a flag follows it", () => {
+      const parsed = parse(["--selectedSet", "--orderBy", "rank"]);
+      expect(parsed.selectedSet).toBe("");
+      expect(parsed.orderBy).toBe("rank");
+    });
+
+    it("rejects an --orderBy value that isn't an allowed field", () => {
+      expect(() => parse(["--orderBy", "recordedAt"])).toThrow();
+    });
   });
 });
 

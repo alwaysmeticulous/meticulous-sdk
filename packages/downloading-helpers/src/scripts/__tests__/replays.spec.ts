@@ -108,6 +108,23 @@ describe("getOrFetchReplayArchive — excludeFileTypes", () => {
       ),
     );
 
+  it("downloads diagnostics-only failed replays into the chrome directory", async () => {
+    (getReplayV3DownloadUrls as Mock).mockResolvedValue({
+      screenshots: {},
+      diffs: {},
+      chromeDiagnostics: {
+        signedUrl: "https://example/chrome-diagnostics.zip",
+        filePath: "chrome-diagnostics.zip",
+      },
+    });
+    await run();
+    expect(downloadAndExtractFile).toHaveBeenCalledWith(
+      "https://example/chrome-diagnostics.zip",
+      join(replayDir(), "chrome-diagnostics.zip"),
+      join(replayDir(), "chrome"),
+    );
+  });
+
   it("writes the cache marker when no exclusions are set", async () => {
     await run();
 
@@ -572,6 +589,69 @@ describe("getOrFetchReplayArchive — replay with no artifacts", () => {
       getOrFetchReplayArchive({} as never, REPLAY_ID, "everything"),
     ).catch(() => undefined);
 
+    expect(
+      existsSync(
+        join(dataDir, "replays", REPLAY_ID, "previously-downloaded.txt"),
+      ),
+    ).toBe(false);
+  });
+
+  it("opts into diagnostics only for download scopes that use them and never caches them as a complete replay", async () => {
+    const diagnostics = {
+      signedUrl: "https://example/chrome.zip",
+      filePath: "chrome-diagnostics.zip",
+    };
+    (downloadAndExtractFile as Mock).mockResolvedValue(undefined);
+    (getReplayV3DownloadUrls as Mock).mockImplementation(
+      (_client, _id, options) =>
+        options.includeChromeDiagnostics
+          ? { screenshots: {}, diffs: {}, chromeDiagnostics: diagnostics }
+          : null,
+    );
+    await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive({} as never, REPLAY_ID),
+    );
+    expect(
+      existsSync(
+        join(dataDir, "replays", REPLAY_ID, "previously-downloaded.txt"),
+      ),
+    ).toBe(false);
+    await expect(
+      runWithLocalDataDir(dataDir, () =>
+        getOrFetchReplayArchive(
+          {} as never,
+          REPLAY_ID,
+          "post-test-run-processing-files-only",
+        ),
+      ),
+    ).rejects.toBeInstanceOf(ReplayHasNoArtifactsError);
+    expect(getReplayV3DownloadUrls).toHaveBeenLastCalledWith(
+      {},
+      REPLAY_ID,
+      expect.objectContaining({ includeChromeDiagnostics: false }),
+    );
+  });
+
+  it("allows callers to make a pruned diagnostics archive best-effort", async () => {
+    (getReplayV3DownloadUrls as Mock).mockResolvedValue({
+      ...(buildDownloadUrls() as Record<string, unknown>),
+      chromeDiagnostics: {
+        signedUrl: "https://example/chrome.zip",
+        filePath: "chrome-diagnostics.zip",
+      },
+    });
+    (downloadAndExtractFile as Mock).mockImplementation((url: string) => {
+      if (url.endsWith("chrome.zip")) {
+        throw new Error("404");
+      }
+    });
+    await expect(
+      runWithLocalDataDir(dataDir, () =>
+        getOrFetchReplayArchive({} as never, REPLAY_ID, "everything", false, {
+          bestEffortFileTypes: new Set(["chromeDiagnostics"]),
+        }),
+      ),
+    ).resolves.toBeDefined();
     expect(
       existsSync(
         join(dataDir, "replays", REPLAY_ID, "previously-downloaded.txt"),

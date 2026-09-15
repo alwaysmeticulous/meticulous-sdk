@@ -14,6 +14,7 @@ import {
   ignoreDiff,
   rejectDiff,
   replyToDiffComment,
+  SESSIONS_ORDER_BY_FIELDS,
   TESTRUN_JS_COVERAGE_CLIENT_VERSION,
 } from "../agent.api";
 
@@ -524,11 +525,14 @@ describe("getSessions", () => {
       recordedBy: "a@b.com",
       excludeSyntheticSessions: true,
       visitedUrlFilter: "*/checkout*",
+      selectedSet: "2026-07-08",
       includeDurationSeconds: true,
       includeNumberUserEvents: true,
       includeNumberUrlsVisited: true,
       includeStartUrl: true,
       includeAbandonedReason: true,
+      includeSelectedSince: true,
+      orderBy: "rank",
       limit: 25,
       offset: 50,
     });
@@ -543,11 +547,14 @@ describe("getSessions", () => {
         recordedBy: "a@b.com",
         excludeSyntheticSessions: "true",
         visitedUrlFilter: "*/checkout*",
+        selectedSet: "2026-07-08",
         includeDurationSeconds: "true",
         includeNumberUserEvents: "true",
         includeNumberUrlsVisited: "true",
         includeStartUrl: "true",
         includeAbandonedReason: "true",
+        includeSelectedSince: "true",
+        orderBy: "rank",
         limit: "25",
         offset: "50",
       },
@@ -562,7 +569,33 @@ describe("getSessions", () => {
       includeNumberUrlsVisited: false,
       includeStartUrl: false,
       includeAbandonedReason: false,
+      includeSelectedSince: false,
     });
+
+    expect(client.get).toHaveBeenCalledWith("agent/sessions", { params: {} });
+  });
+
+  it("spells selectedSet: true as the 'current' keyword on the wire", async () => {
+    await getSessions(asClient(), { selectedSet: true });
+
+    expect(client.get).toHaveBeenCalledWith("agent/sessions", {
+      params: { selectedSet: "current" },
+    });
+  });
+
+  it.each(SESSIONS_ORDER_BY_FIELDS)(
+    "sends orderBy %s through verbatim",
+    async (orderBy) => {
+      await getSessions(asClient(), { orderBy });
+
+      expect(client.get).toHaveBeenCalledWith("agent/sessions", {
+        params: { orderBy },
+      });
+    },
+  );
+
+  it("omits orderBy when not given, so the server picks the default", async () => {
+    await getSessions(asClient(), {});
 
     expect(client.get).toHaveBeenCalledWith("agent/sessions", { params: {} });
   });

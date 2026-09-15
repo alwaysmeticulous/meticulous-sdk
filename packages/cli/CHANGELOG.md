@@ -1,5 +1,23 @@
 # @alwaysmeticulous/cli
 
+## 2.341.1
+
+### Patch Changes
+
+- [#13821](https://github.com/alwaysmeticulous/meticulous/pull/13821) [`93b3323`](https://github.com/alwaysmeticulous/meticulous/commit/93b33234401b5b7d32b172df70a3ae09dfd9590f) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agent-uploaded asset and container builds are now ephemeral. Use the
+  `deploymentId` returned by `agent upload-build` to trigger or re-trigger that
+  build; later `commitSha` lookups only discover persistent deployments uploaded
+  by CI.
+
+- [#13466](https://github.com/alwaysmeticulous/meticulous/pull/13466) [`bfed1ae`](https://github.com/alwaysmeticulous/meticulous/commit/bfed1aeec9b065d6ee1de5227cf3f47fefe44279) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `--selectedSet` to `meticulous agent sessions`, narrowing the listing to the project's selected set — as it stands now for the bare flag, or as of a given date/datetime. `--includeSelectedSince` adds a `selectedSince` column with the selection cycle each session entered that set at, or an `unknown:<reason>` sentinel naming why the entrance couldn't be dated. `--orderBy` chooses the order: `rank` lists the set in its own greedy pick order instead of the default `createdAt`.
+
+- Updated dependencies [[`93b3323`](https://github.com/alwaysmeticulous/meticulous/commit/93b33234401b5b7d32b172df70a3ae09dfd9590f), [`bfed1ae`](https://github.com/alwaysmeticulous/meticulous/commit/bfed1aeec9b065d6ee1de5227cf3f47fefe44279), [`6ac587a`](https://github.com/alwaysmeticulous/meticulous/commit/6ac587aa229ac754ae3200b0a25452673abfe8fb), [`7c814e0`](https://github.com/alwaysmeticulous/meticulous/commit/7c814e0b024b29d1e5503565eb25ab4bebbb3601)]:
+  - @alwaysmeticulous/client@2.341.1
+  - @alwaysmeticulous/remote-replay-launcher@2.341.1
+  - @alwaysmeticulous/downloading-helpers@2.341.1
+  - @alwaysmeticulous/debug-workspace@2.341.1
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.341.1
+
 ## 2.341.0
 
 ### Minor Changes

@@ -149,7 +149,8 @@ export type ReplayFileType =
   | "cookies"
   | "launchBrowserAndReplayParams"
   | "logs"
-  | "appContainerLogs";
+  | "appContainerLogs"
+  | "chromeDiagnostics";
 
 /**
  * The subset of {@link ReplayFileType}s that are downloaded as unzipped archive
@@ -160,6 +161,7 @@ export type ReplayFileType =
  * this type to make misuse a compile-time error rather than a silent no-op.
  */
 export type BestEffortFileType =
+  | "chromeDiagnostics"
   | "snapshottedAssets"
   | "rawPerScreenshotCssCoverage"
   | "rawPerScreenshotJsCoverage"
@@ -260,8 +262,9 @@ export const getOrFetchReplayArchive = async (
 
     const replay = await getReplay(client, replayId);
 
+    let hasNormalArtifacts = false;
     if (replay.version === "v3") {
-      await downloadReplayV3Files(
+      hasNormalArtifacts = await downloadReplayV3Files(
         client,
         replayId,
         replayDir,
@@ -289,7 +292,7 @@ export const getOrFetchReplayArchive = async (
     // set; the cache directory would otherwise look complete to future
     // unfiltered callers even though a swallowed best-effort failure (or an
     // exclusion) may have left it incomplete.
-    if (!bypassCache) {
+    if (!bypassCache && hasNormalArtifacts) {
       await writeFile(previouslyDownloadedFile, downloadScope, "utf-8");
     }
     logger.debug(`Extracted replay archive in ${replayDir}`);
@@ -323,6 +326,7 @@ const downloadReplayV3Files = async (
     // Costs the server an S3 existence check, so only ask when this download
     // would actually keep the file.
     includeAppContainerLogs: includes("appContainerLogs"),
+    includeChromeDiagnostics: includes("chromeDiagnostics"),
   });
   if (!downloadUrls) {
     throw new ReplayHasNoArtifactsError(replayId);
@@ -353,6 +357,7 @@ const downloadReplayV3Files = async (
     screenshots,
     diffs,
     snapshottedAssets,
+    chromeDiagnostics,
     rawPerScreenshotCssCoverage,
     rawPerScreenshotJsCoverage,
     mappedPerScreenshotJsCoverage,
@@ -473,6 +478,17 @@ const downloadReplayV3Files = async (
     : [];
 
   const archivePromises = [
+    ...(includes("chromeDiagnostics") && chromeDiagnostics
+      ? [
+          maybeBestEffort("chromeDiagnostics", () =>
+            downloadAndUnzipIntoDirectory(
+              chromeDiagnostics,
+              replayDir,
+              "chrome",
+            ),
+          ),
+        ]
+      : []),
     ...(includes("snapshottedAssets")
       ? [
           maybeBestEffort("snapshottedAssets", () =>
@@ -546,6 +562,8 @@ const downloadReplayV3Files = async (
       ...appContainerLogsPromises,
     ].map((p) => limited(p)),
   );
+  // Diagnostics-only downloads must not satisfy later normal-artifact requests.
+  return !chromeDiagnostics || downloadUrls.metadata != null;
 };
 
 export const getReplayDir = (replayId: string) =>

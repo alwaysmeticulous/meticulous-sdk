@@ -1924,7 +1924,49 @@ export interface SessionListItem {
    * `includeAbandonedReason` is set, and then only for abandoned sessions.
    */
   abandonedReason?: SessionAbandonmentReason;
+  /**
+   * When the session entered the selected set and stayed in it through the
+   * point `selectedSet` asked about, as an ISO-8601 string — the selection
+   * cycle that added it. Included whenever `includeSelectedSince` is set; when
+   * the entrance can't be dated it carries one of the
+   * {@link SelectedSinceUnknown} sentinels instead of a timestamp.
+   */
+  selectedSince?: string;
 }
+
+/**
+ * What `selectedSince` says when a session's entrance into the selected set
+ * can't be dated, in place of a timestamp.
+ *
+ * - `unknown:not-added-by-a-cycle` — no selection cycle holds the session.
+ *   Usually a selected slot promoted in place onto a patched session after its
+ *   cycle ran, so the cycle still names the pre-promotion session; a manual edit
+ *   to the set looks the same. Only the current set reports this.
+ * - `unknown:before-selection-history` — it is in every cycle the project has,
+ *   so it entered before the recorded history begins.
+ * - `unknown:scan-budget-exhausted` — it is in every cycle the server scanned,
+ *   which stopped at its cycle budget short of the start of history. The
+ *   entrance is older than that scan; on a long-lived project the most stably
+ *   selected sessions land here.
+ */
+export type SelectedSinceUnknown =
+  `unknown:${(typeof SELECTED_SINCE_UNKNOWN_REASONS)[number]}`;
+
+/**
+ * Kept as a value, not just a union, so a caller can enumerate the cases —
+ * and so the backend's own copy (`agent.types.ts`) has something to be checked
+ * against rather than two hand-written lists that drift silently.
+ */
+export const SELECTED_SINCE_UNKNOWN_REASONS = [
+  "not-added-by-a-cycle",
+  "before-selection-history",
+  "scan-budget-exhausted",
+] as const;
+
+/** The orders {@link getSessions} can return rows in. */
+export const SESSIONS_ORDER_BY_FIELDS = ["createdAt", "rank"] as const;
+
+export type SessionsOrderByField = (typeof SESSIONS_ORDER_BY_FIELDS)[number];
 
 export interface SessionsResponse {
   /** The project's most recently recorded sessions, newest first. */
@@ -1940,6 +1982,11 @@ export interface SessionsResponse {
 // `limit` is always applied (server-side default 100, max 1000), so a response
 // never exceeds `limit` rows regardless of the filters; `offset` may page
 // arbitrarily far (offset + limit is not capped).
+//
+// `selectedSet` narrows the listing to the project's selected set, live or as
+// of a past instant; `includeSelectedSince` (only valid alongside it) adds each
+// session's entrance time into that set, and `orderBy: "rank"` (likewise) orders
+// the listing by the selection's own pick order.
 export const getSessions = async (
   client: MeticulousClient,
   options?: {
@@ -1951,11 +1998,25 @@ export const getSessions = async (
     recordedBy?: string | undefined;
     excludeSyntheticSessions?: boolean | undefined;
     visitedUrlFilter?: string | undefined;
+    /**
+     * Restrict to the project's selected set: `true` (or `"current"`) for the
+     * set as it stands now, or an ISO-8601 date/datetime for the set as of
+     * that point.
+     */
+    selectedSet?: string | true | undefined;
     includeDurationSeconds?: boolean | undefined;
     includeNumberUserEvents?: boolean | undefined;
     includeNumberUrlsVisited?: boolean | undefined;
     includeStartUrl?: boolean | undefined;
     includeAbandonedReason?: boolean | undefined;
+    /** Only valid alongside `selectedSet`; the server rejects it otherwise. */
+    includeSelectedSince?: boolean | undefined;
+    /**
+     * Which order to return the sessions in. Defaults to `createdAt`
+     * (newest first). `rank` is only valid alongside `selectedSet`; the server
+     * rejects it otherwise.
+     */
+    orderBy?: SessionsOrderByField | undefined;
     limit?: number | undefined;
     offset?: number | undefined;
   },
@@ -1985,6 +2046,10 @@ export const getSessions = async (
   if (options?.visitedUrlFilter != null) {
     params.visitedUrlFilter = options.visitedUrlFilter;
   }
+  if (options?.selectedSet != null) {
+    params.selectedSet =
+      options.selectedSet === true ? "current" : options.selectedSet;
+  }
   if (options?.includeDurationSeconds) {
     params.includeDurationSeconds = "true";
   }
@@ -1999,6 +2064,12 @@ export const getSessions = async (
   }
   if (options?.includeAbandonedReason) {
     params.includeAbandonedReason = "true";
+  }
+  if (options?.includeSelectedSince) {
+    params.includeSelectedSince = "true";
+  }
+  if (options?.orderBy != null) {
+    params.orderBy = options.orderBy;
   }
   if (options?.limit != null) {
     params.limit = String(options.limit);
