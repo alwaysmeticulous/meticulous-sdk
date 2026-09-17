@@ -79,6 +79,8 @@ export interface ExecuteRemoteTestRunOptions {
 
 export interface ExecuteRemoteTestRunResult {
   testRun: TestRun | null;
+  skipReason?: "comments_disabled_for_author";
+  message?: string;
 }
 
 export interface UploadAssetsAndTriggerTestRunOptions extends ProjectIdentifier {

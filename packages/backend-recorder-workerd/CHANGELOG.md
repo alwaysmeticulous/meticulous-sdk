@@ -1,5 +1,13 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.342.0
+
+### Patch Changes
+
+- [#13991](https://github.com/alwaysmeticulous/meticulous/pull/13991) [`8ff47f0`](https://github.com/alwaysmeticulous/meticulous/commit/8ff47f07ca988c49382853c30e0e9d71bffa4a39) Thanks [@dennysem](https://github.com/dennysem)! - Keep build annotations attached to their own expression when instrumenting for coverage. A coverage marker was inserted at the annotated node's start, which is _after_ any leading comment, so `() => /* @__PURE__ */ jsx("a", {})` became `() => /* @__PURE__ */ (__mcH$(0), jsx("a", {}))` and left the annotation on a sequence expression. Bundlers report that as `INVALID_ANNOTATION` and then discard the hint — on a JSX-heavy Worker build that is one warning per annotated arrow body (85 across 60 React components in our own corpus), because the instrumenter runs after the JSX transform, which annotates every `jsx(...)` call. Statement markers had the same problem: `/* @__PURE__ */ foo();` became `/* @__PURE__ */ __mcS$&&(__mcS$[0]=1); foo();`.
+
+  Both insertions now open before the annotation, so it stays on the call it was written for. Coverage attribution is unchanged — a marker's line still comes from the node it marks.
+
 ## 2.339.0
 
 ### Minor Changes

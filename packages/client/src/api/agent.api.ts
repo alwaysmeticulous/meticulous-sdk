@@ -240,13 +240,9 @@ export interface DiffsSummaryCountsResponse {
  * Temporal's own terminal execution status, surfaced as-is because the
  * computation's own code never ran (so there's nothing more specific to
  * report):
- * - `test-run-not-ready`: the test run hadn't finished within the
- *   computation's bounded wait for it. **The one reason worth retrying** —
- *   the test run is likely still going, and may well have finished by the
- *   time you ask again. Ask again at least a minute later and a fresh attempt
- *   is started (answering `pending`); ask sooner and you just get this same
- *   failure back, since an immediate re-ask can't be told apart from the poll
- *   that was handed it.
+ * - `test-run-not-ready`: retained for response compatibility with older
+ *   servers. Current servers transparently re-arm the next bounded wait
+ *   segment and answer `pending` instead of surfacing this reason.
  * - `test-run-unavailable`: the test run became a base run, or was aborted
  *   or skipped, while waiting for it to finish.
  * - `computation-error`: the computation itself failed (a genuine bug),
@@ -256,8 +252,7 @@ export interface DiffsSummaryCountsResponse {
  *   operator) — rather than failing through its own code path.
  *
  * A `failed` response never has a computation still running behind it, so
- * stop polling when you get one. Spending another computation on the test run
- * is a separate, deliberate decision, made by asking again later.
+ * stop polling when you get one.
  */
 export type DiffsSummaryFailureReason =
   | "test-run-not-ready"
@@ -272,8 +267,7 @@ export interface DiffsSummaryResponse {
    * `pending` — computation queued; `processing` — the test run or summary
    * computation is still running; poll again; `complete` — `data` is
    * populated; `failed` — no result exists and nothing is still computing
-   * one, see `reason`. Stop polling on `failed`; `test-run-not-ready` is the
-   * one reason worth asking again about later.
+   * one, see `reason`. Stop polling on `failed`.
    */
   status: "pending" | "processing" | "complete" | "failed";
   data?: DiffsSummaryDiff[];
@@ -1932,22 +1926,38 @@ export interface SessionListItem {
    * {@link SelectedSinceUnknown} sentinels instead of a timestamp.
    */
   selectedSince?: string;
+  /**
+   * The coverage this session added over everything picked before it, at its
+   * own step in the selection's greedy pick order. Included only when
+   * `includeAdditionalCoverage` is set, and then only for entries that have a
+   * figure. The unit is the same for every row and is named in the response's
+   * `notes`.
+   */
+  additionalCoverage?: number;
 }
 
 /**
  * What `selectedSince` says when a session's entrance into the selected set
  * can't be dated, in place of a timestamp.
  *
- * - `unknown:not-added-by-a-cycle` — no selection cycle holds the session.
- *   Usually a selected slot promoted in place onto a patched session after its
- *   cycle ran, so the cycle still names the pre-promotion session; a manual edit
- *   to the set looks the same. Only the current set reports this.
+ * - `unknown:added-after-last-cycle` — no selection cycle holds the session, so
+ *   it entered after the newest one. Usually a selected slot promoted in place
+ *   onto a patched session after its cycle ran, so the cycle still names the
+ *   pre-promotion session; a manual edit to the set looks the same. Only the
+ *   current set reports this. Ordering by `selectedSince` treats it as the most
+ *   recent entrance of all, which is what it is.
  * - `unknown:before-selection-history` — it is in every cycle the project has,
  *   so it entered before the recorded history begins.
  * - `unknown:scan-budget-exhausted` — it is in every cycle the server scanned,
  *   which stopped at its cycle budget short of the start of history. The
  *   entrance is older than that scan; on a long-lived project the most stably
  *   selected sessions land here.
+ * - `unknown:not-added-by-a-cycle` — the previous name for
+ *   `added-after-last-cycle`, kept here only so code built against an earlier
+ *   `@alwaysmeticulous/client` that exhaustively matches this union still
+ *   compiles. The API never returns it; a session that would have reported it
+ *   now reports `added-after-last-cycle` instead. Remove in a future major
+ *   version.
  */
 export type SelectedSinceUnknown =
   `unknown:${(typeof SELECTED_SINCE_UNKNOWN_REASONS)[number]}`;
@@ -1958,13 +1968,20 @@ export type SelectedSinceUnknown =
  * against rather than two hand-written lists that drift silently.
  */
 export const SELECTED_SINCE_UNKNOWN_REASONS = [
-  "not-added-by-a-cycle",
+  "added-after-last-cycle",
   "before-selection-history",
   "scan-budget-exhausted",
+  /** @deprecated superseded by `added-after-last-cycle`; never returned by the API. */
+  "not-added-by-a-cycle",
 ] as const;
 
 /** The orders {@link getSessions} can return rows in. */
-export const SESSIONS_ORDER_BY_FIELDS = ["createdAt", "rank"] as const;
+export const SESSIONS_ORDER_BY_FIELDS = [
+  "createdAt",
+  "rank",
+  "selectedSince",
+  "additionalCoverage",
+] as const;
 
 export type SessionsOrderByField = (typeof SESSIONS_ORDER_BY_FIELDS)[number];
 
@@ -1985,8 +2002,9 @@ export interface SessionsResponse {
 //
 // `selectedSet` narrows the listing to the project's selected set, live or as
 // of a past instant; `includeSelectedSince` (only valid alongside it) adds each
-// session's entrance time into that set, and `orderBy: "rank"` (likewise) orders
-// the listing by the selection's own pick order.
+// session's entrance time into that set, and `orderBy` (likewise for its
+// selected-set-only values) orders the listing by the selection's own pick order
+// or by that entrance time.
 export const getSessions = async (
   client: MeticulousClient,
   options?: {
@@ -2011,12 +2029,20 @@ export const getSessions = async (
     includeAbandonedReason?: boolean | undefined;
     /** Only valid alongside `selectedSet`; the server rejects it otherwise. */
     includeSelectedSince?: boolean | undefined;
+    /** Only valid alongside `selectedSet`; the server rejects it otherwise. */
+    includeAdditionalCoverage?: boolean | undefined;
     /**
-     * Which order to return the sessions in. Defaults to `createdAt`
-     * (newest first). `rank` is only valid alongside `selectedSet`; the server
-     * rejects it otherwise.
+     * Which order to return the sessions in. Defaults to `createdAt`. `rank`,
+     * `selectedSince` and `additionalCoverage` are only valid alongside
+     * `selectedSet`; the server rejects them otherwise.
      */
     orderBy?: SessionsOrderByField | undefined;
+    /**
+     * Direction for `orderBy`, overriding its default — descending for
+     * `createdAt`, `selectedSince` and `additionalCoverage`, ascending for
+     * `rank`.
+     */
+    order?: "asc" | "desc" | undefined;
     limit?: number | undefined;
     offset?: number | undefined;
   },
@@ -2068,8 +2094,14 @@ export const getSessions = async (
   if (options?.includeSelectedSince) {
     params.includeSelectedSince = "true";
   }
+  if (options?.includeAdditionalCoverage) {
+    params.includeAdditionalCoverage = "true";
+  }
   if (options?.orderBy != null) {
     params.orderBy = options.orderBy;
+  }
+  if (options?.order != null) {
+    params.order = options.order;
   }
   if (options?.limit != null) {
     params.limit = String(options.limit);

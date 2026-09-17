@@ -1,5 +1,6 @@
 import { parse } from "acorn";
 import MagicString from "magic-string";
+import { createAnnotationIndex } from "./annotations";
 
 /**
  * Inserts per-line coverage markers into an ES module.
@@ -122,6 +123,7 @@ export const instrumentModule = ({
   runtimeModuleId,
   resolveOriginalLine = (line) => line,
 }: InstrumentModuleOptions): InstrumentedModule | null => {
+  const annotations = createAnnotationIndex(code);
   let program: AstNode;
   try {
     program = parse(code, {
@@ -131,6 +133,7 @@ export const instrumentModule = ({
       allowAwaitOutsideFunction: true,
       allowReturnOutsideFunction: true,
       allowHashBang: true,
+      onComment: annotations.record,
     }) as unknown as AstNode;
   } catch {
     return null;
@@ -156,7 +159,18 @@ export const instrumentModule = ({
     if (id === null) {
       return;
     }
-    magic.appendLeft(node.start, `${SINK}&&(${SINK}[${id}]=1);`);
+    const marker = `${SINK}&&(${SINK}[${id}]=1);`;
+    const at = annotations.beforeStatement(node.start);
+    if (at === node.start) {
+      magic.appendLeft(at, marker);
+      return;
+    }
+    // Moving before the annotation also moves before the whitespace that
+    // separated it from the previous statement, so a previous statement that
+    // ended by ASI would now run into the marker. A leading empty statement is
+    // legal wherever a statement is, and a statement list is the only place
+    // this inserts.
+    magic.appendLeft(at, `;${marker}`);
   };
 
   const openFunctionBody = (body: AstNode): void => {
@@ -179,7 +193,14 @@ export const instrumentModule = ({
     if (id === null) {
       return;
     }
-    magic.appendLeft(body.start, `(typeof ${HIT}==="function"&&${HIT}(${id}),`);
+    // Opens before any annotation on the body, and before any parens around it,
+    // so the annotation stays on the expression it was written for. The close
+    // still lands at the body's end, so everything crossed here — comments and
+    // opening parens alike — stays inside the pair.
+    magic.appendLeft(
+      annotations.beforeWrappedExpression(body.start),
+      `(typeof ${HIT}==="function"&&${HIT}(${id}),`,
+    );
     magic.appendRight(body.end, ")");
   };
 

@@ -43,7 +43,12 @@ interface SnapshotDownloadUrlsResponse {
  * test run has no resolvable base test run.
  *
  * The backend returns one signed URL and the list of files; we download and
- * assemble them here, in parallel.
+ * assemble them here, one side at a time. A full-size run's base and head file
+ * lists are each already large enough on their own (the caller downloads one
+ * snapshot type at a time for the same reason); downloading both sides
+ * concurrently doubles the peak concurrent connections against the snapshot
+ * store and the peak memory held during assembly, which is what has been
+ * tipping the largest runs into S3 slow-down (503) responses and worker OOMs.
  */
 export const getSnapshotsFromTestRun = async ({
   client,
@@ -62,16 +67,14 @@ export const getSnapshotsFromTestRun = async ({
       throw maybeEnrichFetchError(error);
     });
 
-  const [baseSnapshots, headSnapshots] = await Promise.all([
-    downloadAndAssembleSnapshots({
-      signedBaseUrl: data.signedBaseUrl,
-      files: data.baseSnapshotFiles,
-    }),
-    downloadAndAssembleSnapshots({
-      signedBaseUrl: data.signedBaseUrl,
-      files: data.headSnapshotFiles,
-    }),
-  ]);
+  const baseSnapshots = await downloadAndAssembleSnapshots({
+    signedBaseUrl: data.signedBaseUrl,
+    files: data.baseSnapshotFiles,
+  });
+  const headSnapshots = await downloadAndAssembleSnapshots({
+    signedBaseUrl: data.signedBaseUrl,
+    files: data.headSnapshotFiles,
+  });
 
   return {
     testRunId: data.testRunId,

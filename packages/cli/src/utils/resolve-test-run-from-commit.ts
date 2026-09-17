@@ -250,6 +250,9 @@ export const awaitTestRunCompletion = async (
       throw new CliUserError(
         `Test run ${testRunId} has not completed after 10 minutes (status: ${testRun.status}). ` +
           "It may still be running — check back later, or re-run with --dontWaitForTestRunToComplete to return immediately.",
+        1,
+        "error",
+        { reason: "remote" },
       );
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
@@ -258,6 +261,9 @@ export const awaitTestRunCompletion = async (
   if (throwOnFailure && isTestRunFailed(testRun.status)) {
     throw new CliUserError(
       `Test run ${testRunId} finished unsuccessfully (status: ${testRun.status}).`,
+      1,
+      "error",
+      { reason: "remote" },
     );
   }
   return testRun.status;

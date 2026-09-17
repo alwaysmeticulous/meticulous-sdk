@@ -3,7 +3,9 @@ import { initLogger } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { parseContainerEnv } from "../../command-utils/parse-container-env";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { CI_JSON_OPTION } from "./ci-command-result";
 import { triggerTestRun } from "./trigger-test-run.core";
 import {
   DEPRECATED_TRIGGER_OPTION_DESCRIPTION,
@@ -27,12 +29,16 @@ interface Options {
   companionAssetsPathInImage?: string | undefined;
   companionAssetsRegex?: string | undefined;
   dryRun?: boolean | undefined;
+  json: boolean;
 }
 
 const handler = async (options: Options): Promise<void> => {
   initLogger();
   warnIfDeprecatedTriggerOptionsUsed(options);
-  await triggerTestRun(options);
+  const result = await triggerTestRun(options);
+  if (options.json) {
+    printJson(result);
+  }
 };
 
 export const ciUploadContainerCommand: CommandModule<unknown, Options> = {
@@ -43,6 +49,7 @@ export const ciUploadContainerCommand: CommandModule<unknown, Options> = {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
     dryRun: OPTIONS.dryRun,
+    json: CI_JSON_OPTION,
     baseSha: {
       string: true,
       deprecated: true,
@@ -111,5 +118,5 @@ export const ciUploadContainerCommand: CommandModule<unknown, Options> = {
         "The regex used to determine whether a request path should be served from the companion assets.",
     },
   },
-  handler: wrapHandler(handler),
+  handler: wrapHandler(handler, { structuredErrors: true }),
 };

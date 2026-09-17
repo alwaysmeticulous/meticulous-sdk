@@ -43,6 +43,9 @@ export const handleAuthFailure = (error: unknown): false => {
     throw new CliUserError(
       "Your stored OAuth token has expired and could not be refreshed. " +
         "Re-run the command to start a fresh login.",
+      1,
+      "error",
+      { reason: "auth" },
     );
   }
 
@@ -52,12 +55,18 @@ export const handleAuthFailure = (error: unknown): false => {
   if (!stored) {
     throw new CliUserError(
       `Authentication failed (HTTP ${status})${detail}\n${MISSING_AUTH_GUIDANCE}`,
+      1,
+      "error",
+      { reason: "auth" },
     );
   }
 
   throw new CliUserError(
     `Authentication failed (HTTP ${status})${detail}\n` +
       "If the token is stale, run `meticulous auth logout` and re-run the command.",
+    1,
+    "error",
+    { reason: "auth" },
   );
 };
 
@@ -83,7 +92,9 @@ export const toServerMessageError = (error: unknown): unknown => {
     return error;
   }
   const message = extractServerMessage(error.response?.data);
-  return message ? new CliUserError(message) : error;
+  return message
+    ? new CliUserError(message, 1, "error", { reason: "remote" })
+    : error;
 };
 
 /**

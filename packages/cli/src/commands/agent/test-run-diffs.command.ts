@@ -271,11 +271,10 @@ const handler = async ({
     if (response.status === "failed") {
       const reasonSuffix =
         response.reason != null ? ` (${response.reason})` : "";
-      // Only `test-run-not-ready` is worth another attempt: the test run was
-      // still going when the computation's own wait for it ran out, so it may
-      // well have finished by the time this command is run again. Nothing is
-      // still computing in the background either way — see
-      // DiffsSummaryFailureReason.
+      // Every reason a current server returns here is final: it waits out a
+      // still-running test run rather than reporting it as a failure, so a
+      // `failed` is never just "not yet". `test-run-not-ready` only reaches
+      // this branch from an older server — see DiffsSummaryFailureReason.
       const advice =
         response.reason === "test-run-not-ready"
           ? `the test run hadn't finished in time. Run this command again in a minute or more to start a fresh attempt.`
@@ -292,7 +291,8 @@ const handler = async ({
     if (performance.now() >= summaryDeadline) {
       logNotice(
         `Diffs summary for test run ${resolvedTestRunId} did not complete within 10 minutes ` +
-          `(status: ${response.status}). Something may have gone wrong — try again later.`,
+          `(status: ${response.status}). The test run itself most likely hasn't finished yet — ` +
+          `the computation waits for it, and picks up where it left off when you run this again.`,
       );
       process.exit(1);
     }

@@ -1,5 +1,14 @@
 # @alwaysmeticulous/remote-replay-launcher
 
+## 2.342.0
+
+### Patch Changes
+
+- [#13988](https://github.com/alwaysmeticulous/meticulous/pull/13988) [`2712a2f`](https://github.com/alwaysmeticulous/meticulous/commit/2712a2fcffc743aebb975a698a939661b2c4d810) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add opt-in JSON outcomes to the CI asset, container, and uploaded-chunk test-run commands. Structured results distinguish successful runs, intentional skips, and broad failure categories while preserving existing exit codes and default human-readable output.
+
+- Updated dependencies [[`874594b`](https://github.com/alwaysmeticulous/meticulous/commit/874594b6fa0367e11d1994ee200a2854ceb0dd7b), [`761ced3`](https://github.com/alwaysmeticulous/meticulous/commit/761ced3b1a3466e44e747a10387f1c12bf784538), [`59f1d46`](https://github.com/alwaysmeticulous/meticulous/commit/59f1d468aacace4f2a83e2b6111d6446c6528011)]:
+  - @alwaysmeticulous/client@2.342.0
+
 ## 2.341.1
 
 ### Patch Changes

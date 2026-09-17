@@ -81,7 +81,7 @@ meticulous [command]
 | \`agent timeline-diff\` | Get the timeline diff for a replay diff | Agent/programmatic use |
 | \`agent test-run-check\` | Get a builtin or custom non-visual check report for a test run, or list available check IDs with \`--availableIds\` | Agent/programmatic use |
 | \`agent test-run-for-commit\` | Look up the latest test run for a commit (defaults to git HEAD) | Agent/programmatic use |
-| \`agent sessions\` | List a project's most recently recorded sessions, newest first | Agent/programmatic use |
+| \`agent sessions\` | List a project's recorded sessions, newest first by default, optionally narrowed to the selected set | Agent/programmatic use |
 | \`agent test-run-stats\` | Export reporting statistics for a project's test runs | Agent/programmatic use |
 | \`agent project-daily-stats\` | Export daily project reporting statistics | Agent/programmatic use |
 | \`agent test-run-event-stats\` | Export a project's test-run reporting events | Agent/programmatic use |

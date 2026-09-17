@@ -10,19 +10,30 @@
  * thrown behavior rather than process-level side effects.
  */
 export type CliUserErrorSeverity = "error" | "warn";
+export type CliUserErrorOutcome = "failed" | "skipped";
+
+export interface CliUserErrorMetadata {
+  outcome?: CliUserErrorOutcome;
+  reason?: string;
+}
 
 export class CliUserError extends Error {
   readonly exitCode: number;
   readonly severity: CliUserErrorSeverity;
+  readonly outcome: CliUserErrorOutcome;
+  readonly reason: string | undefined;
 
   constructor(
     message: string,
     exitCode = 1,
     severity: CliUserErrorSeverity = "error",
+    metadata: CliUserErrorMetadata = {},
   ) {
     super(message);
     this.name = "CliUserError";
     this.exitCode = exitCode;
     this.severity = severity;
+    this.outcome = metadata.outcome ?? "failed";
+    this.reason = metadata.reason;
   }
 }

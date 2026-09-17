@@ -1,5 +1,5 @@
-import type { TestRunStatus } from "@alwaysmeticulous/api";
 import type { ContainerEnvVariable } from "@alwaysmeticulous/client";
+import type { CiCommandResult } from "./ci-command-result";
 
 /**
  * The full union of options accepted by {@link triggerTestRun}. The upload mode
@@ -45,7 +45,7 @@ export interface TriggerTestRunOptions {
   dryRun?: boolean | undefined;
 }
 
-export interface TriggerTestRunResult {
-  testRunId: string | null;
-  status: TestRunStatus | null;
-}
+export type TriggerTestRunResult = Exclude<
+  CiCommandResult,
+  { outcome: "failed" }
+>;

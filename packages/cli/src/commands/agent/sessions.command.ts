@@ -46,7 +46,9 @@ interface Options {
   includeStartUrl?: boolean | undefined;
   includeAbandonedReason?: boolean | undefined;
   includeSelectedSince?: boolean | undefined;
+  includeAdditionalCoverage?: boolean | undefined;
   orderBy?: SessionsOrderByField | undefined;
+  order?: "asc" | "desc" | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
   json: boolean;
@@ -69,7 +71,9 @@ const handler = async ({
   includeStartUrl,
   includeAbandonedReason,
   includeSelectedSince,
+  includeAdditionalCoverage,
   orderBy,
+  order,
   limit,
   offset,
   json,
@@ -84,6 +88,21 @@ const handler = async ({
   if (orderBy === "rank" && selectedSetValue == null) {
     throw new Error(
       "--orderBy=rank requires --selectedSet, since the rank is a property of a selected-set entry rather than of a session.",
+    );
+  }
+  if (orderBy === "selectedSince" && selectedSetValue == null) {
+    throw new Error(
+      "--orderBy=selectedSince requires --selectedSet, which decides the selected set the entrance time is measured against.",
+    );
+  }
+  if (includeAdditionalCoverage && selectedSetValue == null) {
+    throw new Error(
+      "--includeAdditionalCoverage requires --selectedSet, which decides the selected set the coverage was added to.",
+    );
+  }
+  if (orderBy === "additionalCoverage" && selectedSetValue == null) {
+    throw new Error(
+      "--orderBy=additionalCoverage requires --selectedSet, which decides the selected set the coverage was added to.",
     );
   }
   const client = await createClientWithOAuth({
@@ -110,7 +129,9 @@ const handler = async ({
     includeStartUrl,
     includeAbandonedReason,
     includeSelectedSince,
+    includeAdditionalCoverage,
     orderBy,
+    order,
     limit,
     offset,
   });
@@ -188,6 +209,17 @@ const handler = async ({
             {
               header: "selectedSince",
               value: (session: SessionListItem) => session.selectedSince ?? "",
+            },
+          ]
+        : []),
+      ...(includeAdditionalCoverage
+        ? [
+            {
+              header: "additionalCoverage",
+              value: (session: SessionListItem) =>
+                session.additionalCoverage != null
+                  ? String(session.additionalCoverage)
+                  : "",
             },
           ]
         : []),
@@ -303,7 +335,7 @@ export const sessionsCommand: CommandModule<unknown, Options> = {
     selectedSet: {
       string: true,
       description:
-        "Output only sessions in the project's selected set (the golden set Meticulous replays). Takes its value optionally: on its own it means the set as it stands now, and with an ISO-8601 date/datetime (e.g. '2026-07-01') the set as of that point — the set left behind by the newest session-selection cycle that had run by then, which for a date-only value means the end of that day. Matched on the selected entry's own session id, so a golden-set slot held by a shortened or patched session matches that session and not the original it derives from.",
+        "Output only sessions in the project's selected set (the golden set Meticulous replays). Takes its value optionally: on its own it means the set as it stands now, and with an ISO-8601 date/datetime (e.g. '2026-07-01') the set as of that point (date-only means end of day).",
     },
     includeDurationSeconds: {
       boolean: true,
@@ -332,13 +364,24 @@ export const sessionsCommand: CommandModule<unknown, Options> = {
     includeSelectedSince: {
       boolean: true,
       description:
-        "Add a selectedSince column with when the session entered the selected set and stayed in it, i.e. the session-selection cycle that added it. Only accepted alongside --selectedSet, which decides the set the entrance time is measured against. A session whose entrance can't be dated gets a fixed sentinel instead of a timestamp: 'unknown:not-added-by-a-cycle' (no cycle holds it — usually a selected slot promoted in place onto a patched session after its cycle ran, so the cycle still names the pre-promotion session; a manual edit looks the same, and only the current set reports this), 'unknown:before-selection-history' (in every cycle the project has, so it entered before the history begins), or 'unknown:scan-budget-exhausted' (in every cycle scanned, which stopped short of the start of history — so the entrance is simply older than that, which is what a long-standing selection on a mature project looks like).",
+        "Add a selectedSince column with when the session entered the selected set and stayed in it, i.e. the session-selection cycle that added it. Only accepted alongside --selectedSet, which decides the set the entrance time is measured against. A session whose entrance can't be dated gets a fixed sentinel instead of a timestamp: 'unknown:added-after-last-cycle', 'unknown:before-selection-history', 'unknown:scan-budget-exhausted'.",
+    },
+    includeAdditionalCoverage: {
+      boolean: true,
+      description:
+        "Add an additionalCoverage column with the coverage the session added over everything picked before it. Only accepted alongside --selectedSet. The unit — original source lines, or raw bundle characters for a project whose replays have no mapped source coverage — is the same for every row and is named in a notice on stderr.",
     },
     orderBy: {
       string: true,
       choices: SESSIONS_ORDER_BY_FIELDS,
       description:
-        "Order the output by this field (default createdAt, newest first). 'rank' is the selected set's own greedy pick order (rankPosition, 1 = picked first, i.e. highest marginal coverage value at its pick step), and is only accepted alongside --selectedSet, since the rank is a property of a selected-set entry rather than of a session. Entries selected before ranks were recorded sort last.",
+        "Order the output by this field (default createdAt). 'rank' is only valid in combination with --selectedSet and is the selected set's own greedy pick order (rankPosition, 1 = picked first, i.e. highest marginal coverage value at its pick step); 'selectedSince' is only valid in combination with --selectedSet and is the entrance time --includeSelectedSince reports; 'additionalCoverage' is only valid in combination with --selectedSet and is the marginal coverage --includeAdditionalCoverage reports.",
+    },
+    order: {
+      string: true,
+      choices: ["asc", "desc"],
+      description:
+        "Sort direction, overriding the default for the chosen --orderBy (descending for createdAt, selectedSince and additionalCoverage, ascending for rank).",
     },
     limit: {
       number: true,

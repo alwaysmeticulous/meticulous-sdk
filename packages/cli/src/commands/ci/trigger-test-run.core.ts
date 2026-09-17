@@ -75,16 +75,28 @@ export const triggerTestRun = async (
   });
 
   if (baseSha && baseSha === commitSha && !gitDiffOutput) {
-    logger.info(
+    const message =
       "Base SHA equals head SHA and no git diff output provided — nothing to test. " +
-        "If you have uncommitted changes, provide --gitDiffOutput or use --repoDirectory.",
-    );
-    return { testRunId: null, status: null };
+      "If you have uncommitted changes, provide --gitDiffOutput or use --repoDirectory.";
+    logger.info(message);
+    return {
+      outcome: "skipped",
+      reason: "nothing_to_test",
+      message,
+      testRunId: null,
+      status: null,
+    };
   }
 
   if (dryRun) {
-    logDryRun({ mode, options, commitSha, baseSha });
-    return { testRunId: null, status: null };
+    const message = logDryRun({ mode, options, commitSha, baseSha });
+    return {
+      outcome: "skipped",
+      reason: "dry_run",
+      message,
+      testRunId: null,
+      status: null,
+    };
   }
 
   const apiToken_ = await resolveApiTokenWithOAuth({
@@ -93,7 +105,7 @@ export const triggerTestRun = async (
   });
   const projectIdentifier = await resolveProjectIdentifier(apiToken_);
 
-  const testRunId =
+  const uploadResult =
     mode === "container"
       ? await runContainerUpload({
           options,
@@ -112,8 +124,19 @@ export const triggerTestRun = async (
           projectIdentifier,
         });
 
-  if (!waitForTestRunToComplete || !testRunId) {
-    return { testRunId, status: null };
+  if ("skipReason" in uploadResult) {
+    return {
+      outcome: "skipped",
+      reason: uploadResult.skipReason,
+      message: uploadResult.message,
+      testRunId: null,
+      status: null,
+    };
+  }
+
+  const { testRunId } = uploadResult;
+  if (!waitForTestRunToComplete) {
+    return { outcome: "success", testRunId, status: null };
   }
 
   const client = await createClientWithOAuth({
@@ -121,7 +144,7 @@ export const triggerTestRun = async (
     enableOAuthLogin: true,
   });
   const status = await awaitTestRunCompletion(client, testRunId);
-  return { testRunId, status };
+  return { outcome: "success", testRunId, status };
 };
 
 interface UploadParams {
@@ -133,6 +156,14 @@ interface UploadParams {
   projectIdentifier: { projectId?: string };
 }
 
+type UploadResult =
+  | { testRunId: string }
+  | {
+      testRunId: null;
+      skipReason: "comments_disabled_for_author";
+      message: string;
+    };
+
 const runAssetUpload = async ({
   options,
   apiToken,
@@ -140,7 +171,7 @@ const runAssetUpload = async ({
   baseSha,
   gitDiffOutput,
   projectIdentifier,
-}: UploadParams): Promise<string | null> => {
+}: UploadParams): Promise<UploadResult> => {
   const logger = initLogger();
   const {
     appDirectory,
@@ -168,7 +199,19 @@ const runAssetUpload = async ({
       waitForBase: waitForBase || waitForTestRunToComplete,
       ...projectIdentifier,
     });
-    return result.testRun?.id ?? null;
+    if (result.skipReason) {
+      return {
+        testRunId: null,
+        skipReason: result.skipReason,
+        message:
+          result.message ??
+          "Test run skipped because CI comments and checks are disabled for this pull request author.",
+      };
+    }
+    if (!result.testRun) {
+      throw new Error("Test run was not created");
+    }
+    return { testRunId: result.testRun.id };
   } catch (error) {
     throw translateUploadError(error);
   }
@@ -181,7 +224,7 @@ const runContainerUpload = async ({
   baseSha,
   gitDiffOutput,
   projectIdentifier,
-}: UploadParams): Promise<string | null> => {
+}: UploadParams): Promise<UploadResult> => {
   const logger = initLogger();
   const {
     localImageTag,
@@ -256,13 +299,19 @@ const runContainerUpload = async ({
           result.message ??
             "Test run skipped because CI comments and checks are disabled for this pull request author.",
         );
-        return null;
+        return {
+          testRunId: null,
+          skipReason: "comments_disabled_for_author",
+          message:
+            result.message ??
+            "Test run skipped because CI comments and checks are disabled for this pull request author.",
+        };
       }
       throw new Error(
         `${result.message ?? "Container upload complete but test run not created"}`,
       );
     }
-    return result.testRun.id;
+    return { testRunId: result.testRun.id };
   } catch (error) {
     throw translateUploadError(error);
   }
@@ -285,16 +334,16 @@ const logDryRun = ({
   options: TriggerTestRunOptions;
   commitSha: string;
   baseSha: string | undefined;
-}): void => {
+}): string => {
   const logger = initLogger();
   const baseSuffix = baseSha ? ` (base: ${baseSha})` : "";
   if (mode === "container") {
-    logger.info(
-      `Dry run: would push container image "${options.localImageTag}" and trigger a test run for commit ${commitSha}${baseSuffix}`,
-    );
+    const message = `Dry run: would push container image "${options.localImageTag}" and trigger a test run for commit ${commitSha}${baseSuffix}`;
+    logger.info(message);
+    return message;
   } else {
-    logger.info(
-      `Dry run: would upload ${options.appDirectory ?? options.appZip} and trigger a test run for commit ${commitSha}${baseSuffix}`,
-    );
+    const message = `Dry run: would upload ${options.appDirectory ?? options.appZip} and trigger a test run for commit ${commitSha}${baseSuffix}`;
+    logger.info(message);
+    return message;
   }
 };

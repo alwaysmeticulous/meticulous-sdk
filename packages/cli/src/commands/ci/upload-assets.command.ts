@@ -1,7 +1,9 @@
 import { initLogger } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { CI_JSON_OPTION } from "./ci-command-result";
 import { triggerTestRun } from "./trigger-test-run.core";
 import {
   DEPRECATED_TRIGGER_OPTION_DESCRIPTION,
@@ -20,12 +22,16 @@ interface Options {
   waitForBase: boolean;
   waitForTestRunToComplete: boolean;
   dryRun?: boolean | undefined;
+  json: boolean;
 }
 
 const handler = async (options: Options): Promise<void> => {
   initLogger();
   warnIfDeprecatedTriggerOptionsUsed(options);
-  await triggerTestRun(options);
+  const result = await triggerTestRun(options);
+  if (options.json) {
+    printJson(result);
+  }
 };
 
 export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
@@ -36,6 +42,7 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
     dryRun: OPTIONS.dryRun,
+    json: CI_JSON_OPTION,
     baseSha: {
       string: true,
       deprecated: true,
@@ -81,5 +88,5 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
       description: `If true, block until the triggered test run finishes. ${DEPRECATED_TRIGGER_OPTION_DESCRIPTION}`,
     },
   },
-  handler: wrapHandler(handler),
+  handler: wrapHandler(handler, { structuredErrors: true }),
 };

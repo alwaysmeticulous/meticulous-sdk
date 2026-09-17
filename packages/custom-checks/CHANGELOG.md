@@ -1,5 +1,15 @@
 # @alwaysmeticulous/custom-checks
 
+## 2.342.0
+
+### Patch Changes
+
+- [#14011](https://github.com/alwaysmeticulous/meticulous/pull/14011) [`3b9e48c`](https://github.com/alwaysmeticulous/meticulous/commit/3b9e48c76f93cc3ca29833ee3cb47429759b8355) Thanks [@phreppo](https://github.com/phreppo)! - Download a test run's base and head builtin-check snapshots sequentially instead of concurrently, halving the peak concurrent connections and peak memory held during assembly for the largest test runs, which was tipping some of them into snapshot-store 503s and worker OOMs.
+
+- Updated dependencies [[`874594b`](https://github.com/alwaysmeticulous/meticulous/commit/874594b6fa0367e11d1994ee200a2854ceb0dd7b), [`761ced3`](https://github.com/alwaysmeticulous/meticulous/commit/761ced3b1a3466e44e747a10387f1c12bf784538), [`59f1d46`](https://github.com/alwaysmeticulous/meticulous/commit/59f1d468aacace4f2a83e2b6111d6446c6528011)]:
+  - @alwaysmeticulous/client@2.342.0
+  - @alwaysmeticulous/downloading-helpers@2.342.0
+
 ## 2.341.1
 
 ### Patch Changes

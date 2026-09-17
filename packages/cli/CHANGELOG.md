@@ -1,5 +1,26 @@
 # @alwaysmeticulous/cli
 
+## 2.342.0
+
+### Minor Changes
+
+- [#13904](https://github.com/alwaysmeticulous/meticulous/pull/13904) [`761ced3`](https://github.com/alwaysmeticulous/meticulous/commit/761ced3b1a3466e44e747a10387f1c12bf784538) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent sessions --orderBy` gains `selectedSince`, listing the selected set by when each session entered it, and a new `--order` reverses any ordering (including the default `createdAt`). The sentinel for a session no selection cycle holds is renamed from `unknown:not-added-by-a-cycle` to `unknown:added-after-last-cycle`, which is what it means — and is why it sorts as the most recent entrance rather than as a missing value. `not-added-by-a-cycle` stays in `SELECTED_SINCE_UNKNOWN_REASONS` as a deprecated, never-returned value so code built against the previous spelling still compiles.
+
+### Patch Changes
+
+- [#13905](https://github.com/alwaysmeticulous/meticulous/pull/13905) [`874594b`](https://github.com/alwaysmeticulous/meticulous/commit/874594b6fa0367e11d1994ee200a2854ceb0dd7b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent sessions --includeAdditionalCoverage` adds the coverage each selected session contributed over everything picked before it, at its own step in the selection's greedy pick order, and `--orderBy=additionalCoverage` sorts by it. The unit — original source lines, or raw bundle characters for a project whose replays have no mapped source coverage — is the same for every row and is named in the response's notes.
+
+- [#13888](https://github.com/alwaysmeticulous/meticulous/pull/13888) [`59f1d46`](https://github.com/alwaysmeticulous/meticulous/commit/59f1d468aacace4f2a83e2b6111d6446c6528011) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent test-run-diffs` now explains a poll timeout as the test run still running — which is what it means, since the server waits out an unfinished run rather than reporting it as a failure — instead of suggesting something may have gone wrong.
+
+- [#13988](https://github.com/alwaysmeticulous/meticulous/pull/13988) [`2712a2f`](https://github.com/alwaysmeticulous/meticulous/commit/2712a2fcffc743aebb975a698a939661b2c4d810) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add opt-in JSON outcomes to the CI asset, container, and uploaded-chunk test-run commands. Structured results distinguish successful runs, intentional skips, and broad failure categories while preserving existing exit codes and default human-readable output.
+
+- Updated dependencies [[`874594b`](https://github.com/alwaysmeticulous/meticulous/commit/874594b6fa0367e11d1994ee200a2854ceb0dd7b), [`761ced3`](https://github.com/alwaysmeticulous/meticulous/commit/761ced3b1a3466e44e747a10387f1c12bf784538), [`59f1d46`](https://github.com/alwaysmeticulous/meticulous/commit/59f1d468aacace4f2a83e2b6111d6446c6528011), [`2712a2f`](https://github.com/alwaysmeticulous/meticulous/commit/2712a2fcffc743aebb975a698a939661b2c4d810)]:
+  - @alwaysmeticulous/client@2.342.0
+  - @alwaysmeticulous/remote-replay-launcher@2.342.0
+  - @alwaysmeticulous/debug-workspace@2.342.0
+  - @alwaysmeticulous/downloading-helpers@2.342.0
+  - @alwaysmeticulous/replay-orchestrator-launcher@2.342.0
+
 ## 2.341.1
 
 ### Patch Changes

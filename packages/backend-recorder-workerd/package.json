@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/backend-recorder-workerd",
-  "version": "2.339.0",
+  "version": "2.342.0",
   "type": "module",
   "description": "Meticulous backend recorder shim for Cloudflare Workers (workerd). Reports inbound and outbound HTTP capture events to a local Meticulous recorder sidecar during development recording.",
   "license": "ISC",
@@ -37,6 +37,7 @@
     "acorn": "^8.17.0",
     "magic-string": "^0.30.17",
     "postgres": "^3.4.7",
+    "rollup": "^4.59.0",
     "tsdown": "^0.21.7",
     "vitest": "catalog:"
   },

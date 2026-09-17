@@ -54,7 +54,9 @@ const runHandler = (
     includeStartUrl?: boolean;
     includeAbandonedReason?: boolean;
     includeSelectedSince?: boolean;
-    orderBy?: "createdAt" | "rank";
+    includeAdditionalCoverage?: boolean;
+    orderBy?: "createdAt" | "rank" | "selectedSince" | "additionalCoverage";
+    order?: "asc" | "desc";
     limit?: number;
     offset?: number;
   } = {},
@@ -261,7 +263,9 @@ describe("sessions command", () => {
       includeStartUrl: true,
       includeAbandonedReason: true,
       includeSelectedSince: true,
+      includeAdditionalCoverage: true,
       orderBy: "rank",
+      order: "desc",
       limit: 25,
       offset: 50,
     });
@@ -284,7 +288,9 @@ describe("sessions command", () => {
         includeStartUrl: true,
         includeAbandonedReason: true,
         includeSelectedSince: true,
+        includeAdditionalCoverage: true,
         orderBy: "rank",
+        order: "desc",
         limit: 25,
         offset: 50,
       },
@@ -312,6 +318,9 @@ describe("sessions command", () => {
         includeStartUrl: undefined,
         includeAbandonedReason: undefined,
         includeSelectedSince: undefined,
+        includeAdditionalCoverage: undefined,
+        orderBy: undefined,
+        order: undefined,
         limit: undefined,
         offset: undefined,
       },
@@ -394,6 +403,73 @@ describe("sessions command", () => {
     );
   });
 
+  it("passes --orderBy=selectedSince through alongside --selectedSet", async () => {
+    await runHandler({ selectedSet: "", orderBy: "selectedSince" });
+
+    expect(mocks.getSessions).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        selectedSet: true,
+        orderBy: "selectedSince",
+      }),
+    );
+  });
+
+  it("rejects --orderBy=selectedSince without --selectedSet, without calling the API", async () => {
+    await expect(runHandler({ orderBy: "selectedSince" })).rejects.toThrow(
+      /--orderBy=selectedSince requires --selectedSet/,
+    );
+    expect(mocks.getSessions).not.toHaveBeenCalled();
+  });
+
+  it("appends the additionalCoverage column, leaving an entry with no figure empty", async () => {
+    mocks.getSessions.mockResolvedValue({
+      sessions: [{ ...SESSIONS[0], additionalCoverage: 120 }, SESSIONS[1]],
+    });
+
+    await runHandler({ selectedSet: "", includeAdditionalCoverage: true });
+
+    const lines = stdoutText().split("\n");
+    expect(lines[0].split("\t")).toContain("additionalCoverage");
+    expect(lines[1].endsWith("\t120")).toBe(true);
+    expect(lines[2].endsWith("\t")).toBe(true);
+  });
+
+  it("passes --orderBy=additionalCoverage through alongside --selectedSet", async () => {
+    await runHandler({ selectedSet: "", orderBy: "additionalCoverage" });
+
+    expect(mocks.getSessions).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        selectedSet: true,
+        orderBy: "additionalCoverage",
+      }),
+    );
+  });
+
+  it("rejects --includeAdditionalCoverage without --selectedSet, without calling the API", async () => {
+    await expect(
+      runHandler({ includeAdditionalCoverage: true }),
+    ).rejects.toThrow(/--includeAdditionalCoverage requires --selectedSet/);
+    expect(mocks.getSessions).not.toHaveBeenCalled();
+  });
+
+  it("rejects --orderBy=additionalCoverage without --selectedSet, without calling the API", async () => {
+    await expect(runHandler({ orderBy: "additionalCoverage" })).rejects.toThrow(
+      /--orderBy=additionalCoverage requires --selectedSet/,
+    );
+    expect(mocks.getSessions).not.toHaveBeenCalled();
+  });
+
+  it("passes --order through on its own, for the default ordering", async () => {
+    await runHandler({ order: "asc" });
+
+    expect(mocks.getSessions).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ order: "asc" }),
+    );
+  });
+
   // Every spelling yargs can produce for an option that takes its value
   // optionally — see `normalizeSelectedSet`. Each of the three beyond the bare
   // flag used to reach the server's ISO-8601 parser and come back a 400.
@@ -463,6 +539,22 @@ describe("sessions command", () => {
 
     it("rejects an --orderBy value that isn't an allowed field", () => {
       expect(() => parse(["--orderBy", "recordedAt"])).toThrow();
+    });
+
+    it("accepts selectedSince as an --orderBy field", () => {
+      expect(parse(["--orderBy", "selectedSince"]).orderBy).toBe(
+        "selectedSince",
+      );
+    });
+
+    it("accepts additionalCoverage as an --orderBy field", () => {
+      expect(parse(["--orderBy", "additionalCoverage"]).orderBy).toBe(
+        "additionalCoverage",
+      );
+    });
+
+    it("rejects an --order value that is neither asc nor desc", () => {
+      expect(() => parse(["--order", "sideways"])).toThrow();
     });
   });
 });

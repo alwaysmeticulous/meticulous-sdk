@@ -16,6 +16,7 @@ import {
 import {
   executeWithRetry,
   initLogger,
+  logNotice,
   logProgress,
 } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
@@ -308,7 +309,7 @@ export const uploadContainer = async ({
     );
     const projectName = encodeURIComponent(testRun.project.name);
     const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${testRun.id}`;
-    logProgress(`Test run triggered: ${testRunUrl}`);
+    logNotice(`Test run triggered: ${testRunUrl}`);
   }
 
   Sentry.captureMessage("Container uploaded and deployment created", {

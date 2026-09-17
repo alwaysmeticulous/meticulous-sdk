@@ -532,7 +532,9 @@ describe("getSessions", () => {
       includeStartUrl: true,
       includeAbandonedReason: true,
       includeSelectedSince: true,
+      includeAdditionalCoverage: true,
       orderBy: "rank",
+      order: "desc",
       limit: 25,
       offset: 50,
     });
@@ -554,7 +556,9 @@ describe("getSessions", () => {
         includeStartUrl: "true",
         includeAbandonedReason: "true",
         includeSelectedSince: "true",
+        includeAdditionalCoverage: "true",
         orderBy: "rank",
+        order: "desc",
         limit: "25",
         offset: "50",
       },
@@ -570,6 +574,7 @@ describe("getSessions", () => {
       includeStartUrl: false,
       includeAbandonedReason: false,
       includeSelectedSince: false,
+      includeAdditionalCoverage: false,
     });
 
     expect(client.get).toHaveBeenCalledWith("agent/sessions", { params: {} });
@@ -599,6 +604,17 @@ describe("getSessions", () => {
 
     expect(client.get).toHaveBeenCalledWith("agent/sessions", { params: {} });
   });
+
+  it.each(["asc", "desc"] as const)(
+    "sends order %s through verbatim",
+    async (order) => {
+      await getSessions(asClient(), { order });
+
+      expect(client.get).toHaveBeenCalledWith("agent/sessions", {
+        params: { order },
+      });
+    },
+  );
 
   it("returns the response data", async () => {
     const sessions = [

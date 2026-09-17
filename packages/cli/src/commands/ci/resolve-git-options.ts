@@ -5,6 +5,7 @@ import {
   hasUncommittedChanges,
   initLogger,
 } from "@alwaysmeticulous/common";
+import { CliUserError } from "../../utils/cli-user-error";
 
 export interface ResolvedGitOptions {
   commitSha: string;
@@ -41,19 +42,20 @@ export const resolveGitOptions = async ({
   gitDiffOutput: string | undefined;
   repoDirectory: string | undefined;
 }): Promise<ResolvedGitOptions> => {
-  const logger = initLogger();
-
   if (repoDirectory && (commitSha_ || baseSha_ || gitDiffOutput_)) {
-    logger.error(
+    throw new CliUserError(
       "--repoDirectory cannot be combined with --commitSha, --baseSha, or --gitDiffOutput. " +
         "When --repoDirectory is provided, all git options are inferred automatically.",
+      1,
+      "error",
+      { reason: "usage" },
     );
-    process.exit(1);
   }
 
   if (gitDiffOutput_ && !baseSha_) {
-    logger.error("--gitDiffOutput requires --baseSha.");
-    process.exit(1);
+    throw new CliUserError("--gitDiffOutput requires --baseSha.", 1, "error", {
+      reason: "usage",
+    });
   }
 
   if (repoDirectory) {
@@ -71,21 +73,25 @@ const resolveFromRepoDirectory = async (
 
   const commitSha = await getCommitSha(undefined, gitOpts);
   if (!commitSha) {
-    logger.error(
+    throw new CliUserError(
       `Could not determine commit SHA from --repoDirectory: ${repoDirectory}`,
+      1,
+      "error",
+      { reason: "environment" },
     );
-    process.exit(1);
   }
 
   const uncommitted = await hasUncommittedChanges(gitOpts);
 
   const baseSha = (await getLocalBaseSha(gitOpts)) || undefined;
   if (!baseSha) {
-    logger.error(
+    throw new CliUserError(
       `Could not determine base SHA from --repoDirectory: ${repoDirectory}. ` +
         "Ensure the repository has an 'origin/main' or 'origin/master' remote branch.",
+      1,
+      "error",
+      { reason: "environment" },
     );
-    process.exit(1);
   }
 
   const gitDiffOutput = uncommitted
@@ -118,10 +124,12 @@ const resolveFromExplicitArgs = async ({
 
   const commitSha = await getCommitSha(commitSha_);
   if (!commitSha) {
-    logger.error(
+    throw new CliUserError(
       "No commit SHA found. Provide one with --commitSha or use --repoDirectory.",
+      1,
+      "error",
+      { reason: "environment" },
     );
-    process.exit(1);
   }
 
   if (commitSha_) {

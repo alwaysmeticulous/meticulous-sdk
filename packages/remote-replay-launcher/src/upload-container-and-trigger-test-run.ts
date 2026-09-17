@@ -1,4 +1,4 @@
-import { initLogger } from "@alwaysmeticulous/common";
+import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type {
   UploadContainerAndTriggerTestRunOptions,
   ExecuteRemoteTestRunResult,
@@ -32,23 +32,30 @@ export const uploadContainerAndTriggerTestRun = async ({
     ...(debugContext ? { debugContext } : {}),
   });
 
+  let skipMessage: string | undefined;
   if (result.testRun) {
     const organizationName = encodeURIComponent(
       result.testRun.project.organization.name,
     );
     const projectName = encodeURIComponent(result.testRun.project.name);
     const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${result.testRun.id}`;
-    logger.info(`Test run triggered: ${testRunUrl}`);
+    logNotice(`Test run triggered: ${testRunUrl}`);
   } else if (result.commentsDisabledForAuthor) {
-    logger.info(
+    skipMessage =
       result.message ??
-        "Test run skipped because CI comments and checks are disabled for this pull request author.",
-    );
+      "Test run skipped because CI comments and checks are disabled for this pull request author.";
+    logger.info(skipMessage);
   } else {
     throw new Error(`${result.message ?? "Test run was not created"}`);
   }
 
   return {
     testRun: result.testRun ?? null,
+    ...(result.commentsDisabledForAuthor
+      ? {
+          skipReason: "comments_disabled_for_author" as const,
+          ...(skipMessage ? { message: skipMessage } : {}),
+        }
+      : {}),
   };
 };

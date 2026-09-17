@@ -12,6 +12,10 @@ import yargs from "yargs";
 import { parseJsonArgs } from "./command-utils/json-args";
 import { setOptions } from "./command-utils/sentry.utils";
 import { CLI_COMMANDS, GLOBAL_OPTIONS } from "./commands/all-commands";
+import {
+  isStructuredCiJsonInvocation,
+  printStructuredCiFailure,
+} from "./commands/ci/ci-command-result";
 import { deprecatedAliases } from "./commands/deprecated-aliases";
 import {
   resolveJsonArgsTarget,
@@ -37,6 +41,15 @@ export const main = async (): Promise<void> => {
 
       Meticulous CLI`,
   );
+  const structuredCiJson = isStructuredCiJsonInvocation(process.argv.slice(2));
+  if (structuredCiJson) {
+    cli.fail((message, error) => {
+      const detail = error?.message ?? message ?? "Invalid command arguments";
+      initLogger().error(detail);
+      printStructuredCiFailure(detail);
+      process.exit(1);
+    });
+  }
 
   // `schemaCommand` and the deprecated aliases are registered alongside the
   // canonical `CLI_COMMANDS` (see all-commands.ts for why they live apart).
@@ -100,6 +113,9 @@ export const main = async (): Promise<void> => {
               // raw parse error escape as an uncaught stack trace.
               if (error instanceof CliUserError) {
                 initLogger()[error.severity](error.message);
+                if (structuredCiJson) {
+                  printStructuredCiFailure(error.message);
+                }
                 process.exit(error.exitCode);
               }
               throw error;
@@ -111,10 +127,15 @@ export const main = async (): Promise<void> => {
     )
     .middleware([
       // Explicit --logLevel wins; otherwise --verbose=false (the default for
-      // agent commands) quietens progress logs so only essential output remains.
+      // agent commands) or structured CI --json quietens progress logs.
       (argv) =>
         setLogLevel(
-          argv.logLevel ?? (argv.verbose === false ? "warn" : undefined),
+          structuredCiJson
+            ? "warn"
+            : (argv.logLevel ??
+                (argv.verbose === false || argv.json === true
+                  ? "warn"
+                  : undefined)),
         ),
       (argv) => handleDataDir(argv.dataDir),
       (argv) => setOptions(argv),

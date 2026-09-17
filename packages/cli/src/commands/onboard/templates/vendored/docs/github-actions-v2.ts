@@ -37,6 +37,38 @@ This ensures assets are loaded from the correct test environment rather than the
 {% /callout_card %}
 `;
 
+const SERVER_GENERATED_FILES_WARNING = `
+{% callout_card variant="warning" title="Important: Files your server generates at runtime" %}
+We serve your uploaded directory exactly as you uploaded it — none of your own server code is in the loop. **Any file your real server writes at container start, or generates per-request, will not exist.**
+
+The most common example is a runtime environment-config script that your entry HTML loads, which your container's entrypoint writes from environment variables:
+
+\`\`\`html
+<!-- index.html -->
+<script src="/_env.js"></script>
+\`\`\`
+
+In an uploaded build there is nothing to write that file, so the request 404s. If your app reads its config as it boots, it will throw before it renders and **every test will simulate against a blank page**.
+
+To fix it, write a static version of the file into the directory you upload. Gate it on \`METICULOUS_BUILD\` so it only applies to builds for Meticulous:
+
+\`\`\`yaml
+      - name: Build project
+        env:
+          METICULOUS_BUILD: "true"
+        run: |
+          pnpm build
+          # Emit the runtime config that production generates at container
+          # start, so the uploaded build can boot on its own.
+          ./scripts/write-env-js.sh > dist/_env.js
+\`\`\`
+
+The values only need to be good enough for your app to boot — Meticulous serves your recorded network responses rather than calling your real backend.
+
+If a static build can't be made self-sufficient, use the **Upload container image** workflow instead: that runs your real entrypoint, so anything it generates at startup is present as usual.
+{% /callout_card %}
+`;
+
 const workflowShared = `
 ${workflowPreamble}
 
@@ -156,6 +188,7 @@ ${workflowShared}
 \`\`\`
 
 ${STATIC_ASSET_URLS_WARNING}
+${SERVER_GENERATED_FILES_WARNING}
 {% /tab %}
 {% tab label="Upload container image" %}
 

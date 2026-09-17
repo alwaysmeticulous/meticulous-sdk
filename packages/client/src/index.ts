@@ -178,6 +178,7 @@ export {
   LabelCommitResponse,
 } from "./api/commit-label.api";
 export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
+export { MAX_AGENT_DIFF_COMMENT_TEXT_LENGTH } from "./api/agent.constants";
 export { TEST_RUN_STATUS_CLIENT_VERSION } from "./api/test-run-status-client-version";
 export {
   getApiToken,

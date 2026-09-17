@@ -13,6 +13,7 @@ import * as Sentry from "@sentry/node";
 import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { parseRewrites } from "../../command-utils/parse-rewrites";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { EXIT_CODES } from "../../utils/exit-codes";
@@ -29,6 +30,7 @@ import {
   manifestHasVersionLookupEntries,
   validateAssetReferencesManifest,
 } from "./run-with-uploaded-asset-chunks.utils";
+import { CI_JSON_OPTION } from "./ci-command-result";
 import { readSessionFilterFile } from "./session-filter.utils";
 
 const POLL_INTERVAL_MS = 10_000;
@@ -44,40 +46,45 @@ interface Options {
   sessionFilter?: string | undefined;
   waitForBase: boolean;
   waitForTestRunToComplete: boolean;
+  json: boolean;
 }
 
 const readAssetReferencesManifest = async (
   manifestPath: string,
 ): Promise<RequestedProjectAssetChunkReference[]> => {
-  const logger = initLogger();
   let raw: string;
   try {
     raw = await readFile(manifestPath, "utf-8");
   } catch (error) {
-    logger.error(
+    throw new CliUserError(
       `Could not read --assetReferencesManifest at ${manifestPath}: ${
         error instanceof Error ? error.message : String(error)
       }`,
+      1,
+      "error",
+      { reason: "environment" },
     );
-    process.exit(1);
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
-    logger.error(
+    throw new CliUserError(
       `--assetReferencesManifest at ${manifestPath} is not valid JSON: ${
         error instanceof Error ? error.message : String(error)
       }`,
+      1,
+      "error",
+      { reason: "usage" },
     );
-    process.exit(1);
   }
 
   const result = validateAssetReferencesManifest(parsed);
   if ("errorMessage" in result) {
-    logger.error(result.errorMessage);
-    process.exit(1);
+    throw new CliUserError(result.errorMessage, 1, "error", {
+      reason: "usage",
+    });
   }
 
   return result.manifest;
@@ -86,11 +93,11 @@ const readAssetReferencesManifest = async (
 const readSessionFilter = async (
   sessionFilterPath: string,
 ): Promise<SessionFilter> => {
-  const logger = initLogger();
   const result = await readSessionFilterFile(sessionFilterPath);
   if (!result.valid) {
-    logger.error(result.error);
-    process.exit(1);
+    throw new CliUserError(result.error, 1, "error", {
+      reason: "usage",
+    });
   }
   return result.filter;
 };
@@ -106,6 +113,7 @@ const handler = async ({
   sessionFilter: sessionFilterPath,
   waitForBase,
   waitForTestRunToComplete,
+  json,
 }: Options): Promise<void> => {
   const logger = initLogger();
 
@@ -113,12 +121,14 @@ const handler = async ({
     waitForTestRunToComplete &&
     !hasGitContextForTestRunWait(repoDirectory, baseSha_, gitDiffOutput_)
   ) {
-    logger.error(
+    throw new CliUserError(
       "--waitForTestRunToComplete is only for runs from a local branch checkout: pass --repoDirectory " +
         "(path to your clone on the branch under test) or both --baseSha and --gitDiffOutput from that branch. " +
         "If you only pass --commitSha you are not on a branch checkout — omit this flag.",
+      1,
+      "error",
+      { reason: "usage" },
     );
-    process.exit(1);
   }
 
   const { commitSha, baseSha, gitDiffOutput } = await resolveGitOptions({
@@ -129,10 +139,19 @@ const handler = async ({
   });
 
   if (baseSha && baseSha === commitSha && !gitDiffOutput) {
-    logger.info(
+    const message =
       "Base SHA equals head SHA and no git diff output provided — nothing to test. " +
-        "If you have uncommitted changes, provide --gitDiffOutput or use --repoDirectory.",
-    );
+      "If you have uncommitted changes, provide --gitDiffOutput or use --repoDirectory.";
+    logger.info(message);
+    if (json) {
+      printJson({
+        outcome: "skipped",
+        reason: "nothing_to_test",
+        message,
+        testRunId: null,
+        status: null,
+      });
+    }
     return;
   }
 
@@ -229,13 +248,27 @@ const handler = async ({
           result.message ??
             "--sessionFilter excluded every session that would otherwise have run.",
           EXIT_CODES.ALL_SESSIONS_EXCLUDED_BY_SESSION_FILTER,
+          "error",
+          {
+            outcome: "skipped",
+            reason: "all_sessions_excluded",
+          },
         );
       }
       if (result.commentsDisabledForAuthor) {
-        logger.info(
+        const message =
           result.message ??
-            "Test run skipped because CI comments and checks are disabled for this pull request author.",
-        );
+          "Test run skipped because CI comments and checks are disabled for this pull request author.";
+        logger.info(message);
+        if (json) {
+          printJson({
+            outcome: "skipped",
+            reason: "comments_disabled_for_author",
+            message,
+            testRunId: null,
+            status: null,
+          });
+        }
         return;
       }
       throw new Error(
@@ -259,6 +292,9 @@ const handler = async ({
   }
 
   if (!waitForTestRunToComplete) {
+    if (json) {
+      printJson({ outcome: "success", testRunId, status: null });
+    }
     return;
   }
 
@@ -274,6 +310,13 @@ const handler = async ({
   logger.info(
     `Test run ${testRunId} finished with status: ${completedTestRun.status}`,
   );
+  if (json) {
+    printJson({
+      outcome: "success",
+      testRunId,
+      status: completedTestRun.status,
+    });
+  }
 };
 
 export const ciRunWithUploadedAssetChunksCommand: CommandModule<
@@ -286,6 +329,7 @@ export const ciRunWithUploadedAssetChunksCommand: CommandModule<
   builder: {
     apiToken: OPTIONS.apiToken,
     commitSha: OPTIONS.commitSha,
+    json: CI_JSON_OPTION,
     baseSha: {
       string: true,
       description:
@@ -345,5 +389,5 @@ export const ciRunWithUploadedAssetChunksCommand: CommandModule<
         "requires --repoDirectory (your clone on that branch) or both --baseSha and --gitDiffOutput from it. Implies --waitForBase.",
     },
   },
-  handler: wrapHandler(handler),
+  handler: wrapHandler(handler, { structuredErrors: true }),
 };
