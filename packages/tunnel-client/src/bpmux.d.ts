@@ -81,7 +81,7 @@ declare module "bpmux" {
 
         peer_multiplex_options?: GenericDuplexOpts & BPMuxDuplexOpts;
       },
-    ): Duplex;
+    );
 
     on(event: "handshake", listener: (duplex: Duplex) => void): this;
     on(event: "error", listener: (err: Error) => void): this;

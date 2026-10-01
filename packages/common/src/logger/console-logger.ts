@@ -34,6 +34,24 @@ export const initLogger: () => log.Logger = () => {
   return logger;
 };
 
+const STDOUT_LOG_METHODS = new Set(["trace", "debug", "info", "log"]);
+
+/**
+ * Sends every log line to stderr, so a command whose stdout carries
+ * machine-readable output can still honour `--logLevel info|debug|trace`.
+ */
+export const routeLogsToStderr: () => void = () => {
+  const logger = initLogger();
+  const originalFactory = logger.methodFactory;
+  logger.methodFactory = (methodName, logLevel, loggerName) =>
+    originalFactory(
+      STDOUT_LOG_METHODS.has(methodName) ? "warn" : methodName,
+      logLevel,
+      loggerName,
+    );
+  logger.rebuild();
+};
+
 export const setLogLevel: (logLevel: string | undefined) => void = (
   logLevel,
 ) => {

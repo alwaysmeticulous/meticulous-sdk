@@ -8,12 +8,20 @@ import {
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { initLogger, logNotice } from "@alwaysmeticulous/common";
-import { runWithUploadedAssetChunks } from "@alwaysmeticulous/remote-replay-launcher";
+import {
+  carryCompletedUpload,
+  runWithUploadedAssetChunks,
+  withCompletedUpload,
+} from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
 import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { parseRewrites } from "../../command-utils/parse-rewrites";
-import { printJson } from "../../command-utils/print-json";
+import {
+  CI_JSON_OPTION,
+  ciUploadFields,
+  printCiJson,
+} from "./ci-command-result";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { EXIT_CODES } from "../../utils/exit-codes";
@@ -30,7 +38,6 @@ import {
   manifestHasVersionLookupEntries,
   validateAssetReferencesManifest,
 } from "./run-with-uploaded-asset-chunks.utils";
-import { CI_JSON_OPTION } from "./ci-command-result";
 import { readSessionFilterFile } from "./session-filter.utils";
 
 const POLL_INTERVAL_MS = 10_000;
@@ -144,7 +151,7 @@ const handler = async ({
       "If you have uncommitted changes, provide --gitDiffOutput or use --repoDirectory.";
     logger.info(message);
     if (json) {
-      printJson({
+      printCiJson({
         outcome: "skipped",
         reason: "nothing_to_test",
         message,
@@ -201,6 +208,7 @@ const handler = async ({
   });
 
   let testRunId: string;
+  let uploadFields: ReturnType<typeof ciUploadFields> = {};
 
   try {
     const result = await runWithUploadedAssetChunks({
@@ -252,6 +260,7 @@ const handler = async ({
           {
             outcome: "skipped",
             reason: "all_sessions_excluded",
+            sourceDeploymentId: result.sourceDeploymentId,
           },
         );
       }
@@ -261,21 +270,33 @@ const handler = async ({
           "Test run skipped because CI comments and checks are disabled for this pull request author.";
         logger.info(message);
         if (json) {
-          printJson({
+          printCiJson({
             outcome: "skipped",
             reason: "comments_disabled_for_author",
             message,
             testRunId: null,
             status: null,
+            ...ciUploadFields({
+              sourceDeploymentId: result.sourceDeploymentId,
+            }),
           });
         }
         return;
       }
-      throw new Error(
+      const error = new Error(
         result.message ?? "Asset chunks resolved but test run not created",
       );
+      throw result.sourceDeploymentId
+        ? withCompletedUpload(error, {
+            sourceDeploymentId: result.sourceDeploymentId,
+          })
+        : error;
     }
     testRunId = result.testRun.id;
+    uploadFields = ciUploadFields({
+      sourceDeploymentId: result.sourceDeploymentId,
+      testRunUrl: result.testRun.url,
+    });
 
     logNotice("");
     logNotice(`Test run created: ${result.testRun.url}`);
@@ -285,7 +306,7 @@ const handler = async ({
     logNotice("");
   } catch (error) {
     if (isOutOfDateClientError(error)) {
-      throw new OutOfDateCLIError();
+      throw carryCompletedUpload(error, new OutOfDateCLIError());
     } else {
       throw error;
     }
@@ -293,7 +314,12 @@ const handler = async ({
 
   if (!waitForTestRunToComplete) {
     if (json) {
-      printJson({ outcome: "success", testRunId, status: null });
+      printCiJson({
+        outcome: "success",
+        testRunId,
+        status: null,
+        ...uploadFields,
+      });
     }
     return;
   }
@@ -311,10 +337,11 @@ const handler = async ({
     `Test run ${testRunId} finished with status: ${completedTestRun.status}`,
   );
   if (json) {
-    printJson({
+    printCiJson({
       outcome: "success",
       testRunId,
       status: completedTestRun.status,
+      ...uploadFields,
     });
   }
 };

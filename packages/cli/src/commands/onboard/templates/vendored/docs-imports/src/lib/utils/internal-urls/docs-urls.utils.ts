@@ -198,7 +198,7 @@ export const AGENTS_SETUP_URL = "/docs/agents/setup";
  */
 export const AGENTS_SETUP_FOR_AGENTS_URL = AGENT_INSTRUCTIONS_DOCS_PATH;
 
-export const AGENT_REVIEW_DOCS_URL = "/docs/agents/agent-review";
+export const AGENT_SWARM_DOCS_URL = "/docs/agents/agent-swarm";
 
 export const AGENTS_WHATS_NEW_URL = "/docs/agents/whats-new";
 

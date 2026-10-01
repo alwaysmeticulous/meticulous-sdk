@@ -50,12 +50,40 @@ describe("wrapHandler structured errors", () => {
     [
       new CliUserError("Bad arguments", 4, "error", { reason: "usage" }),
       4,
-      { outcome: "failed", reason: "usage", message: "Bad arguments" },
+      {
+        cliVersion: "unknown",
+        outcome: "failed",
+        reason: "usage",
+        message: "Bad arguments",
+      },
     ],
     [
       new CliUserError("Run failed", 1, "error", { reason: "remote" }),
       1,
-      { outcome: "failed", reason: "remote", message: "Run failed" },
+      {
+        cliVersion: "unknown",
+        outcome: "failed",
+        reason: "remote",
+        message: "Run failed",
+      },
+    ],
+    [
+      new CliUserError("Run aborted", 1, "error", {
+        reason: "remote",
+        sourceDeploymentId: "deploy-1",
+        testRunId: "run-1",
+        testRunUrl: "https://app.meticulous.ai/test-runs/run-1",
+      }),
+      1,
+      {
+        cliVersion: "unknown",
+        outcome: "failed",
+        reason: "remote",
+        message: "Run aborted",
+        testRunId: "run-1",
+        sourceDeploymentId: "deploy-1",
+        testRunUrl: "https://app.meticulous.ai/test-runs/run-1",
+      },
     ],
     [
       new CliUserError("No sessions", 4, "warn", {
@@ -64,6 +92,7 @@ describe("wrapHandler structured errors", () => {
       }),
       4,
       {
+        cliVersion: "unknown",
         outcome: "skipped",
         reason: "all_sessions_excluded",
         message: "No sessions",
@@ -74,12 +103,22 @@ describe("wrapHandler structured errors", () => {
     [
       fetchError(401),
       1,
-      { outcome: "failed", reason: "auth", message: "Server message" },
+      {
+        cliVersion: "unknown",
+        outcome: "failed",
+        reason: "auth",
+        message: "Server message",
+      },
     ],
     [
       fetchError(503),
       1,
-      { outcome: "failed", reason: "remote", message: "Server message" },
+      {
+        cliVersion: "unknown",
+        outcome: "failed",
+        reason: "remote",
+        message: "Server message",
+      },
     ],
     [
       new OutOfDateCLIError(),

@@ -1,17 +1,23 @@
 import type {
   MeticulousClient,
   TestRunJsCoverageSummaryResponse,
+  TestRunProcessingResponse,
 } from "@alwaysmeticulous/client";
 import {
   getProjectJsCoverageSummary,
   getTestRunJsCoverageSummary,
+  isTestRunProcessingResponse,
 } from "@alwaysmeticulous/client";
 import { logNotice } from "@alwaysmeticulous/common";
 import { printJson } from "../../command-utils/print-json";
 import { CliUserError } from "../../utils/cli-user-error";
+import { pollWhileProcessing } from "../../utils/poll-while-processing";
 import { appendProjectSelectionHint } from "../../utils/project-selection-hint";
 import { withBaseRunRejectionAsUserError } from "./coverage-rejection.util";
-import { resolveFinishedCoverageRuns } from "./coverage-run-resolution.util";
+import {
+  type ResolvedCoverageRuns,
+  resolveFinishedCoverageRuns,
+} from "./coverage-run-resolution.util";
 import { formatCoverageSummary } from "./coverage-summary.util";
 import type { Options } from "./js-coverage.types";
 
@@ -26,20 +32,31 @@ export const printCoverageSummary = async (
   options: Options,
 ): Promise<void> => {
   const { latestForProject, project, json } = options;
-  const summary = latestForProject
-    ? await fetchProjectCoverageSummary(client, project)
-    : await fetchTestRunCoverageSummary(client, options);
-  if (summary == null) {
-    // No totals to report: the run hasn't finished (with
-    // --dontWaitForTestRunToComplete), or the project has no successful run.
-    // Unlike the per-file list there is no meaningful empty shape — a zeroed
-    // summary would read as "this commit covers nothing" — so JSON gets an
-    // explicit `null` and human output nothing at all, with the explanation on
-    // stderr either way.
-    if (json) {
-      printJson(null);
+  let summary: TestRunJsCoverageSummaryResponse | null;
+  if (latestForProject) {
+    summary = await fetchProjectCoverageSummary(client, project);
+    if (summary == null) {
+      // No successful run to report on. A zeroed summary would read as "this
+      // project covers nothing", so JSON gets an explicit `null` and human
+      // output nothing at all, with the explanation on stderr either way.
+      if (json) {
+        printJson(null);
+      }
+      return;
     }
-    return;
+  } else {
+    const runs = await resolveFinishedCoverageRuns(client, options);
+    const response = await fetchTestRunCoverageSummary(client, runs);
+    if (isTestRunProcessingResponse(response)) {
+      // Unfinished run, with --dontWaitForTestRunToComplete: stdout gets the
+      // backend's own processing body, byte for byte what the MCP tool returns
+      // for the same state — the reason is on stderr.
+      if (json) {
+        printJson(response);
+      }
+      return;
+    }
+    summary = response;
   }
   if (json) {
     printJson(summary);
@@ -95,19 +112,29 @@ export const assertSummaryCompatible = (options: Options): void => {
   }
 };
 
-const fetchTestRunCoverageSummary = async (
+// Waited-for runs have finished by now, so a processing response is the race
+// between that check and this request — polled through like every other
+// result. With --dontWaitForTestRunToComplete the request still goes out, once,
+// and its processing response is the answer rather than something to poll past.
+const fetchTestRunCoverageSummary = (
   client: MeticulousClient,
-  options: Options,
-): Promise<TestRunJsCoverageSummaryResponse | null> => {
-  const runs = await resolveFinishedCoverageRuns(client, options);
-  if (runs == null) {
-    return null;
+  runs: ResolvedCoverageRuns,
+): Promise<TestRunJsCoverageSummaryResponse | TestRunProcessingResponse> => {
+  const request = () =>
+    withBaseRunRejectionAsUserError(() =>
+      getTestRunJsCoverageSummary(client, runs.testRunId, {
+        unionTestRunIds: runs.unionTestRunIds,
+      }),
+    );
+  if (!runs.allFinished) {
+    return request();
   }
-  return withBaseRunRejectionAsUserError(() =>
-    getTestRunJsCoverageSummary(client, runs.testRunId, {
-      unionTestRunIds: runs.unionTestRunIds,
-    }),
-  );
+  return pollWhileProcessing(request, {
+    isProcessing: isTestRunProcessingResponse,
+    waitingMessage: (first) => first.message,
+    timeoutMessage: (last) =>
+      `The coverage of test run ${runs.testRunId} did not become available within 10 minutes. ${last.message}`,
+  });
 };
 
 const fetchProjectCoverageSummary = async (

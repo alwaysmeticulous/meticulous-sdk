@@ -2,9 +2,11 @@ import type { TestRunStatus } from "@alwaysmeticulous/api";
 import {
   createClientWithOAuth,
   type DiffsSummaryCountsResponse,
+  type DiffsSummaryResponse,
   getTestRun,
   getTestRunDiffsSummary,
   getTestRunDiffsSummaryCounts,
+  isTestRunProcessingResponse,
 } from "@alwaysmeticulous/client";
 import { logNotice, logProgress } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
@@ -12,6 +14,7 @@ import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { relayingBaseRunRejection } from "../../utils/base-run-rejection";
 import { CliUserError } from "../../utils/cli-user-error";
+import { pollWhileProcessing } from "../../utils/poll-while-processing";
 import {
   assertTestRunComplete,
   ensureTestRunFinished,
@@ -48,11 +51,10 @@ interface Options {
   project?: string | undefined;
 }
 
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
-/** Give up polling the diffs summary after this long, rather than forever. */
-const SUMMARY_POLL_TIMEOUT_MS = 10 * 60_000;
+const isDiffsSummaryInProgress = (
+  response: DiffsSummaryResponse,
+): response is DiffsSummaryResponse & { status: "pending" | "processing" } =>
+  response.status === "pending" || response.status === "processing";
 
 const handler = async ({
   apiToken,
@@ -197,41 +199,49 @@ const handler = async ({
     status,
     { dontWait: dontWaitForTestRunToComplete },
   );
-  if (finishedStatus == null) {
-    // The in-progress notice already went to stderr (ensureTestRunFinished).
-    // For the list, keep stdout's shape stable — an unfinished run has no diffs
-    // yet, so emit an empty JSON array / header-only TSV (matching a finished run
-    // with zero diffs). --counts has no such empty shape: it reports live totals,
-    // so emit nothing rather than a row of zeros that would read as a real,
-    // fully-reviewed result.
-    if (!counts) {
-      if (json) {
-        console.log("[]");
-      } else {
-        console.log(buildDiffsSummaryHeader(columns).join("\t"));
-      }
+  // `null` means --dontWaitForTestRunToComplete left an in-progress run
+  // unwaited-for; the in-progress notice already went to stderr
+  // (ensureTestRunFinished). The request below still goes out, once, so stdout
+  // gets the backend's own processing body — byte for byte what the MCP tool
+  // returns for the same state — never an empty list or a row of zeros that
+  // would read as a real, fully-reviewed result.
+  if (finishedStatus != null) {
+    // Session-pool state was already checked above, before waiting; Partial
+    // only becomes known once the run has finished.
+    if (isTestRunPartial(finishedStatus)) {
+      assertNotBaseRun();
     }
-    return;
+    // Fatal failures already threw while waiting.
+    assertTestRunComplete(resolvedTestRunId, finishedStatus, {
+      resultName: "diffs",
+    });
   }
-
-  // Session-pool state was already checked above, before waiting; Partial only
-  // becomes known once the run has finished.
-  if (isTestRunPartial(finishedStatus)) {
-    assertNotBaseRun();
-  }
-  // Fatal failures already threw while waiting.
-  assertTestRunComplete(resolvedTestRunId, finishedStatus, {
-    resultName: "diffs",
-  });
 
   // `--counts` comes from a dedicated endpoint computed live from the DB, so it
-  // needs neither the (potentially large) diffs list nor the summary poll below.
+  // needs neither the (potentially large) diffs list nor the summary
+  // computation below. A waited-for run has finished by now, so a processing
+  // response is the race between that check and the request.
   if (counts) {
-    emitCounts(
-      await relayingBaseRunRejection(
+    const requestCounts = () =>
+      relayingBaseRunRejection(
         getTestRunDiffsSummaryCounts(client, resolvedTestRunId),
-      ),
-    );
+      );
+    const countsResponse =
+      finishedStatus == null
+        ? await requestCounts()
+        : await pollWhileProcessing(requestCounts, {
+            isProcessing: isTestRunProcessingResponse,
+            waitingMessage: (first) => first.message,
+            timeoutMessage: (last) =>
+              `The diff counts of test run ${resolvedTestRunId} did not become available within 10 minutes. ${last.message}`,
+          });
+    if (isTestRunProcessingResponse(countsResponse)) {
+      if (json) {
+        printJson(countsResponse);
+      }
+      return;
+    }
+    emitCounts(countsResponse);
     return;
   }
 
@@ -255,53 +265,53 @@ const handler = async ({
     onlyWithComments,
   };
 
-  let response = await relayingBaseRunRejection(
-    getTestRunDiffsSummary(client, resolvedTestRunId, diffsSummaryOptions),
-  );
+  const requestSummary = () =>
+    relayingBaseRunRejection(
+      getTestRunDiffsSummary(client, resolvedTestRunId, diffsSummaryOptions),
+    );
+  const response =
+    finishedStatus == null
+      ? await requestSummary()
+      : await pollWhileProcessing(requestSummary, {
+          isProcessing: isDiffsSummaryInProgress,
+          waitingMessage: (first) =>
+            first.message ??
+            `Waiting for diff results for test run ${resolvedTestRunId}...`,
+          timeoutMessage: (last) =>
+            `Diffs summary for test run ${resolvedTestRunId} did not complete within 10 minutes (status: ${last.status}). ` +
+            (last.message ??
+              "The test run itself most likely hasn't finished yet — the computation waits for it, and picks up where it left off when you run this again."),
+        });
 
-  // Poll until complete (or give up after the timeout, rather than forever).
-  // A single line when we start waiting — no per-poll output.
-  const summaryDeadline = performance.now() + SUMMARY_POLL_TIMEOUT_MS;
-  if (response.status === "pending" || response.status === "processing") {
-    logProgress(
-      `Waiting for diff results for test run ${resolvedTestRunId}...`,
-    );
+  if (isDiffsSummaryInProgress(response)) {
+    // Only reachable with --dontWaitForTestRunToComplete: `pending` as much as
+    // `processing`, since that is what the backend calls a summary whose
+    // computation hasn't started — relayed rather than flattened, so stdout
+    // stays identical to the MCP tool's result.
+    if (json) {
+      printJson(response);
+    }
+    return;
   }
-  while (response.status !== "complete") {
-    if (response.status === "failed") {
-      const reasonSuffix =
-        response.reason != null ? ` (${response.reason})` : "";
-      // Every reason a current server returns here is final: it waits out a
-      // still-running test run rather than reporting it as a failure, so a
-      // `failed` is never just "not yet". `test-run-not-ready` only reaches
-      // this branch from an older server — see DiffsSummaryFailureReason.
-      const advice =
-        response.reason === "test-run-not-ready"
-          ? `the test run hadn't finished in time. Run this command again in a minute or more to start a fresh attempt.`
-          : `diffs are not available for it.`;
-      logNotice(
-        `Diffs summary computation failed${reasonSuffix} for test run ${resolvedTestRunId}; ${advice}`,
-      );
-      process.exit(1);
-    }
-    if (response.status !== "pending" && response.status !== "processing") {
-      logNotice(`Error: unexpected status "${String(response.status)}"`);
-      process.exit(1);
-    }
-    if (performance.now() >= summaryDeadline) {
-      logNotice(
-        `Diffs summary for test run ${resolvedTestRunId} did not complete within 10 minutes ` +
-          `(status: ${response.status}). The test run itself most likely hasn't finished yet — ` +
-          `the computation waits for it, and picks up where it left off when you run this again.`,
-      );
-      process.exit(1);
-    }
-    await sleep(2000);
-    response = await getTestRunDiffsSummary(
-      client,
-      resolvedTestRunId,
-      diffsSummaryOptions,
+
+  if (response.status === "failed") {
+    const reasonSuffix = response.reason != null ? ` (${response.reason})` : "";
+    // Every reason a current server returns here is final: it waits out a
+    // still-running test run rather than reporting it as a failure, so a
+    // `failed` is never just "not yet". `test-run-not-ready` only reaches
+    // this branch from an older server — see DiffsSummaryFailureReason.
+    const advice =
+      response.reason === "test-run-not-ready"
+        ? `the test run hadn't finished in time. Run this command again in a minute or more to start a fresh attempt.`
+        : `diffs are not available for it.`;
+    logNotice(
+      `Diffs summary computation failed${reasonSuffix} for test run ${resolvedTestRunId}; ${advice}`,
     );
+    process.exit(1);
+  }
+  if (response.status !== "complete") {
+    logNotice(`Error: unexpected status "${String(response.status)}"`);
+    process.exit(1);
   }
 
   const data = response.data ?? [];
@@ -354,7 +364,7 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     project: {
       string: true,
       description:
-        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project. Cannot be combined with --testRunId, which already determines the project.",
+        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s). Cannot be combined with --testRunId, which already determines the project.",
       conflicts: "testRunId",
     },
     includeAllDiffs: {
@@ -432,7 +442,7 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
       boolean: true,
       default: false,
       description:
-        "By default, if the test run is still in progress the command blocks until it finishes before fetching diffs. Pass this to instead report the in-progress run and exit immediately.",
+        'By default, if the test run is still in progress the command blocks until it finishes before fetching diffs. Pass this to instead exit immediately; an unfinished run is then reported on stderr, and with --json as { status: "pending" | "processing", message } (the list may report either; --counts is always "processing").',
     },
     counts: {
       boolean: true,

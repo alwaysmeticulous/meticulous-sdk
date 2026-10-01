@@ -27,6 +27,7 @@ import {
   uploadAssetsFromZip,
   uploadGitDiffToS3,
 } from "./asset-upload-utils";
+import { withCompletedUpload } from "./completed-upload";
 import {
   getDockerClient,
   getImageInfo,
@@ -265,7 +266,7 @@ export const uploadContainer = async ({
           logger.error(error.message);
         }
       }
-      throw error;
+      throw withCompletedUpload(error, { sourceDeploymentId: uploadId });
     }
   };
 

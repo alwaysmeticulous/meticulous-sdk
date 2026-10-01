@@ -28,6 +28,11 @@ const BASE_RUN_COVERAGE_REJECTION_REASONS = new Set([
   "incomplete-project-coverage",
   "base-run-not-applicable",
   "no-base-test-run",
+  // An unfinished run. The test-run coverage routes answer this client with a
+  // 200 processing body instead (polled through by `pollWhileProcessing`), so
+  // what is left here is the project-scoped routes, which resolve their own
+  // run and have no such negotiation.
+  "run-not-complete",
 ]);
 
 /**

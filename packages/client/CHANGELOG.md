@@ -1,5 +1,120 @@
 # @alwaysmeticulous/client
 
+## 2.343.0
+
+### Minor Changes
+
+- [#14529](https://github.com/alwaysmeticulous/meticulous/pull/14529) [`6c40306`](https://github.com/alwaysmeticulous/meticulous/commit/6c403068f1a334802acf9c5a25772c9f4562ffd9) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `meticulous agent approve-diff` (and the `approveDiff` client function), which approves a screenshot diff, optionally with a review comment explaining why (`--reason` together with `--x`/`--y`). It is only available on projects that turn on "Enable approve/ignore diff actions" in the project's Agents settings; on those projects `agent ignore-diff` also records a real, non-blocking ignore rather than a comment only, so an agent can pass the Meticulous check without a human review. An agent can never approve or ignore a diff a person rejected.
+
+- [#14388](https://github.com/alwaysmeticulous/meticulous/pull/14388) [`1f67454`](https://github.com/alwaysmeticulous/meticulous/commit/1f67454377dff20468b833cf68c4e3d8528a3f89) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `meticulous agent promote-sessions`, which adds the sessions a
+  `trigger-test-run --sessionIds` run replayed to the project's selected set
+  straight away, rather than waiting for the next session selection.
+
+- [#14538](https://github.com/alwaysmeticulous/meticulous/pull/14538) [`0cd78e4`](https://github.com/alwaysmeticulous/meticulous/commit/0cd78e47fee4745d707b0e40893872193a2bc134) Thanks [@linpengzhang](https://github.com/linpengzhang)! - `downloadProjectDeployment` takes an optional `includeChunkFilesIndex`. For a
+  chunked deployment the response then also carries `assetChunkFilesIndexUrls`:
+  a presigned URL for each chunk's `files.json`, at the same index as its
+  tarball in `assetChunkTarballUrls`. Without the flag the request and response
+  are unchanged.
+
+- [#14248](https://github.com/alwaysmeticulous/meticulous/pull/14248) [`2f03f27`](https://github.com/alwaysmeticulous/meticulous/commit/2f03f27f2b26975f3328c082f0fc168d98edca99) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Stabilize the bulk stats contract with immutable event IDs, extensible event
+  metadata, versioned response envelopes, explicit project identity and resolved
+  UTC ranges, test-run status/coverage/timing fields, and daily finalization and
+  exclusion details.
+
+### Patch Changes
+
+- [#14603](https://github.com/alwaysmeticulous/meticulous/pull/14603) [`55e1317`](https://github.com/alwaysmeticulous/meticulous/commit/55e1317ac3c31d79c0790c1356dc3cab26056566) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Expose independent Agent swarm failed-case checks, including confidence-gated
+  diagnosis and recommended-fix Markdown, and their traces.
+
+- [#14603](https://github.com/alwaysmeticulous/meticulous/pull/14603) [`55e1317`](https://github.com/alwaysmeticulous/meticulous/commit/55e1317ac3c31d79c0790c1356dc3cab26056566) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add an optional `setup` flag on Agent swarm steps so leading positioning
+  steps can be distinguished from the behaviour under test.
+
+- [#14223](https://github.com/alwaysmeticulous/meticulous/pull/14223) [`563519b`](https://github.com/alwaysmeticulous/meticulous/commit/563519bf957dc1e186756a643bbd12c6413a547d) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional `outOfProjectScope` on `AgenticChangedFile` so Agent swarm can
+  tell which PR files sit outside the app a project deploys.
+
+- [#14213](https://github.com/alwaysmeticulous/meticulous/pull/14213) [`1e58ceb`](https://github.com/alwaysmeticulous/meticulous/commit/1e58ceb6d528d25f4509ae1b1a341bb9ddfdf1d7) Thanks [@sesajad](https://github.com/sesajad)! - The Agent swarm launch API names the app by the project-deployment row its
+  upload created (`appTarget.projectDeploymentId`) rather than by the upload id.
+  `generateSessions` sends the deployment id returned by the upload, dual-
+  writing the upload id alongside it so a backend not yet running the new launch
+  API still accepts the trigger; the backend also accepts the deprecated
+  `uploadId`/`assetsUploadId` shapes sent by published CLIs, resolving them to
+  the deployment row so every caller's run is keyed the same way.
+
+  The unused `--assetsUploadId` target of `meticulous ci agent-test` is removed;
+  provide `--localImageTag` or `--assetsDir` (the app is always uploaded by the
+  same invocation, so the flag never had a caller). The worker env naming the
+  assets S3 key is renamed `AGENTIC_ASSETS_UPLOAD_ID` → `AGENTIC_ASSETS_S3_KEY` —
+  the backend and worker image ship together.
+
+- [#14365](https://github.com/alwaysmeticulous/meticulous/pull/14365) [`3c57b83`](https://github.com/alwaysmeticulous/meticulous/commit/3c57b833d0ff2ecd2234fe69c313a33c33cd65ab) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous auth list-projects` now works with an API token (`--apiToken`,
+  `METICULOUS_API_TOKEN`, or the config file), listing the token's own project
+  plus any its cross-project access covers. `--project` is described as usable
+  with any API token that has access to the named project, matching the backend,
+  which no longer rejects an explicit project from project API tokens on agent
+  commands. `auth whoami` no longer has a test-run or workflow token case: the
+  backend only answers it for a user login or a project API token.
+
+- [#14307](https://github.com/alwaysmeticulous/meticulous/pull/14307) [`749e76e`](https://github.com/alwaysmeticulous/meticulous/commit/749e76efa3ceb90280964a049f8d8ac5a495ca41) Thanks [@sesajad](https://github.com/sesajad)! - Treat `wfat-` workflow API tokens as API tokens, not OAuth JWTs, when deciding how to authenticate a client.
+
+- [#14426](https://github.com/alwaysmeticulous/meticulous/pull/14426) [`4cb6038`](https://github.com/alwaysmeticulous/meticulous/commit/4cb60387aec93b56fbced9d9304e23e628c0bfc6) Thanks [@Que3216](https://github.com/Que3216)! - Export `getWebappBaseUrl`, which resolves the webapp's base URL from `METICULOUS_API_URL` (the local frontend for a localhost API, otherwise https://app.meticulous.ai).
+
+- [#14138](https://github.com/alwaysmeticulous/meticulous/pull/14138) [`c8f38fc`](https://github.com/alwaysmeticulous/meticulous/commit/c8f38fca4efa206536e12e07949502413bce618b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Wait for a test run's results the same way on every agent command. A run that
+  hasn't finished is reported as `{ status: "processing", message }` by the
+  test-run coverage, coverage-summary, coverage-diff and diffs-counts endpoints
+  (the client's getters return `T | TestRunProcessingResponse`, narrowed with
+  `isTestRunProcessingResponse`) rather than a generic conflict or a partial
+  tally. The `js-coverage`, `js-coverage-diff`, `test-run-diffs` and
+  `test-run-check` commands poll such a result through once the run has finished,
+  and with `--dontWaitForTestRunToComplete --json` all ask once and print the
+  backend's own processing body — the same one the matching MCP tool returns,
+  message included — for an unfinished run, instead of an empty list or `null`.
+
+- [#14138](https://github.com/alwaysmeticulous/meticulous/pull/14138) [`c8f38fc`](https://github.com/alwaysmeticulous/meticulous/commit/c8f38fca4efa206536e12e07949502413bce618b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `DiffsSummaryResponse` (returned by `get_test_run_diffs` and used
+  internally by `agent test-run-diffs`) gains an optional `message` on
+  `pending`/`processing` responses, explaining what's still outstanding —
+  distinguishing a test run that hasn't finished yet from one whose diffs
+  summary is still being computed after it finished — matching the other
+  async agent endpoints (diff counts, coverage).
+
+- [#14059](https://github.com/alwaysmeticulous/meticulous/pull/14059) [`acc089e`](https://github.com/alwaysmeticulous/meticulous/commit/acc089ec7433d3e153d2747d68dd0986714c39ba) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Export `DIFFS_SUMMARY_CLIENT_VERSION`, the agent diffs-summary contract version
+  this client speaks, so other callers of the endpoint can send the same version
+  rather than hardcoding their own.
+
+- [#14280](https://github.com/alwaysmeticulous/meticulous/pull/14280) [`e39b749`](https://github.com/alwaysmeticulous/meticulous/commit/e39b749689249c9e63274ea3b828d67056ba7680) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Accept Agent swarm memory observations of category `irrelevant-overlay`,
+  including the dismiss-control selector later runs use to close that overlay.
+
+- [#14451](https://github.com/alwaysmeticulous/meticulous/pull/14451) [`a155cd2`](https://github.com/alwaysmeticulous/meticulous/commit/a155cd27860c29bdf235e9a7d1b17b3d2da9d721) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Remove the internal agentic session-generation repo read and lease functions
+  (`getAgenticChangedFiles`, `getAgenticRepoFile`, `searchAgenticRepoCode`,
+  `getAgenticFileChanges`, `listAgenticRepoTree`, `listAgenticRepoSourceFiles`,
+  the `*AgenticRepoLease` helpers, and their types) from the public client. They
+  are only used by internal Meticulous services.
+
+- [#14449](https://github.com/alwaysmeticulous/meticulous/pull/14449) [`1a8e23c`](https://github.com/alwaysmeticulous/meticulous/commit/1a8e23c5833b277d34458f0ef41fdfef7636d8a5) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Remove the internal `session-transform-discovery` repo read and lease functions
+  (`getDiscoveryRepoFile`, `getDiscoveryRepoFiles`, `searchDiscoveryRepoCode`,
+  `listDiscoveryRepoTree`, the `*DiscoveryRepoLease` helpers, and their types) from
+  the public client. They are only used by internal Meticulous services.
+
+- [#14185](https://github.com/alwaysmeticulous/meticulous/pull/14185) [`78a17a0`](https://github.com/alwaysmeticulous/meticulous/commit/78a17a055881e844da7c952ccd90e0b8fd38b205) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Report a replay that hasn't finished as `{ status: "processing", message }` on
+  the replay coverage and replay-diff coverage-diff endpoints (the client's
+  `getReplayJsCoverage` / `getReplayDiffJsCoverage` return
+  `T | TestRunProcessingResponse`), rather than "no coverage artifact". The
+  `js-coverage --replayId` and `js-coverage-diff --replayDiffId` commands poll
+  such a result through, and accept `--dontWaitForTestRunToComplete` to print the
+  backend's own processing body — message included, as every other command does —
+  under `--json` instead. A replay no live test run is working on keeps its
+  terminal answer rather than being polled for one that is never coming.
+
+- [#14282](https://github.com/alwaysmeticulous/meticulous/pull/14282) [`d66e097`](https://github.com/alwaysmeticulous/meticulous/commit/d66e097432517d04220be6a378c22ebe861ea975) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add the `ingestion_size_limit` session abandonment reason, reported for sessions
+  that were shortened during ingestion because they exceeded the maximum size.
+
+- [#14466](https://github.com/alwaysmeticulous/meticulous/pull/14466) [`22ca559`](https://github.com/alwaysmeticulous/meticulous/commit/22ca55928aa6bcae3b070fe89b6b797f3d8931ba) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `meticulous agent sessions` can drop sessions recorded by Agent swarm
+  (`--excludeAgentReviewSessions`), keep only sessions whose recording captured
+  the page's HTML document (`--requireInitialNavigationResponse`), and add a
+  `source` column naming what recorded each session (`--includeSource`).
+- Updated dependencies [[`5484f7a`](https://github.com/alwaysmeticulous/meticulous/commit/5484f7ad990482a4da5ccfe6ef21738d3f626a68), [`de3af7b`](https://github.com/alwaysmeticulous/meticulous/commit/de3af7bc7822a0dabae11bcd9107a6d251b8baea), [`0cd78e4`](https://github.com/alwaysmeticulous/meticulous/commit/0cd78e47fee4745d707b0e40893872193a2bc134), [`d3e4881`](https://github.com/alwaysmeticulous/meticulous/commit/d3e488113feffb7b4f7907d9e8c57182a3b29b5b), [`b629828`](https://github.com/alwaysmeticulous/meticulous/commit/b6298281cd86924123b02d5ff23406ed7cd682db), [`0cd64b3`](https://github.com/alwaysmeticulous/meticulous/commit/0cd64b305c76be5a1c20888c3a2499d4784994b1), [`de76ab1`](https://github.com/alwaysmeticulous/meticulous/commit/de76ab1d8c7074c49ccddaa36abfe282427a4e02), [`31ee500`](https://github.com/alwaysmeticulous/meticulous/commit/31ee500b8e1b782bd7cf852b061fd097ba1c52ae), [`2f03f27`](https://github.com/alwaysmeticulous/meticulous/commit/2f03f27f2b26975f3328c082f0fc168d98edca99)]:
+  - @alwaysmeticulous/api@2.343.0
+  - @alwaysmeticulous/common@2.343.0
+
 ## 2.342.0
 
 ### Minor Changes

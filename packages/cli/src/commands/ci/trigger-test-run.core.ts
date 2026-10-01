@@ -4,8 +4,10 @@ import {
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import {
+  carryCompletedUpload,
   uploadAssetsAndTriggerTestRun,
   uploadContainer,
+  withCompletedUpload,
 } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
 import { parseRewrites } from "../../command-utils/parse-rewrites";
@@ -21,6 +23,7 @@ import {
   hasGitContextForTestRunWait,
   resolveGitOptions,
 } from "./resolve-git-options";
+import { ciUploadFields } from "./ci-command-result";
 import type {
   TriggerTestRunOptions,
   TriggerTestRunResult,
@@ -131,20 +134,47 @@ export const triggerTestRun = async (
       message: uploadResult.message,
       testRunId: null,
       status: null,
+      ...uploadResult.fields,
     };
   }
 
-  const { testRunId } = uploadResult;
+  const { testRunId, fields } = uploadResult;
   if (!waitForTestRunToComplete) {
-    return { outcome: "success", testRunId, status: null };
+    return { outcome: "success", testRunId, status: null, ...fields };
   }
 
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,
   });
-  const status = await awaitTestRunCompletion(client, testRunId);
-  return { outcome: "success", testRunId, status };
+  let status: Awaited<ReturnType<typeof awaitTestRunCompletion>>;
+  try {
+    status = await awaitTestRunCompletion(client, testRunId);
+  } catch (error) {
+    throw withTestRunIds(error, testRunId, fields);
+  }
+  return { outcome: "success", testRunId, status, ...fields };
+};
+
+/** Keep the run's ids on an error thrown while waiting for it to finish. */
+const withTestRunIds = (
+  error: unknown,
+  testRunId: string,
+  fields: ReturnType<typeof ciUploadFields>,
+): unknown => {
+  if (error instanceof CliUserError) {
+    return new CliUserError(error.message, error.exitCode, error.severity, {
+      outcome: error.outcome,
+      ...(error.reason ? { reason: error.reason } : {}),
+      ...fields,
+      testRunId,
+    });
+  }
+  return fields.sourceDeploymentId
+    ? withCompletedUpload(error, {
+        sourceDeploymentId: fields.sourceDeploymentId,
+      })
+    : error;
 };
 
 interface UploadParams {
@@ -156,13 +186,16 @@ interface UploadParams {
   projectIdentifier: { projectId?: string };
 }
 
-type UploadResult =
+type UploadResult = {
+  fields: ReturnType<typeof ciUploadFields>;
+} & (
   | { testRunId: string }
   | {
       testRunId: null;
       skipReason: "comments_disabled_for_author";
       message: string;
-    };
+    }
+);
 
 const runAssetUpload = async ({
   options,
@@ -199,6 +232,10 @@ const runAssetUpload = async ({
       waitForBase: waitForBase || waitForTestRunToComplete,
       ...projectIdentifier,
     });
+    const fields = ciUploadFields({
+      sourceDeploymentId: result.sourceDeploymentId,
+      testRunUrl: result.testRun?.url,
+    });
     if (result.skipReason) {
       return {
         testRunId: null,
@@ -206,12 +243,18 @@ const runAssetUpload = async ({
         message:
           result.message ??
           "Test run skipped because CI comments and checks are disabled for this pull request author.",
+        fields,
       };
     }
     if (!result.testRun) {
-      throw new Error("Test run was not created");
+      const error = new Error("Test run was not created");
+      throw result.sourceDeploymentId
+        ? withCompletedUpload(error, {
+            sourceDeploymentId: result.sourceDeploymentId,
+          })
+        : error;
     }
-    return { testRunId: result.testRun.id };
+    return { testRunId: result.testRun.id, fields };
   } catch (error) {
     throw translateUploadError(error);
   }
@@ -293,6 +336,10 @@ const runContainerUpload = async ({
       ...projectIdentifier,
     });
 
+    const fields = ciUploadFields({
+      sourceDeploymentId: result.uploadId,
+      testRunUrl: result.testRun?.url,
+    });
     if (!result.testRun) {
       if (result.commentsDisabledForAuthor) {
         logger.info(
@@ -305,21 +352,25 @@ const runContainerUpload = async ({
           message:
             result.message ??
             "Test run skipped because CI comments and checks are disabled for this pull request author.",
+          fields,
         };
       }
-      throw new Error(
-        `${result.message ?? "Container upload complete but test run not created"}`,
+      throw withCompletedUpload(
+        new Error(
+          `${result.message ?? "Container upload complete but test run not created"}`,
+        ),
+        { sourceDeploymentId: result.uploadId },
       );
     }
-    return { testRunId: result.testRun.id };
+    return { testRunId: result.testRun.id, fields };
   } catch (error) {
     throw translateUploadError(error);
   }
 };
 
-const translateUploadError = (error: unknown): Error =>
+const translateUploadError = (error: unknown): unknown =>
   isOutOfDateClientError(error)
-    ? new OutOfDateCLIError()
+    ? carryCompletedUpload(error, new OutOfDateCLIError())
     : error instanceof Error
       ? error
       : new Error(String(error));

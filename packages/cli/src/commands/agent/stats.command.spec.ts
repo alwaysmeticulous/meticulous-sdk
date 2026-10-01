@@ -99,7 +99,7 @@ describe("stats commands", () => {
       }),
     );
     expect(logSpy.mock.calls[0]?.[0]).toContain(
-      "testRunId\tbaseCommitSha\theadCommitSha",
+      "testRunId\tstatus\tbaseCommitSha\theadCommitSha",
     );
     expect(logSpy.mock.calls[1]?.[0]).toContain('[{"email":"a@example.com"}]');
     expect(mocks.logNotice).toHaveBeenCalledWith("stats paging notice");

@@ -60,6 +60,7 @@ interface StatsCommandConfig<Row extends object> {
 
 const testRunColumns: ReadonlyArray<keyof TestRunStatsItem> = [
   "testRunId",
+  "status",
   "baseCommitSha",
   "headCommitSha",
   "executionSha",
@@ -67,6 +68,7 @@ const testRunColumns: ReadonlyArray<keyof TestRunStatsItem> = [
   "prAuthor",
   "prAuthorBitbucketAccountId",
   "prCoveragePercentage",
+  "commitCoveragePercentage",
   "prStatus",
   "sessionsReplayedCount",
   "diffCount",
@@ -79,6 +81,9 @@ const testRunColumns: ReadonlyArray<keyof TestRunStatsItem> = [
   "userDiffReportCount",
   "meticulousCommentPostedOnPr",
   "runTimestamp",
+  "runStartedAt",
+  "runCompletedAt",
+  "runDurationSeconds",
 ];
 
 const projectDailyColumns: ReadonlyArray<keyof ProjectDailyStatsItem> = [
@@ -91,9 +96,14 @@ const projectDailyColumns: ReadonlyArray<keyof ProjectDailyStatsItem> = [
   "prs",
   "bugsPrevented",
   "prNumbersWithPotentialBugs",
+  "isFinal",
+  "finalizedAt",
+  "metricsVersion",
+  "excluded",
 ];
 
 const eventColumns: ReadonlyArray<keyof TestRunEventStatsItem> = [
+  "eventId",
   "eventType",
   "timestamp",
   "testRunId",
@@ -104,6 +114,7 @@ const eventColumns: ReadonlyArray<keyof TestRunEventStatsItem> = [
   "actor",
   "diffReportType",
   "diffHash",
+  "metadata",
 ];
 
 const createStatsCommand = <Row extends object>({
@@ -148,7 +159,7 @@ const commonBuilder = (
   apiToken: { string: true, description: "Meticulous API token." },
   project: {
     string: true,
-    description: `The project to list ${scope} for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project.`,
+    description: `The project to list ${scope} for (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s).`,
   },
   since: {
     string: true,

@@ -17,7 +17,15 @@ export interface RequestAgenticInstructionsUploadResponse {
 
 export interface AgenticContainerAppTarget {
   type: "container";
-  uploadId: string;
+  /** The project-deployment row the upload created. The run is keyed by it. */
+  projectDeploymentId: string;
+  /**
+   * The upload's id, dual-written during the deployment-id transition: a
+   * backend not yet running the new launch API requires it and ignores
+   * `projectDeploymentId`; the new backend prefers `projectDeploymentId`.
+   * Drop once the new backend is deployed and old CLIs have aged out.
+   */
+  uploadId?: string | undefined;
   enableLocalMocks?: boolean | undefined;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
@@ -39,7 +47,13 @@ export interface AgenticAssetsBackend {
 
 export interface AgenticAssetsAppTarget {
   type: "assets";
-  assetsUploadId: string;
+  /** The project-deployment row the upload created. The run is keyed by it. */
+  projectDeploymentId: string;
+  /**
+   * The upload's id, dual-written during the deployment-id transition; see
+   * `AgenticContainerAppTarget.uploadId`.
+   */
+  assetsUploadId?: string | undefined;
   backend?: AgenticAssetsBackend | undefined;
   /**
    * Port to serve the uploaded frontend on. Assets targets only; the worker
@@ -57,14 +71,6 @@ export interface CompleteAgenticSessionGenerationParams extends ProjectIdentifie
   /** Server-minted id of instructions uploaded for this trigger, if any. */
   instructionsId?: string;
   appTarget?: AgenticAppTarget | undefined;
-  /** @deprecated Use appTarget.type = "container". */
-  uploadId?: string | undefined;
-  /** @deprecated Use appTarget.type = "container". */
-  containerPort?: number | undefined;
-  /** @deprecated Use appTarget.type = "container". */
-  containerEnv?: ContainerEnvVariable[] | undefined;
-  /** @deprecated Use appTarget.type = "container". */
-  containerHealthCheckEndpoint?: string | undefined;
 }
 
 export interface CompleteAgenticSessionGenerationResponse {
@@ -218,6 +224,8 @@ export interface AgenticRunResultStep {
   kind?: AgenticRunStepKind;
   /** How the step went. Absent on blobs from older workers. */
   outcome?: AgenticRunStepOutcome;
+  /** This leading step only got the app into position for the case. */
+  setup?: boolean;
   /**
    * Plain-English explanation of why a failed or blocked step went that way,
    * written for a reader who has not seen the test. Absent on passing steps
@@ -351,6 +359,39 @@ export interface AgenticRunMockDataProvenance {
   };
 }
 
+export type AgenticRunCaseCheckVerdict = Exclude<
+  AgenticRunResultCaseOutcome,
+  "skipped"
+>;
+
+export interface AgenticRunCaseCheckCitation {
+  /** Repo-relative source path that grounded the checker's verdict. */
+  path: string;
+  startLine?: number;
+  endLine?: number;
+}
+
+/** Independent source-grounded review of a case originally reported as failed. */
+export interface AgenticRunCaseCheck {
+  originalOutcome: AgenticRunResultCaseOutcome;
+  originalOutcomeSummary?: string;
+  verdict: AgenticRunCaseCheckVerdict;
+  blockedBy?: AgenticRunBlockedBy;
+  /** The checker's confidence in its source-grounded verdict. */
+  confidence?: "low" | "medium" | "high";
+  /** Why the original verdict was upheld or overturned. */
+  reason: string;
+  /** Markdown diagnosis for a confidently upheld failure. */
+  diagnosis?: string;
+  /** Markdown repair guidance for a confidently upheld failure. */
+  recommendedFix?: string;
+  citations?: AgenticRunCaseCheckCitation[];
+  revisedStepIndexes?: number[];
+  model: string;
+  /** Present when checking could not complete and the original verdict was kept. */
+  error?: string;
+}
+
 export interface AgenticRunResultCase {
   /** Short human-readable name of the flow, unique within this run. */
   title: string;
@@ -386,6 +427,8 @@ export interface AgenticRunResultCase {
   sessionIds: string[];
   /** Why this case was worth testing, e.g. which changed code it targets. */
   rationale?: string;
+  /** Independent review of the case agent's original failed verdict. */
+  check?: AgenticRunCaseCheck;
   /**
    * @deprecated Legacy workers may have included free-form notes. New workers
    * report step outcomes instead.
@@ -419,24 +462,30 @@ export interface AgenticRunSummary {
   featuredFlowMedia?: AgenticRunFeaturedFlowMedia;
 }
 
-export type AgentReviewMemoryCandidateCategory =
+export type AgentSwarmMemoryCandidateCategory =
   | "app-structure"
   | "navigation"
   | "authentication"
   | "test-data"
   | "networking"
-  | "testing-pitfall";
+  | "testing-pitfall"
+  | "irrelevant-overlay";
 
-export type AgentReviewMemoryCandidateAudience = "planner" | "case-runner";
+export type AgentSwarmMemoryCandidateAudience = "planner" | "case-runner";
 
 /**
- * A bounded, untrusted observation proposed by an Agent Review agent for
+ * A bounded, untrusted observation proposed by an Agent swarm agent for
  * possible inclusion in the project's persistent memory.
  */
-export interface AgentReviewMemoryCandidate {
+export interface AgentSwarmMemoryCandidate {
   tip: string;
-  category: AgentReviewMemoryCandidateCategory;
-  audiences: AgentReviewMemoryCandidateAudience[];
+  category: AgentSwarmMemoryCandidateCategory;
+  audiences: AgentSwarmMemoryCandidateAudience[];
+  /**
+   * Only with category `irrelevant-overlay`: CSS selector for the overlay's
+   * dismiss control, so future runs clear it deterministically.
+   */
+  dismissSelector?: string;
 }
 
 /** Coarse metadata about how the agentic run itself executed. */
@@ -504,12 +553,16 @@ export interface AgenticRunTrace {
 export interface AgenticRunCaseTrace extends AgenticRunTrace {
   caseIndex: number;
   caseTitle: string;
+  /** Source-sensitive checker result, present only in the private traces blob. */
+  check?: AgenticRunCaseCheck;
 }
 
 /** Transcript of the planning agent and each independently-run case agent. */
 export interface AgenticRunTraces {
   planner: AgenticRunTrace;
   cases: AgenticRunCaseTrace[];
+  /** Independent verification traces for cases originally reported as failed. */
+  checks?: AgenticRunCaseTrace[];
 }
 
 export interface AgenticRunCoverageFile {
@@ -567,7 +620,7 @@ export interface AgenticRunResultBlob {
   /** Agent-written takeaways grounded in completed cases. */
   summary?: AgenticRunSummary;
   /** Untrusted project-memory observations proposed during this run. */
-  memoryCandidates?: AgentReviewMemoryCandidate[];
+  memoryCandidates?: AgentSwarmMemoryCandidate[];
   /** Present when the agent determined no browser flow can exercise the change. */
   notTestable?: AgenticRunNotTestable;
 }
@@ -927,430 +980,6 @@ export const getAgenticRunCoverage = async ({
     {
       params: projectId ? { projectId } : {},
     },
-  );
-  return data;
-};
-
-export interface GetAgenticChangedFilesParams
-  extends ProjectIdentifier, AgenticRepoLeaseRef {
-  commitSha: string;
-}
-
-export interface AgenticChangedFile {
-  filename: string;
-  status?: string;
-}
-
-export interface GetAgenticChangedFilesResponse {
-  /** `null` when no PR/diff is available or source access is disabled. */
-  files: AgenticChangedFile[] | null;
-  /**
-   * The resolved PR base sha, or `null` under the same conditions `files` is
-   * `null`. Lets a caller that only has the head commit sha (e.g. the agentic
-   * session generation worker) call `getRelevantSessions`, which requires a
-   * `baseCommitSha`.
-   */
-  baseSha: string | null;
-}
-
-/**
- * Lists the files the PR under test touched. Served cap-free off the project's
- * repo-server mirror where possible, falling back to the hosting provider. When
- * `runId` is supplied the mirror read borrows the worker's durable run lease (a
- * warm pod) instead of acquiring a fresh short-lived one; a missing/stale lease
- * falls back to the leaseless path server-side.
- */
-export const getAgenticChangedFiles = async ({
-  client,
-  projectId,
-  commitSha,
-  runId,
-}: GetAgenticChangedFilesParams & {
-  client: MeticulousClient;
-}): Promise<GetAgenticChangedFilesResponse> => {
-  const { data } = await client.get<GetAgenticChangedFilesResponse>(
-    "agentic-session-generation/changed-files",
-    {
-      params: {
-        ...(projectId ? { projectId } : {}),
-        commitSha,
-        ...(runId ? { runId } : {}),
-      },
-    },
-  );
-  return data;
-};
-
-/**
- * The agentic run id (workflow run id) a read carries so the backend borrows the
- * worker's durable repo-server lease — discovered by this id — instead of
- * acquiring a fresh short-lived lease per read. Optional: absent (or a lease
- * that's since gone) falls back to the leaseless per-read path server-side.
- */
-export interface AgenticRepoLeaseRef {
-  runId?: string;
-}
-
-export interface GetAgenticRepoFileParams
-  extends ProjectIdentifier, AgenticRepoLeaseRef {
-  commitSha: string;
-  path: string;
-  /** First source line to return (1-indexed, inclusive). Defaults to 1. */
-  startLine?: number;
-  /** Last source line to return (1-indexed, inclusive). Defaults to EOF. */
-  endLine?: number;
-  /** Hard cap on the returned content in bytes, applied after line selection. */
-  maxBytes?: number;
-}
-
-export interface GetAgenticRepoFileResponse {
-  kind: "found" | "missing";
-  /** UTF-8 decoded file contents; present only when `kind === "found"`. */
-  content?: string;
-  /** `true` when the selected content exceeded `maxBytes` and is partial. */
-  truncated?: boolean;
-  /** Total file size in bytes before any truncation. */
-  sizeBytes?: number;
-}
-
-/** Reads a single source file from the project's repo at `commitSha`. */
-export const getAgenticRepoFile = async ({
-  client,
-  projectId,
-  ...body
-}: GetAgenticRepoFileParams & {
-  client: MeticulousClient;
-}): Promise<GetAgenticRepoFileResponse> => {
-  const { data } = await client.post<GetAgenticRepoFileResponse>(
-    "agentic-session-generation/repo/file",
-    body,
-    projectIdQuery(projectId),
-  );
-  return data;
-};
-
-export interface SearchAgenticRepoCodeParams
-  extends ProjectIdentifier, AgenticRepoLeaseRef {
-  commitSha: string;
-  pattern: string;
-  /** Restrict the search to these path prefixes. */
-  paths?: string[];
-  caseInsensitive?: boolean;
-  /** Lines of context to return around each match. */
-  contextLines?: number;
-  /** Hard cap on the number of matches returned. */
-  maxMatches?: number;
-}
-
-export interface AgenticRepoSearchMatch {
-  path: string;
-  lineNumber: number;
-  line: string;
-  before: string[];
-  after: string[];
-}
-
-export interface SearchAgenticRepoCodeResponse {
-  matches: AgenticRepoSearchMatch[];
-  /** `true` when `maxMatches` was reached and trailing matches were dropped. */
-  truncated: boolean;
-}
-
-/** Searches the project's repo (ripgrep) at `commitSha`. */
-export const searchAgenticRepoCode = async ({
-  client,
-  projectId,
-  ...body
-}: SearchAgenticRepoCodeParams & {
-  client: MeticulousClient;
-}): Promise<SearchAgenticRepoCodeResponse> => {
-  const { data } = await client.post<SearchAgenticRepoCodeResponse>(
-    "agentic-session-generation/repo/search",
-    body,
-    projectIdQuery(projectId),
-  );
-  return data;
-};
-
-export interface GetAgenticFileChangesSingleParams
-  extends ProjectIdentifier, AgenticRepoLeaseRef {
-  commitSha: string;
-  /** Repo-relative path of the file whose changes to return. */
-  path: string;
-}
-
-export interface GetAgenticFileChangesBulkParams
-  extends ProjectIdentifier, AgenticRepoLeaseRef {
-  commitSha: string;
-  /**
-   * Bulk subset. Omit both `path` and `paths` to return every changed file.
-   */
-  paths?: string[];
-}
-
-export type GetAgenticFileChangesParams =
-  | GetAgenticFileChangesSingleParams
-  | GetAgenticFileChangesBulkParams;
-
-export interface GetAgenticFileChange {
-  path: string;
-  /**
-   * The file's unified-diff hunks. Empty string when the file is unchanged.
-   */
-  diff: string;
-}
-
-export interface GetAgenticFileChangesResponse {
-  /**
-   * The file's unified diff (base..head) as raw patch text, or `null` when no
-   * PR/diff is available or source access is disabled. Empty string when the
-   * file is unchanged.
-   */
-  diff: string | null;
-}
-
-export interface GetAgenticFileChangesBulkResponse {
-  /**
-   * One entry per requested path (or every changed file when `paths` is
-   * omitted). `null` when no PR/diff is available or source access is
-   * disabled. Unchanged requested paths have `diff: ""`.
-   */
-  files: GetAgenticFileChange[] | null;
-}
-
-/**
- * Returns how files changed in the PR under test (unified-diff hunks). A
- * single `path` keeps today's `{ diff }` payload for the agent `fileChanges`
- * tool. `paths[]` or omit both returns `{ files }` from one cached whole-PR
- * diff.
- */
-export function getAgenticFileChanges(
-  params: GetAgenticFileChangesSingleParams & { client: MeticulousClient },
-): Promise<GetAgenticFileChangesResponse>;
-export function getAgenticFileChanges(
-  params: GetAgenticFileChangesBulkParams & { client: MeticulousClient },
-): Promise<GetAgenticFileChangesBulkResponse>;
-export async function getAgenticFileChanges({
-  client,
-  projectId,
-  ...body
-}: GetAgenticFileChangesParams & {
-  client: MeticulousClient;
-}): Promise<GetAgenticFileChangesResponse | GetAgenticFileChangesBulkResponse> {
-  const { data } = await client.post<
-    GetAgenticFileChangesResponse | GetAgenticFileChangesBulkResponse
-  >(
-    "agentic-session-generation/repo/file-changes",
-    body,
-    projectIdQuery(projectId),
-  );
-  return data;
-}
-
-export interface ListAgenticRepoTreeParams
-  extends ProjectIdentifier, AgenticRepoLeaseRef {
-  commitSha: string;
-  /** Tree path inside the commit. Defaults to the repo root. */
-  path?: string;
-  /** When true, walks descendants recursively. */
-  recursive?: boolean;
-  /** Hard cap on the number of entries returned. */
-  maxEntries?: number;
-}
-
-export interface AgenticRepoTreeEntry {
-  type: "blob" | "tree" | "commit";
-  path: string;
-  /** Blob size in bytes; `null` for trees/submodules and blobless-mirror blobs. */
-  sizeBytes: number | null;
-}
-
-export interface ListAgenticRepoTreeResponse {
-  entries: AgenticRepoTreeEntry[];
-  /** `true` when `maxEntries` was reached and trailing entries were dropped. */
-  truncated: boolean;
-}
-
-/** Lists a tree in the project's repo at `commitSha`. */
-export const listAgenticRepoTree = async ({
-  client,
-  projectId,
-  ...body
-}: ListAgenticRepoTreeParams & {
-  client: MeticulousClient;
-}): Promise<ListAgenticRepoTreeResponse> => {
-  const { data } = await client.post<ListAgenticRepoTreeResponse>(
-    "agentic-session-generation/repo/ls-tree",
-    body,
-    projectIdQuery(projectId),
-  );
-  return data;
-};
-
-export interface ListAgenticRepoSourceFilesParams
-  extends ProjectIdentifier, AgenticRepoLeaseRef {
-  commitSha: string;
-}
-
-export interface ListAgenticRepoSourceFilesResponse {
-  /** Repo-relative paths eligible for source-map coverage. */
-  paths: string[];
-  /** `true` when the response or bounded tree scan hit a safety limit. */
-  truncated: boolean;
-}
-
-/**
- * The backend route deliberately waits up to 150s for mirror readiness and the
- * repo-server source listing. Stay above that deadline so its timeout response
- * reaches the worker before this client aborts, with transport headroom.
- */
-const LIST_AGENTIC_REPO_SOURCE_FILES_TIMEOUT_MS = 165_000;
-
-/** Lists source-map coverage candidates in the project's repo. */
-export const listAgenticRepoSourceFiles = async ({
-  client,
-  projectId,
-  ...body
-}: ListAgenticRepoSourceFilesParams & {
-  client: MeticulousClient;
-}): Promise<ListAgenticRepoSourceFilesResponse> => {
-  const { data } = await client.post<ListAgenticRepoSourceFilesResponse>(
-    "agentic-session-generation/repo/source-files",
-    body,
-    {
-      ...projectIdQuery(projectId),
-      timeout: LIST_AGENTIC_REPO_SOURCE_FILES_TIMEOUT_MS,
-    },
-  );
-  return data;
-};
-
-export interface AcquireAgenticRepoLeaseParams extends ProjectIdentifier {
-  /** The agentic run id (workflow run id) the lease is keyed on. */
-  runId: string;
-}
-
-export interface AcquireAgenticRepoLeaseResponse {
-  leaseId: string;
-  podInstanceId?: string;
-  recommendedHeartbeatIntervalMs: number;
-  heartbeatTtlMs: number;
-}
-
-/**
- * Acquires a durable repo-server lease for the whole agentic run and kicks off
- * the mirror clone. Blocks only on the bounded pod-boot step; poll
- * {@link getAgenticRepoLeaseStatus} for the clone. The caller must heartbeat
- * (see {@link heartbeatAgenticRepoLease}) and release it
- * ({@link releaseAgenticRepoLease}). Source access is a hard requirement, so this
- * rejects (403) rather than returning an "unavailable" result when the
- * `ALLOW_CODE_ACCESS` kill switch is off, the project disables source access, or
- * the project isn't enrolled.
- */
-export const acquireAgenticRepoLease = async ({
-  client,
-  projectId,
-  ...body
-}: AcquireAgenticRepoLeaseParams & {
-  client: MeticulousClient;
-}): Promise<AcquireAgenticRepoLeaseResponse> => {
-  const { data } = await client.post<AcquireAgenticRepoLeaseResponse>(
-    "agentic-session-generation/repo/lease/acquire",
-    body,
-    {
-      ...projectIdQuery(projectId),
-      // The acquire endpoint blocks server-side up to ~6 min bringing a cold pod
-      // up (backend REPO_SERVER_ACQUIRE_REQUEST_TIMEOUT_MS). Wait that out in a
-      // single attempt — with a little headroom so the server's own response
-      // lands first — rather than aborting at the client's 60s default and
-      // retrying, which fires several redundant bring-ups.
-      timeout: 6.5 * 60 * 1000,
-    },
-  );
-  return data;
-};
-
-export interface GetAgenticRepoLeaseStatusParams extends ProjectIdentifier {
-  /** Instance id of the lease-holding pod (from acquire), if any. */
-  podInstanceId?: string;
-}
-
-export interface AgenticRepoLeaseStatusResponse {
-  /** `true` when the pod is up and its git mirror has finished cloning. */
-  ready: boolean;
-}
-
-/**
- * Returns whether the held lease's pod + git mirror are ready right now — a
- * single point-in-time status query, not a wait. The caller drives its own poll
- * loop (source reads simply retry a mirror that's still cloning).
- */
-export const getAgenticRepoLeaseStatus = async ({
-  client,
-  projectId,
-  podInstanceId,
-}: GetAgenticRepoLeaseStatusParams & {
-  client: MeticulousClient;
-}): Promise<AgenticRepoLeaseStatusResponse> => {
-  const { data } = await client.get<AgenticRepoLeaseStatusResponse>(
-    "agentic-session-generation/repo/lease/status",
-    {
-      params: {
-        ...(projectId ? { projectId } : {}),
-        ...(podInstanceId ? { podInstanceId } : {}),
-      },
-    },
-  );
-  return data;
-};
-
-export interface HeartbeatAgenticRepoLeaseParams extends ProjectIdentifier {
-  leaseId: string;
-  podInstanceId?: string;
-}
-
-export interface HeartbeatAgenticRepoLeaseResponse {
-  ok: boolean;
-  expiresAt?: string;
-}
-
-/** Heartbeats the held lease to keep it alive for the run's lifetime. */
-export const heartbeatAgenticRepoLease = async ({
-  client,
-  projectId,
-  ...body
-}: HeartbeatAgenticRepoLeaseParams & {
-  client: MeticulousClient;
-}): Promise<HeartbeatAgenticRepoLeaseResponse> => {
-  const { data } = await client.post<HeartbeatAgenticRepoLeaseResponse>(
-    "agentic-session-generation/repo/lease/heartbeat",
-    body,
-    projectIdQuery(projectId),
-  );
-  return data;
-};
-
-export interface ReleaseAgenticRepoLeaseParams extends ProjectIdentifier {
-  leaseId: string;
-  podInstanceId?: string;
-}
-
-export interface ReleaseAgenticRepoLeaseResponse {
-  released: boolean;
-}
-
-/** Releases the held lease at the end of the run (best-effort). */
-export const releaseAgenticRepoLease = async ({
-  client,
-  projectId,
-  ...body
-}: ReleaseAgenticRepoLeaseParams & {
-  client: MeticulousClient;
-}): Promise<ReleaseAgenticRepoLeaseResponse> => {
-  const { data } = await client.post<ReleaseAgenticRepoLeaseResponse>(
-    "agentic-session-generation/repo/lease/release",
-    body,
-    projectIdQuery(projectId),
   );
   return data;
 };

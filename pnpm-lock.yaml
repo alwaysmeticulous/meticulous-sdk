@@ -142,7 +142,7 @@ importers:
         version: 4.1.4(@opentelemetry/api@1.9.0)(@types/node@20.19.27)(vite@7.3.6(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.2)(yaml@2.9.0))
 
   packages/cli:
-    dependencies:
+    devDependencies:
       '@alwaysmeticulous/api':
         specifier: workspace:*
         version: link:../api
@@ -188,37 +188,6 @@ importers:
       '@sentry/node':
         specifier: ^10.3.0
         version: 10.32.1
-      chalk:
-        specifier: ^4.1.2
-        version: 4.1.2
-      ci-info:
-        specifier: ^4.0.0
-        version: 4.3.1
-      cli-progress:
-        specifier: ^3.12.0
-        version: 3.12.0
-      inquirer:
-        specifier: ^8.2.7
-        version: 8.2.7(@types/node@20.19.27)
-      ora:
-        specifier: ^5.4.1
-        version: 5.4.1
-      parse-diff:
-        specifier: ^0.11.1
-        version: 0.11.1
-      puppeteer-core:
-        specifier: 24.42.0
-        version: 24.42.0
-      tar:
-        specifier: ^7.5.22
-        version: 7.5.22
-      yaml:
-        specifier: ^2.9.0
-        version: 2.9.0
-      yargs:
-        specifier: ^17.5.1
-        version: 17.7.2
-    devDependencies:
       '@types/cli-progress':
         specifier: ^3.11.5
         version: 3.11.6
@@ -228,12 +197,48 @@ importers:
       '@types/yargs':
         specifier: ^17.0.10
         version: 17.0.35
+      chalk:
+        specifier: ^4.1.2
+        version: 4.1.2
+      ci-info:
+        specifier: ^4.0.0
+        version: 4.3.1
+      cli-progress:
+        specifier: ^3.12.0
+        version: 3.12.0
+      esbuild:
+        specifier: ^0.25.4
+        version: 0.25.12
+      inquirer:
+        specifier: ^8.2.7
+        version: 8.2.7(@types/node@20.19.27)
       loglevel:
         specifier: ^1.8.0
         version: 1.9.2
+      ora:
+        specifier: ^5.4.1
+        version: 5.4.1
+      parse-diff:
+        specifier: ^0.11.1
+        version: 0.11.1
+      prettier:
+        specifier: ^3.5.3
+        version: 3.7.4
+      puppeteer-core:
+        specifier: 24.42.0
+        version: 24.42.0
+      tar:
+        specifier: ^7.5.22
+        version: 7.5.22
       vitest:
         specifier: 'catalog:'
         version: 4.1.4(@opentelemetry/api@1.9.0)(@types/node@20.19.27)(vite@7.3.6(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.2)(yaml@2.9.0))
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
+      yargs:
+        specifier: ^17.5.1
+        version: 17.7.2
 
   packages/client:
     dependencies:

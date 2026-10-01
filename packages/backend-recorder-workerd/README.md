@@ -96,7 +96,7 @@ A request's capture events are batched into **one** report, sent under `ctx.wait
 ## What is captured
 
 - **Inbound requests** (method, URL, headers, status; no bodies), correlated to the frontend session via the `x-meticulous-session-id` header stamped by the Meticulous frontend recorder — or, for the page's initial navigation, via an id the shim mints itself (see [Session ids for the first page render](#session-ids-for-the-first-page-render)).
-- **Outgoing `fetch` calls** made while handling an inbound request: method, URL, headers, status, and request/response bodies (UTF-8, capped at 256 KB; long-lived streams such as SSE are captured truncated).
+- **Outgoing `fetch` calls** made while handling an inbound request: method, URL, headers, status, and request/response bodies (UTF-8, capped at 1 MB; long-lived streams such as SSE are captured truncated).
 - **Calls through `fetch`-shaped bindings** — service bindings and Durable Object stubs — recorded like outgoing fetches, plus the `env` key the call went through. No code change is needed: the binding's `fetch` is instrumented wherever the app reads it from, including via `cloudflare:workers` rather than the handler's `env` argument.
 - **KV namespace operations** — `get`, `getWithMetadata`, `put`, `delete` and `list` on a namespace found on `env`, recorded with the binding name, the key, the call's arguments and the value as JSON (so one `JSON.parse` reconstructs exactly what the app saw, whichever `type` the read asked for). Also no code change needed. A value read as a stream is never read by the recorder — that would take the bytes from the app — and binary values are skipped; both cases are recorded with the reason instead of the value.
 - **postgres.js queries**, when you apply `withMeticulousPostgres` (see above): the SQL with `$1`-style placeholders, the interpolated parameters, the row shape the query asked for, and the resolved rows — or the error, so a query that legitimately failed replays as the same failure rather than as a gap. Cursors, `.forEach()`, COPY streams and `.describe()` pass through unrecorded, since they do not resolve with a single result.
@@ -197,7 +197,7 @@ Because each function re-reads the current request's sink, a callback that outli
 
 ## Limitations
 
-- Streamed responses are captured truncated: the inbound request is reported once the handler returns, which for a streamed response is before the stream ends, and outbound bodies cap at 256 KB. An app whose main endpoints are SSE will not record them faithfully.
+- Streamed responses are captured truncated: the inbound request is reported once the handler returns, which for a streamed response is before the stream ends, and outbound bodies cap at 1 MB. An app whose main endpoints are SSE will not record them faithfully.
 - Bindings other than `fetch`-shaped ones and KV namespaces are not captured: D1, R2, Queues, and RPC method calls on a named entrypoint (`env.SVC.someMethod()`) — an RPC method is not a patchable property, so it cannot be intercepted this way.
 - A KV value that is not text is recorded without its value: reading a `stream` would take the bytes away from the app, and binary values are skipped because KV blobs are large and not UTF-8. The operation, key and arguments are still recorded, with `omitted` saying which case it was.
 - Assets bindings are skipped by default (`ASSETS`, `__STATIC_CONTENT`): asset bytes are large and often binary, and asset serving is usually a worker's highest-volume call. Use `options.skipBindings` to skip others.

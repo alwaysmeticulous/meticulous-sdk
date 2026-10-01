@@ -1,5 +1,13 @@
 # @alwaysmeticulous/common
 
+## 2.343.0
+
+### Patch Changes
+
+- [#14335](https://github.com/alwaysmeticulous/meticulous/pull/14335) [`d3e4881`](https://github.com/alwaysmeticulous/meticulous/commit/d3e488113feffb7b4f7907d9e8c57182a3b29b5b) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `meticulous ci upload-assets`, `upload-container`, and `run-with-uploaded-asset-chunks` `--json` results now include `cliVersion` on every outcome. When a deployment was created they also include `sourceDeploymentId`, and a created test run includes `testRunUrl`.
+
+  An explicit `--logLevel` is now honoured with `--json` on those three commands, instead of being forced to `warn`. Their log lines go to stderr, so stdout still carries only the JSON result.
+
 ## 2.341.0
 
 ### Patch Changes

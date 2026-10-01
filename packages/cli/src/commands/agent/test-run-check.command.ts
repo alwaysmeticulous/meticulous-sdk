@@ -5,6 +5,7 @@ import {
   getTestRunCheckAvailableIds,
   getTestRunCheckReport,
   type TestRunCheckAvailableId,
+  type TestRunCheckReportResponse,
   type TestRunCheckType,
 } from "@alwaysmeticulous/client";
 import { logNotice, logProgress } from "@alwaysmeticulous/common";
@@ -13,6 +14,7 @@ import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { relayingBaseRunRejection } from "../../utils/base-run-rejection";
 import { CliUserError } from "../../utils/cli-user-error";
+import { pollWhileProcessing } from "../../utils/poll-while-processing";
 import {
   assertTestRunComplete,
   ensureTestRunFinished,
@@ -33,17 +35,10 @@ interface Options {
   project?: string | undefined;
 }
 
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * Shorter than the diffs-summary poll timeout: unlike diffs (computed by a
- * backend workflow with a known SLA), a custom check's results depend on the
- * customer's own CI reporting them, so there's no guarantee they ever will —
- * better to give up and let the caller decide whether to retry than to block
- * for a long time on something that may never arrive.
- */
-const REPORT_POLL_TIMEOUT_MS = 3 * 60_000;
+const isReportProcessing = (
+  response: TestRunCheckReportResponse,
+): response is TestRunCheckReportResponse & { status: "processing" } =>
+  response.status === "processing";
 
 const printAvailableIds = (checks: TestRunCheckAvailableId[]): void => {
   const columns: Array<{
@@ -166,7 +161,7 @@ const handler = async ({
         `No check results have been reported for test run ${resolvedTestRunId} yet. ` +
           "This never waits for the run or its checks to finish, so an empty " +
           "list can also mean they simply haven't reported yet — re-run this " +
-          "command in a minute or so before concluding the run has no checks.",
+          "command every 10s for up to 10 minutes before concluding the run has no checks.",
       );
     }
     return;
@@ -186,49 +181,51 @@ const handler = async ({
     status,
     { dontWait: dontWaitForTestRunToComplete },
   );
-  if (finishedStatus == null) {
-    if (json) {
-      printJson({ status: "processing" });
+  if (finishedStatus != null) {
+    // Session-pool state was already checked above, before waiting; Partial
+    // only becomes known once the run has finished.
+    if (isTestRunPartial(finishedStatus)) {
+      assertNotBaseRun();
     }
-    return;
+    assertTestRunComplete(resolvedTestRunId, finishedStatus, {
+      resultName: "check reports",
+    });
   }
-  // Session-pool state was already checked above, before waiting; Partial only
-  // becomes known once the run has finished.
-  if (isTestRunPartial(finishedStatus)) {
-    assertNotBaseRun();
-  }
-  assertTestRunComplete(resolvedTestRunId, finishedStatus, {
-    resultName: "check reports",
-  });
 
   logProgress(
     `Fetching ${checkType} check ${checkId} for test run ${resolvedTestRunId}...`,
   );
-  let response = await relayingBaseRunRejection(
-    getTestRunCheckReport(client, resolvedTestRunId, checkId, { checkType }),
-  );
-  const deadline = performance.now() + REPORT_POLL_TIMEOUT_MS;
-  if (response.status === "processing") {
-    logProgress(
-      `Waiting for ${checkType} check results for test run ${resolvedTestRunId}...`,
+  const request = () =>
+    relayingBaseRunRejection(
+      getTestRunCheckReport(client, resolvedTestRunId, checkId, {
+        checkType,
+      }),
     );
-  }
-  while (response.status === "processing") {
-    if (performance.now() >= deadline) {
-      const minutes = REPORT_POLL_TIMEOUT_MS / 60_000;
-      const caveat =
-        checkType === "custom"
-          ? " They may still be computing, or the reporting CI job may never call back — re-run this command later to check again."
-          : " They may still be computing — re-run this command later to check again.";
-      logNotice(
-        `${checkType} check results for test run ${resolvedTestRunId} did not arrive within ${minutes} minutes.${caveat}`,
-      );
-      process.exit(1);
+  // With --dontWaitForTestRunToComplete (`finishedStatus == null`) the request
+  // still goes out, once: its processing response is the answer, and printing
+  // the backend's own body keeps stdout identical to the MCP tool's result.
+  const response =
+    finishedStatus == null
+      ? await request()
+      : await pollWhileProcessing(request, {
+          isProcessing: isReportProcessing,
+          waitingMessage: () =>
+            `Waiting for ${checkType} check results for test run ${resolvedTestRunId}...`,
+          timeoutMessage: () => {
+            const caveat =
+              checkType === "custom"
+                ? " They may still be computing, or the reporting CI job may never call back — re-run this command later to check again."
+                : " They may still be computing — re-run this command later to check again.";
+            return `${checkType} check results for test run ${resolvedTestRunId} did not arrive within 10 minutes.${caveat}`;
+          },
+        });
+
+  if (isReportProcessing(response)) {
+    // The in-progress notice already went to stderr (ensureTestRunFinished).
+    if (json) {
+      printJson(response);
     }
-    await sleep(2000);
-    response = await getTestRunCheckReport(client, resolvedTestRunId, checkId, {
-      checkType,
-    });
+    return;
   }
 
   if (response.status === "failed") {
@@ -251,7 +248,7 @@ const handler = async ({
 export const testRunCheckCommand: CommandModule<unknown, Options> = {
   command: "test-run-check",
   describe:
-    "Get the Markdown report for a given non-visual check. Outputs the report text, blocking until the test run and check results are ready by default, for at most 3 minutes. A report too large to return inline instead prints a short notice plus a download URL. For --checkType custom, an error saying the run is not expecting custom check results can be transient shortly after the run completes, since the customer's CI registers its checks separately: retry for a minute or so before concluding the run has no custom checks. Pass --availableIds to list the check IDs available for the run instead of fetching a report.",
+    "Get the Markdown report for a given non-visual check. Outputs the report text, blocking until the test run and check results are ready by default, for at most 10 minutes. A report too large to return inline instead prints a short notice plus a download URL. For --checkType custom, an error saying the run is not expecting custom check results can be transient shortly after the run completes, since your CI registers its checks separately: retry for a minute or so before concluding the run has no custom checks. Pass --availableIds to list the check IDs available for the run instead of fetching a report.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     testRunId: {
@@ -267,7 +264,7 @@ export const testRunCheckCommand: CommandModule<unknown, Options> = {
     project: {
       string: true,
       description:
-        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project. Cannot be combined with --testRunId, which already determines the project.",
+        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s). Cannot be combined with --testRunId, which already determines the project.",
       conflicts: "testRunId",
     },
     checkType: {
@@ -284,13 +281,13 @@ export const testRunCheckCommand: CommandModule<unknown, Options> = {
       boolean: true,
       default: false,
       description:
-        "List the check IDs that have reported results for the test run, instead of fetching a report. Outputs a TSV table with columns checkType, checkId. Unlike fetching a report, this never waits for the test run or its checks to finish: an empty list shortly after triggering a run can mean the checks simply haven't reported yet rather than that none exist, so retry for a minute or so (the same budget a report fetch gives itself) before concluding the run has no checks.",
+        "List the check IDs that have reported results for the test run, instead of fetching a report. Outputs a TSV table with columns checkType, checkId. Unlike fetching a report, this never waits for the test run or its checks to finish: an empty list shortly after triggering a run can mean the checks simply haven't reported yet rather than that none exist, so retry every 10s for up to 10 minutes (the same budget a report fetch gives itself) before concluding the run has no checks.",
     },
     dontWaitForTestRunToComplete: {
       boolean: true,
       default: false,
       description:
-        "Report an in-progress test run and exit immediately instead of waiting.",
+        'Exit immediately instead of waiting for an in-progress test run; it is then reported on stderr, and with --json as the backend\'s { status: "processing" } body.',
     },
   },
   handler: wrapHandler(handler),

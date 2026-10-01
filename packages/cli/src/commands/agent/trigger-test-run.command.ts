@@ -396,7 +396,7 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
     project: {
       string: true,
       description:
-        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project.",
+        "The project to trigger the run in (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s).",
     },
   },
   handler: wrapHandler(handler),

@@ -14,7 +14,7 @@ const loggerMock = {
 };
 
 const mocks = vi.hoisted(() => ({
-  getValidAccessToken: vi.fn(),
+  getAuthToken: vi.fn(),
   isInteractiveContext: vi.fn(),
   performOAuthLogin: vi.fn(),
   createClient: vi.fn(),
@@ -28,7 +28,7 @@ vi.mock("@alwaysmeticulous/common", () => ({
 }));
 
 vi.mock("@alwaysmeticulous/client", () => ({
-  getValidAccessToken: mocks.getValidAccessToken,
+  getAuthToken: mocks.getAuthToken,
   isInteractiveContext: mocks.isInteractiveContext,
   performOAuthLogin: mocks.performOAuthLogin,
   createClient: mocks.createClient,
@@ -38,7 +38,7 @@ vi.mock("../../../utils/select-project", () => ({
   listProjectsForUser: mocks.listProjectsForUser,
 }));
 
-const runHandler = (args: { json?: boolean } = {}) =>
+const runHandler = (args: { apiToken?: string; json?: boolean } = {}) =>
   (
     listProjectsCommand as { handler: (args: unknown) => Promise<void> }
   ).handler(args);
@@ -67,7 +67,7 @@ describe("list-projects command", () => {
 
   describe("with a stored OAuth login", () => {
     beforeEach(() => {
-      mocks.getValidAccessToken.mockResolvedValue("oauth-jwt");
+      mocks.getAuthToken.mockResolvedValue("oauth-jwt");
     });
 
     it("writes one slug per line", async () => {
@@ -120,9 +120,28 @@ describe("list-projects command", () => {
     });
   });
 
-  describe("without a stored OAuth login", () => {
+  describe("with an API token", () => {
+    it("lists the token's projects without an OAuth login", async () => {
+      mocks.getAuthToken.mockResolvedValue("prat-token");
+      mocks.listProjectsForUser.mockResolvedValue([
+        project("OrgA", "App1", "id-1"),
+        project("OrgA", "App2", "id-2"),
+      ]);
+
+      await runHandler({ apiToken: "prat-token" });
+
+      expect(mocks.getAuthToken).toHaveBeenCalledWith("prat-token");
+      expect(mocks.performOAuthLogin).not.toHaveBeenCalled();
+      expect(mocks.createClient).toHaveBeenCalledWith({
+        apiToken: "prat-token",
+      });
+      expect(stdoutText()).toBe("OrgA/App1\nOrgA/App2");
+    });
+  });
+
+  describe("without any credentials", () => {
     beforeEach(() => {
-      mocks.getValidAccessToken.mockResolvedValue(null);
+      mocks.getAuthToken.mockResolvedValue(null);
     });
 
     it("throws a CliUserError in a non-interactive context", async () => {

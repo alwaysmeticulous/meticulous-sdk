@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import type { MeticulousClient } from "../../types/client.types";
 import {
   DIFFS_SUMMARY_CLIENT_VERSION,
+  DIFFS_SUMMARY_COUNTS_CLIENT_VERSION,
   createDiffComment,
   getDiffComments,
   getProjectJsCoverage,
@@ -11,6 +12,7 @@ import {
   getTestRunDiffsSummaryCounts,
   getTestRunJsCoverage,
   getSessions,
+  approveDiff,
   ignoreDiff,
   rejectDiff,
   replyToDiffComment,
@@ -449,6 +451,49 @@ describe("rejectDiff", () => {
   });
 });
 
+describe("approveDiff", () => {
+  it("posts the reason to the encoded screenshot approve resource and returns the comment", async () => {
+    const client = {
+      post: vi.fn().mockResolvedValue({ data: { commentId: "comment-1" } }),
+    };
+
+    await expect(
+      approveDiff({
+        client: client as unknown as MeticulousClient,
+        replayDiffId: "rd-1",
+        screenshotName: "after event",
+        reason: "Intended copy change",
+        x: 0.4,
+        y: 0.6,
+      }),
+    ).resolves.toEqual({ commentId: "comment-1" });
+
+    expect(client.post).toHaveBeenCalledWith(
+      "agent/replay-diffs/rd-1/screenshots/after%20event/approve",
+      { reason: "Intended copy change", x: 0.4, y: 0.6 },
+    );
+  });
+});
+
+describe("approveDiff without a reason", () => {
+  it("sends no explanation fields at all", async () => {
+    const client = { post: vi.fn().mockResolvedValue({ data: {} }) };
+
+    await expect(
+      approveDiff({
+        client: client as unknown as MeticulousClient,
+        replayDiffId: "rd-1",
+        screenshotName: "end-state",
+      }),
+    ).resolves.toEqual({});
+
+    expect(client.post).toHaveBeenCalledWith(
+      "agent/replay-diffs/rd-1/screenshots/end-state/approve",
+      {},
+    );
+  });
+});
+
 describe("agent diff comment writes", () => {
   it("posts ignores, comment threads, and replies to their scoped resources", async () => {
     const client = {
@@ -654,6 +699,9 @@ describe("getTestRunDiffsSummaryCounts", () => {
     );
     expect(client.get).toHaveBeenCalledWith(
       "agent/test-runs/tr-1/diffs-summary/counts",
+      {
+        params: { clientVersion: String(DIFFS_SUMMARY_COUNTS_CLIENT_VERSION) },
+      },
     );
     expect(result).toEqual(counts);
   });

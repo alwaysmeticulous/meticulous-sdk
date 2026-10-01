@@ -1,5 +1,6 @@
 import { readFile } from "fs/promises";
 import type {
+  AgenticAppTarget,
   AgenticAssetsBackend,
   ContainerEnvVariable,
   ProjectIdentifier,
@@ -18,7 +19,6 @@ export interface GenerateSessionsOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
   localImageTag?: string | undefined;
   assetsDirectory?: string | undefined;
-  assetsUploadId?: string | undefined;
   commitSha: string;
   /** Path to a markdown file with instructions for the agent (login details, accounts, etc). */
   instructionsFile?: string | undefined;
@@ -50,7 +50,6 @@ export const generateSessions = async ({
   apiToken: apiToken_,
   localImageTag,
   assetsDirectory,
-  assetsUploadId: existingAssetsUploadId,
   commitSha,
   instructionsFile,
   enableLocalMocks,
@@ -67,15 +66,9 @@ export const generateSessions = async ({
   const client = createClient({ apiToken });
   const projectIdentifier = projectId ? { projectId } : {};
 
-  const targetCount = [
-    localImageTag,
-    assetsDirectory,
-    existingAssetsUploadId,
-  ].filter(Boolean).length;
+  const targetCount = [localImageTag, assetsDirectory].filter(Boolean).length;
   if (targetCount !== 1) {
-    throw new Error(
-      "Provide exactly one of localImageTag, assetsDirectory, or assetsUploadId.",
-    );
+    throw new Error("Provide exactly one of localImageTag or assetsDirectory.");
   }
   if (backend && localImageTag) {
     throw new Error("backend is only supported with uploaded assets.");
@@ -86,6 +79,7 @@ export const generateSessions = async ({
 
   let uploadId: string;
   let imageReference: string | undefined;
+  let appTarget: AgenticAppTarget;
   if (localImageTag) {
     const uploadedContainer = await uploadBuild({
       apiToken,
@@ -98,17 +92,38 @@ export const generateSessions = async ({
     });
     uploadId = uploadedContainer.uploadId;
     imageReference = uploadedContainer.imageReference;
-  } else if (assetsDirectory) {
+    // The deployment row the upload registered: the run is keyed by it. The
+    // upload id is dual-written for backends still running the pre-merge
+    // launch API, which requires it and knows nothing of the row id.
+    appTarget = {
+      type: "container",
+      projectDeploymentId: uploadedContainer.deploymentId,
+      uploadId,
+      enableLocalMocks,
+      containerPort,
+      containerEnv,
+      containerHealthCheckEndpoint,
+    };
+  } else {
+    // The validation above guarantees exactly one target, so this is the
+    // assetsDirectory branch.
     const uploadedAssets = await uploadBuild({
       apiToken,
       commitSha,
-      appDirectory: assetsDirectory,
+      appDirectory: assetsDirectory!,
       rewrites: [],
       ...projectIdentifier,
     });
     uploadId = uploadedAssets.uploadId;
-  } else {
-    uploadId = existingAssetsUploadId!;
+    appTarget = {
+      type: "assets",
+      projectDeploymentId: uploadedAssets.deploymentId,
+      // Dual-written for backends still running the pre-merge launch API;
+      // see the container branch above.
+      assetsUploadId: uploadId,
+      ...(backend ? { backend } : {}),
+      ...(appPort != null ? { appPort } : {}),
+    };
   }
 
   let instructionsId: string | undefined;
@@ -128,21 +143,7 @@ export const generateSessions = async ({
     client,
     commitSha,
     ...(instructionsId ? { instructionsId } : {}),
-    appTarget: localImageTag
-      ? {
-          type: "container",
-          uploadId,
-          enableLocalMocks,
-          containerPort,
-          containerEnv,
-          containerHealthCheckEndpoint,
-        }
-      : {
-          type: "assets",
-          assetsUploadId: uploadId,
-          ...(backend ? { backend } : {}),
-          ...(appPort != null ? { appPort } : {}),
-        },
+    appTarget,
     ...projectIdentifier,
   });
 

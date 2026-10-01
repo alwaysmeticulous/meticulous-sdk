@@ -1,4 +1,5 @@
 import type * as MeticulousClientModule from "@alwaysmeticulous/client";
+import { serializeJson } from "@alwaysmeticulous/common/json";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CliUserError } from "../../utils/cli-user-error";
 import { jsCoverageCommand } from "./js-coverage.command";
@@ -176,6 +177,65 @@ describe("js-coverage handler naming a still-Partial run", () => {
       /drop prDiffOnly/i,
     );
     expect(mocks.getTestRunJsCoverage).toHaveBeenCalled();
+  });
+});
+
+// A replay has no run to wait on first, so the result itself is polled while
+// the replay is still running — or reported as not ready with
+// --dontWaitForTestRunToComplete, in the same shape as the whole-run scope.
+describe("js-coverage handler on an unfinished replay", () => {
+  const processing = {
+    status: "processing",
+    message:
+      "Replay r-1 is still Running; its coverage is available once it has finished. Poll again then.",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createClientWithOAuth.mockResolvedValue({});
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  const runReplay = (overrides: Record<string, unknown> = {}) =>
+    runHandler({ testRunId: undefined, replayId: "r-1", ...overrides });
+
+  it("polls through a processing answer", async () => {
+    mocks.getReplayJsCoverage
+      .mockResolvedValueOnce(processing)
+      .mockResolvedValueOnce({ files: [["src/a.ts", [[1, 2]]]] });
+    vi.useFakeTimers();
+
+    const handled = runReplay({ json: true });
+    await vi.advanceTimersByTimeAsync(10_000);
+    await handled;
+    vi.useRealTimers();
+
+    expect(mocks.getReplayJsCoverage).toHaveBeenCalledTimes(2);
+    expect(console.log).toHaveBeenCalledWith(
+      serializeJson([{ repoFilePath: "src/a.ts", executedRanges: [[1, 2]] }]),
+    );
+  });
+
+  it("prints a processing status with --json and --dontWaitForTestRunToComplete", async () => {
+    mocks.getReplayJsCoverage.mockResolvedValue(processing);
+
+    await runReplay({ json: true, dontWaitForTestRunToComplete: true });
+
+    expect(mocks.getReplayJsCoverage).toHaveBeenCalledTimes(1);
+    expect(console.log).toHaveBeenCalledTimes(1);
+    // The backend's own body, message included — byte-identical to the MCP
+    // tool's result.
+    expect(console.log).toHaveBeenCalledWith(serializeJson(processing));
+    expect(mocks.logNotice).toHaveBeenCalledWith(processing.message);
+  });
+
+  it("prints nothing in human mode with --dontWaitForTestRunToComplete", async () => {
+    mocks.getReplayJsCoverage.mockResolvedValue(processing);
+
+    await runReplay({ dontWaitForTestRunToComplete: true });
+
+    expect(console.log).not.toHaveBeenCalled();
+    expect(mocks.logNotice).toHaveBeenCalledWith(processing.message);
   });
 });
 
@@ -416,18 +476,27 @@ describe("js-coverage handler with --summary", () => {
     expect(mocks.getTestRunJsCoverageSummary).not.toHaveBeenCalled();
   });
 
-  // A zeroed summary would read as "this commit covers nothing", so there is no
-  // empty-shape equivalent of the per-file empty list: JSON gets an explicit
-  // null and human output nothing, with the reason on stderr.
-  it("prints null rather than zeroed totals when the run has not finished", async () => {
+  // A zeroed summary would read as "this commit covers nothing", so an
+  // unfinished run is asked once and prints the backend's own processing body,
+  // the same one the MCP tool returns — JSON only; human output gets nothing,
+  // with the reason on stderr.
+  it("prints the backend's processing body rather than zeroed totals when the run has not finished", async () => {
+    const processing = {
+      status: "processing" as const,
+      message: "Test run tr-1 is still Running; its coverage…",
+    };
     mocks.getTestRun.mockResolvedValue({ status: "Running" });
+    mocks.getTestRunJsCoverageSummary.mockResolvedValue(processing);
     await runHandler({
       summary: true,
       dontWaitForTestRunToComplete: true,
       json: true,
     });
-    expect(mocks.getTestRunJsCoverageSummary).not.toHaveBeenCalled();
-    expect(vi.mocked(console.log).mock.calls).toEqual([["null"]]);
+    // Asked once, not polled: the caller said not to wait.
+    expect(mocks.getTestRunJsCoverageSummary).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(console.log).mock.calls).toEqual([
+      [JSON.stringify(processing, null, 2)],
+    ]);
   });
 
   it("prints nothing when the project has no successful run", async () => {

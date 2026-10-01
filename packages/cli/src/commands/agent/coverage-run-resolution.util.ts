@@ -9,12 +9,20 @@ import {
   resolveTestRunForCommitOrThrow,
 } from "../../utils/resolve-test-run-from-commit";
 
-/** The runs a whole-test-run coverage request applies to, all finished. */
+/** The runs a whole-test-run coverage request applies to. */
 export interface ResolvedCoverageRuns {
   /** The run coverage is returned for. */
   testRunId: string;
   /** Additional runs to union in; empty when none were named. */
   unionTestRunIds: string[];
+  /**
+   * Whether every one of them has finished. Only ever `false` with
+   * `--dontWaitForTestRunToComplete`, which returns the runs unwaited-for
+   * rather than withholding them: the request still goes out once, so the
+   * caller prints the backend's own processing response instead of a locally
+   * invented one (see {@link resolveFinishedCoverageRuns}).
+   */
+  allFinished: boolean;
 }
 
 export interface CoverageRunSelection {
@@ -40,8 +48,11 @@ export interface CoverageRunSelection {
  * backend knows, so it decides and a base run reached via any of these three
  * paths is treated identically (see {@link assertCoverageResolvable}).
  *
- * Returns `null` when `--dontWaitForTestRunToComplete` was passed and some run
- * has not finished — the caller then emits its own empty result.
+ * With `--dontWaitForTestRunToComplete` it stops waiting at the first
+ * unfinished run and returns the runs with `allFinished: false` instead of
+ * blocking. The request still goes out once from there, so the caller prints
+ * the backend's own `{ status: "processing", message }` — the same body the
+ * MCP tool returns for that state — rather than a locally invented one.
  */
 export const resolveFinishedCoverageRuns = async (
   client: MeticulousClient,
@@ -53,7 +64,7 @@ export const resolveFinishedCoverageRuns = async (
     project,
     dontWaitForTestRunToComplete,
   }: CoverageRunSelection,
-): Promise<ResolvedCoverageRuns | null> => {
+): Promise<ResolvedCoverageRuns> => {
   let resolvedTestRunId: string;
   let status;
   let rawUnionIds: string[];
@@ -84,14 +95,21 @@ export const resolveFinishedCoverageRuns = async (
     status,
     { dontWait: dontWaitForTestRunToComplete },
   );
+  const unionTestRunIds = assertNoSelfUnion(resolvedTestRunId, rawUnionIds);
   if (finishedStatus == null) {
-    return null;
+    // Unfinished, with --dontWaitForTestRunToComplete. The remaining runs are
+    // left unchecked: the backend refuses on the first unfinished one anyway,
+    // and each check is a round trip spent to reach the same answer.
+    return {
+      testRunId: resolvedTestRunId,
+      unionTestRunIds,
+      allFinished: false,
+    };
   }
   assertCoverageResolvable(resolvedTestRunId, finishedStatus);
 
   // The extra runs don't change how the primary was resolved — they just add
   // more coverage to union in. Each needs the same "finished" guarantee.
-  const unionTestRunIds = assertNoSelfUnion(resolvedTestRunId, rawUnionIds);
   for (const unionTestRunId of unionTestRunIds) {
     const unionStatus = (
       await getTestRun({ client, testRunId: unionTestRunId })
@@ -103,12 +121,16 @@ export const resolveFinishedCoverageRuns = async (
       { dontWait: dontWaitForTestRunToComplete },
     );
     if (unionFinishedStatus == null) {
-      return null;
+      return {
+        testRunId: resolvedTestRunId,
+        unionTestRunIds,
+        allFinished: false,
+      };
     }
     assertCoverageResolvable(unionTestRunId, unionFinishedStatus);
   }
 
-  return { testRunId: resolvedTestRunId, unionTestRunIds };
+  return { testRunId: resolvedTestRunId, unionTestRunIds, allFinished: true };
 };
 
 /**

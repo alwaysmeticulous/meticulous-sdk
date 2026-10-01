@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { existsSync } from "fs";
 import { mkdir, readdir, readFile, rm, symlink, writeFile } from "fs/promises";
 import http from "http";
@@ -765,47 +766,89 @@ describe("streamDownloadAndInflateTar", () => {
     }
   });
 
-  it("counts only the successful attempt when an earlier one fails", async () => {
-    // Large enough that the abandoned attempt below pushes a substantial
-    // number of bytes through inflate before dying, so that counting it would
-    // visibly inflate the totals.
+  it("inflates on the thread pool to the same bytes as the synchronous path", async () => {
     await writeFile(join(sourceDir, "big.txt"), "A".repeat(2 * 1024 * 1024));
+    await writeFile(join(sourceDir, "random.bin"), randomBytes(512 * 1024));
     const compressed = await createRawDeflatedTar(sourceDir);
 
-    let requestCount = 0;
     const server = http.createServer((_req, res) => {
-      requestCount += 1;
       res.writeHead(200, { "Content-Length": compressed.length.toString() });
-      if (requestCount === 1) {
-        // Half a body, then a dead connection, so inflate really does consume
-        // these bytes before the attempt fails and is retried from scratch.
-        // Destroying from the write callback is what makes that true: a
-        // destroy issued on the same tick as the write discards the buffer
-        // and the client receives nothing.
-        res.write(
-          compressed.subarray(0, Math.floor(compressed.length / 2)),
-          () => res.destroy(),
-        );
-        return;
-      }
       res.end(compressed);
     });
     const { url, close } = await listenOnEphemeralPort(server);
+    const threadPoolTarPath = `${outputTarPath}.thread-pool`;
 
     try {
-      const stats = await streamDownloadAndInflateTar(url, outputTarPath, {
-        retryDelay: 1,
-      });
-
-      expect(requestCount).toBeGreaterThan(1);
-      expect(stats.compressedBytes).toBe(compressed.length);
-      expect(stats.inflatedBytes).toBe(
-        (await readFile(outputTarPath)).byteLength,
+      const syncStats = await streamDownloadAndInflateTar(url, outputTarPath);
+      const threadPoolStats = await streamDownloadAndInflateTar(
+        url,
+        threadPoolTarPath,
+        { inflateOnThreadPool: true },
       );
+
+      // `Buffer.equals`, not `toEqual`: vitest compares multi-MB buffers byte
+      // by byte, which takes seconds and times the test out on CI runners.
+      const [threadPoolTar, syncTar] = await Promise.all([
+        readFile(threadPoolTarPath),
+        readFile(outputTarPath),
+      ]);
+      expect(threadPoolTar.length).toBe(syncTar.length);
+      expect(threadPoolTar.equals(syncTar)).toBe(true);
+      expect(threadPoolStats).toEqual({
+        compressedBytes: syncStats.compressedBytes,
+        inflatedBytes: syncStats.inflatedBytes,
+        inflateMs: 0,
+      });
     } finally {
       await close();
     }
   });
+
+  it.each([{ inflateOnThreadPool: false }, { inflateOnThreadPool: true }])(
+    "counts only the successful attempt when an earlier one fails (%o)",
+    async ({ inflateOnThreadPool }) => {
+      // Large enough that the abandoned attempt below pushes a substantial
+      // number of bytes through inflate before dying, so that counting it would
+      // visibly inflate the totals.
+      await writeFile(join(sourceDir, "big.txt"), "A".repeat(2 * 1024 * 1024));
+      const compressed = await createRawDeflatedTar(sourceDir);
+
+      let requestCount = 0;
+      const server = http.createServer((_req, res) => {
+        requestCount += 1;
+        res.writeHead(200, { "Content-Length": compressed.length.toString() });
+        if (requestCount === 1) {
+          // Half a body, then a dead connection, so inflate really does consume
+          // these bytes before the attempt fails and is retried from scratch.
+          // Destroying from the write callback is what makes that true: a
+          // destroy issued on the same tick as the write discards the buffer
+          // and the client receives nothing.
+          res.write(
+            compressed.subarray(0, Math.floor(compressed.length / 2)),
+            () => res.destroy(),
+          );
+          return;
+        }
+        res.end(compressed);
+      });
+      const { url, close } = await listenOnEphemeralPort(server);
+
+      try {
+        const stats = await streamDownloadAndInflateTar(url, outputTarPath, {
+          retryDelay: 1,
+          inflateOnThreadPool,
+        });
+
+        expect(requestCount).toBeGreaterThan(1);
+        expect(stats.compressedBytes).toBe(compressed.length);
+        expect(stats.inflatedBytes).toBe(
+          (await readFile(outputTarPath)).byteLength,
+        );
+      } finally {
+        await close();
+      }
+    },
+  );
 
   it("reports the wire bytes to a supplied progress bar, rolling back a failed attempt", async () => {
     await writeFile(join(sourceDir, "big.txt"), "A".repeat(2 * 1024 * 1024));

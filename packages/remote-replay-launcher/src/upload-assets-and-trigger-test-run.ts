@@ -1,5 +1,6 @@
 import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import { uploadAssets, uploadAssetsFromZip } from "./asset-upload-utils";
+import { withCompletedUpload } from "./completed-upload";
 import type {
   UploadAssetsAndTriggerTestRunOptions,
   ExecuteRemoteTestRunResult,
@@ -57,11 +58,15 @@ export const uploadAssetsAndTriggerTestRun = async ({
       "Test run skipped because CI comments and checks are disabled for this pull request author.";
     logger.info(skipMessage);
   } else {
-    throw new Error(`${result.message ?? "Test run was not created"}`);
+    throw withCompletedUpload(
+      new Error(`${result.message ?? "Test run was not created"}`),
+      { sourceDeploymentId: result.uploadId },
+    );
   }
 
   return {
     testRun: result.testRun ?? null,
+    sourceDeploymentId: result.uploadId,
     ...(result.commentsDisabledForAuthor
       ? {
           skipReason: "comments_disabled_for_author" as const,

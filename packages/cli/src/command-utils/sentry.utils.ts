@@ -1,12 +1,15 @@
 import { isFetchError } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
+import { readCompletedUpload } from "@alwaysmeticulous/remote-replay-launcher";
 import { SENTRY_FLUSH_TIMEOUT } from "@alwaysmeticulous/sentry";
 import * as Sentry from "@sentry/node";
-import type {
-  CiFailureReason,
-  CiSkipReason,
+import {
+  ciUploadFields,
+  printCiJson,
+  type CiFailureReason,
+  type CiSkipReason,
+  type CiUploadFields,
 } from "../commands/ci/ci-command-result";
-import { printJson } from "./print-json";
 import { CliUserError } from "../utils/cli-user-error";
 import { OutOfDateCLIError } from "../utils/out-of-date-client-error";
 
@@ -62,19 +65,23 @@ const reportHandlerError = (
   if (error instanceof CliUserError) {
     logger[error.severity](error.message);
     if (json) {
+      const fields = uploadFieldsFromError(error);
       if (error.outcome === "skipped" && error.reason) {
-        printJson({
+        printCiJson({
           outcome: "skipped",
           reason: error.reason as CiSkipReason,
           message: error.message,
           testRunId: null,
           status: null,
+          ...fields,
         });
       } else {
-        printJson({
+        printCiJson({
           outcome: "failed",
           reason: (error.reason as CiFailureReason | undefined) ?? "usage",
           message: error.message,
+          ...(error.testRunId ? { testRunId: error.testRunId } : {}),
+          ...fields,
         });
       }
     }
@@ -99,10 +106,11 @@ const reportHandlerError = (
     logger.error(error);
   }
   if (json) {
-    printJson({
+    printCiJson({
       outcome: "failed",
       reason: classifyFailureReason(error),
       message,
+      ...uploadFieldsFromError(error),
     });
   }
   logger.info("");
@@ -111,6 +119,16 @@ const reportHandlerError = (
   );
   Sentry.captureException(error);
   return 1;
+};
+
+const uploadFieldsFromError = (error: unknown): CiUploadFields => {
+  if (error instanceof CliUserError) {
+    return ciUploadFields({
+      sourceDeploymentId: error.sourceDeploymentId,
+      testRunUrl: error.testRunUrl,
+    });
+  }
+  return ciUploadFields(readCompletedUpload(error) ?? {});
 };
 
 const getErrorMessage = (error: unknown): string => {

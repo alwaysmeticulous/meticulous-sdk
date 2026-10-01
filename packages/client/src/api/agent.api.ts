@@ -73,9 +73,11 @@ export const getTestRunCheckAvailableIds = async (
 /**
  * The review decision for a difference.
  *
- * An agent can only ever produce `rejected`, and it is the same `rejected` a
- * human produces — it blocks the pull request identically. Nothing here says who
- * decided; read `isAgentAuthored` on the decision for that.
+ * An agent's decision is the same decision a human's is: an agent `rejected`
+ * blocks the pull request identically. An agent can only produce `accepted` or
+ * `ignored` on a project that allows agents to approve and ignore diffs, and
+ * never over a human rejection. Nothing here says who decided; read
+ * `isAgentAuthored` on the decision for that.
  */
 export type DiffDecisionState =
   | "accepted"
@@ -272,6 +274,12 @@ export interface DiffsSummaryResponse {
   status: "pending" | "processing" | "complete" | "failed";
   data?: DiffsSummaryDiff[];
   /**
+   * Present on `pending`/`processing` responses; says whether the wait is for
+   * the test run itself to finish or for the summary computation that
+   * follows it.
+   */
+  message?: string;
+  /**
    * Present on complete responses; true when only a subset of selected
    * representative diffs is returned.
    */
@@ -316,6 +324,11 @@ export interface GetDiffCommentsOptions {
 
 export interface AgentDiffCommentMutationResponse {
   commentId: string;
+}
+
+/** Omits `commentId` for an approval given without a reason. */
+export interface AgentApproveDiffResponse {
+  commentId?: string;
 }
 
 export interface AgentDiffCommentCoordinates {
@@ -372,6 +385,22 @@ export interface TestRunForCommitResponse {
    * status lets the caller decide whether to wait for the run to finish.
    */
   status: TestRunStatus | null;
+}
+
+/** The reply to {@link promoteSessions}. */
+export interface PromoteSessionsResponse {
+  /** Sessions appended to the project's selected set by this call. */
+  promotedSessionIds: string[];
+  /** Sessions the selected set already held, left untouched. */
+  alreadySelectedSessionIds: string[];
+  /**
+   * A new run completing the commit's base run with the promoting run's
+   * replays of the promoted sessions. The commit resolves to it once it has
+   * finished post-processing. Null when nothing was newly promoted, or when
+   * building it failed after the promotion had committed.
+   */
+  updatedBaseTestRunId: string | null;
+  notes: string[];
 }
 
 /** The reply to {@link completeBaseRun}. */
@@ -437,6 +466,25 @@ export interface TestRunJsCoverageResponse {
 }
 
 /**
+ * What a test-run getter answers while the run it was asked about hasn't
+ * finished — the same `{ status: "processing" }` shape the diffs-summary and
+ * check-report getters return while their result is still being computed.
+ * Poll again; a run that finishes without the result answers with an error
+ * rather than this. `message` names the run and its status.
+ */
+export interface TestRunProcessingResponse {
+  status: "processing";
+  message: string;
+}
+
+export const isTestRunProcessingResponse = (
+  value: unknown,
+): value is TestRunProcessingResponse =>
+  typeof value === "object" &&
+  value !== null &&
+  (value as TestRunProcessingResponse).status === "processing";
+
+/**
  * The agent test-run js-coverage API contract version this client speaks. Sent
  * on every request so the backend knows to serve the V2 per-file response
  * ({@link TestRunJsCoverageResponseV2}); older backends that don't
@@ -455,8 +503,38 @@ export interface TestRunJsCoverageResponse {
  *   either version may pass `limit`/`offset` explicitly (`limit: 0` = no
  *   limit). Also adds `includeLineCounts`, `orderBy`/`order`, and a repeatable
  *   `globFilter`.
+ * - v4: a run that hasn't finished yet answers 200 with a
+ *   {@link TestRunProcessingResponse} instead of HTTP 409, so the response
+ *   type is a union the caller must narrow (see
+ *   {@link isTestRunProcessingResponse}). Below v4 the 409 is unchanged,
+ *   since a client that doesn't narrow would read the coverage as empty.
  */
-export const TESTRUN_JS_COVERAGE_CLIENT_VERSION = 3;
+export const TESTRUN_JS_COVERAGE_CLIENT_VERSION = 4;
+
+/**
+ * As {@link TESTRUN_JS_COVERAGE_CLIENT_VERSION}, for
+ * `GET test-runs/:id/js-coverage-summary` and
+ * `GET test-runs/:id/js-coverage-diff`. Neither route had a contract to
+ * negotiate before the processing response, so both start at v1.
+ *
+ * - v0 (no clientVersion sent): what every published CLI sends; an unfinished
+ *   run is HTTP 409.
+ * - v1: an unfinished run is 200 with a {@link TestRunProcessingResponse}.
+ */
+export const TESTRUN_COVERAGE_AGGREGATE_CLIENT_VERSION = 1;
+
+/**
+ * The contract version this client speaks for
+ * `GET test-runs/:id/diffs-summary/counts`.
+ *
+ * - v0 (no clientVersion sent): what every published CLI sends; an unfinished
+ *   run is HTTP 409. It used to answer with its live, partial counts — withheld
+ *   on every version now, since a partial tally is indistinguishable from a
+ *   finished run's, so v0 loses a result it was never meant to be served
+ *   rather than keeping it.
+ * - v1: an unfinished run is 200 with a {@link TestRunProcessingResponse}.
+ */
+export const DIFFS_SUMMARY_COUNTS_CLIENT_VERSION = 1;
 
 /**
  * The contract version this client speaks for
@@ -469,8 +547,22 @@ export const TESTRUN_JS_COVERAGE_CLIENT_VERSION = 3;
  * - v1: a request naming no `limit` is paginated to the backend's default page
  *   size, and the response carries `totalFiles`. Only the *default* changed —
  *   either version may pass `limit`/`offset` explicitly (`limit: 0` = all).
+ * - v2: a replay diff whose base or head replay hasn't finished answers 200
+ *   with a {@link TestRunProcessingResponse} instead of HTTP 404, so the
+ *   response type is a union the caller must narrow. Below v2 the 409 a
+ *   current backend sends for that state keeps an unaware client from reading
+ *   the diff as empty.
  */
-export const REPLAY_DIFF_JS_COVERAGE_DIFF_CLIENT_VERSION = 1;
+export const REPLAY_DIFF_JS_COVERAGE_DIFF_CLIENT_VERSION = 2;
+
+/**
+ * The contract version this client speaks for `GET replays/:id/js-coverage`.
+ *
+ * - v0 (no clientVersion sent): what every published CLI sends; a replay that
+ *   hasn't finished is HTTP 409 (formerly 404, "no coverage artifact").
+ * - v1: an unfinished replay is 200 with a {@link TestRunProcessingResponse}.
+ */
+export const REPLAY_JS_COVERAGE_CLIENT_VERSION = 1;
 
 /** Which columns/rows the V2 test-run coverage response should carry. */
 export interface TestRunJsCoverageOptions {
@@ -800,8 +892,10 @@ export const getTestRunJsCoverageDiff = async (
   client: MeticulousClient,
   testRunId: string,
   options?: TestRunJsCoverageDiffOptions,
-): Promise<TestRunJsCoverageDiffResponse> => {
-  const params: Record<string, string | string[]> = {};
+): Promise<TestRunJsCoverageDiffResponse | TestRunProcessingResponse> => {
+  const params: Record<string, string | string[]> = {
+    clientVersion: String(TESTRUN_COVERAGE_AGGREGATE_CLIENT_VERSION),
+  };
   const globs = (
     typeof options?.globFilter === "string"
       ? [options.globFilter]
@@ -1309,6 +1403,41 @@ export const rejectDiff = async ({
   return data;
 };
 
+/**
+ * Record an agent review approving one screenshot difference. `reason`, `x`
+ * and `y` are optional but all-or-nothing: the coordinates place the reason's
+ * comment.
+ */
+export const approveDiff = async ({
+  client,
+  replayDiffId,
+  screenshotName,
+  reason,
+  x,
+  y,
+}: {
+  client: MeticulousClient;
+  replayDiffId: string;
+  screenshotName: string;
+  reason?: string | undefined;
+  x?: number | undefined;
+  y?: number | undefined;
+}): Promise<AgentApproveDiffResponse> => {
+  const { data } = await client
+    .post(
+      `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/approve`,
+      {
+        ...(reason != null ? { reason } : {}),
+        ...(x != null ? { x } : {}),
+        ...(y != null ? { y } : {}),
+      },
+    )
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
 /** Record an agent review ignoring one screenshot difference. */
 export const ignoreDiff = async ({
   client,
@@ -1384,14 +1513,17 @@ export const replyToDiffComment = async ({
 };
 
 // Aggregate diff counts (replays, deduplicated differences, decision breakdown)
-// for a test run. Computed live server-side, so unlike the diffs-summary it needs
-// no polling and returns just the numbers rather than the full list.
+// for a test run. Computed live server-side once the run has finished — until
+// then it answers `processing`, like the diffs-summary does — and returns just
+// the numbers rather than the full list.
 export const getTestRunDiffsSummaryCounts = async (
   client: MeticulousClient,
   testRunId: string,
-): Promise<DiffsSummaryCountsResponse> => {
+): Promise<DiffsSummaryCountsResponse | TestRunProcessingResponse> => {
   const { data } = await client
-    .get(`agent/test-runs/${testRunId}/diffs-summary/counts`)
+    .get(`agent/test-runs/${testRunId}/diffs-summary/counts`, {
+      params: { clientVersion: String(DIFFS_SUMMARY_COUNTS_CLIENT_VERSION) },
+    })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
@@ -1429,11 +1561,7 @@ export const getScreenshotDomDiff = async (
 // ---------------------------------------------------------------------------
 
 export interface AgentWhoamiResponse {
-  authenticatedVia:
-    | "oauth"
-    | "project-api-token"
-    | "test-run-token"
-    | "workflow-token";
+  authenticatedVia: "oauth" | "project-api-token";
   email?: string;
   firstName?: string;
   lastName?: string;
@@ -1549,6 +1677,24 @@ export const completeBaseRun = async (
   return data;
 };
 
+// Adds the sessions a pinned-session run (`trigger-test-run --sessionIds`)
+// replayed to the project's selected set; all of its sessions when
+// `sessionIds` is omitted.
+export const promoteSessions = async (
+  client: MeticulousClient,
+  testRunId: string,
+  sessionIds?: string[],
+): Promise<PromoteSessionsResponse> => {
+  const { data } = await client
+    .post(`agent/test-runs/${testRunId}/promote-sessions`, {
+      ...(sessionIds != null ? { sessionIds } : {}),
+    })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
 // Returns the whole test run's coverage from the precomputed, repo-mapped
 // coverage.json (keyed by repo-relative path). Sends `clientVersion` so the
 // backend serves the V2 per-file response carrying the requested columns
@@ -1558,7 +1704,7 @@ export const getTestRunJsCoverage = async (
   client: MeticulousClient,
   testRunId: string,
   options?: TestRunJsCoverageOptions,
-): Promise<TestRunJsCoverageResponseV2> => {
+): Promise<TestRunJsCoverageResponseV2 | TestRunProcessingResponse> => {
   const params: Record<string, string | string[]> = {
     clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
   };
@@ -1680,8 +1826,10 @@ export const getTestRunJsCoverageSummary = async (
   client: MeticulousClient,
   testRunId: string,
   options?: { unionTestRunIds?: string[] },
-): Promise<TestRunJsCoverageSummaryResponse> => {
-  const params: Record<string, string> = {};
+): Promise<TestRunJsCoverageSummaryResponse | TestRunProcessingResponse> => {
+  const params: Record<string, string> = {
+    clientVersion: String(TESTRUN_COVERAGE_AGGREGATE_CLIENT_VERSION),
+  };
   if (options?.unionTestRunIds != null && options.unionTestRunIds.length > 0) {
     params.unionTestRunIds = options.unionTestRunIds.join(",");
   }
@@ -1733,12 +1881,14 @@ export const getReplayJsCoverage = async (
     includeAllFiles?: boolean | undefined;
     globFilter?: string | string[] | undefined;
   },
-): Promise<ReplayJsCoverageResponse> => {
+): Promise<ReplayJsCoverageResponse | TestRunProcessingResponse> => {
   const path =
     screenshotName != null
       ? `agent/replays/${replayId}/screenshots/${encodeURIComponent(screenshotName)}/js-coverage`
       : `agent/replays/${replayId}/js-coverage`;
-  const params: Record<string, string | string[]> = {};
+  const params: Record<string, string | string[]> = {
+    clientVersion: String(REPLAY_JS_COVERAGE_CLIENT_VERSION),
+  };
   if (options?.testRunId != null) {
     params.testRunId = options.testRunId;
   }
@@ -1776,7 +1926,7 @@ export const getReplayDiffJsCoverage = async (
     limit?: number | undefined;
     offset?: number | undefined;
   },
-): Promise<ReplayDiffJsCoverageDiffResponse> => {
+): Promise<ReplayDiffJsCoverageDiffResponse | TestRunProcessingResponse> => {
   const path =
     screenshotName != null
       ? `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/js-coverage-diff`
@@ -1865,7 +2015,22 @@ export type SessionAbandonmentReason =
   | "max_session_time"
   | "user_requested"
   | "error_creating_payload"
-  | "superseded_by_native_recorder";
+  | "superseded_by_native_recorder"
+  | "ingestion_size_limit";
+
+/**
+ * What recorded a session. Mirrors `SessionSource` in
+ * `packages/session-payload-api` (a private package `public_packages` can't
+ * depend on) — keep the two in sync.
+ */
+export type SessionSource =
+  | "unknown"
+  | "snippet"
+  | "cli"
+  | "cli-login-flow"
+  | "cli-login-flow-application-storage"
+  | "crawler"
+  | "agentic-session-generation";
 
 /** One row of the recent-sessions listing. */
 export interface SessionListItem {
@@ -1918,6 +2083,12 @@ export interface SessionListItem {
    * `includeAbandonedReason` is set, and then only for abandoned sessions.
    */
   abandonedReason?: SessionAbandonmentReason;
+  /**
+   * What recorded the session: `snippet` for the customer's own users,
+   * `agentic-session-generation` for an Agent swarm run, and so on. Included
+   * only when `includeSource` is set.
+   */
+  source?: SessionSource;
   /**
    * When the session entered the selected set and stayed in it through the
    * point `selectedSet` asked about, as an ISO-8601 string — the selection
@@ -1992,9 +2163,9 @@ export interface SessionsResponse {
 }
 
 // Lists the project's most recently created sessions, newest first.
-// Project/test-run API tokens determine the project; OAuth user tokens may
-// pass `project` to override which project this call targets, falling back to
-// the caller's stored default project when omitted.
+// An API token defaults to its own project and may pass `project` to target
+// another in its cross-project scope; an OAuth user token may pass `project`,
+// falling back to the caller's stored default project when omitted.
 //
 // `limit` is always applied (server-side default 100, max 1000), so a response
 // never exceeds `limit` rows regardless of the filters; `offset` may page
@@ -2015,6 +2186,8 @@ export const getSessions = async (
     recordedUntil?: string | undefined;
     recordedBy?: string | undefined;
     excludeSyntheticSessions?: boolean | undefined;
+    excludeAgentReviewSessions?: boolean | undefined;
+    requireInitialNavigationResponse?: boolean | undefined;
     visitedUrlFilter?: string | undefined;
     /**
      * Restrict to the project's selected set: `true` (or `"current"`) for the
@@ -2027,6 +2200,7 @@ export const getSessions = async (
     includeNumberUrlsVisited?: boolean | undefined;
     includeStartUrl?: boolean | undefined;
     includeAbandonedReason?: boolean | undefined;
+    includeSource?: boolean | undefined;
     /** Only valid alongside `selectedSet`; the server rejects it otherwise. */
     includeSelectedSince?: boolean | undefined;
     /** Only valid alongside `selectedSet`; the server rejects it otherwise. */
@@ -2069,6 +2243,12 @@ export const getSessions = async (
   if (options?.excludeSyntheticSessions) {
     params.excludeSyntheticSessions = "true";
   }
+  if (options?.excludeAgentReviewSessions) {
+    params.excludeAgentReviewSessions = "true";
+  }
+  if (options?.requireInitialNavigationResponse) {
+    params.requireInitialNavigationResponse = "true";
+  }
   if (options?.visitedUrlFilter != null) {
     params.visitedUrlFilter = options.visitedUrlFilter;
   }
@@ -2090,6 +2270,9 @@ export const getSessions = async (
   }
   if (options?.includeAbandonedReason) {
     params.includeAbandonedReason = "true";
+  }
+  if (options?.includeSource) {
+    params.includeSource = "true";
   }
   if (options?.includeSelectedSince) {
     params.includeSelectedSince = "true";

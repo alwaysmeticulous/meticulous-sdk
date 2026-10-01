@@ -1,5 +1,23 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 2.343.0
+
+### Minor Changes
+
+- [#14518](https://github.com/alwaysmeticulous/meticulous/pull/14518) [`b1ea550`](https://github.com/alwaysmeticulous/meticulous/commit/b1ea550465090eca5d56ad0222900ac7cba56ac8) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add an `inflateOnThreadPool` option to `streamDownloadAndInflateTar`. It
+  inflates on libuv's thread pool instead of synchronously on the main thread,
+  so many concurrent downloads decompress on several cores at once rather than
+  queueing on one. `inflateMs` is not measured in this mode and is reported as 0.
+
+### Patch Changes
+
+- [#14238](https://github.com/alwaysmeticulous/meticulous/pull/14238) [`9211135`](https://github.com/alwaysmeticulous/meticulous/commit/92111358dee50fed444415e7ade5533ed65f5a33) Thanks [@phreppo](https://github.com/phreppo)! - Retry JSON archive downloads with exponential backoff and jitter so transient server errors have time to recover.
+
+- Updated dependencies [[`6c40306`](https://github.com/alwaysmeticulous/meticulous/commit/6c403068f1a334802acf9c5a25772c9f4562ffd9), [`1f67454`](https://github.com/alwaysmeticulous/meticulous/commit/1f67454377dff20468b833cf68c4e3d8528a3f89), [`55e1317`](https://github.com/alwaysmeticulous/meticulous/commit/55e1317ac3c31d79c0790c1356dc3cab26056566), [`55e1317`](https://github.com/alwaysmeticulous/meticulous/commit/55e1317ac3c31d79c0790c1356dc3cab26056566), [`563519b`](https://github.com/alwaysmeticulous/meticulous/commit/563519bf957dc1e186756a643bbd12c6413a547d), [`1e58ceb`](https://github.com/alwaysmeticulous/meticulous/commit/1e58ceb6d528d25f4509ae1b1a341bb9ddfdf1d7), [`3c57b83`](https://github.com/alwaysmeticulous/meticulous/commit/3c57b833d0ff2ecd2234fe69c313a33c33cd65ab), [`5484f7a`](https://github.com/alwaysmeticulous/meticulous/commit/5484f7ad990482a4da5ccfe6ef21738d3f626a68), [`de3af7b`](https://github.com/alwaysmeticulous/meticulous/commit/de3af7bc7822a0dabae11bcd9107a6d251b8baea), [`0cd78e4`](https://github.com/alwaysmeticulous/meticulous/commit/0cd78e47fee4745d707b0e40893872193a2bc134), [`d3e4881`](https://github.com/alwaysmeticulous/meticulous/commit/d3e488113feffb7b4f7907d9e8c57182a3b29b5b), [`749e76e`](https://github.com/alwaysmeticulous/meticulous/commit/749e76efa3ceb90280964a049f8d8ac5a495ca41), [`4cb6038`](https://github.com/alwaysmeticulous/meticulous/commit/4cb60387aec93b56fbced9d9304e23e628c0bfc6), [`c8f38fc`](https://github.com/alwaysmeticulous/meticulous/commit/c8f38fca4efa206536e12e07949502413bce618b), [`b629828`](https://github.com/alwaysmeticulous/meticulous/commit/b6298281cd86924123b02d5ff23406ed7cd682db), [`c8f38fc`](https://github.com/alwaysmeticulous/meticulous/commit/c8f38fca4efa206536e12e07949502413bce618b), [`0cd64b3`](https://github.com/alwaysmeticulous/meticulous/commit/0cd64b305c76be5a1c20888c3a2499d4784994b1), [`acc089e`](https://github.com/alwaysmeticulous/meticulous/commit/acc089ec7433d3e153d2747d68dd0986714c39ba), [`e39b749`](https://github.com/alwaysmeticulous/meticulous/commit/e39b749689249c9e63274ea3b828d67056ba7680), [`a155cd2`](https://github.com/alwaysmeticulous/meticulous/commit/a155cd27860c29bdf235e9a7d1b17b3d2da9d721), [`1a8e23c`](https://github.com/alwaysmeticulous/meticulous/commit/1a8e23c5833b277d34458f0ef41fdfef7636d8a5), [`78a17a0`](https://github.com/alwaysmeticulous/meticulous/commit/78a17a055881e844da7c952ccd90e0b8fd38b205), [`de76ab1`](https://github.com/alwaysmeticulous/meticulous/commit/de76ab1d8c7074c49ccddaa36abfe282427a4e02), [`31ee500`](https://github.com/alwaysmeticulous/meticulous/commit/31ee500b8e1b782bd7cf852b061fd097ba1c52ae), [`d66e097`](https://github.com/alwaysmeticulous/meticulous/commit/d66e097432517d04220be6a378c22ebe861ea975), [`22ca559`](https://github.com/alwaysmeticulous/meticulous/commit/22ca55928aa6bcae3b070fe89b6b797f3d8931ba), [`2f03f27`](https://github.com/alwaysmeticulous/meticulous/commit/2f03f27f2b26975f3328c082f0fc168d98edca99)]:
+  - @alwaysmeticulous/client@2.343.0
+  - @alwaysmeticulous/api@2.343.0
+  - @alwaysmeticulous/common@2.343.0
+
 ## 2.342.0
 
 ### Patch Changes

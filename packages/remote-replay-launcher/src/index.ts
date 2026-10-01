@@ -28,3 +28,9 @@ export {
   RunWithUploadedAssetChunksResult,
 } from "./run-with-uploaded-asset-chunks";
 export { TunnelData } from "./types";
+export {
+  carryCompletedUpload,
+  readCompletedUpload,
+  withCompletedUpload,
+  type CompletedUploadDetails,
+} from "./completed-upload";

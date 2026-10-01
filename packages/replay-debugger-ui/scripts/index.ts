@@ -10,10 +10,12 @@ export interface Server {
   close: () => void;
 }
 
-export const startUIServer = async (): Promise<Server> => {
+export const startUIServer = async ({
+  // The static export shipped with this package; callers that repackage it
+  // (e.g. the bundled CLI) pass its location.
+  staticRoot = join(__dirname, "..", "out"),
+}: { staticRoot?: string | undefined } = {}): Promise<Server> => {
   const app = express();
-
-  const staticRoot = join(__dirname, "..", "out");
 
   app.use(express.static(staticRoot));
 

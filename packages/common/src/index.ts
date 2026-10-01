@@ -9,6 +9,7 @@ export {
   initLogger,
   logNotice,
   logProgress,
+  routeLogsToStderr,
   setLogLevel,
 } from "./logger/console-logger";
 export { DebugLogger } from "./logger/debug-logger";

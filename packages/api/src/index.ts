@@ -2,7 +2,11 @@ export { Organization } from "./organization.types";
 export { Project, ProjectSettingsScreenshottingOptions } from "./project.types";
 export { TEST_RUN_EVENT_TYPES } from "./agent-stats.types";
 export type {
+  BulkStatsEnvelope,
   BulkStatsPagination,
+  BulkStatsProjectIdentity,
+  BulkStatsRange,
+  BulkStatsRepositoryIdentity,
   PrNumbersByBugPreventionCategory,
   ProjectDailyPrStats,
   ProjectDailyRunTimeStats,
@@ -168,6 +172,7 @@ export {
   CustomRequests,
 } from "./sdk-bundle-api/sdk-to-bundle/header-injection";
 export {
+  AtomicBatchDivergence,
   ConsoleErrorDivergenceIndicator,
   Divergence,
   DivergenceConsoleError,

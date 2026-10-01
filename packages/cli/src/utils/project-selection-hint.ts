@@ -63,15 +63,11 @@ const describeProjectSelection = async (
         '--project "<org/project>" to override it for a single command.'
       );
     case "token":
-      // Only a project API token with cross-project access can actually use
-      // --project (see `ApiTokenService.resolveProjectFromTokenOrRequest`); other
-      // project and every test-run token reject it. Worded to be true either way
-      // rather than assuming this token can't use it.
       return (
         `Searched project ${selection.slug}, which your API token is scoped to by default. Pass ` +
-        '--project "<org/project>" to search a different project — this only works for a project API ' +
-        "token with cross-project access; other tokens are rejected. `meticulous auth set-project` does " +
-        "not apply to any API token — to change the default, log in as a user with `meticulous auth login`."
+        '--project "<org/project>" to search a different project the token has access to (via ' +
+        "cross-project access). `meticulous auth set-project` does not apply to any API token — to " +
+        "change the default, log in as a user with `meticulous auth login`."
       );
     case "unknown":
       return (

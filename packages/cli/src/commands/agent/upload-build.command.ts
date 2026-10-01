@@ -22,7 +22,6 @@ interface Options {
   apiToken?: string | undefined;
   commitSha?: string | undefined;
   appDirectory?: string | undefined;
-  appZip?: string | undefined;
   rewrites?: string;
   localImageTag?: string | undefined;
   containerPort?: number | undefined;
@@ -36,7 +35,6 @@ const handler = async ({
   apiToken,
   commitSha: commitSha_,
   appDirectory,
-  appZip,
   rewrites,
   localImageTag,
   containerPort,
@@ -45,7 +43,9 @@ const handler = async ({
   json,
   dryRun,
 }: Options): Promise<void> => {
-  const mode = detectUploadMode({ localImageTag, appDirectory, appZip });
+  const mode = detectUploadMode({ localImageTag, appDirectory }, [
+    "--appDirectory",
+  ]);
   const { commitSha, source: commitShaSource } = await resolveBuildCommitSha({
     commitSha: commitSha_,
   });
@@ -54,7 +54,7 @@ const handler = async ({
     const what =
       mode === "container"
         ? `container image "${localImageTag}"`
-        : `assets from ${appDirectory ?? appZip}`;
+        : `assets from ${appDirectory}`;
     logNotice(
       `Dry run: would upload ${what} and register a deployment for commit ${commitSha}`,
     );
@@ -79,7 +79,6 @@ const handler = async ({
       apiToken: apiToken_,
       commitSha,
       appDirectory,
-      appZip,
       rewrites: parseRewrites(rewrites),
       localImageTag,
       containerPort,
@@ -128,11 +127,6 @@ export const uploadBuildCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "The directory containing the application's static assets (asset upload mode).",
-    },
-    appZip: {
-      string: true,
-      description:
-        "The zip file containing the application's static assets (asset upload mode).",
     },
     rewrites: {
       string: true,

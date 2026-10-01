@@ -1,8 +1,10 @@
+import { readFile } from "fs/promises";
 import { join, normalize } from "path";
 import {
   getMeticulousVersion,
   initLogger,
   logNotice,
+  routeLogsToStderr,
   setLogLevel,
   setMeticulousLocalDataDir,
 } from "@alwaysmeticulous/common";
@@ -15,6 +17,7 @@ import { CLI_COMMANDS, GLOBAL_OPTIONS } from "./commands/all-commands";
 import {
   isStructuredCiJsonInvocation,
   printStructuredCiFailure,
+  setCliJsonVersion,
 } from "./commands/ci/ci-command-result";
 import { deprecatedAliases } from "./commands/deprecated-aliases";
 import {
@@ -34,6 +37,12 @@ export const main = async (): Promise<void> => {
   initLogger();
   const packageJsonPath = normalize(join(__dirname, "../package.json"));
   const meticulousVersion = await getMeticulousVersion(packageJsonPath);
+  const packageJson = JSON.parse(
+    await readFile(packageJsonPath, { encoding: "utf-8" }),
+  ) as { version?: unknown };
+  setCliJsonVersion(
+    typeof packageJson.version === "string" ? packageJson.version : "unknown",
+  );
   await initSentry(meticulousVersion);
 
   const cli = yargs.scriptName("meticulous").usage(
@@ -43,6 +52,7 @@ export const main = async (): Promise<void> => {
   );
   const structuredCiJson = isStructuredCiJsonInvocation(process.argv.slice(2));
   if (structuredCiJson) {
+    routeLogsToStderr();
     cli.fail((message, error) => {
       const detail = error?.message ?? message ?? "Invalid command arguments";
       initLogger().error(detail);
@@ -127,19 +137,19 @@ export const main = async (): Promise<void> => {
     )
     .middleware([
       // Explicit --logLevel wins; otherwise --verbose=false (the default for
-      // agent commands) or structured CI --json quietens progress logs.
+      // agent commands) or --json quietens progress logs.
       (argv) =>
         setLogLevel(
-          structuredCiJson
-            ? "warn"
-            : (argv.logLevel ??
-                (argv.verbose === false || argv.json === true
-                  ? "warn"
-                  : undefined)),
+          argv.logLevel ??
+            (structuredCiJson || argv.verbose === false || argv.json === true
+              ? "warn"
+              : undefined),
         ),
       (argv) => handleDataDir(argv.dataDir),
       (argv) => setOptions(argv),
     ]).argv;
 };
 
-void main();
+if (require.main === module) {
+  void main();
+}

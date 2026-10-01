@@ -51,13 +51,14 @@ export const setProjectCommand: CommandModule<unknown, Options> = {
     });
     const apiToken = await getAuthToken(null);
 
-    // Project-scoped API tokens (env var or legacy config) already pin a
-    // project, so `set-project` has nothing to do.
+    // An API token's default is always its own project, with no stored
+    // default to change, so `set-project` has nothing to do.
     if (apiToken && !isOAuthJwt(apiToken)) {
       throw new CliUserError(
-        "An API token (env var or legacy config) is already in use; it " +
-          "is bound to a single project, so `auth set-project` does not " +
-          "apply.\n" +
+        "An API token (env var or legacy config) is already in use; its " +
+          "default is always its own project, so `auth set-project` does " +
+          "not apply. Pass `--project` on individual commands to target " +
+          "another project the token has access to.\n" +
           "To select a project interactively, first run `meticulous auth " +
           "logout` and unset `METICULOUS_API_TOKEN`, then re-run this " +
           "command to log in with OAuth.",

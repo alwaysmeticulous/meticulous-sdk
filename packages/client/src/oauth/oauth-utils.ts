@@ -1,17 +1,18 @@
 const PROJECT_API_TOKEN_PREFIX = "prat-";
-const TEST_RUN_API_TOKEN_PREFIX = "trat";
+const WORKFLOW_API_TOKEN_PREFIX = "wfat-";
 
 /**
  * Detects whether a token string is an OAuth JWT.
  *
  * JWTs have exactly 3 dot-separated non-empty segments and are not
- * project or test-run API tokens. Mirrors the backend's `isOAuthJwt`.
+ * project or workflow API tokens. Mirrors the backend's `isOAuthJwt` (which
+ * resolves workflow tokens separately before OAuth).
  */
 export const isOAuthJwt = (token: string): boolean => {
   if (
     !token ||
     token.startsWith(PROJECT_API_TOKEN_PREFIX) ||
-    token.startsWith(TEST_RUN_API_TOKEN_PREFIX)
+    token.startsWith(WORKFLOW_API_TOKEN_PREFIX)
   ) {
     return false;
   }

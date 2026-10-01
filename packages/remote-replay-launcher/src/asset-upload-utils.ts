@@ -34,6 +34,7 @@ import {
   DEPLOYMENT_IN_PROGRESS_RETRY,
   WAIT_ON_THE_SLOW_SCHEDULE,
 } from "./deployment-in-progress";
+import { withCompletedUpload } from "./completed-upload";
 import { pollWhileBaseNotFound } from "./poll-for-base-test-run";
 import {
   MultipartCompressingUploader,
@@ -211,20 +212,20 @@ const completeUploadAndWaitForBase = async ({
     ...(projectId ? { projectId } : {}),
   };
 
-  // The trigger can outlast the edge timeout; keep coming back on the slow
-  // schedule instead of failing a run the backend is still creating.
-  // `debugContext` only on the first call — it's the same on every poll.
-  const initialResult = await executeWithRetry(
-    () =>
-      completeAssetUpload({
-        ...completeAssetUploadArgs,
-        ...WAIT_ON_THE_SLOW_SCHEDULE,
-        ...(debugContext ? { debugContext } : {}),
-      }),
-    { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger },
-  );
-  const { testRun, baseNotFound, message, commentsDisabledForAuthor } =
-    await pollWhileBaseNotFound({
+  const triggerRun = async () => {
+    // The trigger can outlast the edge timeout; keep coming back on the slow
+    // schedule instead of failing a run the backend is still creating.
+    // `debugContext` only on the first call — it's the same on every poll.
+    const initialResult = await executeWithRetry(
+      () =>
+        completeAssetUpload({
+          ...completeAssetUploadArgs,
+          ...WAIT_ON_THE_SLOW_SCHEDULE,
+          ...(debugContext ? { debugContext } : {}),
+        }),
+      { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger },
+    );
+    return pollWhileBaseNotFound({
       initialResult: {
         testRun: initialResult?.testRun ?? null,
         baseNotFound: initialResult?.baseNotFound,
@@ -244,6 +245,16 @@ const completeUploadAndWaitForBase = async ({
           mustHaveBase: false,
         }),
     });
+  };
+
+  let triggered: Awaited<ReturnType<typeof triggerRun>>;
+  try {
+    triggered = await triggerRun();
+  } catch (error) {
+    throw withCompletedUpload(error, { sourceDeploymentId: uploadId });
+  }
+  const { testRun, baseNotFound, message, commentsDisabledForAuthor } =
+    triggered;
 
   Sentry.captureMessage("Deployment assets marked as uploaded", {
     level: "debug",

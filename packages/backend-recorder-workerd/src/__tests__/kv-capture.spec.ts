@@ -1,7 +1,11 @@
 import * as http from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { type MeticulousExecutionContext, withMeticulous } from "../index";
+import {
+  MAX_BODY_CAPTURE_SIZE,
+  type MeticulousExecutionContext,
+  withMeticulous,
+} from "../index";
 import type {
   CaptureEvent,
   CaptureEventsPayload,
@@ -387,7 +391,9 @@ describe("KV capture", () => {
 
   it("truncates an oversized value", async () => {
     const kv = new FakeKvNamespace();
-    kv.entries.set("big", { value: "x".repeat(300 * 1024) });
+    kv.entries.set("big", {
+      value: "x".repeat(MAX_BODY_CAPTURE_SIZE + 1024),
+    });
 
     await callThroughHandler(envWith(kv), (env) =>
       (env.MY_KV as FakeKvNamespace).get("big"),
@@ -395,7 +401,7 @@ describe("KV capture", () => {
 
     const [event] = kvEvents();
     expect(event.result?.truncated).toBe(true);
-    expect(event.result?.body.length).toBe(256 * 1024);
+    expect(event.result?.body.length).toBe(MAX_BODY_CAPTURE_SIZE);
   });
 
   it("does not record a namespace named in skipBindings", async () => {

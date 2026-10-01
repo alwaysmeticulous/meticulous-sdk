@@ -6,6 +6,7 @@ import {
   agentUploadContainerBuild,
   agentUploadGitDiffBuild,
   completeContainerUpload,
+  downloadProjectDeployment,
   requestDeploymentSourceMapArtifactUpload,
   triggerDeploymentSourceMapIngestion,
 } from "../project-deployments.api";
@@ -299,5 +300,38 @@ describe("completeContainerUpload", () => {
     ).rejects.toThrow(
       "Container image test-project/app:upload-1 not found in Harbor registry.",
     );
+  });
+});
+
+describe("downloadProjectDeployment", () => {
+  const response = {
+    kind: "chunked",
+    assetChunkTarballUrls: ["https://tarball-0"],
+    metadata: { rewrites: [] },
+  };
+
+  it("sends no query by default", async () => {
+    const get = vi.fn().mockResolvedValue({ data: response });
+
+    await downloadProjectDeployment({
+      client: { get } as unknown as MeticulousClient,
+      deploymentUploadId: "upload-1",
+    });
+
+    expect(get).toHaveBeenCalledWith("project-deployments/upload-1", undefined);
+  });
+
+  it("asks for chunk files.json URLs when requested", async () => {
+    const get = vi.fn().mockResolvedValue({ data: response });
+
+    await downloadProjectDeployment({
+      client: { get } as unknown as MeticulousClient,
+      deploymentUploadId: "upload-1",
+      includeChunkFilesIndex: true,
+    });
+
+    expect(get).toHaveBeenCalledWith("project-deployments/upload-1", {
+      params: { includeChunkFilesIndex: true },
+    });
   });
 });

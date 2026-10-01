@@ -1,5 +1,5 @@
 import {
-  AGENT_REVIEW_DOCS_URL,
+  AGENT_SWARM_DOCS_URL,
   AGENTS_CLI_COMMANDS_URL,
   FAQ_AND_TROUBLESHOOTING_URL,
   GITHUB_ACTIONS_SETUP_URL,
@@ -43,7 +43,7 @@ meticulous [command]
 | \`ci upload-asset-chunk\` | Upload one named, versioned asset chunk | Multi-bundle deployments |
 | \`ci run-with-uploaded-asset-chunks\` | Trigger a test run against uploaded chunks | Multi-bundle deployments |
 | \`ci upload-container\` | Upload Docker container and test | CI testing with containers |
-| \`ci agent-test\` | Upload a build and launch an agent to explore the PR | Beta, opt-in Agent review |
+| \`ci agent-test\` | Upload a build and launch an agent to explore the PR | Beta, opt-in Agent swarm |
 | \`ci run-local\` | Run all replay test cases locally | Local test execution |
 | \`ci prepare\` | Ensure base run exists | CI setup |
 | \`ci label-commit\` | Attach labels to a commit | Marking commits as not relevant for testing |
@@ -71,8 +71,9 @@ meticulous [command]
 | \`agent trigger-test-run\` | Trigger a test run against an uploaded build | Agent/programmatic use |
 | \`agent test-run-diffs\` | List replay diffs for a test run with summary | Agent/programmatic use |
 | \`agent diff-comments\` | Get review comments for a replay-diff screenshot | Agent/programmatic use |
+| \`agent approve-diff\` | Agent-approve a screenshot diff, optionally commenting why, if the project allows it | Agent/programmatic use |
 | \`agent reject-diff\` | Agent-reject a screenshot diff and comment why | Agent/programmatic use |
-| \`agent ignore-diff\` | Agent-ignore a screenshot diff as unrelated to the change and comment why | Agent/programmatic use |
+| \`agent ignore-diff\` | Agent-ignore a screenshot diff as unrelated to the change and comment why; a real ignore only if the project allows it | Agent/programmatic use |
 | \`agent create-diff-comment\` | Start a review comment thread on a screenshot diff | Agent/programmatic use |
 | \`agent reply-to-diff-comment\` | Reply to a review comment thread | Agent/programmatic use |
 | \`agent dom-diff\` | Get the DOM diff for a replay-diff screenshot | Agent/programmatic use |
@@ -90,6 +91,7 @@ meticulous [command]
 | \`agent upload-build\` | Upload a build (static assets or container) and capture a deployment ID | Agent/programmatic use |
 | \`agent trigger-test-run\` | Trigger a test run against an uploaded build | Agent/programmatic use |
 | \`agent complete-base-run\` | Replay the selected sessions a base run has not run yet | Agent/programmatic use |
+| \`agent promote-sessions\` | Add sessions a pinned-session test run replayed to the selected set | Agent/programmatic use |
 | \`agent submit-feedback\` | Submit free-form feedback about Meticulous to the Meticulous team | Agent/programmatic use |
 | \`schema\` | Print the CLI command schema as JSON | Agent/programmatic use |
 
@@ -306,7 +308,7 @@ npx @alwaysmeticulous/cli ci run-with-tunnel \\
 ## ci agent-test
 
 {% callout type="info" title="Beta opt-in" %}
-Agent review is currently in beta and is not available to every customer. Your Meticulous project must be explicitly enabled before this command can launch. [Set up Agent review](${AGENT_REVIEW_DOCS_URL}) explains how to request access and configure the workflow.
+Agent swarm is currently in beta and is not available to every customer. Your Meticulous project must be explicitly enabled before this command can launch. [Set up Agent swarm](${AGENT_SWARM_DOCS_URL}) explains how to request access and configure the workflow.
 {% /callout %}
 
 Upload one build target and launch a Meticulous-hosted agent that explores the pull request and creates additional recorded sessions.
@@ -323,10 +325,9 @@ npx @alwaysmeticulous/cli ci agent-test \\
 Provide exactly one target:
 
 - \`--assetsDir\` — a built static frontend directory.
-- \`--assetsUploadId\` — an existing uploaded-assets build.
 - \`--localImageTag\` — a locally built Docker image.
 
-Use \`--instructionsFile\` to give the agent routes and flows to exercise. With an uploaded frontend, \`--backendUrl\` proxies configured relative paths (\`--backendProxyPaths\`, default \`/api\`) to a public HTTPS staging backend. It cannot be combined with \`--enableLocalMocks\`. For absolute cross-origin requests, contact Meticulous to add the required egress policy for your project.
+By default, the agent reads routes and flows to exercise from \`.meticulous/agent-swarm-instructions.md\` in the repository at the commit being tested. Use \`--instructionsFile\` to override those instructions for one CLI-launched run. With an uploaded frontend, \`--backendUrl\` proxies configured relative paths (\`--backendProxyPaths\`, default \`/api\`) to a public HTTPS staging backend. It cannot be combined with \`--enableLocalMocks\`. For absolute cross-origin requests, contact Meticulous to add the required egress policy for your project.
 
 For a pull request workflow, pass \`github.event.pull_request.head.sha || github.sha\` as \`--commitSha\`, rather than only \`github.sha\`. Use \`--dryRun\` to validate options without launching an agent.
 
@@ -424,6 +425,14 @@ npx @alwaysmeticulous/cli ci upload-assets \\
 **Why avoid it by default:** the run can still have background work in some configurations (for example lazy session execution), so a naive "wait until complete" loop may exit too early or fail with errors that are hard to interpret if you were only trying to "wait for Meticulous."
 
 **When it may be appropriate:** automation that deliberately must block until the run is fully finished (for example internal regression checks where the process relies on the CLI exit code). If you are onboarding a new project or wiring PR checks, you almost never need this flag.
+
+---
+
+#### \`--json\`
+
+**Type**: Boolean
+**Description**: Print one machine-readable JSON result on stdout. See [Machine-readable output](#machine-readable-output).
+**Default**: \`false\`
 
 ---
 
@@ -708,6 +717,14 @@ generic \`1\`, so a pipeline can tell "nothing to test" apart from a real failur
 
 **Type**: Boolean
 **Description**: Print what would be triggered without making the API call.
+**Default**: \`false\`
+
+---
+
+#### \`--json\`
+
+**Type**: Boolean
+**Description**: Print one machine-readable JSON result on stdout. See [Machine-readable output](#machine-readable-output).
 **Default**: \`false\`
 
 ---
@@ -1332,6 +1349,69 @@ npx @alwaysmeticulous/cli ci run-with-tunnel \\
 # Cleanup
 kill $APP_PID
 \`\`\`
+
+---
+
+### Machine-readable output
+
+\`ci upload-assets\`, \`ci upload-container\`, and \`ci run-with-uploaded-asset-chunks\` accept \`--json\`. With it, the command prints exactly one JSON object on stdout describing the outcome. Progress, notices, and errors go to stderr, so stdout can be parsed directly. Exit codes are the same with or without \`--json\`.
+
+\`--json\` hides progress logs by default. To see them as well, pass \`--logLevel info\` (or \`debug\`); they are written to stderr and stdout still carries only the JSON.
+
+The result is one of three shapes, told apart by \`outcome\`:
+
+\`\`\`json
+{
+  "cliVersion": "x.y.z",
+  "outcome": "success",
+  "testRunId": "…",
+  "status": null,
+  "sourceDeploymentId": "…",
+  "testRunUrl": "https://app.meticulous.ai/projects/<org>/<project>/test-runs/<testRunId>"
+}
+\`\`\`
+
+\`\`\`json
+{
+  "cliVersion": "x.y.z",
+  "outcome": "skipped",
+  "reason": "comments_disabled_for_author",
+  "message": "Test run skipped because CI comments and checks are disabled for this pull request author.",
+  "testRunId": null,
+  "status": null,
+  "sourceDeploymentId": "…"
+}
+\`\`\`
+
+\`\`\`json
+{
+  "cliVersion": "x.y.z",
+  "outcome": "failed",
+  "reason": "remote",
+  "message": "…"
+}
+\`\`\`
+
+| Field | Present | Meaning |
+|-------|---------|---------|
+| \`cliVersion\` | Always | Version of \`@alwaysmeticulous/cli\` that produced the result |
+| \`outcome\` | Always | \`success\`, \`skipped\`, or \`failed\` |
+| \`reason\` | \`skipped\` and \`failed\` | Why the run was skipped or failed (see below) |
+| \`message\` | \`skipped\` and \`failed\` | Human-readable explanation |
+| \`testRunId\` | \`success\` and \`skipped\`, and \`failed\` once a test run exists | ID of the test run, or \`null\` when none was created |
+| \`status\` | \`success\` and \`skipped\` | On \`success\` with \`--waitForTestRunToComplete\`, the final test-run status. Otherwise \`null\` |
+| \`sourceDeploymentId\` | When a deployment was created | ID of the uploaded build. This is not the test run ID |
+| \`testRunUrl\` | When a test run was created | Link to the test run |
+
+\`sourceDeploymentId\` is also included on a \`failed\` result when the upload finished but the test run could not be created. With \`--waitForTestRunToComplete\`, a run that ends as \`Aborted\` or \`ExecutionError\`, or does not finish within 10 minutes, gives a \`failed\` result that still includes \`testRunId\`, \`testRunUrl\`, and \`sourceDeploymentId\`.
+
+Skip reasons: \`comments_disabled_for_author\` (CI comments and checks are disabled for the pull request author; the build is still uploaded), \`all_sessions_excluded\` (\`--sessionFilter\` matched no sessions), \`nothing_to_test\` (base and head are the same commit with no diff), and \`dry_run\`.
+
+Failure reasons: \`usage\` (invalid arguments), \`auth\` (the API token was rejected), \`environment\` (a local file or directory is missing or unreadable), \`cli_out_of_date\` (upgrade the CLI), \`remote\` (the Meticulous API returned an error), and \`unexpected\`.
+
+A \`comments_disabled_for_author\` skip exits with code 0.
+
+Upload sizes and part-by-part progress are not included in the JSON. Pass \`--logLevel info\` to get them on stderr.
 
 ---
 

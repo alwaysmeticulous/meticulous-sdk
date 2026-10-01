@@ -1,5 +1,5 @@
 import axios from "axios";
-import axiosRetry from "axios-retry";
+import axiosRetry, { exponentialDelay } from "axios-retry";
 import { unzipSingleEntryToJson } from "./unzip-single-entry";
 
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 60_000;
@@ -19,7 +19,11 @@ export const downloadAndUnzipJson = async <T>(
   options?: { timeoutMs?: number },
 ): Promise<T> => {
   const client = axios.create();
-  axiosRetry(client, { retries: 3 });
+  axiosRetry(client, {
+    retries: 3,
+    retryDelay: (retryCount, error) =>
+      exponentialDelay(retryCount, error, 1000),
+  });
 
   const response = await client.get<ArrayBuffer>(downloadUrl, {
     responseType: "arraybuffer",

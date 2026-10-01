@@ -1,5 +1,6 @@
 import type { CommandModule } from "yargs";
 import { completeBaseRunCommand } from "./complete-base-run.command";
+import { promoteSessionsCommand } from "./promote-sessions.command";
 import { diffCommentsCommand } from "./diff-comments.command";
 import { jsCoverageDiffCommand } from "./js-coverage-diff.command";
 import { jsCoverageCommand } from "./js-coverage.command";
@@ -19,6 +20,7 @@ import {
 import { timelineDiffCommand } from "./timeline.command";
 import { triggerTestRunCommand } from "./trigger-test-run.command";
 import { uploadBuildCommand } from "./upload-build.command";
+import { approveDiffCommand } from "./approve-diff.command";
 import { rejectDiffCommand } from "./reject-diff.command";
 import { ignoreDiffCommand } from "./ignore-diff.command";
 import { createDiffCommentCommand } from "./create-diff-comment.command";
@@ -38,6 +40,7 @@ export const agentCommand: CommandModule = {
       .command(domDiffCommand)
       .command(timelineDiffCommand)
       .command(diffCommentsCommand)
+      .command(approveDiffCommand)
       .command(rejectDiffCommand)
       .command(ignoreDiffCommand)
       .command(createDiffCommentCommand)
@@ -51,6 +54,7 @@ export const agentCommand: CommandModule = {
       .command(uploadBuildCommand)
       .command(triggerTestRunCommand)
       .command(completeBaseRunCommand)
+      .command(promoteSessionsCommand)
       .command(submitFeedbackCommand)
       .option("verbose", {
         boolean: true,

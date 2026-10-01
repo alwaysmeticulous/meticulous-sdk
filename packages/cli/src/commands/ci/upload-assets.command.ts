@@ -1,9 +1,8 @@
 import { initLogger } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
-import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
-import { CI_JSON_OPTION } from "./ci-command-result";
+import { CI_JSON_OPTION, printCiJson } from "./ci-command-result";
 import { triggerTestRun } from "./trigger-test-run.core";
 import {
   DEPRECATED_TRIGGER_OPTION_DESCRIPTION,
@@ -30,7 +29,7 @@ const handler = async (options: Options): Promise<void> => {
   warnIfDeprecatedTriggerOptionsUsed(options);
   const result = await triggerTestRun(options);
   if (options.json) {
-    printJson(result);
+    printCiJson(result);
   }
 };
 

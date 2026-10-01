@@ -59,6 +59,7 @@ if (window.Meticulous?.isRunningAsTest) {
 - Skip form validation
 - Bypass authentication
 - Use deterministic values (timestamps, IDs)
+- Show a fixed app version or commit SHA instead of the build's own
 - Disable analytics/tracking
 - Skip animations
 

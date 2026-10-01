@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
+import { onboardTemplatesDir } from "../../bundled-assets";
 import { CUSTOMER_AGENT_NAMES } from "./customer-agents";
 import { CUSTOMER_DOC_DIRS, CUSTOMER_DOC_FILES } from "./customer-docs";
 import { inlineImportedDocConstants } from "./inline-doc-constants";
@@ -70,10 +71,8 @@ export interface OnboardContextJson {
   } | null;
 }
 
-const templatesDir = (): string => join(__dirname, "templates");
-
 const agentsDir = (): string => {
-  const bundled = join(templatesDir(), "agents");
+  const bundled = join(onboardTemplatesDir, "agents");
   // Prefer the postbuild-copied agents only when they actually contain files —
   // an empty `templates/agents/` directory (e.g. from a partial local setup)
   // must not block the source-mode fallback.
@@ -110,7 +109,7 @@ const webappFrontendDir = (): string =>
   join(__dirname, "..", "..", "..", "..", "..", "packages", "webapp-frontend");
 
 const docsSrcDir = (): string => {
-  const bundled = join(templatesDir(), "docs");
+  const bundled = join(onboardTemplatesDir, "docs");
   if (existsSync(bundled) && readdirSync(bundled).length > 0) {
     return bundled;
   }
@@ -127,7 +126,7 @@ const docsSrcDir = (): string => {
  * the same paths so both modes resolve identically.
  */
 const docImportsRoot = (): string => {
-  const bundled = join(templatesDir(), "docs-imports");
+  const bundled = join(onboardTemplatesDir, "docs-imports");
   return existsSync(bundled) ? bundled : webappFrontendDir();
 };
 
@@ -154,7 +153,7 @@ export const materializeOnboardWorkspace = (options: {
 
   writeFileSafeSync(projectRoot, join(workspaceRelative, ".gitignore"), "*\n");
 
-  const templates = templatesDir();
+  const templates = onboardTemplatesDir;
   writeFileSafeSync(
     projectRoot,
     join(claudeRelative, "CLAUDE.md"),

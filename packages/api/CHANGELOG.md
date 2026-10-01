@@ -1,5 +1,68 @@
 # @alwaysmeticulous/api
 
+## 2.343.0
+
+### Minor Changes
+
+- [#14538](https://github.com/alwaysmeticulous/meticulous/pull/14538) [`0cd78e4`](https://github.com/alwaysmeticulous/meticulous/commit/0cd78e47fee4745d707b0e40893872193a2bc134) Thanks [@linpengzhang](https://github.com/linpengzhang)! - `downloadProjectDeployment` takes an optional `includeChunkFilesIndex`. For a
+  chunked deployment the response then also carries `assetChunkFilesIndexUrls`:
+  a presigned URL for each chunk's `files.json`, at the same index as its
+  tarball in `assetChunkTarballUrls`. Without the flag the request and response
+  are unchanged.
+
+- [#14248](https://github.com/alwaysmeticulous/meticulous/pull/14248) [`2f03f27`](https://github.com/alwaysmeticulous/meticulous/commit/2f03f27f2b26975f3328c082f0fc168d98edca99) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Stabilize the bulk stats contract with immutable event IDs, extensible event
+  metadata, versioned response envelopes, explicit project identity and resolved
+  UTC ranges, test-run status/coverage/timing fields, and daily finalization and
+  exclusion details.
+
+### Patch Changes
+
+- [#14030](https://github.com/alwaysmeticulous/meticulous/pull/14030) [`5484f7a`](https://github.com/alwaysmeticulous/meticulous/commit/5484f7ad990482a4da5ccfe6ef21738d3f626a68) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `atomicDivergences` to `NetworkActivityDivergenceIndicator`, naming the
+  operations inside a batched request that diverged when the enclosing envelopes
+  could not be paired.
+
+- [#13644](https://github.com/alwaysmeticulous/meticulous/pull/13644) [`de3af7b`](https://github.com/alwaysmeticulous/meticulous/commit/de3af7bc7822a0dabae11bcd9107a6d251b8baea) Thanks [@dennysem](https://github.com/dennysem)! - Raise the per-body capture cap from 256 KiB to 1 MiB, so four times as much of a large request or response body survives into the recording. The cap is defined once in `backend-recorder-workerd` and imported by the Node recorder, whose HTTP, undici and replay paths previously each declared their own copy of the value.
+
+  A truncated body now also records the share of it that was captured, as `http.request.body.captured_percentage` / `http.response.body.captured_percentage` (absent when the body was captured whole). The truncation flag itself is more accurate too: a body cut exactly on a chunk boundary, or one whose decompressed text overflowed the cap, used to report `truncated: false`.
+
+- [#13124](https://github.com/alwaysmeticulous/meticulous/pull/13124) [`b629828`](https://github.com/alwaysmeticulous/meticulous/commit/b6298281cd86924123b02d5ff23406ed7cd682db) Thanks [@dennysem](https://github.com/dennysem)! - Stop routing the browser's subresource fetches through the backend coverage session turnstile.
+
+  V8 precise coverage counters are process-global, so the only way to say which session covered
+  what is to let one session own the process at a time and close a coverage window on each handoff.
+  That gate sat on every inbound request the replay engine tagged — and it tags all of them, so a
+  page's scripts, stylesheets, images and fonts queued for ownership alongside its SSR and API
+  traffic. On an unbundled dev server that is ~1,600 requests a page, and with a couple of dozen
+  replays sharing one app container the parking alone could outlast the navigation budget: one
+  customer test run logged 3,601 s of cumulative parked delay across 24 replays, 16 forced
+  degrades, and 19 sessions dying at exactly the 120 s `page.goto` deadline.
+
+  Those requests buy no attribution to pay for it. Serving a static asset executes a framework's
+  static handler or a dev server's transform pipeline, both of which live in `node_modules` and are
+  dropped before a coverage window is ever written; the app's own middleware is still covered
+  because dynamic requests traverse it too. So they are now delivered straight through and left out
+  of the activity tracker entirely — which also narrows window unions, meaning fewer windows come
+  out `concurrent`, and removes the parked-request overflow that was forcing the turnstile to
+  degrade to concurrent admission in the first place.
+
+  The classification is the replay engine's, not a guess: it now sends Chromium's own resource type
+  on the `X-Meticulous-Resource-Type` header alongside the session and replay ids, and the recorder
+  exempts only `stylesheet`, `script`, `image`, `font`, `media`, `manifest` and `texttrack` on a
+  GET or HEAD. Everything else keeps its gate, including `document`, `xhr`, `fetch`, `prefetch`,
+  `other`, an absent header, and any other method — a Next.js `<link rel=prefetch>` payload runs
+  `getServerSideProps`, so guessing wrong there would leak real handler coverage into another
+  session's window. Set `METICULOUS_BACKEND_COVERAGE_EXEMPT_SUBRESOURCES=false` to gate everything
+  as before.
+
+  Only coverage attribution changes. An exempted request still resolves its session id, replay id
+  and inbound anchor, so anything it fans out to is matched against the mock store exactly as
+  before.
+
+- [#14350](https://github.com/alwaysmeticulous/meticulous/pull/14350) [`0cd64b3`](https://github.com/alwaysmeticulous/meticulous/commit/0cd64b305c76be5a1c20888c3a2499d4784994b1) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `direct_feature_flag` to `SessionRelevanceReason`. A `_ff` extra minted because the coverage-source replay recorded a detected flag carries this reason, so `backend.test_run.executed_sessions` can tell it apart from the path-filtered flag slice.
+
+- [#14271](https://github.com/alwaysmeticulous/meticulous/pull/14271) [`de76ab1`](https://github.com/alwaysmeticulous/meticulous/commit/de76ab1d8c7074c49ccddaa36abfe282427a4e02) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Index a test run's replays by every customer feature flag they recorded on `replay-context`, whether or not the run overrode it. Post-process always writes `coverage-replays-by-feature-flag.json` with the same `replayIds` / `replaySets` dictionary as `coverage-replays-by-file.v2.json`, keyed by flag name; `byFlag` is empty when no replay recorded a flag. `PUT test-runs/:id/data` now returns the optional `coverageReplaysByFeatureFlag` upload location; it is not returned on `GET`.
+
+- [#14220](https://github.com/alwaysmeticulous/meticulous/pull/14220) [`31ee500`](https://github.com/alwaysmeticulous/meticulous/commit/31ee500b8e1b782bd7cf852b061fd097ba1c52ae) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `coverage_curve_cap` to `SessionRelevanceReason`. An RSE skip marks a session NotRelevant with this reason when it sits outside the golden set's 95% coverage-curve prefix.
+
 ## 2.341.0
 
 ### Minor Changes

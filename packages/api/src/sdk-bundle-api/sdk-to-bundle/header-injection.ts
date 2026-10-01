@@ -36,4 +36,11 @@ export interface CustomRequests {
 interface HTTPRequest {
   isNavigationRequest: () => boolean;
   url: () => string;
+  /**
+   * Chromium's classification of what the browser is fetching (`document`,
+   * `script`, `stylesheet`, `image`, `xhr`, …). Optional because not every
+   * caller has a real browser request to hand — a header that needs it should
+   * return `""` when it is absent, which skips injection.
+   */
+  resourceType?: () => string;
 }

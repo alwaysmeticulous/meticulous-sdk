@@ -61,6 +61,17 @@ selector added to project settings.
    applies a built-in redaction for the default `div.mapboxgl-map` root; when flaky pixels
    extend beyond it (extra chrome, custom wrappers, multiple maps), add `meticulous-ignore` to
    the map container (or a wrapper that covers the extra chrome).
+6. **Build-specific values (version numbers, commit SHAs, build timestamps)**: Meticulous
+   compares the base build against the head build, so any value baked in at build time differs
+   on every PR. Two shapes cause diffs:
+   - **Displayed**: a version / SHA / build date rendered in a footer, sidebar, about dialog,
+     or settings page changes on every screenshot that shows it.
+   - **Compared against a recorded response**: an "A new version is available" banner, toast,
+     or forced reload that compares the bundled version with a polled `/api/version`,
+     `version.json`, or similar. During replay that response is the one captured at
+     _recording_ time (often a local dev machine returning `0.0.0`, or an older deploy), so the
+     check fires on almost every replay and the banner covers real changes. Pinning the bundled
+     version alone does not fix this — the check itself must be skipped under Meticulous.
 
 ## What to Investigate
 
@@ -113,6 +124,34 @@ state. Static marketing assets on a CDN (logos, icons) are unlikely to change an
 - Grep `package.json` for `mapbox-gl`, `mapbox-gl-js`, `react-map-gl`, `@vis.gl/react-map-gl`
 - Grep source for `mapboxgl`, `new mapboxgl.Map`, `Map` from `react-map-gl`, `react-map-gl`
 - List each map instance with file path (every map container gets the `meticulous-ignore` class)
+
+### Build-Specific Values (Version, Commit SHA, Build Time)
+
+First find where build-time values are injected, then trace each one to where it is used.
+
+- Build config: webpack `DefinePlugin` / `EnvironmentPlugin`, Vite `define`, esbuild `define`,
+  Next.js `env` / `generateBuildId` in `next.config.*`, Rollup `replace`, and plugins such as
+  `git-revision-webpack-plugin` or `vite-plugin-version-mark`
+- Shell-outs in build config or scripts: `git describe`, `git rev-parse`, `git log -1`
+- Env vars whose names contain `VERSION`, `SHA`, `COMMIT`, `REVISION`, `RELEASE`, `BUILD_ID`,
+  `BUILD_TIME`, or `BUILD_DATE` (with `VITE_`, `REACT_APP_`, `NEXT_PUBLIC_`, `PUBLIC_`
+  prefixes, or as `__APP_VERSION__`-style globals), and CI-provided ones such as
+  `GITHUB_SHA`, `CI_COMMIT_SHA`, `VERCEL_GIT_COMMIT_SHA`, `CF_PAGES_COMMIT_SHA`,
+  `COMMIT_REF` (Netlify), `RENDER_GIT_COMMIT`
+- `version` imported from `package.json`, or `process.env.npm_package_version`
+
+For every value found, classify each use:
+
+- **Displayed** — rendered as visible text or UI (footer, sidebar, about / help dialog,
+  settings page, tooltip). Values that only go to Sentry/Datadog release tags, analytics,
+  request headers, `<meta>` tags, or `console` output are not visible and need no change.
+- **Compared** — checked against a fetched value to show an update banner/toast/modal or to
+  force `window.location.reload()`. Grep for `new version`, `update available`,
+  `updateAvailable`, `versionMismatch`, `refresh to update`, `/version`, and `version.json`
+  to find these even when the build constant has a generic name.
+
+Also note whether each displayed value is rendered on the client only, or also on the server
+(SSR / React Server Components / an HTML template filled at build time).
 
 ## Mitigation Strategies
 
@@ -191,6 +230,76 @@ covers extra chrome or wrappers that sit outside that root):
 
 No project-settings change is required — the `meticulous-ignore` class auto-ignores the element.
 
+### For Build-Specific Values
+
+The goal is that every Meticulous replay sees the **same** value whichever build it runs
+against. Use a fixed placeholder in the value's usual format (e.g. `0.0.0-meticulous` for a
+version, `0000000` for a short SHA) so layout stays realistic. Leave non-visible uses (release
+tags, analytics, request headers) on the real value.
+
+**Compared values (update banners, forced reloads):** guard the decision, not just the fetch —
+return "no update" when `window.Meticulous?.isRunningAsTest`, so neither the banner nor a
+reload happens. For example:
+
+```diff
+ export const updateAvailableAtom = atom((get) => {
++  // Meticulous replays the recorded /api/version response, which won't match this build's version.
++  if (window.Meticulous?.isRunningAsTest) {
++    return false;
++  }
+   const deployed = get(deployedVersionAtom);
+   if (!CURRENT_VERSION || !deployed) {
+     return false;
+   }
+   return deployed !== CURRENT_VERSION;
+ });
+```
+
+Pinning the bundled version (below) never fixes this case on its own: the recorded response
+still carries whatever version the recording environment reported.
+
+**Displayed values rendered only on the client:** substitute the placeholder at the single
+place the display string is derived (a shared constant, helper, or component), not at every
+render site:
+
+```ts
+// Meticulous diffs screenshots across builds, so show a fixed version under test.
+export const getDisplayVersion = (): string =>
+  window.Meticulous?.isRunningAsTest ? "0.0.0-meticulous" : APP_VERSION;
+```
+
+This works for every CI approach, including Cloud Replay against preview URLs.
+
+**Displayed values that are also server-rendered** (SSR, React Server Components, build-time
+HTML templates): a client-only guard leaves the server HTML unchanged and causes a hydration
+mismatch. Use the reviewer's CI approach to choose:
+
+- **`upload-assets` / `upload-container`:** pin the value in the build config when
+  `process.env.METICULOUS_BUILD === "true"`, so the server and client bundles both get the
+  same constant:
+
+  ```diff
+   define: {
+  -  __APP_VERSION__: JSON.stringify(getGitVersion()),
+  +  // Pinned in the Meticulous build so base and head render identically.
+  +  __APP_VERSION__: JSON.stringify(
+  +    process.env.METICULOUS_BUILD === "true" ? "0.0.0-meticulous" : getGitVersion(),
+  +  ),
+   },
+  ```
+
+  `METICULOUS_BUILD=true` is set only on the Meticulous build by the **Set Up CI** step — do
+  not add CI instructions for it; add a one-line note pointing to that step.
+
+- **Cloud Replay against preview URLs** (the same build serves real users, so there is no
+  Meticulous-only build var): return the placeholder on the server when the request has the
+  `meticulous-is-test: 1` header, and on the client when `window.Meticulous?.isRunningAsTest`.
+  The header can be spoofed, which is acceptable here only because the sole effect is showing
+  a placeholder string — never gate behaviour on it.
+
+If the value sits in its own small element and none of the above is practical (e.g. it is
+rendered by a third-party component), add `meticulous-ignore` to that element instead.
+
 ## What to Produce
 
 Write **one** file: the customer-facing section, to the output file path provided in the prompt.
@@ -262,7 +371,20 @@ error-reporting overlay injected at runtime). Elements you can edit should use t
 <List each Mapbox map with file path. Show a unified diff adding the `meticulous-ignore` class
 to the map container (see "For Mapbox GL maps" mitigation above). If no Mapbox usage found,
 write "No Mapbox GL maps detected.">
+
+### G. Build-Specific Values (Version, Commit SHA, Build Time)
+
+**Searches performed:**
+- [ ] Checked build config (`DefinePlugin`, Vite/esbuild `define`, `next.config` `env`) and build scripts for injected version/SHA/build-time values and `git describe` / `git rev-parse`
+- [ ] Grepped for `VERSION` / `SHA` / `COMMIT` / `BUILD_*` env vars, `package.json` version imports, and `npm_package_version`
+- [ ] Grepped for update-available / new-version checks (`new version`, `updateAvailable`, `/version`, `version.json`)
+
+**Findings:**
+<List each build-specific value with where it is injected and where it is used, classified as
+Displayed (client-only or server-rendered) or Compared. Show a unified diff for each mitigation
+from "For Build-Specific Values" above. If none are visible or compared, write "No displayed or
+compared build-specific values detected.">
 ```
 
-**You MUST include all subsections A through F.** For each subsection, either list findings
+**You MUST include all subsections A through G.** For each subsection, either list findings
 with diffs or explicitly state that nothing was found. Do not skip any subsection.

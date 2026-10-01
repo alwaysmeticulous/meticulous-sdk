@@ -42,7 +42,6 @@ interface Options {
   repoDirectory?: string | undefined;
   localImageTag?: string | undefined;
   assetsDir?: string | undefined;
-  assetsUploadId?: string | undefined;
   backendUrl?: string | undefined;
   backendProxyPaths?: string[] | undefined;
   appPort?: number | undefined;
@@ -60,7 +59,6 @@ const handler = async ({
   repoDirectory,
   localImageTag,
   assetsDir,
-  assetsUploadId,
   backendUrl,
   backendProxyPaths,
   appPort,
@@ -79,11 +77,9 @@ const handler = async ({
     gitDiffOutput: undefined,
     repoDirectory,
   });
-  const targets = [localImageTag, assetsDir, assetsUploadId].filter(Boolean);
+  const targets = [localImageTag, assetsDir].filter(Boolean);
   if (targets.length !== 1) {
-    throw new Error(
-      "Provide exactly one of --localImageTag, --assetsDir, or --assetsUploadId.",
-    );
+    throw new Error("Provide exactly one of --localImageTag or --assetsDir.");
   }
   if (enableLocalMocks && backendUrl) {
     throw new Error("--enableLocalMocks cannot be combined with --backendUrl.");
@@ -92,8 +88,7 @@ const handler = async ({
     throw new Error("--appPort is only supported with uploaded assets.");
   }
 
-  const target =
-    localImageTag ?? assetsDir ?? `uploaded assets ${assetsUploadId ?? ""}`;
+  const target = localImageTag ?? assetsDir!;
   logger.info(
     `Launching agentic PR testing with ${target} for commit ${commitSha}`,
   );
@@ -111,7 +106,6 @@ const handler = async ({
       commitSha,
       localImageTag,
       assetsDir,
-      assetsUploadId,
       backendUrl,
       appPort,
       enableLocalMocks,
@@ -130,7 +124,6 @@ const handler = async ({
       apiToken: apiToken_,
       localImageTag,
       assetsDirectory: assetsDir,
-      assetsUploadId,
       commitSha,
       ...(instructionsFile ? { instructionsFile } : {}),
       enableLocalMocks,
@@ -182,10 +175,6 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
       description:
         "A directory of built frontend assets to upload and serve to the agent.",
     },
-    assetsUploadId: {
-      string: true,
-      description: "An existing uploaded-assets upload ID to serve.",
-    },
     backendUrl: {
       string: true,
       description:
@@ -209,7 +198,8 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
     instructionsFile: {
       string: true,
       description:
-        "Path to a markdown file with instructions for the agent (e.g. how to log in, which accounts to use).",
+        "Path to a markdown file that overrides the agent instructions in " +
+        ".meticulous/agent-swarm-instructions.md at --commitSha (e.g. routes and accounts to use).",
     },
     enableLocalMocks: {
       boolean: true,

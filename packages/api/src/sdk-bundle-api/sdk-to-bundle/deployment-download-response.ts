@@ -16,6 +16,12 @@ export interface ChunkedDownloadResponse {
    * collision (last-wins), so consumers must preserve it.
    */
   assetChunkTarballUrls: string[];
+  /**
+   * Presigned download URLs for each chunk's `files.json` (the paths its
+   * tarball holds), at the same index as `assetChunkTarballUrls`. Only present
+   * when the download was requested with `includeChunkFilesIndex`.
+   */
+  assetChunkFilesIndexUrls?: string[];
   metadata: AssetUploadMetadata;
 }
 

@@ -70,6 +70,14 @@ export const isPrAuthorRelevance = (
  * - `rse_skipped_sampling`: relevance never ran, and an operator load-shedding
  *   override marked the session MaybeRelevant so the standard sampling would
  *   shed it (MaybeRelevant).
+ * - `coverage_curve_cap`: relevance never ran, and the session sits outside
+ *   the greedy prefix that reaches 95% of the golden set's own coverage
+ *   curve, so the RSE-skip cap dropped it (NotRelevant). The prefix is those
+ *   session ids; `rankPosition` is not a dense 1..N. Sessions inside the
+ *   prefix stay unannotated.
+ * - `direct_feature_flag`: a `_ff` extra minted because the coverage-source
+ *   replay recorded a detected flag (IsRelevant). Stamped at mint time, after
+ *   Relevant Session Execution has already emitted its selection mix.
  */
 export type SessionRelevanceReason =
   | "direct_coverage"
@@ -83,7 +91,9 @@ export type SessionRelevanceReason =
   | "new_relative_to_coverage_source"
   | "refinement_blast_radius_union"
   | "pre_annotated"
-  | "rse_skipped_sampling";
+  | "rse_skipped_sampling"
+  | "coverage_curve_cap"
+  | "direct_feature_flag";
 
 export interface TestCase {
   sessionId: string;
@@ -98,9 +108,10 @@ export interface TestCase {
   rankPosition?: number;
 
   /**
-   * Why `relevanceToPR` holds the value it does. Only set by the paths that
-   * derive relevance from coverage; test cases annotated elsewhere (e.g. the
-   * IsPrAuthor family) and runs that predate this field leave it undefined.
+   * Why `relevanceToPR` holds the value it does. Set by the paths that
+   * derive relevance from coverage, and on a `_ff` extra minted because the
+   * coverage-source replay recorded the flag. Test cases annotated elsewhere
+   * (e.g. the IsPrAuthor family) leave it undefined.
    */
   relevanceReason?: SessionRelevanceReason;
 }
@@ -220,6 +231,13 @@ export interface TestRunDataLocations {
   coverageBackendByReplay?: S3Location;
   diversityByReplay?: S3Location;
   relevantReplayContexts: S3Location;
+  /**
+   * `coverage-replays-by-feature-flag.json.gz`: replays keyed by each
+   * customer feature flag they recorded on `replay-context`, whether or not
+   * this run overrode it. Written for every post-processed run; `byFlag` is
+   * empty when no replay recorded a flag. Minted on put. Not returned on get.
+   */
+  coverageReplaysByFeatureFlag?: S3Location;
   appContainerLogs?: AppContainerLogsLocations;
 }
 

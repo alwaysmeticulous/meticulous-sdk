@@ -6,6 +6,7 @@ import type {
   ReplayJsCoverageResponse,
   TestRunJsCoverageOptions,
   TestRunJsCoverageResponseV2,
+  TestRunProcessingResponse,
 } from "@alwaysmeticulous/client";
 import {
   COVERAGE_ORDER_BY_FIELDS,
@@ -14,6 +15,7 @@ import {
   getReplayJsCoverage,
   getTestRunJsCoverage,
   isFetchError,
+  isTestRunProcessingResponse,
 } from "@alwaysmeticulous/client";
 import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import { coerceLimit, coerceOffset } from "./paging-options.utils";
@@ -23,6 +25,7 @@ import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
+import { pollWhileProcessing } from "../../utils/poll-while-processing";
 import { appendProjectSelectionHint } from "../../utils/project-selection-hint";
 import {
   isTestRunComplete,
@@ -43,6 +46,7 @@ import {
   assertCoverageResolvable,
   parseHeadPlusTestRunIds,
   parseTestRunIds,
+  type ResolvedCoverageRuns,
   resolveFinishedCoverageRuns,
 } from "./coverage-run-resolution.util";
 import {
@@ -161,34 +165,16 @@ const handler = async (options: Options): Promise<void> => {
       screenshotName,
       includeAllFiles: options.includeAllFiles,
       globFilter,
+      dontWaitForTestRunToComplete,
       json,
     });
   } else {
     // Whole-test-run coverage. Coverage exists once every run involved has
     // finished, so `resolveFinishedCoverageRuns` blocks until they have
-    // (default) or, with --dontWaitForTestRunToComplete, returns null and we
-    // report the in-progress run and stop.
+    // (default) or, with --dontWaitForTestRunToComplete, hands them back
+    // unwaited-for and the request below answers `processing`.
     const runs = await resolveFinishedCoverageRuns(client, options);
-    if (runs == null) {
-      // Keep stdout's shape stable: an unfinished run has no coverage yet, so
-      // emit the empty JSON array / a header-only TSV (matching a finished run
-      // with zero files) rather than nothing — the notice went to stderr.
-      if (json) {
-        console.log("[]");
-      } else {
-        console.log(["repoFilePath", ...columns].join("\t"));
-      }
-      return;
-    }
-
-    await printTestRunCoverage(
-      client,
-      runs.testRunId,
-      options,
-      columns,
-      json,
-      runs.unionTestRunIds,
-    );
+    await printTestRunCoverage(client, runs, options, columns, json);
   }
 };
 
@@ -286,6 +272,7 @@ const printReplayCoverage = async (
     screenshotName,
     includeAllFiles,
     globFilter,
+    dontWaitForTestRunToComplete,
     json,
   }: {
     testRunId: string | undefined;
@@ -294,6 +281,7 @@ const printReplayCoverage = async (
     screenshotName: string | undefined;
     includeAllFiles: boolean;
     globFilter: string[] | undefined;
+    dontWaitForTestRunToComplete: boolean;
     json: boolean;
   },
 ): Promise<void> => {
@@ -305,13 +293,45 @@ const printReplayCoverage = async (
       ? await resolveTestRunIdForCommit(client, commitSha, project)
       : undefined);
 
-  try {
-    const result = await getReplayJsCoverage(client, replayId, screenshotName, {
-      testRunId: effectiveTestRunId,
-      includeAllFiles,
-      globFilter,
-    });
+  // The replay may still be running; unlike the whole-run scope there is no
+  // run to wait on first, so the result itself is what's polled — or, with
+  // --dontWaitForTestRunToComplete, reported as not ready. An error (such as
+  // the ambiguous-run one handled below) propagates from the first request.
+  const fetchReplayCoverage = async (
+    anchorTestRunId: string | undefined,
+  ): Promise<ReplayJsCoverageResponse | TestRunProcessingResponse> => {
+    const request = () =>
+      getReplayJsCoverage(client, replayId, screenshotName, {
+        testRunId: anchorTestRunId,
+        includeAllFiles,
+        globFilter,
+      });
+    return dontWaitForTestRunToComplete
+      ? request()
+      : pollWhileProcessing(request, {
+          isProcessing: isTestRunProcessingResponse,
+          waitingMessage: (first) => first.message,
+          timeoutMessage: (last) =>
+            `The coverage of replay ${replayId} did not become available within 10 minutes. ${last.message}`,
+        });
+  };
+  const printReplayResultOrProcessing = (
+    result: ReplayJsCoverageResponse | TestRunProcessingResponse,
+  ): void => {
+    if (isTestRunProcessingResponse(result)) {
+      logNotice(result.message);
+      if (json) {
+        printJson(result);
+      }
+      return;
+    }
     printReplayResult(result, json);
+  };
+
+  try {
+    printReplayResultOrProcessing(
+      await fetchReplayCoverage(effectiveTestRunId),
+    );
   } catch (error) {
     // When the caller gave us no run to anchor on and the replay is the head of
     // several runs, the endpoint can't pick one. Fall back to the run for the
@@ -330,22 +350,13 @@ const printReplayCoverage = async (
       // replay's coverage being served, not the anchoring run's.
       if (fallback != null && canAnchorReplayCoverage(fallback.status)) {
         try {
-          const result = await getReplayJsCoverage(
-            client,
-            replayId,
-            screenshotName,
-            {
-              testRunId: fallback.testRunId,
-              includeAllFiles,
-              globFilter,
-            },
-          );
+          const result = await fetchReplayCoverage(fallback.testRunId);
           // Only announce the fallback once it has actually worked, so a doomed
           // retry doesn't leave a misleading "retrying against run X" line.
           logNotice(
             `Replay is the head of multiple test runs; resolved coverage against test run ${fallback.testRunId} from the local commit.`,
           );
-          printReplayResult(result, json);
+          printReplayResultOrProcessing(result);
           return;
         } catch {
           // The local-HEAD run doesn't contain this replay (e.g. inspecting a
@@ -465,11 +476,10 @@ const printCoverageFiles = (
 
 const printTestRunCoverage = async (
   client: MeticulousClient,
-  testRunId: string,
+  runs: ResolvedCoverageRuns,
   options: Options,
   columns: CoverageColumn[],
   json: boolean,
-  unionTestRunIds: string[],
 ): Promise<void> => {
   // Send the resolved columns as explicit flags (the default-to-executed rule
   // lives here in `determineColumns`, not the backend), so the backend never
@@ -478,14 +488,27 @@ const printTestRunCoverage = async (
   const requestOptions: TestRunJsCoverageOptions = {
     includeAllFiles: options.includeAllFiles,
     ...(options.globFilter != null ? { globFilter: options.globFilter } : {}),
-    ...(unionTestRunIds.length > 0 ? { unionTestRunIds } : {}),
+    ...(runs.unionTestRunIds.length > 0
+      ? { unionTestRunIds: runs.unionTestRunIds }
+      : {}),
     ...coverageOrderingRequestOptions(options),
   };
   for (const column of columns) {
     requestOptions[COVERAGE_COLUMN_FLAG[column]] = true;
   }
   requestOptions.prDiffOnly = options.prDiffOnly;
-  const result = await fetchTestRunCoverage(client, testRunId, requestOptions);
+  const result = await fetchTestRunCoverage(client, runs, requestOptions);
+
+  if (isTestRunProcessingResponse(result)) {
+    // Unfinished run, with --dontWaitForTestRunToComplete: stdout gets the
+    // backend's own processing body, byte for byte what the MCP tool returns
+    // for the same state, never an empty list that would read as "no
+    // coverage" — the notice went to stderr.
+    if (json) {
+      printJson(result);
+    }
+    return;
+  }
 
   printCoverageFiles(result.files, columns, json);
 
@@ -496,15 +519,30 @@ const printTestRunCoverage = async (
 // The backend declines some coverage requests as routine rather than a fault —
 // a base run that hasn't replayed its whole selected set (as the primary run or
 // among `unionTestRunIds`), or a base run's `prDiffOnly` (it has no PR) — and
-// those are relayed as clean user errors.
-const fetchTestRunCoverage = async (
+// those are relayed as clean user errors. A waited-for run has finished by the
+// time this is called, so a processing response is the race between that check
+// and the request, polled through like every other result. With
+// --dontWaitForTestRunToComplete nothing waited, so the single request's
+// processing response is the answer itself.
+const fetchTestRunCoverage = (
   client: MeticulousClient,
-  testRunId: string,
+  runs: ResolvedCoverageRuns,
   requestOptions: TestRunJsCoverageOptions,
-): Promise<TestRunJsCoverageResponseV2> =>
-  withBaseRunRejectionAsUserError(() =>
-    getTestRunJsCoverage(client, testRunId, requestOptions),
-  );
+): Promise<TestRunJsCoverageResponseV2 | TestRunProcessingResponse> => {
+  const request = () =>
+    withBaseRunRejectionAsUserError(() =>
+      getTestRunJsCoverage(client, runs.testRunId, requestOptions),
+    );
+  if (!runs.allFinished) {
+    return request();
+  }
+  return pollWhileProcessing(request, {
+    isProcessing: isTestRunProcessingResponse,
+    waitingMessage: (first) => first.message,
+    timeoutMessage: (last) =>
+      `The coverage of test run ${runs.testRunId} did not become available within 10 minutes. ${last.message}`,
+  });
+};
 
 export const isAmbiguousTestRunError = (error: unknown): boolean =>
   isFetchError(error) &&
@@ -652,7 +690,7 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
       boolean: true,
       default: false,
       description:
-        "For whole-test-run coverage, return immediately instead of the default of blocking until the run finishes; an unfinished run is then reported as not complete.",
+        'Return immediately instead of the default of blocking until the run (or, with --replayId, the replay) has finished; an unfinished one is then reported on stderr, and with --json as { status: "processing", message }.',
     },
   },
   handler: wrapHandler(handler),

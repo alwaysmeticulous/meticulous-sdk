@@ -108,9 +108,9 @@ export class CaptureBuffer {
 }
 
 /**
- * Buffered-payload ceiling, in JSON characters. Two 256 KB bodies per event means a handful of
- * body-carrying calls reaches this; the sidecar's own payload limit is 8 MB, so a batch built to
- * this bound always fits with room for JSON escaping.
+ * Buffered-payload ceiling, in JSON characters. An event can carry two bodies of
+ * `MAX_BODY_CAPTURE_SIZE`, so one or two body-carrying calls can reach this; the sidecar's own
+ * payload limit is 8 MB, which leaves the batch this bound builds room for JSON escaping.
  */
 const MAX_BUFFERED_CHARS = 2 * 1024 * 1024;
 

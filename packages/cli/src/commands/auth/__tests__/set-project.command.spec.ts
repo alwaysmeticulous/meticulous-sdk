@@ -58,7 +58,7 @@ describe("set-project command", () => {
     mocks.isOAuthJwt.mockReturnValue(false);
 
     await expect(runHandler()).rejects.toThrow(
-      /already in use.*bound to a single project/s,
+      /already in use.*always its own project/s,
     );
     expect(mocks.selectAndStoreProject).not.toHaveBeenCalled();
   });

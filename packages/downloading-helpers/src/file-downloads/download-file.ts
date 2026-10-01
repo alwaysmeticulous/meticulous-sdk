@@ -5,7 +5,12 @@ import type { Readable, Stream } from "stream";
 import { finished, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { promisify } from "util";
-import { constants as zlibConstants, createGunzip } from "zlib";
+import type { InflateRaw as InflateRawStream } from "zlib";
+import {
+  constants as zlibConstants,
+  createGunzip,
+  createInflateRaw,
+} from "zlib";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import { InflateRaw } from "fast-zlib";
@@ -356,15 +361,24 @@ export interface StreamDownloadAndInflateTarOptions {
    * owns it and is responsible for stopping it.
    */
   progressBar?: DownloadProgressBar;
+  /**
+   * Inflate on libuv's thread pool (Node's async zlib) instead of
+   * synchronously on the main thread. Set this when running many downloads
+   * concurrently: synchronous inflate serializes all of them on one core,
+   * while the thread pool inflates up to `UV_THREADPOOL_SIZE` (default 4)
+   * streams at once. `inflateMs` is not measured in this mode and stays 0.
+   */
+  inflateOnThreadPool?: boolean;
 }
 
 /**
  * Byte counts and decompression cost for a single
  * {@link streamDownloadAndInflateTar} call.
  *
- * Inflation runs synchronously on the main thread, so comparing `inflateMs`
- * against the call's total wall time tells you whether a slow download was
- * decompression-bound (ratio near 1) or network-bound (ratio near 0).
+ * By default inflation runs synchronously on the main thread, so comparing
+ * `inflateMs` against the call's total wall time tells you whether a slow
+ * download was decompression-bound (ratio near 1) or network-bound (ratio
+ * near 0).
  *
  * Counts cover the attempt that succeeded only; a retried attempt starts from
  * zero.
@@ -374,7 +388,10 @@ export interface InflateTarDownloadStats {
   compressedBytes: number;
   /** Bytes written to the output `.tar` after inflation. */
   inflatedBytes: number;
-  /** Cumulative wall time spent inside synchronous inflate calls. */
+  /**
+   * Cumulative wall time spent inside synchronous inflate calls. Always 0
+   * with `inflateOnThreadPool`, where inflation happens off the main thread.
+   */
   inflateMs: number;
 }
 
@@ -437,18 +454,26 @@ export const streamDownloadAndInflateTar = async (
       progress = opts.progressBar?.trackStream(
         parseInt(String(response.headers["content-length"] ?? "0"), 10),
       );
+      const threadPoolInflate = opts.inflateOnThreadPool
+        ? createThreadPoolInflateRawStream()
+        : undefined;
+      const output = createWriteStream(outputTarFilePath, {
+        highWaterMark: STREAMING_HIGH_WATER_MARK,
+      });
       await pipeline(
         [
           response.data as Readable,
           ...(progress ? [progress.stream] : []),
-          createFastInflateRawStream(stats),
-          createWriteStream(outputTarFilePath, {
-            highWaterMark: STREAMING_HIGH_WATER_MARK,
-          }),
+          threadPoolInflate ?? createFastInflateRawStream(stats),
+          output,
         ],
         { signal: abortController.signal },
       );
 
+      if (threadPoolInflate) {
+        stats.compressedBytes = threadPoolInflate.bytesWritten;
+        stats.inflatedBytes = output.bytesWritten;
+      }
       return stats;
     } catch (error) {
       progress?.rollback();
@@ -690,8 +715,9 @@ const raceAgainstAbort = <T>(
  * Wraps fast-zlib's synchronous InflateRaw in a Transform stream with
  * a tuned highWaterMark for better large-file throughput.
  *
- * fast-zlib processes chunks synchronously via zlib's _processChunk,
- * avoiding the thread-pool overhead of Node's built-in async zlib streams.
+ * fast-zlib processes chunks synchronously via zlib's _processChunk, so the
+ * time spent inflating can be measured; concurrent streams share the main
+ * thread (see {@link createThreadPoolInflateRawStream} for the alternative).
  *
  * When `stats` is supplied, byte counts and inflate time are accumulated into
  * it as the stream runs, letting callers attribute a slow download between the
@@ -744,6 +770,17 @@ const createFastInflateRawStream = (
     },
   });
 };
+
+/**
+ * Node's async raw inflate, which runs each chunk on libuv's thread pool.
+ *
+ * The output chunk size is raised from zlib's 16 KiB default to match the
+ * pipeline's high-water mark: with 16 KiB chunks the per-chunk thread-pool
+ * hop nearly doubled the CPU spent inflating a deployment archive, while at
+ * 256 KiB it costs no more than the synchronous path.
+ */
+const createThreadPoolInflateRawStream = (): InflateRawStream =>
+  createInflateRaw({ chunkSize: STREAMING_HIGH_WATER_MARK });
 
 const recordInflateStats = (
   stats: InflateTarDownloadStats | undefined,

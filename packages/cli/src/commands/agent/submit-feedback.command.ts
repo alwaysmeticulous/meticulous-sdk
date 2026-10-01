@@ -99,7 +99,7 @@ export const submitFeedbackCommand: CommandModule<unknown, Options> = {
     project: {
       string: true,
       description:
-        "The project the feedback relates to (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project.",
+        "The project the feedback relates to (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s).",
     },
   },
   handler: wrapHandler(handler),

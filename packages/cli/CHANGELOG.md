@@ -1,5 +1,118 @@
 # @alwaysmeticulous/cli
 
+## 2.343.0
+
+### Minor Changes
+
+- [#14529](https://github.com/alwaysmeticulous/meticulous/pull/14529) [`6c40306`](https://github.com/alwaysmeticulous/meticulous/commit/6c403068f1a334802acf9c5a25772c9f4562ffd9) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `meticulous agent approve-diff` (and the `approveDiff` client function), which approves a screenshot diff, optionally with a review comment explaining why (`--reason` together with `--x`/`--y`). It is only available on projects that turn on "Enable approve/ignore diff actions" in the project's Agents settings; on those projects `agent ignore-diff` also records a real, non-blocking ignore rather than a comment only, so an agent can pass the Meticulous check without a human review. An agent can never approve or ignore a diff a person rejected.
+
+- [#14388](https://github.com/alwaysmeticulous/meticulous/pull/14388) [`1f67454`](https://github.com/alwaysmeticulous/meticulous/commit/1f67454377dff20468b833cf68c4e3d8528a3f89) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `meticulous agent promote-sessions`, which adds the sessions a
+  `trigger-test-run --sessionIds` run replayed to the project's selected set
+  straight away, rather than waiting for the next session selection.
+
+- [#14248](https://github.com/alwaysmeticulous/meticulous/pull/14248) [`2f03f27`](https://github.com/alwaysmeticulous/meticulous/commit/2f03f27f2b26975f3328c082f0fc168d98edca99) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Stabilize the bulk stats contract with immutable event IDs, extensible event
+  metadata, versioned response envelopes, explicit project identity and resolved
+  UTC ranges, test-run status/coverage/timing fields, and daily finalization and
+  exclusion details.
+
+### Patch Changes
+
+- [#14588](https://github.com/alwaysmeticulous/meticulous/pull/14588) [`c8d3e70`](https://github.com/alwaysmeticulous/meticulous/commit/c8d3e7058aed18cbbfc8884ef65fc939160f3ea6) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Document `.meticulous/agent-swarm-instructions.md` as the default Agent swarm instructions file and clarify that `--instructionsFile` overrides it for one run.
+
+- [#14213](https://github.com/alwaysmeticulous/meticulous/pull/14213) [`1e58ceb`](https://github.com/alwaysmeticulous/meticulous/commit/1e58ceb6d528d25f4509ae1b1a341bb9ddfdf1d7) Thanks [@sesajad](https://github.com/sesajad)! - The Agent swarm launch API names the app by the project-deployment row its
+  upload created (`appTarget.projectDeploymentId`) rather than by the upload id.
+  `generateSessions` sends the deployment id returned by the upload, dual-
+  writing the upload id alongside it so a backend not yet running the new launch
+  API still accepts the trigger; the backend also accepts the deprecated
+  `uploadId`/`assetsUploadId` shapes sent by published CLIs, resolving them to
+  the deployment row so every caller's run is keyed the same way.
+
+  The unused `--assetsUploadId` target of `meticulous ci agent-test` is removed;
+  provide `--localImageTag` or `--assetsDir` (the app is always uploaded by the
+  same invocation, so the flag never had a caller). The worker env naming the
+  assets S3 key is renamed `AGENTIC_ASSETS_UPLOAD_ID` → `AGENTIC_ASSETS_S3_KEY` —
+  the backend and worker image ship together.
+
+- [#14365](https://github.com/alwaysmeticulous/meticulous/pull/14365) [`3c57b83`](https://github.com/alwaysmeticulous/meticulous/commit/3c57b833d0ff2ecd2234fe69c313a33c33cd65ab) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous auth list-projects` now works with an API token (`--apiToken`,
+  `METICULOUS_API_TOKEN`, or the config file), listing the token's own project
+  plus any its cross-project access covers. `--project` is described as usable
+  with any API token that has access to the named project, matching the backend,
+  which no longer rejects an explicit project from project API tokens on agent
+  commands. `auth whoami` no longer has a test-run or workflow token case: the
+  backend only answers it for a user login or a project API token.
+
+- [#14289](https://github.com/alwaysmeticulous/meticulous/pull/14289) [`f5dcffa`](https://github.com/alwaysmeticulous/meticulous/commit/f5dcffa319879fcc1f12a3e855ead2fa44866ba5) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - The CLI is now distributed as a self-contained bundle, so installing it via
+  `npx` no longer resolves a separate runtime dependency tree.
+
+  The CLI package no longer exports its internal yargs command modules
+  (`recordCommand`, `replayCommand`, `ciRunLocalCommand` and
+  `ciStartTunnelCommand`). `labelCommitCore` remains available for programmatic
+  use.
+
+- [#14503](https://github.com/alwaysmeticulous/meticulous/pull/14503) [`d589c7a`](https://github.com/alwaysmeticulous/meticulous/commit/d589c7ae1d9a02a90ec5aa9726284e8dfc5f321e) Thanks [@linpengzhang](https://github.com/linpengzhang)! - `meticulous ci upload-asset-chunk` now lists the entry names actually written to the
+  tar in the chunk's `files.json`, including `--chunkAssetsDirectoryPrefix`. Previously a
+  chunk uploaded with a prefix indexed its files without it (for example
+  `./index.meticulous.html` for an entry stored as `/approvals-app/index.meticulous.html`),
+  so the index didn't match the archive. Chunks uploaded without a prefix are unchanged.
+
+- [#14335](https://github.com/alwaysmeticulous/meticulous/pull/14335) [`d3e4881`](https://github.com/alwaysmeticulous/meticulous/commit/d3e488113feffb7b4f7907d9e8c57182a3b29b5b) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `meticulous ci upload-assets`, `upload-container`, and `run-with-uploaded-asset-chunks` `--json` results now include `cliVersion` on every outcome. When a deployment was created they also include `sourceDeploymentId`, and a created test run includes `testRunUrl`.
+
+  An explicit `--logLevel` is now honoured with `--json` on those three commands, instead of being forced to `warn`. Their log lines go to stderr, so stdout still carries only the JSON result.
+
+- [#14138](https://github.com/alwaysmeticulous/meticulous/pull/14138) [`c8f38fc`](https://github.com/alwaysmeticulous/meticulous/commit/c8f38fca4efa206536e12e07949502413bce618b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - The `agent test-run-diffs`, `js-coverage`, `js-coverage --summary` and
+  `js-coverage-diff` commands now relay the backend's own explanation of what's
+  still outstanding while waiting for a result and on timeout, instead of a
+  locally hardcoded guess.
+
+- [#14138](https://github.com/alwaysmeticulous/meticulous/pull/14138) [`c8f38fc`](https://github.com/alwaysmeticulous/meticulous/commit/c8f38fca4efa206536e12e07949502413bce618b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Wait for a test run's results the same way on every agent command. A run that
+  hasn't finished is reported as `{ status: "processing", message }` by the
+  test-run coverage, coverage-summary, coverage-diff and diffs-counts endpoints
+  (the client's getters return `T | TestRunProcessingResponse`, narrowed with
+  `isTestRunProcessingResponse`) rather than a generic conflict or a partial
+  tally. The `js-coverage`, `js-coverage-diff`, `test-run-diffs` and
+  `test-run-check` commands poll such a result through once the run has finished,
+  and with `--dontWaitForTestRunToComplete --json` all ask once and print the
+  backend's own processing body — the same one the matching MCP tool returns,
+  message included — for an unfinished run, instead of an empty list or `null`.
+
+- [#14138](https://github.com/alwaysmeticulous/meticulous/pull/14138) [`c8f38fc`](https://github.com/alwaysmeticulous/meticulous/commit/c8f38fca4efa206536e12e07949502413bce618b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `DiffsSummaryResponse` (returned by `get_test_run_diffs` and used
+  internally by `agent test-run-diffs`) gains an optional `message` on
+  `pending`/`processing` responses, explaining what's still outstanding —
+  distinguishing a test run that hasn't finished yet from one whose diffs
+  summary is still being computed after it finished — matching the other
+  async agent endpoints (diff counts, coverage).
+
+- [#14522](https://github.com/alwaysmeticulous/meticulous/pull/14522) [`f527807`](https://github.com/alwaysmeticulous/meticulous/commit/f5278072e8ed5a639568a64eea1c86f0c33c54da) Thanks [@linpengzhang](https://github.com/linpengzhang)! - `meticulous agent upload-build` no longer accepts `--appZip`, and `uploadBuild`
+  no longer takes `appZip`. Pass the build output directory (`--appDirectory` /
+  `appDirectory`) instead: it is uploaded as a multipart `tar.d` archive that
+  replays serve file by file, rather than a zip that has to be fully extracted
+  before a replay can start. `ci upload-assets --appZip` is unchanged.
+
+- [#14527](https://github.com/alwaysmeticulous/meticulous/pull/14527) [`ba5fb4e`](https://github.com/alwaysmeticulous/meticulous/commit/ba5fb4ed98bc49b6bb95674610c4b1bad77c25a1) Thanks [@alexivanov](https://github.com/alexivanov)! - Onboarding now looks for version numbers, commit SHAs and build timestamps that are baked into the build and cause false positive diffs, since they differ between the base and head builds of every PR. Displayed values are pinned to a fixed placeholder when running as a Meticulous test (at build time via `METICULOUS_BUILD` for server-rendered values). "New version available" checks are skipped under Meticulous, because they compare the build's version against the version response captured when the session was recorded.
+
+- [#14185](https://github.com/alwaysmeticulous/meticulous/pull/14185) [`78a17a0`](https://github.com/alwaysmeticulous/meticulous/commit/78a17a055881e844da7c952ccd90e0b8fd38b205) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Report a replay that hasn't finished as `{ status: "processing", message }` on
+  the replay coverage and replay-diff coverage-diff endpoints (the client's
+  `getReplayJsCoverage` / `getReplayDiffJsCoverage` return
+  `T | TestRunProcessingResponse`), rather than "no coverage artifact". The
+  `js-coverage --replayId` and `js-coverage-diff --replayDiffId` commands poll
+  such a result through, and accept `--dontWaitForTestRunToComplete` to print the
+  backend's own processing body — message included, as every other command does —
+  under `--json` instead. A replay no live test run is working on keeps its
+  terminal answer rather than being polled for one that is never coming.
+
+- [#14466](https://github.com/alwaysmeticulous/meticulous/pull/14466) [`22ca559`](https://github.com/alwaysmeticulous/meticulous/commit/22ca55928aa6bcae3b070fe89b6b797f3d8931ba) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `meticulous agent sessions` can drop sessions recorded by Agent swarm
+  (`--excludeAgentReviewSessions`), keep only sessions whose recording captured
+  the page's HTML document (`--requireInitialNavigationResponse`), and add a
+  `source` column naming what recorded each session (`--includeSource`).
+
+- [#14138](https://github.com/alwaysmeticulous/meticulous/pull/14138) [`c8f38fc`](https://github.com/alwaysmeticulous/meticulous/commit/c8f38fca4efa206536e12e07949502413bce618b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent test-run-check` (and `get_test_run_check` over MCP) now waits up to
+  10 minutes for check results before giving up, matching every other
+  result-reading command/tool, instead of 3, and reports a test run that is still
+  running as `{ status: "processing" }` rather than as not expecting checks — the
+  CI job that registers custom checks only runs once the test run has concluded.
+  Every result poll now waits 10s between attempts, the cadence the tools already
+  document, rather than 2s.
+
 ## 2.342.0
 
 ### Minor Changes

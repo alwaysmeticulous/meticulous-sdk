@@ -252,34 +252,4 @@ describe("whoami command", () => {
       expect(stdoutText()).not.toContain("Pinned project");
     });
   });
-
-  describe("test-run API token", () => {
-    beforeEach(() => {
-      mocks.getAuthToken.mockResolvedValue("test-run-token");
-      mocks.getAgentWhoami.mockResolvedValue({
-        authenticatedVia: "test-run-token" as const,
-        selectedProject: "Org/App",
-      });
-    });
-
-    it("reports itself distinctly from a project API token", async () => {
-      await runHandler();
-
-      const out = stdoutText();
-      expect(out).toContain("test-run API token");
-      expect(out).toContain("Pinned project: Org/App");
-      expect(noticeText()).toContain("scoped to a single project");
-    });
-
-    it("emits structured JSON with --json", async () => {
-      await runHandler({ json: true });
-
-      expect(JSON.parse(stdoutText())).toEqual({
-        authenticatedVia: "test-run-token",
-        tokenSource: "~/.meticulous/config.json",
-        selectedProject: "Org/App",
-        pinnedProject: "Org/App",
-      });
-    });
-  });
 });

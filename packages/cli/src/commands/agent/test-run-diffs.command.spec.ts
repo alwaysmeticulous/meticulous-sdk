@@ -31,6 +31,10 @@ vi.mock("@alwaysmeticulous/client", () => ({
   getTestRunDiffsSummary: mocks.getTestRunDiffsSummary,
   getTestRunDiffsSummaryCounts: mocks.getTestRunDiffsSummaryCounts,
   isFetchError: mocks.isFetchError,
+  isTestRunProcessingResponse: (value: unknown) =>
+    typeof value === "object" &&
+    value !== null &&
+    (value as { status?: unknown }).status === "processing",
 }));
 
 vi.mock("@alwaysmeticulous/common", () => ({
@@ -157,7 +161,7 @@ describe("test-run-diffs command polling", () => {
     vi.useFakeTimers();
     const handlerRejection =
       expect(runHandler()).rejects.toThrow(ProcessExitError);
-    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.advanceTimersByTimeAsync(10_000);
     await handlerRejection;
     vi.useRealTimers();
 
@@ -181,20 +185,20 @@ describe("test-run-diffs command polling", () => {
     );
   });
 
-  it("exits 1 once the 10-minute deadline passes while still pending", async () => {
+  it("gives up with a user error once the 10-minute deadline passes while still pending", async () => {
     mocks.getTestRunDiffsSummary.mockResolvedValue({ status: "pending" });
     const nowSpy = vi
       .spyOn(performance, "now")
       .mockReturnValueOnce(0) // t0
-      .mockReturnValueOnce(0) // summaryDeadline base
+      .mockReturnValueOnce(0) // poll deadline base
       .mockReturnValueOnce(999_999_999); // deadline check inside the loop
 
-    await expect(runHandler()).rejects.toThrow(ProcessExitError);
-
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(mocks.logNotice).toHaveBeenCalledWith(
-      expect.stringContaining("did not complete within 10 minutes"),
+    const handled = runHandler();
+    await expect(handled).rejects.toBeInstanceOf(CliUserError);
+    await expect(handled).rejects.toThrow(
+      /did not complete within 10 minutes \(status: pending\)/,
     );
+    expect(exitSpy).not.toHaveBeenCalled();
     nowSpy.mockRestore();
   });
 
@@ -475,14 +479,88 @@ describe("test-run-diffs command polling", () => {
     // ensureTestRunFinished returns null (and logs the in-progress notice to
     // stderr) when the run is unfinished and --dontWaitForTestRunToComplete.
     mocks.ensureTestRunFinished.mockResolvedValue(null);
+    mocks.getTestRunDiffsSummaryCounts.mockResolvedValue({
+      status: "processing",
+      message: "Test run tr-1 is still Running.",
+    });
 
     await runHandler({ counts: true, dontWaitForTestRunToComplete: true });
 
     expect(exitSpy).not.toHaveBeenCalled();
-    // No live counts to report — emit nothing rather than a misleading row of
-    // zeros. The counts endpoint isn't hit either.
-    expect(mocks.getTestRunDiffsSummaryCounts).not.toHaveBeenCalled();
+    // No counts to report — emit nothing rather than a misleading row of
+    // zeros. The reason is on stderr.
     expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  // The same body the MCP tool returns for that state, relayed from the
+  // backend rather than invented here — so `--json` is never an empty list or
+  // a row of zeros that reads as a finished result, and the message survives.
+  it.each([
+    [
+      "the list",
+      {},
+      "getTestRunDiffsSummary" as const,
+      {
+        status: "pending" as const,
+        message: "Test run tr-1 is still Running; its diffs summary…",
+      },
+    ],
+    [
+      "--counts",
+      { counts: true },
+      "getTestRunDiffsSummaryCounts" as const,
+      {
+        status: "processing" as const,
+        message: "Test run tr-1 is still Running; its diff counts…",
+      },
+    ],
+  ])(
+    "prints the backend's processing body for %s with --json on an in-progress run reported without waiting",
+    async (_label, overrides, mockName, processing) => {
+      mocks.ensureTestRunFinished.mockResolvedValue(null);
+      mocks[mockName].mockResolvedValue(processing);
+
+      await runHandler({
+        ...overrides,
+        json: true,
+        dontWaitForTestRunToComplete: true,
+      });
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      expect(logSpy).toHaveBeenCalledWith(JSON.stringify(processing, null, 2));
+      // Asked once, not polled: the caller said not to wait.
+      expect(mocks[mockName]).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  // The run has finished by the time --counts asks, so a processing answer is
+  // the race between that check and the request — polled through, not failed.
+  it("polls --counts through a processing answer", async () => {
+    mocks.getTestRunDiffsSummaryCounts
+      .mockResolvedValueOnce({
+        status: "processing",
+        message: "Test run tr-1 is still PostProcessing.",
+      })
+      .mockResolvedValueOnce({
+        numReplays: 1,
+        numDiffs: 0,
+        numApproved: 0,
+        numIgnored: 0,
+        numRejected: 0,
+        numUnreviewed: 0,
+        numWithOpenComments: 0,
+      });
+    vi.useFakeTimers();
+
+    const handled = runHandler({ counts: true, json: true });
+    await vi.advanceTimersByTimeAsync(10_000);
+    await handled;
+    vi.useRealTimers();
+
+    expect(mocks.getTestRunDiffsSummaryCounts).toHaveBeenCalledTimes(2);
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('"numReplays": 1'),
+    );
   });
 
   it.each([

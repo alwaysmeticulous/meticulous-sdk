@@ -31,6 +31,7 @@ export interface DebugPipelineOptions {
   additionalDownloads?:
     | ((ctx: DebugContext, debugDataDir: string) => void | Promise<void>)
     | undefined;
+  templatesDir?: string | undefined;
   additionalTemplatesDir?: string | undefined;
   writeContextJson?:
     | ((
@@ -91,6 +92,7 @@ export const runDebugPipeline = async (
     workspaceDir,
     projectRepoDir,
     maxConcurrency: opts.maxConcurrentDownloads,
+    templatesDir: opts.templatesDir,
     additionalTemplatesDir: opts.additionalTemplatesDir,
     writeContextJson: opts.writeContextJson,
     isLocalCli: true,

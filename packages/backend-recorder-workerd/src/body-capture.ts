@@ -1,8 +1,14 @@
 import type { CapturedBody } from "./protocol";
 import { redactRequestBody } from "./redact-body";
 
-/** Matches the Node backend recorder's body capture cap (met-http-instrumentation). */
-export const MAX_BODY_CAPTURE_SIZE = 256 * 1024;
+/**
+ * Cap on the bytes of any one captured body, and so on the size of the span attribute it
+ * becomes. Defined here and re-exported by the Node recorder's `constants.ts` (same
+ * arrangement as the shared attribute names) so a Worker recording and a Node recording
+ * truncate at the same point, and so the replay side — which re-applies the cap to a live
+ * body before hashing it — agrees with what was stored.
+ */
+export const MAX_BODY_CAPTURE_SIZE = 1024 * 1024;
 
 /** Cap on how long we keep reading a (possibly never-ending, e.g. SSE) body clone. */
 const BODY_READ_TIMEOUT_MS = 10_000;

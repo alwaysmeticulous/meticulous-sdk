@@ -1,6 +1,31 @@
 import type { TestRunStatus } from "@alwaysmeticulous/api";
 import { printJson } from "../../command-utils/print-json";
 
+let cliJsonVersion = "unknown";
+
+/** Raw CLI package version, stamped onto every structured CI JSON result. */
+export const setCliJsonVersion = (version: string): void => {
+  cliJsonVersion = version;
+};
+
+export interface CiUploadFields {
+  sourceDeploymentId?: string;
+  testRunUrl?: string;
+}
+
+export const ciUploadFields = (fields: {
+  [Key in keyof CiUploadFields]: CiUploadFields[Key] | undefined;
+}): CiUploadFields => {
+  const result: CiUploadFields = {};
+  if (fields.sourceDeploymentId) {
+    result.sourceDeploymentId = fields.sourceDeploymentId;
+  }
+  if (fields.testRunUrl) {
+    result.testRunUrl = fields.testRunUrl;
+  }
+  return result;
+};
+
 export type CiSkipReason =
   | "comments_disabled_for_author"
   | "all_sessions_excluded"
@@ -87,9 +112,13 @@ export const isStructuredCiJsonInvocation = (
   return false;
 };
 
+export const printCiJson = (value: object): void => {
+  printJson({ cliVersion: cliJsonVersion, ...value });
+};
+
 export const printStructuredCiFailure = (
   message: string,
   reason: CiFailureReason = "usage",
 ): void => {
-  printJson({ outcome: "failed", reason, message });
+  printCiJson({ outcome: "failed", reason, message });
 };

@@ -43,7 +43,7 @@ describe("generateSessions container deployment", () => {
     });
   });
 
-  it("registers the pushed container before launching Agent Review", async () => {
+  it("registers the pushed container before launching Agent swarm", async () => {
     await generateSessions({
       apiToken: "token",
       projectId: "project123",
@@ -68,7 +68,7 @@ describe("generateSessions container deployment", () => {
     );
   });
 
-  it("does not launch Agent Review when registration fails", async () => {
+  it("does not launch Agent swarm when registration fails", async () => {
     vi.mocked(uploadBuild).mockRejectedValue(new Error("registration failed"));
 
     await expect(
@@ -80,5 +80,69 @@ describe("generateSessions container deployment", () => {
     ).rejects.toThrow("registration failed");
 
     expect(completeAgenticSessionGeneration).not.toHaveBeenCalled();
+  });
+});
+
+describe("generateSessions appTarget deployment reference", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(createClient).mockReturnValue({} as never);
+    vi.mocked(completeAgenticSessionGeneration).mockResolvedValue({
+      agenticRunId: "run123",
+    });
+  });
+
+  it("names a freshly uploaded container by its deployment row", async () => {
+    vi.mocked(uploadBuild).mockResolvedValue({
+      deploymentId: "deployment123",
+      uploadId: "upload123",
+      imageReference: "registry.example/app:upload123",
+    });
+
+    await generateSessions({
+      apiToken: "token",
+      projectId: "project123",
+      localImageTag: "app:head",
+      commitSha: "abc123",
+      containerPort: 3000,
+    });
+
+    expect(completeAgenticSessionGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appTarget: {
+          type: "container",
+          projectDeploymentId: "deployment123",
+          uploadId: "upload123",
+          enableLocalMocks: undefined,
+          containerPort: 3000,
+          containerEnv: undefined,
+          containerHealthCheckEndpoint: undefined,
+        },
+      }),
+    );
+  });
+
+  it("names a freshly uploaded assets build by its deployment row", async () => {
+    vi.mocked(uploadBuild).mockResolvedValue({
+      deploymentId: "deployment456",
+      uploadId: "upload456",
+    });
+
+    await generateSessions({
+      apiToken: "token",
+      projectId: "project123",
+      assetsDirectory: "dist",
+      commitSha: "abc123",
+    });
+
+    expect(completeAgenticSessionGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appTarget: {
+          type: "assets",
+          projectDeploymentId: "deployment456",
+          assetsUploadId: "upload456",
+        },
+      }),
+    );
   });
 });

@@ -418,8 +418,12 @@ export interface HttpSpanAttributes {
 
   "http.request.body"?: string;
   "http.request.body.truncated"?: boolean;
+  /** Share of the body the stored value represents. Only set when truncated. */
+  "http.request.body.captured_percentage"?: number;
   "http.response.body"?: string;
   "http.response.body.truncated"?: boolean;
+  /** Share of the body the stored value represents. Only set when truncated. */
+  "http.response.body.captured_percentage"?: number;
 
   "meticulous.frontend_session_id"?: string;
 

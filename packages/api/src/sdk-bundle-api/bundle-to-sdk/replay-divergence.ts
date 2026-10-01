@@ -31,6 +31,33 @@ export interface NetworkActivityDivergenceIndicator {
    * match quality did not degrade vs base.
    */
   graphqlShapedConsoleErrorCauseEventIndices?: number[] | undefined;
+  /**
+   * Operations inside a batched request that diverged on their own, when the
+   * enclosing envelopes could not be paired. Absent for unbatched requests.
+   */
+  atomicDivergences?: AtomicBatchDivergence[] | undefined;
+}
+
+/**
+ * A single operation inside a batched request (GraphQL array batch, tRPC batch,
+ * Palantir bulk) that diverged between the base and head replays.
+ *
+ * Envelope-level match quality cannot express this. A client may regroup the
+ * same operations into different POST envelopes, so two envelopes carrying
+ * different operation sets never pair up and their whole-batch classifications
+ * are not comparable — the operations inside them still are.
+ */
+export interface AtomicBatchDivergence {
+  operationName: string;
+  /**
+   * - `unmatched`: base was served a recorded response for this operation and
+   *   head was not.
+   * - `dropped`: base asked for this operation and head never did, anywhere in
+   *   the replay. An operation that merely moved to a different envelope is not
+   *   dropped.
+   * - `new`: head asked for an operation base never did, and it went unmatched.
+   */
+  reason: "unmatched" | "dropped" | "new";
 }
 
 /**

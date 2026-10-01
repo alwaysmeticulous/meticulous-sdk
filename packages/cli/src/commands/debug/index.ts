@@ -7,6 +7,7 @@ import { runDebugPipeline } from "@alwaysmeticulous/debug-workspace";
 import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { debugWorkspaceTemplatesDir } from "../../bundled-assets";
 import { cleanWorkspaces } from "./clean-workspaces";
 import { presentWorkspace } from "./present-workspace";
 import {
@@ -57,6 +58,7 @@ const runPipeline = async (opts: {
     replayDiffId: opts.replayDiffId,
     replayIds: opts.replayIds,
     sessionId: opts.sessionId,
+    templatesDir: debugWorkspaceTemplatesDir,
     createWorktree: (ctx, workspaceDir) =>
       createProjectWorktree({ debugContext: ctx, workspaceDir }),
     onWorkspaceReady: (workspaceDir, projectRepoDir) =>

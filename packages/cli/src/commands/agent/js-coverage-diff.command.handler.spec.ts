@@ -1,4 +1,5 @@
 import type * as MeticulousClientModule from "@alwaysmeticulous/client";
+import { serializeJson } from "@alwaysmeticulous/common/json";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { jsCoverageDiffCommand } from "./js-coverage-diff.command";
 
@@ -235,47 +236,155 @@ describe("js-coverage-diff paging", () => {
   });
 });
 
-// With --dontWaitForTestRunToComplete, an unfinished run yields no runs to
-// report on. The two output shapes need different empty forms, and `--summary`
-// has to match `js-coverage --summary` rather than the per-file path: a zeroed
-// or empty delta reads as "this commit changed no coverage" instead of "not
-// ready yet".
+// With --dontWaitForTestRunToComplete, an unfinished run is asked for once and
+// answers `processing`. stdout then gets the backend's own body — with --json
+// only — rather than an empty list or a zeroed delta, either of which reads as
+// "this commit changed no coverage" instead of "not ready yet".
 describe("js-coverage-diff on an unfinished run", () => {
+  const processing = {
+    status: "processing" as const,
+    message: "Test run tr-1 is still Running; its coverage…",
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createClientWithOAuth.mockResolvedValue({});
     mocks.getTestRun.mockResolvedValue({ status: "Running" });
+    mocks.getTestRunJsCoverageDiff.mockResolvedValue(processing);
     vi.spyOn(console, "log").mockImplementation(() => undefined);
   });
 
   const runUnfinished = (overrides: Record<string, unknown> = {}) =>
     runHandler({ dontWaitForTestRunToComplete: true, ...overrides });
 
-  it("prints JSON null for --summary --json, not an empty list", async () => {
-    await runUnfinished({ summary: true, json: true });
+  it.each([
+    ["--summary", { summary: true }],
+    ["the per-file path", {}],
+  ])(
+    "prints the backend's processing body for %s with --json",
+    async (_label, overrides) => {
+      await runUnfinished({ ...overrides, json: true });
 
-    expect(console.log).toHaveBeenCalledTimes(1);
-    expect(console.log).toHaveBeenCalledWith("null");
-    expect(mocks.getTestRunJsCoverageDiff).not.toHaveBeenCalled();
+      expect(console.log).toHaveBeenCalledTimes(1);
+      expect(console.log).toHaveBeenCalledWith(serializeJson(processing));
+      // Asked once, not polled: the caller said not to wait.
+      expect(mocks.getTestRunJsCoverageDiff).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each([
+    ["--summary", { summary: true }],
+    ["the per-file path", {}],
+  ])(
+    "prints nothing at all for %s in human mode",
+    async (_label, overrides) => {
+      await runUnfinished(overrides);
+
+      expect(console.log).not.toHaveBeenCalled();
+    },
+  );
+});
+
+// A replay pair has no run to wait on first, so the result itself is polled
+// while either replay is still running — or reported as not ready with
+// --dontWaitForTestRunToComplete, in the same shape as the whole-run scope.
+describe("js-coverage-diff --replayDiffId on an unfinished replay", () => {
+  const processing = {
+    status: "processing",
+    message:
+      "Replay r-head is still Running; its coverage is available once it has finished. Poll again then.",
+  };
+  const diff = {
+    base: null,
+    head: null,
+    diff: [],
+    totalFiles: 0,
+    filesAdded: 0,
+    filesRemoved: 0,
+    filesModified: 0,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createClientWithOAuth.mockResolvedValue({});
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
   });
 
-  it("prints nothing at all for --summary in human mode", async () => {
-    await runUnfinished({ summary: true });
+  const runReplayDiff = (overrides: Record<string, unknown> = {}) =>
+    runHandler({ testRunId: undefined, replayDiffId: "rd-1", ...overrides });
+
+  it("polls through a processing answer", async () => {
+    mocks.getReplayDiffJsCoverage
+      .mockResolvedValueOnce(processing)
+      .mockResolvedValueOnce(diff);
+    vi.useFakeTimers();
+
+    const handled = runReplayDiff({ json: true });
+    await vi.advanceTimersByTimeAsync(10_000);
+    await handled;
+    vi.useRealTimers();
+
+    expect(mocks.getReplayDiffJsCoverage).toHaveBeenCalledTimes(2);
+    expect(console.log).toHaveBeenCalledWith(serializeJson([]));
+  });
+
+  it("prints a processing status with --json and --dontWaitForTestRunToComplete", async () => {
+    mocks.getReplayDiffJsCoverage.mockResolvedValue(processing);
+
+    await runReplayDiff({ json: true, dontWaitForTestRunToComplete: true });
+
+    expect(mocks.getReplayDiffJsCoverage).toHaveBeenCalledTimes(1);
+    expect(console.log).toHaveBeenCalledTimes(1);
+    // The backend's own body, message included — byte-identical to the MCP
+    // tool's result.
+    expect(console.log).toHaveBeenCalledWith(serializeJson(processing));
+    expect(mocks.logNotice).toHaveBeenCalledWith(processing.message);
+  });
+
+  it("prints nothing in human mode with --dontWaitForTestRunToComplete", async () => {
+    mocks.getReplayDiffJsCoverage.mockResolvedValue(processing);
+
+    await runReplayDiff({ dontWaitForTestRunToComplete: true });
 
     expect(console.log).not.toHaveBeenCalled();
+    expect(mocks.logNotice).toHaveBeenCalledWith(processing.message);
+  });
+});
+
+// The run has finished by the time the diff is requested, so a processing
+// answer is the race between that check and the request — polled through
+// rather than reported as an error.
+describe("js-coverage-diff on a run that finished just now", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createClientWithOAuth.mockResolvedValue({});
+    mocks.getTestRun.mockResolvedValue({ status: "Success" });
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
   });
 
-  it("still prints an empty list for the per-file path", async () => {
-    await runUnfinished({ json: true });
+  it("polls through a processing answer to the diff", async () => {
+    mocks.getTestRunJsCoverageDiff
+      .mockResolvedValueOnce({
+        status: "processing",
+        message: "Test run tr-1 is still PostProcessing.",
+      })
+      .mockResolvedValueOnce({
+        testRunId: "tr-1",
+        baseTestRunId: "tr-0",
+        executionSha: "head",
+        baseExecutionSha: "base",
+        delta: { files: 0, uniqueLinesAdded: 0, regressedLines: 0 },
+      });
+    vi.useFakeTimers();
 
-    expect(console.log).toHaveBeenCalledWith("[]");
-  });
+    const handled = runHandler({ summary: true, json: true });
+    await vi.advanceTimersByTimeAsync(10_000);
+    await handled;
+    vi.useRealTimers();
 
-  it("still prints the header row for the per-file path in human mode", async () => {
-    await runUnfinished();
-
+    expect(mocks.getTestRunJsCoverageDiff).toHaveBeenCalledTimes(2);
     expect(console.log).toHaveBeenCalledWith(
-      "repoFilePath\tstatus\tbaseRanges\theadRanges",
+      expect.stringContaining('"baseTestRunId": "tr-0"'),
     );
   });
 });

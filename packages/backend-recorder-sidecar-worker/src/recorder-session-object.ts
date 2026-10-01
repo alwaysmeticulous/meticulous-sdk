@@ -223,8 +223,11 @@ const pad = (seq: number): string => String(seq).padStart(12, "0");
  * what is actually written. A batch arriving over the limit would fail its `put` and lose the
  * whole request's spans, so it is split instead.
  *
- * An event too large on its own is still written alone: nothing can be done to make it fit, and
- * failing that one `put` loses only it.
+ * An event too large on its own is still written alone — nothing can be done to make it fit here.
+ * Since the batches and the counter go in one atomic `put`, its oversized value fails the whole
+ * report's write, so the request's spans are lost rather than truncated. Two bodies at
+ * `MAX_BODY_CAPTURE_SIZE` each can reach that, which is a known gap (see
+ * `backend-recorder-workerd/__docs__/deployed-cloudflare-recording.md`).
  */
 export const splitToFitValueLimit = (
   events: CaptureEvent[],

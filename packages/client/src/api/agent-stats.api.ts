@@ -7,7 +7,11 @@ import { maybeEnrichFetchError } from "../errors";
 import type { MeticulousClient } from "../types/client.types";
 
 export type {
+  BulkStatsEnvelope,
   BulkStatsPagination,
+  BulkStatsProjectIdentity,
+  BulkStatsRange,
+  BulkStatsRepositoryIdentity,
   TestRunEventActor,
   TestRunEventDiffReportType,
   TestRunEventType,

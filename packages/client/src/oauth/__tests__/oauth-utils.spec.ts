@@ -26,9 +26,10 @@ describe("isOAuthJwt", () => {
     expect(isOAuthJwt("prat-opaque-token")).toBe(false);
   });
 
-  it("returns false for a test-run API token (trat prefix)", () => {
-    expect(isOAuthJwt("trat-abc.def.ghi")).toBe(false);
-    expect(isOAuthJwt("trat_opaque")).toBe(false);
+  it("returns false for a workflow API token (wfat- prefix)", () => {
+    // Even with a JWT-like shape, the prefix must short-circuit.
+    expect(isOAuthJwt("wfat-abc.def.ghi")).toBe(false);
+    expect(isOAuthJwt("wfat-opaque-token")).toBe(false);
   });
 
   it("returns false when there are not exactly 3 segments", () => {

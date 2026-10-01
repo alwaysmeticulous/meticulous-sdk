@@ -74,7 +74,7 @@ export interface ReplayComparisonEntry {
   screenshotCount: number | null;
 }
 
-const TEMPLATES_DIR = join(__dirname, "templates");
+const DEFAULT_TEMPLATES_DIR = join(__dirname, "templates");
 
 export interface GenerateDebugWorkspaceOptions {
   client: MeticulousClient;
@@ -82,6 +82,12 @@ export interface GenerateDebugWorkspaceOptions {
   workspaceDir: string;
   projectRepoDir: string | undefined;
   maxConcurrency?: number | undefined;
+  /**
+   * Where this package's own templates live. Defaults to the copy shipped
+   * next to this module; callers that repackage the templates (e.g. the
+   * bundled CLI) pass their location.
+   */
+  templatesDir?: string | undefined;
   additionalTemplatesDir?: string | undefined;
   /**
    * When true, do not write `.claude/CLAUDE.md` or `.claude/settings.json`
@@ -160,7 +166,11 @@ export const generateDebugWorkspace = async (
     isLocalCli,
     hasSnapshotAssets,
   };
-  const claudeMd = renderClaudeMd(options.additionalTemplatesDir, conditions);
+  const templates: TemplateDirs = {
+    baseDir: options.templatesDir ?? DEFAULT_TEMPLATES_DIR,
+    overlayDir: options.additionalTemplatesDir,
+  };
+  const claudeMd = renderClaudeMd(templates, conditions);
   if (!options.skipDefaultClaudeFiles) {
     writeFileSync(join(claudeDir, "CLAUDE.md"), claudeMd);
   }
@@ -195,16 +205,11 @@ export const generateDebugWorkspace = async (
     domDiffMap,
   );
 
-  copyClaudeSubdir(workspaceDir, "agents", options.additionalTemplatesDir, {
-    conditions,
-  });
-  copySkills(workspaceDir, options.additionalTemplatesDir, conditions);
+  copyClaudeSubdir(workspaceDir, "agents", templates, { conditions });
+  copySkills(workspaceDir, templates, conditions);
 
   if (!options.skipDefaultClaudeFiles) {
-    const settingsSrc = resolveTemplateFile(
-      "settings.json",
-      options.additionalTemplatesDir,
-    );
+    const settingsSrc = resolveTemplateFile("settings.json", templates);
     if (settingsSrc) {
       copyFileSync(settingsSrc, join(claudeDir, "settings.json"));
     }
@@ -217,17 +222,24 @@ export const generateDebugWorkspace = async (
 // Template copying (with overlay support)
 // ---------------------------------------------------------------------------
 
+interface TemplateDirs {
+  /** This package's templates. */
+  baseDir: string;
+  /** Optional caller-supplied templates layered on top of the base ones. */
+  overlayDir: string | undefined;
+}
+
 const resolveTemplateFile = (
   relativePath: string,
-  additionalTemplatesDir: string | undefined,
+  { baseDir, overlayDir }: TemplateDirs,
 ): string | undefined => {
-  if (additionalTemplatesDir) {
-    const overlayPath = join(additionalTemplatesDir, relativePath);
+  if (overlayDir) {
+    const overlayPath = join(overlayDir, relativePath);
     if (existsSync(overlayPath)) {
       return overlayPath;
     }
   }
-  const basePath = join(TEMPLATES_DIR, relativePath);
+  const basePath = join(baseDir, relativePath);
   if (existsSync(basePath)) {
     return basePath;
   }
@@ -254,10 +266,10 @@ interface MarkdownConditions {
 }
 
 const renderClaudeMd = (
-  additionalTemplatesDir: string | undefined,
+  templates: TemplateDirs,
   conditions: MarkdownConditions,
 ): string => {
-  const src = resolveTemplateFile("CLAUDE.md", additionalTemplatesDir);
+  const src = resolveTemplateFile("CLAUDE.md", templates);
   if (!src) {
     throw new Error(
       "CLAUDE.md template not found in the debug-workspace package. This indicates a packaging bug.",
@@ -269,7 +281,7 @@ const renderClaudeMd = (
 const copyClaudeSubdir = (
   workspaceDir: string,
   subdir: string,
-  additionalTemplatesDir: string | undefined,
+  { baseDir, overlayDir }: TemplateDirs,
   options: {
     conditions?: MarkdownConditions;
   } = {},
@@ -303,13 +315,13 @@ const copyClaudeSubdir = (
     }
   };
 
-  const baseSrcDir = join(TEMPLATES_DIR, subdir);
+  const baseSrcDir = join(baseDir, subdir);
   if (existsSync(baseSrcDir)) {
     writeFromDir(baseSrcDir);
   }
 
-  if (additionalTemplatesDir) {
-    const overlaySrcDir = join(additionalTemplatesDir, subdir);
+  if (overlayDir) {
+    const overlaySrcDir = join(overlayDir, subdir);
     if (existsSync(overlaySrcDir)) {
       writeFromDir(overlaySrcDir);
     }
@@ -318,12 +330,12 @@ const copyClaudeSubdir = (
 
 const copySkills = (
   workspaceDir: string,
-  additionalTemplatesDir: string | undefined,
+  { baseDir, overlayDir }: TemplateDirs,
   conditions: MarkdownConditions,
 ): void => {
   const skillDirNames = new Set<string>();
 
-  const baseSrcDir = join(TEMPLATES_DIR, "skills");
+  const baseSrcDir = join(baseDir, "skills");
   if (existsSync(baseSrcDir)) {
     for (const entry of readdirSync(baseSrcDir)) {
       if (statSync(join(baseSrcDir, entry)).isDirectory()) {
@@ -332,8 +344,8 @@ const copySkills = (
     }
   }
 
-  if (additionalTemplatesDir) {
-    const overlaySrcDir = join(additionalTemplatesDir, "skills");
+  if (overlayDir) {
+    const overlaySrcDir = join(overlayDir, "skills");
     if (existsSync(overlaySrcDir)) {
       for (const entry of readdirSync(overlaySrcDir)) {
         if (statSync(join(overlaySrcDir, entry)).isDirectory()) {
@@ -350,7 +362,7 @@ const copySkills = (
     copyClaudeSubdir(
       workspaceDir,
       join("skills", skillName),
-      additionalTemplatesDir,
+      { baseDir, overlayDir },
       { conditions },
     );
   }

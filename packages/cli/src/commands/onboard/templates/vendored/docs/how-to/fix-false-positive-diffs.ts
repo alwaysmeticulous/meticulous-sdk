@@ -4,6 +4,7 @@ import { WHERE_CAN_I_REACH_OUT_FOR_SUPPORT } from "../constants";
 
 const SERVER_SIDE_RENDERING_ANCHOR = "server-side-rendering";
 const ENV_DIFFERENCES_ANCHOR = "env-differences";
+const BUILD_SPECIFIC_VALUES_ANCHOR = "build-specific-values";
 const PAUSING_METICULOUS_REPLAYS_ANCHOR = "pausing-meticulous-replays";
 const OTHER_CAUSES_ANCHOR = "other-causes";
 const GENERAL_TECHNIQUES_ANCHOR = "general-techniques";
@@ -23,6 +24,7 @@ show up that are unrelated to your code change could be due to:
 
  - [Changes in content derived from database data, or the current date/time, when using server side rendering](#${SERVER_SIDE_RENDERING_ANCHOR}) (when using client side rendering Meticulous handles this automatically)
  - Or, [differences in how you build the code for the two different environments you're comparing between (e.g. PR build vs main branch build)](#${ENV_DIFFERENCES_ANCHOR})
+ - Or, [version numbers, commit SHAs or build timestamps baked into the build](#${BUILD_SPECIFIC_VALUES_ANCHOR})
  - Or, [executing asynchronous tasks that Meticulous doesn't natively handle](#${PAUSING_METICULOUS_REPLAYS_ANCHOR})
  - Or, [other causes](#${OTHER_CAUSES_ANCHOR})
 
@@ -110,6 +112,46 @@ If it's not possible to unify the configuration across the environments then you
 If, instead of preview URLs, you're using the \`report-diffs-action\` GitHub action, then Meticulous will compare snapshots from running your app from the base
 commit of the main branch to snapshots from running your app from the head commit of the pull request branch. In this case it's similarly important to make sure
 that you compile and run your app with the same configuration for both the main branch and the pull request branches.
+
+{% anchor id="${BUILD_SPECIFIC_VALUES_ANCHOR}" /%}
+## Diffs due to version numbers, commit SHAs or build timestamps
+
+Meticulous compares a replay against the base commit's build with a replay against the head commit's build, so any value baked in at
+build time -- an app version, a git tag or commit SHA, a build date -- is different on every pull request. This causes false positive diffs in two ways:
+
+ - **The value is displayed**, for example "v2.14.0 · 3f9c2ab" in a footer, sidebar or about dialog. Every screenshot showing it has a diff.
+ - **The value is compared against a response**, for example an update banner ("A new version is available") that compares the bundled version with a
+   polled \`/api/version\` or \`version.json\`. Meticulous replays the response captured when the session was recorded (often from a local dev
+   server, or an older deployment), so the versions almost never match and the banner covers the page -- or the app reloads itself mid-replay.
+
+To fix this, make the app use a fixed value whenever it runs as a Meticulous test.
+
+For an update check, skip the check itself -- pinning the bundled version doesn't help, because the recorded response still carries whatever
+version the recording environment reported:
+
+\`\`\`javascript
+const isUpdateAvailable = (deployedVersion) => {
+  // Meticulous replays the recorded /api/version response, which won't match this build's version
+  if (window.Meticulous?.isRunningAsTest) {
+    return false
+  }
+  return Boolean(deployedVersion) && deployedVersion !== APP_VERSION
+}
+\`\`\`
+
+For a displayed value, show a placeholder in the same format:
+
+\`\`\`javascript
+const getDisplayVersion = () =>
+  window.Meticulous?.isRunningAsTest ? '0.0.0-meticulous' : APP_VERSION
+\`\`\`
+
+If the value is also rendered on the server (server side rendering or NextJS server components), return the same placeholder on the server
+too, otherwise the server HTML still differs and hydration can fail. If you build a separate copy of your app for Meticulous in CI, you can pin the
+value in your build config (e.g. webpack \`DefinePlugin\` or Vite \`define\`) for that build. Otherwise, check for the
+[\`meticulous-is-test\` header](#${SERVER_SIDE_RENDERING_ANCHOR}) on the server.
+
+Only change values that are visible on the page -- values sent as error-reporting release tags or analytics properties can keep their real value.
 
 {% anchor id="${PAUSING_METICULOUS_REPLAYS_ANCHOR}" /%}
 ## Diffs due to asynchronous tasks not handled natively by Meticulous

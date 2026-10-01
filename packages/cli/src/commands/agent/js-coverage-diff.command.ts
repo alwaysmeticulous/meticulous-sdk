@@ -6,6 +6,7 @@ import {
   createClientWithOAuth,
   getReplayDiffJsCoverage,
   getTestRunJsCoverageDiff,
+  isTestRunProcessingResponse,
 } from "@alwaysmeticulous/client";
 import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
@@ -13,6 +14,7 @@ import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
+import { pollWhileProcessing } from "../../utils/poll-while-processing";
 import { withBaseRunRejectionAsUserError } from "./coverage-rejection.util";
 import { resolveFinishedCoverageRuns } from "./coverage-run-resolution.util";
 import { coerceLimit, coerceOffset } from "./paging-options.utils";
@@ -65,43 +67,44 @@ const handler = async (options: Options): Promise<void> => {
     project: options.project,
     dontWaitForTestRunToComplete: options.dontWaitForTestRunToComplete,
   });
-  if (runs == null) {
-    // Unfinished run, with --dontWaitForTestRunToComplete. The two output
-    // shapes need different empty forms, matching `js-coverage`:
-    //
-    // - the per-file list keeps its shape (a header-only table / an empty
-    //   list), since an empty list of differing files is a coherent value;
-    // - `--summary` has no meaningful empty shape — a zeroed delta would read
-    //   as "this commit changed no coverage" rather than "not ready yet" — so
-    //   JSON gets an explicit `null` and human output nothing at all.
-    //
-    // The reason is on stderr either way, from `resolveFinishedCoverageRuns`.
-    if (options.summary) {
-      if (json) {
-        printJson(null);
-      }
-      return;
-    }
+  // A waited-for run has finished by now, so a processing response is either
+  // the race between that check and this request, or the base it is diffed
+  // against: the backend resolves that one itself and requires it settled too,
+  // and nothing here ever waited for it. Polled through like every other
+  // result — except under --dontWaitForTestRunToComplete, where nothing waited
+  // and the single request's processing response is the answer itself.
+  const request = () =>
+    withBaseRunRejectionAsUserError(() =>
+      getTestRunJsCoverageDiff(client, runs.testRunId, {
+        ...(options.globFilter != null
+          ? { globFilter: options.globFilter }
+          : {}),
+        // The per-file rows are discarded below, so don't ask for them: on a
+        // large repo they are almost the whole response.
+        ...(options.summary ? { summaryOnly: true } : {}),
+        ...(options.limit != null ? { limit: options.limit } : {}),
+        ...(options.offset != null ? { offset: options.offset } : {}),
+      }),
+    );
+  const result = runs.allFinished
+    ? await pollWhileProcessing(request, {
+        isProcessing: isTestRunProcessingResponse,
+        waitingMessage: (first) => first.message,
+        timeoutMessage: (last) =>
+          `The coverage diff of test run ${runs.testRunId} did not become available within 10 minutes. ${last.message}`,
+      })
+    : await request();
+
+  if (isTestRunProcessingResponse(result)) {
+    // stdout gets the backend's own processing body, byte for byte what the
+    // MCP tool returns for the same state, never an empty list or a zeroed
+    // delta that would read as "this commit changed no coverage". The reason
+    // is on stderr, from `resolveFinishedCoverageRuns`.
     if (json) {
-      printJson([]);
-    } else {
-      console.log(
-        ["repoFilePath", "status", "baseRanges", "headRanges"].join("\t"),
-      );
+      printJson(result);
     }
     return;
   }
-
-  const result = await withBaseRunRejectionAsUserError(() =>
-    getTestRunJsCoverageDiff(client, runs.testRunId, {
-      ...(options.globFilter != null ? { globFilter: options.globFilter } : {}),
-      // The per-file rows are discarded below, so don't ask for them: on a
-      // large repo they are almost the whole response.
-      ...(options.summary ? { summaryOnly: true } : {}),
-      ...(options.limit != null ? { limit: options.limit } : {}),
-      ...(options.offset != null ? { offset: options.offset } : {}),
-    }),
-  );
 
   if (options.summary) {
     printDelta(result, json);
@@ -124,7 +127,6 @@ export const assertScopeCoherent = (options: Options): void => {
         ["testRunId", options.testRunId != null],
         ["commitSha", options.commitSha != null],
         ["summary", options.summary],
-        ["dontWaitForTestRunToComplete", options.dontWaitForTestRunToComplete],
       ] as const
     )
       .filter(([, enabled]) => enabled)
@@ -230,18 +232,39 @@ const printDelta = (
 const printReplayDiffCoverageDiff = async (
   client: MeticulousClient,
   replayDiffId: string,
-  { screenshotName, globFilter, json, limit, offset }: Options,
-): Promise<void> => {
-  const result = await getReplayDiffJsCoverage(
-    client,
-    replayDiffId,
+  {
     screenshotName,
-    {
+    globFilter,
+    json,
+    limit,
+    offset,
+    dontWaitForTestRunToComplete,
+  }: Options,
+): Promise<void> => {
+  const request = () =>
+    getReplayDiffJsCoverage(client, replayDiffId, screenshotName, {
       globFilter,
       ...(limit != null ? { limit } : {}),
       ...(offset != null ? { offset } : {}),
-    },
-  );
+    });
+  // Either replay may still be running; unlike the whole-run scope there is no
+  // run to wait on first, so the result itself is what's polled — or, with
+  // --dontWaitForTestRunToComplete, reported as not ready.
+  const result = dontWaitForTestRunToComplete
+    ? await request()
+    : await pollWhileProcessing(request, {
+        isProcessing: isTestRunProcessingResponse,
+        waitingMessage: (first) => first.message,
+        timeoutMessage: (last) =>
+          `The coverage diff of replay diff ${replayDiffId} did not become available within 10 minutes. ${last.message}`,
+      });
+  if (isTestRunProcessingResponse(result)) {
+    logNotice(result.message);
+    if (json) {
+      printJson(result);
+    }
+    return;
+  }
 
   // Counted over the whole diff by the backend, so the summary stays truthful
   // when these rows are one page of it. An older backend doesn't send them,
@@ -346,7 +369,7 @@ export const jsCoverageDiffCommand: CommandModule<unknown, Options> = {
       boolean: true,
       default: false,
       description:
-        "For a whole-test-run diff, return immediately instead of the default of blocking until the run finishes; an unfinished run is then reported as not complete.",
+        'Return immediately instead of the default of blocking until the run (or, with --replayDiffId, both replays) has finished; an unfinished one is then reported on stderr, and with --json as { status: "processing", message }.',
     },
   },
   handler: wrapHandler(handler),

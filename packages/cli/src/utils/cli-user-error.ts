@@ -15,6 +15,9 @@ export type CliUserErrorOutcome = "failed" | "skipped";
 export interface CliUserErrorMetadata {
   outcome?: CliUserErrorOutcome;
   reason?: string;
+  sourceDeploymentId?: string | undefined;
+  testRunId?: string | undefined;
+  testRunUrl?: string | undefined;
 }
 
 export class CliUserError extends Error {
@@ -22,6 +25,9 @@ export class CliUserError extends Error {
   readonly severity: CliUserErrorSeverity;
   readonly outcome: CliUserErrorOutcome;
   readonly reason: string | undefined;
+  readonly sourceDeploymentId: string | undefined;
+  readonly testRunId: string | undefined;
+  readonly testRunUrl: string | undefined;
 
   constructor(
     message: string,
@@ -35,5 +41,8 @@ export class CliUserError extends Error {
     this.severity = severity;
     this.outcome = metadata.outcome ?? "failed";
     this.reason = metadata.reason;
+    this.sourceDeploymentId = metadata.sourceDeploymentId;
+    this.testRunId = metadata.testRunId;
+    this.testRunUrl = metadata.testRunUrl;
   }
 }

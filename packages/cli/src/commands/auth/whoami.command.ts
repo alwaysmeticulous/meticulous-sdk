@@ -82,11 +82,7 @@ export const whoamiCommand: CommandModule<unknown, Options> = {
       throw toServerMessageError(error);
     });
 
-    if (
-      whoami.authenticatedVia === "project-api-token" ||
-      whoami.authenticatedVia === "test-run-token" ||
-      whoami.authenticatedVia === "workflow-token"
-    ) {
+    if (whoami.authenticatedVia === "project-api-token") {
       printPinnedTokenWhoami(whoami, json);
       return;
     }
@@ -111,12 +107,6 @@ const printPinnedTokenWhoami = (
   const tokenSource = process.env["METICULOUS_API_TOKEN"]
     ? "METICULOUS_API_TOKEN environment variable"
     : "~/.meticulous/config.json";
-  const label =
-    whoami.authenticatedVia === "test-run-token"
-      ? "test-run API token"
-      : whoami.authenticatedVia === "workflow-token"
-        ? "workflow API token"
-        : "project API token";
   if (json) {
     printJson({
       authenticatedVia: whoami.authenticatedVia,
@@ -127,7 +117,7 @@ const printPinnedTokenWhoami = (
       pinnedProject: whoami.selectedProject,
     });
   } else {
-    console.log(`Authenticated via: ${label} (${tokenSource})`);
+    console.log(`Authenticated via: project API token (${tokenSource})`);
     if (whoami.selectedProject) {
       console.log(`Pinned project: ${whoami.selectedProject}`);
     }

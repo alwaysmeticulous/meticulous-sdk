@@ -30,6 +30,8 @@ interface Options {
   recordedUntil?: string | undefined;
   recordedBy?: string | undefined;
   excludeSyntheticSessions?: boolean | undefined;
+  excludeAgentReviewSessions?: boolean | undefined;
+  requireInitialNavigationResponse?: boolean | undefined;
   visitedUrlFilter?: string | undefined;
   /**
    * `--selectedSet` takes its date optionally, so yargs yields `""` for the
@@ -45,6 +47,7 @@ interface Options {
   includeNumberUrlsVisited?: boolean | undefined;
   includeStartUrl?: boolean | undefined;
   includeAbandonedReason?: boolean | undefined;
+  includeSource?: boolean | undefined;
   includeSelectedSince?: boolean | undefined;
   includeAdditionalCoverage?: boolean | undefined;
   orderBy?: SessionsOrderByField | undefined;
@@ -63,6 +66,8 @@ const handler = async ({
   recordedUntil,
   recordedBy,
   excludeSyntheticSessions,
+  excludeAgentReviewSessions,
+  requireInitialNavigationResponse,
   visitedUrlFilter,
   selectedSet,
   includeDurationSeconds,
@@ -70,6 +75,7 @@ const handler = async ({
   includeNumberUrlsVisited,
   includeStartUrl,
   includeAbandonedReason,
+  includeSource,
   includeSelectedSince,
   includeAdditionalCoverage,
   orderBy,
@@ -121,6 +127,8 @@ const handler = async ({
     recordedUntil,
     recordedBy,
     excludeSyntheticSessions,
+    excludeAgentReviewSessions,
+    requireInitialNavigationResponse,
     visitedUrlFilter,
     selectedSet: selectedSetValue,
     includeDurationSeconds,
@@ -128,6 +136,7 @@ const handler = async ({
     includeNumberUrlsVisited,
     includeStartUrl,
     includeAbandonedReason,
+    includeSource,
     includeSelectedSince,
     includeAdditionalCoverage,
     orderBy,
@@ -201,6 +210,14 @@ const handler = async ({
               header: "abandonedReason",
               value: (session: SessionListItem) =>
                 session.abandonedReason ?? "",
+            },
+          ]
+        : []),
+      ...(includeSource
+        ? [
+            {
+              header: "source",
+              value: (session: SessionListItem) => session.source ?? "",
             },
           ]
         : []),
@@ -295,7 +312,7 @@ export const sessionsCommand: CommandModule<unknown, Options> = {
     project: {
       string: true,
       description:
-        "The project to list sessions for (id, 'org/proj', or simply 'proj'). One-off override, when omitted uses the user-configured default project.",
+        "The project to list sessions for (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s).",
     },
     createdSince: {
       string: true,
@@ -327,10 +344,20 @@ export const sessionsCommand: CommandModule<unknown, Options> = {
       description:
         "Output only original sessions (drop sessions produced by patching, slicing, or mutation); also omits the status column, since every row is then original.",
     },
+    excludeAgentReviewSessions: {
+      boolean: true,
+      description:
+        "Output only sessions not recorded by an Agent swarm run (drop sessions whose source is agentic-session-generation).",
+    },
+    requireInitialNavigationResponse: {
+      boolean: true,
+      description:
+        "Output only sessions whose recording captured the initial page navigation (HTML document) response. No session recorded before 2026-04-23 carries this, so older sessions are all dropped.",
+    },
     visitedUrlFilter: {
       string: true,
       description:
-        "Output only sessions that visited a URL matching this glob (only '*' is a wildcard, matching any run of characters; everything else — including '?', '.', '/' — is literal). Matched against every visited URL and the startUrl, e.g. '*/checkout*'.",
+        "Output only sessions that visited a URL matching this glob (only '*' is a wildcard, matching any run of characters; everything else — including '?', '.', '/' — is literal), e.g. '*/checkout*'.",
     },
     selectedSet: {
       string: true,
@@ -360,6 +387,11 @@ export const sessionsCommand: CommandModule<unknown, Options> = {
       boolean: true,
       description:
         "Add an abandonedReason column with why the recorder gave up on the session, for sessions that were abandoned.",
+    },
+    includeSource: {
+      boolean: true,
+      description:
+        "Add a source column with what recorded the session (e.g. snippet for real users, agentic-session-generation for an Agent swarm run).",
     },
     includeSelectedSince: {
       boolean: true,

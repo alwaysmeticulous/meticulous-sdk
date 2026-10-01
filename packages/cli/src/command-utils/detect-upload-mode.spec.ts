@@ -21,6 +21,12 @@ describe("detectUploadMode", () => {
     expect(() => detectUploadMode({})).toThrow(CliUserError);
   });
 
+  test("only suggests the asset flags the caller accepts", () => {
+    expect(() => detectUploadMode({}, ["--appDirectory"])).toThrow(
+      "No upload input provided. Pass --localImageTag for a container, or --appDirectory for static assets.",
+    );
+  });
+
   test("throws when both container and asset input are provided", () => {
     expect(() =>
       detectUploadMode({

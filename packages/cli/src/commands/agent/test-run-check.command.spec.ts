@@ -138,7 +138,7 @@ describe("test-run-check command", () => {
     vi.useFakeTimers();
 
     const result = runHandler({ json: true });
-    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(10_000);
     await result;
 
     expect(mocks.getTestRunCheckReport).toHaveBeenCalledTimes(2);
@@ -148,23 +148,25 @@ describe("test-run-check command", () => {
     });
   });
 
-  it("emits processing JSON and returns immediately when the run is unfinished and waiting is disabled", async () => {
+  it("emits the backend's processing body and returns immediately when the run is unfinished and waiting is disabled", async () => {
     mocks.ensureTestRunFinished.mockResolvedValue(null);
+    mocks.getTestRunCheckReport.mockResolvedValue({ status: "processing" });
 
     await runHandler({ json: true, dontWaitForTestRunToComplete: true });
 
     expect(mocks.printJson).toHaveBeenCalledWith({ status: "processing" });
-    expect(mocks.getTestRunCheckReport).not.toHaveBeenCalled();
+    // Asked once, not polled: the caller said not to wait.
+    expect(mocks.getTestRunCheckReport).toHaveBeenCalledTimes(1);
   });
 
   it("prints nothing when the run is unfinished, waiting is disabled, and --json is not set", async () => {
     mocks.ensureTestRunFinished.mockResolvedValue(null);
+    mocks.getTestRunCheckReport.mockResolvedValue({ status: "processing" });
 
     await runHandler({ json: false, dontWaitForTestRunToComplete: true });
 
     expect(mocks.printJson).not.toHaveBeenCalled();
     expect(logSpy).not.toHaveBeenCalled();
-    expect(mocks.getTestRunCheckReport).not.toHaveBeenCalled();
   });
 
   it("reports an execution failure instead of continuing to poll", async () => {

@@ -44,8 +44,9 @@ export interface UploadAssetChunkOptions extends ProjectIdentifier {
  * same encoding the non-chunked tar.d path uses), uploads to S3 via a
  * presigned URL, then marks the chunk as uploaded. The asset server
  * inflates each chunk on demand and serves files through a tar-aware
- * facade. A `files.json` index listing the paths inside the tar is uploaded
- * alongside the tarball so the server can serve individual files by name.
+ * facade. A `files.json` index listing the entry names inside the tar
+ * (including `chunkAssetsDirectoryPrefix`) is uploaded alongside the tarball
+ * so the server can serve individual files by name.
  */
 export const uploadAssetChunk = async ({
   apiToken: apiToken_,
@@ -218,7 +219,7 @@ export const writeCompressedTar = ({
         ...(prefix ? { prefix } : {}),
         onWriteEntry(entry) {
           if (entry.type === "File") {
-            filePaths.push(entry.path);
+            filePaths.push(toTarEntryName(entry.path, entry.prefix));
           }
         },
       },
@@ -251,4 +252,19 @@ export const writeCompressedTar = ({
       outStream.end(() => resolvePromise({ filePaths }));
     });
   });
+};
+
+/**
+ * The name node-tar writes into the entry's header. `onWriteEntry` fires
+ * before the header is built and exposes the path without the `prefix`
+ * option applied, so the prefix is joined here the same way node-tar's
+ * `prefixPath` does: a leading `./` is dropped and trailing slashes on the
+ * prefix are stripped. The files index must list these names, since readers
+ * look files up by their name inside the tar.
+ */
+const toTarEntryName = (path: string, prefix: string | undefined): string => {
+  if (!prefix) {
+    return path;
+  }
+  return `${prefix.replace(/\/+$/, "")}/${path.replace(/^\.(\/|$)/, "")}`;
 };

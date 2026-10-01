@@ -16,6 +16,7 @@ import {
 import { executeWithRetry, initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { uploadGitDiffToS3 } from "./asset-upload-utils";
+import { withCompletedUpload } from "./completed-upload";
 import {
   DEPLOYMENT_IN_PROGRESS_RETRY,
   WAIT_ON_THE_SLOW_SCHEDULE,
@@ -49,6 +50,7 @@ export interface RunWithUploadedAssetChunksResult {
   commentsDisabledForAuthor?: boolean;
   overlaps?: ChunkPathOverlap[];
   overlapsTruncated?: boolean;
+  sourceDeploymentId?: string;
 }
 
 /**
@@ -136,10 +138,39 @@ export const runWithUploadedAssetChunks = async ({
         })
     : () => triggerRunWithUploadedAssetChunks({ ...args, mustHaveBase: false });
 
-  const initialResult = await executeWithRetry(
-    () => triggerRunWithUploadedAssetChunks(args),
-    { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger },
-  );
+  let initialResult: Awaited<
+    ReturnType<typeof triggerRunWithUploadedAssetChunks>
+  >;
+  let polled: Awaited<ReturnType<typeof pollWhileBaseNotFound>>;
+  try {
+    initialResult = await executeWithRetry(
+      () => triggerRunWithUploadedAssetChunks(args),
+      { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger },
+    );
+    polled = await pollWhileBaseNotFound({
+      initialResult: {
+        testRun: initialResult?.testRun ?? null,
+        baseNotFound: initialResult?.baseNotFound,
+        extraBasePollTimeoutMs: initialResult?.extraBasePollTimeoutMs,
+        message: initialResult?.message,
+        allSessionsExcludedBySessionFilter:
+          initialResult?.allSessionsExcludedBySessionFilter,
+        commentsDisabledForAuthor: initialResult?.commentsDisabledForAuthor,
+        overlaps: initialResult?.overlaps,
+        overlapsTruncated: initialResult?.overlapsTruncated,
+      },
+      retryFn: () => triggerRunWithUploadedAssetChunks(args),
+      fallbackFn,
+      ...(manifestHasVersionLookups
+        ? {
+            fallbackLogMessage:
+              "Timed out waiting for a base test run. Not proceeding without a base because this manifest uses versionLookup entries, which require one.",
+          }
+        : {}),
+    });
+  } catch (error) {
+    throw withCompletedUpload(error, { sourceDeploymentId });
+  }
   const {
     testRun,
     baseNotFound,
@@ -148,27 +179,7 @@ export const runWithUploadedAssetChunks = async ({
     commentsDisabledForAuthor,
     overlaps: triggerOverlaps,
     overlapsTruncated: triggerOverlapsTruncated,
-  } = await pollWhileBaseNotFound({
-    initialResult: {
-      testRun: initialResult?.testRun ?? null,
-      baseNotFound: initialResult?.baseNotFound,
-      extraBasePollTimeoutMs: initialResult?.extraBasePollTimeoutMs,
-      message: initialResult?.message,
-      allSessionsExcludedBySessionFilter:
-        initialResult?.allSessionsExcludedBySessionFilter,
-      commentsDisabledForAuthor: initialResult?.commentsDisabledForAuthor,
-      overlaps: initialResult?.overlaps,
-      overlapsTruncated: initialResult?.overlapsTruncated,
-    },
-    retryFn: () => triggerRunWithUploadedAssetChunks(args),
-    fallbackFn,
-    ...(manifestHasVersionLookups
-      ? {
-          fallbackLogMessage:
-            "Timed out waiting for a base test run. Not proceeding without a base because this manifest uses versionLookup entries, which require one.",
-        }
-      : {}),
-  });
+  } = polled;
 
   // The trigger computes overlaps over the fully resolved manifest and is the
   // single authoritative source for a real run — an omitted/empty result means
@@ -196,6 +207,7 @@ export const runWithUploadedAssetChunks = async ({
 
   return {
     testRun: testRun ?? null,
+    sourceDeploymentId,
     ...(message ? { message } : {}),
     ...(allSessionsExcludedBySessionFilter
       ? { allSessionsExcludedBySessionFilter: true }

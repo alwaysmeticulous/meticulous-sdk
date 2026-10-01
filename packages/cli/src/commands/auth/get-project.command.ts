@@ -17,7 +17,7 @@ interface Options {
 
 /**
  * Prints the project that project-scoped CLI commands would currently use —
- * the token's own pinned project for a project/test-run API token, or the
+ * the token's own pinned project for a project API token, or the
  * OAuth caller's default project (`auth set-project`) otherwise. Scriptable:
  * only the resolved `organization/name` slug goes to stdout; exits non-zero
  * with the backend's guidance on stderr if nothing is resolved.

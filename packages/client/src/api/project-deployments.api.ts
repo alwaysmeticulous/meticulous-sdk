@@ -85,6 +85,25 @@ export interface TriggerDeploymentSourceMapIngestionResponse {
   scheduled: boolean;
 }
 
+export interface GetDeploymentSourceMapMappingArtifactParams {
+  projectDeploymentId: string;
+  timeoutMs?: number | undefined;
+}
+
+export interface GetDeploymentSourceMapMappingArtifactResponse {
+  manifestDownloadUrl: string;
+}
+
+export interface GetDeploymentSourceMapArtifactDownloadUrlParams {
+  projectDeploymentId: string;
+  sourceMapSha256: string;
+  timeoutMs?: number | undefined;
+}
+
+export interface GetDeploymentSourceMapArtifactDownloadUrlResponse {
+  downloadUrl: string;
+}
+
 export interface CompleteAssetUploadParams extends ProjectIdentifier {
   uploadId: string;
   commitSha: string;
@@ -193,14 +212,12 @@ const triggerRequestConfig = (
 };
 
 /**
- * Identifies (or overrides) a project for OAuth callers of the `agent/*`
- * namespace. Unlike {@link ProjectIdentifier}, `project` is resolved flexibly
- * server-side — a bare id, an `"organization/name"` slug, or a bare name that
- * uniquely identifies one of the caller's accessible projects (see
- * `ProjectService.resolveForUserByIdentifier`) — and falls back to the
- * caller's stored default project when omitted, so it's rarely needed.
- * Omitted entirely when authenticating with a project-scoped API token (the
- * token already pins the project).
+ * Identifies (or overrides) a project for callers of the `agent/*` namespace.
+ * Unlike {@link ProjectIdentifier}, `project` is resolved flexibly
+ * server-side — a bare id, an `"organization/name"` slug, or a bare name — and
+ * falls back to the OAuth caller's stored default project, or an API token's
+ * own project, when omitted. An API token may only name projects it has
+ * access to (via cross-project access).
  */
 export interface AgentProjectOverride {
   project?: string | undefined;
@@ -331,6 +348,46 @@ export const requestDeploymentSourceMapArtifactUpload = async ({
     await client.post<RequestDeploymentSourceMapArtifactUploadResponse>(
       `project-deployments/${projectDeploymentId}/source-map-mapping-artifact-upload-url`,
       body,
+    );
+  return data;
+};
+
+/**
+ * Returns the deployment's completed source-map mapping artifact's manifest
+ * download URL, or null when ingestion has not recorded one. Best-effort
+ * consumers only: ingestion runs asynchronously after deployment creation.
+ */
+export const getDeploymentSourceMapMappingArtifact = async ({
+  client,
+  projectDeploymentId,
+  timeoutMs,
+}: GetDeploymentSourceMapMappingArtifactParams & {
+  client: MeticulousClient;
+}): Promise<GetDeploymentSourceMapMappingArtifactResponse | null> => {
+  const { data } =
+    await client.get<GetDeploymentSourceMapMappingArtifactResponse | null>(
+      `project-deployments/${encodeURIComponent(projectDeploymentId)}/source-map-mapping-artifact`,
+      timeoutMs != null ? { timeout: timeoutMs } : undefined,
+    );
+  return data;
+};
+
+/**
+ * Returns a presigned download URL for one ingested raw source map, keyed by
+ * its sha256, or null when the deployment has no recorded artifact.
+ */
+export const getDeploymentSourceMapArtifactDownloadUrl = async ({
+  client,
+  projectDeploymentId,
+  sourceMapSha256,
+  timeoutMs,
+}: GetDeploymentSourceMapArtifactDownloadUrlParams & {
+  client: MeticulousClient;
+}): Promise<GetDeploymentSourceMapArtifactDownloadUrlResponse | null> => {
+  const { data } =
+    await client.get<GetDeploymentSourceMapArtifactDownloadUrlResponse | null>(
+      `project-deployments/${encodeURIComponent(projectDeploymentId)}/source-map-mapping-artifact/maps/${encodeURIComponent(sourceMapSha256)}`,
+      timeoutMs != null ? { timeout: timeoutMs } : undefined,
     );
   return data;
 };
@@ -559,12 +616,21 @@ export const completeAssetChunkUpload = async ({
 export const downloadProjectDeployment = async ({
   client,
   deploymentUploadId,
+  includeChunkFilesIndex,
 }: {
   client: MeticulousClient;
   deploymentUploadId: string;
+  /**
+   * For a chunked deployment, also return each chunk's `files.json` URL in
+   * `assetChunkFilesIndexUrls`.
+   */
+  includeChunkFilesIndex?: boolean;
 }): Promise<DownloadDeploymentResponse> => {
   const { data } = await client.get<DownloadDeploymentResponse>(
     `project-deployments/${deploymentUploadId}`,
+    includeChunkFilesIndex
+      ? { params: { includeChunkFilesIndex: true } }
+      : undefined,
   );
   return data;
 };

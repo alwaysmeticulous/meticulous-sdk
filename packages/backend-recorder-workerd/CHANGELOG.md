@@ -1,5 +1,13 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.343.0
+
+### Minor Changes
+
+- [#13644](https://github.com/alwaysmeticulous/meticulous/pull/13644) [`de3af7b`](https://github.com/alwaysmeticulous/meticulous/commit/de3af7bc7822a0dabae11bcd9107a6d251b8baea) Thanks [@dennysem](https://github.com/dennysem)! - Raise the per-body capture cap from 256 KiB to 1 MiB, so four times as much of a large request or response body survives into the recording. The cap is defined once in `backend-recorder-workerd` and imported by the Node recorder, whose HTTP, undici and replay paths previously each declared their own copy of the value.
+
+  A truncated body now also records the share of it that was captured, as `http.request.body.captured_percentage` / `http.response.body.captured_percentage` (absent when the body was captured whole). The truncation flag itself is more accurate too: a body cut exactly on a chunk boundary, or one whose decompressed text overflowed the cap, used to report `truncated: false`.
+
 ## 2.342.0
 
 ### Patch Changes

@@ -1,5 +1,22 @@
 # @alwaysmeticulous/debug-workspace
 
+## 2.343.0
+
+### Patch Changes
+
+- [#14289](https://github.com/alwaysmeticulous/meticulous/pull/14289) [`f5dcffa`](https://github.com/alwaysmeticulous/meticulous/commit/f5dcffa319879fcc1f12a3e855ead2fa44866ba5) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - The CLI is now distributed as a self-contained bundle, so installing it via
+  `npx` no longer resolves a separate runtime dependency tree.
+
+  The CLI package no longer exports its internal yargs command modules
+  (`recordCommand`, `replayCommand`, `ciRunLocalCommand` and
+  `ciStartTunnelCommand`). `labelCommitCore` remains available for programmatic
+  use.
+
+- Updated dependencies [[`6c40306`](https://github.com/alwaysmeticulous/meticulous/commit/6c403068f1a334802acf9c5a25772c9f4562ffd9), [`1f67454`](https://github.com/alwaysmeticulous/meticulous/commit/1f67454377dff20468b833cf68c4e3d8528a3f89), [`55e1317`](https://github.com/alwaysmeticulous/meticulous/commit/55e1317ac3c31d79c0790c1356dc3cab26056566), [`55e1317`](https://github.com/alwaysmeticulous/meticulous/commit/55e1317ac3c31d79c0790c1356dc3cab26056566), [`563519b`](https://github.com/alwaysmeticulous/meticulous/commit/563519bf957dc1e186756a643bbd12c6413a547d), [`1e58ceb`](https://github.com/alwaysmeticulous/meticulous/commit/1e58ceb6d528d25f4509ae1b1a341bb9ddfdf1d7), [`3c57b83`](https://github.com/alwaysmeticulous/meticulous/commit/3c57b833d0ff2ecd2234fe69c313a33c33cd65ab), [`9211135`](https://github.com/alwaysmeticulous/meticulous/commit/92111358dee50fed444415e7ade5533ed65f5a33), [`0cd78e4`](https://github.com/alwaysmeticulous/meticulous/commit/0cd78e47fee4745d707b0e40893872193a2bc134), [`d3e4881`](https://github.com/alwaysmeticulous/meticulous/commit/d3e488113feffb7b4f7907d9e8c57182a3b29b5b), [`749e76e`](https://github.com/alwaysmeticulous/meticulous/commit/749e76efa3ceb90280964a049f8d8ac5a495ca41), [`4cb6038`](https://github.com/alwaysmeticulous/meticulous/commit/4cb60387aec93b56fbced9d9304e23e628c0bfc6), [`c8f38fc`](https://github.com/alwaysmeticulous/meticulous/commit/c8f38fca4efa206536e12e07949502413bce618b), [`c8f38fc`](https://github.com/alwaysmeticulous/meticulous/commit/c8f38fca4efa206536e12e07949502413bce618b), [`acc089e`](https://github.com/alwaysmeticulous/meticulous/commit/acc089ec7433d3e153d2747d68dd0986714c39ba), [`e39b749`](https://github.com/alwaysmeticulous/meticulous/commit/e39b749689249c9e63274ea3b828d67056ba7680), [`a155cd2`](https://github.com/alwaysmeticulous/meticulous/commit/a155cd27860c29bdf235e9a7d1b17b3d2da9d721), [`1a8e23c`](https://github.com/alwaysmeticulous/meticulous/commit/1a8e23c5833b277d34458f0ef41fdfef7636d8a5), [`78a17a0`](https://github.com/alwaysmeticulous/meticulous/commit/78a17a055881e844da7c952ccd90e0b8fd38b205), [`d66e097`](https://github.com/alwaysmeticulous/meticulous/commit/d66e097432517d04220be6a378c22ebe861ea975), [`22ca559`](https://github.com/alwaysmeticulous/meticulous/commit/22ca55928aa6bcae3b070fe89b6b797f3d8931ba), [`2f03f27`](https://github.com/alwaysmeticulous/meticulous/commit/2f03f27f2b26975f3328c082f0fc168d98edca99), [`b1ea550`](https://github.com/alwaysmeticulous/meticulous/commit/b1ea550465090eca5d56ad0222900ac7cba56ac8)]:
+  - @alwaysmeticulous/client@2.343.0
+  - @alwaysmeticulous/downloading-helpers@2.343.0
+  - @alwaysmeticulous/common@2.343.0
+
 ## 2.342.0
 
 ### Patch Changes

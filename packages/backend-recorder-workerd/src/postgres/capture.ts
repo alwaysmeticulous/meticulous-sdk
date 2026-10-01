@@ -29,7 +29,8 @@ export const POSTGRES_JS_RESULT_TRUNCATED_ATTR =
 // recorded result" miss.
 export const POSTGRES_JS_ERROR_ATTR = "meticulous.postgresjs.error";
 
-// Cap the captured result to bound span size, matching the HTTP/undici/pg 256 KB cap.
+// Cap the captured result to bound span size, matching the Node recorder's pg result cap.
+// Bodies are capped separately, at MAX_BODY_CAPTURE_SIZE.
 export const MAX_POSTGRES_JS_RESULT_SIZE = 256 * 1024;
 
 /**
