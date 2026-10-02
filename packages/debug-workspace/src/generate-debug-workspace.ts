@@ -24,6 +24,7 @@ import { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
 import { fetchDomDiffs, type DomDiffMap } from "./fetch-dom-diffs";
 import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
 import { parseMeticulousSha } from "./meticulous-sha";
+import { readReplayTimeline } from "./replay-walk";
 import { screenshotIdentifierToFilename } from "./screenshot-identifier";
 
 interface TimelineEntry {
@@ -726,17 +727,15 @@ export const redactCookiesAndHeaders = (
       ) {
         count++;
       }
-      // `timeline.json`'s network-request entries (`pollyReplay`,
+      // The timeline's network-request entries (`pollyReplay`,
       // `passedThroughNetworkRequest`, etc.) embed full HAR `headers` arrays,
       // including `Cookie`/`Authorization` values, for every request/response
-      // in the replay. Redact it before `generateDebugDerivedFiles` derives
-      // `timeline.ndjson` / `events-index` / `network-log` from it.
+      // in the replay. Redact both serialisations before
+      // `generateDebugDerivedFiles` derives `events-index` / `network-log`
+      // from whichever is present.
       if (redactCookiesAndHeadersInFile(join(replayDir, "timeline.json"))) {
         count++;
       }
-      // Usually generated fresh from (already-redacted) `timeline.json`, but
-      // redact in place too in case it was already present in the downloaded
-      // archive.
       if (
         redactCookiesAndHeadersInNdjsonFile(join(replayDir, "timeline.ndjson"))
       ) {
@@ -1705,15 +1704,8 @@ const generateTimelineSummaries = (workspaceDir: string): void => {
     }
 
     for (const replayId of readdirSync(subDirPath)) {
-      const timelinePath = join(subDirPath, replayId, "timeline.json");
-      if (!existsSync(timelinePath)) {
-        continue;
-      }
-
-      const timeline = JSON.parse(
-        readFileSync(timelinePath, "utf8"),
-      ) as TimelineEntry[];
-      if (!Array.isArray(timeline)) {
+      const timeline = readReplayTimeline(join(subDirPath, replayId));
+      if (timeline == null) {
         continue;
       }
 
@@ -2023,15 +2015,8 @@ const buildScreenshotMap = (
     }
 
     for (const replayId of readdirSync(subDirPath)) {
-      const timelinePath = join(subDirPath, replayId, "timeline.json");
-      if (!existsSync(timelinePath)) {
-        continue;
-      }
-
-      const timeline = JSON.parse(
-        readFileSync(timelinePath, "utf8"),
-      ) as unknown[];
-      if (!Array.isArray(timeline)) {
+      const timeline = readReplayTimeline(join(subDirPath, replayId));
+      if (timeline == null) {
         continue;
       }
 
@@ -2266,28 +2251,23 @@ const extractReplayStats = (
     stats.totalAnimationFrames = counts["jsReplay"] ?? null;
   }
 
-  const timelinePath = join(replayDir, "timeline.json");
-  if (existsSync(timelinePath)) {
-    const timeline = JSON.parse(
-      readFileSync(timelinePath, "utf8"),
-    ) as TimelineEntry[];
-    if (Array.isArray(timeline) && timeline.length > 0) {
-      let minVt: number | undefined;
-      let maxVt: number | undefined;
-      for (const entry of timeline) {
-        const vt = entry.virtualTimeStart;
-        if (vt != null) {
-          if (minVt == null || vt < minVt) {
-            minVt = vt;
-          }
-          if (maxVt == null || vt > maxVt) {
-            maxVt = vt;
-          }
+  const timeline = readReplayTimeline(replayDir);
+  if (timeline != null && timeline.length > 0) {
+    let minVt: number | undefined;
+    let maxVt: number | undefined;
+    for (const entry of timeline) {
+      const vt = entry.virtualTimeStart;
+      if (vt != null) {
+        if (minVt == null || vt < minVt) {
+          minVt = vt;
+        }
+        if (maxVt == null || vt > maxVt) {
+          maxVt = vt;
         }
       }
-      if (minVt != null && maxVt != null) {
-        stats.totalVirtualTimeMs = Math.round(maxVt - minVt);
-      }
+    }
+    if (minVt != null && maxVt != null) {
+      stats.totalVirtualTimeMs = Math.round(maxVt - minVt);
     }
   }
 
@@ -2321,6 +2301,7 @@ const collectFileMetadata = (
     "logs.deterministic.txt",
     "logs.deterministic.filtered.txt",
     "logs.concise.txt",
+    "timeline.ndjson",
     "timeline.json",
     "timeline-stats.json",
     "metadata.json",

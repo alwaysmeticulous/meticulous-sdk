@@ -4,8 +4,8 @@ import chalk from "chalk";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import {
   discoverReplayDirs,
+  readReplayTimeline,
   readScreenshotMetadata,
-  readTimelineJson,
   type ReplayDir,
 } from "./replay-walk";
 import { screenshotIdentifierToBaseName } from "./screenshot-identifier";
@@ -31,9 +31,7 @@ export const extractScreenshotDomFiles = (workspaceDir: string): void => {
       continue;
     }
 
-    const virtualTimeByName = readTimelineVirtualTimes(
-      join(replayDir.path, "timeline.json"),
-    );
+    const virtualTimeByName = readTimelineVirtualTimes(replayDir.path);
 
     for (const filename of readdirSync(screenshotsDir)) {
       if (!filename.endsWith(".metadata.json")) {
@@ -95,11 +93,9 @@ const renderWithHeader = (
   return header + dom;
 };
 
-const readTimelineVirtualTimes = (
-  timelinePath: string,
-): Map<string, number> => {
+const readTimelineVirtualTimes = (replayDir: string): Map<string, number> => {
   const map = new Map<string, number>();
-  const timeline = readTimelineJson(timelinePath);
+  const timeline = readReplayTimeline(replayDir);
   if (timeline == null) {
     return map;
   }

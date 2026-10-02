@@ -30,7 +30,7 @@ import { appendProjectSelectionHint } from "../../utils/project-selection-hint";
 import {
   isTestRunComplete,
   isTestRunPartial,
-  resolveTestRunForCommitOrThrow,
+  resolveTestRunOrThrow,
   tryResolveTestRunForCommit,
 } from "../../utils/resolve-test-run-from-commit";
 import {
@@ -54,6 +54,7 @@ import {
   printCoverageSummary,
 } from "./js-coverage-summary";
 import type { Options } from "./js-coverage.types";
+import { assertSingleRunSelector, prNumberOption } from "./pr-number-option";
 
 // Re-exported for callers/tests that historically imported these helpers from
 // this command module.
@@ -73,6 +74,7 @@ const handler = async (options: Options): Promise<void> => {
     apiToken,
     testRunId,
     commitSha,
+    prNumber,
     latestForProject,
     project,
     replayId,
@@ -93,11 +95,10 @@ const handler = async (options: Options): Promise<void> => {
     throw new CliUserError("--screenshotName only applies to --replayId.");
   }
 
-  // --testRunId and --commitSha are two ways to name a run; passing both is
-  // ambiguous on both paths (whole-test-run and --replayId disambiguation).
-  if (testRunId != null && commitSha != null) {
-    throw new CliUserError("Pass either --testRunId or --commitSha, not both.");
-  }
+  // --testRunId, --prNumber and --commitSha are three ways to name a run;
+  // passing more than one is ambiguous on both paths (whole-test-run and
+  // --replayId disambiguation).
+  assertSingleRunSelector({ testRunId, prNumber, commitSha });
 
   // With an explicit --testRunId already in hand, combining it with
   // --headPlusTestRunIds is redundant — --testRunIds covers exactly that case
@@ -112,10 +113,13 @@ const handler = async (options: Options): Promise<void> => {
   // primary), so it can't be combined with the other ways of naming one.
   if (
     testRunIds != null &&
-    (testRunId != null || commitSha != null || headPlusTestRunIds != null)
+    (testRunId != null ||
+      prNumber != null ||
+      commitSha != null ||
+      headPlusTestRunIds != null)
   ) {
     throw new CliUserError(
-      "--testRunIds cannot be combined with --testRunId, --commitSha, or --headPlusTestRunIds.",
+      "--testRunIds cannot be combined with --testRunId, --prNumber, --commitSha, or --headPlusTestRunIds.",
     );
   }
 
@@ -161,6 +165,7 @@ const handler = async (options: Options): Promise<void> => {
     await printReplayCoverage(client, project, {
       testRunId,
       commitSha,
+      prNumber,
       replayId,
       screenshotName,
       includeAllFiles: options.includeAllFiles,
@@ -196,6 +201,7 @@ export const assertLatestForProjectCompatible = (options: Options): void => {
     [
       ["testRunId", options.testRunId != null],
       ["commitSha", options.commitSha != null],
+      ["prNumber", options.prNumber != null],
       ["replayId", options.replayId != null],
       ["screenshotName", options.screenshotName != null],
       ["headPlusTestRunIds", options.headPlusTestRunIds != null],
@@ -244,21 +250,23 @@ export const assertTestRunOnlyFlagsUnsetForReplay = (
   }
 };
 
-// Resolves a commit to a test run id, used only to disambiguate which run a
-// --replayId belongs to. The replay's own coverage exists once that replay has
+// Resolves a commit or pull request to a test run id, used only to disambiguate
+// which run a --replayId belongs to; `undefined` when neither was given. The replay's own coverage exists once that replay has
 // executed, independent of whole-run completion, so we don't require the run to
 // be complete here (unlike the whole-test-run path) — getReplayJsCoverage
 // surfaces an actionable error if the replay itself has no coverage yet.
-const resolveTestRunIdForCommit = async (
+const resolveAnchorTestRunId = async (
   client: MeticulousClient,
-  commitSha: string | undefined,
-  project: string | undefined,
-): Promise<string> => {
-  const { testRunId } = await resolveTestRunForCommitOrThrow(
-    client,
-    commitSha,
-    project,
-  );
+  lookUp: {
+    commitSha: string | undefined;
+    prNumber: number | undefined;
+    project: string | undefined;
+  },
+): Promise<string | undefined> => {
+  if (lookUp.commitSha == null && lookUp.prNumber == null) {
+    return undefined;
+  }
+  const { testRunId } = await resolveTestRunOrThrow(client, lookUp);
   return testRunId;
 };
 
@@ -268,6 +276,7 @@ const printReplayCoverage = async (
   {
     testRunId,
     commitSha,
+    prNumber,
     replayId,
     screenshotName,
     includeAllFiles,
@@ -277,6 +286,7 @@ const printReplayCoverage = async (
   }: {
     testRunId: string | undefined;
     commitSha: string | undefined;
+    prNumber: number | undefined;
     replayId: string;
     screenshotName: string | undefined;
     includeAllFiles: boolean;
@@ -285,13 +295,11 @@ const printReplayCoverage = async (
     json: boolean;
   },
 ): Promise<void> => {
-  // An explicit --commitSha selects the run client-side (the endpoint only
-  // understands testRunId); --testRunId is passed through as-is.
+  // An explicit --commitSha or --prNumber selects the run client-side (the
+  // endpoint only understands testRunId); --testRunId is passed through as-is.
   const effectiveTestRunId =
     testRunId ??
-    (commitSha != null
-      ? await resolveTestRunIdForCommit(client, commitSha, project)
-      : undefined);
+    (await resolveAnchorTestRunId(client, { commitSha, prNumber, project }));
 
   // The replay may still be running; unlike the whole-run scope there is no
   // run to wait on first, so the result itself is what's polled — or, with
@@ -564,13 +572,14 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
     commitSha: {
       string: true,
       description:
-        "A commit SHA, used as an alternative to --testRunId: looks up the latest test run for the commit. For whole-test-run coverage, defaults to the current git HEAD when neither --testRunId nor --commitSha is given.",
+        "A commit SHA, used as an alternative to --testRunId: looks up the latest test run for the commit. For whole-test-run coverage, defaults to the current git HEAD when none of --testRunId, --prNumber and --commitSha is given.",
     },
+    prNumber: prNumberOption(["testRunIds"]),
     latestForProject: {
       boolean: true,
       default: false,
       description:
-        "Return coverage from the project's preferred latest successful test run (the same run used by the webapp's project coverage view) — not necessarily your current commit. Uses --project when provided, otherwise the token's project or the OAuth user's default project. Cannot be combined with an explicit run/commit/replay, --prDiffOnly, run unions, or --dontWaitForTestRunToComplete.",
+        "Return coverage from the project's preferred latest successful test run (the same run used by the webapp's project coverage view) — not necessarily your current commit. Uses --project when provided, otherwise the token's project or the OAuth user's default project. Cannot be combined with an explicit run/commit/pull request/replay, --prDiffOnly, run unions, or --dontWaitForTestRunToComplete.",
       // No yargs-level `conflicts` here: yargs treats a conflicting option as
       // "present" once it has a value, including its default — since
       // prDiffOnly/dontWaitForTestRunToComplete also default to false, that
@@ -581,13 +590,13 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
     project: {
       string: true,
       description:
-        "The project to use for --latestForProject or commit lookup (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the token's project or the OAuth user's configured default project. Cannot be combined with --testRunId or --testRunIds, which already determine the project.",
+        "The project to use for --latestForProject or commit or pull request lookup (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the token's project or the OAuth user's configured default project. Cannot be combined with --testRunId or --testRunIds, which already determine the project.",
       conflicts: ["testRunId", "testRunIds"],
     },
     replayId: {
       string: true,
       description:
-        "The replay ID. Pass the base or head replay to get each side's coverage. Repo file paths are resolved against the run that executed the replay; --testRunId / --commitSha may be combined to disambiguate when the replay was the head of more than one run.",
+        "The replay ID. Pass the base or head replay to get each side's coverage. Repo file paths are resolved against the run that executed the replay; --testRunId / --prNumber / --commitSha may be combined to disambiguate when the replay was the head of more than one run.",
     },
     screenshotName: {
       string: true,
@@ -597,15 +606,15 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
     headPlusTestRunIds: {
       string: true,
       description:
-        "Comma-separated additional test run IDs to union with the run resolved via --commitSha, or the current git HEAD by default (cannot be combined with --testRunId — use --testRunIds instead when you already have an explicit primary ID). " +
+        "Comma-separated additional test run IDs to union with the run resolved via --prNumber or --commitSha, or the current git HEAD by default (cannot be combined with --testRunId — use --testRunIds instead when you already have an explicit primary ID). " +
         "Useful for checking combined coverage of the resolved run with additional custom-session test runs, each covering a subset of sessions. No run may still be running, and all must belong to the same project and have executed the exact same commit as the run resolved above " +
         "(a PR's merge commit is recomputed whenever its base branch moves, so a run triggered against a since-advanced base is rejected). Whole-test-run coverage only.",
     },
     testRunIds: {
       string: true,
       description:
-        "Comma-separated test run IDs: the first is the primary run coverage is returned for, the rest are unioned in exactly like --headPlusTestRunIds. An alternative to --testRunId/--commitSha for callers that already have an ordered list of run IDs on hand. " +
-        "Cannot be combined with --testRunId, --commitSha, or --headPlusTestRunIds. Same constraints as --headPlusTestRunIds apply to the additional IDs (same project, same commit as the primary). Whole-test-run coverage only.",
+        "Comma-separated test run IDs: the first is the primary run coverage is returned for, the rest are unioned in exactly like --headPlusTestRunIds. An alternative to --testRunId/--prNumber/--commitSha for callers that already have an ordered list of run IDs on hand. " +
+        "Cannot be combined with --testRunId, --prNumber, --commitSha, or --headPlusTestRunIds. Same constraints as --headPlusTestRunIds apply to the additional IDs (same project, same commit as the primary). Whole-test-run coverage only.",
     },
     includeAllFiles: {
       boolean: true,

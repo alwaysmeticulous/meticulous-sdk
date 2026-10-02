@@ -1,5 +1,18 @@
 # @alwaysmeticulous/debug-workspace
 
+## 2.344.0
+
+### Minor Changes
+
+- [#14698](https://github.com/alwaysmeticulous/meticulous/pull/14698) [`e8779d1`](https://github.com/alwaysmeticulous/meticulous/commit/e8779d1659068e6088bd982032d31c6a1af45422) Thanks [@phreppo](https://github.com/phreppo)! - Add shared replay-timeline readers that prefer `timeline.ndjson` and fall back to `timeline.json`; debug workspaces now read whichever a replay directory holds.
+
+### Patch Changes
+
+- Updated dependencies [[`eeb901d`](https://github.com/alwaysmeticulous/meticulous/commit/eeb901db21edbe891b897045b60bff81a4a9629d), [`ed10260`](https://github.com/alwaysmeticulous/meticulous/commit/ed102608f3ccba84002490339dcf22393cc8d5c2), [`317b114`](https://github.com/alwaysmeticulous/meticulous/commit/317b11450c2e604d506f0429558fa947fc8c19df), [`e8779d1`](https://github.com/alwaysmeticulous/meticulous/commit/e8779d1659068e6088bd982032d31c6a1af45422), [`7fee95d`](https://github.com/alwaysmeticulous/meticulous/commit/7fee95d3b1bf7cff2796a37359808bba1b525255)]:
+  - @alwaysmeticulous/client@2.344.0
+  - @alwaysmeticulous/downloading-helpers@2.344.0
+  - @alwaysmeticulous/common@2.343.0
+
 ## 2.343.0
 
 ### Patch Changes

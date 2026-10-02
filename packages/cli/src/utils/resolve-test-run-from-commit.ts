@@ -4,6 +4,7 @@ import type { MeticulousClient } from "@alwaysmeticulous/client";
 import {
   getTestRun,
   getTestRunForCommit,
+  getTestRunForPullRequest,
   IN_PROGRESS_TEST_RUN_STATUS,
 } from "@alwaysmeticulous/client";
 import {
@@ -158,17 +159,19 @@ export const assertTestRunComplete = (
  * printed — with `--testRunId` to work with one.
  *
  * Logs the resolved commit (see {@link logResolvedCommitSha}) and the test run
- * id (under `--verbose`).
+ * id (under `--verbose`). `otherRunSelectors` names the command's alternatives
+ * to `--commitSha` for the error when no commit can be determined.
  */
 export const resolveTestRunForCommitOrThrow = async (
   client: MeticulousClient,
   commitSha: string | undefined,
   project?: string,
+  otherRunSelectors = "--testRunId",
 ): Promise<ResolvedTestRun> => {
   const sha = await getCommitSha(commitSha);
   if (!sha) {
     throw new CliUserError(
-      "Could not determine a commit SHA. Pass --commitSha or --testRunId, or run inside a git repository.",
+      `Could not determine a commit SHA. Pass --commitSha or ${otherRunSelectors}, or run inside a git repository.`,
     );
   }
   await logResolvedCommitSha(commitSha, sha);
@@ -180,6 +183,63 @@ export const resolveTestRunForCommitOrThrow = async (
     throw new CliUserError(
       await appendProjectSelectionHint(
         `No test run found for commit ${sha}.`,
+        client,
+        project,
+      ),
+    );
+  }
+  logProgress(`Resolved test run id: ${testRunId}`);
+  return { testRunId, status };
+};
+
+/**
+ * Resolves the run a command targets when no `--testRunId` is given: the
+ * latest run for the pull request's head commit for `--prNumber`, else for
+ * `--commitSha` (or the local checkout's HEAD). See
+ * {@link resolveTestRunForPullRequestOrThrow} and
+ * {@link resolveTestRunForCommitOrThrow}.
+ */
+export const resolveTestRunOrThrow = async (
+  client: MeticulousClient,
+  {
+    commitSha,
+    prNumber,
+    project,
+  }: {
+    commitSha: string | undefined;
+    prNumber: number | undefined;
+    project: string | undefined;
+  },
+): Promise<ResolvedTestRun> =>
+  prNumber != null
+    ? resolveTestRunForPullRequestOrThrow(client, prNumber, project)
+    : resolveTestRunForCommitOrThrow(
+        client,
+        commitSha,
+        project,
+        "--testRunId or --prNumber",
+      );
+
+/**
+ * {@link resolveTestRunForCommitOrThrow} for a pull request's head commit,
+ * resolved server-side: the same run `--commitSha <PR head>` would give.
+ * Throws a `CliUserError` when the project has no such pull request or no
+ * usable run on its head.
+ */
+export const resolveTestRunForPullRequestOrThrow = async (
+  client: MeticulousClient,
+  prNumber: number,
+  project?: string,
+): Promise<ResolvedTestRun> => {
+  const { testRunId, status } = await getTestRunForPullRequest(
+    client,
+    prNumber,
+    { project },
+  );
+  if (testRunId == null || status == null) {
+    throw new CliUserError(
+      await appendProjectSelectionHint(
+        `No test run found for pull request ${prNumber}.`,
         client,
         project,
       ),

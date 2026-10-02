@@ -22,6 +22,11 @@ export interface ChunkedDownloadResponse {
    * when the download was requested with `includeChunkFilesIndex`.
    */
   assetChunkFilesIndexUrls?: string[];
+  /**
+   * Each chunk's name, at the same index as `assetChunkTarballUrls`. A name
+   * identifies the same chunk across deployments, unlike its index or URL.
+   */
+  assetChunkNames?: string[];
   metadata: AssetUploadMetadata;
 }
 

@@ -1,5 +1,19 @@
 # @alwaysmeticulous/client
 
+## 2.344.0
+
+### Minor Changes
+
+- [#14667](https://github.com/alwaysmeticulous/meticulous/pull/14667) [`eeb901d`](https://github.com/alwaysmeticulous/meticulous/commit/eeb901db21edbe891b897045b60bff81a4a9629d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `--prNumber` to the `meticulous agent` commands that resolve a test run from `--testRunId` or `--commitSha` (`test-run-for-commit`, `test-run-diffs`, `test-run-check`, `js-coverage` and `js-coverage-diff`), plus the `getTestRunForPullRequest` client function. It resolves to the latest test run for the pull request's head commit, exactly as `--commitSha` would for that commit.
+
+### Patch Changes
+
+- [#14629](https://github.com/alwaysmeticulous/meticulous/pull/14629) [`ed10260`](https://github.com/alwaysmeticulous/meticulous/commit/ed102608f3ccba84002490339dcf22393cc8d5c2) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional `stepIndex` and `media` to Agent swarm summary takeaways, pointing
+  each takeaway at the step to show as a screenshot or short video clip.
+- Updated dependencies [[`583cde4`](https://github.com/alwaysmeticulous/meticulous/commit/583cde4ee6cb6d93141a54754161726d1981b1d3)]:
+  - @alwaysmeticulous/api@2.344.0
+  - @alwaysmeticulous/common@2.343.0
+
 ## 2.343.0
 
 ### Minor Changes

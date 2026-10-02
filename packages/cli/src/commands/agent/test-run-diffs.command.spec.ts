@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   isFetchError: vi.fn(),
   isSessionPool: vi.fn(),
   isTestRunPartial: vi.fn(),
-  resolveTestRunForCommitOrThrow: vi.fn(),
+  resolveTestRunOrThrow: vi.fn(),
   logNotice: vi.fn(),
   logProgress: vi.fn(),
 }));
@@ -47,7 +47,7 @@ vi.mock("../../utils/resolve-test-run-from-commit", () => ({
   assertTestRunComplete: mocks.assertTestRunComplete,
   isSessionPool: mocks.isSessionPool,
   isTestRunPartial: mocks.isTestRunPartial,
-  resolveTestRunForCommitOrThrow: mocks.resolveTestRunForCommitOrThrow,
+  resolveTestRunOrThrow: mocks.resolveTestRunOrThrow,
 }));
 
 class ProcessExitError extends Error {
@@ -100,7 +100,7 @@ describe("test-run-diffs command polling", () => {
       (error: unknown) =>
         typeof error === "object" && error != null && "response" in error,
     );
-    mocks.resolveTestRunForCommitOrThrow.mockResolvedValue({
+    mocks.resolveTestRunOrThrow.mockResolvedValue({
       testRunId: "tr-1",
       status: "Success",
     });

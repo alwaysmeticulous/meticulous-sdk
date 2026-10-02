@@ -45,6 +45,7 @@ const baseOptions = (overrides: Partial<Options> = {}): Options => ({
   replayId: undefined,
   testRunId: undefined,
   commitSha: undefined,
+  prNumber: undefined,
   screenshotName: undefined,
   dontWaitForTestRunToComplete: false,
   includeExecutedRanges: false,

@@ -376,8 +376,9 @@ export type FileWithCompactRanges = [filePath: string, ranges: CompactRange[]];
 export interface TestRunForCommitResponse {
   /**
    * The id of the most recent user-visible test run for the commit, including
-   * one still in progress (`ExecutionError`/`Aborted` runs are skipped), or
-   * `null` if the project has no such run.
+   * one still in progress (`ExecutionError`/`Aborted`/`Skipped` runs are
+   * skipped), or `null` if the project has no such run. For a pull request
+   * lookup, the run the PR reports, whatever its status.
    */
   testRunId: string | null;
   /**
@@ -1649,6 +1650,28 @@ export const getTestRunForCommit = async (
   options?: { project?: string | undefined },
 ): Promise<TestRunForCommitResponse> => {
   const params: Record<string, string> = { commitSha };
+  if (options?.project != null) {
+    params.project = options.project;
+  }
+  const { data } = await client
+    .get("agent/test-runs", { params })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+// {@link getTestRunForCommit} for a pull request's head commit: resolves
+// exactly as that commit's SHA would. `prNumber` is the hosting provider's
+// PR/MR number. Returns `{ testRunId: null }` when the project has no such
+// pull request or no usable run on its head. Project selection as for
+// {@link getTestRunForCommit}.
+export const getTestRunForPullRequest = async (
+  client: MeticulousClient,
+  prNumber: number,
+  options?: { project?: string | undefined },
+): Promise<TestRunForCommitResponse> => {
+  const params: Record<string, string> = { prNumber: String(prNumber) };
   if (options?.project != null) {
     params.project = options.project;
   }

@@ -1,5 +1,11 @@
 # @alwaysmeticulous/cli
 
+## 2.344.0
+
+### Minor Changes
+
+- [#14667](https://github.com/alwaysmeticulous/meticulous/pull/14667) [`eeb901d`](https://github.com/alwaysmeticulous/meticulous/commit/eeb901db21edbe891b897045b60bff81a4a9629d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `--prNumber` to the `meticulous agent` commands that resolve a test run from `--testRunId` or `--commitSha` (`test-run-for-commit`, `test-run-diffs`, `test-run-check`, `js-coverage` and `js-coverage-diff`), plus the `getTestRunForPullRequest` client function. It resolves to the latest test run for the pull request's head commit, exactly as `--commitSha` would for that commit.
+
 ## 2.343.0
 
 ### Minor Changes

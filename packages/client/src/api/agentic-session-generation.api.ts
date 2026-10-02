@@ -441,6 +441,10 @@ export interface AgenticRunSummaryTakeaway {
   caseIndex: number;
   /** Short, agent-written finding grounded in that case's result. */
   text: string;
+  /** Index of the step that best demonstrates the finding. */
+  stepIndex?: number;
+  /** Preferred way to present the evidence in the review overview. */
+  media?: "screenshot" | "video";
 }
 
 /** Durable media generated for the summary's highest-priority flow. */

@@ -1,5 +1,13 @@
 # @alwaysmeticulous/api
 
+## 2.344.0
+
+### Patch Changes
+
+- [#14684](https://github.com/alwaysmeticulous/meticulous/pull/14684) [`583cde4`](https://github.com/alwaysmeticulous/meticulous/commit/583cde4ee6cb6d93141a54754161726d1981b1d3) Thanks [@linpengzhang](https://github.com/linpengzhang)! - A chunked deployment download response can carry `assetChunkNames`, each
+  chunk's name at the same index as `assetChunkTarballUrls`. Unlike an index or
+  URL, a name identifies the same chunk across deployments.
+
 ## 2.343.0
 
 ### Minor Changes

@@ -6,7 +6,7 @@ import {
   assertTestRunComplete,
   ensureTestRunFinished,
   isTestRunPartial,
-  resolveTestRunForCommitOrThrow,
+  resolveTestRunOrThrow,
 } from "../../utils/resolve-test-run-from-commit";
 
 /** The runs a whole-test-run coverage request applies to. */
@@ -28,6 +28,7 @@ export interface ResolvedCoverageRuns {
 export interface CoverageRunSelection {
   testRunId: string | undefined;
   commitSha: string | undefined;
+  prNumber: number | undefined;
   testRunIds: string | undefined;
   headPlusTestRunIds: string | undefined;
   project?: string | undefined;
@@ -39,8 +40,8 @@ export interface CoverageRunSelection {
  * until each has finished (coverage exists only then).
  *
  * `--testRunIds` names the primary (its first ID) and the extras to union in
- * directly; otherwise the primary comes from `--testRunId`, else `--commitSha`,
- * else the local checkout's HEAD, and the extras from `--headPlusTestRunIds`.
+ * directly; otherwise the primary comes from `--testRunId`, else `--prNumber`,
+ * else `--commitSha`, else the local checkout's HEAD, and the extras from `--headPlusTestRunIds`.
  *
  * Which run is "the primary" is resolved the same way regardless of whether it
  * turns out to be a base run: whether such a run's coverage describes its
@@ -59,6 +60,7 @@ export const resolveFinishedCoverageRuns = async (
   {
     testRunId,
     commitSha,
+    prNumber,
     testRunIds,
     headPlusTestRunIds,
     project,
@@ -79,11 +81,11 @@ export const resolveFinishedCoverageRuns = async (
     status = (await getTestRun({ client, testRunId })).status;
     rawUnionIds = [];
   } else {
-    const resolved = await resolveTestRunForCommitOrThrow(
-      client,
+    const resolved = await resolveTestRunOrThrow(client, {
       commitSha,
+      prNumber,
       project,
-    );
+    });
     resolvedTestRunId = resolved.testRunId;
     status = resolved.status;
     rawUnionIds = parseHeadPlusTestRunIds(headPlusTestRunIds);

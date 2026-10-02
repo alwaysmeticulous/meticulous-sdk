@@ -74,6 +74,7 @@ export {
   ignoreDiff,
   getScreenshotDomDiff,
   getTestRunForCommit,
+  getTestRunForPullRequest,
   completeBaseRun,
   CompleteBaseRunResponse,
   promoteSessions,

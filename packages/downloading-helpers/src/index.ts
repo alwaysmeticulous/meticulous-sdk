@@ -54,3 +54,16 @@ export {
   type TrackedDownloadStream,
 } from "./file-downloads/download-progress";
 export { getReplayDir } from "./scripts/replays";
+export {
+  TIMELINE_JSON_FILE_NAME,
+  TIMELINE_NDJSON_FILE_NAME,
+  type ReplayTimelineFile,
+  type ReplayTimelineFormat,
+  forEachTimelineEntryInNdjsonFile,
+  parseTimelineNdjson,
+  readReplayTimelineFile,
+  readReplayTimelineFileSync,
+  readReplayTimelineFromDir,
+  resolveReplayTimelineFile,
+  timelineFormatForFileName,
+} from "./file-downloads/replay-timeline";

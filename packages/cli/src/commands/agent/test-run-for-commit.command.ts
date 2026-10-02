@@ -1,6 +1,7 @@
 import {
   createClientWithOAuth,
   getTestRunForCommit,
+  getTestRunForPullRequest,
 } from "@alwaysmeticulous/client";
 import { getCommitSha, logNotice, logProgress } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
@@ -13,10 +14,13 @@ import {
   isTestRunInProgress,
   logResolvedCommitSha,
 } from "../../utils/resolve-test-run-from-commit";
+import { prNumberOption } from "./pr-number-option";
+import type { TestRunLookUp } from "./test-run-for-commit.types";
 
 interface Options {
   apiToken?: string | null | undefined;
   commitSha: string | undefined;
+  prNumber: number | undefined;
   dontWaitForTestRunToComplete: boolean;
   json: boolean;
   project?: string | undefined;
@@ -25,34 +29,22 @@ interface Options {
 const handler = async ({
   apiToken,
   commitSha,
+  prNumber,
   dontWaitForTestRunToComplete,
   json,
   project,
 }: Options): Promise<void> => {
-  // Default to the current checkout's HEAD so the command can be run with no
-  // arguments to auto-infer the test run for the working tree.
-  const resolvedCommitSha = await getCommitSha(commitSha);
-  if (!resolvedCommitSha) {
-    throw new CliUserError(
-      "Could not determine a commit SHA. Pass --commitSha or run inside a git repository.",
-    );
-  }
-  // The lookup is by commit, so warn when the local tree is dirty (the run is
-  // resolved for HEAD, not the uncommitted changes), matching trigger-test-run /
-  // test-run-diffs.
-  await logResolvedCommitSha(commitSha, resolvedCommitSha);
+  const lookUp =
+    prNumber != null
+      ? lookUpPullRequest(prNumber, project)
+      : await lookUpCommit(commitSha, project);
 
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,
   });
 
-  // `project` is a one-off override (resolved flexibly server-side); when
-  // omitted, project-scoped tokens use their own project and OAuth tokens
-  // fall back to the caller's stored default (`meticulous auth set-project`).
-  const result = await getTestRunForCommit(client, resolvedCommitSha, {
-    project,
-  });
+  const result = await lookUp.fetch(client);
 
   if (result.testRunId == null) {
     if (json) {
@@ -61,7 +53,7 @@ const handler = async ({
     // Guidance on stderr regardless of --json (which only changes stdout).
     logNotice(
       await appendProjectSelectionHint(
-        `No test run found for commit ${resolvedCommitSha}.`,
+        `No test run found for ${lookUp.subject}.`,
         client,
         project,
       ),
@@ -99,21 +91,60 @@ const handler = async ({
   }
 };
 
+// `project` is a one-off override (resolved flexibly server-side); when
+// omitted, project-scoped tokens use their own project and OAuth tokens fall
+// back to the caller's stored default (`meticulous auth set-project`).
+const lookUpPullRequest = (
+  prNumber: number,
+  project: string | undefined,
+): TestRunLookUp => ({
+  subject: `pull request ${prNumber}`,
+  fetch: (client) => getTestRunForPullRequest(client, prNumber, { project }),
+});
+
+// Defaults to the current checkout's HEAD so the command can be run with no
+// arguments to auto-infer the test run for the working tree.
+const lookUpCommit = async (
+  commitSha: string | undefined,
+  project: string | undefined,
+): Promise<TestRunLookUp> => {
+  const resolvedCommitSha = await getCommitSha(commitSha);
+  if (!resolvedCommitSha) {
+    throw new CliUserError(
+      "Could not determine a commit SHA. Pass --commitSha or --prNumber, or run inside a git repository.",
+    );
+  }
+  // The lookup is by commit, so warn when the local tree is dirty (the run is
+  // resolved for HEAD, not the uncommitted changes), matching trigger-test-run /
+  // test-run-diffs.
+  await logResolvedCommitSha(commitSha, resolvedCommitSha);
+  return {
+    subject: `commit ${resolvedCommitSha}`,
+    fetch: (client) =>
+      getTestRunForCommit(client, resolvedCommitSha, { project }),
+  };
+};
+
 export const testRunForCommitCommand: CommandModule<unknown, Options> = {
   command: "test-run-for-commit",
   describe:
-    "Look up the latest test run for a given commit (defaults to the current git HEAD). Outputs the testRunId, or nothing (with --json, a null testRunId) when there is no usable run yet — in which case the reply also names the project that was searched, since the failure may be due to a wrong project being selected as default (see auth get-project / auth set-project).",
+    "Look up the latest test run for a given commit (defaults to the current git HEAD) or pull request. Outputs the testRunId, or nothing (with --json, a null testRunId) when there is no usable run yet — in which case the reply also names the project that was searched, since the failure may be due to a wrong project being selected as default (see auth get-project / auth set-project).",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     commitSha: {
       string: true,
       description:
-        "The commit to look up. Defaults to the current git HEAD when omitted.",
+        "The commit to look up. Defaults to the current git HEAD when neither this nor --prNumber is given.",
+    },
+    prNumber: {
+      ...prNumberOption(),
+      description:
+        "The pull request to look up, as an alternative to --commitSha: looks up the latest test run for its head commit, exactly as passing that commit's --commitSha would.",
     },
     project: {
       string: true,
       description:
-        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s).",
+        "The project to look up the commit or pull request in (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s).",
     },
     dontWaitForTestRunToComplete: {
       boolean: true,

@@ -1,3 +1,7 @@
+import {
+  readReplayTimelineFileSync,
+  resolveReplayTimelineFile,
+} from "@alwaysmeticulous/downloading-helpers";
 import { existsSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import type { ScreenshotIdentifier } from "./screenshot-identifier";
@@ -33,7 +37,7 @@ export const discoverReplayDirs = (
     }
     for (const replayId of readdirSync(roleDir)) {
       const path = join(roleDir, replayId);
-      if (options.requireTimeline && !existsSync(join(path, "timeline.json"))) {
+      if (options.requireTimeline && resolveReplayTimelineFile(path) == null) {
         continue;
       }
       dirs.push({ role, replayId, path });
@@ -53,15 +57,20 @@ export interface TimelineEntry {
   };
 }
 
-/** Returns `null` if the file is missing, unparseable, or not a JSON array. */
-export const readTimelineJson = (
-  timelinePath: string,
+/**
+ * The replay directory's timeline (`timeline.ndjson`, or `timeline.json` for
+ * replays that predate it). Returns `null` if neither file is present, or the
+ * one found is unparseable or not a list of entries.
+ */
+export const readReplayTimeline = (
+  replayDir: string,
 ): TimelineEntry[] | null => {
-  if (!existsSync(timelinePath)) {
+  const file = resolveReplayTimelineFile(replayDir);
+  if (file == null) {
     return null;
   }
   try {
-    const parsed = JSON.parse(readFileSync(timelinePath, "utf-8"));
+    const parsed = readReplayTimelineFileSync<unknown>(file);
     return Array.isArray(parsed) ? (parsed as TimelineEntry[]) : null;
   } catch {
     return null;

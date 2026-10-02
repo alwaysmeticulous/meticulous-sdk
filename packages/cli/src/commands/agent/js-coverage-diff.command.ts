@@ -19,6 +19,7 @@ import { withBaseRunRejectionAsUserError } from "./coverage-rejection.util";
 import { resolveFinishedCoverageRuns } from "./coverage-run-resolution.util";
 import { coerceLimit, coerceOffset } from "./paging-options.utils";
 import { logResponseNotes } from "./response-notes.utils";
+import { assertSingleRunSelector, prNumberOption } from "./pr-number-option";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -26,6 +27,7 @@ interface Options {
   screenshotName: string | undefined;
   testRunId: string | undefined;
   commitSha: string | undefined;
+  prNumber: number | undefined;
   project?: string | undefined;
   globFilter: string[] | undefined;
   summary: boolean;
@@ -56,12 +58,13 @@ const handler = async (options: Options): Promise<void> => {
     return;
   }
 
-  // The run to report on: --testRunId, else --commitSha, else the local
+  // The run to report on: --testRunId, else --prNumber, else --commitSha, else the local
   // checkout's HEAD — the same resolution `js-coverage` uses. Its coverage
   // exists only once it has finished, so block until it has.
   const runs = await resolveFinishedCoverageRuns(client, {
     testRunId: options.testRunId,
     commitSha: options.commitSha,
+    prNumber: options.prNumber,
     testRunIds: undefined,
     headPlusTestRunIds: undefined,
     project: options.project,
@@ -126,6 +129,7 @@ export const assertScopeCoherent = (options: Options): void => {
       [
         ["testRunId", options.testRunId != null],
         ["commitSha", options.commitSha != null],
+        ["prNumber", options.prNumber != null],
         ["summary", options.summary],
       ] as const
     )
@@ -141,11 +145,9 @@ export const assertScopeCoherent = (options: Options): void => {
   if (options.screenshotName != null) {
     throw new CliUserError("--screenshotName only applies to --replayDiffId.");
   }
-  // --testRunId and --commitSha are two ways to name the same run, as on
-  // `js-coverage`; passing both is ambiguous.
-  if (options.testRunId != null && options.commitSha != null) {
-    throw new CliUserError("Pass either --testRunId or --commitSha, not both.");
-  }
+  // --testRunId, --prNumber and --commitSha are three ways to name the same
+  // run, as on `js-coverage`; passing more than one is ambiguous.
+  assertSingleRunSelector(options);
   // `--summary` returns one row of totals, so there is nothing to page.
   // Rejected rather than ignored, as on `js-coverage --summary`.
   if (options.summary) {
@@ -329,17 +331,18 @@ export const jsCoverageDiffCommand: CommandModule<unknown, Options> = {
     testRunId: {
       string: true,
       description:
-        "The test run whose coverage to compare against its own base run's. Defaults to the run for the current git HEAD when neither this nor --commitSha is given. Not for a base run, which has no base of its own.",
+        "The test run whose coverage to compare against its own base run's. Defaults to the run for the current git HEAD when none of this, --prNumber and --commitSha is given. Not for a base run, which has no base of its own.",
     },
     commitSha: {
       string: true,
       description:
-        "A commit SHA, used as an alternative to --testRunId: looks up the latest test run for the commit. Defaults to the current git HEAD when omitted.",
+        "A commit SHA, used as an alternative to --testRunId: looks up the latest test run for the commit. Defaults to the current git HEAD when none of this, --testRunId and --prNumber is given.",
     },
+    prNumber: prNumberOption(),
     project: {
       string: true,
       description:
-        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the token's project or the OAuth user's configured default project.",
+        "The project to look up the commit or pull request in (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the token's project or the OAuth user's configured default project.",
       conflicts: ["testRunId"],
     },
     globFilter: {

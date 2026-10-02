@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   assertTestRunComplete: vi.fn(),
   isSessionPool: vi.fn(),
   isTestRunPartial: vi.fn(),
-  resolveTestRunForCommitOrThrow: vi.fn(),
+  resolveTestRunOrThrow: vi.fn(),
   logNotice: vi.fn(),
   logProgress: vi.fn(),
   printJson: vi.fn(),
@@ -41,7 +41,7 @@ vi.mock("../../utils/resolve-test-run-from-commit", () => ({
   assertTestRunComplete: mocks.assertTestRunComplete,
   isSessionPool: mocks.isSessionPool,
   isTestRunPartial: mocks.isTestRunPartial,
-  resolveTestRunForCommitOrThrow: mocks.resolveTestRunForCommitOrThrow,
+  resolveTestRunOrThrow: mocks.resolveTestRunOrThrow,
 }));
 
 class ProcessExitError extends Error {}
@@ -208,8 +208,32 @@ describe("test-run-check command", () => {
     expect(mocks.ensureTestRunFinished).not.toHaveBeenCalled();
   });
 
+  it("resolves a pull request's latest test run from --prNumber", async () => {
+    mocks.resolveTestRunOrThrow.mockResolvedValue({
+      testRunId: "tr-from-pr",
+      status: "Success",
+    });
+    mocks.getTestRunCheckReport.mockResolvedValue({
+      status: "complete",
+      text: "report",
+    });
+
+    await runHandler({ testRunId: undefined, prNumber: 42, project: "org/p" });
+
+    expect(mocks.resolveTestRunOrThrow).toHaveBeenCalledWith(
+      expect.anything(),
+      { commitSha: undefined, prNumber: 42, project: "org/p" },
+    );
+    expect(mocks.getTestRunCheckReport).toHaveBeenCalledWith(
+      expect.anything(),
+      "tr-from-pr",
+      "accessibility",
+      { checkType: "builtin" },
+    );
+  });
+
   it("resolves a test run from a commit when no testRunId is passed", async () => {
-    mocks.resolveTestRunForCommitOrThrow.mockResolvedValue({
+    mocks.resolveTestRunOrThrow.mockResolvedValue({
       testRunId: "tr-from-commit",
       status: "Success",
     });
@@ -220,10 +244,9 @@ describe("test-run-check command", () => {
 
     await runHandler({ testRunId: undefined, commitSha: "abc123" });
 
-    expect(mocks.resolveTestRunForCommitOrThrow).toHaveBeenCalledWith(
+    expect(mocks.resolveTestRunOrThrow).toHaveBeenCalledWith(
       expect.anything(),
-      "abc123",
-      undefined,
+      { commitSha: "abc123", prNumber: undefined, project: undefined },
     );
     expect(mocks.getTestRunCheckReport).toHaveBeenCalledWith(
       expect.anything(),
@@ -315,7 +338,7 @@ describe("test-run-check --availableIds", () => {
   });
 
   it("resolves a test run from a commit when no testRunId is passed", async () => {
-    mocks.resolveTestRunForCommitOrThrow.mockResolvedValue({
+    mocks.resolveTestRunOrThrow.mockResolvedValue({
       testRunId: "tr-from-commit",
       status: "Success",
     });
@@ -328,10 +351,9 @@ describe("test-run-check --availableIds", () => {
       commitSha: "abc123",
     });
 
-    expect(mocks.resolveTestRunForCommitOrThrow).toHaveBeenCalledWith(
+    expect(mocks.resolveTestRunOrThrow).toHaveBeenCalledWith(
       expect.anything(),
-      "abc123",
-      undefined,
+      { commitSha: "abc123", prNumber: undefined, project: undefined },
     );
     expect(mocks.getTestRunCheckAvailableIds).toHaveBeenCalledWith(
       expect.anything(),

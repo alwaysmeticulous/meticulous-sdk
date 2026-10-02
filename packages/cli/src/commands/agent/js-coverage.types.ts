@@ -5,6 +5,7 @@ export interface Options {
   apiToken?: string | null | undefined;
   testRunId: string | undefined;
   commitSha: string | undefined;
+  prNumber: number | undefined;
   latestForProject: boolean;
   project?: string | undefined;
   replayId: string | undefined;

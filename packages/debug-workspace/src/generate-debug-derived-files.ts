@@ -4,7 +4,7 @@ import chalk from "chalk";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import {
   discoverReplayDirs,
-  readTimelineJson,
+  readReplayTimeline,
   type ReplayDir,
   type TimelineEntry,
 } from "./replay-walk";
@@ -38,9 +38,7 @@ export const generateDebugDerivedFiles = (workspaceDir: string): void => {
   console.log(chalk.cyan("  Generating debug derived files..."));
 
   for (const replayDir of replayDirs) {
-    const timelineEntries = readTimelineJson(
-      join(replayDir.path, "timeline.json"),
-    );
+    const timelineEntries = readReplayTimeline(replayDir.path);
 
     if (timelineEntries) {
       generateTimelineNdjson(replayDir, timelineEntries);

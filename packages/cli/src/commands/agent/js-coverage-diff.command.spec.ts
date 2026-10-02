@@ -9,6 +9,7 @@ const baseOptions = (
   screenshotName: undefined,
   testRunId: undefined,
   commitSha: undefined,
+  prNumber: undefined,
   project: undefined,
   globFilter: undefined,
   summary: false,
@@ -53,12 +54,14 @@ describe("js-coverage-diff scope validation", () => {
     ).not.toThrow();
   });
 
-  it("rejects naming the run twice", () => {
-    expect(() =>
-      assertScopeCoherent(
-        baseOptions({ testRunId: "tr-1", commitSha: "abc123" }),
-      ),
-    ).toThrow(/Pass either --testRunId or --commitSha, not both/);
+  it.each([
+    [{ testRunId: "tr-1", commitSha: "abc123" }],
+    [{ testRunId: "tr-1", prNumber: 42 }],
+    [{ prNumber: 42, commitSha: "abc123" }],
+  ])("rejects naming the run twice (%o)", (selectors) => {
+    expect(() => assertScopeCoherent(baseOptions(selectors))).toThrow(
+      /Pass only one of --testRunId, --prNumber and --commitSha/,
+    );
   });
 
   it("rejects the whole-run options alongside a replay diff", () => {

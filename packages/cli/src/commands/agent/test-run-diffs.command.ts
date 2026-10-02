@@ -20,8 +20,9 @@ import {
   ensureTestRunFinished,
   isSessionPool,
   isTestRunPartial,
-  resolveTestRunForCommitOrThrow,
+  resolveTestRunOrThrow,
 } from "../../utils/resolve-test-run-from-commit";
+import { assertSingleRunSelector, prNumberOption } from "./pr-number-option";
 import {
   buildDiffsSummaryHeader,
   formatDiffRow,
@@ -33,6 +34,7 @@ interface Options {
   apiToken?: string | null | undefined;
   testRunId: string | undefined;
   commitSha: string | undefined;
+  prNumber: number | undefined;
   dontWaitForTestRunToComplete: boolean;
   includeReplayIds: boolean;
   includeMismatchFraction: boolean;
@@ -60,6 +62,7 @@ const handler = async ({
   apiToken,
   testRunId,
   commitSha,
+  prNumber,
   dontWaitForTestRunToComplete,
   includeReplayIds,
   includeMismatchFraction,
@@ -77,9 +80,7 @@ const handler = async ({
   json,
   project,
 }: Options): Promise<void> => {
-  if (testRunId != null && commitSha != null) {
-    throw new CliUserError("Pass either --testRunId or --commitSha, not both.");
-  }
+  assertSingleRunSelector({ testRunId, prNumber, commitSha });
 
   // --counts reports fixed aggregate totals from a dedicated endpoint that takes
   // no list/filter options, so combining it with any of them is meaningless —
@@ -143,11 +144,11 @@ const handler = async ({
     // on the backend).
     sessionPoolRun = isSessionPool(run.configData);
   } else {
-    const resolved = await resolveTestRunForCommitOrThrow(
-      client,
+    const resolved = await resolveTestRunOrThrow(client, {
       commitSha,
+      prNumber,
       project,
-    );
+    });
     resolvedTestRunId = resolved.testRunId;
     status = resolved.status;
     // Deliberately not fetched here. Recognising a *settled* session pool needs
@@ -354,17 +355,18 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     testRunId: {
       string: true,
       description:
-        "The test run ID. When omitted, the run is looked up from --commitSha, or from the current git HEAD when that is also omitted.",
+        "The test run ID. When omitted, the run is looked up from --prNumber or --commitSha, or from the current git HEAD when neither is given.",
     },
     commitSha: {
       string: true,
       description:
-        "A commit SHA, used as an alternative to --testRunId: looks up the latest test run for the commit. Defaults to the current git HEAD when neither --testRunId nor --commitSha is given.",
+        "A commit SHA, used as an alternative to --testRunId: looks up the latest test run for the commit. Defaults to the current git HEAD when none of --testRunId, --prNumber and --commitSha is given.",
     },
+    prNumber: prNumberOption(),
     project: {
       string: true,
       description:
-        "The project to look up the commit for (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s). Cannot be combined with --testRunId, which already determines the project.",
+        "The project to look up the commit or pull request in (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s). Cannot be combined with --testRunId, which already determines the project.",
       conflicts: "testRunId",
     },
     includeAllDiffs: {

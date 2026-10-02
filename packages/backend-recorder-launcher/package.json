@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/backend-recorder-launcher",
-  "version": "2.343.0",
+  "version": "2.344.0",
   "description": "Downloads the backend-recorder bundle script and executes it",
   "license": "ISC",
   "main": "dist/index.js",
