@@ -81,7 +81,12 @@ meticulous [command]
 | \`agent image-files\` | Download screenshot images to \`~/.meticulous/agent-images\` | Agent/programmatic use |
 | \`agent timeline-diff\` | Get the timeline diff for a replay diff | Agent/programmatic use |
 | \`agent test-run-check\` | Get a builtin or custom non-visual check report for a test run, or list available check IDs with \`--availableIds\` | Agent/programmatic use |
+| \`agent check-comments\` | Get the reasons recorded with agent decisions on a non-visual check of a test run | Agent/programmatic use |
+| \`agent approve-check\` | Agent-approve a failing non-visual check, optionally with a reason, if the project allows it | Agent/programmatic use |
+| \`agent reject-check\` | Agent-reject a failing non-visual check, with a reason | Agent/programmatic use |
+| \`agent ignore-check\` | Agent-ignore a failing non-visual check as unrelated to the change, with a reason, if the project allows it | Agent/programmatic use |
 | \`agent test-run-for-commit\` | Look up the latest test run for a commit (defaults to git HEAD) | Agent/programmatic use |
+| \`agent test-runs\` | List a project's pull request test runs, or its base test runs, newest first | Agent/programmatic use |
 | \`agent sessions\` | List a project's recorded sessions, newest first by default, optionally narrowed to the selected set | Agent/programmatic use |
 | \`agent test-run-stats\` | Export reporting statistics for a project's test runs | Agent/programmatic use |
 | \`agent project-daily-stats\` | Export daily project reporting statistics | Agent/programmatic use |
@@ -693,7 +698,9 @@ npx @alwaysmeticulous/cli ci run-with-uploaded-asset-chunks \\
 \`\`\`
 
 If the filter excludes every session, no test run is triggered and the command exits with code \`4\` rather than the
-generic \`1\`, so a pipeline can tell "nothing to test" apart from a real failure.
+generic \`1\`, so a pipeline can tell "nothing to test" apart from a real failure. An empty regex list (or one containing
+only blank strings) also exits with \`4\`, but still creates the deployment, so later runs whose base is this commit —
+such as a stacked pull request — can compare against it.
 
 ---
 

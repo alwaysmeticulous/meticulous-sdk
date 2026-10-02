@@ -8,6 +8,7 @@ import { domDiffCommand } from "./screenshot-dom-diff.command";
 import { imageFilesCommand } from "./screenshot-image-files.command";
 import { imageUrlsCommand } from "./screenshot-image.command";
 import { sessionsCommand } from "./sessions.command";
+import { testRunsCommand } from "./test-runs.command";
 import { submitFeedbackCommand } from "./submit-feedback.command";
 import { testRunCheckCommand } from "./test-run-check.command";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
@@ -25,6 +26,10 @@ import { rejectDiffCommand } from "./reject-diff.command";
 import { ignoreDiffCommand } from "./ignore-diff.command";
 import { createDiffCommentCommand } from "./create-diff-comment.command";
 import { replyToDiffCommentCommand } from "./reply-to-diff-comment.command";
+import { checkCommentsCommand } from "./check-comments.command";
+import { approveCheckCommand } from "./approve-check.command";
+import { rejectCheckCommand } from "./reject-check.command";
+import { ignoreCheckCommand } from "./ignore-check.command";
 
 export const agentCommand: CommandModule = {
   command: "agent",
@@ -34,6 +39,10 @@ export const agentCommand: CommandModule = {
     yargs
       .command(testRunForCommitCommand)
       .command(testRunCheckCommand)
+      .command(checkCommentsCommand)
+      .command(approveCheckCommand)
+      .command(rejectCheckCommand)
+      .command(ignoreCheckCommand)
       .command(testRunDiffsCommand)
       .command(imageFilesCommand)
       .command(imageUrlsCommand)
@@ -48,6 +57,7 @@ export const agentCommand: CommandModule = {
       .command(jsCoverageCommand)
       .command(jsCoverageDiffCommand)
       .command(sessionsCommand)
+      .command(testRunsCommand)
       .command(testRunStatsCommand)
       .command(projectDailyStatsCommand)
       .command(testRunEventStatsCommand)

@@ -77,6 +77,12 @@ export interface ReplayAndStoreResultsResult {
   workerdShimVersion?: string;
 
   /**
+   * `fatalError` timeline entries the replay emitted; they don't affect pass/fail
+   * by themselves. Absent from older bundles.
+   */
+  fatalErrorsCount?: number;
+
+  /**
    * Indicates that at least one of the screenshots was compared against a replay
    * that was generated with a different Meticulous logic/environment version, or
    * with different project settings.

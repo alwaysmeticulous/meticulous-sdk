@@ -234,6 +234,35 @@ describe("sessions command", () => {
     expect(noticeText()).toContain("No recorded sessions found");
   });
 
+  it.each([
+    [{}, true],
+    [{ offset: 0 }, true],
+    [{ excludeSyntheticSessions: false }, true],
+    [{ selectedSet: false }, true],
+    [{ selectedSet: "" }, false],
+    [{ selectedSet: "2026-01-01" }, false],
+    [{ createdSince: "2026-07-01" }, false],
+    [{ recordedBy: "a@b.com" }, false],
+    [{ excludeSyntheticSessions: true }, false],
+    [{ visitedUrlFilter: "/checkout" }, false],
+  ])(
+    "adds the project-selection hint to an empty first page for %j only when unfiltered (as the MCP tool does)",
+    async (args, expectHint) => {
+      mocks.getSessions.mockResolvedValue({ sessions: [] });
+
+      await runHandler(args);
+
+      expect(noticeText()).toContain(
+        expectHint
+          ? "No recorded sessions found for this project."
+          : "No recorded sessions matching the filters found for this project.",
+      );
+      expect(noticeText().includes("meticulous auth list-projects")).toBe(
+        expectHint,
+      );
+    },
+  );
+
   it("leaves an empty later page to the backend's notice", async () => {
     mocks.getSessions.mockResolvedValue({
       sessions: [],

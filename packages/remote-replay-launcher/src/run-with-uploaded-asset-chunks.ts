@@ -37,6 +37,12 @@ export interface RunWithUploadedAssetChunksOptions extends ProjectIdentifier {
    * to both the head run and any base run created to compare against).
    */
   sessionFilter?: SessionFilter | undefined;
+  /**
+   * Create the deployment (and upload the git diff) but trigger no test run.
+   * A later run whose base is this commit can still create its base run
+   * against the deployment.
+   */
+  skipTrigger?: boolean;
 }
 
 export interface RunWithUploadedAssetChunksResult {
@@ -69,6 +75,7 @@ export const runWithUploadedAssetChunks = async ({
   createDeployment = true,
   assetReferencesManifest,
   sessionFilter,
+  skipTrigger = false,
   projectId,
 }: RunWithUploadedAssetChunksOptions): Promise<RunWithUploadedAssetChunksResult> => {
   const logger = initLogger();
@@ -109,6 +116,13 @@ export const runWithUploadedAssetChunks = async ({
       gitDiffOutput,
       ...(projectId ? { projectId } : {}),
     });
+  }
+
+  if (skipTrigger) {
+    logger.info(
+      `Created deployment ${sourceDeploymentId} without triggering a test run`,
+    );
+    return { testRun: null, sourceDeploymentId };
   }
 
   // Phase 2: trigger the run against the created deployment, polling for the

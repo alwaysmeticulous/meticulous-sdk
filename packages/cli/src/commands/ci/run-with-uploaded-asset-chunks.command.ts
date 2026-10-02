@@ -38,7 +38,10 @@ import {
   manifestHasVersionLookupEntries,
   validateAssetReferencesManifest,
 } from "./run-with-uploaded-asset-chunks.utils";
-import { readSessionFilterFile } from "./session-filter.utils";
+import {
+  MATCHES_NO_SESSIONS,
+  readSessionFilterFile,
+} from "./session-filter.utils";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -99,7 +102,7 @@ const readAssetReferencesManifest = async (
 
 const readSessionFilter = async (
   sessionFilterPath: string,
-): Promise<SessionFilter> => {
+): Promise<SessionFilter | typeof MATCHES_NO_SESSIONS> => {
   const result = await readSessionFilterFile(sessionFilterPath);
   if (!result.valid) {
     throw new CliUserError(result.error, 1, "error", {
@@ -183,12 +186,16 @@ const handler = async ({
 
   // Validated ahead of the trigger so a bad regex fails fast in the CLI
   // rather than after chunk resolution on the server.
-  const sessionFilter = sessionFilterPath
+  const parsedSessionFilter = sessionFilterPath
     ? await readSessionFilter(sessionFilterPath)
     : undefined;
+  const matchesNoSessions = parsedSessionFilter === MATCHES_NO_SESSIONS;
+  const sessionFilter = matchesNoSessions ? undefined : parsedSessionFilter;
 
   logger.info(
-    `Triggering test run for commit ${commitSha} against ${manifest.length} uploaded asset chunk(s)`,
+    matchesNoSessions
+      ? `--sessionFilter matches no sessions: creating a deployment for commit ${commitSha} from ${manifest.length} uploaded asset chunk(s) without triggering a test run`
+      : `Triggering test run for commit ${commitSha} against ${manifest.length} uploaded asset chunk(s)`,
   );
 
   Sentry.captureMessage("Received run-with-uploaded-asset-chunks request", {
@@ -220,6 +227,7 @@ const handler = async ({
       rewrites: parseRewrites(rewrites),
       waitForBase: waitForBase || waitForTestRunToComplete,
       ...(sessionFilter ? { sessionFilter } : {}),
+      ...(matchesNoSessions ? { skipTrigger: true } : {}),
       ...projectIdentifier,
     });
     // Emit overlaps as a single warn (stderr) before the null check so failure
@@ -249,6 +257,21 @@ const handler = async ({
     }
 
     if (!result.testRun) {
+      if (matchesNoSessions) {
+        // Same exit code as a filter that matched nothing server-side, so
+        // pipelines already treating it as a skip need no change.
+        throw new CliUserError(
+          "--sessionFilter lists no regexes, so it matches no sessions. Created the deployment without triggering a test run; " +
+            "a later run whose base is this commit can still use it to create its base.",
+          EXIT_CODES.ALL_SESSIONS_EXCLUDED_BY_SESSION_FILTER,
+          "error",
+          {
+            outcome: "skipped",
+            reason: "all_sessions_excluded",
+            sourceDeploymentId: result.sourceDeploymentId,
+          },
+        );
+      }
       if (result.allSessionsExcludedBySessionFilter) {
         // Distinct exit code: the build is fine, the filter simply matched
         // nothing, which a pipeline may want to treat as a skip.
@@ -400,6 +423,8 @@ export const ciRunWithUploadedAssetChunksCommand: CommandModule<
         " We recommend checking with a Meticulous engineer before using it." +
         ` If the filter excludes every session, no test run is triggered and the command exits with code ${EXIT_CODES.ALL_SESSIONS_EXCLUDED_BY_SESSION_FILTER}` +
         " (all other failures exit with 1), so a pipeline can tell that apart from a real failure." +
+        " An empty regex list, or one containing only blank strings, also exits with that code, but still creates the deployment" +
+        " so later runs whose base is this commit can compare against it." +
         " See https://app.meticulous.ai/docs/how-to/filter-sessions-by-start-url.",
     },
     waitForBase: {

@@ -128,7 +128,7 @@ const lookUpCommit = async (
 export const testRunForCommitCommand: CommandModule<unknown, Options> = {
   command: "test-run-for-commit",
   describe:
-    "Look up the latest test run for a given commit (defaults to the current git HEAD) or pull request. Outputs the testRunId, or nothing (with --json, a null testRunId) when there is no usable run yet — in which case the reply also names the project that was searched, since the failure may be due to a wrong project being selected as default (see auth get-project / auth set-project).",
+    "Look up the latest test run for a given commit (defaults to the current git HEAD) or pull request. Outputs the testRunId, or nothing (with --json, a null testRunId) when there is no usable run yet — in which case the reply also names the project that was searched, since the failure may be due to a wrong project being selected as default (see auth get-project / auth set-project). A status (in the --json output) of Success means a test run without diffs, and Failure a test run with diffs.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     commitSha: {

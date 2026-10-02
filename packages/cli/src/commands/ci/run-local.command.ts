@@ -19,6 +19,7 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
+import { hasBaseScreenshotComparison } from "./run-local.utils";
 
 interface Options
   extends
@@ -43,6 +44,8 @@ interface Options
   enablePerScreenshotCoverage?: boolean;
   dryRun?: boolean;
   onlyReplaySessionsInTestsFile: boolean;
+  failIfMissingBaseComparisons: boolean;
+  failOnFatalErrors: boolean;
 }
 
 const NO_PARALLELIZE_FLAG = "--no-parallelize";
@@ -80,6 +83,8 @@ const handler = async ({
   enablePerScreenshotCoverage,
   dryRun,
   onlyReplaySessionsInTestsFile,
+  failIfMissingBaseComparisons,
+  failOnFatalErrors,
 }: Options): Promise<void> => {
   const executionOptions: ReplayExecutionOptions = {
     headless,
@@ -140,7 +145,7 @@ const handler = async ({
   }
 
   try {
-    const { testRun } = await executeTestRun({
+    const { testRun, testCaseResults } = await executeTestRun({
       testsFile: testsFile ?? null,
       onlyReplaySessionsInTestsFile,
       executionOptions,
@@ -160,6 +165,41 @@ const handler = async ({
 
     if (testRun.status === "Failure") {
       process.exit(1);
+    }
+
+    // Without this, a base run sharing no sessions (or no compared screenshots) passes vacuously.
+    if (failIfMissingBaseComparisons && baseTestRunId != null) {
+      const resultsWithoutBaseComparison = testCaseResults.filter(
+        (result) => !hasBaseScreenshotComparison(result),
+      );
+      if (resultsWithoutBaseComparison.length > 0) {
+        logger.error(
+          `${resultsWithoutBaseComparison.length} of ${testCaseResults.length} test case(s) had no base screenshots to compare against in test run ${baseTestRunId}: ${resultsWithoutBaseComparison
+            .map((result) => result.sessionId)
+            .join(
+              ", ",
+            )}. The pinned base test run may not contain this suite's sessions (or needs re-pinning after adding new tests).`,
+        );
+        process.exit(1);
+      }
+    }
+
+    // A replay cut short by a fatal error can still pass if the screenshots it took match.
+    if (failOnFatalErrors) {
+      const resultsWithFatalErrors = testCaseResults.filter(
+        (result) => (result.fatalErrorsCount ?? 0) > 0,
+      );
+      if (resultsWithFatalErrors.length > 0) {
+        logger.error(
+          `${resultsWithFatalErrors.length} of ${testCaseResults.length} test case(s) hit a fatal error during replay: ${resultsWithFatalErrors
+            .map(
+              (result) =>
+                `${result.sessionId} (${result.fatalErrorsCount} fatal error(s))`,
+            )
+            .join(", ")}. See the replay logs above for details.`,
+        );
+        process.exit(1);
+      }
     }
   } catch (error) {
     if (isOutOfDateClientError(error)) {
@@ -236,6 +276,18 @@ export const ciRunLocalCommand: CommandModule<unknown, Options> = {
     baseTestRunId: {
       string: true,
       description: "The id of a test run to compare visual snapshots against.",
+    },
+    failIfMissingBaseComparisons: {
+      boolean: true,
+      description:
+        "Fail (exit code 1) if any executed test case had no base screenshots to compare against in the run passed via --baseTestRunId. Guards against a mispinned or stale base test run passing vacuously. No effect without --baseTestRunId.",
+      default: false,
+    },
+    failOnFatalErrors: {
+      boolean: true,
+      description:
+        "Fail (exit code 1) if any replay emitted a fatal error, even when the screenshots it did take all match. Guards against a replay that died part-way passing on the part that ran.",
+      default: false,
     },
     moveBeforeMouseEvent: OPTIONS.moveBeforeMouseEvent,
     ...COMMON_REPLAY_OPTIONS,

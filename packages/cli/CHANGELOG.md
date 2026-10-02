@@ -1,5 +1,47 @@
 # @alwaysmeticulous/cli
 
+## 2.345.0
+
+### Minor Changes
+
+- [#14663](https://github.com/alwaysmeticulous/meticulous/pull/14663) [`bdd6fbb`](https://github.com/alwaysmeticulous/meticulous/commit/bdd6fbb496ee0c26ac63a588887b468aa44ef53b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add agent reviews for non-visual checks: `meticulous agent reject-check`,
+  `approve-check` and `ignore-check` record an agent decision on a failing
+  builtin or custom check, storing the given reason as its justification, and
+  `check-comments` reads those reasons back. All four take `--prNumber` as an
+  alternative to `--testRunId`. The client exposes the same
+  operations as `rejectCheck`, `approveCheck`, `ignoreCheck` and
+  `getCheckComments`.
+
+- [#14668](https://github.com/alwaysmeticulous/meticulous/pull/14668) [`15174c4`](https://github.com/alwaysmeticulous/meticulous/commit/15174c45d0f5e77e5e895be9dc08996be28f9c0a) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `meticulous agent test-runs`, which lists a project's pull request test
+  runs newest first, optionally for one pull request (`--prNumber`) or just each
+  pull request's newest run (`--latestPerPullRequest`), and with `--baseTestRuns`
+  the runs without a pull request that pull request runs are compared against.
+  `--withDiffsOnly` and `--withCheckIssuesOnly` (narrowed with `--checkIds`)
+  filter the runs as the web app's test-runs tab does, and
+  `--includeCheckIssueCounts` adds each run's `checkWarningCount` and
+  `checkFailureCount`. The client exposes it as `getTestRuns`.
+
+  `meticulous agent sessions` now only adds the "searched project" hint to an
+  empty result when no filter was given (including `--selectedSet`), since a
+  filtered empty result is more likely the filters than the project.
+
+- [#14746](https://github.com/alwaysmeticulous/meticulous/pull/14746) [`9375046`](https://github.com/alwaysmeticulous/meticulous/commit/93750464fa3bb5c4bfe88c65d6fb5993aad681b7) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `--failIfMissingBaseComparisons` and `--failOnFatalErrors` flags to `ci run-local`, which fail the run if any test case had no base screenshots to compare against, or if any replay hit a fatal error. Test case results gain an optional `fatalErrorsCount`.
+
+- [#14750](https://github.com/alwaysmeticulous/meticulous/pull/14750) [`7c529d2`](https://github.com/alwaysmeticulous/meticulous/commit/7c529d2879f6d5fe9ac6ea88dbb537b675778be3) Thanks [@alexivanov](https://github.com/alexivanov)! - `ci run-with-uploaded-asset-chunks` now accepts a `--sessionFilter` whose
+  `session-start-url-matches-any-regex` list is empty or contains only blank
+  strings. Such a filter matches no sessions: the command creates the deployment
+  without triggering a test run and exits with code 4, the same code as a filter
+  that matched nothing. Because the deployment exists, a later run whose base is
+  this commit (for example a pull request stacked on top) can still create its
+  base test run against it. `runWithUploadedAssetChunks` gains a matching
+  `skipTrigger` option.
+
+### Patch Changes
+
+- [#14640](https://github.com/alwaysmeticulous/meticulous/pull/14640) [`e43e800`](https://github.com/alwaysmeticulous/meticulous/commit/e43e8007efffeef0716a4305d273f7f5e103d60c) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Explain in the `agent test-run-for-commit`, `agent trigger-test-run` and
+  `agent complete-base-run` help that a test run's `Success` status means it found
+  no diffs and `Failure` means it found diffs.
+
 ## 2.344.0
 
 ### Minor Changes

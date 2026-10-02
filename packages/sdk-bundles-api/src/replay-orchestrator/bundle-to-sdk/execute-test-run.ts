@@ -54,4 +54,10 @@ export interface DetailedTestCaseResult extends TestCaseResult {
   screenshotDiffDataByBaseReplayId: Record<string, ScreenshotDiffData>;
   totalNumberOfScreenshots: number;
   totalNumberOfSourceFiles: number;
+
+  /**
+   * `fatalError` timeline entries the head replay emitted; they don't fail the
+   * test case by themselves. Absent from older bundles.
+   */
+  fatalErrorsCount?: number;
 }

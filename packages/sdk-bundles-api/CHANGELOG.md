@@ -1,5 +1,11 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.345.0
+
+### Patch Changes
+
+- [#14746](https://github.com/alwaysmeticulous/meticulous/pull/14746) [`9375046`](https://github.com/alwaysmeticulous/meticulous/commit/93750464fa3bb5c4bfe88c65d6fb5993aad681b7) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `--failIfMissingBaseComparisons` and `--failOnFatalErrors` flags to `ci run-local`, which fail the run if any test case had no base screenshots to compare against, or if any replay hit a fatal error. Test case results gain an optional `fatalErrorsCount`.
+
 ## 2.344.0
 
 ### Patch Changes

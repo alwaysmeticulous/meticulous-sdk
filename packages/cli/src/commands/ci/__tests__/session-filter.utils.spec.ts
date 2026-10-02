@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseSessionFilterFileContents } from "../session-filter.utils";
+import {
+  MATCHES_NO_SESSIONS,
+  parseSessionFilterFileContents,
+} from "../session-filter.utils";
 
 describe("parseSessionFilterFileContents", () => {
   it("parses a valid session filter file", () => {
@@ -55,9 +58,28 @@ describe("parseSessionFilterFileContents", () => {
     expect(result.error).toContain("session-start-url-matches-any-regex");
   });
 
-  it("rejects an empty regex list", () => {
+  it.each([[[]], [[""]], [["  ", "\t"]]])(
+    "treats %j as matching no sessions",
+    (regexes) => {
+      const result = parseSessionFilterFileContents(
+        JSON.stringify({ "session-start-url-matches-any-regex": regexes }),
+      );
+      expect(result).toEqual({ valid: true, filter: MATCHES_NO_SESSIONS });
+    },
+  );
+
+  it("still rejects a blank regex mixed with real ones", () => {
     const result = parseSessionFilterFileContents(
-      JSON.stringify({ "session-start-url-matches-any-regex": [] }),
+      JSON.stringify({
+        "session-start-url-matches-any-regex": ["my-path/", ""],
+      }),
+    );
+    expect(result.valid).toBe(false);
+  });
+
+  it("still rejects a non-array regex list", () => {
+    const result = parseSessionFilterFileContents(
+      JSON.stringify({ "session-start-url-matches-any-regex": "" }),
     );
     expect(result.valid).toBe(false);
   });

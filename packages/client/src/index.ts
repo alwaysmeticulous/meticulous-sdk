@@ -121,6 +121,21 @@ export {
   type ProjectDailyStatsResponse,
   type ProjectDailyStatsOptions,
 } from "./api/agent-stats.api";
+export {
+  type AgentCheckComment,
+  type AgentCheckReviewResponse,
+  type AgentCheckTarget,
+  approveCheck,
+  getCheckComments,
+  ignoreCheck,
+  rejectCheck,
+} from "./api/agent-check-reviews.api";
+export { getTestRuns } from "./api/agent-test-runs.api";
+export type {
+  GetTestRunsOptions,
+  TestRunListItem,
+  TestRunsResponse,
+} from "./api/agent-test-runs.types";
 export * from "./api/github-cloud-replay.api";
 export {
   WhoamiOrganization,

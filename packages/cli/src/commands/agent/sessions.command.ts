@@ -252,12 +252,31 @@ const handler = async ({
   // full page (== limit, likely more via --offset) is easy to tell from a
   // partial one.
   if (sessions.length === 0 && (offset ?? 0) === 0) {
+    // An explicit `false` (`--no-excludeSyntheticSessions`) is the default, so
+    // removes no rows. An empty selected set is an ordinary answer on the right
+    // project.
+    const filtered = [
+      createdSince,
+      createdUntil,
+      recordedSince,
+      recordedUntil,
+      recordedBy,
+      excludeSyntheticSessions,
+      excludeAgentReviewSessions,
+      requireInitialNavigationResponse,
+      visitedUrlFilter,
+      selectedSetValue,
+    ].some((value) => value != null && value !== false);
+    // Only an unfiltered empty list suggests the wrong project, matching the
+    // get_sessions MCP tool.
     logNotice(
-      await appendProjectSelectionHint(
-        "No recorded sessions found for this project.",
-        client,
-        project,
-      ),
+      filtered
+        ? "No recorded sessions matching the filters found for this project."
+        : await appendProjectSelectionHint(
+            "No recorded sessions found for this project.",
+            client,
+            project,
+          ),
     );
     return;
   }

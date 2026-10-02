@@ -39,7 +39,7 @@ const parsePrNumber = (value: number): number => {
 export const prNumberOption = (extraConflicts: string[] = []) => ({
   number: true as const,
   description:
-    "A pull request number, used as an alternative to --testRunId: looks up the latest test run for the pull request's head commit, exactly as --commitSha would for that commit.",
+    "A pull/merge request number, used as an alternative to --testRunId: looks up the latest test run for the pull request's head commit, exactly as --commitSha would for that commit.",
   conflicts: ["testRunId", "commitSha", ...extraConflicts],
   coerce: parsePrNumber,
 });

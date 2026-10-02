@@ -1,5 +1,35 @@
 # @alwaysmeticulous/client
 
+## 2.345.0
+
+### Minor Changes
+
+- [#14663](https://github.com/alwaysmeticulous/meticulous/pull/14663) [`bdd6fbb`](https://github.com/alwaysmeticulous/meticulous/commit/bdd6fbb496ee0c26ac63a588887b468aa44ef53b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add agent reviews for non-visual checks: `meticulous agent reject-check`,
+  `approve-check` and `ignore-check` record an agent decision on a failing
+  builtin or custom check, storing the given reason as its justification, and
+  `check-comments` reads those reasons back. All four take `--prNumber` as an
+  alternative to `--testRunId`. The client exposes the same
+  operations as `rejectCheck`, `approveCheck`, `ignoreCheck` and
+  `getCheckComments`.
+
+- [#14668](https://github.com/alwaysmeticulous/meticulous/pull/14668) [`15174c4`](https://github.com/alwaysmeticulous/meticulous/commit/15174c45d0f5e77e5e895be9dc08996be28f9c0a) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `meticulous agent test-runs`, which lists a project's pull request test
+  runs newest first, optionally for one pull request (`--prNumber`) or just each
+  pull request's newest run (`--latestPerPullRequest`), and with `--baseTestRuns`
+  the runs without a pull request that pull request runs are compared against.
+  `--withDiffsOnly` and `--withCheckIssuesOnly` (narrowed with `--checkIds`)
+  filter the runs as the web app's test-runs tab does, and
+  `--includeCheckIssueCounts` adds each run's `checkWarningCount` and
+  `checkFailureCount`. The client exposes it as `getTestRuns`.
+
+  `meticulous agent sessions` now only adds the "searched project" hint to an
+  empty result when no filter was given (including `--selectedSet`), since a
+  filtered empty result is more likely the filters than the project.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @alwaysmeticulous/common@2.343.0
+
 ## 2.344.0
 
 ### Minor Changes

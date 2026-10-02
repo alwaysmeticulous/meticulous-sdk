@@ -1,13 +1,13 @@
 import {
   createClientWithOAuth,
   getDiffComments,
-  type AgentDiffComment,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { requireIdArgument } from "./argument-validation.utils";
+import { printCommentThreadsTsv } from "./comments-tsv.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
@@ -40,67 +40,14 @@ const handler = async ({
     return;
   }
 
-  const columns = [
-    "id",
-    "replyToCommentId",
-    "author",
-    "isAgentAuthored",
-    "text",
-    "x",
-    "y",
-  ];
-  if (includeResolved) columns.push("isResolved");
-  console.log(columns.join("\t"));
-  for (const comment of flattenCommentsForTsv(comments)) {
-    console.log(
-      [
-        comment.id,
-        comment.replyToCommentId ?? "",
-        comment.author ?? "",
-        comment.isAgentAuthored,
-        // Preserve a one-row-per-comment TSV shape for multiline/tabbed text.
-        JSON.stringify(comment.text),
-        comment.x.toFixed(5),
-        comment.y.toFixed(5),
-        ...(includeResolved ? [comment.isResolved ?? false] : []),
-      ].join("\t"),
-    );
-  }
+  printCommentThreadsTsv(comments, {
+    includeResolved,
+    threadColumns: [
+      { name: "x", value: ({ x }) => x.toFixed(5) },
+      { name: "y", value: ({ y }) => y.toFixed(5) },
+    ],
+  });
 };
-
-const flattenCommentsForTsv = (
-  comments: AgentDiffComment[],
-): Array<{
-  id: string;
-  replyToCommentId?: string;
-  author?: string;
-  isAgentAuthored: boolean;
-  text: string;
-  x: number;
-  y: number;
-  isResolved?: boolean;
-}> =>
-  comments.flatMap((comment) => [
-    {
-      id: comment.id,
-      ...(comment.author != null ? { author: comment.author } : {}),
-      isAgentAuthored: comment.isAgentAuthored,
-      text: comment.text,
-      x: comment.x,
-      y: comment.y,
-      ...(comment.isResolved != null ? { isResolved: comment.isResolved } : {}),
-    },
-    ...comment.replies.map((reply) => ({
-      id: reply.id,
-      replyToCommentId: comment.id,
-      ...(reply.author != null ? { author: reply.author } : {}),
-      isAgentAuthored: reply.isAgentAuthored,
-      text: reply.text,
-      x: comment.x,
-      y: comment.y,
-      ...(comment.isResolved != null ? { isResolved: comment.isResolved } : {}),
-    })),
-  ]);
 
 export const diffCommentsCommand: CommandModule<unknown, Options> = {
   command: "diff-comments",

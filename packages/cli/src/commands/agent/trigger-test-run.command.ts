@@ -332,7 +332,7 @@ const handler = async ({
 export const triggerTestRunCommand: CommandModule<unknown, Options> = {
   command: "trigger-test-run",
   describe:
-    "Trigger a test run against a deployment created by 'agent upload-build'. Outputs the testRunId (or JSON with --json).",
+    "Trigger a test run against a deployment created by 'agent upload-build'. Outputs the testRunId (or JSON with --json). A status (in the --json output) of Success means a test run without diffs, and Failure a test run with diffs.",
   builder: {
     apiToken: OPTIONS.apiToken,
     deploymentId: {

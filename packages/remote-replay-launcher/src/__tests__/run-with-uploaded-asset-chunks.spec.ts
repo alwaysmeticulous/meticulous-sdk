@@ -4,6 +4,7 @@ import {
 } from "@alwaysmeticulous/client";
 import type * as Common from "@alwaysmeticulous/common";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { uploadGitDiffToS3 } from "../asset-upload-utils";
 import { pollWhileBaseNotFound } from "../poll-for-base-test-run";
 import { runWithUploadedAssetChunks } from "../run-with-uploaded-asset-chunks";
 
@@ -82,5 +83,28 @@ describe("runWithUploadedAssetChunks", () => {
     await assertion;
 
     expect(triggerRunWithUploadedAssetChunks).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates the deployment and uploads the git diff but triggers nothing when skipTrigger is set", async () => {
+    const result = await runWithUploadedAssetChunks({
+      client: {} as never,
+      commitSha: "abc123def456",
+      gitDiffOutput: "diff --git a/x b/x",
+      waitForBase: true,
+      rewrites: [],
+      assetReferencesManifest: [{ name: "app", versionId: "v1" }],
+      skipTrigger: true,
+    });
+
+    expect(result).toEqual({
+      testRun: null,
+      sourceDeploymentId: "deployment-123",
+    });
+    expect(createRunWithUploadedAssetChunks).toHaveBeenCalledTimes(1);
+    expect(uploadGitDiffToS3).toHaveBeenCalledWith(
+      expect.objectContaining({ uploadId: "deployment-123" }),
+    );
+    expect(triggerRunWithUploadedAssetChunks).not.toHaveBeenCalled();
+    expect(pollWhileBaseNotFound).not.toHaveBeenCalled();
   });
 });

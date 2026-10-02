@@ -265,7 +265,8 @@ export const testRunStatsCommand = createStatsCommand<TestRunStatsItem>({
     },
     prNumbers: {
       string: true,
-      description: "Output only these comma-separated pull request numbers.",
+      description:
+        "Output only these comma-separated pull/merge request numbers.",
     },
     commitShas: {
       string: true,
@@ -312,7 +313,7 @@ export const testRunEventStatsCommand =
       prNumbers: {
         string: true,
         description:
-          "Output only test-run events for these comma-separated pull request numbers.",
+          "Output only test-run events for these comma-separated pull/merge request numbers.",
       },
       eventTypes: {
         string: true,
