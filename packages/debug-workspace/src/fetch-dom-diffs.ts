@@ -81,7 +81,7 @@ const DEFAULT_MAX_CONCURRENCY = 8;
  * (downloaded to `debug-data/diffs/<replayDiffId>.json`), which is the
  * authoritative set of compared screenshots — each entry carries the
  * `identifier` (so we can derive the backend name directly, without consulting
- * the curated `timeline.json`) and the `outcome`. We only call the DOM-diff API
+ * the curated timeline) and the `outcome`. We only call the DOM-diff API
  * for outcomes that represent a real visual difference; `no-diff` screenshots
  * are recorded as identical without an API round-trip. Per-screenshot fetch
  * errors are logged and recorded as `skipped-error`; the pipeline never fails

@@ -1,3 +1,4 @@
+import { HTTP_RESPONSE_BODY_ENCODING_ATTR } from "../body-encoding";
 import {
   type BindingRequestEvent,
   CAPTURED_HEADERS,
@@ -236,6 +237,10 @@ export class SpanBuilder {
     if (event.responseBody !== undefined) {
       attributes["http.response.body"] = event.responseBody.body;
       attributes["http.response.body.truncated"] = event.responseBody.truncated;
+      if (event.responseBody.encoding !== undefined) {
+        attributes[HTTP_RESPONSE_BODY_ENCODING_ATTR] =
+          event.responseBody.encoding;
+      }
     }
 
     return this.buildClientSpan(

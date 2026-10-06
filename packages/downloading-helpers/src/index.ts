@@ -30,6 +30,7 @@ export { ensureReplayLogTextFiles } from "./file-downloads/replay-log-text-files
 export {
   downloadFile,
   downloadAndExtractFile,
+  type DownloadFileOptions,
   streamDownloadAndExtractTar,
   streamDownloadAndExtractTarGz,
   type StreamDownloadAndExtractTarOptions,

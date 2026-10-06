@@ -15,6 +15,8 @@ export type {
   KvOmittedReason,
   KvOperation,
   KvOperationEvent,
+  OutboundFetchAgentSwarmTestingRequest,
+  OutboundFetchAgentSwarmTestingResponse,
   OutboundFetchLookupRequest,
   OutboundFetchLookupResponse,
   OutboundRequestEvent,
@@ -22,12 +24,15 @@ export type {
   ReplaySessionInfoResponse,
 } from "./protocol";
 export {
+  AGENT_SWARM_TESTING_RUN_ID_ENV_KEY,
+  AGENT_SWARM_TESTING_SIDECAR_URL_ENV_KEY,
   CAPTURED_HEADERS,
   FRONTEND_SESSION_ID_HEADER,
   METICULOUS_PASSTHROUGH_HEADER,
   parseVirtualTimeMs,
   REPLAY_ID_HEADER,
   REPLAY_SIDECAR_URL_HEADER,
+  SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH,
   SIDECAR_EVENTS_PATH,
   SIDECAR_PROTOCOL_VERSION,
   SIDECAR_PROTOCOL_VERSION_HEADER,
@@ -42,7 +47,20 @@ export {
   MAX_BODY_CAPTURE_SIZE,
   readBodyWithCap,
   readRequestBodyWithCap,
+  readResponseBodyWithCap,
 } from "./body-capture";
+/**
+ * Exported for the Node recorder, which captures response bodies through its own instrumentations
+ * and must store them in the same form, and for its replay side, which serves them back.
+ */
+export {
+  BODY_ENCODING_BASE64,
+  type BodyEncoding,
+  decodeBodyBytes,
+  encodeBodyBytes,
+  type EncodedBody,
+  HTTP_RESPONSE_BODY_ENCODING_ATTR,
+} from "./body-encoding";
 export { headersToRecord } from "./outbound-capture";
 /**
  * Exported for the Node recorder, whose `health-probe.ts` adapts this to
@@ -218,6 +236,15 @@ export interface MeticulousWorkerHandler<Env = never> {
  * Replay takes precedence over recording when both are configured. A stale sidecar var baked into
  * an image is far more likely than a spurious replay header (nothing but the replay runner emits
  * one), and letting the env win would silently record a replay instead of mocking it.
+ *
+ * **Agent-swarm testing** activates on two deployment env vars,
+ * `METICULOUS_AGENT_SWARM_TESTING_SIDECAR_URL` and `METICULOUS_AGENT_SWARM_TESTING_RUN_ID`,
+ * set by whoever deploys the worker for a swarm run. Every outgoing `fetch` call is first
+ * offered to the interceptor service the URL names; it either supplies the response to serve
+ * or the call passes through to the real service. Unlike replay the mode is best-effort by
+ * design: a call the interceptor cannot answer is never failed, there is no frozen clock and
+ * no seeded randomness, and nothing is recorded. The sidecar URL is validated exactly like
+ * the replay one.
  *
  * With neither configured the wrapper is a complete pass-through, so it is safe to keep in
  * deployed code. Requires the `nodejs_als` (or `nodejs_compat`) compatibility flag. A capture

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, type Mock } from "vitest";
 import type { MeticulousClient } from "../../types/client.types";
 import {
+  cancelAgenticTotpSlotWait,
   completeAgenticSessionGeneration,
   reserveAgenticTotpSlot,
 } from "../agentic-session-generation.api";
@@ -78,6 +79,24 @@ describe("reserveAgenticTotpSlot", () => {
 
     expect(client.post).toHaveBeenCalledWith(
       "agentic-session-generation/totp-slot",
+      { agenticRunId: "run" },
+      { params: { projectId: "project" } },
+    );
+  });
+
+  it("posts a cancellation when the run stops waiting", async () => {
+    const client = {
+      post: vi.fn().mockResolvedValue({ data: {} }),
+    } as unknown as { post: Mock };
+
+    await cancelAgenticTotpSlotWait({
+      client: client as unknown as MeticulousClient,
+      projectId: "project",
+      agenticRunId: "run",
+    });
+
+    expect(client.post).toHaveBeenCalledWith(
+      "agentic-session-generation/totp-slot/cancel",
       { agenticRunId: "run" },
       { params: { projectId: "project" } },
     );

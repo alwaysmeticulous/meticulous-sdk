@@ -17,7 +17,7 @@ Use this guide when replays fail or diverge due to network request problems.
 
 ### 2. Compare Network Activity in Timeline
 
-- In `timeline.json`, look for network-related events.
+- In `timeline.ndjson`, look for network-related events.
 - Compare the sequence and timing of network requests between head and base.
 - Look for requests in one replay that are missing in the other.
 

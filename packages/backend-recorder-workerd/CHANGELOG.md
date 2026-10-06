@@ -1,5 +1,25 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.346.0
+
+### Minor Changes
+
+- [#14759](https://github.com/alwaysmeticulous/meticulous/pull/14759) [`2b9f18a`](https://github.com/alwaysmeticulous/meticulous/commit/2b9f18ab26f1988ac51ddd625e0363ee13d5a9ff) Thanks [@sesajad](https://github.com/sesajad)! - Add an agent-swarm-testing mode beside replay to the workerd backend recorder shim. Activated
+  by two deployment env vars, `METICULOUS_AGENT_SWARM_TESTING_SIDECAR_URL` (validated like the
+  replay sidecar URL) and `METICULOUS_AGENT_SWARM_TESTING_RUN_ID`, it offers every outgoing
+  `fetch` call to an interceptor service, which either supplies the response to serve or lets
+  the call pass through to the real service. Unlike replay the mode is best-effort: a call the
+  interceptor cannot answer is never failed, and there is no frozen clock, seeded randomness or
+  coverage. The foundation for agentic session generation against workerd backends.
+
+### Patch Changes
+
+- [#14795](https://github.com/alwaysmeticulous/meticulous/pull/14795) [`4234233`](https://github.com/alwaysmeticulous/meticulous/commit/4234233ddfdcb9bb267b077f677986b3290dbb7e) Thanks [@dennysem](https://github.com/dennysem)! - Record response bodies that are not UTF-8, such as an archive or an image served without a
+  `content-encoding`, as base64 marked with `http.response.body.encoding: "base64"`, and serve those
+  exact bytes back on replay. Such bodies were previously decoded as UTF-8, which replaced every
+  invalid byte with U+FFFD and left the replayed body unusable. Text bodies are recorded exactly as
+  before.
+
 ## 2.343.0
 
 ### Minor Changes

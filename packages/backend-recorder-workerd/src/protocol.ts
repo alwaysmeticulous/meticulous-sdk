@@ -4,6 +4,8 @@
  * is the single source of truth for the shape of capture events.
  */
 
+import type { BodyEncoding } from "./body-encoding";
+
 export const SIDECAR_PROTOCOL_VERSION = "2";
 
 /** Header carrying {@link SIDECAR_PROTOCOL_VERSION} on every shim → sidecar request. */
@@ -80,7 +82,7 @@ export const SIDECAR_REPLAY_COVERAGE_PATH = "/v1/replay/coverage";
  * so an inbound header is the only way per-replay config can reach the shim.
  *
  * The shim validates the value before using it and only honours a loopback /
- * `host.docker.internal` / private-network `http:` origin — see `replay-sidecar-url.ts`.
+ * `host.docker.internal` / private-network `http:` origin — see `sidecar-url.ts`.
  */
 export const REPLAY_SIDECAR_URL_HEADER =
   "x-meticulous-backend-replay-sidecar-url";
@@ -110,10 +112,19 @@ export const CAPTURED_HEADERS = [
 ] as const;
 
 export interface CapturedBody {
-  /** UTF-8 decoded body, truncated to the capture cap. */
+  /**
+   * The body truncated to the capture cap: its UTF-8 text, or base64 of its bytes when
+   * `encoding` is set.
+   */
   body: string;
   /** True when the body exceeded the capture cap or the read was cut short. */
   truncated: boolean;
+  /**
+   * Set only on a response body whose bytes are not UTF-8, which is stored base64 so that replay
+   * can serve it back exactly. Additive and non-version-bumping: an older shim omits it, and its
+   * bodies are text as before.
+   */
+  encoding?: BodyEncoding;
 }
 
 /**
@@ -375,6 +386,11 @@ export type OutboundFetchLookupResponse =
       outcome: "mock";
       statusCode: number;
       body: string;
+      /**
+       * Set when `body` is base64 of a recorded response that was not UTF-8, so the shim must
+       * serve the decoded bytes rather than the text. An older shim ignores it.
+       */
+      bodyEncoding?: BodyEncoding;
       headers: Record<string, string>;
     }
   /**
@@ -385,3 +401,52 @@ export type OutboundFetchLookupResponse =
    * live path is the request-side `meticulous-passthrough` header.
    */
   | { outcome: "no-mock" };
+
+/**
+ * Env var holding the origin of the agent-swarm-testing interceptor service, as a wrangler
+ * var on the deployment. Validated exactly like the replay sidecar URL — a loopback /
+ * docker-gateway / private-network `http:` origin only — see `sidecar-url.ts`.
+ */
+export const AGENT_SWARM_TESTING_SIDECAR_URL_ENV_KEY =
+  "METICULOUS_AGENT_SWARM_TESTING_SIDECAR_URL";
+
+/**
+ * Env var identifying the agent-swarm run, so an interceptor shared by several runs can tell
+ * whose traffic a call belongs to.
+ */
+export const AGENT_SWARM_TESTING_RUN_ID_ENV_KEY =
+  "METICULOUS_AGENT_SWARM_TESTING_RUN_ID";
+
+/** Agent-swarm-testing route. */
+export const SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH =
+  "/v1/agent-swarm-testing/outbound-fetch";
+
+/**
+ * One outbound `fetch` offered to the interceptor, sent to
+ * {@link SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH}. Unlike replay's lookup there is no
+ * consume-once mock state, so a single run id suffices.
+ */
+export interface OutboundFetchAgentSwarmTestingRequest {
+  runId: string;
+  /** Value of {@link FRONTEND_SESSION_ID_HEADER} on the inbound request, if any. */
+  frontendSessionId?: string;
+  method: string;
+  /** Full URL including query string. */
+  url: string;
+  /** Request body as captured by `readBodyWithCap`, mirroring the replay lookup. */
+  requestBody?: CapturedBody;
+}
+
+/**
+ * A response for the interceptor to serve, or a signal to let the call through. Unlike
+ * replay's lookup response there is no failure outcome: agent-swarm testing is best-effort,
+ * so anything the shim cannot act on becomes a passthrough, never a failed call.
+ */
+export type OutboundFetchAgentSwarmTestingResponse =
+  | {
+      outcome: "mock";
+      statusCode: number;
+      body: string;
+      headers: Record<string, string>;
+    }
+  | { outcome: "passthrough" };

@@ -31,11 +31,13 @@ const promisifiedFinished = promisify(finished);
  */
 const STREAMING_HIGH_WATER_MARK = 256 * 1024;
 
-interface DownloadFileOptions {
+export interface DownloadFileOptions {
   firstDataTimeoutInMs?: number;
   downloadCompleteTimeoutInMs?: number;
   maxDownloadContentRetries?: number;
   downloadContentRetryDelay?: number;
+  /** Defaults to true. Turn off for callers that download many small files. */
+  showProgressBar?: boolean;
 }
 
 /**
@@ -71,7 +73,9 @@ export const downloadFile = async (
     10,
   );
 
-  const progressBar = createDownloadProgressBar();
+  const progressBar = createDownloadProgressBar({
+    enabled: opts.showProgressBar ?? true,
+  });
   const progress = progressBar.trackStream(contentLength);
 
   const writer = createWriteStream(path);
@@ -111,6 +115,7 @@ export const downloadFile = async (
       setTimeout(resolve, downloadContentRetryDelay),
     );
     await downloadFile(fileUrl, path, {
+      ...opts,
       firstDataTimeoutInMs,
       downloadCompleteTimeoutInMs,
       maxDownloadContentRetries: maxDownloadContentRetries - 1,
@@ -130,6 +135,7 @@ export const downloadFile = async (
  * Do not try extracting to a dir that may already be in use by another process b/c overlapping
  * file names can cause data corruption.
  * @param extractTimeoutInMs The timeout for the zip extraction, in milliseconds.
+ * @param downloadFileOptions Options forwarded to the underlying {@link downloadFile} call.
  * @returns The list of the extracted files.
  */
 export const downloadAndExtractFile: (
@@ -137,13 +143,15 @@ export const downloadAndExtractFile: (
   tmpZipFilePath: string,
   extractPath: string,
   extractTimeoutInMs?: number,
+  downloadFileOptions?: DownloadFileOptions,
 ) => Promise<string[]> = async (
   fileUrl,
   tmpZipFilePath,
   extractPath,
   extractTimeoutInMs = 300_000,
+  downloadFileOptions = {},
 ) => {
-  await downloadFile(fileUrl, tmpZipFilePath);
+  await downloadFile(fileUrl, tmpZipFilePath, downloadFileOptions);
   const entries: string[] = [];
 
   const abortController = new AbortController();

@@ -1,6 +1,7 @@
 import { installBindingPatch } from "./binding-patch";
 import { CaptureBuffer } from "./capture-buffer";
 import {
+  type RequestAgentSwarmTestingContext,
   type RequestCaptureContext,
   type RequestReplayContext,
   requestCaptureContext,
@@ -13,6 +14,8 @@ import { warnOnce } from "./log";
 import { getOriginalFetch } from "./original-fetch";
 import { headersToRecord } from "./outbound-capture";
 import {
+  AGENT_SWARM_TESTING_RUN_ID_ENV_KEY,
+  AGENT_SWARM_TESTING_SIDECAR_URL_ENV_KEY,
   FRONTEND_SESSION_ID_HEADER,
   type InboundRequestEvent,
   parseVirtualTimeMs,
@@ -27,7 +30,7 @@ import {
 import { publishSessionIdOnResponse } from "./publish-session-id";
 import { publishWorkerdShimVersionOnResponse } from "./publish-shim-version";
 import { installReplayLogTagging } from "./replay-log-tagging";
-import { parseReplaySidecarUrl } from "./replay-sidecar-url";
+import { parseSidecarUrl } from "./sidecar-url";
 import { getReplaySessionInfo } from "./sidecar-client";
 import {
   resolveSidecarTransport,
@@ -75,9 +78,14 @@ export interface MeticulousInvocation {
 }
 
 /**
- * Records, or replays, one inbound request. Shared by `withMeticulous` (an ES-module Worker's
- * `fetch`) and `withMeticulousPagesFunction` (a Pages Functions `onRequest`), which differ only
- * in how they get at the request, the env and `waitUntil`.
+ * Records, replays, or runs agent-swarm testing on, one inbound request. Shared by
+ * `withMeticulous` (an ES-module Worker's `fetch`) and `withMeticulousPagesFunction` (a Pages
+ * Functions `onRequest`), which differ only in how they get at the request, the env and
+ * `waitUntil`.
+ *
+ * Replay takes precedence over agent-swarm testing, and either over recording: nothing but
+ * Meticulous's own runners emit the replay header, so a header present is a deliberate
+ * choice, and the sidecar env vars a stale image can carry are not.
  */
 export const runWithMeticulous = async (
   { request, env, ctx, invokeHandler }: MeticulousInvocation,
@@ -85,13 +93,25 @@ export const runWithMeticulous = async (
 ): Promise<Response> => {
   let transport: SidecarTransport | undefined;
   let replayContext: RequestReplayContext | undefined;
+  let agentSwarmTestingContext: RequestAgentSwarmTestingContext | undefined;
   try {
     replayContext = await resolveReplayContext(request, ctx);
+    if (replayContext === undefined) {
+      agentSwarmTestingContext = resolveAgentSwarmTestingContext(
+        request,
+        env,
+        ctx,
+      );
+    }
     transport =
-      replayContext === undefined
+      replayContext === undefined && agentSwarmTestingContext === undefined
         ? resolveSidecarTransport(options, env)
         : undefined;
-    if (replayContext !== undefined || transport !== undefined) {
+    if (
+      replayContext !== undefined ||
+      agentSwarmTestingContext !== undefined ||
+      transport !== undefined
+    ) {
       installFetchPatch();
     }
     if (transport !== undefined) {
@@ -125,6 +145,7 @@ export const runWithMeticulous = async (
       error,
     );
     replayContext = undefined;
+    agentSwarmTestingContext = undefined;
     transport = undefined;
   }
 
@@ -147,6 +168,14 @@ export const runWithMeticulous = async (
       invokeHandler,
     );
     return publishWorkerdShimVersionOnResponse(replayResponse);
+  }
+
+  if (agentSwarmTestingContext !== undefined) {
+    const testingResponse = await requestCaptureContext.run(
+      agentSwarmTestingContext,
+      invokeHandler,
+    );
+    return publishWorkerdShimVersionOnResponse(testingResponse);
   }
 
   if (transport === undefined) {
@@ -285,7 +314,7 @@ const resolveReplayContext = async (
   let replayId: string | undefined;
   let virtualTimeMs: number | undefined;
   try {
-    sidecarUrl = parseReplaySidecarUrl(
+    sidecarUrl = parseSidecarUrl(
       request.headers.get(REPLAY_SIDECAR_URL_HEADER),
     );
     frontendSessionId =
@@ -318,6 +347,55 @@ const resolveReplayContext = async (
     sidecarUrl,
     clockAnchorMs: info.clockAnchorMs,
     ...(virtualTimeMs !== undefined ? { virtualTimeMs } : {}),
+    waitUntil: buildWaitUntil(ctx),
+  };
+};
+
+/**
+ * Whether this deployment is running agent-swarm testing, and the context to serve requests
+ * under.
+ *
+ * Activates on the two deployment env vars — a validated interceptor origin plus a run id —
+ * neither of which changes per request, which is why env vars work here where replay needs
+ * headers (replay is per-session, and workerd cannot see container environment variables;
+ * these vars are set on the container by whoever deploys it for a swarm run). There is no
+ * session handshake with the interceptor: the mode is best-effort by design, so nothing is
+ * gated on the interceptor being reachable.
+ */
+const resolveAgentSwarmTestingContext = (
+  request: Request,
+  env: unknown,
+  ctx: MeticulousExecutionContext,
+): RequestAgentSwarmTestingContext | undefined => {
+  let sidecarUrl: string | undefined;
+  let runId: string | undefined;
+  try {
+    const envRecord =
+      env !== null && typeof env === "object"
+        ? (env as Record<string, unknown>)
+        : {};
+    const rawSidecarUrl = envRecord[AGENT_SWARM_TESTING_SIDECAR_URL_ENV_KEY];
+    sidecarUrl =
+      typeof rawSidecarUrl === "string"
+        ? parseSidecarUrl(rawSidecarUrl)
+        : undefined;
+    const rawRunId = envRecord[AGENT_SWARM_TESTING_RUN_ID_ENV_KEY];
+    runId =
+      typeof rawRunId === "string" && rawRunId !== "" ? rawRunId : undefined;
+  } catch {
+    return undefined;
+  }
+  if (sidecarUrl === undefined || runId === undefined) {
+    return undefined;
+  }
+
+  return {
+    mode: "agent-swarm-testing",
+    requestId: crypto.randomUUID(),
+    runId,
+    frontendSessionId:
+      request.headers.get(FRONTEND_SESSION_ID_HEADER) ?? undefined,
+    sidecarUrl,
     waitUntil: buildWaitUntil(ctx),
   };
 };

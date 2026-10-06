@@ -23,7 +23,7 @@ Use this guide when investigating unexpected visual differences between head and
 
 ### 3. Compare Logs at Screenshot Time
 
-- Find the screenshot timestamps in `timeline.json`.
+- Find the screenshot timestamps in `timeline.ndjson`.
 - Compare what events occurred before each screenshot in head vs base.
 - Look for missing or extra events that could cause visual differences.
 

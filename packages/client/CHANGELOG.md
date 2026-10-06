@@ -1,5 +1,26 @@
 # @alwaysmeticulous/client
 
+## 2.346.0
+
+### Minor Changes
+
+- [#14662](https://github.com/alwaysmeticulous/meticulous/pull/14662) [`9c6571d`](https://github.com/alwaysmeticulous/meticulous/commit/9c6571d5e0c32e00add19ddacd9fb5833d306e0d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent ignore-diff` takes a new `--reportFlake` flag that also reports the diff to Meticulous to investigate as a likely replay-engine bug. Its description now spells out which diffs to ignore and which not to.
+
+### Patch Changes
+
+- [#14751](https://github.com/alwaysmeticulous/meticulous/pull/14751) [`b3e154b`](https://github.com/alwaysmeticulous/meticulous/commit/b3e154b982a7a8ed06acf577891025dae9817ece) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add optional base-vs-head comparison fields to Agent swarm run results.
+
+- [#14762](https://github.com/alwaysmeticulous/meticulous/pull/14762) [`0ad98d7`](https://github.com/alwaysmeticulous/meticulous/commit/0ad98d7d4ff47ae05c52eb8e71a1edd27d6bb717) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional structured guidance to Agent swarm case checks: `headline`,
+  `rootCause` with source-copied evidence, `fix` with proposed changes,
+  `howToVerify`, `unconfirmed`, and `confidenceRationale`.
+
+- [#14856](https://github.com/alwaysmeticulous/meticulous/pull/14856) [`898b58a`](https://github.com/alwaysmeticulous/meticulous/commit/898b58a31a7d51f4ed10529b0129a940cd325b6c) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `reserveAgenticTotpSlot` takes an optional `attempt`, and a declined reservation
+  now reports the run's `queuePosition` and `estimatedWaitMs` in the project's
+  TOTP login queue. `cancelAgenticTotpSlotWait` removes a run that stops waiting.
+- Updated dependencies [[`4234233`](https://github.com/alwaysmeticulous/meticulous/commit/4234233ddfdcb9bb267b077f677986b3290dbb7e), [`5457783`](https://github.com/alwaysmeticulous/meticulous/commit/54577831d01a1f41ac659f674952d2c40cc1cc05)]:
+  - @alwaysmeticulous/api@2.346.0
+  - @alwaysmeticulous/common@2.343.0
+
 ## 2.345.0
 
 ### Minor Changes

@@ -398,11 +398,6 @@ example workflow above:
         run: pnpm build -- --sourcemap
 \`\`\`
 
-\`--sourcemap\` covers JavaScript only — Vite emits no CSS source maps for production builds at all. If you also want
-coverage attributed to your stylesheets, add \`@alwaysmeticulous/recorder-plugin/css-sourcemap\` to your Vite config, as
-described in the
-[Viewing source coverage information in Meticulous guide](${ENABLE_SOURCE_COVERAGE_URL}).
-
 **Create React App** — set \`GENERATE_SOURCEMAP=true\`:
 
 \`\`\`yaml
@@ -706,11 +701,6 @@ build:
     - pnpm install --frozen-lockfile
     - pnpm build -- --sourcemap
 \`\`\`
-
-\`--sourcemap\` covers JavaScript only — Vite emits no CSS source maps for production builds at all. If you also want
-coverage attributed to your stylesheets, add \`@alwaysmeticulous/recorder-plugin/css-sourcemap\` to your Vite config, as
-described in the
-[Viewing source coverage information in Meticulous guide](${ENABLE_SOURCE_COVERAGE_URL}).
 
 **Create React App** — set \`GENERATE_SOURCEMAP=true\`:
 

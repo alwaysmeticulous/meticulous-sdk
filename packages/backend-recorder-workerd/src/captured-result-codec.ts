@@ -25,6 +25,8 @@
  * because rebuilding one needs the class and replay has no `@prisma/client` to reach it through.
  */
 
+import { fromBase64, toBase64 } from "./base64";
+
 const ENCODING_VERSION = 1;
 const ENVELOPE_VERSION_KEY = "__meticulousEncoding";
 const TYPE_TAG_KEY = "__meticulousType";
@@ -219,31 +221,3 @@ const reviveLegacyTimestamps = (value: unknown): unknown => {
 
 const asLegacyTimestamp = (value: string): Date | undefined =>
   ISO_TIMESTAMP.test(value) ? decodeDate(value) : undefined;
-
-const BASE64_CHUNK_SIZE = 0x8000;
-
-const toBase64 = (view: ArrayBufferView): string => {
-  const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(bytes).toString("base64");
-  }
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += BASE64_CHUNK_SIZE) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + BASE64_CHUNK_SIZE));
-  }
-  return btoa(binary);
-};
-
-// Replay only ever runs on Node, so a `Buffer` is both what pg returned at record time and a
-// `Uint8Array` as far as a Prisma `Bytes` consumer is concerned.
-const fromBase64 = (base64: string): Uint8Array => {
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(base64, "base64");
-  }
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-};

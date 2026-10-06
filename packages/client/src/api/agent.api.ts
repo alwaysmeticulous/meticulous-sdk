@@ -1439,7 +1439,10 @@ export const approveDiff = async ({
   return data;
 };
 
-/** Record an agent review ignoring one screenshot difference. */
+/**
+ * Record an agent review ignoring one screenshot difference, optionally also
+ * reporting it to Meticulous as a likely replay-engine flake.
+ */
 export const ignoreDiff = async ({
   client,
   replayDiffId,
@@ -1447,6 +1450,7 @@ export const ignoreDiff = async ({
   reason,
   x,
   y,
+  reportFlake,
 }: {
   client: MeticulousClient;
   replayDiffId: string;
@@ -1454,11 +1458,12 @@ export const ignoreDiff = async ({
   reason: string;
   x: number;
   y: number;
+  reportFlake?: boolean;
 }): Promise<AgentDiffCommentMutationResponse> => {
   const { data } = await client
     .post(
       `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/ignore`,
-      { reason, x, y },
+      { reason, x, y, ...(reportFlake ? { reportFlake } : {}) },
     )
     .catch((error) => {
       throw maybeEnrichFetchError(error);

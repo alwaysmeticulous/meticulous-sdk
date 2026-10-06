@@ -78,10 +78,28 @@ export interface RequestReplayContext extends BaseRequestContext {
   virtualTimeMs?: number;
 }
 
-export type RequestContext = RequestCaptureContext | RequestReplayContext;
+/**
+ * Agent-swarm testing: outbound calls are offered to an interceptor service before they leave
+ * the worker. The interceptor either serves a response or the call passes through to the real
+ * service — unlike replay there is no hermeticity, no frozen clock and no coverage, so this
+ * context is deliberately a strict subset of the replay one.
+ */
+export interface RequestAgentSwarmTestingContext extends BaseRequestContext {
+  mode: "agent-swarm-testing";
+  /** Identifies the agent-swarm run to the interceptor, from the deployment env. */
+  runId: string;
+  frontendSessionId: string | undefined;
+  /** Normalized origin of the interceptor service, e.g. "http://127.0.0.1:9670". No trailing slash. */
+  sidecarUrl: string;
+}
+
+export type RequestContext =
+  | RequestCaptureContext
+  | RequestReplayContext
+  | RequestAgentSwarmTestingContext;
 
 export const requestCaptureContext = new AsyncLocalStorage<RequestContext>();
 
 /** The origin the shim's own sidecar traffic goes to, for the self-capture guards. */
 export const sidecarOriginOf = (ctx: RequestContext): string =>
-  ctx.mode === "replay" ? ctx.sidecarUrl : transportOrigin(ctx.transport);
+  ctx.mode === "record" ? transportOrigin(ctx.transport) : ctx.sidecarUrl;

@@ -482,6 +482,45 @@ describe("withMeticulous in replay mode", () => {
     expect(upstreamHits).toBe(0);
   });
 
+  it("serves a base64 recorded body as the bytes it encodes", async () => {
+    // A gzip header: not UTF-8, so it was recorded as base64.
+    const recorded = Uint8Array.from([
+      0x1f, 0x8b, 0x08, 0x00, 0xff, 0xfe, 0x00,
+    ]);
+    lookupHandler = () => ({
+      outcome: "mock",
+      statusCode: 200,
+      body: Buffer.from(recorded).toString("base64"),
+      bodyEncoding: "base64",
+      headers: { "content-type": "application/gzip" },
+    });
+    const handler = withMeticulous({
+      fetch: async () => {
+        const upstream = await fetch(`${upstreamUrl}/archive`);
+        return new Response(await upstream.arrayBuffer(), {
+          status: upstream.status,
+        });
+      },
+    });
+
+    const response = await handler.fetch(
+      new Request("http://worker.local/page", {
+        headers: {
+          "x-meticulous-session-id": "base64-1",
+          [REPLAY_ID_HEADER]: "replay-1",
+          "x-meticulous-backend-replay-sidecar-url": sidecarUrl,
+        },
+      }),
+      undefined as never,
+      makeCtx(),
+    );
+
+    expect(Array.from(new Uint8Array(await response.arrayBuffer()))).toEqual(
+      Array.from(recorded),
+    );
+    expect(upstreamHits).toBe(0);
+  });
+
   /**
    * An app that renders the session id into its HTML must render the same bytes on a replay
    * as it did when recording, or every server-rendered page it produces is a permanent diff.

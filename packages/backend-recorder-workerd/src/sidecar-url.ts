@@ -1,7 +1,8 @@
 import { warnOnce } from "./log";
 
 /**
- * Validation for the replay sidecar origin carried on inbound requests.
+ * Validation for a sidecar origin, whether it arrives on a request header (replay) or in a
+ * deployment env var (agent-swarm testing).
  *
  * The value arrives in a request header, so in principle anything that can reach the worker
  * can propose one — and the shim POSTs outbound request bodies to whatever it accepts. The
@@ -23,7 +24,7 @@ const ALLOWED_HOSTNAMES = new Set([
   "host.containers.internal",
 ]);
 
-export const parseReplaySidecarUrl = (
+export const parseSidecarUrl = (
   raw: string | null | undefined,
 ): string | undefined => {
   if (typeof raw !== "string" || raw.length === 0) {
@@ -31,8 +32,8 @@ export const parseReplaySidecarUrl = (
   }
   if (raw.length > MAX_URL_LENGTH) {
     warnOnce(
-      "replay-sidecar-url",
-      "Ignoring an implausibly long Meticulous replay sidecar URL.",
+      "sidecar-url",
+      "Ignoring an implausibly long Meticulous sidecar URL.",
     );
     return undefined;
   }
@@ -41,10 +42,7 @@ export const parseReplaySidecarUrl = (
   try {
     url = new URL(raw);
   } catch {
-    warnOnce(
-      "replay-sidecar-url",
-      "Ignoring an unparseable Meticulous replay sidecar URL.",
-    );
+    warnOnce("sidecar-url", "Ignoring an unparseable Meticulous sidecar URL.");
     return undefined;
   }
 
@@ -59,8 +57,8 @@ export const parseReplaySidecarUrl = (
 
   if (!isAcceptable) {
     warnOnce(
-      "replay-sidecar-url",
-      `Ignoring the Meticulous replay sidecar URL "${raw}" — only a plain http:// origin on a loopback, docker-gateway or private-network host is honoured.`,
+      "sidecar-url",
+      `Ignoring the Meticulous sidecar URL "${raw}" — only a plain http:// origin on a loopback, docker-gateway or private-network host is honoured.`,
     );
     return undefined;
   }

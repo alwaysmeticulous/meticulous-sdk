@@ -145,7 +145,7 @@ or set the `METICULOUS_BACKEND_PROVISIONAL_SESSION_IDS` var to `"false"` (a work
 
 `getMeticulousSessionId()` is also how the id reaches another process. A document navigation has no inbound header for your app to forward, so a worker that fans out to its own services has to pass the id on as `x-meticulous-session-id` itself; the shim does not add it to outbound requests.
 
-Request bodies have secret-looking JSON fields (`clientSecret`, `apiKey`, `token`, `password`, …) replaced with `REDACTED` before they leave the worker, since plenty of APIs carry a credential in the body rather than a header. Response bodies are stored verbatim. A KV `put` value is redacted the same way, for the same reason; a value read back from KV is stored verbatim, like a response body.
+Request bodies have secret-looking JSON fields (`clientSecret`, `apiKey`, `token`, `password`, …) replaced with `REDACTED` before they leave the worker, since plenty of APIs carry a credential in the body rather than a header. Response bodies are stored verbatim: as text when they are UTF-8, and otherwise as base64 (marked with `http.response.body.encoding: "base64"`), so a binary response such as an archive or an image replays byte-for-byte. A KV `put` value is redacted the same way, for the same reason; a value read back from KV is stored verbatim, like a response body.
 
 ## Replay
 
@@ -164,6 +164,12 @@ one Worker isolate serves concurrent replays. Startup and other work outside a r
 untagged.
 
 Calls through bindings and KV namespaces are not served from the recording (see Limitations) and are never failed — they always reach the real binding.
+
+## Agent-swarm testing
+
+A third mode sits beside replay for Meticulous-driven runs (agentic session generation). It activates on two deployment env vars, `METICULOUS_AGENT_SWARM_TESTING_SIDECAR_URL` and `METICULOUS_AGENT_SWARM_TESTING_RUN_ID`, set by whoever deploys the worker for a swarm run; the URL is validated like the replay sidecar URL. Every outgoing `fetch` call is offered to the interceptor service the URL names: the interceptor either supplies the response to serve, or the call passes through to the real service.
+
+The mode is best-effort by design — the opposite of replay's hermeticity. A call the interceptor cannot answer (a miss, an unreachable or misbehaving interceptor, a response the shim cannot represent) is never failed; it simply reaches the real service. There is no frozen clock, no seeded randomness and no recording. The `meticulous-passthrough` header skips the interceptor for a call entirely.
 
 ## Code coverage
 

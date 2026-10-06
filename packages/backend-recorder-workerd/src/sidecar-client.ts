@@ -4,10 +4,13 @@ import {
   type CaptureEvent,
   type CaptureEventsPayload,
   type CoverageReportRequest,
+  type OutboundFetchAgentSwarmTestingRequest,
+  type OutboundFetchAgentSwarmTestingResponse,
   type OutboundFetchLookupRequest,
   type OutboundFetchLookupResponse,
   type ReplaySessionInfoResponse,
   SIDECAR_EVENTS_PATH,
+  SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH,
   SIDECAR_PROTOCOL_VERSION,
   SIDECAR_PROTOCOL_VERSION_HEADER,
   SIDECAR_REPLAY_COVERAGE_PATH,
@@ -25,6 +28,8 @@ type FetchFn = typeof globalThis.fetch;
  */
 const SESSION_INFO_TIMEOUT_MS = 10_000;
 const LOOKUP_TIMEOUT_MS = 5_000;
+
+const AGENT_SWARM_TESTING_TIMEOUT_MS = 5_000;
 
 /**
  * Capture reporting is off the response path (it runs under `ctx.waitUntil`), so a timeout here
@@ -286,6 +291,50 @@ export const postCoverageReport = async (
       error,
     );
     return "failed";
+  }
+};
+
+/**
+ * Offers one outbound call to the interceptor service. Never rejects; returns undefined when
+ * the interceptor could not be consulted, which the caller turns into a passthrough — never
+ * a failed call.
+ */
+export const postAgentSwarmTestingOutboundFetch = async (
+  fetchFn: FetchFn,
+  sidecarUrl: string,
+  payload: OutboundFetchAgentSwarmTestingRequest,
+): Promise<OutboundFetchAgentSwarmTestingResponse | undefined> => {
+  try {
+    return await withTimeout(AGENT_SWARM_TESTING_TIMEOUT_MS, async (signal) => {
+      const response = await fetchFn(
+        `${sidecarUrl}${SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH}`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            [SIDECAR_PROTOCOL_VERSION_HEADER]: SIDECAR_PROTOCOL_VERSION,
+          },
+          body: JSON.stringify(payload),
+          signal,
+        },
+      );
+      if (!response.ok) {
+        warnOnce(
+          "intercept-lookup-rejected",
+          `Meticulous interceptor rejected an outbound fetch intercept (HTTP ${response.status}) - the call will pass through.`,
+        );
+        await response.arrayBuffer().catch(() => undefined);
+        return undefined;
+      }
+      return (await response.json()) as OutboundFetchAgentSwarmTestingResponse;
+    });
+  } catch (error) {
+    warnOnce(
+      "agent-swarm-testing-lookup-unreachable",
+      "Could not reach the Meticulous interceptor for an outbound fetch - the call will pass through.",
+      error,
+    );
+    return undefined;
   }
 };
 

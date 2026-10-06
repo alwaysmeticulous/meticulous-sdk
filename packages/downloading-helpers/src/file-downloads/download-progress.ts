@@ -46,8 +46,11 @@ export interface DownloadProgressBar {
 
 export const createDownloadProgressBar = ({
   label = "Downloading",
+  enabled = true,
 }: {
   label?: string;
+  /** When false, streams are still tracked but the bar is never rendered. */
+  enabled?: boolean;
 } = {}): DownloadProgressBar => {
   // oxlint-disable-next-line typescript-eslint/no-redundant-type-constituents -- cli-progress types resolve under tsc; tsgolint false positive
   let bar: cliProgress.SingleBar | null = null;
@@ -61,6 +64,7 @@ export const createDownloadProgressBar = ({
     }
     if (bar == null) {
       if (
+        !enabled ||
         !shouldShowProgressBar() ||
         totalBytes < MIN_BYTES_TO_SHOW_PROGRESS_BAR
       ) {

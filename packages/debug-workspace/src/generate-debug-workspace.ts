@@ -662,9 +662,7 @@ const redactCookiesAndHeadersInFile = (
 
 // Redacts an NDJSON file (one JSON value per line) in place, running
 // `redactCookiesAndHeadersInJson` over each line independently. Used for
-// `timeline.ndjson`, which -- unlike `timeline.json` -- is sometimes already
-// present in the downloaded replay archive rather than generated fresh from
-// the (by-then-redacted) `timeline.json`.
+// `timeline.ndjson`.
 const redactCookiesAndHeadersInNdjsonFile = (filePath: string): boolean => {
   if (!existsSync(filePath)) {
     return false;

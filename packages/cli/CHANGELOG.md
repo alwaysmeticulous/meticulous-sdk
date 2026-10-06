@@ -1,5 +1,15 @@
 # @alwaysmeticulous/cli
 
+## 2.346.0
+
+### Minor Changes
+
+- [#14662](https://github.com/alwaysmeticulous/meticulous/pull/14662) [`9c6571d`](https://github.com/alwaysmeticulous/meticulous/commit/9c6571d5e0c32e00add19ddacd9fb5833d306e0d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent ignore-diff` takes a new `--reportFlake` flag that also reports the diff to Meticulous to investigate as a likely replay-engine bug. Its description now spells out which diffs to ignore and which not to.
+
+### Patch Changes
+
+- [#14843](https://github.com/alwaysmeticulous/meticulous/pull/14843) [`234327b`](https://github.com/alwaysmeticulous/meticulous/commit/234327b10bd305f9e1fd394db8babfebd39443f7) Thanks [@linpengzhang](https://github.com/linpengzhang)! - CSS coverage collection is disabled. `--enableCssCoverage` is now hidden and has no effect, and the recorder plugin README no longer documents the CSS source map plugin.
+
 ## 2.345.0
 
 ### Minor Changes

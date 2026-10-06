@@ -109,10 +109,25 @@ export interface SessionData {
   backendSpans?: SerializedBackendSpan[];
 }
 
+/**
+ * Reported by the recorder so replay can tell "this gesture did not happen" from
+ * "this recorder never captured that gesture".
+ */
+export const RECORDER_CAPABILITIES = {
+  /** `dblclick`, `pointercancel` and `paste` are recorded, so their absence is meaningful. */
+  InputFidelityMarkers: "input-fidelity-markers",
+} as const;
+
+export type RecorderCapability =
+  (typeof RECORDER_CAPABILITIES)[keyof typeof RECORDER_CAPABILITIES];
+
 export interface WindowData {
   startUrl: string;
   width: number;
   height: number;
+
+  /** Undefined on older sessions: infer nothing from a missing event type. */
+  recorderCapabilities?: RecorderCapability[];
 }
 
 export interface Cookie {
@@ -424,6 +439,11 @@ export interface HttpSpanAttributes {
   "http.response.body.truncated"?: boolean;
   /** Share of the body the stored value represents. Only set when truncated. */
   "http.response.body.captured_percentage"?: number;
+  /**
+   * `"base64"` when the response body's bytes were not UTF-8 (an archive, an image) and so are
+   * stored as base64 to be replayed exactly. Absent means the body is stored as its text.
+   */
+  "http.response.body.encoding"?: "base64";
 
   "meticulous.frontend_session_id"?: string;
 

@@ -11,8 +11,8 @@ Use this guide when replay timelines differ unexpectedly between head and base r
 
 ### 1. Load and Compare Timelines
 
-- Read `timeline.json` from both head and base replay directories.
-- The timeline is an array of events with timestamps, types, and data.
+- Read `timeline.ndjson` from both head and base replay directories.
+- The timeline is one event per line, each with timestamps, a kind, and data.
 - Look for the first event where the timelines diverge.
 
 ### 2. Understand Event Types

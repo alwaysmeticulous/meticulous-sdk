@@ -59,11 +59,10 @@ Each replay directory (`debug-data/replays/<role>/<replayId>/`) contains:
   over the raw version unless you need unmodified output.
 - `logs.concise.txt` -- Full logs with both virtual and real timestamps, and trace IDs.
   Credential-looking values are redacted the same way as in `logs.deterministic.txt`.
-- `timeline.json` -- Detailed timeline of all replay events (user interactions, network requests,
-  DOM mutations, etc.). Can be 1-2MB; prefer `debug-data/events-index/` or
-  `debug-data/timeline-summaries/` for compact overviews. Cookie/header values on network request
-  entries are redacted.
-- `timeline.ndjson` -- Same data as `timeline.json` but one JSON object per line (NDJSON format).
+- `timeline.ndjson` -- Detailed timeline of all replay events (user interactions, network requests,
+  DOM mutations, etc.), one JSON object per line (NDJSON format). Can be 1-2MB; prefer
+  `debug-data/events-index/` or `debug-data/timeline-summaries/` for compact overviews. Cookie/header
+  values on network request entries are redacted.
   Greppable with standard tools: `grep '"screenshot"' timeline.ndjson` to find screenshots,
   `grep '"pollyReplay"' timeline.ndjson` for network stubs.
 - `timeline-stats.json` -- Aggregated statistics about timeline events.
@@ -89,7 +88,7 @@ screenshot. Use this to localize which code ran around a specific diff.
 
 Per-replay generated summaries:
 
-- `debug-data/events-index/<role>-<replayId>.txt` -- **Use this instead of raw timeline.json.**
+- `debug-data/events-index/<role>-<replayId>.txt` -- **Use this instead of raw timeline.ndjson.**
   One line per timeline event with index, virtual time, kind, and key data fields. Fully greppable:
   `grep 'kind=screenshot' events-index/head-abc.txt` to find screenshots,
   `grep 'kind=pollyReplay' events-index/head-abc.txt` for network stubs,
@@ -162,7 +161,7 @@ path there is no `replayDiffId`, so `dom-diffs/` is not generated — diff the p
 
 Individual screenshots may also be marked `skipped-error` (backend fetch failed) or
 `skipped-unsupported` (e.g. redacted variants, or screenshots whose identifier couldn't
-be resolved from `timeline.json`) in the per-pair `.summary.txt`. For those, fall back
+be resolved from the timeline) in the per-pair `.summary.txt`. For those, fall back
 to diffing the two `screenshots/<baseName>.html` files directly.
 
 ### Other Data
@@ -247,7 +246,7 @@ visual diffs. Only open `debug-data/pr-diff.txt` directly to verify findings.
    Fall back to the raw `logs.deterministic.txt` only if you need unmodified output.
 8. **Events index** -- grep `debug-data/events-index/<role>-<replayId>.txt` by kind,
    virtual time, or URL (e.g. `grep 'kind=screenshot'`, `grep 'api/v9/users'`). Prefer this
-   over parsing `timeline.json`.
+   over parsing `timeline.ndjson`.
 9. **Logs index** -- grep `debug-data/logs-index/<role>-<replayId>.txt` by source
    (`source=application`), type (`type=warn`), keyword, or virtual time (`vt=1234`).
 
@@ -304,7 +303,7 @@ a specific screenshot.
     <!-- end-if-snapshot-assets -->
     <!-- end-if-local-cli -->
 
-**Important**: Do NOT use Python one-liners to parse `timeline.json` or `logs.ndjson`. The
+**Important**: Do NOT use Python one-liners to parse `timeline.ndjson` or `logs.ndjson`. The
 derived files above (`events-index/`, `logs-index/`, `network-log/`, `vt-progression/`,
 `screenshot-timeline-context/`) are pre-computed and greppable. Use `timeline.ndjson`
 (NDJSON format, one JSON object per line) if you need to grep the raw timeline data.

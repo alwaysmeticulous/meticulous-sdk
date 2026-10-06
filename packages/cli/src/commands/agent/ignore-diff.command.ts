@@ -1,4 +1,9 @@
-import { createClientWithOAuth, ignoreDiff } from "@alwaysmeticulous/client";
+import {
+  createClientWithOAuth,
+  IGNORE_DIFF_CRITERIA,
+  ignoreDiff,
+  REPORT_FLAKE_DESCRIPTION,
+} from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
@@ -16,6 +21,7 @@ interface Options {
   reason: string;
   x: number;
   y: number;
+  reportFlake: boolean;
   json: boolean;
 }
 
@@ -26,6 +32,7 @@ const handler = async ({
   reason,
   x,
   y,
+  reportFlake,
   json,
 }: Options): Promise<void> => {
   initLogger();
@@ -43,6 +50,7 @@ const handler = async ({
     reason,
     x,
     y,
+    reportFlake,
   });
   if (json) {
     printJson(response);
@@ -53,8 +61,7 @@ const handler = async ({
 
 export const ignoreDiffCommand: CommandModule<unknown, Options> = {
   command: "ignore-diff",
-  describe:
-    'Record an agent decision ignoring a screenshot diff as unrelated to the change under review — typically a flake, e.g. subpixel rendering noise or animation non-determinism — and add a review comment explaining why. On a project without the "Enable approve/ignore diff actions" setting this does not actually ignore the diff: it only adds the comment, so the diff stays unreviewed and the pull request check stays pending until a human decides. Refused on a diff a person rejected. Outputs the ID of the review comment, or an object with commentId with --json.',
+  describe: `Record an agent decision ignoring a screenshot diff as unrelated to the change under review, and add a review comment explaining why. On a project without the "Enable approve/ignore diff actions" setting this does not actually ignore the diff: it only adds the comment, so the diff stays unreviewed and the pull request check stays pending until a human decides. ${IGNORE_DIFF_CRITERIA} Refused on a diff a person rejected. Outputs the ID of the review comment, or an object with commentId with --json.`,
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     replayDiffId: {
@@ -75,6 +82,11 @@ export const ignoreDiffCommand: CommandModule<unknown, Options> = {
       demandOption: true,
     },
     ...diffCommentCoordinateOptions,
+    reportFlake: {
+      boolean: true,
+      default: false,
+      description: REPORT_FLAKE_DESCRIPTION,
+    },
   },
   handler: wrapHandler(handler),
 };

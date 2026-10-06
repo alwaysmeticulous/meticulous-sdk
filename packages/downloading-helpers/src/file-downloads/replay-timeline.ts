@@ -3,12 +3,11 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 
 /**
- * A replay's timeline is uploaded in two serialisations of the same entries:
- * `timeline.ndjson` (one entry per line) and, for replays that predate it,
- * `timeline.json` (a single JSON array). The ndjson form is the one being
- * kept; the array form is a fallback for older replays and will stop being
- * written. Every reader should go through these helpers so it keeps working
- * whichever one a replay directory holds.
+ * A replay's timeline is uploaded as `timeline.ndjson` (one entry per line).
+ * Replays produced before that artifact existed instead have `timeline.json`
+ * (a single JSON array), which is no longer written. Every reader should go
+ * through these helpers so it keeps working whichever one a replay directory
+ * holds.
  */
 export const TIMELINE_NDJSON_FILE_NAME = "timeline.ndjson";
 export const TIMELINE_JSON_FILE_NAME = "timeline.json";

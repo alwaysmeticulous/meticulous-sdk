@@ -148,13 +148,13 @@ export const OPTIONS = {
   enableCssCoverage: {
     boolean: true,
     default: false,
-    description: "Enable CSS coverage for the replay",
+    hidden: true,
+    deprecated: "CSS coverage collection is disabled; this flag has no effect",
   },
   enablePerScreenshotCoverage: {
     boolean: true,
     default: false,
-    description:
-      "Enable per-screenshot coverage collection (JS always, plus CSS if --enableCssCoverage is set) for the replay",
+    description: "Enable per-screenshot JS coverage collection for the replay",
   },
 } as const;
 

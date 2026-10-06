@@ -1,5 +1,19 @@
 # @alwaysmeticulous/api
 
+## 2.346.0
+
+### Minor Changes
+
+- [#11523](https://github.com/alwaysmeticulous/meticulous/pull/11523) [`5457783`](https://github.com/alwaysmeticulous/meticulous/commit/54577831d01a1f41ac659f674952d2c40cc1cc05) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add the optional recorder fields `ReplayableEvent.isTrusted` and `ReplayableEvent.scrollbarGutterPress`, and `WindowData.recorderCapabilities` with the `RECORDER_CAPABILITIES` constant and `RecorderCapability` type, so replay can tell synthetic events and gutter presses apart and tell a gesture that didn't happen from one the recorder never captured.
+
+### Patch Changes
+
+- [#14795](https://github.com/alwaysmeticulous/meticulous/pull/14795) [`4234233`](https://github.com/alwaysmeticulous/meticulous/commit/4234233ddfdcb9bb267b077f677986b3290dbb7e) Thanks [@dennysem](https://github.com/dennysem)! - Record response bodies that are not UTF-8, such as an archive or an image served without a
+  `content-encoding`, as base64 marked with `http.response.body.encoding: "base64"`, and serve those
+  exact bytes back on replay. Such bodies were previously decoded as UTF-8, which replaced every
+  invalid byte with U+FFFD and left the replayed body unusable. Text bodies are recorded exactly as
+  before.
+
 ## 2.344.0
 
 ### Patch Changes

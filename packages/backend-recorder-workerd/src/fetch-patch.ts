@@ -2,6 +2,7 @@ import { requestCaptureContext, sidecarOriginOf } from "./context";
 import { isOrphanedDatadogAgentUrl } from "./datadog-agent";
 import { getOriginalFetch, setOriginalFetch } from "./original-fetch";
 import { captureOutboundCall } from "./outbound-capture";
+import { agentSwarmTestingOutboundCall } from "./agent-swarm-testing-fetch";
 import { replayOutboundCall } from "./replay-fetch";
 
 type FetchFn = typeof globalThis.fetch;
@@ -68,9 +69,13 @@ const patchedFetch: FetchFn = async (input, init) => {
     return original(request);
   }
 
-  return ctx.mode === "replay"
-    ? replayOutboundCall(ctx, request, (req) => original(req))
-    : captureOutboundCall(ctx, { kind: "outbound" }, request, (req) =>
-        original(req),
-      );
+  if (ctx.mode === "replay") {
+    return replayOutboundCall(ctx, request, (req) => original(req));
+  }
+  if (ctx.mode === "agent-swarm-testing") {
+    return agentSwarmTestingOutboundCall(ctx, request, (req) => original(req));
+  }
+  return captureOutboundCall(ctx, { kind: "outbound" }, request, (req) =>
+    original(req),
+  );
 };

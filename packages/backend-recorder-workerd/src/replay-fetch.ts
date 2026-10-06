@@ -1,4 +1,9 @@
 import { readRequestBodyWithCap } from "./body-capture";
+import {
+  BODY_ENCODING_BASE64,
+  type BodyEncoding,
+  decodeBodyBytes,
+} from "./body-encoding";
 import type { RequestReplayContext } from "./context";
 import { warn, warnOnce } from "./log";
 import { getOriginalFetch } from "./original-fetch";
@@ -106,7 +111,12 @@ const describeUnservedOutcome = (outcome: string): string =>
     ? "no recorded response"
     : `an unrecognised sidecar outcome (${outcome})`;
 
-const hasPassthroughHeader = (request: Request): boolean => {
+/**
+ * Whether the request is explicitly marked as one that must reach the real service. Shared
+ * with agent-swarm testing, which honours the same mark — a rule both modes must agree on, so it
+ * has exactly one implementation.
+ */
+export const hasPassthroughHeader = (request: Request): boolean => {
   try {
     return request.headers.get(METICULOUS_PASSTHROUGH_HEADER) === "true";
   } catch {
@@ -177,9 +187,10 @@ const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
  * essentially just content-type. In particular it can never set cookies — fine for the API
  * calls this path serves, but a real limitation for a backend that authenticates that way.
  */
-const buildMockResponse = (mock: {
+export const buildMockResponse = (mock: {
   statusCode: number;
   body: string;
+  bodyEncoding?: BodyEncoding;
   headers: Record<string, string>;
 }): Response | undefined => {
   try {
@@ -194,7 +205,9 @@ const buildMockResponse = (mock: {
         // Skip a header name/value the runtime rejects rather than losing the whole mock.
       }
     }
-    const body = NULL_BODY_STATUSES.has(mock.statusCode) ? null : mock.body;
+    const body = NULL_BODY_STATUSES.has(mock.statusCode)
+      ? null
+      : servedBody(mock);
     return new Response(body, { status: mock.statusCode, headers });
   } catch (error) {
     warnOnce(
@@ -205,3 +218,15 @@ const buildMockResponse = (mock: {
     return undefined;
   }
 };
+
+/**
+ * A text body is passed as text, so the runtime defaults its content type as it always has; a
+ * base64 body is served as the bytes it encodes.
+ */
+const servedBody = (mock: {
+  body: string;
+  bodyEncoding?: BodyEncoding;
+}): string | Uint8Array =>
+  mock.bodyEncoding === BODY_ENCODING_BASE64
+    ? decodeBodyBytes(mock.body, mock.bodyEncoding)
+    : mock.body;

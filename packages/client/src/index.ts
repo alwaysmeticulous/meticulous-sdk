@@ -206,7 +206,11 @@ export {
   LabelCommitResponse,
 } from "./api/commit-label.api";
 export { IN_PROGRESS_TEST_RUN_STATUS } from "./api/test-run.constants";
-export { MAX_AGENT_DIFF_COMMENT_TEXT_LENGTH } from "./api/agent.constants";
+export {
+  IGNORE_DIFF_CRITERIA,
+  MAX_AGENT_DIFF_COMMENT_TEXT_LENGTH,
+  REPORT_FLAKE_DESCRIPTION,
+} from "./api/agent.constants";
 export { TEST_RUN_STATUS_CLIENT_VERSION } from "./api/test-run-status-client-version";
 export {
   getApiToken,
@@ -341,13 +345,21 @@ export {
   AgenticRunMockDataProvenance,
   AgenticRunCaseCheckVerdict,
   AgenticRunCaseCheckCitation,
+  AgenticRunCaseCheckEvidence,
+  AgenticRunCaseCheckFixChange,
   AgenticRunCaseCheck,
   AgenticRunResultCase,
+  AgenticRunComparisonVerdict,
+  AgenticRunComparisonStatus,
+  AgenticRunComparisonDisplay,
+  AgenticRunComparisonSide,
+  AgenticRunScreenshotComparison,
   AgenticCaseProvenance,
   AgenticRunSummary,
   AgenticRunSummaryTakeaway,
   AgenticRunFeaturedFlowMedia,
   AgenticRunResultStep,
+  AgenticRunPlaybackAction,
   AgenticRunHighlightRegion,
   AgenticRunUrlHighlightRange,
   AgenticRunStepKind,
@@ -388,6 +400,8 @@ export {
   ReserveAgenticTotpSlotParams,
   ReserveAgenticTotpSlotResponse,
   reserveAgenticTotpSlot,
+  CancelAgenticTotpSlotWaitParams,
+  cancelAgenticTotpSlotWait,
   SearchRecordedRequestsParams,
   SearchRecordedRequestsResponse,
   RecordedRequestDetails,

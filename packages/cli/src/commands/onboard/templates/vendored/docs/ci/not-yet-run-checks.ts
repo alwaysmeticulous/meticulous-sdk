@@ -2,7 +2,10 @@ import {
   GITHUB_ACTIONS_SETUP_URL,
   MAKE_CHECK_BLOCKING_URL,
 } from "src/lib/utils/internal-urls/docs-urls.utils";
-import { METICULOUS_GITHUB_CHECK_NAME } from "@alwaysmeticulous/webapp-frontend-backend-shared";
+import {
+  METICULOUS_GITHUB_BUILTIN_CHECKS_CHECK_NAME,
+  METICULOUS_GITHUB_CHECK_NAME,
+} from "@alwaysmeticulous/webapp-frontend-backend-shared";
 import { INITIALIZE_WITH_SUCCESSFUL_CHECK_CHECKBOX_LABEL } from "src/components/project/overview/settings/ci-settings/not-yet-run-pull-request-commit-check.component";
 
 export const document = `---
@@ -49,6 +52,10 @@ There are two ways of solving these issues:
     check will start off as 'success' and turn to 'pending' when and if the Meticulous tests start running. If the Meticulous tests never run
     then the check will be successful, and the PR can merge. This does however mean that developers will be able to merge pull requests in
     the period between the PR being opened and the Meticulous tests being triggered after the build or deployment completes.
+
+    If Meticulous checks (the non-visual checks reported under the separate '*${METICULOUS_GITHUB_BUILTIN_CHECKS_CHECK_NAME}*' check) are
+    enabled for everyone on your project, the same option creates a successful '*${METICULOUS_GITHUB_BUILTIN_CHECKS_CHECK_NAME}*' check in
+    the same cases, so that check can be made required too without blocking merge queues or pull requests Meticulous doesn't run on.
  2. Use a GitHub action such as [wait-for-checks](https://github.com/marketplace/actions/wait-for-checks) that only waits for checks that
     are actually triggered, rather than waiting for a hard coded list of checks even if some of them are never triggered on some PRs. As long
     as a GitHub workflow is running or a check pending while the application is being built prior to the Meticulous tests being triggered then

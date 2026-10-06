@@ -19,7 +19,7 @@ non-deterministic behavior.
 
 ### 2. Check Timeline for Timing Issues
 
-- Read `timeline.json` and look for events with significantly different virtual timestamps.
+- Read `timeline.ndjson` and look for events with significantly different virtual timestamps.
 - Look for race conditions: events that depend on network responses or animations completing.
 - Check for `setTimeout`/`setInterval` patterns that may resolve differently.
 

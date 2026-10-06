@@ -217,6 +217,15 @@ export interface AgenticRunUrlHighlightRange {
   end: number;
 }
 
+/** Timing facts captured by the worker, without screenshots, selectors, or key values. */
+export interface AgenticRunPlaybackAction {
+  actionId: number;
+  kind: string;
+  sessionId: string;
+  startTimestampMs: number;
+  endTimestampMs: number;
+}
+
 /** A single step the agent took while running a case. */
 export interface AgenticRunResultStep {
   /** What the step did, e.g. "Click the 'Schedule for later' switch". */
@@ -236,6 +245,8 @@ export interface AgenticRunResultStep {
   detail?: string;
   /** Browser actions from the testcase execution that produced this step. */
   actionIds?: number[];
+  /** Ordered captured actions; new worker results always include this, including an empty list. */
+  playbackActions?: AgenticRunPlaybackAction[];
   /** Recorded session containing the linked actions, when they share one. */
   sessionId?: string;
   /** Epoch timestamp when the first linked action began executing. */
@@ -371,6 +382,33 @@ export interface AgenticRunCaseCheckCitation {
   endLine?: number;
 }
 
+/** A tight source range that shows part of an upheld failure's mechanism. */
+export interface AgenticRunCaseCheckEvidence {
+  path: string;
+  startLine: number;
+  endLine: number;
+  /** Why this range matters to the failure, in one sentence. */
+  note: string;
+  /**
+   * The cited lines as the checker read them, copied by the worker from the
+   * readFile output rather than quoted by the model. Absent when the checker
+   * never read the whole range.
+   */
+  snippet?: string;
+}
+
+/** One edit the checker proposes to repair an upheld failure. */
+export interface AgenticRunCaseCheckFixChange {
+  path: string;
+  startLine?: number;
+  endLine?: number;
+  description: string;
+  /** Proposed replacement code; never existing code. */
+  proposedCode?: string;
+  /** Syntax-highlighting language of `proposedCode`, e.g. "tsx". */
+  language?: string;
+}
+
 /** Independent source-grounded review of a case originally reported as failed. */
 export interface AgenticRunCaseCheck {
   originalOutcome: AgenticRunResultCaseOutcome;
@@ -379,17 +417,77 @@ export interface AgenticRunCaseCheck {
   blockedBy?: AgenticRunBlockedBy;
   /** The checker's confidence in its source-grounded verdict. */
   confidence?: "low" | "medium" | "high";
+  /** What would have to be true for the confidence to be higher or lower. */
+  confidenceRationale?: string;
   /** Why the original verdict was upheld or overturned. */
   reason: string;
-  /** Markdown diagnosis for a confidently upheld failure. */
+  /** One plain-language sentence naming what is broken, for an upheld failure. */
+  headline?: string;
+  /** Structured mechanism of an upheld failure. */
+  rootCause?: {
+    explanation: string;
+    evidence: AgenticRunCaseCheckEvidence[];
+  };
+  /** Structured repair of an upheld failure. */
+  fix?: {
+    summary: string;
+    changes: AgenticRunCaseCheckFixChange[];
+  };
+  /** How to confirm the fix works, e.g. behaviour to check or tests to run. */
+  howToVerify?: string[];
+  /** What the source left unsettled about the diagnosis. */
+  unconfirmed?: string;
+  /**
+   * Markdown diagnosis for an upheld failure. Rendered from `rootCause` for
+   * checks that have one, so readers that predate it still show guidance.
+   */
   diagnosis?: string;
-  /** Markdown repair guidance for a confidently upheld failure. */
+  /**
+   * Markdown repair guidance for an upheld failure. Rendered from `fix` for
+   * checks that have one, so readers that predate it still show guidance.
+   */
   recommendedFix?: string;
   citations?: AgenticRunCaseCheckCitation[];
   revisedStepIndexes?: number[];
   model: string;
   /** Present when checking could not complete and the original verdict was kept. */
   error?: string;
+}
+
+export type AgenticRunComparisonVerdict = "regression" | "intended-change";
+
+export type AgenticRunComparisonStatus =
+  | "identical"
+  | "different"
+  | "different-size"
+  | "missing-on-base"
+  | "missing-on-head";
+
+export type AgenticRunComparisonDisplay = "video" | "screenshot";
+
+export interface AgenticRunComparisonSide {
+  screenshotPath?: string;
+  sessionId?: string;
+  /** Epoch milliseconds the checkpoint was captured, like step timestamps. */
+  timestampMs?: number;
+  /** Epoch start of the segment leading to this checkpoint, for synced playback. */
+  segmentStartTimestampMs?: number;
+  width?: number;
+  height?: number;
+}
+
+export interface AgenticRunScreenshotComparison {
+  /** The `page.screenshot` name both sides captured. */
+  screenshotName: string;
+  status: AgenticRunComparisonStatus;
+  mismatchPixels?: number;
+  mismatchFraction?: number;
+  diffPath?: string;
+  base: AgenticRunComparisonSide;
+  head: AgenticRunComparisonSide;
+  verdict: AgenticRunComparisonVerdict;
+  explanation: string;
+  display: AgenticRunComparisonDisplay;
 }
 
 export interface AgenticRunResultCase {
@@ -429,6 +527,18 @@ export interface AgenticRunResultCase {
   rationale?: string;
   /** Independent review of the case agent's original failed verdict. */
   check?: AgenticRunCaseCheck;
+  /** Whether the case drove the PR's base deployment alongside its head. */
+  compareWithBase?: boolean;
+  /**
+   * Base-vs-head checkpoint comparisons the case agent surfaced. Noise it
+   * judged immaterial is left out.
+   */
+  comparisons?: AgenticRunScreenshotComparison[];
+  /**
+   * Sessions recorded on the base deployment, for side-by-side playback only.
+   * Never part of `sessionIds`, so they are not replayed or selected.
+   */
+  baseSessionIds?: string[];
   /**
    * @deprecated Legacy workers may have included free-form notes. New workers
    * report step outcomes instead.
@@ -685,6 +795,11 @@ export interface CompleteAgenticRunResultParams extends ProjectIdentifier {
   agenticRunId: string;
   /** Every session produced across the run (the union of all cases' sessions). */
   sessionIds: string[];
+  /**
+   * Sessions recorded on the base deployment by base-vs-head cases. Kept apart
+   * from `sessionIds` so they are never replayed or selected.
+   */
+  baseSessionIds?: string[];
   /** Whether the run intentionally completed without browser-exercisable cases. */
   notTestable?: boolean;
   /**
@@ -850,15 +965,30 @@ export const isAgenticRunCancelled = async ({
 export interface ReserveAgenticTotpSlotParams extends ProjectIdentifier {
   /** The agentic run whose workflow token is making the reservation. */
   agenticRunId: string;
+  /**
+   * Which MFA submission this reservation is for, starting at 1. Later
+   * attempts queue ahead of first attempts, since that run is already part-way
+   * through sign-in.
+   */
+  attempt?: number;
 }
 
 export type ReserveAgenticTotpSlotResponse =
   | { reserved: true }
-  | { reserved: false; retryAfterMs: number };
+  | {
+      reserved: false;
+      /** When to call again; keep calling to hold the run's place in the queue. */
+      retryAfterMs: number;
+      /** Runs ahead of this one. Absent from backends without the queue. */
+      queuePosition?: number;
+      /** Lower bound on the remaining wait. Absent from backends without the queue. */
+      estimatedWaitMs?: number;
+    };
 
 /**
- * Reserves the project's next TOTP submission window. A used slot expires on
- * its own because releasing it would allow another worker to reuse the code.
+ * Reserves the project's next TOTP submission window, queueing runs in arrival
+ * order. A used slot expires on its own because releasing it would allow
+ * another worker to reuse the code.
  */
 export const reserveAgenticTotpSlot = async ({
   client,
@@ -873,6 +1003,29 @@ export const reserveAgenticTotpSlot = async ({
     projectIdQuery(projectId),
   );
   return data;
+};
+
+export interface CancelAgenticTotpSlotWaitParams extends ProjectIdentifier {
+  /** The queued agentic run that has stopped waiting. */
+  agenticRunId: string;
+}
+
+/**
+ * Removes a run from the TOTP wait queue. This does not release an acquired
+ * slot, because its code may already have been submitted.
+ */
+export const cancelAgenticTotpSlotWait = async ({
+  client,
+  projectId,
+  ...body
+}: CancelAgenticTotpSlotWaitParams & {
+  client: MeticulousClient;
+}): Promise<void> => {
+  await client.post(
+    "agentic-session-generation/totp-slot/cancel",
+    body,
+    projectIdQuery(projectId),
+  );
 };
 
 export interface RequestAgenticTestcasesUploadParams extends ProjectIdentifier {

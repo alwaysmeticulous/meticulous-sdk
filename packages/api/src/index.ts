@@ -109,6 +109,8 @@ export {
   HttpSpanAttributes,
   SerializedBackendSpan,
   WORKERD_FETCH_CLIENT_TECHNOLOGY,
+  RECORDER_CAPABILITIES,
+  RecorderCapability,
 } from "./sdk-bundle-api/sdk-to-bundle/session-data";
 export {
   SequenceNumber,

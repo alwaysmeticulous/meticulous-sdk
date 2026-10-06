@@ -32,7 +32,7 @@ Summarize:
 - Network request overview: grep for `request` and note counts, failures
 - Screenshot timestamps and event numbers
 
-### Timeline files (`timeline.json`)
+### Timeline files (`timeline.ndjson`)
 
 Summarize:
 

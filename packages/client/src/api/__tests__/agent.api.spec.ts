@@ -541,6 +541,27 @@ describe("agent diff comment writes", () => {
       ["agent/diff-comments/comment-1/replies", { text: "Agreed" }],
     ]);
   });
+
+  it("sends reportFlake on an ignore only when set", async () => {
+    const client = {
+      post: vi.fn().mockResolvedValue({ data: { commentId: "comment-1" } }),
+    };
+
+    await ignoreDiff({
+      client: client as unknown as MeticulousClient,
+      replayDiffId: "rd-1",
+      screenshotName: "end-state",
+      reason: "Spinner caught mid-frame",
+      x: 0.5,
+      y: 0.5,
+      reportFlake: true,
+    });
+
+    expect(client.post).toHaveBeenCalledWith(
+      "agent/replay-diffs/rd-1/screenshots/end-state/ignore",
+      { reason: "Spinner caught mid-frame", x: 0.5, y: 0.5, reportFlake: true },
+    );
+  });
 });
 
 describe("getSessions", () => {

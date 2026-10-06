@@ -1,4 +1,7 @@
-import { readBodyWithCap, readRequestBodyWithCap } from "./body-capture";
+import {
+  readRequestBodyWithCap,
+  readResponseBodyWithCap,
+} from "./body-capture";
 import type { RequestCaptureContext } from "./context";
 import { warnOnce } from "./log";
 import {
@@ -163,7 +166,7 @@ export const captureOutboundCall = async (
         async () => {
           const [requestBody, responseBody] = await Promise.all([
             requestBodyPromise,
-            readBodyWithCap(responseClone.body).catch(() => undefined),
+            readResponseBodyWithCap(responseClone.body).catch(() => undefined),
           ]);
           report(ctx, transport, {
             ...frozenMeta,

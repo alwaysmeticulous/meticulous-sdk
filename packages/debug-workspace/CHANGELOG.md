@@ -1,5 +1,16 @@
 # @alwaysmeticulous/debug-workspace
 
+## 2.346.0
+
+### Patch Changes
+
+- [#14699](https://github.com/alwaysmeticulous/meticulous/pull/14699) [`804186a`](https://github.com/alwaysmeticulous/meticulous/commit/804186aa4557fc20befbad0ce87c09a10bdc2ef6) Thanks [@phreppo](https://github.com/phreppo)! - Debug workspace guidance now points at `timeline.ndjson`, which is the only timeline artifact new replays produce.
+
+- Updated dependencies [[`b3e154b`](https://github.com/alwaysmeticulous/meticulous/commit/b3e154b982a7a8ed06acf577891025dae9817ece), [`0ad98d7`](https://github.com/alwaysmeticulous/meticulous/commit/0ad98d7d4ff47ae05c52eb8e71a1edd27d6bb717), [`898b58a`](https://github.com/alwaysmeticulous/meticulous/commit/898b58a31a7d51f4ed10529b0129a940cd325b6c), [`37e18e0`](https://github.com/alwaysmeticulous/meticulous/commit/37e18e03c81cb101a3e8408d7a5d01127e12ec9f), [`9c6571d`](https://github.com/alwaysmeticulous/meticulous/commit/9c6571d5e0c32e00add19ddacd9fb5833d306e0d)]:
+  - @alwaysmeticulous/client@2.346.0
+  - @alwaysmeticulous/downloading-helpers@2.346.0
+  - @alwaysmeticulous/common@2.343.0
+
 ## 2.345.0
 
 ### Patch Changes

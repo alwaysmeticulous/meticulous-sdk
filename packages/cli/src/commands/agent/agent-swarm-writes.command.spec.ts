@@ -1,3 +1,4 @@
+import type * as Client from "@alwaysmeticulous/client";
 import { serializeJson } from "@alwaysmeticulous/common/json";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { approveDiffCommand } from "./approve-diff.command";
@@ -21,7 +22,8 @@ vi.mock("@alwaysmeticulous/common", () => ({
   initLogger: vi.fn(),
   logNotice: vi.fn(),
 }));
-vi.mock("@alwaysmeticulous/client", () => ({
+vi.mock("@alwaysmeticulous/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof Client>()),
   createClientWithOAuth: mocks.createClientWithOAuth,
   createDiffComment: mocks.createDiffComment,
   replyToDiffComment: mocks.replyToDiffComment,
@@ -104,6 +106,7 @@ describe("agent swarm write commands", () => {
       reason: "Expected variation",
       x: 0.2,
       y: 0.8,
+      reportFlake: true,
       json: false,
     });
 
@@ -114,6 +117,7 @@ describe("agent swarm write commands", () => {
       reason: "Expected variation",
       x: 0.2,
       y: 0.8,
+      reportFlake: true,
     });
     expect(logSpy).toHaveBeenCalledWith("comment-2");
   });

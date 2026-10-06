@@ -26,4 +26,16 @@ export interface ReplayableEvent {
    * Please note that since this timestamp is computed using `performance.timeOrigin` it may differ by multiple hours from timestamps recorded using `Date.now()`.
    */
   timeStampRaw: number;
+
+  /**
+   * `false` if the page's own JavaScript dispatched the event. Untrusted markers are not replayed
+   * as real input, since the app re-dispatches them itself. Undefined (trusted) on older sessions.
+   */
+  isTrusted?: boolean;
+
+  /**
+   * For pointerdown: the press landed on the target's scrollbar gutter. Replay drops it and its
+   * release, since headless overlay scrollbars have no gutter and the press would hit content.
+   */
+  scrollbarGutterPress?: boolean;
 }

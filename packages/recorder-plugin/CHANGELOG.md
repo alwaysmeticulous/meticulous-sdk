@@ -1,5 +1,11 @@
 # @alwaysmeticulous/recorder-plugin
 
+## 2.346.0
+
+### Patch Changes
+
+- [#14843](https://github.com/alwaysmeticulous/meticulous/pull/14843) [`234327b`](https://github.com/alwaysmeticulous/meticulous/commit/234327b10bd305f9e1fd394db8babfebd39443f7) Thanks [@linpengzhang](https://github.com/linpengzhang)! - CSS coverage collection is disabled. `--enableCssCoverage` is now hidden and has no effect, and the recorder plugin README no longer documents the CSS source map plugin.
+
 ## 2.338.0
 
 ### Patch Changes
