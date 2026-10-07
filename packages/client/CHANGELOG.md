@@ -1,5 +1,23 @@
 # @alwaysmeticulous/client
 
+## 2.347.0
+
+### Patch Changes
+
+- [#14905](https://github.com/alwaysmeticulous/meticulous/pull/14905) [`552f837`](https://github.com/alwaysmeticulous/meticulous/commit/552f837780b7bdbd5e31c272e424b771af425812) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional worker-computed `runEvidence` to Agent swarm case results, listing
+  the reported run's failed, hung, or slow backend requests and its page errors.
+  Add optional `linkedToChange` and `linkedToChangeRationale` to case checks,
+  recording whether an upheld failure was traced to the pull request's changes.
+
+- [#14825](https://github.com/alwaysmeticulous/meticulous/pull/14825) [`ccaea2f`](https://github.com/alwaysmeticulous/meticulous/commit/ccaea2fc8d1e9e2dd03344f9c9b8dc253312a83f) Thanks [@sesajad](https://github.com/sesajad)! - Allow assets- or container-based agentic session generation requests to reference a separately uploaded backend container deployment.
+
+- [#14877](https://github.com/alwaysmeticulous/meticulous/pull/14877) [`64531c4`](https://github.com/alwaysmeticulous/meticulous/commit/64531c4f9c4e4b9180eea8329702c36dbe87a89c) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - The `User-Agent` sent on every API request now includes the JavaScript runtime
+  and its version (`@alwaysmeticulous/client/<version> node/<node version> [app label]`,
+  or `bun/<version>` / `deno/<version>` under those runtimes).
+- Updated dependencies [[`9b2b7ad`](https://github.com/alwaysmeticulous/meticulous/commit/9b2b7adb7f2ccf2c78a255df8914ad614ca1bda1), [`0e6c244`](https://github.com/alwaysmeticulous/meticulous/commit/0e6c244478e7947d38f312b15c63693352db4a7a)]:
+  - @alwaysmeticulous/api@2.347.0
+  - @alwaysmeticulous/common@2.347.0
+
 ## 2.346.0
 
 ### Minor Changes

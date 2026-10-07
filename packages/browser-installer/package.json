@@ -1,7 +1,7 @@
 {
-  "name": "@alwaysmeticulous/replay-orchestrator-launcher",
+  "name": "@alwaysmeticulous/browser-installer",
   "version": "2.347.0",
-  "description": "Downloads the replay-orchestrator bundle script and executes it",
+  "description": "Installs the Chrome for Testing build that Meticulous runs replays and recordings in",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,15 +14,19 @@
     "dev": "tsc --build tsconfig.json --watch",
     "format": "prettier --write src",
     "lint": "oxlint --type-aware src",
-    "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
     "lint:fix": "oxlint --type-aware src --fix",
-    "depcheck": "depcheck --ignore-patterns=dist"
+    "depcheck": "depcheck --ignore-patterns=dist",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@alwaysmeticulous/browser-installer": "workspace:*",
-    "@alwaysmeticulous/common": "workspace:*",
-    "@alwaysmeticulous/downloading-helpers": "workspace:*",
-    "@alwaysmeticulous/sdk-bundles-api": "workspace:*"
+    "@puppeteer/browsers": "3.2.2",
+    "chalk": "^4.1.2",
+    "proxy-agent": "^6.5.0",
+    "puppeteer-core": "25.10.0",
+    "yauzl": "^3.4.0"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
   },
   "author": {
     "name": "The Meticulous Team",
@@ -36,7 +40,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
-    "directory": "packages/replay-orchestrator-launcher"
+    "directory": "packages/browser-installer"
   },
   "bugs": {
     "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"

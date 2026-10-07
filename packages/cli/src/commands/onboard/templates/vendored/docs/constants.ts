@@ -19,16 +19,10 @@ export const SIMULATION_TAB_NAMES = {
   TIMELINE_AND_LOGS: "Timeline & Logs",
 };
 
-/**
- * Keep in sync with [@alwaysmeticulous/browser-utils](https://github.com/alwaysmeticulous/meticulous/blob/9c89cf58ae240bea0f9201c5d704a0bcc53e61bd/packages/browser-utils/src/utils/public-api-classes.ts#L11).
- */
-export const METICULOUS_REDACT_RECORDING_CLASS = "meticulous-redact-recording";
-
-/**
- * Keep in sync with [@alwaysmeticulous/browser-utils](https://github.com/alwaysmeticulous/meticulous/blob/9c89cf58ae240bea0f9201c5d704a0bcc53e61bd/packages/browser-utils/src/utils/public-api-classes.ts#L11).
- */
-export const METICULOUS_MASK_RECORDING_PREVIEW_CLASS =
-  "meticulous-mask-recording-preview";
+export {
+  METICULOUS_MASK_RECORDING_PREVIEW_CLASS,
+  METICULOUS_REDACT_RECORDING_CLASS,
+} from "src/lib/analytics/redaction-classes";
 
 export const GITHUB_ACTION_UPLOAD_ASSETS_NAME =
   "alwaysmeticulous/report-diffs-action/upload-assets";

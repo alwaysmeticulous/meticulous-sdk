@@ -1,4 +1,5 @@
-import { ensureBrowser, initLogger } from "@alwaysmeticulous/common";
+import { ensureBrowser } from "@alwaysmeticulous/browser-installer";
+import { initLogger } from "@alwaysmeticulous/common";
 import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
 import type {
   ExecuteScheduledTestRunChunkOptions,

@@ -114,6 +114,28 @@ export interface TestCase {
    * (e.g. the IsPrAuthor family) leave it undefined.
    */
   relevanceReason?: SessionRelevanceReason;
+
+  /**
+   * Set when this follow-up run reuses the previous run's replays instead of
+   * executing the session. The copied diff is the result. Absent when the
+   * session is executed or dropped by relevance sampling.
+   */
+  adopted?: AdoptedReplay;
+}
+
+/**
+ * Provenance for a session whose replays were reused from an earlier run on
+ * the same pull request. The frame SHAs are the commits those replays were
+ * executed on, which may be older than `fromTestRunId` when that run adopted
+ * them in turn.
+ */
+export interface AdoptedReplay {
+  headReplayId: string;
+  baseReplayId: string;
+  fromTestRunId: string;
+  replayDiffId: string;
+  headFrameExecutionSha: string;
+  baseFrameExecutionSha: string;
 }
 
 export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {

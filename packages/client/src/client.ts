@@ -23,11 +23,29 @@ import { VERSION } from "./version";
 const DEFAULT_TIMEOUT = 60_000;
 const BASE_API_URL = "https://app.meticulous.ai/api/";
 
+// Bun and Deno both report a compatible Node version in `process.versions.node`,
+// so they're checked first — otherwise their users would be counted as Node.
+// Exported for unit testing; not re-exported from the package index.
+export const describeRuntime = ({
+  bun,
+  deno,
+  node,
+}: NodeJS.ProcessVersions): string => {
+  if (bun) {
+    return `bun/${bun}`;
+  }
+  if (deno) {
+    return `deno/${deno}`;
+  }
+  return `node/${node}`;
+};
+
 // Sent on every request so the backend can attribute traffic to a client
-// version (queryable in Datadog). This package is Node-only (it imports
-// undici's fetch), so setting User-Agent is allowed. Callers may override it
-// by passing their own `user-agent` header.
-const USER_AGENT = `@alwaysmeticulous/client/${VERSION}`;
+// version and JS runtime (queryable in Datadog) — the runtime is what decides
+// whether raising the SDK's `engines` floor breaks a customer's CI. This package
+// is Node-only (it imports undici's fetch), so setting User-Agent is allowed.
+// Callers may override it by passing their own `user-agent` header.
+const USER_AGENT = `@alwaysmeticulous/client/${VERSION} ${describeRuntime(process.versions)}`;
 
 // Consumers can append their own identity to the User-Agent so backend logs
 // attribute traffic to a specific consumer and version (e.g.

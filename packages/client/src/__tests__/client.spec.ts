@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { buildUserAgent, declareClientAppInfo } from "../client";
+import {
+  buildUserAgent,
+  declareClientAppInfo,
+  describeRuntime,
+} from "../client";
 import { VERSION } from "../version";
 
 const ENV_VAR = "METICULOUS_CLIENT_USER_AGENT_SUFFIX";
-const BASE = `@alwaysmeticulous/client/${VERSION}`;
+const BASE = `@alwaysmeticulous/client/${VERSION} node/${process.versions.node}`;
 
 let originalSuffix: string | undefined;
 
@@ -23,6 +27,24 @@ afterEach(() => {
 describe("buildUserAgent", () => {
   it("returns the base user-agent when nothing is provided", () => {
     expect(buildUserAgent()).toBe(BASE);
+  });
+
+  it("reports the Node runtime right after the client version", () => {
+    expect(buildUserAgent("cli")).toMatch(
+      /^@alwaysmeticulous\/client\/\S+ node\/\d+\.\d+\.\d+ cli$/,
+    );
+  });
+
+  it("reports Bun and Deno as themselves, not as the Node they emulate", () => {
+    expect(describeRuntime({ ...process.versions, node: "22.12.0" })).toBe(
+      "node/22.12.0",
+    );
+    expect(
+      describeRuntime({ ...process.versions, node: "22.6.0", bun: "1.1.38" }),
+    ).toBe("bun/1.1.38");
+    expect(
+      describeRuntime({ ...process.versions, node: "22.11.0", deno: "2.1.4" }),
+    ).toBe("deno/2.1.4");
   });
 
   it("appends the appInfo option", () => {

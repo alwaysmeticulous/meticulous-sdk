@@ -1,5 +1,6 @@
 import type { ReplayableEvent } from "@alwaysmeticulous/api";
-import { initLogger, ensureBrowser } from "@alwaysmeticulous/common";
+import { ensureBrowser } from "@alwaysmeticulous/browser-installer";
+import { initLogger } from "@alwaysmeticulous/common";
 import { startUIServer } from "@alwaysmeticulous/replay-debugger-ui";
 import { replayDebuggerUiDir } from "../bundled-assets";
 import type {

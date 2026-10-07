@@ -26,6 +26,10 @@ export interface AgenticContainerAppTarget {
    * Drop once the new backend is deployed and old CLIs have aged out.
    */
   uploadId?: string | undefined;
+
+  backendContainerDeploymentId?: string | undefined;
+  /** Frontend runtime env variable receiving the backend origin. Defaults to METICULOUS_BACKEND_URL. */
+  backendUrlEnvVariable?: string | undefined;
   enableLocalMocks?: boolean | undefined;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
@@ -55,6 +59,8 @@ export interface AgenticAssetsAppTarget {
    */
   assetsUploadId?: string | undefined;
   backend?: AgenticAssetsBackend | undefined;
+  /** Backend container deployment in the same project. Mutually exclusive with `backend`. */
+  backendContainerDeploymentId?: string | undefined;
   /**
    * Port to serve the uploaded frontend on. Assets targets only; the worker
    * defaults to 8000 when omitted.
@@ -370,6 +376,51 @@ export interface AgenticRunMockDataProvenance {
   };
 }
 
+/**
+ * How a backend request in a case's reported run went wrong: an HTTP error
+ * response, a network failure before any response, a request that was still
+ * open when the run ended, or one that answered unusually slowly.
+ */
+export type AgenticRunBackendFailureKind =
+  | "http-error"
+  | "network-error"
+  | "hung"
+  | "slow";
+
+/** Requests to one endpoint that failed the same way during the reported run. */
+export interface AgenticRunBackendFailure {
+  kind: AgenticRunBackendFailureKind;
+  method: string;
+  /** `host/path`, never the query string. */
+  endpoint: string;
+  /** The HTTP status, for `http-error` and `slow`. */
+  status?: number;
+  /** The browser's failure text, for `network-error`. */
+  error?: string;
+  count: number;
+  /** Longest time a matching request took or, for `hung`, had been waiting. */
+  maxDurationMs?: number;
+}
+
+/**
+ * Worker-computed evidence from a case's reported run, never declared by the
+ * agent. Lets a reviewer, or the failure checker, tell an application failure
+ * from a backend or environment problem that happened during the run.
+ */
+export interface AgenticRunEvidence {
+  /**
+   * Data requests that failed, hung, or were very slow, most frequent first.
+   * Excludes mock misses and requests the harness refused, which are reported
+   * elsewhere. Always empty on runs that use local mocks, whose responses come
+   * from mock.ts rather than a backend.
+   */
+  backendFailures: AgenticRunBackendFailure[];
+  /** Total failing requests, including any beyond those listed. */
+  backendFailureCount: number;
+  /** Uncaught page errors and console errors/warnings, oldest first. */
+  pageErrors: string[];
+}
+
 export type AgenticRunCaseCheckVerdict = Exclude<
   AgenticRunResultCaseOutcome,
   "skipped"
@@ -409,6 +460,8 @@ export interface AgenticRunCaseCheckFixChange {
   language?: string;
 }
 
+export type AgenticRunCaseCheckLinkedToChange = "yes" | "no" | "unclear";
+
 /** Independent source-grounded review of a case originally reported as failed. */
 export interface AgenticRunCaseCheck {
   originalOutcome: AgenticRunResultCaseOutcome;
@@ -437,6 +490,15 @@ export interface AgenticRunCaseCheck {
   howToVerify?: string[];
   /** What the source left unsettled about the diagnosis. */
   unconfirmed?: string;
+  /**
+   * For an upheld failure, whether the checker found the pull request's changes
+   * on the failing path. `no` means the failure stands but the change did not
+   * cause it — for example a pre-existing bug or an unhealthy backend. Absent on
+   * checks written before this field existed.
+   */
+  linkedToChange?: AgenticRunCaseCheckLinkedToChange;
+  /** One sentence on what decided `linkedToChange`. */
+  linkedToChangeRationale?: string;
   /**
    * Markdown diagnosis for an upheld failure. Rendered from `rootCause` for
    * checks that have one, so readers that predate it still show guidance.
@@ -521,6 +583,11 @@ export interface AgenticRunResultCase {
    * `recorded` data; a fail is annotated with the strict recheck's verdict.
    */
   mockDataProvenance?: AgenticRunMockDataProvenance;
+  /**
+   * Worker-computed network and console evidence from the reported run.
+   * Present only when the case executed a test and the run left evidence.
+   */
+  runEvidence?: AgenticRunEvidence;
   /** Sessions recorded while running this case. */
   sessionIds: string[];
   /** Why this case was worth testing, e.g. which changed code it targets. */

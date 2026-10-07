@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ensureBrowser } from "../browser-installer";
 
 const { installMock, getInstalledBrowsersMock, detectBrowserPlatformMock } =
   vi.hoisted(() => ({
@@ -17,31 +18,9 @@ vi.mock("@puppeteer/browsers", () => ({
   detectBrowserPlatform: detectBrowserPlatformMock,
 }));
 
-const NEW_REVISIONS_SPECIFIER = "puppeteer-core/lib/puppeteer/revisions.js";
-const LEGACY_CJS_REVISIONS_SPECIFIER =
-  "puppeteer-core/lib/cjs/puppeteer/revisions.js";
-const LEGACY_ESM_REVISIONS_SPECIFIER =
-  "puppeteer-core/lib/esm/puppeteer/revisions.js";
-
-/**
- * Simulates puppeteer-core's revision-export layout: >=25 exposes a single
- * path, <25 only the two build-specific deep imports. `chrome: undefined`
- * emulates that specifier not existing in the "installed" major (a rejected
- * dynamic import), matching what `loadPuppeteerRevisions` actually catches.
- */
-const mockRevisionsLayout = (specifier: string, chrome: string | undefined) =>
-  vi.doMock(specifier, () => {
-    if (chrome === undefined) {
-      throw new Error(`Cannot find module '${specifier}'`);
-    }
-    return { PUPPETEER_REVISIONS: { chrome } };
-  });
-
-const mockUnresolvableRevisions = () => {
-  mockRevisionsLayout(NEW_REVISIONS_SPECIFIER, undefined);
-  mockRevisionsLayout(LEGACY_CJS_REVISIONS_SPECIFIER, undefined);
-  mockRevisionsLayout(LEGACY_ESM_REVISIONS_SPECIFIER, undefined);
-};
+vi.mock("puppeteer-core/lib/puppeteer/revisions.js", () => ({
+  PUPPETEER_REVISIONS: { chrome: "152.0.7977.42" },
+}));
 
 describe("ensureBrowser", () => {
   const originalEnv = process.env;
@@ -49,7 +28,6 @@ describe("ensureBrowser", () => {
   let chromeBinary: string;
 
   beforeEach(() => {
-    vi.resetModules();
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ensure-browser-"));
     chromeBinary = path.join(tempDir, "chrome");
     fs.writeFileSync(chromeBinary, "");
@@ -61,11 +39,11 @@ describe("ensureBrowser", () => {
     installMock.mockReset();
     getInstalledBrowsersMock.mockReset();
     detectBrowserPlatformMock.mockReset();
-    mockUnresolvableRevisions();
   });
 
   afterEach(() => {
     process.env = originalEnv;
+    vi.restoreAllMocks();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
@@ -73,7 +51,6 @@ describe("ensureBrowser", () => {
     process.env.PUPPETEER_EXECUTABLE_PATH = chromeBinary;
     detectBrowserPlatformMock.mockReturnValue("linux");
 
-    const { ensureBrowser } = await import("../src/browser-installer");
     const result = await ensureBrowser();
 
     expect(result).toBe(chromeBinary);
@@ -87,57 +64,49 @@ describe("ensureBrowser", () => {
       "missing-chrome",
     );
 
-    const { ensureBrowser } = await import("../src/browser-installer");
-
     await expect(ensureBrowser()).rejects.toThrow(
       /PUPPETEER_EXECUTABLE_PATH is set to .*missing-chrome but no file exists there/,
     );
     expect(installMock).not.toHaveBeenCalled();
   });
 
-  it("installs the puppeteer-core >=25 recommended Chrome revision", async () => {
+  it("reuses an installed browser matching the puppeteer-core recommended revision", async () => {
     process.env.PUPPETEER_CACHE_DIR = tempDir;
     detectBrowserPlatformMock.mockReturnValue("linux");
-    getInstalledBrowsersMock.mockResolvedValue([]);
-    installMock.mockResolvedValue({ executablePath: chromeBinary });
-    mockRevisionsLayout(NEW_REVISIONS_SPECIFIER, "152.0.7977.42");
+    getInstalledBrowsersMock.mockResolvedValue([
+      {
+        browser: "chrome",
+        platform: "linux",
+        buildId: "152.0.7977.42",
+        executablePath: chromeBinary,
+      },
+    ]);
 
-    const { ensureBrowser } = await import("../src/browser-installer");
     const result = await ensureBrowser();
 
     expect(result).toBe(chromeBinary);
-    expect(installMock).toHaveBeenCalledWith(
-      expect.objectContaining({ buildId: "152.0.7977.42" }),
-    );
-  });
-
-  it("falls back to the legacy <25 revisions layout when the new path can't be resolved", async () => {
-    process.env.PUPPETEER_CACHE_DIR = tempDir;
-    detectBrowserPlatformMock.mockReturnValue("linux");
-    getInstalledBrowsersMock.mockResolvedValue([]);
-    installMock.mockResolvedValue({ executablePath: chromeBinary });
-    mockRevisionsLayout(LEGACY_CJS_REVISIONS_SPECIFIER, "148.0.7778.97");
-
-    const { ensureBrowser } = await import("../src/browser-installer");
-    const result = await ensureBrowser();
-
-    expect(result).toBe(chromeBinary);
-    expect(installMock).toHaveBeenCalledWith(
-      expect.objectContaining({ buildId: "148.0.7778.97" }),
-    );
-  });
-
-  it("throws rather than installing an unpinned Chrome when no revision is resolvable", async () => {
-    process.env.PUPPETEER_CACHE_DIR = tempDir;
-    detectBrowserPlatformMock.mockReturnValue("linux");
-    getInstalledBrowsersMock.mockResolvedValue([]);
-
-    const { ensureBrowser } = await import("../src/browser-installer");
-
-    await expect(ensureBrowser()).rejects.toThrow(
-      /Could not determine which Chrome build to install/,
-    );
     expect(installMock).not.toHaveBeenCalled();
+  });
+
+  it("installs the puppeteer-core recommended Chrome revision", async () => {
+    process.env.PUPPETEER_CACHE_DIR = tempDir;
+    detectBrowserPlatformMock.mockReturnValue("linux");
+    getInstalledBrowsersMock.mockResolvedValue([
+      {
+        browser: "chrome",
+        platform: "linux",
+        buildId: "148.0.7778.97",
+        executablePath: chromeBinary,
+      },
+    ]);
+    installMock.mockResolvedValue({ executablePath: chromeBinary });
+
+    const result = await ensureBrowser();
+
+    expect(result).toBe(chromeBinary);
+    expect(installMock).toHaveBeenCalledWith(
+      expect.objectContaining({ buildId: "152.0.7977.42", cacheDir: tempDir }),
+    );
   });
 
   it("prefers METICULOUS_CHROME_BUILD_ID over puppeteer-core's recommended revision", async () => {
@@ -146,14 +115,25 @@ describe("ensureBrowser", () => {
     detectBrowserPlatformMock.mockReturnValue("linux");
     getInstalledBrowsersMock.mockResolvedValue([]);
     installMock.mockResolvedValue({ executablePath: chromeBinary });
-    mockRevisionsLayout(NEW_REVISIONS_SPECIFIER, "152.0.7977.42");
 
-    const { ensureBrowser } = await import("../src/browser-installer");
     const result = await ensureBrowser();
 
     expect(result).toBe(chromeBinary);
     expect(installMock).toHaveBeenCalledWith(
       expect.objectContaining({ buildId: "153.0.8001.0" }),
     );
+  });
+
+  it("warns once about an invalid PUPPETEER_CACHE_DIR when installing", async () => {
+    process.env.PUPPETEER_CACHE_DIR = "relative/cache";
+    detectBrowserPlatformMock.mockReturnValue("linux");
+    getInstalledBrowsersMock.mockResolvedValue([]);
+    installMock.mockResolvedValue({ executablePath: chromeBinary });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await ensureBrowser();
+
+    expect(warn).toHaveBeenCalledOnce();
+    expect(installMock).toHaveBeenCalledOnce();
   });
 });

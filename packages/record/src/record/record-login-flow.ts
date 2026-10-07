@@ -1,4 +1,5 @@
-import { defer, initLogger, ensureBrowser } from "@alwaysmeticulous/common";
+import { ensureBrowser } from "@alwaysmeticulous/browser-installer";
+import { defer, initLogger } from "@alwaysmeticulous/common";
 import chalk from "chalk";
 import type { Logger } from "loglevel";
 import type { Browser, Page } from "puppeteer-core";

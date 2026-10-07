@@ -50,18 +50,18 @@ describe("replay timeline readers", () => {
     await expect(readReplayTimelineFromDir(dir)).resolves.toEqual(entries);
   });
 
-  it("falls back to timeline.json for replays that predate the ndjson artifact", async () => {
+  it("falls back to the legacy timeline.json for replays that predate the ndjson artifact", async () => {
     await writeFile(join(dir, "timeline.json"), json);
 
     expect(resolveReplayTimelineFile(dir)).toEqual({
       path: join(dir, "timeline.json"),
-      format: "json",
+      format: "legacy-json",
     });
     await expect(readReplayTimelineFromDir(dir)).resolves.toEqual(entries);
     expect(
       readReplayTimelineFileSync({
         path: join(dir, "timeline.json"),
-        format: "json",
+        format: "legacy-json",
       }),
     ).toEqual(entries);
   });
@@ -152,6 +152,6 @@ describe("replay timeline readers", () => {
 
   it("infers the format from the extracted file name", () => {
     expect(timelineFormatForFileName("timeline.ndjson")).toBe("ndjson");
-    expect(timelineFormatForFileName("timeline.json")).toBe("json");
+    expect(timelineFormatForFileName("timeline.json")).toBe("legacy-json");
   });
 });

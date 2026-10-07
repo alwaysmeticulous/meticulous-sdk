@@ -50,6 +50,7 @@ export {
   SessionRelevance,
   SessionRelevanceReason,
   isPrAuthorRelevance,
+  AdoptedReplay,
   TestCase,
   TestCaseReplayOptions,
   TestRunStatus,

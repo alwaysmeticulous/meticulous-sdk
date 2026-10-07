@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import { initLogger, ensureBrowser } from "@alwaysmeticulous/common";
+import { ensureBrowser } from "@alwaysmeticulous/browser-installer";
+import { initLogger } from "@alwaysmeticulous/common";
 import type { Browser, PuppeteerNode } from "puppeteer-core";
 import puppeteer, { launch } from "puppeteer-core";
 import type { RecordSessionOptions } from "../types";

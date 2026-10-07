@@ -1,4 +1,4 @@
-import { cpSync, existsSync, writeFileSync } from "node:fs";
+import { cpSync, writeFileSync } from "node:fs";
 import { builtinModules, createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,16 +42,6 @@ const result = await build({
           path: join(packageRoot, "scripts", "prettier-shim.ts"),
         }));
         build.onResolve(
-          { filter: /^puppeteer-core\/lib\/puppeteer\/revisions\.js$/ },
-          () => ({
-            // browser-installer picks the Chrome version from this file, but
-            // puppeteer-core 24.x (which we publish for Node 18 support) only
-            // has it at build-specific paths it reaches via a runtime import.
-            // A bundle has no puppeteer-core on disk, so resolve it here.
-            path: resolvePuppeteerRevisions(),
-          }),
-        );
-        build.onResolve(
           { filter: /^puppeteer-core(?:\/.*)?$/ },
           ({ path }) => ({
             // Force imports from workspace packages to the CLI's own copy so
@@ -75,21 +65,6 @@ const result = await build({
   sourcesContent: false,
   target: "node18",
 });
-
-function resolvePuppeteerRevisions() {
-  const puppeteerRoot = dirname(require.resolve("puppeteer-core/package.json"));
-  const candidates = [
-    "lib/puppeteer/revisions.js",
-    "lib/cjs/puppeteer/revisions.js",
-  ].map((relativePath) => join(puppeteerRoot, relativePath));
-  const found = candidates.find((candidate) => existsSync(candidate));
-  if (found == null) {
-    throw new Error(
-      `puppeteer-core revisions not found; tried:\n${candidates.join("\n")}`,
-    );
-  }
-  return found;
-}
 
 const optionalRuntimeImports = new Set([
   // Optional performance/platform enhancements. Their callers all fall back

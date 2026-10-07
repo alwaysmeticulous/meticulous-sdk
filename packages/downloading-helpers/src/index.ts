@@ -56,7 +56,7 @@ export {
 } from "./file-downloads/download-progress";
 export { getReplayDir } from "./scripts/replays";
 export {
-  TIMELINE_JSON_FILE_NAME,
+  LEGACY_TIMELINE_JSON_FILE_NAME,
   TIMELINE_NDJSON_FILE_NAME,
   type ReplayTimelineFile,
   type ReplayTimelineFormat,

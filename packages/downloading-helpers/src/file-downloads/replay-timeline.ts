@@ -3,16 +3,22 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 
 /**
- * A replay's timeline is uploaded as `timeline.ndjson` (one entry per line).
- * Replays produced before that artifact existed instead have `timeline.json`
- * (a single JSON array), which is no longer written. Every reader should go
- * through these helpers so it keeps working whichever one a replay directory
- * holds.
+ * A replay's timeline is `timeline.ndjson`: one entry per line, so it can be
+ * streamed without holding the whole timeline on the heap. That is the only
+ * form replays write.
+ *
+ * `timeline.json` (a single JSON array) is the legacy form, written by every
+ * replay before 3 April 2026 and by nothing since. It is read-only and it is
+ * **permanent**: projects with six-month, one-year or unlimited retention
+ * still hold replays from before that date, and the unlimited ones always
+ * will, so the fallback can never be removed without breaking their Timeline
+ * tab. Never write it, never presign it for upload, and keep every reader on
+ * these helpers so both forms stay readable everywhere.
  */
 export const TIMELINE_NDJSON_FILE_NAME = "timeline.ndjson";
-export const TIMELINE_JSON_FILE_NAME = "timeline.json";
+export const LEGACY_TIMELINE_JSON_FILE_NAME = "timeline.json";
 
-export type ReplayTimelineFormat = "ndjson" | "json";
+export type ReplayTimelineFormat = "ndjson" | "legacy-json";
 
 export interface ReplayTimelineFile {
   path: string;
@@ -20,8 +26,8 @@ export interface ReplayTimelineFile {
 }
 
 /**
- * The timeline file present in `replayDir`, preferring the ndjson form, or
- * `null` when the directory holds neither.
+ * The timeline file present in `replayDir`: the ndjson form, else the legacy
+ * array form, else `null`.
  */
 export const resolveReplayTimelineFile = (
   replayDir: string,
@@ -30,16 +36,17 @@ export const resolveReplayTimelineFile = (
   if (existsSync(ndjsonPath)) {
     return { path: ndjsonPath, format: "ndjson" };
   }
-  const jsonPath = join(replayDir, TIMELINE_JSON_FILE_NAME);
-  if (existsSync(jsonPath)) {
-    return { path: jsonPath, format: "json" };
+  const legacyPath = join(replayDir, LEGACY_TIMELINE_JSON_FILE_NAME);
+  if (existsSync(legacyPath)) {
+    return { path: legacyPath, format: "legacy-json" };
   }
   return null;
 };
 
 export const timelineFormatForFileName = (
   fileName: string,
-): ReplayTimelineFormat => (fileName.endsWith(".ndjson") ? "ndjson" : "json");
+): ReplayTimelineFormat =>
+  fileName.endsWith(".ndjson") ? "ndjson" : "legacy-json";
 
 /**
  * Reads the whole timeline in `replayDir` into memory. Throws when the
@@ -51,7 +58,7 @@ export const readReplayTimelineFromDir = async <T = unknown>(
   const file = resolveReplayTimelineFile(replayDir);
   if (file == null) {
     throw new Error(
-      `No ${TIMELINE_NDJSON_FILE_NAME} or ${TIMELINE_JSON_FILE_NAME} in ${replayDir}`,
+      `No ${TIMELINE_NDJSON_FILE_NAME} or ${LEGACY_TIMELINE_JSON_FILE_NAME} in ${replayDir}`,
     );
   }
   return readReplayTimelineFile<T>(file);

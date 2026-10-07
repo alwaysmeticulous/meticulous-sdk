@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 2.347.0
+
+### Patch Changes
+
+- [#14840](https://github.com/alwaysmeticulous/meticulous/pull/14840) [`9b2b7ad`](https://github.com/alwaysmeticulous/meticulous/commit/9b2b7adb7f2ccf2c78a255df8914ad614ca1bda1) Thanks [@Genora51](https://github.com/Genora51)! - A test case can record that its replays were reused from an earlier run, including the commits those replays were executed on.
+
 ## 2.346.0
 
 ### Minor Changes

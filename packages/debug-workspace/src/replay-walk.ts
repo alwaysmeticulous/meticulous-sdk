@@ -58,9 +58,10 @@ export interface TimelineEntry {
 }
 
 /**
- * The replay directory's timeline (`timeline.ndjson`, or `timeline.json` for
- * replays that predate it). Returns `null` if neither file is present, or the
- * one found is unparseable or not a list of entries.
+ * The replay directory's timeline (`timeline.ndjson`, or the legacy
+ * `timeline.json` on replays from before 3 April 2026). Returns `null` if
+ * neither file is present, or the one found is unparseable or not a list of
+ * entries.
  */
 export const readReplayTimeline = (
   replayDir: string,

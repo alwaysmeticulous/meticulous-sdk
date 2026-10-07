@@ -1,5 +1,16 @@
 # @alwaysmeticulous/debug-workspace
 
+## 2.347.0
+
+### Patch Changes
+
+- [#14873](https://github.com/alwaysmeticulous/meticulous/pull/14873) [`06675e6`](https://github.com/alwaysmeticulous/meticulous/commit/06675e64b83842bf0807d386cc578e89f98aba69) Thanks [@phreppo](https://github.com/phreppo)! - Name the array-form `timeline.json` as the legacy, permanently supported timeline fallback: `TIMELINE_JSON_FILE_NAME` is now `LEGACY_TIMELINE_JSON_FILE_NAME` and the `ReplayTimelineFormat` value `"json"` is now `"legacy-json"`.
+
+- Updated dependencies [[`552f837`](https://github.com/alwaysmeticulous/meticulous/commit/552f837780b7bdbd5e31c272e424b771af425812), [`ccaea2f`](https://github.com/alwaysmeticulous/meticulous/commit/ccaea2fc8d1e9e2dd03344f9c9b8dc253312a83f), [`64531c4`](https://github.com/alwaysmeticulous/meticulous/commit/64531c4f9c4e4b9180eea8329702c36dbe87a89c), [`0e6c244`](https://github.com/alwaysmeticulous/meticulous/commit/0e6c244478e7947d38f312b15c63693352db4a7a), [`06675e6`](https://github.com/alwaysmeticulous/meticulous/commit/06675e64b83842bf0807d386cc578e89f98aba69)]:
+  - @alwaysmeticulous/client@2.347.0
+  - @alwaysmeticulous/common@2.347.0
+  - @alwaysmeticulous/downloading-helpers@2.347.0
+
 ## 2.346.0
 
 ### Patch Changes

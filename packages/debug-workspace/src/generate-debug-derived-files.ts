@@ -56,6 +56,9 @@ export const generateDebugDerivedFiles = (workspaceDir: string): void => {
   }
 };
 
+// Replays from before 3 April 2026 only ship the legacy `timeline.json`;
+// derive the ndjson form for them so the greppable layout is the same for
+// every replay in the workspace.
 const generateTimelineNdjson = (
   replayDir: ReplayDir,
   entries: TimelineEntry[],

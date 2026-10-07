@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "2.346.0",
+  "version": "2.347.0",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@alwaysmeticulous/api": "workspace:*",
+    "@alwaysmeticulous/browser-installer": "workspace:*",
     "@alwaysmeticulous/client": "workspace:*",
     "@alwaysmeticulous/common": "workspace:*",
     "@alwaysmeticulous/debug-workspace": "workspace:*",
@@ -51,7 +52,7 @@
     "inquirer": "^8.2.7",
     "ora": "^5.4.1",
     "parse-diff": "^0.11.1",
-    "puppeteer-core": "24.42.0",
+    "puppeteer-core": "25.10.0",
     "tar": "^7.5.22",
     "yaml": "^2.9.0",
     "yargs": "^17.5.1",

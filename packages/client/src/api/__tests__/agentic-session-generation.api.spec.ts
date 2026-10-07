@@ -7,6 +7,28 @@ import {
 } from "../agentic-session-generation.api";
 
 describe("completeAgenticSessionGeneration", () => {
+  it("sends the frontend and backend deployment references independently", async () => {
+    const client = {
+      post: vi.fn().mockResolvedValue({ data: { agenticRunId: "run" } }),
+    };
+    const appTarget = {
+      type: "assets" as const,
+      projectDeploymentId: "frontend",
+      backendContainerDeploymentId: "backend",
+    };
+    await completeAgenticSessionGeneration({
+      client: client as unknown as MeticulousClient,
+      projectId: "project",
+      commitSha: "commit",
+      appTarget,
+    });
+    expect(client.post).toHaveBeenCalledWith(
+      "agentic-session-generation/launch",
+      expect.objectContaining({ appTarget }),
+      expect.anything(),
+    );
+  });
+
   it("redacts every login-option value from a failed launch request", async () => {
     const launchError = {
       config: {
