@@ -6,6 +6,10 @@ import {
 } from "./with-meticulous";
 
 export type {
+  BeMockInstallRequest,
+  BeMockInstallResponse,
+  BeMockLogsRequest,
+  BeMockLogsResponse,
   BindingRequestEvent,
   CaptureEvent,
   CapturedBody,
@@ -32,6 +36,8 @@ export {
   parseVirtualTimeMs,
   REPLAY_ID_HEADER,
   REPLAY_SIDECAR_URL_HEADER,
+  SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_LOGS_PATH,
+  SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_PATH,
   SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH,
   SIDECAR_EVENTS_PATH,
   SIDECAR_PROTOCOL_VERSION,
@@ -239,7 +245,11 @@ export interface MeticulousWorkerHandler<Env = never> {
  *
  * **Agent-swarm testing** activates on two deployment env vars,
  * `METICULOUS_AGENT_SWARM_TESTING_SIDECAR_URL` and `METICULOUS_AGENT_SWARM_TESTING_RUN_ID`,
- * set by whoever deploys the worker for a swarm run. Every outgoing `fetch` call is first
+ * set by whoever deploys the worker for a swarm run. These must be Worker bindings,
+ * not just environment variables on the host process: forward them at startup through
+ * Wrangler vars or the `.dev.vars` file consumed by the runtime. The app calls a sidecar
+ * in the same pod through loopback; configuring the sidecar's own environment does not
+ * configure the Worker's bindings. Every outgoing `fetch` call is first
  * offered to the interceptor service the URL names; it either supplies the response to serve
  * or the call passes through to the real service. Unlike replay the mode is best-effort by
  * design: a call the interceptor cannot answer is never failed, there is no frozen clock and

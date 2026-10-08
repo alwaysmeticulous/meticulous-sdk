@@ -525,7 +525,18 @@ export type AgenticRunComparisonStatus =
   | "missing-on-base"
   | "missing-on-head";
 
+/** @deprecated Superseded by the case-level `AgenticRunComparisonPresentation`. */
 export type AgenticRunComparisonDisplay = "video" | "screenshot";
+
+/**
+ * How a base-vs-head case is presented by default: base and head recordings
+ * played side by side, held together at each checkpoint, or each surfaced
+ * difference as base, head and diff screenshots. Viewers can switch between
+ * the two.
+ */
+export type AgenticRunComparisonPresentation =
+  | "side-by-side-video"
+  | "diff-sequence";
 
 export interface AgenticRunComparisonSide {
   screenshotPath?: string;
@@ -549,7 +560,20 @@ export interface AgenticRunScreenshotComparison {
   head: AgenticRunComparisonSide;
   verdict: AgenticRunComparisonVerdict;
   explanation: string;
-  display: AgenticRunComparisonDisplay;
+  /** @deprecated Written by older workers; see `comparisonPresentation`. */
+  display?: AgenticRunComparisonDisplay;
+}
+
+/**
+ * One checkpoint both sides of the reported run were compared at, whether or
+ * not it differed. Side-by-side playback holds the two recordings together
+ * at each of these.
+ */
+export interface AgenticRunComparisonCheckpoint {
+  screenshotName: string;
+  status: AgenticRunComparisonStatus;
+  base: Pick<AgenticRunComparisonSide, "sessionId" | "timestampMs">;
+  head: Pick<AgenticRunComparisonSide, "sessionId" | "timestampMs">;
 }
 
 export interface AgenticRunResultCase {
@@ -601,6 +625,10 @@ export interface AgenticRunResultCase {
    * judged immaterial is left out.
    */
   comparisons?: AgenticRunScreenshotComparison[];
+  /** The reported run's checkpoints in capture order, for synced playback. */
+  comparisonCheckpoints?: AgenticRunComparisonCheckpoint[];
+  /** The case agent's chosen default presentation of a comparison case. */
+  comparisonPresentation?: AgenticRunComparisonPresentation;
   /**
    * Sessions recorded on the base deployment, for side-by-side playback only.
    * Never part of `sessionIds`, so they are not replayed or selected.

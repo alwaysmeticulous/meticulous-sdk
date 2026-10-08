@@ -422,6 +422,68 @@ export const SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH =
   "/v1/agent-swarm-testing/outbound-fetch";
 
 /**
+ * Agent-swarm-testing route that installs a be-mock: an agent-authored
+ * `be-mock.ts` (backend mocks), compiled by the agentic session-generation
+ * worker into a self-contained sandbox bundle and sent here as text. The
+ * sidecar runs it in its own permission-restricted child process over the
+ * frozen RPC toolkit, and routes every intercepted outbound fetch through
+ * the module's `interceptRequest` export — see
+ * `packages/backend-recorder-js/src/sidecar/be-mock` and
+ * `packages/agentic-session-generation-worker/src/app-access/be-mocking`.
+ */
+export const SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_PATH =
+  "/v1/agent-swarm-testing/be-mock";
+
+/**
+ * One be-mock install, sent to {@link SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_PATH}.
+ * The `code` is the compiled bundle (the per-kind child runner + the frozen
+ * RPC + the agent-authored be-mock.ts), not the raw TypeScript: the sidecar
+ * image carries no compiler, and the worker's static check has already
+ * accepted the source.
+ */
+export interface BeMockInstallRequest {
+  /** Whose run this module belongs to; see {@link AGENT_SWARM_TESTING_RUN_ID_ENV_KEY}. */
+  runId: string;
+  /** The compiled, self-contained sandbox bundle to install. */
+  code: string;
+}
+
+/**
+ * Agent-swarm-testing route that reads the active be-mock's logs: the worker
+ * fetches them when it assembles a test run's result, so the module's
+ * `log(...)` lines — startup and `interceptRequest` debug lines alike —
+ * reach the agent's run logs instead of dying in the sidecar's pod logs.
+ */
+export const SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_LOGS_PATH =
+  "/v1/agent-swarm-testing/be-mock/logs";
+
+/** One be-mock logs fetch, sent to {@link SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_LOGS_PATH}. */
+export interface BeMockLogsRequest {
+  /** Whose run's module is being read; see {@link AGENT_SWARM_TESTING_RUN_ID_ENV_KEY}. */
+  runId: string;
+}
+
+/** The active sandbox's collected logs since its install (this attempt's window). */
+export interface BeMockLogsResponse {
+  logs: string[];
+}
+
+/** The install's outcome, mirroring the run the worker reports. */
+export type BeMockInstallResponse =
+  | {
+      ok: true;
+      /** The sandbox's startup logs (stdout/stderr, agent log lines), if any. */
+      logs?: string[];
+    }
+  | {
+      ok: false;
+      /** Startup failure: the static check, the build or the sandbox rejected it. */
+      error: string;
+      /** The sandbox's collected logs, for the agent's repair loop. */
+      logs: string[];
+    };
+
+/**
  * One outbound `fetch` offered to the interceptor, sent to
  * {@link SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH}. Unlike replay's lookup there is no
  * consume-once mock state, so a single run id suffices.

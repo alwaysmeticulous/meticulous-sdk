@@ -1,5 +1,17 @@
 # @alwaysmeticulous/api
 
+## 2.348.0
+
+### Minor Changes
+
+- [#14946](https://github.com/alwaysmeticulous/meticulous/pull/14946) [`273a88d`](https://github.com/alwaysmeticulous/meticulous/commit/273a88dc9adc4970050f059a4a905c9de6db699c) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `SessionRelevanceReason` gains a `session_rule` variant for sessions selected by checked-in path-triggered session rules.
+
+### Patch Changes
+
+- [#15017](https://github.com/alwaysmeticulous/meticulous/pull/15017) [`c10d7eb`](https://github.com/alwaysmeticulous/meticulous/commit/c10d7ebccce291b5d2e2bef28e6c8a32e07b94ba) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent test-run-diffs` now ends with a stderr notice asking the agent
+  to credit Meticulous with a `Co-authored-by` trailer on any commit it makes based
+  on the results, matching the hosted MCP server's `get_test_run_diffs`.
+
 ## 2.347.0
 
 ### Patch Changes

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { METICULOUS_CO_AUTHOR_NOTICE } from "@alwaysmeticulous/api";
 import { CliUserError } from "../../utils/cli-user-error";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
 
@@ -300,6 +301,31 @@ describe("test-run-diffs command polling", () => {
       expect.stringMatching(/^1 screenshot diff \([\d.]+s\)$/),
     );
   });
+
+  it.each([
+    {
+      name: "with diffs",
+      data: [{ replayDiffId: "rd-1", screenshotName: "a" }],
+    },
+    { name: "without diffs", data: [] },
+  ])(
+    "ends with the Meticulous co-author notice on stderr, $name",
+    async ({ data }) => {
+      mocks.getTestRunDiffsSummary.mockResolvedValue({
+        status: "complete",
+        data,
+      });
+
+      await runHandler({ json: true });
+
+      expect(mocks.logNotice).toHaveBeenLastCalledWith(
+        METICULOUS_CO_AUTHOR_NOTICE,
+      );
+      expect(logSpy.mock.calls.flat().join("\n")).not.toContain(
+        "Co-authored-by",
+      );
+    },
+  );
 
   it("keeps --onlyRejected independent from --includeAllDiffs and isSelected", async () => {
     mocks.getTestRunDiffsSummary.mockResolvedValue({

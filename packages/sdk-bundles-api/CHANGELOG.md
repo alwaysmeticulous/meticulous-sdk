@@ -1,5 +1,14 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.348.0
+
+### Patch Changes
+
+- [#15086](https://github.com/alwaysmeticulous/meticulous/pull/15086) [`f035485`](https://github.com/alwaysmeticulous/meticulous/commit/f035485d363f2e5d2ad7e4efb6e2513b82121d60) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - `ci run-local` gains `--disableKnownFlakeClassification`, which reports visual diffs matching a known flake as diffs rather than flakes. Use it with `--rerunTestsNTimes` to measure raw flake rates.
+
+- Updated dependencies [[`273a88d`](https://github.com/alwaysmeticulous/meticulous/commit/273a88dc9adc4970050f059a4a905c9de6db699c), [`c10d7eb`](https://github.com/alwaysmeticulous/meticulous/commit/c10d7ebccce291b5d2e2bef28e6c8a32e07b94ba)]:
+  - @alwaysmeticulous/api@2.348.0
+
 ## 2.347.0
 
 ### Patch Changes

@@ -34,6 +34,7 @@ interface Options
   parallelTasks?: number | null | undefined;
   maxRetriesOnFailure: number;
   rerunTestsNTimes: number;
+  disableKnownFlakeClassification: boolean;
   testsFile?: string | undefined;
   maxDurationMs: number | null | undefined;
   maxEventCount: number | null | undefined;
@@ -67,6 +68,7 @@ const handler = async ({
   parallelTasks: parallelTasks_,
   maxRetriesOnFailure,
   rerunTestsNTimes,
+  disableKnownFlakeClassification,
   testsFile,
   disableRemoteFonts,
   noSandbox,
@@ -158,6 +160,7 @@ const handler = async ({
       parallelTasks: parallelTasks ?? null,
       maxRetriesOnFailure,
       rerunTestsNTimes,
+      disableKnownFlakeClassification,
       githubSummary,
       sessionIdForApplicationStorage: sessionIdForApplicationStorage ?? null,
       maxSemanticVersionSupported: 1,
@@ -261,6 +264,12 @@ export const ciRunLocalCommand: CommandModule<unknown, Options> = {
       description:
         "If set to a value greater than 0 then will re-run all replays the specified number of times and mark them as a flake if the visual snapshot generated on one of the retried replays differs from that in the first replay.",
       default: 0,
+    },
+    disableKnownFlakeClassification: {
+      boolean: true,
+      description:
+        "Report visual diffs that match a known flake as diffs rather than flakes. Use with --rerunTestsNTimes to measure raw flake rates.",
+      default: false,
     },
     testsFile: {
       string: true,

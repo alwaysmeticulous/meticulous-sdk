@@ -67,6 +67,8 @@ export const isPrAuthorRelevance = (
  *   sampled wider-blast-radius union (IsRelevant).
  * - `pre_annotated`: carried an upstream `relevanceToPR` annotation that takes
  *   precedence over coverage-derived relevance.
+ * - `session_rule`: selected by a checked-in path-triggered session rule
+ *   (IsRelevant).
  * - `rse_skipped_sampling`: relevance never ran, and an operator load-shedding
  *   override marked the session MaybeRelevant so the standard sampling would
  *   shed it (MaybeRelevant).
@@ -91,6 +93,7 @@ export type SessionRelevanceReason =
   | "new_relative_to_coverage_source"
   | "refinement_blast_radius_union"
   | "pre_annotated"
+  | "session_rule"
   | "rse_skipped_sampling"
   | "coverage_curve_cap"
   | "direct_feature_flag";

@@ -97,6 +97,9 @@ meticulous [command]
 | \`agent trigger-test-run\` | Trigger a test run against an uploaded build | Agent/programmatic use |
 | \`agent complete-base-run\` | Replay the selected sessions a base run has not run yet | Agent/programmatic use |
 | \`agent promote-sessions\` | Add sessions a pinned-session test run replayed to the selected set | Agent/programmatic use |
+| \`agent agent-swarm-runs\` | List a project's Agent swarm runs, newest first, optionally for one pull request | Agent/programmatic use |
+| \`agent agent-swarm-run\` | Get the status and list of cases for an Agent swarm run (by default the latest execution run for a test run, commit or pull request) | Agent/programmatic use |
+| \`agent agent-swarm-run-case\` | Get the full details of an Agent swarm case, with its failure check and fix prompt | Agent/programmatic use |
 | \`agent submit-feedback\` | Submit free-form feedback about Meticulous to the Meticulous team | Agent/programmatic use |
 | \`schema\` | Print the CLI command schema as JSON | Agent/programmatic use |
 

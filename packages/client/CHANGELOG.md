@@ -1,5 +1,32 @@
 # @alwaysmeticulous/client
 
+## 2.348.0
+
+### Minor Changes
+
+- [#14891](https://github.com/alwaysmeticulous/meticulous/pull/14891) [`f03953b`](https://github.com/alwaysmeticulous/meticulous/commit/f03953bdaca7c35bad8ff4c3089e0209c8e67299) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `meticulous agent agent-swarm-runs`, `agent-swarm-run` and `agent-swarm-run-case` for reading
+  Agent swarm results: a project's runs, newest first and paged like
+  `test-runs` (`--prNumber` for every run of a pull request, `--status`,
+  `--createdSince`/`--createdUntil`, `--includeCounts` for case counts); a run's status, case counts, takeaways and cases (by
+  `--swarmRunId`, or the latest execution run for a test run, commit or pull
+  request; `--status` filters the cases); and one case's steps, backend failures and page errors during the run, base
+  comparisons and, with source-code access, the failure checker's review
+  (including whether the pull request caused the failure) and fix prompt
+  (`--fixPrompt`). `agent-swarm-run` and `agent-swarm-run-case` wait for an in-progress run
+  to finish unless given `--dontWaitForSwarmRunToComplete`. With `--json` they print the
+  same JSON as the `get_agent_swarm_runs`, `get_agent_swarm_run` and
+  `get_agent_swarm_run_case` MCP tools. The client exposes them as
+  `getAgentSwarmRuns`, `getAgentSwarmRun` and `getAgentSwarmRunCase`, with
+  `isAgentSwarmRunProcessingResponse` recognising an unfinished run.
+
+- [#15064](https://github.com/alwaysmeticulous/meticulous/pull/15064) [`0c93565`](https://github.com/alwaysmeticulous/meticulous/commit/0c93565448e313c99b44e310548ca8a25a349b76) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Agentic run result cases gain optional `comparisonPresentation` and `comparisonCheckpoints` fields for base-vs-head cases. The per-comparison `display` field is now optional and deprecated.
+
+### Patch Changes
+
+- Updated dependencies [[`273a88d`](https://github.com/alwaysmeticulous/meticulous/commit/273a88dc9adc4970050f059a4a905c9de6db699c), [`c10d7eb`](https://github.com/alwaysmeticulous/meticulous/commit/c10d7ebccce291b5d2e2bef28e6c8a32e07b94ba)]:
+  - @alwaysmeticulous/api@2.348.0
+  - @alwaysmeticulous/common@2.347.0
+
 ## 2.347.0
 
 ### Patch Changes

@@ -1,4 +1,7 @@
-import type { TestRunStatus } from "@alwaysmeticulous/api";
+import {
+  METICULOUS_CO_AUTHOR_NOTICE,
+  type TestRunStatus,
+} from "@alwaysmeticulous/api";
 import {
   createClientWithOAuth,
   type DiffsSummaryCountsResponse,
@@ -333,17 +336,17 @@ const handler = async ({
     logNotice(
       `Test run ${resolvedTestRunId} does not have any diffs matching the query.`,
     );
-    return;
+  } else {
+    const tEnd = performance.now();
+    const elapsed = `${((tEnd - t0) / 1000).toFixed(1)}s`;
+    logNotice(
+      response.selectionApplied
+        ? // The backend always reports numMatchingDiffs alongside selectionApplied.
+          `Including ${data.length} representative screenshot ${pluralize(data.length, "diff")} out of ${response.numMatchingDiffs!} total (${elapsed})`
+        : `${data.length} screenshot ${pluralize(data.length, "diff")} (${elapsed})`,
+    );
   }
-
-  const tEnd = performance.now();
-  const elapsed = `${((tEnd - t0) / 1000).toFixed(1)}s`;
-  logNotice(
-    response.selectionApplied
-      ? // The backend always reports numMatchingDiffs alongside selectionApplied.
-        `Including ${data.length} representative screenshot ${pluralize(data.length, "diff")} out of ${response.numMatchingDiffs!} total (${elapsed})`
-      : `${data.length} screenshot ${pluralize(data.length, "diff")} (${elapsed})`,
-  );
+  logNotice(METICULOUS_CO_AUTHOR_NOTICE);
 };
 
 export const testRunDiffsCommand: CommandModule<unknown, Options> = {

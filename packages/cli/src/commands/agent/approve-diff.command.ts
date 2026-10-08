@@ -57,7 +57,7 @@ const handler = async ({
 export const approveDiffCommand: CommandModule<unknown, Options> = {
   command: "approve-diff",
   describe:
-    'Record an agent decision approving a screenshot diff, optionally with a review comment explaining why. Only available on projects with the "Enable approve/ignore diff actions" setting, and refused on a diff a person rejected. Outputs the ID of the review comment recording the decision, or an object with commentId with --json; with no --reason there is no comment, so it outputs nothing, or an empty object with --json.',
+    "Record an agent decision approving a screenshot diff, optionally with a review comment explaining why. Refused on a diff a person rejected. Outputs the ID of the review comment recording the decision, or an object with commentId with --json; with no --reason there is no comment, so it outputs nothing, or an empty object with --json.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     replayDiffId: {

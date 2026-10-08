@@ -40,7 +40,7 @@ const handler = async ({
 
 export const approveCheckCommand: CommandModule<unknown, Options> = {
   command: "approve-check",
-  describe: `Record an agent decision approving a failing non-visual check, optionally with a reason justifying it. Only available on projects with the "Enable approve/ignore check actions" setting, and refused on a check a person rejected. ${CHECK_REVIEW_REASON_NOTE} Outputs nothing, or an empty object with --json.`,
+  describe: `Record an agent decision approving a failing non-visual check, optionally with a reason justifying it. Refused on a check a person rejected. ${CHECK_REVIEW_REASON_NOTE} Outputs nothing, or an empty object with --json.`,
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     ...checkTargetOptions,

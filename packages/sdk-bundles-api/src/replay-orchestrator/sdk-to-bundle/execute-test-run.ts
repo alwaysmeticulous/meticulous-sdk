@@ -63,6 +63,13 @@ export interface ExecuteTestRunOptions {
    */
   rerunTestsNTimes: number;
 
+  /**
+   * If true, diffs whose hash matches one of the project's known flakes are reported as diffs, rather than
+   * as 'diff-is-known-flake' flakes. Use with `rerunTestsNTimes` to measure raw flake rates: otherwise a flake
+   * recorded as known by an earlier run is hidden from every later one.
+   */
+  disableKnownFlakeClassification?: boolean;
+
   githubSummary: boolean;
 
   /**

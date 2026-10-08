@@ -8,6 +8,9 @@ import { domDiffCommand } from "./screenshot-dom-diff.command";
 import { imageFilesCommand } from "./screenshot-image-files.command";
 import { imageUrlsCommand } from "./screenshot-image.command";
 import { sessionsCommand } from "./sessions.command";
+import { agentSwarmRunCaseCommand } from "./agent-swarm-run-case.command";
+import { agentSwarmRunCommand } from "./agent-swarm-run.command";
+import { agentSwarmRunsCommand } from "./agent-swarm-runs.command";
 import { testRunsCommand } from "./test-runs.command";
 import { submitFeedbackCommand } from "./submit-feedback.command";
 import { testRunCheckCommand } from "./test-run-check.command";
@@ -57,6 +60,9 @@ export const agentCommand: CommandModule = {
       .command(jsCoverageCommand)
       .command(jsCoverageDiffCommand)
       .command(sessionsCommand)
+      .command(agentSwarmRunsCommand)
+      .command(agentSwarmRunCommand)
+      .command(agentSwarmRunCaseCommand)
       .command(testRunsCommand)
       .command(testRunStatsCommand)
       .command(projectDailyStatsCommand)

@@ -1,5 +1,36 @@
 # @alwaysmeticulous/cli
 
+## 2.348.0
+
+### Minor Changes
+
+- [#14891](https://github.com/alwaysmeticulous/meticulous/pull/14891) [`f03953b`](https://github.com/alwaysmeticulous/meticulous/commit/f03953bdaca7c35bad8ff4c3089e0209c8e67299) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `meticulous agent agent-swarm-runs`, `agent-swarm-run` and `agent-swarm-run-case` for reading
+  Agent swarm results: a project's runs, newest first and paged like
+  `test-runs` (`--prNumber` for every run of a pull request, `--status`,
+  `--createdSince`/`--createdUntil`, `--includeCounts` for case counts); a run's status, case counts, takeaways and cases (by
+  `--swarmRunId`, or the latest execution run for a test run, commit or pull
+  request; `--status` filters the cases); and one case's steps, backend failures and page errors during the run, base
+  comparisons and, with source-code access, the failure checker's review
+  (including whether the pull request caused the failure) and fix prompt
+  (`--fixPrompt`). `agent-swarm-run` and `agent-swarm-run-case` wait for an in-progress run
+  to finish unless given `--dontWaitForSwarmRunToComplete`. With `--json` they print the
+  same JSON as the `get_agent_swarm_runs`, `get_agent_swarm_run` and
+  `get_agent_swarm_run_case` MCP tools. The client exposes them as
+  `getAgentSwarmRuns`, `getAgentSwarmRun` and `getAgentSwarmRunCase`, with
+  `isAgentSwarmRunProcessingResponse` recognising an unfinished run.
+
+- [#15086](https://github.com/alwaysmeticulous/meticulous/pull/15086) [`f035485`](https://github.com/alwaysmeticulous/meticulous/commit/f035485d363f2e5d2ad7e4efb6e2513b82121d60) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - `ci run-local` gains `--disableKnownFlakeClassification`, which reports visual diffs matching a known flake as diffs rather than flakes. Use it with `--rerunTestsNTimes` to measure raw flake rates.
+
+### Patch Changes
+
+- [#15040](https://github.com/alwaysmeticulous/meticulous/pull/15040) [`83e2c1c`](https://github.com/alwaysmeticulous/meticulous/commit/83e2c1c8fb1fa72fe7834b43a1e83a6d806317c6) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - The help text for `meticulous agent approve-diff`, `approve-check` and
+  `ignore-check` no longer says which project setting allows them. A call on a
+  project without the setting is refused with an error naming the setting.
+
+- [#15017](https://github.com/alwaysmeticulous/meticulous/pull/15017) [`c10d7eb`](https://github.com/alwaysmeticulous/meticulous/commit/c10d7ebccce291b5d2e2bef28e6c8a32e07b94ba) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent test-run-diffs` now ends with a stderr notice asking the agent
+  to credit Meticulous with a `Co-authored-by` trailer on any commit it makes based
+  on the results, matching the hosted MCP server's `get_test_run_diffs`.
+
 ## 2.347.0
 
 ### Minor Changes
