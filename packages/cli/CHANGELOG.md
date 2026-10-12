@@ -1,5 +1,23 @@
 # @alwaysmeticulous/cli
 
+## 2.349.0
+
+### Minor Changes
+
+- [#15143](https://github.com/alwaysmeticulous/meticulous/pull/15143) [`b635def`](https://github.com/alwaysmeticulous/meticulous/commit/b635def6c09009d768d38525b947623b13882e61) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent test-run-diffs`, `test-run-check`, `js-coverage`,
+  `js-coverage-diff` and the check review commands now accept `--project`
+  together with `--testRunId`, as long as it names the test run's own project;
+  a project the run doesn't belong to is rejected with an error naming both.
+  The client gains `assertTestRunInProject` for the same check.
+
+### Patch Changes
+
+- [#14794](https://github.com/alwaysmeticulous/meticulous/pull/14794) [`b399b55`](https://github.com/alwaysmeticulous/meticulous/commit/b399b553f74695f54ccc17b0c6b17320a82abd3c) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Document in `meticulous agent dom-diff --help` that a change to `<html>` or `<body>` themselves now appears as a leading `<!-- root element ... -->` comment line in the DOM diff.
+
+- [#15253](https://github.com/alwaysmeticulous/meticulous/pull/15253) [`77e92d4`](https://github.com/alwaysmeticulous/meticulous/commit/77e92d4e8cf06c95ab1f3698efacf7b63c69c1d6) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - The co-author notice shown after `meticulous agent test-run-diffs` and
+  `get_test_run_diffs` no longer asks agents to add a `Co-authored-by` trailer
+  on Bitbucket, which doesn't support it. GitHub and GitLab are unchanged.
+
 ## 2.348.0
 
 ### Minor Changes

@@ -3,6 +3,7 @@ import type { MeticulousClient } from "@alwaysmeticulous/client";
 import { getTestRun } from "@alwaysmeticulous/client";
 import { CliUserError } from "../../utils/cli-user-error";
 import {
+  assertTestRunInProjectOrThrow,
   assertTestRunComplete,
   ensureTestRunFinished,
   isTestRunPartial,
@@ -78,7 +79,11 @@ export const resolveFinishedCoverageRuns = async (
       .status;
   } else if (testRunId != null) {
     resolvedTestRunId = testRunId;
-    status = (await getTestRun({ client, testRunId })).status;
+    const [, run] = await Promise.all([
+      assertTestRunInProjectOrThrow(client, testRunId, project),
+      getTestRun({ client, testRunId }),
+    ]);
+    status = run.status;
     rawUnionIds = [];
   } else {
     const resolved = await resolveTestRunOrThrow(client, {

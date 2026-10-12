@@ -2,10 +2,12 @@ import type { TestRunStatus } from "@alwaysmeticulous/api";
 import { isSessionPool } from "@alwaysmeticulous/api";
 import type { MeticulousClient } from "@alwaysmeticulous/client";
 import {
+  assertTestRunInProject,
   getTestRun,
   getTestRunForCommit,
   getTestRunForPullRequest,
   IN_PROGRESS_TEST_RUN_STATUS,
+  TEST_RUN_PROJECT_MISMATCH_REASON,
 } from "@alwaysmeticulous/client";
 import {
   getCommitSha,
@@ -15,6 +17,7 @@ import {
   logProgress,
 } from "@alwaysmeticulous/common";
 import { CliUserError } from "./cli-user-error";
+import { errorResponseBody } from "./error-response-body";
 import { appendProjectSelectionHint } from "./project-selection-hint";
 
 const POLL_INTERVAL_MS = 10_000;
@@ -219,6 +222,35 @@ export const resolveTestRunOrThrow = async (
         project,
         "--testRunId or --prNumber",
       );
+
+/**
+ * For a command given both `--testRunId` and `--project`. The run already
+ * determines the project, so `--project` is redundant, but harmless as long
+ * as it names the run's own project; naming another one is a real mistake
+ * (the wrong run, or the wrong project), so it's rejected. Checked by the
+ * backend, which owns how a `--project` value resolves.
+ */
+export const assertTestRunInProjectOrThrow = async (
+  client: MeticulousClient,
+  testRunId: string,
+  project: string | undefined,
+): Promise<void> => {
+  if (project == null) {
+    return;
+  }
+  try {
+    await assertTestRunInProject(client, testRunId, project);
+  } catch (error) {
+    const body = errorResponseBody(error);
+    if (
+      body?.reason === TEST_RUN_PROJECT_MISMATCH_REASON &&
+      body.message != null
+    ) {
+      throw new CliUserError(body.message);
+    }
+    throw error;
+  }
+};
 
 /**
  * {@link resolveTestRunForCommitOrThrow} for a pull request's head commit,

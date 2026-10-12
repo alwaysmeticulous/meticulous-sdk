@@ -10,6 +10,7 @@ vi.mock("../../command-utils/sentry.utils", () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
+  assertTestRunInProjectOrThrow: vi.fn(),
   createClientWithOAuth: vi.fn(),
   resolveApiTokenWithOAuth: vi.fn(),
   getTestRun: vi.fn(),
@@ -44,6 +45,7 @@ vi.mock("@alwaysmeticulous/common", () => ({
 }));
 
 vi.mock("../../utils/resolve-test-run-from-commit", () => ({
+  assertTestRunInProjectOrThrow: mocks.assertTestRunInProjectOrThrow,
   ensureTestRunFinished: mocks.ensureTestRunFinished,
   assertTestRunComplete: mocks.assertTestRunComplete,
   isSessionPool: mocks.isSessionPool,
@@ -214,6 +216,33 @@ describe("test-run-diffs command polling", () => {
     expect(exitSpy).not.toHaveBeenCalled();
     const stdout = logSpy.mock.calls.flat().join("\n");
     expect(stdout.split("\n")[0]).toBe("replayDiffId\tscreenshotName");
+  });
+
+  it("checks --project against the run named by --testRunId before reading it", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [],
+    });
+
+    await runHandler({ project: "org/proj" });
+
+    expect(mocks.assertTestRunInProjectOrThrow).toHaveBeenCalledWith(
+      {},
+      "tr-1",
+      "org/proj",
+    );
+    expect(mocks.resolveTestRunOrThrow).not.toHaveBeenCalled();
+  });
+
+  it("stops when --project names another project than --testRunId's", async () => {
+    mocks.assertTestRunInProjectOrThrow.mockRejectedValueOnce(
+      new Error("Test run tr-1 belongs to project org/proj, not org/other."),
+    );
+
+    await expect(runHandler({ project: "other" })).rejects.toThrow(
+      "Test run tr-1 belongs to project org/proj, not org/other.",
+    );
+    expect(mocks.getTestRunDiffsSummary).not.toHaveBeenCalled();
   });
 
   it("requests and prints mismatchFraction only when opted in", async () => {

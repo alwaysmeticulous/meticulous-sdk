@@ -444,12 +444,18 @@ export const SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_PATH =
 export interface BeMockInstallRequest {
   /** Whose run this module belongs to; see {@link AGENT_SWARM_TESTING_RUN_ID_ENV_KEY}. */
   runId: string;
+  /**
+   * The routing key: the sidecar serves this module only to outbound calls whose
+   * inbound request carried this {@link FRONTEND_SESSION_ID_HEADER}, so parallel
+   * cases sharing one backend each get their own module.
+   */
+  frontendSessionId: string;
   /** The compiled, self-contained sandbox bundle to install. */
   code: string;
 }
 
 /**
- * Agent-swarm-testing route that reads the active be-mock's logs: the worker
+ * Agent-swarm-testing route that reads one installed be-mock's logs: the worker
  * fetches them when it assembles a test run's result, so the module's
  * `log(...)` lines — startup and `interceptRequest` debug lines alike —
  * reach the agent's run logs instead of dying in the sidecar's pod logs.
@@ -461,9 +467,26 @@ export const SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_LOGS_PATH =
 export interface BeMockLogsRequest {
   /** Whose run's module is being read; see {@link AGENT_SWARM_TESTING_RUN_ID_ENV_KEY}. */
   runId: string;
+  /** The module's routing key, as installed; see {@link BeMockInstallRequest}. */
+  frontendSessionId: string;
 }
 
-/** The active sandbox's collected logs since its install (this attempt's window). */
+/**
+ * Agent-swarm-testing route that stops one installed be-mock, so a finished
+ * attempt's sandbox process does not outlive it.
+ */
+export const SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_UNINSTALL_PATH =
+  "/v1/agent-swarm-testing/be-mock/uninstall";
+
+/** One be-mock uninstall, sent to {@link SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_UNINSTALL_PATH}. */
+export interface BeMockUninstallRequest {
+  /** Whose run's module is being stopped; see {@link AGENT_SWARM_TESTING_RUN_ID_ENV_KEY}. */
+  runId: string;
+  /** The module's routing key, as installed; see {@link BeMockInstallRequest}. */
+  frontendSessionId: string;
+}
+
+/** The module's collected logs since its install. */
 export interface BeMockLogsResponse {
   logs: string[];
 }

@@ -1,5 +1,11 @@
 # @alwaysmeticulous/replay-debugger-ui
 
+## 2.349.0
+
+### Patch Changes
+
+- [#15266](https://github.com/alwaysmeticulous/meticulous/pull/15266) [`19806a2`](https://github.com/alwaysmeticulous/meticulous/commit/19806a29bcb4d383cdf35e50d6d2282ecb90b0a8) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Bump next to 16.3.6 for GHSA-vcvr-r3jv-pc5j.
+
 ## 2.343.0
 
 ### Patch Changes

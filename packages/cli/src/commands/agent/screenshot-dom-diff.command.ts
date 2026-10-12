@@ -61,7 +61,7 @@ const handler = async ({
 export const domDiffCommand: CommandModule<unknown, Options> = {
   command: "dom-diff",
   describe:
-    "Get the DOM diff for a given screenshot diff. Outputs unified-diff-style text, one hunk per change.",
+    "Get the DOM diff for a given screenshot diff. Outputs unified-diff-style text, one hunk per change. A change to `<html>` or `<body>` themselves (which the snapshot leaves out) appears as a leading `<!-- root element <html ...> -->` comment line.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     replayDiffId: {

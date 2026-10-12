@@ -19,6 +19,7 @@ import { relayingBaseRunRejection } from "../../utils/base-run-rejection";
 import { CliUserError } from "../../utils/cli-user-error";
 import { pollWhileProcessing } from "../../utils/poll-while-processing";
 import {
+  assertTestRunInProjectOrThrow,
   assertTestRunComplete,
   ensureTestRunFinished,
   isSessionPool,
@@ -140,7 +141,10 @@ const handler = async ({
   let sessionPoolRun: boolean;
   if (testRunId != null) {
     resolvedTestRunId = testRunId;
-    const run = await getTestRun({ client, testRunId });
+    const [, run] = await Promise.all([
+      assertTestRunInProjectOrThrow(client, testRunId, project),
+      getTestRun({ client, testRunId }),
+    ]);
     status = run.status;
     // No eager/non-eager distinction here: a session-pool run has no diffs of
     // its own to list regardless of eagerness (see isBaseOrAnySessionPoolRun
@@ -369,8 +373,7 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     project: {
       string: true,
       description:
-        "The project to look up the commit or pull request in (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s). Cannot be combined with --testRunId, which already determines the project.",
-      conflicts: "testRunId",
+        "The project to look up the commit or pull request in (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s). With --testRunId it is optional, and must name the test run's own project.",
     },
     includeAllDiffs: {
       boolean: true,

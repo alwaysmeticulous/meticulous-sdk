@@ -18,6 +18,7 @@ vi.mock("../../../command-utils/sentry.utils", () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
+  assertTestRunInProjectOrThrow: vi.fn(),
   createClientWithOAuth: vi.fn(),
   approveCheck: vi.fn(),
   rejectCheck: vi.fn(),
@@ -39,6 +40,7 @@ vi.mock("@alwaysmeticulous/client", () => ({
   getCheckComments: mocks.getCheckComments,
 }));
 vi.mock("../../../utils/resolve-test-run-from-commit", () => ({
+  assertTestRunInProjectOrThrow: mocks.assertTestRunInProjectOrThrow,
   resolveTestRunForPullRequestOrThrow:
     mocks.resolveTestRunForPullRequestOrThrow,
 }));

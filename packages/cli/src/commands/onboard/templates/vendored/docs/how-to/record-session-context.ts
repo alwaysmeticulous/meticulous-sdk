@@ -99,7 +99,8 @@ for (const [name, value] of Object.entries(flags)) {
 
 Do **not** rely on that snapshot if you also call \`getFlagOverride\` in the resolver: the
 SDK will still report the recorded / stubbed value, not the forced one. Record inside the
-resolver instead.
+resolver instead — or, if your app applies overrides to the whole map at once with
+\`getAllFlagOverrides\`, record the merged map rather than the SDK snapshot.
 
 If your app uses **both** a client-side SDK *and* server-evaluated flags (whose resolved
 values reach the frontend via something like a \`features\` field on \`/me\`), it's worth

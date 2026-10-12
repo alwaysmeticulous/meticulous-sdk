@@ -15,8 +15,9 @@ You can either add the recorder to all environments or just internal non-product
 
 ## 1. Create and connect your project
 
-Sign up at [https://app.meticulous.ai/signup](https://app.meticulous.ai/signup). You will be prompted to create an organization and
-project. Connect the project to its GitHub, GitLab, or Bitbucket repository before installing the recorder.
+Sign in at [https://app.meticulous.ai](https://app.meticulous.ai) and create a project in your organization. If you're not part
+of an organization yet, ask a colleague to invite you, or [book a demo](https://www.meticulous.ai/book-a-demo) to set up an
+enterprise license. Connect the project to its GitHub, GitLab, or Bitbucket repository before installing the recorder.
 
 ## 2. Install the Meticulous recorder
 

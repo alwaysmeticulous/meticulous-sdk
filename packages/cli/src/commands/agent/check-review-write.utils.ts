@@ -6,7 +6,10 @@ import type {
 import { logNotice } from "@alwaysmeticulous/common";
 import { printJson } from "../../command-utils/print-json";
 import { CliUserError } from "../../utils/cli-user-error";
-import { resolveTestRunForPullRequestOrThrow } from "../../utils/resolve-test-run-from-commit";
+import {
+  assertTestRunInProjectOrThrow,
+  resolveTestRunForPullRequestOrThrow,
+} from "../../utils/resolve-test-run-from-commit";
 import { requireIdArgument } from "./argument-validation.utils";
 import { prNumberOption } from "./pr-number-option";
 
@@ -35,8 +38,7 @@ export const checkTargetOptions = {
   project: {
     string: true,
     description:
-      "The project to look up the pull request in (id, 'org/proj', or simply 'proj'), with --prNumber only. One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s).",
-    conflicts: "testRunId",
+      "The project to look up the pull request in (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s). With --testRunId it is optional, and must name the test run's own project.",
   },
   checkId: {
     string: true,
@@ -92,6 +94,7 @@ export const resolveCheckTarget = async (
   { testRunId, prNumber, project, checkId, checkType }: CheckTargetOptions,
 ): Promise<CheckTarget> => {
   if (testRunId != null) {
+    await assertTestRunInProjectOrThrow(client, testRunId, project);
     return { testRunId, checkId, checkType };
   }
   if (prNumber == null) {

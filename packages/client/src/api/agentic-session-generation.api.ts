@@ -567,14 +567,21 @@ export interface AgenticRunScreenshotComparison {
 /**
  * One checkpoint both sides of the reported run were compared at, whether or
  * not it differed. Side-by-side playback holds the two recordings together
- * at each of these.
+ * at each of these. Only one side carries a `screenshotPath`, head's unless
+ * the checkpoint is missing on head, so a viewer can show the checkpoint
+ * without the agent having reported it as a difference.
  */
 export interface AgenticRunComparisonCheckpoint {
   screenshotName: string;
   status: AgenticRunComparisonStatus;
-  base: Pick<AgenticRunComparisonSide, "sessionId" | "timestampMs">;
-  head: Pick<AgenticRunComparisonSide, "sessionId" | "timestampMs">;
+  base: AgenticRunComparisonCheckpointSide;
+  head: AgenticRunComparisonCheckpointSide;
 }
+
+export type AgenticRunComparisonCheckpointSide = Pick<
+  AgenticRunComparisonSide,
+  "sessionId" | "timestampMs" | "screenshotPath"
+>;
 
 export interface AgenticRunResultCase {
   /** Short human-readable name of the flow, unique within this run. */

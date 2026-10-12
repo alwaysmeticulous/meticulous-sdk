@@ -48,6 +48,9 @@ const override = window.Meticulous?.context?.getFlagOverride?.('myFlag');
 if (override?.overridden) {
   // Prefer override.value in your resolver, then record that same value
 }
+
+// Every override the current replay forces, keyed by flag name ({} outside a replay)
+const allOverrides = window.Meticulous?.context?.getAllFlagOverrides?.();
 \`\`\`
 
 ## Full API Reference

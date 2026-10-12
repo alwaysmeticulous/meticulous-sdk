@@ -94,6 +94,27 @@ Meticulous snippet isn't loaded.
 It also composes with the blanket default described below: check for an override first, then fall back to
 defaulting unrecognised flags to enabled, then record the value you return.
 
+#### Reading every override at once
+
+If your app resolves all of its flags in one place — a flag map built at startup, or a client initialised
+with a full set of values (such as LaunchDarkly's \`bootstrap\` option) — use \`getAllFlagOverrides\` instead
+of asking about each flag in turn. It returns every flag the current replay forces, keyed by flag name, so
+you can layer the overrides on top of your own values:
+
+\`\`\`typescript
+const flags = {
+  ...flagsFromYourBackend,
+  ...window.Meticulous?.context?.getAllFlagOverrides?.(),
+};
+for (const [name, value] of Object.entries(flags)) {
+  window.Meticulous?.context?.recordFeatureFlag?.(name, value);
+}
+\`\`\`
+
+The same consumption rules apply: an override for an on/off gate may be a string, so coerce it where your app
+expects a boolean. Flags missing from the returned object are not overridden. It returns \`{}\` for real users
+being recorded, so it is safe to leave in production code.
+
 ### Improving Test Coverage with New Feature Flags
 
 As mentioned above, sessions recorded with different flag values will keep those values on replay, and

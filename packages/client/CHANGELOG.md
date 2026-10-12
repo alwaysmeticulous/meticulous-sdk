@@ -1,5 +1,23 @@
 # @alwaysmeticulous/client
 
+## 2.349.0
+
+### Minor Changes
+
+- [#15143](https://github.com/alwaysmeticulous/meticulous/pull/15143) [`b635def`](https://github.com/alwaysmeticulous/meticulous/commit/b635def6c09009d768d38525b947623b13882e61) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent test-run-diffs`, `test-run-check`, `js-coverage`,
+  `js-coverage-diff` and the check review commands now accept `--project`
+  together with `--testRunId`, as long as it names the test run's own project;
+  a project the run doesn't belong to is rejected with an error naming both.
+  The client gains `assertTestRunInProject` for the same check.
+
+- [#15150](https://github.com/alwaysmeticulous/meticulous/pull/15150) [`84ae5d9`](https://github.com/alwaysmeticulous/meticulous/commit/84ae5d91d9752ed03a949b6c3aebf0bbf4b89e1f) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Agentic run comparison checkpoints may now carry a `screenshotPath` on one side, and the new `AgenticRunComparisonCheckpointSide` type is exported.
+
+### Patch Changes
+
+- Updated dependencies [[`3515977`](https://github.com/alwaysmeticulous/meticulous/commit/3515977aaada8422c8d2af5994d3a1e081b29c1c), [`77e92d4`](https://github.com/alwaysmeticulous/meticulous/commit/77e92d4e8cf06c95ab1f3698efacf7b63c69c1d6), [`b14673a`](https://github.com/alwaysmeticulous/meticulous/commit/b14673a12a8e73f00cdbe6c9f220287a9f4ab7bf)]:
+  - @alwaysmeticulous/api@2.349.0
+  - @alwaysmeticulous/common@2.347.0
+
 ## 2.348.0
 
 ### Minor Changes

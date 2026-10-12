@@ -342,8 +342,7 @@ export const jsCoverageDiffCommand: CommandModule<unknown, Options> = {
     project: {
       string: true,
       description:
-        "The project to look up the commit or pull request in (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the token's project or the OAuth user's configured default project.",
-      conflicts: ["testRunId"],
+        "The project to look up the commit or pull request in (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the token's project or the OAuth user's configured default project. With --testRunId it is optional, and must name the test run's own project.",
     },
     globFilter: {
       string: true,

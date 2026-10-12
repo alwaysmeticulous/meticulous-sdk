@@ -513,6 +513,18 @@ export interface MeticulousPublicContextApi {
   getFlagOverride(label: string): FeatureFlagOverride;
 
   /**
+   * Every feature flag value the current replay forces, keyed by flag label: the same overrides
+   * {@link getFlagOverride} serves one at a time. Useful when your flag client is initialised
+   * with a full set of values up front (e.g. LaunchDarkly `bootstrap`), rather than resolving
+   * flags one by one.
+   *
+   * The returned object is a copy, so mutating it has no effect on the replay. Flags absent from
+   * it are not overridden, and your application should evaluate them itself. Always returns `{}`
+   * outside of a replay, so it is safe to call from production code.
+   */
+  getAllFlagOverrides(): Record<string, string | boolean>;
+
+  /**
    * Call this method to record some custom context about the session. For instance, you could use
    * this to capture whether a user is opted into beta features, or what colour scheme they have
    * selected in your app. If this method is called multiple times with the same label, the value

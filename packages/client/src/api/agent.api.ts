@@ -1688,6 +1688,33 @@ export const getTestRunForPullRequest = async (
   return data;
 };
 
+/** The project a test run belongs to, once a caller-named project was checked against it. */
+export interface AgentTestRunProject {
+  projectId: string;
+  /** `org/project`. */
+  project: string;
+}
+
+/**
+ * Checks that `project` names the project `testRunId` belongs to, for a
+ * command given both. Rejects with HTTP 400 and reason `project-mismatch`
+ * (see {@link TEST_RUN_PROJECT_MISMATCH_REASON}) when it names another one.
+ */
+export const assertTestRunInProject = async (
+  client: MeticulousClient,
+  testRunId: string,
+  project: string,
+): Promise<AgentTestRunProject> => {
+  const { data } = await client
+    .get(`agent/test-runs/${testRunId}/project`, { params: { project } })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+export const TEST_RUN_PROJECT_MISMATCH_REASON = "project-mismatch";
+
 /**
  * Schedules the selected sessions a base run hasn't replayed yet, so its
  * coverage comes to describe its commit. Returns as soon as the work is

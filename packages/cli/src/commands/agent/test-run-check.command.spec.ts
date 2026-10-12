@@ -6,6 +6,7 @@ vi.mock("../../command-utils/sentry.utils", () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
+  assertTestRunInProjectOrThrow: vi.fn(),
   createClientWithOAuth: vi.fn(),
   getTestRun: vi.fn(),
   getTestRunCheckReport: vi.fn(),
@@ -37,6 +38,7 @@ vi.mock("../../command-utils/print-json", () => ({
 }));
 
 vi.mock("../../utils/resolve-test-run-from-commit", () => ({
+  assertTestRunInProjectOrThrow: mocks.assertTestRunInProjectOrThrow,
   ensureTestRunFinished: mocks.ensureTestRunFinished,
   assertTestRunComplete: mocks.assertTestRunComplete,
   isSessionPool: mocks.isSessionPool,

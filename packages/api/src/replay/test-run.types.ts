@@ -63,6 +63,13 @@ export const isPrAuthorRelevance = (
  *   no diff/result, so it likely failed there (NotRelevant).
  * - `new_relative_to_coverage_source`: absent from the coverage source
  *   entirely, so relevance is unknown and we run it (IsRelevant).
+ * - `flag_override_source_relevance`: a `_ff` session in the golden set with
+ *   no replay of its own in the coverage source took the coverage-derived
+ *   relevance of the session it was minted from.
+ * - `previous_pr_run_relevance`: no coverage-derived relevance, so instead of
+ *   `failed_in_coverage_source` / `new_relative_to_coverage_source` it stays
+ *   IsRelevant because the previous run on the same pull request executed it
+ *   as relevant.
  * - `refinement_blast_radius_union`: promoted by agentic RSE refinement's
  *   sampled wider-blast-radius union (IsRelevant).
  * - `pre_annotated`: carried an upstream `relevanceToPR` annotation that takes
@@ -91,6 +98,8 @@ export type SessionRelevanceReason =
   | "no_coverage_or_not_chosen"
   | "failed_in_coverage_source"
   | "new_relative_to_coverage_source"
+  | "flag_override_source_relevance"
+  | "previous_pr_run_relevance"
   | "refinement_blast_radius_union"
   | "pre_annotated"
   | "session_rule"

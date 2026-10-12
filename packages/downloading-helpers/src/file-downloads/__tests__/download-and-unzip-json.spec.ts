@@ -42,3 +42,41 @@ it("recovers when the download server is unavailable for several seconds", async
     });
   }
 }, 30_000);
+
+it("hands the unzipped bytes to parseJson instead of decoding them to a string", async () => {
+  const zip = new JSZip();
+  zip.file("coverage.json", JSON.stringify({ files: 3 }));
+  const archive = await zip.generateAsync({ type: "nodebuffer" });
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { "Content-Type": "application/gzip" });
+    response.end(archive);
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+
+  try {
+    const address = server.address();
+    if (address == null || typeof address === "string") {
+      throw new Error("Expected an HTTP server address");
+    }
+    const parsedBytes: Buffer[] = [];
+    await expect(
+      downloadAndUnzipJson(
+        `http://127.0.0.1:${address.port}/coverage.json.gz`,
+        {
+          parseJson: (json) => {
+            parsedBytes.push(json);
+            return "parsed";
+          },
+        },
+      ),
+    ).resolves.toEqual("parsed");
+    expect(parsedBytes.map((bytes) => bytes.toString("utf-8"))).toEqual([
+      JSON.stringify({ files: 3 }),
+    ]);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+      server.closeAllConnections();
+    });
+  }
+});

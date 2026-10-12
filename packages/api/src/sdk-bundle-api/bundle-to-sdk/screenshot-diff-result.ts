@@ -257,6 +257,20 @@ export interface ScreenshotDiffResultDifference extends ScreenshotDiffResultComp
    * Only present on replays since ~June 2025.
    */
   diffInBoundingBoxOfIgnoredElement?: boolean;
+
+  /**
+   * True when the DOM is identical (after noise removal) and every differing
+   * pixel lies inside an image drawn at a size other than its natural size,
+   * with the same source, natural size and box on both sides, and differs
+   * only slightly. Chromium resamples such images from whichever cached
+   * decode is available, which varies between replays of identical code, so
+   * a diff like this is very likely noise rather than a change.
+   *
+   * A label only: the outcome stays a diff. Absent when false, and on
+   * screenshots captured before images recorded their natural size
+   * (~Oct 2026).
+   */
+  onlyImageResamplingNoise?: true;
 }
 
 /**

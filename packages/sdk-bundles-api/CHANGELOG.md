@@ -1,5 +1,18 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.349.0
+
+### Minor Changes
+
+- [#15098](https://github.com/alwaysmeticulous/meticulous/pull/15098) [`3d41f55`](https://github.com/alwaysmeticulous/meticulous/commit/3d41f55c4b6ee30022d1eec85b85ca47ee7ffd56) Thanks [@narobertson42](https://github.com/narobertson42)! - `ExecuteScheduledTestRunChunkOptions` gains an optional `chunkDeadlineEpochMs`, so flake-check retries that wouldn't finish before the chunk is killed can be skipped.
+
+- [#15288](https://github.com/alwaysmeticulous/meticulous/pull/15288) [`de111ea`](https://github.com/alwaysmeticulous/meticulous/commit/de111ea13ecd5a5f91b6de39fa0e6c9068cdc971) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - Add `window.Meticulous.context.getAllFlagOverrides()`, which returns every feature flag value the current replay forces as a `{ [label]: value }` map — the same overrides `getFlagOverride` serves one flag at a time. It suits flag clients initialised with a full set of values up front, such as LaunchDarkly's `bootstrap`. It returns `{}` for real users being recorded, so it is safe to call from production code.
+
+### Patch Changes
+
+- Updated dependencies [[`3515977`](https://github.com/alwaysmeticulous/meticulous/commit/3515977aaada8422c8d2af5994d3a1e081b29c1c), [`77e92d4`](https://github.com/alwaysmeticulous/meticulous/commit/77e92d4e8cf06c95ab1f3698efacf7b63c69c1d6), [`b14673a`](https://github.com/alwaysmeticulous/meticulous/commit/b14673a12a8e73f00cdbe6c9f220287a9f4ab7bf)]:
+  - @alwaysmeticulous/api@2.349.0
+
 ## 2.348.0
 
 ### Patch Changes

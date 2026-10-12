@@ -1,6 +1,6 @@
 import axios from "axios";
 import axiosRetry, { exponentialDelay } from "axios-retry";
-import { unzipSingleEntryToJson } from "./unzip-single-entry";
+import { unzipSingleEntry, unzipSingleEntryToJson } from "./unzip-single-entry";
 
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 60_000;
 
@@ -16,7 +16,15 @@ const DEFAULT_DOWNLOAD_TIMEOUT_MS = 60_000;
  */
 export const downloadAndUnzipJson = async <T>(
   downloadUrl: string,
-  options?: { timeoutMs?: number },
+  options?: {
+    timeoutMs?: number;
+    /**
+     * Parses the unzipped bytes. Defaults to a UTF-8 decode + `JSON.parse`,
+     * which throws `ERR_STRING_TOO_LONG` once the JSON exceeds V8's ~512MiB
+     * string cap; pass a buffer-level parser for artifacts that can be that big.
+     */
+    parseJson?: (json: Buffer) => unknown;
+  },
 ): Promise<T> => {
   const client = axios.create();
   axiosRetry(client, {
@@ -32,12 +40,14 @@ export const downloadAndUnzipJson = async <T>(
     maxContentLength: Infinity,
   });
 
-  return unzipSingleEntryToJson<T>(
-    new Uint8Array(response.data),
-    // Not the URL itself: these are usually presigned, and the name ends up in
-    // error messages.
-    archiveNameFromUrl(downloadUrl),
-  );
+  // Not the URL itself: these are usually presigned, and the name ends up in
+  // error messages.
+  const archiveName = archiveNameFromUrl(downloadUrl);
+  const bytes = new Uint8Array(response.data);
+  if (options?.parseJson == null) {
+    return unzipSingleEntryToJson<T>(bytes, archiveName);
+  }
+  return options.parseJson(await unzipSingleEntry(bytes, archiveName)) as T;
 };
 
 const archiveNameFromUrl = (downloadUrl: string): string => {

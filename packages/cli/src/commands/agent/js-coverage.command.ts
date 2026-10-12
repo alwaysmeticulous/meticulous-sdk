@@ -28,6 +28,7 @@ import { formatCoverageRanges } from "../../utils/format-coverage-ranges";
 import { pollWhileProcessing } from "../../utils/poll-while-processing";
 import { appendProjectSelectionHint } from "../../utils/project-selection-hint";
 import {
+  assertTestRunInProjectOrThrow,
   isTestRunComplete,
   isTestRunPartial,
   resolveTestRunOrThrow,
@@ -297,6 +298,9 @@ const printReplayCoverage = async (
 ): Promise<void> => {
   // An explicit --commitSha or --prNumber selects the run client-side (the
   // endpoint only understands testRunId); --testRunId is passed through as-is.
+  if (testRunId != null) {
+    await assertTestRunInProjectOrThrow(client, testRunId, project);
+  }
   const effectiveTestRunId =
     testRunId ??
     (await resolveAnchorTestRunId(client, { commitSha, prNumber, project }));
@@ -590,8 +594,8 @@ export const jsCoverageCommand: CommandModule<unknown, Options> = {
     project: {
       string: true,
       description:
-        "The project to use for --latestForProject or commit or pull request lookup (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the token's project or the OAuth user's configured default project. Cannot be combined with --testRunId or --testRunIds, which already determine the project.",
-      conflicts: ["testRunId", "testRunIds"],
+        "The project to use for --latestForProject or commit or pull request lookup (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the token's project or the OAuth user's configured default project. With --testRunId it is optional, and must name the test run's own project. Cannot be combined with --testRunIds, which already determines the project.",
+      conflicts: ["testRunIds"],
     },
     replayId: {
       string: true,

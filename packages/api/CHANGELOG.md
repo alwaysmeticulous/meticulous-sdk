@@ -1,5 +1,21 @@
 # @alwaysmeticulous/api
 
+## 2.349.0
+
+### Patch Changes
+
+- [#14976](https://github.com/alwaysmeticulous/meticulous/pull/14976) [`3515977`](https://github.com/alwaysmeticulous/meticulous/commit/3515977aaada8422c8d2af5994d3a1e081b29c1c) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `onlyImageResamplingNoise` to `ScreenshotDiffResultDifference`: set when a diff is confined to images Chromium resampled, with an identical DOM, so it is very likely noise.
+
+- [#15253](https://github.com/alwaysmeticulous/meticulous/pull/15253) [`77e92d4`](https://github.com/alwaysmeticulous/meticulous/commit/77e92d4e8cf06c95ab1f3698efacf7b63c69c1d6) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - The co-author notice shown after `meticulous agent test-run-diffs` and
+  `get_test_run_diffs` no longer asks agents to add a `Co-authored-by` trailer
+  on Bitbucket, which doesn't support it. GitHub and GitLab are unchanged.
+
+- [#15041](https://github.com/alwaysmeticulous/meticulous/pull/15041) [`b14673a`](https://github.com/alwaysmeticulous/meticulous/commit/b14673a12a8e73f00cdbe6c9f220287a9f4ab7bf) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add two session relevance reasons: `flag_override_source_relevance` (a `_ff`
+  session in the golden set took the coverage-derived relevance of the session it
+  was minted from) and `previous_pr_run_relevance` (a test case with no
+  coverage-derived relevance stayed IsRelevant because the previous test run on
+  the same pull request executed it as relevant).
+
 ## 2.348.0
 
 ### Minor Changes
