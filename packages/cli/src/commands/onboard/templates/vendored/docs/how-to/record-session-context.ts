@@ -63,6 +63,17 @@ window.Meticulous?.context.recordFeatureFlag('bigUiRefactor', true);
 window.Meticulous?.context.recordFeatureFlag('checkoutFlowStyle', 'v3');
 \`\`\`
 
+If a flag's key isn't meaningful to the people reviewing test results (an opaque ID such as
+\`exp_4821\`, say), pass a human-readable label. Meticulous shows the label wherever it
+displays the flag; overrides and everything else still use the key. Flags without
+a label are shown by their key:
+
+\`\`\`js
+window.Meticulous?.context.recordFeatureFlag('exp_4821', true, {
+  label: 'New checkout flow',
+});
+\`\`\`
+
 Record the value your app **actually used** after any override. The usual place is the
 same helper that resolves the flag:
 

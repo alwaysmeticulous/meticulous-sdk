@@ -491,17 +491,37 @@ export type FeatureFlagOverride =
   | { overridden: false }
   | { overridden: true; value: string | boolean };
 
+export interface RecordFeatureFlagOptions {
+  /**
+   * Human-readable name to show for this flag in the Meticulous UI, e.g. `"New checkout flow"`
+   * for the key `"checkout-v3"`. Defaults to the flag's key. Meticulous still identifies the flag
+   * by its key everywhere else, including {@link MeticulousPublicContextApi.getFlagOverride}.
+   *
+   * Must be a non-empty string of at most 1000 characters. Otherwise the call records nothing and
+   * returns `{ success: false }`.
+   */
+  label?: string;
+}
+
 export interface MeticulousPublicContextApi {
   /**
    * Record the value of a feature flag that your application actually used. If this
-   * method is called multiple times with the same label, the value will be overwritten.
+   * method is called multiple times with the same key, the value (and label, if given) will be
+   * overwritten.
    *
    * If you also call {@link getFlagOverride} in the same resolver, record the value you
    * returned after applying the override — not a later snapshot from your flag SDK.
+   *
+   * ```js
+   * window.Meticulous?.context?.recordFeatureFlag?.("checkout-v3", true, {
+   *   label: "New checkout flow",
+   * });
+   * ```
    */
   recordFeatureFlag(
-    label: string,
+    key: string,
     value: string | boolean,
+    options?: RecordFeatureFlagOptions,
   ): { success: boolean };
 
   /**

@@ -1,5 +1,11 @@
 # @alwaysmeticulous/cli
 
+## 3.0.0
+
+### Patch Changes
+
+- [#15398](https://github.com/alwaysmeticulous/meticulous/pull/15398) [`71d4450`](https://github.com/alwaysmeticulous/meticulous/commit/71d4450cbeafe1d4dd0dc7382a0328aeac947220) Thanks [@narobertson42](https://github.com/narobertson42)! - Document reading forced feature flags from the `meticulous_flag_overrides` cookie on your server in the bundled "Testing Feature Flags" guide.
+
 ## 2.350.0
 
 ### Minor Changes

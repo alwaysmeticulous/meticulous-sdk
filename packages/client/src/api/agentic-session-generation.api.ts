@@ -1244,6 +1244,8 @@ export const getAgenticRunCoverage = async ({
 };
 
 export interface SearchRecordedRequestsParams extends ProjectIdentifier {
+  source?: "browser" | "backend";
+
   method: string;
   /**
    * Absolute URL of the request to look for. Only its path reaches the fuzzy
@@ -1280,6 +1282,8 @@ export interface RecordedRequestMatch {
   hash: string;
   /** True when only a one-segment wildcard shape matched. */
   nearMatch?: boolean;
+  inferred?: boolean;
+
   /** Full stored document size, including request and response bodies. */
   size: number;
   /** Null when the document exceeds the broad-search detail-read limit. */

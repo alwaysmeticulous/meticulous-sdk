@@ -1,4 +1,6 @@
 import {
+  ADDITIONAL_GUIDES,
+  FLAG_OVERRIDE_COOKIE_ANCHOR,
   FLAG_OVERRIDE_TROUBLESHOOTING_ANCHOR,
   METICULOUS_WINDOW_OBJECT_URL,
   NETWORK_STUBBING_EXPLANATION_URL,
@@ -52,8 +54,12 @@ How it works:
    evaluation, and keeps reporting the value it actually used with \`recordFeatureFlag\`. Real users being recorded never
    receive a forced value.
 
-Your app receives forced values through the [JavaScript API](#using-the-javascript-api). Meticulous starts forcing flags
-for your project once it sees your app call \`getFlagOverride\` during a replay.
+Your app receives forced values through:
+
+- **The [JavaScript API](#using-the-javascript-api)**, for flags your browser code resolves. Meticulous starts forcing
+  flags for your project once it sees your app call \`getFlagOverride\` during a replay.
+- **[A cookie your server reads](#${FLAG_OVERRIDE_COOKIE_ANCHOR})**, for flags your server resolves, for example while
+  rendering a page. Meticulous starts forcing flags once the Meticulous team enables cookie delivery for your project.
 
 ### Using the JavaScript API {% #using-the-javascript-api %}
 
@@ -121,6 +127,36 @@ for (const [name, value] of Object.entries(flags)) {
 The same consumption rules apply: an override for an on/off gate may be a string, so coerce it where your app expects a
 boolean. Flags missing from the returned object are not overridden. It returns \`{}\` for real users being recorded, so
 it is safe to leave in production code.
+
+### Reading overrides from a cookie on your server {% #${FLAG_OVERRIDE_COOKIE_ANCHOR} %}
+
+If your server resolves flags while rendering a page, it can read forced values from the
+\`meticulous_flag_overrides\` cookie instead of your app calling \`getFlagOverride\`.
+
+**Turning it on.** While we roll this out, the Meticulous team enables cookie delivery per project, so contact us to turn
+it on. Meticulous can see your app calling \`getFlagOverride\`, but it can't see your server reading a cookie, so it only
+forces flags for an app that relies on the cookie once cookie delivery is on. If your app already reads overrides from a
+cookie of its own in the format below, we can send that cookie name instead, and you won't need to change any code.
+
+Once it's on, every replay that forces at least one flag sets the cookie before the first page load, so it is sent on the
+very first document request and on every request after that. Its value is URL-encoded JSON in the same shape as
+\`getAllFlagOverrides\`, for example \`{"new-checkout":true,"pricing-test":"treatment-b"}\`:
+
+\`\`\`typescript
+const overridesCookie = request.cookies["meticulous_flag_overrides"];
+const overrides = overridesCookie
+  ? JSON.parse(decodeURIComponent(overridesCookie))
+  : {};
+const flags = { ...resolveFlagsForUser(user), ...overrides };
+\`\`\`
+
+The cookie is not \`httpOnly\`, so your browser code can read it too. The same consumption rules apply as for the
+JavaScript API. Your app must still **record** the values it actually used with \`recordFeatureFlag\`, for example by
+recording the flag values your server sends to the browser. Requests your frontend makes with \`fetch\` or
+\`XMLHttpRequest\` are normally answered from the recording during a replay, so the cookie only changes what your server
+sends for requests that actually reach it, such as page loads. With
+[backend testing](${ADDITIONAL_GUIDES.GETTING_STARTED_BACKEND_TESTING_URL}), your app's own API requests reach your server
+too, so it applies the cookie there as well.
 
 ## Defaulting new flags to on {% #defaulting-new-flags-to-on %}
 
@@ -204,8 +240,8 @@ value you return. See [Using the JavaScript API](#using-the-javascript-api).
 ## Troubleshooting {% #${FLAG_OVERRIDE_TROUBLESHOOTING_ANCHOR} %}
 
 **No forced replays appear on pull requests that change a flag.** Meticulous only forces flags once it has seen your app
-call \`getFlagOverride\` during a replay, and only for flags your app reports with \`recordFeatureFlag\`. Check that the
-helper your code uses calls both.
+call \`getFlagOverride\` during a replay, or once cookie delivery is on for your project, and only for flags your app
+reports with \`recordFeatureFlag\`. Check that the helper your code uses does both.
 
 **A forced flag didn't change what the replay rendered.**
 
@@ -216,7 +252,7 @@ helper your code uses calls both.
   \`Boolean()\` wrapped around a variant, quietly picks the wrong branch. See
   [Matching the override to your helper](#matching-the-override-to-your-helper).
 - **The flag is evaluated only on your server.** The JavaScript API runs in the browser, so a flag your server resolves
-  while rendering a page doesn't see it.
+  while rendering a page doesn't see it. Read the [cookie](#${FLAG_OVERRIDE_COOKIE_ANCHOR}) on your server instead.
 - **The code behind the flag has no visible effect in that session.** A forced flag can only change screenshots on pages
   the recorded session actually visits.
 

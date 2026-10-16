@@ -367,9 +367,38 @@ export type CustomData = {
   events?: CustomUserEvent[];
 };
 
+/** One feature flag as recorded by `recordFeatureFlag`. */
+export interface RecordedFeatureFlag {
+  value: string | boolean;
+  /** Human-readable name shown in the Meticulous UI in place of the key. */
+  label?: string;
+}
+
+/**
+ * How {@link SessionContext.featureFlags} stored a flag before it could carry
+ * a label: the bare value. Only sessions and replays recorded before then
+ * contain it; remove it, and the code that handles it, once those have aged
+ * out of retention.
+ */
+export type LegacyRecordedFeatureFlag = string | boolean;
+
+/** Marks {@link SessionContext.featureFlags} as holding {@link RecordedFeatureFlag} entries. */
+export const FEATURE_FLAGS_SCHEMA_VERSION = "1.0";
+
 export type SessionContext = {
   customContext: Record<string, string | boolean>;
-  featureFlags: Record<string, string | boolean>;
+  /**
+   * {@link FEATURE_FLAGS_SCHEMA_VERSION} when every entry of `featureFlags` is
+   * a {@link RecordedFeatureFlag}. Without it, every entry is a
+   * {@link LegacyRecordedFeatureFlag}, even one that looks like an object.
+   */
+  featureFlagsSchemaVersion?: typeof FEATURE_FLAGS_SCHEMA_VERSION;
+  /**
+   * Keyed by flag key. Internal code reads this through
+   * `readRecordedFeatureFlags` (`@alwaysmeticulous/replay-data-api`), which
+   * also handles {@link LegacyRecordedFeatureFlag} entries.
+   */
+  featureFlags: Record<string, RecordedFeatureFlag | LegacyRecordedFeatureFlag>;
   userId?: string;
   userEmail?: string;
 };

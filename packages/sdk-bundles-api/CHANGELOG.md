@@ -1,5 +1,18 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 3.0.0
+
+### Minor Changes
+
+- [#15251](https://github.com/alwaysmeticulous/meticulous/pull/15251) [`20e99dd`](https://github.com/alwaysmeticulous/meticulous/commit/20e99dd0be44d777b6fd3325f8fca4155dd64d61) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - `window.Meticulous.context.recordFeatureFlag` accepts an optional third argument, `{ label }`, a human-readable name that the Meticulous UI shows in place of the flag's key. Existing two-argument calls are unchanged.
+
+  `SessionContext.featureFlags` now stores each flag as a `RecordedFeatureFlag` (`{ value, label? }`), and `SessionContext.featureFlagsSchemaVersion` is set to `FEATURE_FLAGS_SCHEMA_VERSION` (`"1.0"`) to say so. Sessions recorded earlier have no version and store the bare value (`LegacyRecordedFeatureFlag`), so the map's type allows both; read every entry of an unversioned context as a bare value.
+
+### Patch Changes
+
+- Updated dependencies [[`20e99dd`](https://github.com/alwaysmeticulous/meticulous/commit/20e99dd0be44d777b6fd3325f8fca4155dd64d61)]:
+  - @alwaysmeticulous/api@3.0.0
+
 ## 2.350.0
 
 ### Minor Changes

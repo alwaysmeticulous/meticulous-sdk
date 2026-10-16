@@ -58,6 +58,7 @@ export {
   MeticulousPublicApi,
   MeticulousPublicAgentSwarmReplayApi,
   FeatureFlagOverride,
+  RecordFeatureFlagOptions,
   MeticulousPressureObserver,
   MeticulousPressureObserverConstructor,
   MeticulousPressureRecord,

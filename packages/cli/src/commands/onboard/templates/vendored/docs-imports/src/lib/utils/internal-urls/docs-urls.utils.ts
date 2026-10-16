@@ -66,6 +66,10 @@ export const TESTING_MULTIPLE_APPS_URL =
 
 export const TESTING_FEATURE_FLAGS = "/docs/how-to/testing-feature-flags";
 
+export const FLAG_OVERRIDE_COOKIE_ANCHOR = "flag-override-cookie";
+
+export const FLAG_OVERRIDE_COOKIE_DOCS_URL = `${TESTING_FEATURE_FLAGS}#${FLAG_OVERRIDE_COOKIE_ANCHOR}`;
+
 export const FLAG_OVERRIDE_TROUBLESHOOTING_ANCHOR =
   "flag-override-troubleshooting";
 

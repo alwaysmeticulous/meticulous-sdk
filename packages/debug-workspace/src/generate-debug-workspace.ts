@@ -2414,7 +2414,13 @@ interface SessionDataJson {
   webSocketData?: Array<{ url?: string; events?: unknown[] }>;
   context?: {
     customContext?: Record<string, string | boolean>;
-    featureFlags?: Record<string, string | boolean>;
+    /** `FEATURE_FLAGS_SCHEMA_VERSION` from `@alwaysmeticulous/api`. */
+    featureFlagsSchemaVersion?: "1.0";
+    /** Bare values unless `featureFlagsSchemaVersion` is set. */
+    featureFlags?: Record<
+      string,
+      string | boolean | { value: string | boolean; label?: string }
+    >;
     userId?: string;
     userEmail?: string;
   };
@@ -2572,7 +2578,7 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
     const flags = Object.entries(ctx.featureFlags ?? {});
     if (flags.length > 0) {
       parts.push(
-        `  Feature flags: ${flags.map(([k, v]) => `${k}=${v}`).join(", ")}`,
+        `  Feature flags: ${flags.map(([k, v]) => `${k}=${formatRecordedFlagValue(v, ctx.featureFlagsSchemaVersion)}`).join(", ")}`,
       );
     }
     parts.push("");
@@ -2676,4 +2682,17 @@ const defaultWriteContextJson = (
     join(workspaceDir, DEBUG_DATA_DIRECTORY, "context.json"),
     JSON.stringify(context, null, 2),
   );
+};
+
+const formatRecordedFlagValue = (
+  entry: unknown,
+  schemaVersion: string | undefined,
+): string => {
+  if (typeof entry !== "object" || entry === null) {
+    return String(entry);
+  }
+  if (schemaVersion === "1.0" && "value" in entry) {
+    return String(entry.value);
+  }
+  return JSON.stringify(entry);
 };
