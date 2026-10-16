@@ -200,12 +200,6 @@ const printTestRunDiffRows = (
     }
   }
 
-  const { delta } = result;
-  logNotice(
-    `${delta.files} files with coverage changes ` +
-      `(${delta.filesAdded} added, ${delta.filesRemoved} removed, ${delta.filesModified} modified); ` +
-      `${delta.uniqueLinesAdded} lines newly covered, ${delta.regressedLines} no longer covered`,
-  );
   logResponseNotes(result);
 };
 
@@ -268,19 +262,6 @@ const printReplayDiffCoverageDiff = async (
     return;
   }
 
-  // Counted over the whole diff by the backend, so the summary stays truthful
-  // when these rows are one page of it. An older backend doesn't send them,
-  // and doesn't page either, so the rows are then the whole diff.
-  const totalFiles = result.totalFiles ?? result.diff.length;
-  const added =
-    result.filesAdded ?? result.diff.filter((d) => d.status === "added").length;
-  const removed =
-    result.filesRemoved ??
-    result.diff.filter((d) => d.status === "removed").length;
-  const modified =
-    result.filesModified ??
-    result.diff.filter((d) => d.status === "modified").length;
-
   if (json) {
     printJson(
       result.diff.map((d) => ({
@@ -304,11 +285,6 @@ const printReplayDiffCoverageDiff = async (
     }
   }
 
-  // Summary on stderr regardless of --json (which only changes stdout).
-  logNotice(
-    `${totalFiles} files with coverage changes ` +
-      `(${added} added, ${removed} removed, ${modified} modified)`,
-  );
   logResponseNotes(result);
 };
 

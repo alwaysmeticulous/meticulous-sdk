@@ -22,6 +22,7 @@ import {
   SCREENSHOT_DIFF_OPTIONS,
 } from "../command-utils/common-options";
 import { parseContainerEnv } from "../command-utils/parse-container-env";
+import { parseFlagOverrides } from "../command-utils/parse-flag-overrides";
 import { wrapHandler } from "../command-utils/sentry.utils";
 import {
   isOutOfDateClientError,
@@ -52,6 +53,7 @@ interface Options
   networkDebuggingRequestTypes: string[] | undefined;
   networkDebuggingWebsocketUrlRegexes: string[] | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
+  flagOverrides?: Record<string, string | boolean> | undefined;
   dryRun?: boolean;
 }
 
@@ -90,6 +92,7 @@ const handler = async ({
   enableCssCoverage,
   enablePerScreenshotCoverage,
   containerEnv,
+  flagOverrides,
   dryRun,
 }: Options): Promise<void> => {
   if (!takeSnapshots && storyboard) {
@@ -220,6 +223,9 @@ const handler = async ({
       suppressScreenshotDiffLogging: false,
       disableAssetCache: false,
       sessionIdForApplicationStorage: sessionIdForApplicationStorage ?? null,
+      ...(flagOverrides != null
+        ? { customerFeatureFlagOverrides: flagOverrides }
+        : {}),
       ...(enableStepThroughDebugger
         ? {
             onBeforeUserEvent: async (options) =>
@@ -357,6 +363,12 @@ export const replayCommand: CommandModule<unknown, Options> = {
       coerce: parseContainerEnv,
       description:
         "Extra environment variables to set in the app container when replaying against an uploaded-container:// app URL (repeatable, name=value). These override env vars registered with the container upload.",
+    },
+    flagOverrides: {
+      string: true,
+      coerce: parseFlagOverrides,
+      description:
+        'Feature flag values to force during the simulation, as a JSON object of flag name to string or boolean (e.g. \'{"my_flag": true, "my_experiment": "treatment"}\'). Served to your app through window.Meticulous.context.getFlagOverride and getAllFlagOverrides.',
     },
     ...COMMON_REPLAY_OPTIONS,
     ...SCREENSHOT_DIFF_OPTIONS,

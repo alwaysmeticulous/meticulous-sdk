@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/browser-installer",
-  "version": "2.347.0",
+  "version": "2.350.0",
   "description": "Installs the Chrome for Testing build that Meticulous runs replays and recordings in",
   "license": "ISC",
   "main": "dist/index.js",
@@ -19,10 +19,10 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@puppeteer/browsers": "3.2.2",
+    "@puppeteer/browsers": "3.2.3",
     "chalk": "^4.1.2",
     "proxy-agent": "^6.5.0",
-    "puppeteer-core": "25.10.0",
+    "puppeteer-core": "25.12.0",
     "yauzl": "^3.4.0"
   },
   "devDependencies": {

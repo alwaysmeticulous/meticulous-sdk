@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir } from "fs/promises";
+import { mkdir } from "fs/promises";
 import { dirname, join } from "path";
 import type { MeticulousClient } from "@alwaysmeticulous/client";
 import { getReplay, getReplayV3DownloadUrls } from "@alwaysmeticulous/client";
@@ -12,7 +12,10 @@ import {
   downloadFile,
 } from "../file-downloads/download-file";
 import {
-  fileExists,
+  readDownloadedScopes,
+  recordDownloadedScope,
+} from "../file-downloads/downloaded-scopes.utils";
+import {
   getOrDownloadJsonFile,
   waitToAcquireLockOnDirectory,
 } from "../file-downloads/local-data.utils";
@@ -80,9 +83,8 @@ export const getOrFetchReplay = async (
  * - `screenshots-only`: Download only the screenshots.
  * - `timeline-only`: Download only the timeline data.
  * - `post-test-run-processing-files-only`: Download only the files that are needed for post-test-run processing
- * - `post-process-including-unmapped-ranges`: Download everything needed for post-process including unmapped ranges.
- * - `post-process-including-css-coverage`: Same as post-process-including-unmapped-ranges, plus
- *   the replay's mapped CSS coverage and — for replays that did not map their own — the raw CSS
+ * - `post-process-including-css-coverage`: Same as post-test-run-processing-files-only, plus the
+ *   replay's raw JS coverage, the replay's mapped CSS coverage and — for replays that did not map their own — the raw CSS
  *   coverage, whose baked-in stylesheet text — where the artifact still carries any — is all
  *   post-processing can map from. Deliberately excludes snapshotted assets: a coverage entry
  *   whose text could not be read is dropped before it can carry ranges, so the snapshotted
@@ -95,7 +97,6 @@ const DOWNLOAD_SCOPES = [
   "screenshots-only",
   "timeline-only",
   "post-test-run-processing-files-only",
-  "post-process-including-unmapped-ranges",
   "post-process-including-css-coverage",
 ] as const;
 
@@ -107,8 +108,6 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<DownloadScope, RegExp> = {
   "timeline-only": /^timeline/,
   "post-test-run-processing-files-only":
     /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage)/,
-  "post-process-including-unmapped-ranges":
-    /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage|rawCoverage)/,
   "post-process-including-css-coverage":
     /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage|rawCoverage|cssCoverage|mappedCssCoverage)/,
 };
@@ -119,8 +118,6 @@ const shouldDownloadFile = (
 ): boolean => {
   return DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD[downloadScope].test(fileType);
 };
-
-const REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME = "previously-downloaded.txt";
 
 /**
  * Known file-type keys returned by the v3 download-urls endpoint. The server
@@ -173,9 +170,10 @@ export interface ReplayArchiveOptions {
    * `diffs`). Useful when the caller knows it will not need certain artifacts
    * and wants to avoid the bandwidth/time cost of fetching them.
    *
-   * When set, the cross-tool replay cache is bypassed: the cache short-circuit
-   * is skipped and the `previously-downloaded.txt` marker is not written, so
-   * subsequent unfiltered callers will re-download into the cache.
+   * A directory an earlier download already completed for this scope (or
+   * `everything`) is returned as is, so it may still hold excluded files.
+   * Otherwise the excluded files are skipped, and the scope is not recorded as
+   * downloaded, so later unfiltered callers still fetch them.
    */
   excludeFileTypes?: ReadonlySet<ReplayFileType>;
 
@@ -190,9 +188,11 @@ export interface ReplayArchiveOptions {
    * (see {@link BestEffortFileType}); other file types always fail hard, which
    * is why the key type is restricted to that subset.
    *
-   * Like `excludeFileTypes`, setting this bypasses the cross-tool cache (the
-   * marker is not written), since a swallowed failure may leave the replay
-   * directory incomplete.
+   * Like `excludeFileTypes`, setting this keeps the scope from being recorded
+   * as downloaded, since a swallowed failure may leave the replay directory
+   * incomplete. A directory an earlier download already completed is still
+   * returned as is: that download fetched these files as mandatory, so any it
+   * lacks were not available.
    */
   bestEffortFileTypes?: ReadonlySet<BestEffortFileType>;
 }
@@ -201,7 +201,6 @@ export const getOrFetchReplayArchive = async (
   client: MeticulousClient,
   replayId: string,
   downloadScope: DownloadScope = "everything",
-  formatJsonFiles: boolean = false,
   options: ReplayArchiveOptions = {},
 ): Promise<{ fileName: string }> => {
   const logger = initLogger();
@@ -210,55 +209,36 @@ export const getOrFetchReplayArchive = async (
   const hasBestEffort =
     bestEffortFileTypes != null && bestEffortFileTypes.size > 0;
   // A best-effort artifact may fail and leave the directory incomplete, so —
-  // like `excludeFileTypes` — bypass the cache short-circuit and don't write
-  // the "fully downloaded" marker.
+  // like `excludeFileTypes` — don't record the scope as downloaded.
   const bypassCache = hasExcludes || hasBestEffort;
+  // Widen to `ReadonlySet<string>`: `ReplayFileType` is for caller-side typo
+  // safety, but internally we check against arbitrary keys returned by the
+  // server.
+  const excluded: ReadonlySet<string> = excludeFileTypes ?? new Set();
 
   const replayDir = getReplayDir(replayId);
   await mkdir(replayDir, { recursive: true });
   const releaseLock = await waitToAcquireLockOnDirectory(replayDir);
 
   try {
-    const previouslyDownloadedFile = join(
+    // Only fetch what earlier downloads into this directory did not cover: a
+    // concurrent process might be reading those files, so we must not
+    // overwrite them.
+    const previousScopes = await readDownloadedScopes(
       replayDir,
-      REPLAY_PREVIOUSLY_DOWNLOADED_FILE_NAME,
+      DOWNLOAD_SCOPES,
     );
-
-    // Check what we have already downloaded. This is passed to the downloading function
-    // to avoid downloading the same thing twice. This is particularly important because
-    // a concurrent process might be using the previously downloaded data, so we don't
-    // want to overwrite it while it's being read.
-    //
-    // When `excludeFileTypes` is set we skip the cache short-circuit so that callers
-    // always get a fresh fetch with the requested exclusions applied.
-    let previouslyDownloadedScope: DownloadScope | undefined = undefined;
-    if (await fileExists(previouslyDownloadedFile)) {
-      const fileContents = (
-        await readFile(previouslyDownloadedFile, "utf-8")
-      ).trim();
-      if (DOWNLOAD_SCOPES.includes(fileContents as DownloadScope)) {
-        previouslyDownloadedScope = fileContents as DownloadScope;
-        if (
-          !bypassCache &&
-          (previouslyDownloadedScope === downloadScope ||
-            previouslyDownloadedScope === "everything")
-        ) {
-          logger.debug(`Replay archive already downloaded at ${replayDir}`);
-          return { fileName: replayDir };
-        } else if (!bypassCache) {
-          // Instead of trying to reason about how to combine the two scopes, let's bump
-          // to downloading everything which is guaranteed to be a superset.
-          logger.debug(
-            `Replay archive is partially downloaded at ${replayDir}, will now download everything`,
-          );
-          downloadScope = "everything";
-        }
-      } else {
-        throw new Error(
-          `Error: Unknown previously download scope "${fileContents}"`,
-        );
-      }
+    if (
+      previousScopes.includes(downloadScope) ||
+      previousScopes.includes("everything")
+    ) {
+      logger.debug(`Replay archive already downloaded at ${replayDir}`);
+      return { fileName: replayDir };
     }
+    const includes = (fileType: string): boolean =>
+      shouldDownloadFile(fileType, downloadScope) &&
+      !excluded.has(fileType) &&
+      !previousScopes.some((scope) => shouldDownloadFile(fileType, scope));
 
     const replay = await getReplay(client, replayId);
 
@@ -268,18 +248,7 @@ export const getOrFetchReplayArchive = async (
         client,
         replayId,
         replayDir,
-        downloadScope,
-        formatJsonFiles,
-        previouslyDownloadedScope,
-        // Avoid requesting presigned URLs for sections the scope won't use.
-        // Screenshots and diffs can each have hundreds of entries, making the
-        // response payload large; skipping them keeps the request lightweight.
-        shouldDownloadFile("screenshots", downloadScope),
-        shouldDownloadFile("diffs", downloadScope),
-        // Widen to `ReadonlySet<string>` at the boundary: `ReplayFileType` is
-        // for caller-side typo safety, but internally we check against
-        // arbitrary keys returned by the server.
-        excludeFileTypes as ReadonlySet<string> | undefined,
+        includes,
         bestEffortFileTypes as ReadonlySet<string> | undefined,
       );
     } else {
@@ -293,7 +262,7 @@ export const getOrFetchReplayArchive = async (
     // unfiltered callers even though a swallowed best-effort failure (or an
     // exclusion) may have left it incomplete.
     if (!bypassCache && hasNormalArtifacts) {
-      await writeFile(previouslyDownloadedFile, downloadScope, "utf-8");
+      await recordDownloadedScope(replayDir, previousScopes, downloadScope);
     }
     logger.debug(`Extracted replay archive in ${replayDir}`);
     return { fileName: replayDir };
@@ -306,23 +275,17 @@ const downloadReplayV3Files = async (
   client: MeticulousClient,
   replayId: string,
   replayDir: string,
-  downloadScope: DownloadScope,
-  formatJsonFiles: boolean,
-  previouslyDownloadedScope: DownloadScope | undefined,
-  includeScreenshots: boolean,
-  includeDiffs: boolean,
-  excludeFileTypes: ReadonlySet<string> | undefined,
+  includes: (fileType: string) => boolean,
   bestEffortFileTypes: ReadonlySet<string> | undefined,
 ) => {
   const logger = initLogger();
 
-  const includes = (fileType: string): boolean =>
-    shouldDownloadFile(fileType, downloadScope) &&
-    !(excludeFileTypes?.has(fileType) ?? false);
-
   const downloadUrls = await getReplayV3DownloadUrls(client, replayId, {
-    includeScreenshots,
-    includeDiffs,
+    // Avoid requesting presigned URLs for sections this download won't use.
+    // Screenshots and diffs can each have hundreds of entries, making the
+    // response payload large; skipping them keeps the request lightweight.
+    includeScreenshots: includes("screenshots"),
+    includeDiffs: includes("diffs"),
     // Costs the server an S3 existence check, so only ask when this download
     // would actually keep the file.
     includeAppContainerLogs: includes("appContainerLogs"),
@@ -407,11 +370,6 @@ const downloadReplayV3Files = async (
       const filePath = join(replayDir, fileType);
       return async () => {
         await downloadAndExtractFile(data.signedUrl, filePath, replayDir);
-        if (formatJsonFiles && filePath.endsWith(".json")) {
-          const fileContents = await readFile(filePath, "utf-8");
-          const json = JSON.parse(fileContents);
-          await writeFile(filePath, JSON.stringify(json, null, 2), "utf-8");
-        }
       };
     });
 
@@ -419,33 +377,29 @@ const downloadReplayV3Files = async (
     await mkdir(join(replayDir, "screenshots"), { recursive: true });
   }
 
-  // If `previouslyDownloadedScope === "screenshots-only"` we trust that the
-  // screenshots are already on disk from a prior unfiltered download (the
-  // marker is only ever written after an unfiltered run) and skip re-download.
-  // Safe even when `excludeFileTypes` is set: we're leaving existing files in
-  // place, not re-using stale data.
-  const screenshotPromises: (() => Promise<string[] | void>)[] =
-    !includes("screenshots") || previouslyDownloadedScope === "screenshots-only"
-      ? []
-      : Object.values(screenshots).flatMap((data) => {
-          const imageFilePath = join(replayDir, data.image.filePath);
-          const metadata = data.metadata;
-          if (metadata?.filePath == null) {
-            return [() => downloadFile(data.image.signedUrl, imageFilePath)];
-          }
+  const screenshotPromises: (() => Promise<string[] | void>)[] = !includes(
+    "screenshots",
+  )
+    ? []
+    : Object.values(screenshots).flatMap((data) => {
+        const imageFilePath = join(replayDir, data.image.filePath);
+        const metadata = data.metadata;
+        if (metadata?.filePath == null) {
+          return [() => downloadFile(data.image.signedUrl, imageFilePath)];
+        }
 
-          const metadataFilePath = join(replayDir, metadata.filePath);
-          return [
-            () => downloadFile(data.image.signedUrl, imageFilePath),
-            async () => {
-              await downloadAndExtractFile(
-                metadata.signedUrl,
-                metadataFilePath,
-                join(replayDir, dirname(metadata.filePath)),
-              );
-            },
-          ];
-        });
+        const metadataFilePath = join(replayDir, metadata.filePath);
+        return [
+          () => downloadFile(data.image.signedUrl, imageFilePath),
+          async () => {
+            await downloadAndExtractFile(
+              metadata.signedUrl,
+              metadataFilePath,
+              join(replayDir, dirname(metadata.filePath)),
+            );
+          },
+        ];
+      });
 
   const diffsFolder = join(replayDir, "diffs");
   if (includes("diffs")) {

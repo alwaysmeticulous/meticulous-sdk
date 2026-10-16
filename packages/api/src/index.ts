@@ -58,6 +58,7 @@ export {
   TestCaseResult,
   TestCaseResultStatus,
   AppContainerLogsLocations,
+  TestRunData,
   TestRunDataLocations,
   TestRun,
   isNonEagerSessionPool,

@@ -2,7 +2,7 @@ import type {
   ExecuteSecureTunnelTestRunOptions as ExecuteSecureTunnelTestRunPayload,
   ExecuteSecureTunnelTestRunResponse,
   TestRun,
-  TestRunDataLocations,
+  TestRunData,
   TestRunNetworkPatchingResult,
 } from "@alwaysmeticulous/api";
 import { isFetchError, maybeEnrichFetchError } from "../errors";
@@ -120,17 +120,26 @@ export const getTestRunData: (options: {
   client: MeticulousClient;
   testRunId: string;
   includeAppContainerLogs?: boolean;
-}) => Promise<TestRunDataLocations> = async ({
+  /**
+   * Only with `testRunId: "latest"`: the project (id, 'org/proj', or simply
+   * 'proj') whose latest main-branch test run to use. Defaults to the OAuth
+   * user's configured default project or the API token's own project.
+   */
+  project?: string | undefined;
+}) => Promise<TestRunData> = async ({
   client,
   testRunId,
   includeAppContainerLogs,
+  project,
 }) => {
-  const params = includeAppContainerLogs
-    ? { params: { includeAppContainerLogs: true } }
-    : {};
-  const { data } = await client.get<TestRunDataLocations>(
+  const { data } = await client.get<TestRunData>(
     `test-runs/${testRunId}/data`,
-    params,
+    {
+      params: {
+        ...(includeAppContainerLogs ? { includeAppContainerLogs: true } : {}),
+        ...(project != null ? { project } : {}),
+      },
+    },
   );
   return data;
 };

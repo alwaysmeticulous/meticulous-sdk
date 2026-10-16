@@ -1,5 +1,23 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 2.350.0
+
+### Minor Changes
+
+- [#15442](https://github.com/alwaysmeticulous/meticulous/pull/15442) [`3db9644`](https://github.com/alwaysmeticulous/meticulous/commit/3db96447efd46bbb575236072c3a58203144a5bf) Thanks [@sesajad](https://github.com/sesajad)! - The agent-swarm interceptor sidecar now records what each installed be-mock
+  decided for every outbound call routed to it — served a mock, or passed it
+  through (and why, when the module failed) — and reports them on the new
+  `GET /v1/agent-swarm-testing/be-mock/calls` route, keyed by `runId` and
+  `frontendSessionId`. The report's shapes are exported as `BeMockCall` and
+  `BeMockCallsReport`.
+
+- [#15356](https://github.com/alwaysmeticulous/meticulous/pull/15356) [`f92c39b`](https://github.com/alwaysmeticulous/meticulous/commit/f92c39bfc331bee7d1ecb668c50ecc3aad9f6afe) Thanks [@sesajad](https://github.com/sesajad)! - The agent-swarm interceptor sidecar now hosts each be-mock over one WebSocket
+  connection (`/v1/agent-swarm-testing/be-mock`) instead of the install, logs and
+  uninstall HTTP routes: the module lives as long as its connection, streams its
+  log lines back, and asks the worker for every session it passes to the new
+  `loadSessionBackendRequests`, which returns that recorded session's outbound
+  HTTP calls.
+
 ## 2.346.0
 
 ### Minor Changes

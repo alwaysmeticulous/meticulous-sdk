@@ -139,6 +139,18 @@ export interface ReplayAndStoreResultsOptions {
     chunkNumber: number;
     chunkAttempt: number;
   };
+
+  /**
+   * Customer feature flag values this replay should force, keyed by flag name. Served to the
+   * application through `window.Meticulous.context.getFlagOverride` and `getAllFlagOverrides`.
+   * Absent or empty means no flag is overridden. Distinct from Meticulous's own engine
+   * feature flags.
+   *
+   * In cloud test runs this is only set on flag-variant replays, never on the ordinary
+   * golden-set pair: forcing flags there would churn screenshots against the value the
+   * session recorded.
+   */
+  customerFeatureFlagOverrides?: Record<string, string | boolean>;
 }
 
 export interface PreNavigationResult {

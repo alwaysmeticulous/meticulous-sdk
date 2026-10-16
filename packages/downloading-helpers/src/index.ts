@@ -1,7 +1,13 @@
 export { sanitizeFilename } from "./file-downloads/local-data.utils";
 export {
+  DOWNLOADED_SCOPES_FILE_NAME,
+  LEGACY_PREVIOUSLY_DOWNLOADED_FILE_NAME,
+} from "./file-downloads/downloaded-scopes.utils";
+export {
   ReplayHasNoArtifactsError,
+  TestRunDataWithheldError,
   isReplayHasNoArtifactsError,
+  isTestRunDataWithheldError,
 } from "./errors";
 export { downloadAppContainerLogs } from "./file-downloads/app-container-logs";
 export {

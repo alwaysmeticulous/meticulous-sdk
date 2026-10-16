@@ -55,6 +55,8 @@ if (window.Meticulous?.isRunningAsTest) {
 }
 \`\`\`
 
+Agent swarm browsers, which record new sessions against your app, also set \`isRunningAsTest\` to \`true\`. Use [\`isRunningInAgentSwarm\`](#isrunninginagentswarm) to tell them apart from replays.
+
 **Common use cases**:
 - Skip form validation
 - Bypass authentication
@@ -62,6 +64,16 @@ if (window.Meticulous?.isRunningAsTest) {
 - Show a fixed app version or commit SHA instead of the build's own
 - Disable analytics/tracking
 - Skip animations
+
+---
+
+### isRunningInAgentSwarm
+
+**Type**: \`boolean | undefined\`
+
+**Description**: \`true\` when the app is being driven by a Meticulous Agent swarm browser. \`isRunningAsTest\` is also \`true\` there, so code that relaxes behavior for Meticulous tests applies to Agent swarm too; check this flag only when the two need to differ.
+
+In Agent swarm the recorder is running, so \`window.Meticulous.record\` is available. \`window.Meticulous.replay\` is present but its controls (\`pause\`, \`resume\`, \`recordCustomSnapshot\`, listeners) are no-ops, and replay-only data such as \`sessionBeingReplayed\`, \`commitUnderTest\` and \`native\` is absent.
 
 ---
 

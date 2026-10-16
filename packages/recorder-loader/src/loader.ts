@@ -21,7 +21,10 @@ export interface Recorder {
 export const tryLoadAndStartRecorder = async (
   options: LoaderOptions,
 ): Promise<Recorder> => {
-  if (window.Meticulous?.isRunningAsTest) {
+  if (
+    window.Meticulous?.isRunningAsTest &&
+    !window.Meticulous.isRunningInAgentSwarm
+  ) {
     console.debug(
       "Running as part of a Meticulous test case, so skipping loading the Meticulous recorder.",
     );

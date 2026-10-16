@@ -145,6 +145,13 @@ export const main = async (): Promise<void> => {
               ? "warn"
               : undefined),
         ),
+      // `--json` reserves stdout for the result, even with an explicit
+      // --logLevel.
+      (argv) => {
+        if (argv.json === true && !structuredCiJson) {
+          routeLogsToStderr();
+        }
+      },
       (argv) => handleDataDir(argv.dataDir),
       (argv) => setOptions(argv),
     ]).argv;

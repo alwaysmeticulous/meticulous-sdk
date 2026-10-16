@@ -422,26 +422,75 @@ export const SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH =
   "/v1/agent-swarm-testing/outbound-fetch";
 
 /**
- * Agent-swarm-testing route that installs a be-mock: an agent-authored
+ * Agent-swarm-testing WebSocket route that hosts one be-mock: an agent-authored
  * `be-mock.ts` (backend mocks), compiled by the agentic session-generation
- * worker into a self-contained sandbox bundle and sent here as text. The
- * sidecar runs it in its own permission-restricted child process over the
- * frozen RPC toolkit, and routes every intercepted outbound fetch through
- * the module's `interceptRequest` export — see
- * `packages/backend-recorder-js/src/sidecar/be-mock` and
+ * worker into a self-contained sandbox bundle. The sidecar runs it in its own
+ * permission-restricted child process over the frozen RPC toolkit, and routes
+ * every intercepted outbound fetch through the module's `interceptRequest`
+ * export — see `packages/backend-recorder-js/src/sidecar/be-mock` and
  * `packages/agentic-session-generation-worker/src/app-access/be-mocking`.
+ *
+ * One connection is one installed module: the worker opens it, sends
+ * {@link BeMockInstallMessage}, answers every {@link BeMockLoadSessionMessage}
+ * while the module loads, and receives {@link BeMockReadyMessage} (or
+ * {@link BeMockFailedMessage}) and then the module's log lines. Closing the
+ * connection — from either side — uninstalls the module.
  */
 export const SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_PATH =
   "/v1/agent-swarm-testing/be-mock";
 
 /**
- * One be-mock install, sent to {@link SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_PATH}.
- * The `code` is the compiled bundle (the per-kind child runner + the frozen
- * RPC + the agent-authored be-mock.ts), not the raw TypeScript: the sidecar
- * image carries no compiler, and the worker's static check has already
- * accepted the source.
+ * Agent-swarm-testing route reporting what one installed be-mock decided for
+ * each outbound call routed to it: `GET` with `runId` and `frontendSessionId`
+ * query params, answered with {@link BeMockCallsReport} — or 404 when no module
+ * is installed under that id. Calls routed to no module are never reported: no
+ * case could have mocked them.
  */
-export interface BeMockInstallRequest {
+export const SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_CALLS_PATH =
+  "/v1/agent-swarm-testing/be-mock/calls";
+
+/**
+ * One outbound call an installed be-mock was offered, and what came of it. A
+ * passed-through call's real response is not observed: the sidecar only takes
+ * the module's decision.
+ */
+export type BeMockCall = {
+  method: string;
+  url: string;
+  requestBody?: CapturedBody;
+} & (
+  | {
+      /** interceptRequest's response was served. */
+      outcome: "mock";
+      response: { statusCode: number; body: string };
+    }
+  | {
+      /**
+       * The call went to the real service: interceptRequest returned
+       * undefined, or its answer could not be used (`error` says why).
+       */
+      outcome: "passthrough";
+      error?: string;
+    }
+);
+
+export interface BeMockCallsReport {
+  /** In completion order (the module finished deciding). */
+  calls: BeMockCall[];
+  /** Calls not kept once the report reached its bound. */
+  droppedCount: number;
+}
+
+/**
+ * How often the sidecar pings each be-mock connection (a WebSocket ping
+ * frame). The sidecar terminates a connection that misses a pong; the worker
+ * treats several missed pings as a lost module.
+ */
+export const BE_MOCK_PING_INTERVAL_MS = 15_000;
+
+/** Worker → sidecar: the module to install. Always the connection's first message. */
+export interface BeMockInstallMessage {
+  type: "install";
   /** Whose run this module belongs to; see {@link AGENT_SWARM_TESTING_RUN_ID_ENV_KEY}. */
   runId: string;
   /**
@@ -455,56 +504,78 @@ export interface BeMockInstallRequest {
 }
 
 /**
- * Agent-swarm-testing route that reads one installed be-mock's logs: the worker
- * fetches them when it assembles a test run's result, so the module's
- * `log(...)` lines — startup and `interceptRequest` debug lines alike —
- * reach the agent's run logs instead of dying in the sidecar's pod logs.
+ * Worker → sidecar: one recorded session's backend spans, answering a
+ * {@link BeMockLoadSessionMessage}. `error` instead when the worker could not
+ * read the session.
  */
-export const SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_LOGS_PATH =
-  "/v1/agent-swarm-testing/be-mock/logs";
+export type BeMockSessionMessage =
+  | { type: "session"; sessionId: string; backendSpans: unknown[] }
+  | { type: "session"; sessionId: string; error: string };
 
-/** One be-mock logs fetch, sent to {@link SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_LOGS_PATH}. */
-export interface BeMockLogsRequest {
-  /** Whose run's module is being read; see {@link AGENT_SWARM_TESTING_RUN_ID_ENV_KEY}. */
-  runId: string;
-  /** The module's routing key, as installed; see {@link BeMockInstallRequest}. */
-  frontendSessionId: string;
-}
+export type BeMockWorkerMessage = BeMockInstallMessage | BeMockSessionMessage;
 
 /**
- * Agent-swarm-testing route that stops one installed be-mock, so a finished
- * attempt's sandbox process does not outlive it.
+ * Sidecar → worker: the loading module called `loadSessionBackendRequests`
+ * for this session. Sent only before {@link BeMockReadyMessage}: a module
+ * loads its recordings at the top level.
  */
-export const SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_UNINSTALL_PATH =
-  "/v1/agent-swarm-testing/be-mock/uninstall";
-
-/** One be-mock uninstall, sent to {@link SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_UNINSTALL_PATH}. */
-export interface BeMockUninstallRequest {
-  /** Whose run's module is being stopped; see {@link AGENT_SWARM_TESTING_RUN_ID_ENV_KEY}. */
-  runId: string;
-  /** The module's routing key, as installed; see {@link BeMockInstallRequest}. */
-  frontendSessionId: string;
+export interface BeMockLoadSessionMessage {
+  type: "loadSession";
+  sessionId: string;
 }
 
-/** The module's collected logs since its install. */
-export interface BeMockLogsResponse {
-  logs: string[];
+/** Sidecar → worker: the module loaded and now answers outbound calls. */
+export interface BeMockReadyMessage {
+  type: "ready";
 }
 
-/** The install's outcome, mirroring the run the worker reports. */
-export type BeMockInstallResponse =
-  | {
-      ok: true;
-      /** The sandbox's startup logs (stdout/stderr, agent log lines), if any. */
-      logs?: string[];
-    }
-  | {
-      ok: false;
-      /** Startup failure: the static check, the build or the sandbox rejected it. */
-      error: string;
-      /** The sandbox's collected logs, for the agent's repair loop. */
-      logs: string[];
-    };
+/** Sidecar → worker: the install failed; the sidecar closes the connection after it. */
+export interface BeMockFailedMessage {
+  type: "failed";
+  error: string;
+}
+
+/** Sidecar → worker: one line from the module (stdout/stderr or its `log(...)`). */
+export interface BeMockLogMessage {
+  type: "log";
+  line: string;
+}
+
+export type BeMockSidecarMessage =
+  | BeMockLoadSessionMessage
+  | BeMockReadyMessage
+  | BeMockFailedMessage
+  | BeMockLogMessage;
+
+/**
+ * One outbound HTTP call a recorded session's backend made, as
+ * `loadSessionBackendRequests` returns it to be-mock.ts. The request mirrors
+ * {@link OutboundFetchAgentSwarmTestingRequest} so a live request compares
+ * field for field; the response is servable as-is.
+ */
+export interface BeMockRecordedRequest {
+  method: string;
+  /**
+   * Full URL including query string, as recorded — or only the path and query
+   * when the recording stored no scheme or host (older recorders).
+   */
+  url: string;
+  requestBody?: CapturedBody;
+  /**
+   * True when ingestion attached this call by its time alone, not by this
+   * session's id: it may belong to another user's traffic on the same backend.
+   */
+  inferred: boolean;
+  response: {
+    statusCode: number;
+    /** As recorded: text, or base64 when `bodyEncoding` is set. */
+    body: string;
+    bodyEncoding?: BodyEncoding;
+    /** True when the recorder cut the body at the capture cap. */
+    bodyTruncated: boolean;
+    headers: Record<string, string>;
+  };
+}
 
 /**
  * One outbound `fetch` offered to the interceptor, sent to

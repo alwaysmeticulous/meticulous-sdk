@@ -12,9 +12,11 @@ import type {
   ReplayFileType,
 } from "@alwaysmeticulous/downloading-helpers";
 import {
+  DOWNLOADED_SCOPES_FILE_NAME,
   ensureReplayLogTextFiles,
   getOrFetchReplayArchive,
   getOrFetchRecordedSessionData,
+  LEGACY_PREVIOUSLY_DOWNLOADED_FILE_NAME,
 } from "@alwaysmeticulous/downloading-helpers";
 import chalk from "chalk";
 import pLimit from "p-limit";
@@ -22,6 +24,11 @@ import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import type { DebugContext } from "./debug.types";
 
 const DEFAULT_MAX_REPLAY_DOWNLOADS = 8;
+
+const CACHE_MARKER_FILE_NAMES: ReadonlySet<string> = new Set([
+  DOWNLOADED_SCOPES_FILE_NAME,
+  LEGACY_PREVIOUSLY_DOWNLOADED_FILE_NAME,
+]);
 
 export interface DownloadDebugDataOptions {
   client: MeticulousClient;
@@ -105,7 +112,6 @@ const downloadReplays = async (
           client,
           replayId,
           "everything",
-          true,
           {
             excludeFileTypes,
             bestEffortFileTypes,
@@ -168,10 +174,10 @@ const copyReplayDir = (src: string, dest: string): void => {
         cpSync(srcPath, destPath, { recursive: true });
       }
     } else {
-      // `previously-downloaded.txt` is an internal cache marker. We don't write
-      // it ourselves (excludeFileTypes is set), but a prior unfiltered caller
-      // running locally may have left one — don't surface it in the workspace.
-      if (entry.name === "previously-downloaded.txt") {
+      // Internal cache markers. We don't write them ourselves (excludeFileTypes
+      // is set), but a prior unfiltered caller running locally may have left
+      // them — don't surface them in the workspace.
+      if (CACHE_MARKER_FILE_NAMES.has(entry.name)) {
         continue;
       }
       cpSync(srcPath, destPath);

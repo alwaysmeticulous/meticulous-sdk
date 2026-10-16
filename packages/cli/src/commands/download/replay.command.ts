@@ -1,52 +1,56 @@
 import { createClientWithOAuth } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
 import {
   ensureReplayLogTextFiles,
   getOrFetchReplay,
   getOrFetchReplayArchive,
 } from "@alwaysmeticulous/downloading-helpers";
 import type { CommandModule } from "yargs";
+import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
+import { requireIdArgument } from "../agent/argument-validation.utils";
 
 interface Options {
   apiToken?: string | null | undefined;
   replayId: string;
+  json: boolean;
 }
 
-const handler = async ({ apiToken, replayId }: Options): Promise<void> => {
-  const logger = initLogger();
+const handler = async ({
+  apiToken,
+  replayId,
+  json,
+}: Options): Promise<void> => {
+  requireIdArgument("replayId", replayId);
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,
   });
 
-  const { fileName: replayMetadataFileName } = await getOrFetchReplay(
-    client,
-    replayId,
-  );
-  logger.info(`Downloaded replay metadata to: ${replayMetadataFileName}`);
-  const { fileName: replayFolderFilePath } = await getOrFetchReplayArchive(
+  await getOrFetchReplay(client, replayId);
+  const { fileName: path } = await getOrFetchReplayArchive(
     client,
     replayId,
     "everything",
-    true,
   );
+  await ensureReplayLogTextFiles(path);
 
-  await ensureReplayLogTextFiles(replayFolderFilePath);
-
-  logger.info(`Downloaded replay data to: ${replayFolderFilePath}`);
+  if (json) {
+    printJson({ replayId, path });
+  } else {
+    console.log(path);
+  }
 };
 
 export const downloadReplayCommand: CommandModule<unknown, Options> = {
   command: "replay",
-  describe: "Download a replay from Meticulous",
+  describe:
+    "Download the data for a given replay (screenshots, timeline, logs, coverage and other artifacts). Outputs the local directory it was written to.",
   builder: {
-    apiToken: {
-      string: true,
-    },
+    apiToken: { string: true, description: "Meticulous API token." },
     replayId: {
       string: true,
       demandOption: true,
+      description: "The replay ID.",
     },
   },
   handler: wrapHandler(handler),

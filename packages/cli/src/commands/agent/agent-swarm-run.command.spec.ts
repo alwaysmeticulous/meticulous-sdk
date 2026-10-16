@@ -51,11 +51,8 @@ const runResponse = {
   run: {
     swarmRunId: "run-1",
     status: "succeeded",
-    phase: "succeeded",
     commitSha: "abc",
-    url: "https://app.meticulous.ai/run-1",
   },
-  resultSource: "result",
   counts: {
     total: 2,
     pass: 1,
@@ -70,8 +67,6 @@ const runResponse = {
       caseIndex: 0,
       title: "Search",
       status: "pass",
-      stepCount: 1,
-      comparisonCount: 0,
       regressionCount: 0,
       usedSyntheticMockData: false,
     },
@@ -82,9 +77,7 @@ const runResponse = {
       blockedBy: "environment",
       outcomeSummary: "The API\ntimed out.",
       takeaway: "The total is wrong.",
-      stepCount: 2,
-      comparisonCount: 0,
-      regressionCount: 0,
+      regressionCount: 1,
       usedSyntheticMockData: false,
     },
   ],
@@ -118,15 +111,12 @@ describe("agent agent-swarm-run", () => {
     await run(agentSwarmRunCommand, { ...defaults, swarmRunId: "run-1" });
 
     expect(logSpy.mock.calls.map((call: unknown[]) => call[0])).toEqual([
-      "caseIndex\tstatus\tblockedBy\ttitle\toutcomeSummary\ttakeaway",
-      "0\tpass\t\tSearch\t\t",
-      "1\tblocked\tenvironment\tCheckout total\tThe API timed out.\tThe total is wrong.",
+      "caseIndex\tstatus\tblockedBy\ttitle\toutcomeSummary\ttakeaway\tregressionCount\tusedSyntheticMockData",
+      "0\tpass\t\tSearch\t\t\t0\tfalse",
+      "1\tblocked\tenvironment\tCheckout total\tThe API timed out.\tThe total is wrong.\t1\tfalse",
     ]);
     expect(mocks.logNotice).toHaveBeenCalledWith(
       "Agent swarm run run-1: succeeded (commit abc) — 2 cases: 1 pass, 1 fail, 0 blocked",
-    );
-    expect(mocks.logNotice).not.toHaveBeenCalledWith(
-      "https://app.meticulous.ai/run-1",
     );
     expect(mocks.logNotice).not.toHaveBeenCalledWith(
       expect.stringContaining("Takeaway"),
@@ -157,7 +147,7 @@ describe("agent agent-swarm-run", () => {
     });
 
     expect(logSpy.mock.calls.map((call: unknown[]) => call[0])).toEqual([
-      "caseIndex\tstatus\tblockedBy\ttitle\toutcomeSummary\ttakeaway",
+      "caseIndex\tstatus\tblockedBy\ttitle\toutcomeSummary\ttakeaway\tregressionCount\tusedSyntheticMockData",
     ]);
     expect(mocks.logNotice).toHaveBeenCalledWith(
       "Agent swarm run run-1 has no cases with status fail.",

@@ -426,7 +426,7 @@ export const testRunDiffsCommand: CommandModule<unknown, Options> = {
     includeDomDiffIds: {
       boolean: true,
       description:
-        "Add a domDiffIds column with a comma-separated list of diff IDs, where each ID represents a distinct structural DOM change. This is used to determine the selected set and its priority order.",
+        "Add a domDiffIds column with a semicolon-separated list of the distinct structural DOM changes in the diff, as IDs in ascending order (each ID listed once). Diffs sharing an ID contain the same change, and lower IDs appear in at least as many diffs across the whole test run. This is used to determine the selected set and its priority order.",
       default: false,
     },
     similarGroupId: {

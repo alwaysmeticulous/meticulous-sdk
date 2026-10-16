@@ -1,5 +1,78 @@
 # @alwaysmeticulous/client
 
+## 2.350.0
+
+### Minor Changes
+
+- [#15528](https://github.com/alwaysmeticulous/meticulous/pull/15528) [`3a119af`](https://github.com/alwaysmeticulous/meticulous/commit/3a119af187ec286efc65e0862c3e5ba6fbe5a6ed) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent js-coverage-diff` relays the diff's one-line summary from the backend,
+  so the MCP tools return the same line, and `agent promote-sessions --json`
+  leaves its notes out of the JSON (they stay on stderr). The client sends
+  `clientVersion` 2 for the test-run coverage routes and 3 for the replay-diff
+  coverage diff, which add that summary to `notes`.
+
+  `agent image-urls` and the `get_image_urls` tool no longer return the
+  deprecated `screenshot` field, which duplicated `before`/`after` for a
+  `missing-base`/`missing-head` screenshot: the client sends `clientVersion` 1,
+  and `ScreenshotUrlsResponse` drops the field. Clients that send no version
+  still receive it.
+
+- [#15528](https://github.com/alwaysmeticulous/meticulous/pull/15528) [`3a119af`](https://github.com/alwaysmeticulous/meticulous/commit/3a119af187ec286efc65e0862c3e5ba6fbe5a6ed) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent agent-swarm-run` and `agent agent-swarm-run-case` return the same fields
+  with and without `--json` (apart from the case's `fixPrompt`):
+  - `agent-swarm-run` adds `regressionCount` and `usedSyntheticMockData` columns,
+    and `agent-swarm-run-case` prints `mockDataProvenance` and the check's
+    `blockedBy` and `error`.
+  - The JSON drops the fields neither output printed: the webapp `url`, the
+    run's mode, phase, base, pull request number and timestamps,
+    `resultSource`, each case's tag, group, provenance and step/comparison
+    counts, step and comparison details beyond what is printed,
+    `compareWithBase`, `baseSessionIds`, and the check's raw guidance (which the
+    fix prompt still carries). The client response types shrink to match, and
+    `AgentSwarmRunMode`, `AgentSwarmRunPhase`, `AgentSwarmComparisonSide` and
+    `AgentSwarmSourceRange` are removed.
+
+  The client sends `clientVersion` 1 for the run; clients that send no version
+  still receive `resultSource`.
+
+- [#15528](https://github.com/alwaysmeticulous/meticulous/pull/15528) [`3a119af`](https://github.com/alwaysmeticulous/meticulous/commit/3a119af187ec286efc65e0862c3e5ba6fbe5a6ed) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - The `download` commands now work like the `agent` commands:
+  - `download test-run` resolves its run the same way: `--testRunId`, `--prNumber`
+    or `--commitSha`, defaulting to the test run for the current git HEAD (pass
+    `--testRunId latest` for the project's latest main-branch run, as the bare
+    command did before). `--project` picks the project to look in; alongside a
+    specific `--testRunId`, the run must belong to it. An in-progress run is
+    waited for unless `--dontWaitForTestRunToComplete` is passed.
+  - `download test-run --scope` offers every scope. A pull-request scope fails
+    with an error when the caller may not read the project's source code.
+  - stdout carries only the path(s) the data was written to, or with `--json` an
+    object naming them; progress logs go to stderr under `--verbose`. With
+    `--json`, logs of every command go to stderr, even with an explicit
+    `--logLevel`.
+  - Empty or whitespace-containing IDs are rejected up front.
+
+  `getTestRunData` returns the resolved `testRunId` (typed `TestRunData`) and
+  accepts `project`.
+
+  `getOrFetchReplayArchive` and `getOrFetchTestRunData` drop their JSON
+  pretty-printing argument (`formatJsonFiles` / `humanReadable`), which never
+  took effect: pass the options or project that followed it one position
+  earlier.
+
+  `getOrFetchTestRunData` and `getOrFetchReplayArchive` cache per scope:
+  downloading a further scope into a directory fetches only the files earlier
+  scopes did not cover, instead of re-downloading everything. A scope recorded by
+  a newer version is ignored rather than failing the download.
+  `getOrFetchTestRunData` throws `TestRunDataWithheldError` for a pull-request
+  scope whose files the backend withheld, including after an `everything`
+  download that went without them, and fetches them once they are available. It
+  downloads `latest` into the resolved run's own directory, so later calls reuse
+  it. The cache marker file names are exported as `DOWNLOADED_SCOPES_FILE_NAME`
+  and `LEGACY_PREVIOUSLY_DOWNLOADED_FILE_NAME`.
+
+### Patch Changes
+
+- Updated dependencies [[`3a119af`](https://github.com/alwaysmeticulous/meticulous/commit/3a119af187ec286efc65e0862c3e5ba6fbe5a6ed), [`8fa75a6`](https://github.com/alwaysmeticulous/meticulous/commit/8fa75a6f727c92244f202395f9279184f61952f3)]:
+  - @alwaysmeticulous/api@2.350.0
+  - @alwaysmeticulous/common@2.347.0
+
 ## 2.349.0
 
 ### Minor Changes

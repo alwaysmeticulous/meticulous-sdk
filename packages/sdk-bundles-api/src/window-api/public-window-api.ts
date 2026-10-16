@@ -7,18 +7,49 @@ export type MeticulousPublicApi = MeticulousPublicApiCommon &
   (
     | {
         isRunningAsTest: true;
+        isRunningInAgentSwarm?: false;
         replay: MeticulousPublicReplayApi;
       }
     | {
+        isRunningAsTest: true;
+        isRunningInAgentSwarm: true;
+        replay: MeticulousPublicAgentSwarmReplayApi;
+        record: MeticulousPublicRecordApi;
+      }
+    | {
         isRunningAsTest: false;
+        isRunningInAgentSwarm?: false;
         record: MeticulousPublicRecordApi;
       }
   );
 
 export interface MeticulousPublicApiCommon {
   isRunningAsTest?: boolean;
+  /**
+   * True when the app is being driven by a Meticulous Agent swarm browser,
+   * which records new sessions against a test deployment. `isRunningAsTest` is
+   * also true there, so apps that relax behaviour for Meticulous tests do the
+   * same for Agent swarm; check this flag only to tell the two apart.
+   */
+  isRunningInAgentSwarm?: boolean;
   context: MeticulousPublicContextApi;
 }
+
+/**
+ * The replay API exposed in Agent swarm, where no replay is running. Its
+ * methods are no-ops so code written for replays keeps working, and replay-only
+ * data such as the session being replayed is absent.
+ */
+export type MeticulousPublicAgentSwarmReplayApi = Omit<
+  MeticulousPublicReplayApi,
+  | "isBenchmarkableReplay"
+  | "native"
+  | "commitUnderTest"
+  | "sessionBeingReplayed"
+  | "browser"
+> & {
+  isBenchmarkableReplay: false;
+};
 
 /**
  * Options for {@link MeticulousPublicReplayApi.recordCustomSnapshot}.

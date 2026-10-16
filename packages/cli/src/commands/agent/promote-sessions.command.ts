@@ -62,7 +62,8 @@ const handler = async ({
   const response = await requestPromotion(client, testRunId, sessionIds);
 
   if (json) {
-    printJson(response);
+    const { notes: _notes, ...result } = response;
+    printJson(result);
   } else {
     printKeyValueLines(response);
   }

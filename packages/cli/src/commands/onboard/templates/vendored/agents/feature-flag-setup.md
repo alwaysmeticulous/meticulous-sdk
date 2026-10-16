@@ -24,8 +24,9 @@ Read the Meticulous doc source files in `.claude/docs/`:
   of hardcoding a list, the recommendation to cover **both client-side and
   server-evaluated** flags, and any guidance on when to re-record after login or a flag
   refresh. Adapt every customer-facing claim from this doc rather than restating it.
-- `.claude/docs/how-to/testing-feature-flags.ts` -- how Meticulous tests recorded flags
-  (network stubbing, the optional default-on-when-replaying-old-sessions trick).
+- `.claude/docs/how-to/testing-feature-flags.ts` -- how Meticulous tests flags: replaying
+  recorded values, letting Meticulous force named flags, per-provider wrappers (Statsig,
+  LaunchDarkly), and the optional default-on fallback for flags older sessions predate.
 - `.claude/docs/how-to/window-meticulous-object.ts` -- `window.Meticulous` API reference.
 
 `recordFeatureFlag` is the dedicated API for this — never use `recordCustomValues` or

@@ -66,6 +66,9 @@ export const TESTING_MULTIPLE_APPS_URL =
 
 export const TESTING_FEATURE_FLAGS = "/docs/how-to/testing-feature-flags";
 
+export const FLAG_OVERRIDE_TROUBLESHOOTING_ANCHOR =
+  "flag-override-troubleshooting";
+
 export const RECORD_AND_REPLAY_ON_DIFFERENT_ENVIRONMENTS_URL =
   "/docs/how-to/record-and-replay-on-different-environments";
 

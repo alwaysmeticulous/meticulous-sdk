@@ -1,5 +1,27 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 2.350.0
+
+### Minor Changes
+
+- [#15434](https://github.com/alwaysmeticulous/meticulous/pull/15434) [`03910b5`](https://github.com/alwaysmeticulous/meticulous/commit/03910b5127ebae6c84667c9c83e8a3d544d68dd5) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `window.Meticulous.isRunningInAgentSwarm`. Agent swarm browsers now set
+  `isRunningAsTest` to true, so apps behave there as they do in a replay, and set
+  `isRunningInAgentSwarm` to tell the two apart. In Agent swarm,
+  `window.Meticulous.replay` exposes no-op controls (`pause`, `resume`,
+  `recordCustomSnapshot`, ...) and no replay-only data. `tryLoadAndStartRecorder`
+  still records when `isRunningInAgentSwarm` is true.
+
+- [#15525](https://github.com/alwaysmeticulous/meticulous/pull/15525) [`2014178`](https://github.com/alwaysmeticulous/meticulous/commit/201417871a2a3434d1b4a55114ed4fd3229e3cff) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - Add `--flagOverrides` to `meticulous simulate`, a JSON object of feature flag
+  values to force during the simulation (e.g.
+  `--flagOverrides '{"my_flag": true, "my_experiment": "treatment"}'`). The values
+  are served to your app through `window.Meticulous.context.getFlagOverride` and
+  `getAllFlagOverrides`, so you can check your flag resolver honours them.
+
+### Patch Changes
+
+- Updated dependencies [[`3a119af`](https://github.com/alwaysmeticulous/meticulous/commit/3a119af187ec286efc65e0862c3e5ba6fbe5a6ed), [`8fa75a6`](https://github.com/alwaysmeticulous/meticulous/commit/8fa75a6f727c92244f202395f9279184f61952f3)]:
+  - @alwaysmeticulous/api@2.350.0
+
 ## 2.349.0
 
 ### Minor Changes

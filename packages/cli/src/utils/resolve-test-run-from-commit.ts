@@ -330,17 +330,24 @@ export const tryResolveTestRunForCommit = async (
 export const awaitTestRunCompletion = async (
   client: MeticulousClient,
   testRunId: string,
-  { throwOnFailure = true }: { throwOnFailure?: boolean } = {},
+  {
+    throwOnFailure = true,
+    knownStatus,
+  }: {
+    throwOnFailure?: boolean;
+    /** The run's status as the caller just fetched it, to skip fetching again. */
+    knownStatus?: TestRunStatus;
+  } = {},
 ): Promise<TestRunStatus> => {
-  let testRun = await getTestRun({ client, testRunId });
-  if (isTestRunInProgress(testRun.status)) {
+  let status = knownStatus ?? (await getTestRun({ client, testRunId })).status;
+  if (isTestRunInProgress(status)) {
     logProgress(`Waiting for test run ${testRunId} to complete...`);
   }
   const deadline = performance.now() + POLL_TIMEOUT_MS;
-  while (isTestRunInProgress(testRun.status)) {
+  while (isTestRunInProgress(status)) {
     if (performance.now() >= deadline) {
       throw new CliUserError(
-        `Test run ${testRunId} has not completed after 10 minutes (status: ${testRun.status}). ` +
+        `Test run ${testRunId} has not completed after 10 minutes (status: ${status}). ` +
           "It may still be running — check back later, or re-run with --dontWaitForTestRunToComplete to return immediately.",
         1,
         "error",
@@ -348,17 +355,17 @@ export const awaitTestRunCompletion = async (
       );
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-    testRun = await getTestRun({ client, testRunId });
+    status = (await getTestRun({ client, testRunId })).status;
   }
-  if (throwOnFailure && isTestRunFailed(testRun.status)) {
+  if (throwOnFailure && isTestRunFailed(status)) {
     throw new CliUserError(
-      `Test run ${testRunId} finished unsuccessfully (status: ${testRun.status}).`,
+      `Test run ${testRunId} finished unsuccessfully (status: ${status}).`,
       1,
       "error",
       { reason: "remote" },
     );
   }
-  return testRun.status;
+  return status;
 };
 
 /**
@@ -381,5 +388,8 @@ export const ensureTestRunFinished = async (
     logNotice(`Test run ${testRunId} is not complete (status: ${status}).`);
     return null;
   }
-  return awaitTestRunCompletion(client, testRunId, { throwOnFailure });
+  return awaitTestRunCompletion(client, testRunId, {
+    throwOnFailure,
+    knownStatus: status,
+  });
 };

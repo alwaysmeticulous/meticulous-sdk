@@ -31,6 +31,14 @@ const CASE_COLUMNS: ReadonlyArray<{
   { header: "title", value: (testCase) => testCase.title },
   { header: "outcomeSummary", value: (testCase) => testCase.outcomeSummary },
   { header: "takeaway", value: (testCase) => testCase.takeaway },
+  {
+    header: "regressionCount",
+    value: (testCase) => String(testCase.regressionCount),
+  },
+  {
+    header: "usedSyntheticMockData",
+    value: (testCase) => String(testCase.usedSyntheticMockData),
+  },
 ];
 
 const swarmRunHandler = async (options: SwarmRunOptions): Promise<void> => {
@@ -57,7 +65,7 @@ const swarmRunHandler = async (options: SwarmRunOptions): Promise<void> => {
 export const agentSwarmRunCommand: CommandModule<unknown, SwarmRunOptions> = {
   command: "agent-swarm-run",
   describe:
-    "Get the status and list of cases for a given Agent swarm run (by default the latest execution run for the test run, commit or pull request). Agent swarm is Meticulous's hosted agent that explores a pull request's build in a browser and reports pass/fail/blocked test flows. Outputs a TSV table with columns caseIndex, status, blockedBy, title, outcomeSummary and takeaway (the run summary's headline finding, for at most three cases), and the run's status, case counts, errorMessage, supersededBySwarmRunId and notTestable on stderr. Case status: pass; fail (the app misbehaved — already upheld by an independent failure checker); blocked (could not be verified — blockedBy says whether the application or the test environment stopped it); skipped; or not-started / running in a run that stopped before finishing. notTestable explains a run that deliberately executed no flows. If the run has not finished, blocks until it has, for at most 10 minutes. Use agent agent-swarm-run-case for a case's steps, failure check and fix prompt.",
+    "Get the status and list of cases for a given Agent swarm run (by default the latest execution run for the test run, commit or pull request). Agent swarm is Meticulous's hosted agent that explores a pull request's build in a browser and reports pass/fail/blocked test flows. Outputs a TSV table with columns caseIndex, status, blockedBy, title, outcomeSummary, takeaway (the run summary's headline finding, for at most three cases), regressionCount (base-vs-head comparisons judged regressions) and usedSyntheticMockData (the run served modified or generated mock API data, which weakens a pass; see the case's mockDataProvenance), and the run's status, case counts, errorMessage, supersededBySwarmRunId and notTestable on stderr. Case status: pass; fail (the app misbehaved — already upheld by an independent failure checker); blocked (could not be verified — blockedBy says whether the application or the test environment stopped it); skipped; or not-started / running in a run that stopped before finishing. notTestable explains a run that deliberately executed no flows. If the run has not finished, blocks until it has, for at most 10 minutes. Use agent agent-swarm-run-case for a case's steps, failure check and fix prompt.",
   builder: {
     ...swarmRunSelectorBuilder,
     status: {
@@ -104,10 +112,11 @@ const logRunNotices = (
       `Not testable (${result.notTestable.category}): ${result.notTestable.reason}`,
     );
   }
-  // A not-testable run's reason already explains why it has no cases.
+  // A run without counts has no result to list cases from, and a not-testable
+  // run's reason already explains why it has no cases.
   if (
     result.cases.length === 0 &&
-    result.resultSource !== "none" &&
+    result.counts != null &&
     result.notTestable == null
   ) {
     logNotice(

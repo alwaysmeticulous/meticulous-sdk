@@ -9,20 +9,20 @@ const testCase: AgentSwarmCaseResponse = {
   status: "fail",
   outcomeSummary: "Opens the replay\ninstead of the errors view.",
   steps: [
+    { outcome: "pass", description: "Open sessions" },
     {
-      stepIndex: 0,
-      description: "Open sessions",
-      outcome: "pass",
-      setup: true,
-    },
-    {
-      stepIndex: 1,
-      description: "Click the error count",
       outcome: "fail",
+      description: "Click the error count",
       reason: "Landed on the replay.",
-      setup: false,
     },
   ],
+  comparisons: [],
+  mockDataProvenance: {
+    recorded: 4,
+    modified: 1,
+    generated: 0,
+    strictRecheck: { performed: true, reproduced: true },
+  },
   runEvidence: {
     backendFailures: [
       {
@@ -36,19 +36,14 @@ const testCase: AgentSwarmCaseResponse = {
     backendFailureCount: 3,
     pageErrors: ["TypeError: x is undefined"],
   },
-  compareWithBase: false,
-  comparisons: [],
   check: {
-    originalOutcome: "fail",
     verdict: "fail",
     confidence: "high",
     reason: "The row handler wins.",
     headline: "Error counts open the replay.",
     linkedToChange: "yes",
-  } as NonNullable<AgentSwarmCaseResponse["check"]>,
+  },
   sessionIds: ["s-1", "s-2"],
-  baseSessionIds: [],
-  url: "https://app.example/case",
   fixPrompt: "Fix it.",
 };
 
@@ -62,6 +57,9 @@ describe("formatSwarmRunCase", () => {
       "outcomeSummary:\tOpens the replay instead of the errors view.",
       "steps[0]:\tpass — Open sessions",
       "steps[1]:\tfail — Click the error count — Landed on the replay.",
+      "mockDataProvenance:\t4 recorded, 1 modified, 0 generated",
+      "mockDataProvenance.strictRecheck.performed:\ttrue",
+      "mockDataProvenance.strictRecheck.reproduced:\ttrue",
       "runEvidence.backendFailureCount:\t3",
       "runEvidence.backendFailures[0]:\tGET api.example.com/errors: http-error 500 (x3)",
       "runEvidence.pageErrors[0]:\tTypeError: x is undefined",
@@ -74,10 +72,9 @@ describe("formatSwarmRunCase", () => {
     ]);
   });
 
-  it("leaves out the url and fix prompt", () => {
+  it("leaves out the fix prompt", () => {
     const text = formatSwarmRunCase(testCase).join("\n");
 
-    expect(text).not.toContain("https://app.example/case");
     expect(text).not.toContain("Fix it.");
   });
 });

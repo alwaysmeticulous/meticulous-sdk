@@ -249,7 +249,6 @@ export interface TestRunDataLocations {
    */
   coverageReplaysByFileV2?: S3Location;
   coverageReplaysByFileUnmapped?: S3Location;
-  coverageReplaysByFileUnmappedWithRanges?: S3Location;
   coverageScreenshotReplaysByFile?: S3Location;
   coverageScreenshotReplaysByFilePr?: S3Location;
   coverageScreenshotReplaysByFileUnmapped?: S3Location;
@@ -273,6 +272,12 @@ export interface TestRunDataLocations {
    */
   coverageReplaysByFeatureFlag?: S3Location;
   appContainerLogs?: AppContainerLogsLocations;
+}
+
+/** `GET test-runs/:id/data`: the run's artifact locations. */
+export interface TestRunData extends TestRunDataLocations {
+  /** The run the locations are for: resolved server-side for `latest`. */
+  testRunId: string;
 }
 
 export interface TestRun {

@@ -24,7 +24,6 @@ import {
 import {
   getOrFetchReplayArchive,
   type BestEffortFileType,
-  type DownloadScope,
   type ReplayFileType,
 } from "../replays";
 
@@ -92,8 +91,7 @@ describe("getOrFetchReplayArchive — excludeFileTypes", () => {
   });
 
   const replayDir = (): string => join(dataDir, "replays", REPLAY_ID);
-  const markerPath = (): string =>
-    join(replayDir(), "previously-downloaded.txt");
+  const markerPath = (): string => join(replayDir(), "downloaded-scopes.txt");
 
   const run = (
     excludeFileTypes?: ReadonlySet<ReplayFileType>,
@@ -103,7 +101,6 @@ describe("getOrFetchReplayArchive — excludeFileTypes", () => {
         {} as never,
         REPLAY_ID,
         "everything",
-        false,
         excludeFileTypes ? { excludeFileTypes } : {},
       ),
     );
@@ -292,22 +289,74 @@ describe("getOrFetchReplayArchive — excludeFileTypes", () => {
     expect(downloadAndExtractFile as Mock).not.toHaveBeenCalled();
   });
 
-  it("bypasses the cache short-circuit when exclusions are set, even if the marker says 'everything'", async () => {
+  it("hits the cache short-circuit with exclusions set when the marker says 'everything'", async () => {
     await mkdir(replayDir(), { recursive: true });
     await writeFile(markerPath(), "everything", "utf-8");
 
     await run(new Set<ReplayFileType>(["playbackData"]));
 
-    // Short-circuit was bypassed: we re-fetched URLs and re-downloaded the
-    // non-excluded files.
-    expect(getReplayV3DownloadUrls as Mock).toHaveBeenCalledTimes(1);
-    const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
-      (call) => call[0] as string,
-    );
-    expect(downloadedKeys).toContain("https://example/timeline");
-    expect(downloadedKeys).not.toContain("https://example/playbackData");
-    // Marker is preserved (not overwritten) — we read but didn't rewrite it.
+    expect(getReplayV3DownloadUrls as Mock).not.toHaveBeenCalled();
     expect(readFileSync(markerPath(), "utf8")).toBe("everything");
+  });
+
+  it("hits the cache short-circuit on the marker written by older versions", async () => {
+    await mkdir(replayDir(), { recursive: true });
+    await writeFile(
+      join(replayDir(), "previously-downloaded.txt"),
+      "everything",
+      "utf-8",
+    );
+
+    await run();
+
+    expect(getReplayV3DownloadUrls as Mock).not.toHaveBeenCalled();
+  });
+
+  it("adds only another scope's files to an earlier download", async () => {
+    await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive({} as never, REPLAY_ID, "timeline-only"),
+    );
+    vi.clearAllMocks();
+    (getReplay as Mock).mockResolvedValue({ version: "v3" });
+    (getReplayV3DownloadUrls as Mock).mockResolvedValue(buildDownloadUrls());
+
+    await run();
+
+    const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
+      (call) => call[0],
+    );
+    expect(downloadedKeys).not.toContain("https://example/timeline");
+    expect(downloadedKeys).toEqual(
+      expect.arrayContaining([
+        "https://example/metadata",
+        "https://example/playbackData",
+      ]),
+    );
+    expect(readFileSync(markerPath(), "utf8")).toBe(
+      "timeline-only\neverything",
+    );
+  });
+
+  it("skips screenshots an earlier download already fetched when widening to everything", async () => {
+    await mkdir(replayDir(), { recursive: true });
+    await writeFile(markerPath(), "screenshots-only", "utf-8");
+
+    await run();
+
+    expect(getReplayV3DownloadUrls as Mock).toHaveBeenCalledWith(
+      expect.anything(),
+      REPLAY_ID,
+      expect.objectContaining({
+        includeScreenshots: false,
+        includeDiffs: true,
+      }),
+    );
+    expect(
+      (downloadAndExtractFile as Mock).mock.calls.map((call) => call[0]),
+    ).toContain("https://example/timeline");
+    expect(readFileSync(markerPath(), "utf8")).toBe(
+      "screenshots-only\neverything",
+    );
   });
 });
 
@@ -360,44 +409,21 @@ describe("getOrFetchReplayArchive — post-process-including-css-coverage scope"
     expect(downloadedKeys).toContain("https://example/mappedCssCoverage");
   });
 
-  // Each scope needs its own data dir: a populated one carries a cache marker,
-  // which would short-circuit or widen the second run instead of exercising the
-  // scope under test.
-  const downloadedUrlsForScope = async (
-    scope: DownloadScope,
-  ): Promise<Set<string>> => {
-    const scopeDir = mkdtempSync(join(tmpdir(), "met-replays-scope-"));
-    (downloadAndExtractFile as Mock).mockClear();
-    try {
-      await runWithLocalDataDir(scopeDir, () =>
-        getOrFetchReplayArchive({} as never, REPLAY_ID, scope),
-      );
-      return new Set(
-        (downloadAndExtractFile as Mock).mock.calls.map(
-          (call) => call[0] as string,
-        ),
-      );
-    } finally {
-      rmSync(scopeDir, { recursive: true, force: true });
-    }
-  };
-
-  // Post-processing selects this scope *instead of* the unmapped-ranges one
-  // rather than in addition to it, so it has to remain a superset. Asserting
-  // the containment directly, rather than spot-checking `rawCoverage`, keeps
-  // that true if either scope's file list is edited.
-  it("stays a superset of the unmapped-ranges scope it is chosen instead of", async () => {
-    const unmappedRanges = await downloadedUrlsForScope(
-      "post-process-including-unmapped-ranges",
-    );
-    const cssCoverage = await downloadedUrlsForScope(
-      "post-process-including-css-coverage",
+  // Post-processing reads `raw-coverage.json` to classify an empty mapped
+  // coverage result.
+  it("downloads the raw JS coverage", async () => {
+    await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive(
+        {} as never,
+        REPLAY_ID,
+        "post-process-including-css-coverage",
+      ),
     );
 
-    expect(unmappedRanges).toContain("https://example/rawCoverage");
-    expect([...unmappedRanges].filter((url) => !cssCoverage.has(url))).toEqual(
-      [],
+    const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
+      (call) => call[0] as string,
     );
+    expect(downloadedKeys).toContain("https://example/rawCoverage");
   });
 
   it("does NOT download snapshotted assets", async () => {
@@ -463,7 +489,7 @@ describe("getOrFetchReplayArchive — bestEffortFileTypes", () => {
   });
 
   const markerPath = (): string =>
-    join(dataDir, "replays", REPLAY_ID, "previously-downloaded.txt");
+    join(dataDir, "replays", REPLAY_ID, "downloaded-scopes.txt");
 
   const run = (
     bestEffortFileTypes?: ReadonlySet<BestEffortFileType>,
@@ -473,7 +499,6 @@ describe("getOrFetchReplayArchive — bestEffortFileTypes", () => {
         {} as never,
         REPLAY_ID,
         "everything",
-        false,
         bestEffortFileTypes ? { bestEffortFileTypes } : {},
       ),
     );
@@ -537,7 +562,6 @@ describe("getOrFetchReplayArchive — missing signedUrl", () => {
         {} as never,
         REPLAY_ID,
         "everything",
-        false,
         bestEffortFileTypes ? { bestEffortFileTypes } : {},
       ),
     );
@@ -590,9 +614,7 @@ describe("getOrFetchReplayArchive — replay with no artifacts", () => {
     ).catch(() => undefined);
 
     expect(
-      existsSync(
-        join(dataDir, "replays", REPLAY_ID, "previously-downloaded.txt"),
-      ),
+      existsSync(join(dataDir, "replays", REPLAY_ID, "downloaded-scopes.txt")),
     ).toBe(false);
   });
 
@@ -612,9 +634,7 @@ describe("getOrFetchReplayArchive — replay with no artifacts", () => {
       getOrFetchReplayArchive({} as never, REPLAY_ID),
     );
     expect(
-      existsSync(
-        join(dataDir, "replays", REPLAY_ID, "previously-downloaded.txt"),
-      ),
+      existsSync(join(dataDir, "replays", REPLAY_ID, "downloaded-scopes.txt")),
     ).toBe(false);
     await expect(
       runWithLocalDataDir(dataDir, () =>
@@ -647,15 +667,13 @@ describe("getOrFetchReplayArchive — replay with no artifacts", () => {
     });
     await expect(
       runWithLocalDataDir(dataDir, () =>
-        getOrFetchReplayArchive({} as never, REPLAY_ID, "everything", false, {
+        getOrFetchReplayArchive({} as never, REPLAY_ID, "everything", {
           bestEffortFileTypes: new Set(["chromeDiagnostics"]),
         }),
       ),
     ).resolves.toBeDefined();
     expect(
-      existsSync(
-        join(dataDir, "replays", REPLAY_ID, "previously-downloaded.txt"),
-      ),
+      existsSync(join(dataDir, "replays", REPLAY_ID, "downloaded-scopes.txt")),
     ).toBe(false);
   });
 });

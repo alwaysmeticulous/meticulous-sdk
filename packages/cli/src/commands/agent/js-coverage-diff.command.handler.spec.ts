@@ -483,9 +483,8 @@ describe("js-coverage-diff --replayDiffId paging", () => {
     );
   });
 
-  // The summary must describe the whole diff even when the rows are one page,
-  // so it uses the backend's counts rather than counting the returned rows.
-  it("summarises the whole diff, not the returned page", async () => {
+  // The backend writes the whole-diff summary, so the CLI only relays it.
+  it("relays the backend's summary of the whole diff", async () => {
     mocks.getReplayDiffJsCoverage.mockResolvedValue({
       base: null,
       head: null,
@@ -501,44 +500,16 @@ describe("js-coverage-diff --replayDiffId paging", () => {
       filesAdded: 100,
       filesRemoved: 50,
       filesModified: 150,
+      notes: [
+        "300 files with coverage changes (100 added, 50 removed, 150 modified)",
+      ],
     });
 
     await runReplayDiff({ limit: 1 });
 
+    expect(mocks.logNotice).toHaveBeenCalledTimes(1);
     expect(mocks.logNotice).toHaveBeenCalledWith(
       "300 files with coverage changes (100 added, 50 removed, 150 modified)",
-    );
-  });
-
-  // An older backend neither pages nor sends the counts, so the rows are the
-  // whole diff and counting them is correct.
-  it("falls back to counting rows when the backend sends no totals", async () => {
-    mocks.getReplayDiffJsCoverage.mockResolvedValue({
-      base: null,
-      head: null,
-      diff: [
-        {
-          filePath: "src/a.ts",
-          status: "added",
-          baseRanges: [],
-          headRanges: [[1, 3]],
-        },
-        {
-          filePath: "src/b.ts",
-          status: "modified",
-          baseRanges: [[1, 2]],
-          headRanges: [[1, 5]],
-        },
-      ],
-    });
-
-    await runReplayDiff();
-
-    expect(mocks.logNotice).toHaveBeenCalledWith(
-      "2 files with coverage changes (1 added, 0 removed, 1 modified)",
-    );
-    expect(mocks.logNotice).not.toHaveBeenCalledWith(
-      expect.stringContaining("--offset"),
     );
   });
 });

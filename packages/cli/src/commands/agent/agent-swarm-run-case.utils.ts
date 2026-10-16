@@ -36,6 +36,25 @@ export const formatSwarmRunCase = (
       `${comparison.screenshotName}: ${joinParts([comparison.verdict, comparison.explanation])}`,
     ),
   );
+  const provenance = testCase.mockDataProvenance;
+  if (provenance != null) {
+    add(
+      "mockDataProvenance",
+      `${provenance.recorded} recorded, ${provenance.modified} modified, ${provenance.generated} generated`,
+    );
+    const recheck = provenance.strictRecheck;
+    if (recheck != null) {
+      add(
+        "mockDataProvenance.strictRecheck.performed",
+        String(recheck.performed),
+      );
+      add(
+        "mockDataProvenance.strictRecheck.reproduced",
+        recheck.reproduced == null ? undefined : String(recheck.reproduced),
+      );
+      add("mockDataProvenance.strictRecheck.note", recheck.note);
+    }
+  }
   const evidence = testCase.runEvidence;
   if (evidence != null) {
     add("runEvidence.backendFailureCount", evidence.backendFailureCount);
@@ -54,11 +73,13 @@ export const formatSwarmRunCase = (
   const check = testCase.check;
   if (check != null) {
     add("check.verdict", check.verdict);
+    add("check.blockedBy", check.blockedBy);
     add("check.confidence", check.confidence);
     add("check.headline", check.headline);
     add("check.reason", check.reason);
     add("check.linkedToChange", check.linkedToChange);
     add("check.linkedToChangeRationale", check.linkedToChangeRationale);
+    add("check.error", check.error);
   }
   add("checkWithheld", testCase.checkWithheld);
   add("sessionIds", testCase.sessionIds.join(","));

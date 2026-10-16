@@ -1,16 +1,20 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir } from "fs/promises";
 import { join } from "path";
-import type { TestRunDataLocations } from "@alwaysmeticulous/api";
+import type { TestRunData, TestRunDataLocations } from "@alwaysmeticulous/api";
 import type { MeticulousClient } from "@alwaysmeticulous/client";
 import { getTestRunData } from "@alwaysmeticulous/client";
 import {
   getMeticulousLocalDataDir,
   initLogger,
 } from "@alwaysmeticulous/common";
+import { TestRunDataWithheldError } from "../errors";
 import { downloadAppContainerLogs } from "./app-container-logs";
 import { downloadAndExtractFile } from "./download-file";
 import {
-  fileExists,
+  readDownloadedScopes,
+  recordDownloadedScope,
+} from "./downloaded-scopes.utils";
+import {
   sanitizeFilename,
   waitToAcquireLockOnDirectory,
 } from "./local-data.utils";
@@ -33,8 +37,42 @@ export const DOWNLOAD_SCOPES = [
 
 export type TestRunDownloadScope = (typeof DOWNLOAD_SCOPES)[number];
 
-const includesAppContainerLogs = (scope: TestRunDownloadScope): boolean =>
-  scope === "everything" || scope === "app-container-logs";
+/**
+ * Recorded instead of `everything` when the backend withheld the pull-request
+ * files from a caller who may not read the project's code, so a later
+ * pull-request scope or `everything` still fetches them, or reports them
+ * withheld.
+ */
+const EVERYTHING_EXCEPT_PR = "everything-except-pr";
+
+type RecordedScope = TestRunDownloadScope | typeof EVERYTHING_EXCEPT_PR;
+
+const RECORDED_SCOPES: readonly RecordedScope[] = [
+  ...DOWNLOAD_SCOPES,
+  EVERYTHING_EXCEPT_PR,
+];
+
+const PR_SCOPES: ReadonlySet<RecordedScope> = new Set([
+  "coverage-pr-only",
+  "coverage-by-replay-pr-only",
+]);
+
+/**
+ * The `*Pr` fields of `TestRunDataLocations`, which the backend leaves out all
+ * together for such a caller.
+ */
+const PR_FILE_TYPES = [
+  "coveragePr",
+  "coverageStatsPr",
+  "coverageReplaysByFilePr",
+  "coverageScreenshotReplaysByFilePr",
+  "coverageByReplayPr",
+] as const satisfies readonly (keyof TestRunDataLocations)[];
+
+const includesAppContainerLogs = (scope: RecordedScope): boolean =>
+  scope === "everything" ||
+  scope === EVERYTHING_EXCEPT_PR ||
+  scope === "app-container-logs";
 
 const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<
   TestRunDownloadScope,
@@ -49,76 +87,67 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<
 
 export const shouldDownloadTestRunFile = (
   fileType: string,
-  downloadScope: TestRunDownloadScope,
+  downloadScope: RecordedScope,
 ): boolean => {
+  if (downloadScope === EVERYTHING_EXCEPT_PR) {
+    return !(PR_FILE_TYPES as readonly string[]).includes(fileType);
+  }
   return DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD[downloadScope].test(fileType);
 };
-
-const TEST_RUN_PREVIOUSLY_DOWNLOADED_FILE_NAME = "previously-downloaded.txt";
 
 export const getOrFetchTestRunData = async (
   client: MeticulousClient,
   testRunId: string,
   downloadScope: TestRunDownloadScope = "everything",
-  humanReadable: boolean = true,
-): Promise<{ fileName: string; data: TestRunDataLocations }> => {
+  /** Only with `testRunId: "latest"`: see `getTestRunData`. */
+  project?: string,
+): Promise<{ fileName: string; data: TestRunData }> => {
+  if (testRunId === "latest") {
+    // Download into the resolved run's own directory, so later calls for the
+    // same run reuse it.
+    const { testRunId: resolvedTestRunId } = await getTestRunData({
+      client,
+      testRunId,
+      project,
+    });
+    return getOrFetchTestRunData(client, resolvedTestRunId, downloadScope);
+  }
+
   const logger = initLogger();
 
   const testRunDir = join(
     getMeticulousLocalDataDir(),
     "test-runs",
-    testRunId === "latest"
-      ? `latest_${Date.now()}`
-      : sanitizeFilename(testRunId),
+    sanitizeFilename(testRunId),
   );
 
   await mkdir(testRunDir, { recursive: true });
   const releaseLock = await waitToAcquireLockOnDirectory(testRunDir);
 
   try {
-    const previouslyDownloadedFile = join(
+    // Only fetch what earlier downloads into this directory did not cover: a
+    // concurrent process might be reading those files, so we must not
+    // overwrite them.
+    const previousScopes = await readDownloadedScopes(
       testRunDir,
-      TEST_RUN_PREVIOUSLY_DOWNLOADED_FILE_NAME,
+      RECORDED_SCOPES,
     );
+    const isCovered = (covers: (scope: RecordedScope) => boolean): boolean =>
+      previousScopes.some(covers);
 
-    // Check what we have already downloaded. This is passed to the downloading function
-    // to avoid downloading the same thing twice. This is particularly important because
-    // a concurrent process might be using the previously downloaded data, so we don't
-    // want to overwrite it while it's being read.
-    let previouslyDownloadedScope: TestRunDownloadScope | undefined = undefined;
-    if (await fileExists(previouslyDownloadedFile)) {
-      const fileContents = (
-        await readFile(previouslyDownloadedFile, "utf-8")
-      ).trim();
-      if (DOWNLOAD_SCOPES.includes(fileContents as TestRunDownloadScope)) {
-        previouslyDownloadedScope = fileContents as TestRunDownloadScope;
-        if (
-          previouslyDownloadedScope === downloadScope ||
-          previouslyDownloadedScope === "everything"
-        ) {
-          logger.debug(`Test run data already downloaded at ${testRunDir}`);
-          const testRunData = await getTestRunData({ client, testRunId });
-          return { fileName: testRunDir, data: testRunData };
-        } else {
-          // Instead of trying to reason about how to combine the two scopes, let's bump
-          // to downloading everything which is guaranteed to be a superset.
-          logger.debug(
-            `Test run data is partially downloaded at ${testRunDir}, will now download everything`,
-          );
-          downloadScope = "everything";
-        }
-      } else {
-        throw new Error(
-          `Error: Unknown previously download scope "${fileContents}"`,
-        );
-      }
+    if (isCovered((scope) => coversScope(scope, downloadScope))) {
+      logger.debug(`Test run data already downloaded at ${testRunDir}`);
+      const testRunData = await getTestRunData({ client, testRunId });
+      return { fileName: testRunDir, data: testRunData };
     }
 
     logger.info("Fetching test run data locations...");
     const testRunData = await getTestRunData({
       client,
       testRunId,
-      includeAppContainerLogs: includesAppContainerLogs(downloadScope),
+      includeAppContainerLogs:
+        includesAppContainerLogs(downloadScope) &&
+        !isCovered(includesAppContainerLogs),
     });
 
     if (!testRunData) {
@@ -128,10 +157,21 @@ export const getOrFetchTestRunData = async (
       process.exit(1);
     }
 
+    const { testRunId: resolvedTestRunId, ...rest } = testRunData;
+    const locations: TestRunDataLocations = rest;
+    const prFilesWithheld = PR_FILE_TYPES.every(
+      (fileType) => locations[fileType] == null,
+    );
+    if (prFilesWithheld && PR_SCOPES.has(downloadScope)) {
+      throw new TestRunDataWithheldError(resolvedTestRunId, downloadScope);
+    }
+
     logger.info("Downloading test run data...");
-    const downloadPromises = Object.entries(testRunData)
-      .filter(([fileType]) =>
-        shouldDownloadTestRunFile(fileType, downloadScope),
+    const downloadPromises = Object.entries(locations)
+      .filter(
+        ([fileType]) =>
+          shouldDownloadTestRunFile(fileType, downloadScope) &&
+          !isCovered((scope) => shouldDownloadTestRunFile(fileType, scope)),
       )
       .map(([fileType, location]) => {
         if (location == null) {
@@ -151,15 +191,6 @@ export const getOrFetchTestRunData = async (
             targetFilePath,
             testRunDir,
           );
-          if (humanReadable && targetFilePath.endsWith(".json")) {
-            const fileContents = await readFile(targetFilePath, "utf-8");
-            const json = JSON.parse(fileContents);
-            await writeFile(
-              targetFilePath,
-              JSON.stringify(json, null, 2),
-              "utf-8",
-            );
-          }
         };
       })
       .filter((promise): promise is () => Promise<void> => promise !== null);
@@ -171,11 +202,31 @@ export const getOrFetchTestRunData = async (
       await downloadAppContainerLogs(testRunData.appContainerLogs, testRunDir);
     }
 
-    await writeFile(previouslyDownloadedFile, downloadScope, "utf-8");
+    await recordDownloadedScope(
+      testRunDir,
+      previousScopes,
+      prFilesWithheld && downloadScope === "everything"
+        ? EVERYTHING_EXCEPT_PR
+        : downloadScope,
+    );
     logger.info("Test run data downloaded.");
 
     return { fileName: testRunDir, data: testRunData };
   } finally {
     await releaseLock();
   }
+};
+
+const coversScope = (
+  recorded: RecordedScope,
+  requested: TestRunDownloadScope,
+): boolean => {
+  if (recorded === requested || recorded === "everything") {
+    return true;
+  }
+  return (
+    recorded === EVERYTHING_EXCEPT_PR &&
+    requested !== "everything" &&
+    !PR_SCOPES.has(requested)
+  );
 };

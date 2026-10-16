@@ -1,5 +1,21 @@
 # @alwaysmeticulous/recorder-loader
 
+## 2.350.0
+
+### Minor Changes
+
+- [#15434](https://github.com/alwaysmeticulous/meticulous/pull/15434) [`03910b5`](https://github.com/alwaysmeticulous/meticulous/commit/03910b5127ebae6c84667c9c83e8a3d544d68dd5) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `window.Meticulous.isRunningInAgentSwarm`. Agent swarm browsers now set
+  `isRunningAsTest` to true, so apps behave there as they do in a replay, and set
+  `isRunningInAgentSwarm` to tell the two apart. In Agent swarm,
+  `window.Meticulous.replay` exposes no-op controls (`pause`, `resume`,
+  `recordCustomSnapshot`, ...) and no replay-only data. `tryLoadAndStartRecorder`
+  still records when `isRunningInAgentSwarm` is true.
+
+### Patch Changes
+
+- Updated dependencies [[`03910b5`](https://github.com/alwaysmeticulous/meticulous/commit/03910b5127ebae6c84667c9c83e8a3d544d68dd5), [`2014178`](https://github.com/alwaysmeticulous/meticulous/commit/201417871a2a3434d1b4a55114ed4fd3229e3cff)]:
+  - @alwaysmeticulous/sdk-bundles-api@2.350.0
+
 ## 2.349.0
 
 ### Patch Changes

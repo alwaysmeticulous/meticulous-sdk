@@ -78,10 +78,10 @@ const resolveFlag = (flagKey) => {
 \`\`\`
 
 That keeps recording and overriding on one path. \`recordFeatureFlag\` only stores a value;
-it does not change what a replay sees. \`getFlagOverride\` is what lets Meticulous force a
-flag so a replay can exercise code that was off when the session was recorded. How you
-consume \`override.value\` depends on whether the helper is an on/off gate, a value-read,
-or an equality-check — see
+it does not change what a replay sees. \`getFlagOverride\` is how your app receives a value
+Meticulous forces, so a replay can exercise code that was off when the session was recorded.
+How you consume \`override.value\` depends on whether the helper is an on/off gate, a
+value-read, or an equality-check — see
 [Testing Feature Flags with Meticulous](${TESTING_FEATURE_FLAGS}).
 
 If you only want to record (and are not wrapping a resolver), you can still loop over the

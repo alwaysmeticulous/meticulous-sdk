@@ -521,8 +521,10 @@ export const TESTRUN_JS_COVERAGE_CLIENT_VERSION = 4;
  * - v0 (no clientVersion sent): what every published CLI sends; an unfinished
  *   run is HTTP 409.
  * - v1: an unfinished run is 200 with a {@link TestRunProcessingResponse}.
+ * - v2: a per-file `js-coverage-diff` response carries the diff's one-line
+ *   summary in `notes`.
  */
-export const TESTRUN_COVERAGE_AGGREGATE_CLIENT_VERSION = 1;
+export const TESTRUN_COVERAGE_AGGREGATE_CLIENT_VERSION = 2;
 
 /**
  * The contract version this client speaks for
@@ -553,8 +555,10 @@ export const DIFFS_SUMMARY_COUNTS_CLIENT_VERSION = 1;
  *   response type is a union the caller must narrow. Below v2 the 409 a
  *   current backend sends for that state keeps an unaware client from reading
  *   the diff as empty.
+ * - v3: the response carries the diff's one-line summary (files added,
+ *   removed and modified) in `notes`.
  */
-export const REPLAY_DIFF_JS_COVERAGE_DIFF_CLIENT_VERSION = 2;
+export const REPLAY_DIFF_JS_COVERAGE_DIFF_CLIENT_VERSION = 3;
 
 /**
  * The contract version this client speaks for `GET replays/:id/js-coverage`.
@@ -964,15 +968,18 @@ export interface ScreenshotUrlsResponse {
   outcome: string;
   before?: string;
   after?: string;
-  /**
-   * @deprecated Superseded by `before`/`after`. Still populated (mirroring
-   * whichever of `before`/`after` is set) for `missing-base`/`missing-head`
-   * outcomes only, so already-published CLI versions reading this field keep
-   * working. New consumers should use `before`/`after` instead.
-   */
-  screenshot?: string;
   diffImage?: string;
 }
+
+/**
+ * The contract version this client speaks for
+ * `GET replay-diffs/:id/screenshots/:name/image-urls`.
+ *
+ * - v0 (no clientVersion sent): a lone screenshot's `before`/`after` URL is
+ *   also returned as `screenshot`, which older CLIs read.
+ * - v1: no `screenshot` field.
+ */
+export const IMAGE_URLS_CLIENT_VERSION = 1;
 
 // ---------------------------------------------------------------------------
 // Timeline Diff types
@@ -2020,6 +2027,7 @@ export const getScreenshotUrls = async (
   const { data } = await client
     .get(
       `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/image-urls`,
+      { params: { clientVersion: String(IMAGE_URLS_CLIENT_VERSION) } },
     )
     .catch((error) => {
       throw maybeEnrichFetchError(error);

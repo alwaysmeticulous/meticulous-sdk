@@ -87,10 +87,11 @@ describe("agent promote-sessions", () => {
     ]);
   });
 
-  it("prints the response verbatim under --json", async () => {
+  it("prints the response without its notes under --json", async () => {
     await runHandler({ json: true });
 
-    expect(JSON.parse(stdout.join("\n"))).toEqual(RESPONSE);
+    const { notes: _notes, ...body } = RESPONSE;
+    expect(JSON.parse(stdout.join("\n"))).toEqual(body);
   });
 
   it("rejects an empty --sessionIds", async () => {
