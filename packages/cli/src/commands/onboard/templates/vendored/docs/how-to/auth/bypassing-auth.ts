@@ -14,7 +14,7 @@ stub all network responses. However, it may get tripped up if it gets redirected
 
 You can solve this by disabling the code that performs the redirect or auth check when running Meticulous tests in CI or against your preview URLs.
 
-This can be done securely by setting a secret in the 'Custom Request Headers' tab of your project's settings screen, or, if the check or redirect
+This can be done securely by setting a secret under **Settings → Network → Request headers** ([open](https://app.meticulous.ai/settings?page=network#request-headers)), or, if the check or redirect
 being disabled does not have security implications (and only UX implications), or is for localhost inside CI, then you can disable it in code by checking [the window variables or
 request headers that Meticulous sets](${METICULOUS_WINDOW_OBJECT_URL}).
 

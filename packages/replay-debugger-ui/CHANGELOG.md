@@ -1,5 +1,11 @@
 # @alwaysmeticulous/replay-debugger-ui
 
+## 3.1.0
+
+### Patch Changes
+
+- [#15665](https://github.com/alwaysmeticulous/meticulous/pull/15665) [`c685691`](https://github.com/alwaysmeticulous/meticulous/commit/c685691f6ebec916c43a781d5d6377ebee3b9b87) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Bump next to 16.3.8 for CVE-2026-94483, CVE-2026-94484, CVE-2026-94485, CVE-2026-94543, CVE-2026-94544 and CVE-2026-94486.
+
 ## 2.349.0
 
 ### Patch Changes

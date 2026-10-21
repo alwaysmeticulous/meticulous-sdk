@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/replay-debugger-ui",
-  "version": "2.349.0",
+  "version": "3.1.0",
   "description": "The Meticulous toolkit to replay user sessions",
   "license": "ISC",
   "main": "dist/index.js",
@@ -36,7 +36,7 @@
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.7",
     "classnames": "^2.3.1",
-    "next": "^16.3.6",
+    "next": "^16.3.8",
     "postcss": "^8.5.25",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

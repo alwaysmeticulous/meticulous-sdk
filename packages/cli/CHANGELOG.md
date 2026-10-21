@@ -1,5 +1,39 @@
 # @alwaysmeticulous/cli
 
+## 3.1.0
+
+### Minor Changes
+
+- [#15728](https://github.com/alwaysmeticulous/meticulous/pull/15728) [`e213955`](https://github.com/alwaysmeticulous/meticulous/commit/e213955972c54711f9b7b3965fcee2ee53f7552c) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agent swarm flows that the test environment blocked against a live backend can
+  be retried with mocked API responses. Result cases gain an optional
+  `mockFallback` (`AgenticRunMockFallback`) recording the blocked live attempt.
+  `agent agent-swarm-run` adds a `mockedBackend` column, `agent-swarm-run-case`
+  prints the case's `mockFallback`, and `agent agent-swarm-setup-blockers` adds a
+  `fallbackOutcome` column with how the retry ended.
+
+- [#15727](https://github.com/alwaysmeticulous/meticulous/pull/15727) [`d66fa2b`](https://github.com/alwaysmeticulous/meticulous/commit/d66fa2ba47f70076ce7e17406c63959e72d5303e) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `agent agent-swarm-setup-blockers`, which lists the test flows that Agent
+  swarm runs against a live backend couldn't verify because of the project's test
+  environment (missing test data, test-user permissions, feature flags,
+  authentication, backend health or external dependencies), with per-category
+  counts, the evidence and a suggested fix for each. The client adds
+  `getAgentSwarmSetupBlockers`.
+
+### Patch Changes
+
+- [#15784](https://github.com/alwaysmeticulous/meticulous/pull/15784) [`bde69be`](https://github.com/alwaysmeticulous/meticulous/commit/bde69be3a6f6e450f1aff6141100c89141a146fa) Thanks [@narobertson42](https://github.com/narobertson42)! - `meticulous agent ignore-diff --help` now names the project setting as it appears in the Meticulous app: "Let agents approve and ignore diffs" on the project's Agent access settings page.
+
+- [#15705](https://github.com/alwaysmeticulous/meticulous/pull/15705) [`4fc006a`](https://github.com/alwaysmeticulous/meticulous/commit/4fc006a319cb672600681b93c08ef2502cc28d32) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent --help` now explains what Meticulous is and when an agent should use these commands (reviewing a pull request, after pushing a frontend change, when the Meticulous CI check fails), with the review and fix workflows and usage notes. The top-level `meticulous --help` points agents to it.
+
+- [#15671](https://github.com/alwaysmeticulous/meticulous/pull/15671) [`7c12865`](https://github.com/alwaysmeticulous/meticulous/commit/7c12865fe691f939141400145285cca82e3f8bb9) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `sideDivergences` to `AgenticRunResultCase` and `AgentSwarmCaseResponse`: where a base-vs-head case's base run departed from the head's actions or mock data, with the case's `onSide` reason and where it happened in each side's recording. `agent agent-swarm-run-case` prints them.
+
+- [#15883](https://github.com/alwaysmeticulous/meticulous/pull/15883) [`55e129c`](https://github.com/alwaysmeticulous/meticulous/commit/55e129c10394806241e8d1c06e96e0f9afab4b5b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent test-run-diffs` now prints the Meticulous co-author notice only when it's likely run by a coding agent (stderr isn't a terminal, or the environment variables Claude Code, Codex or Cursor set on the commands their agents run are present), so humans running it by hand no longer see it. `meticulous agent --help` now also says how to credit Meticulous as a co-author. `@alwaysmeticulous/api` exports that instruction as `METICULOUS_CO_AUTHOR_INSTRUCTION`.
+
+- [#15627](https://github.com/alwaysmeticulous/meticulous/pull/15627) [`94a7949`](https://github.com/alwaysmeticulous/meticulous/commit/94a7949d55f40633ff69020256ac7718ef239896) Thanks [@narobertson42](https://github.com/narobertson42)! - Explain the forced-flag status icons (question mark, warning, dash) in the troubleshooting section of the bundled "Testing Feature Flags" guide.
+
+- [#15832](https://github.com/alwaysmeticulous/meticulous/pull/15832) [`5a03e69`](https://github.com/alwaysmeticulous/meticulous/commit/5a03e69fe2971343ac867b82dd3ca18c292a0a34) Thanks [@adrikoz](https://github.com/adrikoz)! - The `ci upload-assets`, `ci upload-container`, and `ci run-with-uploaded-asset-chunks` commands no longer fail when Meticulous hits GitHub's API rate limit while starting the test run and has scheduled an automatic retry; they report it as a skip instead.
+
+- [#15773](https://github.com/alwaysmeticulous/meticulous/pull/15773) [`266d132`](https://github.com/alwaysmeticulous/meticulous/commit/266d13220cd613b23d4a64a46fd7154d75af17c9) Thanks [@narobertson42](https://github.com/narobertson42)! - `meticulous onboard` links to the new project settings pages (Repository & CI, API tokens) instead of the old settings tab, and the bundled docs use the new settings page names.
+
 ## 3.0.0
 
 ### Patch Changes

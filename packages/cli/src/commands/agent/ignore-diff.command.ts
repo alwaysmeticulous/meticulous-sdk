@@ -61,7 +61,7 @@ const handler = async ({
 
 export const ignoreDiffCommand: CommandModule<unknown, Options> = {
   command: "ignore-diff",
-  describe: `Record an agent decision ignoring a screenshot diff as unrelated to the change under review, and add a review comment explaining why. On a project without the "Enable approve/ignore diff actions" setting this does not actually ignore the diff: it only adds the comment, so the diff stays unreviewed and the pull request check stays pending until a human decides. ${IGNORE_DIFF_CRITERIA} Refused on a diff a person rejected. Outputs the ID of the review comment, or an object with commentId with --json.`,
+  describe: `Record an agent decision ignoring a screenshot diff as unrelated to the change under review, and add a review comment explaining why. On a project without the "Let agents approve and ignore diffs" setting this does not actually ignore the diff: it only adds the comment, so the diff stays unreviewed and the pull request check stays pending until a human decides. ${IGNORE_DIFF_CRITERIA} Refused on a diff a person rejected. Outputs the ID of the review comment, or an object with commentId with --json.`,
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     replayDiffId: {

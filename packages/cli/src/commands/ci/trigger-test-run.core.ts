@@ -5,6 +5,7 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import {
   carryCompletedUpload,
+  describeGitHubRateLimitRetry,
   uploadAssetsAndTriggerTestRun,
   uploadContainer,
   withCompletedUpload,
@@ -192,7 +193,9 @@ type UploadResult = {
   | { testRunId: string }
   | {
       testRunId: null;
-      skipReason: "comments_disabled_for_author";
+      skipReason:
+        | "comments_disabled_for_author"
+        | "github_rate_limit_retry_scheduled";
       message: string;
     }
 );
@@ -240,9 +243,7 @@ const runAssetUpload = async ({
       return {
         testRunId: null,
         skipReason: result.skipReason,
-        message:
-          result.message ??
-          "Test run skipped because CI comments and checks are disabled for this pull request author.",
+        message: result.message ?? "Test run was not created.",
         fields,
       };
     }
@@ -342,16 +343,24 @@ const runContainerUpload = async ({
     });
     if (!result.testRun) {
       if (result.commentsDisabledForAuthor) {
-        logger.info(
+        const message =
           result.message ??
-            "Test run skipped because CI comments and checks are disabled for this pull request author.",
-        );
+          "Test run skipped because CI comments and checks are disabled for this pull request author.";
+        logger.info(message);
         return {
           testRunId: null,
           skipReason: "comments_disabled_for_author",
-          message:
-            result.message ??
-            "Test run skipped because CI comments and checks are disabled for this pull request author.",
+          message,
+          fields,
+        };
+      }
+      if (result.githubRateLimitRetryScheduled) {
+        const message = describeGitHubRateLimitRetry(result.message);
+        logger.info(message);
+        return {
+          testRunId: null,
+          skipReason: "github_rate_limit_retry_scheduled",
+          message,
           fields,
         };
       }

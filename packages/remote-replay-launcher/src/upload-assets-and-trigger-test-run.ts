@@ -1,6 +1,7 @@
 import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import { uploadAssets, uploadAssetsFromZip } from "./asset-upload-utils";
 import { withCompletedUpload } from "./completed-upload";
+import { describeGitHubRateLimitRetry } from "./github-rate-limit-retry";
 import type {
   UploadAssetsAndTriggerTestRunOptions,
   ExecuteRemoteTestRunResult,
@@ -44,6 +45,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
     throw new Error("Expected either appDirectory or appZip to be provided");
   }
 
+  let skipReason: ExecuteRemoteTestRunResult["skipReason"];
   let skipMessage: string | undefined;
   if (result.testRun) {
     const organizationName = encodeURIComponent(
@@ -53,10 +55,15 @@ export const uploadAssetsAndTriggerTestRun = async ({
     const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${result.testRun.id}`;
     logNotice(`Test run triggered: ${testRunUrl}`);
   } else if (result.commentsDisabledForAuthor) {
+    skipReason = "comments_disabled_for_author";
     skipMessage =
       result.message ??
       "Test run skipped because CI comments and checks are disabled for this pull request author.";
     logger.info(skipMessage);
+  } else if (result.githubRateLimitRetryScheduled) {
+    skipReason = "github_rate_limit_retry_scheduled";
+    skipMessage = describeGitHubRateLimitRetry(result.message);
+    logNotice(skipMessage);
   } else {
     throw withCompletedUpload(
       new Error(`${result.message ?? "Test run was not created"}`),
@@ -67,11 +74,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
   return {
     testRun: result.testRun ?? null,
     sourceDeploymentId: result.uploadId,
-    ...(result.commentsDisabledForAuthor
-      ? {
-          skipReason: "comments_disabled_for_author" as const,
-          ...(skipMessage ? { message: skipMessage } : {}),
-        }
-      : {}),
+    ...(skipReason ? { skipReason } : {}),
+    ...(skipMessage ? { message: skipMessage } : {}),
   };
 };

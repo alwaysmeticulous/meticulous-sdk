@@ -6,9 +6,12 @@ import type {
   AgenticRunBlockedBy,
   AgenticRunCaseCheckLinkedToChange,
   AgenticRunComparisonVerdict,
+  AgenticRunMockFallback,
   AgenticRunNotTestableCategory,
   AgenticRunProgressCaseStatus,
   AgenticRunResultCaseOutcome,
+  AgenticRunSetupIssueCategory,
+  AgenticRunSideDivergence,
   AgenticRunStepOutcome,
 } from "./agentic-session-generation.api";
 
@@ -76,6 +79,62 @@ export interface GetAgentSwarmRunsOptions {
   offset?: number | undefined;
 }
 
+export type AgentSwarmSetupBlockerCategory = AgenticRunSetupIssueCategory;
+
+/**
+ * How a setup-blocked flow's retry with mocked API responses ended, or
+ * `unreported` when the retry never reported.
+ */
+export type AgentSwarmSetupBlockerFallbackOutcome =
+  | "pass"
+  | "fail"
+  | "blocked"
+  | "skipped"
+  | "unreported";
+
+export interface AgentSwarmSetupBlockerCount {
+  category: AgentSwarmSetupBlockerCategory;
+  count: number;
+}
+
+export interface AgentSwarmSetupBlockerEntry {
+  createdAt: string;
+  /** Pass with caseIndex to get_agent_swarm_run_case / agent-swarm-run-case. */
+  swarmRunId: string;
+  caseIndex: number;
+  caseId: string;
+  commitSha: string;
+  category: AgentSwarmSetupBlockerCategory;
+  blockedBy: AgenticRunBlockedBy;
+  caseTitle: string;
+  summary: string;
+  evidence: string;
+  suggestedFix: string;
+  /**
+   * Null when the flow was not retried with mocks. A `pass` verified only the
+   * frontend, against recorded API responses.
+   */
+  fallbackOutcome: AgentSwarmSetupBlockerFallbackOutcome | null;
+}
+
+export interface AgentSwarmSetupBlockersResponse {
+  /** The effective lower bound, including the default 30-day lookback. */
+  since: string;
+  /** Every category's count over all matching blockers, not just this page. */
+  counts: AgentSwarmSetupBlockerCount[];
+  setupBlockers: AgentSwarmSetupBlockerEntry[];
+  notes?: AgentResponseNotes;
+}
+
+export interface GetAgentSwarmSetupBlockersOptions {
+  project?: string | undefined;
+  since?: string | undefined;
+  category?: AgentSwarmSetupBlockerCategory | undefined;
+  runId?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+}
+
 export interface AgentSwarmNotTestable {
   category: AgenticRunNotTestableCategory;
   reason: string;
@@ -101,6 +160,12 @@ export interface AgentSwarmCaseSummary {
    * fail against the case's `mockDataProvenance.strictRecheck`.
    */
   usedSyntheticMockData: boolean;
+  /**
+   * True when a test environment setup issue blocked the case against the live
+   * backend and its result comes from a retry with mocked API responses: a
+   * pass verified the frontend only, not the backend.
+   */
+  mockedBackend: boolean;
 }
 
 /**
@@ -208,8 +273,21 @@ export interface AgentSwarmCaseResponse {
   rationale?: string;
   steps: AgentSwarmStep[];
   comparisons: AgentSwarmComparison[];
+  /**
+   * Where the base run departed from the head's actions or mock data, with the
+   * case's reason; omitted when both sides ran the same flow.
+   */
+  sideDivergences?: AgenticRunSideDivergence[];
   /** Where the reported run's mock API data came from; omitted when unknown. */
   mockDataProvenance?: AgentSwarmMockDataProvenance;
+  /**
+   * The case was blocked against the live backend by a test environment setup
+   * issue (`liveAttempt`) and retried with mocked API responses. When
+   * `completed`, the case's status, steps and evidence are the mocked
+   * retry's, so the backend was not tested; otherwise the retry never
+   * reported. Omitted when the case was not retried.
+   */
+  mockFallback?: AgenticRunMockFallback;
   /**
    * Backend failures and page errors during the reported run; omitted when the
    * run left none. A failure that depends on them may be environmental.
@@ -270,6 +348,24 @@ export const getAgentSwarmRuns = async (
         ...rest,
         includeCounts: includeCounts ? "true" : undefined,
       }),
+    })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+/**
+ * Gets recent setup blockers and per-category counts for a project's Agent
+ * swarm runs. The server applies a 30-day lookback and a limit of 100 by default.
+ */
+export const getAgentSwarmSetupBlockers = async (
+  client: MeticulousClient,
+  options: GetAgentSwarmSetupBlockersOptions = {},
+): Promise<AgentSwarmSetupBlockersResponse> => {
+  const { data } = await client
+    .get<AgentSwarmSetupBlockersResponse>("agent/agent-swarm/setup-blockers", {
+      params: toParams({ ...options }),
     })
     .catch((error) => {
       throw maybeEnrichFetchError(error);

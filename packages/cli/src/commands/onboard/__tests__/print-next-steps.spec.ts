@@ -5,7 +5,7 @@ const baseContext = {
   orgAndProject: "acme/web app",
   meticulousSideSetupPath: "/tmp/missing-setup.md",
   meticulousTokensUrl:
-    "https://app.meticulous.ai/projects/acme/web%20app?tab=settings&section=tokens",
+    "https://app.meticulous.ai/settings/acme/projects/web%20app/api-tokens",
   meticulousSessionsUrl:
     "https://app.meticulous.ai/projects/acme/web%20app?tab=sessions",
   secretsUrl: "https://github.com/acme/web/settings/secrets/actions",

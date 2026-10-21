@@ -4,7 +4,7 @@ export const linkBitbucketInstructions = `
     ([guide](https://support.atlassian.com/bitbucket-cloud/docs/create-a-repository-access-token/))
     - Grant **Repositories: Read** and **Pull requests: Read**
 2. In Meticulous, link the repository and paste the token:
-    - When creating a Bitbucket project, or from **Project settings → CI settings → Linked repository**
+    - When creating a Bitbucket project, or from **Settings → Repository & CI → Repository** ([open](https://app.meticulous.ai/settings?page=repository))
     - Enter your Bitbucket **workspace**, **repository slug**, and paste the access token (it is stored securely and never shown again)
 3. Add the Meticulous webhook in Bitbucket (**Repository settings → Webhooks → Add webhook**):
     - Use the **Webhook URL** and **Secret** shown by Meticulous after linking

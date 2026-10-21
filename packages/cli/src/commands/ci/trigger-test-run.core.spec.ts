@@ -157,6 +157,20 @@ describe("triggerTestRun CI outcomes", () => {
     });
   });
 
+  it("returns a rate-limit-retry skip", async () => {
+    vi.mocked(uploadAssetsAndTriggerTestRun).mockResolvedValue({
+      testRun: null,
+      skipReason: "github_rate_limit_retry_scheduled",
+      message:
+        "GitHub's API rate limit was hit while triggering the test run; a retry has been scheduled.",
+    });
+
+    await expect(triggerTestRun(options)).resolves.toMatchObject({
+      outcome: "skipped",
+      reason: "github_rate_limit_retry_scheduled",
+    });
+  });
+
   it("skips before uploading when there is nothing to test", async () => {
     vi.mocked(resolveGitOptions).mockResolvedValue({
       commitSha: "same",

@@ -81,7 +81,7 @@ describe("buildDiffsSummaryHeader", () => {
     ]);
   });
 
-  // Pins the invariant from .claude/rules/agent-command-descriptions.md: TSV
+  // Pins the invariant from .claude/rules/agent-mcp-cli-tooling.md: TSV
   // headers must match JSON key names. buildDiffsSummaryHeader, flattenDiffsSummary
   // (backend), and the client's legacy-normalize flatten each independently encode
   // this field order — this is the cheap check that catches them drifting apart.

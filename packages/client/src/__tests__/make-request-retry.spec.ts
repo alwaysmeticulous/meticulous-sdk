@@ -53,3 +53,57 @@ describe("makeRequest retry override", () => {
     expect(meticulousFetch).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("makeRequest caller abort signal", () => {
+  beforeEach(() => {
+    meticulousFetch.mockReset();
+  });
+
+  it("is passed through to fetch so the request can be aborted in flight", async () => {
+    const controller = new AbortController();
+    meticulousFetch.mockImplementation(
+      (_url: unknown, init?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        }),
+    );
+
+    const promise = request({ signal: controller.signal });
+    controller.abort();
+
+    await expect(promise).rejects.toThrow("Aborted");
+  });
+
+  it("does not re-attempt a request the caller aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    meticulousFetch.mockRejectedValue(severedConnection());
+
+    await expect(request({ signal: controller.signal })).rejects.toThrow(
+      "fetch failed",
+    );
+
+    expect(meticulousFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not re-attempt when the caller aborts mid-retry-schedule", async () => {
+    const controller = new AbortController();
+    meticulousFetch.mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          reject(severedConnection());
+        }),
+    );
+
+    const promise = request({
+      signal: controller.signal,
+      retry: { maxRetries: 3 },
+    });
+    controller.abort();
+    await expect(promise).rejects.toThrow("fetch failed");
+
+    expect(meticulousFetch).toHaveBeenCalledTimes(1);
+  });
+});

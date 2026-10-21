@@ -4,7 +4,7 @@ export interface RequestConfig<D> {
   headers?: Record<string, string>;
   params?: Record<string, any>;
   timeout?: number;
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
   data?: D;
   /**
    * Overrides the client's own retry schedule, or disables it with `false`

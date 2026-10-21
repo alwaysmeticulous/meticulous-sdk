@@ -14,4 +14,12 @@ export interface MeticulousPrivateApi {
   stopRecording?: () => void;
 
   flushPendingPayloads?: () => Promise<void>;
+
+  /**
+   * Feature flag overrides a host (the Agent swarm recording browser) set for
+   * this page at document start. Absent on ordinary recordings: a real user's
+   * flags are whatever the application itself evaluates. Read only through the
+   * resolver in recordts/src/utils/flag-override.ts, never directly.
+   */
+  flagOverrides?: Record<string, string | boolean>;
 }

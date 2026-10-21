@@ -1,5 +1,27 @@
 # @alwaysmeticulous/api
 
+## 3.1.0
+
+### Minor Changes
+
+- [#15662](https://github.com/alwaysmeticulous/meticulous/pull/15662) [`cb91931`](https://github.com/alwaysmeticulous/meticulous/commit/cb9193194af9901f2ecc3c9c8b5b3347958b775c) Thanks [@phreppo](https://github.com/phreppo)! - `prNumbersWithPotentialBugs` in the project daily stats gains the `check_rejected` and `check_eliminated` categories, for bugs caught by builtin or custom checks, and the `bugsPrevented.high` / `bugsPrevented.medium` tiers include them.
+
+- [#15692](https://github.com/alwaysmeticulous/meticulous/pull/15692) [`cf5e8fe`](https://github.com/alwaysmeticulous/meticulous/commit/cf5e8fed56d534f4d3dea2703a06e52a5369b39f) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `FlakeEvidence` gains an `image-resampling-noise` variant, for diffs labelled `onlyImageResamplingNoise`. That label no longer requires an identical DOM, only that no DOM change paints over the resampled images.
+
+### Patch Changes
+
+- [#15883](https://github.com/alwaysmeticulous/meticulous/pull/15883) [`55e129c`](https://github.com/alwaysmeticulous/meticulous/commit/55e129c10394806241e8d1c06e96e0f9afab4b5b) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent test-run-diffs` now prints the Meticulous co-author notice only when it's likely run by a coding agent (stderr isn't a terminal, or the environment variables Claude Code, Codex or Cursor set on the commands their agents run are present), so humans running it by hand no longer see it. `meticulous agent --help` now also says how to credit Meticulous as a co-author. `@alwaysmeticulous/api` exports that instruction as `METICULOUS_CO_AUTHOR_INSTRUCTION`.
+
+- [#15708](https://github.com/alwaysmeticulous/meticulous/pull/15708) [`f522f3f`](https://github.com/alwaysmeticulous/meticulous/commit/f522f3fe3c5712d8f5b3d160bb603af772bcd971) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add optional `coverageExpandedEditedLines` and `coverageStatsExpandedEditedLines` locations to `TestRunDataLocations`, and treat them like the `*Pr` files when the backend withholds pull-request coverage from a test-run download.
+
+- [#15781](https://github.com/alwaysmeticulous/meticulous/pull/15781) [`598ead6`](https://github.com/alwaysmeticulous/meticulous/commit/598ead69592986e714e0a42c653e972133d23065) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add optional `coverageReplaysByFileExpandedEditedLines`, `coverageScreenshotReplaysByFileExpandedEditedLines` and `coverageByReplayExpandedEditedLines` locations to `TestRunDataLocations`, and treat them like the `*Pr` files when the backend withholds pull-request coverage from a test-run download.
+
+- [#15699](https://github.com/alwaysmeticulous/meticulous/pull/15699) [`c7c35ad`](https://github.com/alwaysmeticulous/meticulous/commit/c7c35ada4f717dca17a659011f3f6b8d8907d4a0) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `internationalization_sibling_coverage` to `SessionRelevanceReason`, recording that a session was selected because its coverage-source replay covered the co-located sibling source file of a changed internationalization catalog (e.g. `Foo.tsx` for `Foo.i18n.yml`), rather than covering a directly edited line.
+
+- [#15748](https://github.com/alwaysmeticulous/meticulous/pull/15748) [`af15e19`](https://github.com/alwaysmeticulous/meticulous/commit/af15e195de9e75755b314fefdb4a4b1c034d56f3) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Document that `TestRunDataLocations`'s PR-scoped coverage fields are omitted when the project disables source-code access.
+
+- [#15593](https://github.com/alwaysmeticulous/meticulous/pull/15593) [`cb08ae9`](https://github.com/alwaysmeticulous/meticulous/commit/cb08ae9e06f9c1a9f627e5948564372ec9012299) Thanks [@linpengzhang](https://github.com/linpengzhang)! - `GET test-runs/:id/data` now returns `coverageReplaysByFeatureFlag` when the run has a `coverage-replays-by-feature-flag.json.gz` artifact, and omits it otherwise.
+
 ## 3.0.0
 
 ### Major Changes

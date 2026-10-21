@@ -1,6 +1,9 @@
 export { Organization } from "./organization.types";
 export { Project, ProjectSettingsScreenshottingOptions } from "./project.types";
-export { METICULOUS_CO_AUTHOR_NOTICE } from "./agent-attribution";
+export {
+  METICULOUS_CO_AUTHOR_INSTRUCTION,
+  METICULOUS_CO_AUTHOR_NOTICE,
+} from "./agent-attribution";
 export { TEST_RUN_EVENT_TYPES } from "./agent-stats.types";
 export type {
   BulkStatsEnvelope,

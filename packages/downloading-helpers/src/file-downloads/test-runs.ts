@@ -58,8 +58,9 @@ const PR_SCOPES: ReadonlySet<RecordedScope> = new Set([
 ]);
 
 /**
- * The `*Pr` fields of `TestRunDataLocations`, which the backend leaves out all
- * together for such a caller.
+ * The PR-scoped fields of `TestRunDataLocations` (the `*Pr` and
+ * expanded-edited-lines ones), which the backend leaves out all together for
+ * such a caller.
  */
 const PR_FILE_TYPES = [
   "coveragePr",
@@ -67,6 +68,11 @@ const PR_FILE_TYPES = [
   "coverageReplaysByFilePr",
   "coverageScreenshotReplaysByFilePr",
   "coverageByReplayPr",
+  "coverageExpandedEditedLines",
+  "coverageStatsExpandedEditedLines",
+  "coverageReplaysByFileExpandedEditedLines",
+  "coverageScreenshotReplaysByFileExpandedEditedLines",
+  "coverageByReplayExpandedEditedLines",
 ] as const satisfies readonly (keyof TestRunDataLocations)[];
 
 const includesAppContainerLogs = (scope: RecordedScope): boolean =>

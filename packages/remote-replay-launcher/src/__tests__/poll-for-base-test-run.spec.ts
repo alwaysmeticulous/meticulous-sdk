@@ -66,6 +66,25 @@ describe("pollWhileBaseNotFound", () => {
     expect(fallbackFn).not.toHaveBeenCalled();
   });
 
+  it("preserves a rate-limit retry-scheduled skip without polling", async () => {
+    const retryFn = vi.fn();
+    const fallbackFn = vi.fn();
+
+    const result = await pollWhileBaseNotFound({
+      initialResult: {
+        testRun: null,
+        baseNotFound: false,
+        githubRateLimitRetryScheduled: true,
+      },
+      retryFn,
+      fallbackFn,
+    });
+
+    expect(result.githubRateLimitRetryScheduled).toBe(true);
+    expect(retryFn).not.toHaveBeenCalled();
+    expect(fallbackFn).not.toHaveBeenCalled();
+  });
+
   it("keeps polling for the server-provided extraBasePollTimeoutMs", async () => {
     const retryFn = vi.fn().mockResolvedValue({
       testRun: null,

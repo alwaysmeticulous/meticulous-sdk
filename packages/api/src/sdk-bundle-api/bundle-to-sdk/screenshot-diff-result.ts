@@ -259,16 +259,17 @@ export interface ScreenshotDiffResultDifference extends ScreenshotDiffResultComp
   diffInBoundingBoxOfIgnoredElement?: boolean;
 
   /**
-   * True when the DOM is identical (after noise removal) and every differing
-   * pixel lies inside an image drawn at a size other than its natural size,
-   * with the same source, natural size and box on both sides, and differs
-   * only slightly. Chromium resamples such images from whichever cached
-   * decode is available, which varies between replays of identical code, so
-   * a diff like this is very likely noise rather than a change.
+   * True when every differing pixel lies inside an image drawn at a size
+   * other than its natural size, with the same source, natural size, paint
+   * style and box on both sides, and differs only slightly. Chromium
+   * resamples such images from whichever cached decode is available, which
+   * varies between replays of identical code, so a diff like this is very
+   * likely noise rather than a change.
    *
-   * A label only: the outcome stays a diff. Absent when false, and on
-   * screenshots captured before images recorded their natural size
-   * (~Oct 2026).
+   * Projects that opt in turn such a diff into a flake with evidence
+   * `image-resampling-noise`; elsewhere it is a label only. Absent when
+   * false, and on screenshots captured before images recorded their natural
+   * size (~Oct 2026).
    */
   onlyImageResamplingNoise?: true;
 }
@@ -315,11 +316,14 @@ export interface ScreenshotDiffResultFlake {
  *                                         a diff but when we compared the redacted versions of the screenshot we found a diff.
  *
  * - **diff-is-known-flake**: The diff screenshot's hash matches the hash of a flake that was previously detected by one of the methods above.
+ *
+ * - **image-resampling-noise**: The diff is {@link ScreenshotDiffResultDifference.onlyImageResamplingNoise}.
  */
 export type FlakeEvidence =
   | "varied-results-on-retry"
   | "varied-redacted-results-on-retry"
-  | "diff-is-known-flake";
+  | "diff-is-known-flake"
+  | "image-resampling-noise";
 
 export type ScreenshotDiffRetryResult =
   | SingleTryScreenshotDiffRetryResult

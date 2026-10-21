@@ -34,7 +34,7 @@ In all of these cases, if you can't solve the underlying cause, then you can jus
 ### Configuring certain diffs to be ignored
 
 You can configure diffs inside certain elements to be ignored by adding a CSS selector to the
-_'Elements to ignore when comparing screenshots'_ list in the _'Screenshotting behavior'_ section in project settings, or by adding the
+_'Elements to ignore'_ list on [Settings → Ignored elements](https://app.meticulous.ai/settings?page=ignored-elements), or by adding the
 \`meticulous-ignore\` class to an element.
 
 Please note that if you open a pull request to add a \`meticulous-ignore\` class to an element then the ignore rule will only apply to Meticulous
@@ -60,10 +60,10 @@ your server components which cause flakes in Meticulous tests. It'll always be p
 of a Meticulous test.
 
 If you render text based on the current time (for example "Posted 7 minutes ago"), you can configure Meticulous to send a simulated date
-header with the virtual time by adding a custom header in your project settings (Settings > Custom Request Headers). Use the
-**Simulated Date** template to set the header value - this will be resolved per-request to the virtual time in RFC 7231 format.
+header with the virtual time by adding a custom header under **Settings → Network → Request headers** ([open](https://app.meticulous.ai/settings?page=network#request-headers)). Use the
+**Simulated date** template to set the header value - this will be resolved per-request to the virtual time in RFC 7231 format.
 
-For example, you could add a custom header named \`meticulous-simulated-date\` using the Simulated Date template, then use it like so:
+For example, you could add a custom header named \`meticulous-simulated-date\` using the Simulated date template, then use it like so:
 
 \`\`\`javascript
 import { headers } from 'next/headers'

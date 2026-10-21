@@ -14,6 +14,11 @@ const TEST_RUN_DATA_FILE_TYPES = [
   "coverageScreenshotReplaysByFilePr",
   "coverageScreenshotReplaysByFileUnmapped",
   "coverageByReplayPr",
+  "coverageExpandedEditedLines",
+  "coverageStatsExpandedEditedLines",
+  "coverageReplaysByFileExpandedEditedLines",
+  "coverageScreenshotReplaysByFileExpandedEditedLines",
+  "coverageByReplayExpandedEditedLines",
   "diversityByReplay",
   "relevantReplayContexts",
 ] as const;
@@ -66,6 +71,26 @@ describe("shouldDownloadTestRunFile", () => {
   it("downloads all files for everything", () => {
     for (const fileType of TEST_RUN_DATA_FILE_TYPES) {
       expect(shouldDownloadTestRunFile(fileType, "everything")).toBe(true);
+    }
+  });
+
+  it("treats the PR-scoped and expanded-edited-lines files as not downloaded for everything-except-pr", () => {
+    const withheld = new Set<string>([
+      "coveragePr",
+      "coverageStatsPr",
+      "coverageReplaysByFilePr",
+      "coverageScreenshotReplaysByFilePr",
+      "coverageByReplayPr",
+      "coverageExpandedEditedLines",
+      "coverageStatsExpandedEditedLines",
+      "coverageReplaysByFileExpandedEditedLines",
+      "coverageScreenshotReplaysByFileExpandedEditedLines",
+      "coverageByReplayExpandedEditedLines",
+    ]);
+    for (const fileType of TEST_RUN_DATA_FILE_TYPES) {
+      expect(shouldDownloadTestRunFile(fileType, "everything-except-pr")).toBe(
+        !withheld.has(fileType),
+      );
     }
   });
 

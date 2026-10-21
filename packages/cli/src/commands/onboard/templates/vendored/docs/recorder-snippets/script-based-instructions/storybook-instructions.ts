@@ -1,11 +1,4 @@
-import {
-  METICULOUS_SETUP_CALENDLY_LINK,
-  METICULOUS_SUPPORT_EMAIL,
-} from "src/lib/next/next.constants";
-import {
-  ENSURE_RECORDER_CAPTURES_ALL_REQUESTS_URL,
-  TYPESCRIPT_TYPES_URL,
-} from "src/lib/utils/internal-urls/docs-urls.utils";
+import { TYPESCRIPT_TYPES_URL } from "src/lib/utils/internal-urls/docs-urls.utils";
 import { SNIPPET_URL } from "../constants";
 
 export const storybookInstructions = (

@@ -111,6 +111,18 @@ const makeSingleRequest = async <T>(
   timeout?: number,
 ): Promise<Response<T>> => {
   const controller = new AbortController();
+  // A caller-supplied signal (deadline or cancellation) must abort the
+  // request too, not just the built-in timeout — and must stop the retry
+  // loop from re-attempting an abandoned request.
+  const callerSignal = options.signal;
+  const forwardAbort = (): void => controller.abort();
+  if (callerSignal != null) {
+    if (callerSignal.aborted) {
+      controller.abort();
+    } else {
+      callerSignal.addEventListener("abort", forwardAbort, { once: true });
+    }
+  }
   const timeoutId = setTimeout(() => {
     controller.abort();
   }, timeout ?? DEFAULT_TIMEOUT);
@@ -119,7 +131,9 @@ const makeSingleRequest = async <T>(
     signal: controller.signal,
   });
   clearTimeout(timeoutId);
-
+  if (callerSignal != null) {
+    callerSignal.removeEventListener("abort", forwardAbort);
+  }
   const responseHeaders: Record<string, string> = {};
   response.headers.forEach((value: string, key: string) => {
     responseHeaders[key] = value;
@@ -198,6 +212,7 @@ export const makeRequest = async <T>(
 
   const requestInit: RequestInit = {
     ...options,
+    ...(config.signal != null ? { signal: config.signal } : {}),
     headers: finalHeaders,
   };
 
@@ -209,7 +224,11 @@ export const makeRequest = async <T>(
   }
 
   return await executeWithRetry(attempt, {
-    shouldRetry: defaultShouldRetry,
+    // A caller-aborted request is never re-attempted: the deadline or
+    // cancellation that aborted it stands even if the network error looks
+    // transient.
+    shouldRetry: (error) =>
+      config.signal?.aborted === true ? false : defaultShouldRetry(error),
     logger,
     operationDescription: `${requestInit.method ?? "GET"} ${new URL(finalUrl).pathname}`,
     ...config.retry,

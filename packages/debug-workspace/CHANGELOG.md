@@ -1,5 +1,16 @@
 # @alwaysmeticulous/debug-workspace
 
+## 3.1.0
+
+### Patch Changes
+
+- [#15702](https://github.com/alwaysmeticulous/meticulous/pull/15702) [`1d8d246`](https://github.com/alwaysmeticulous/meticulous/commit/1d8d246cff84357a39e3636e7b10d6cc0df4525d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - The debug workspace's events index, network log and screenshot timeline context list entries in virtual time order, each still numbered by its position in `timeline.ndjson`. A replay stored in virtual time order and one stored in the order its entries were reported now line up.
+
+- Updated dependencies [[`e213955`](https://github.com/alwaysmeticulous/meticulous/commit/e213955972c54711f9b7b3965fcee2ee53f7552c), [`d66fa2b`](https://github.com/alwaysmeticulous/meticulous/commit/d66fa2ba47f70076ce7e17406c63959e72d5303e), [`2765a1a`](https://github.com/alwaysmeticulous/meticulous/commit/2765a1a5d4591304a8a344162c7915301405e11d), [`7c12865`](https://github.com/alwaysmeticulous/meticulous/commit/7c12865fe691f939141400145285cca82e3f8bb9), [`1d8d246`](https://github.com/alwaysmeticulous/meticulous/commit/1d8d246cff84357a39e3636e7b10d6cc0df4525d), [`77fa3ba`](https://github.com/alwaysmeticulous/meticulous/commit/77fa3bac2a3302fc07bb3a7586fdee68e3280f03), [`f522f3f`](https://github.com/alwaysmeticulous/meticulous/commit/f522f3fe3c5712d8f5b3d160bb603af772bcd971), [`598ead6`](https://github.com/alwaysmeticulous/meticulous/commit/598ead69592986e714e0a42c653e972133d23065), [`5a03e69`](https://github.com/alwaysmeticulous/meticulous/commit/5a03e69fe2971343ac867b82dd3ca18c292a0a34)]:
+  - @alwaysmeticulous/client@3.1.0
+  - @alwaysmeticulous/common@3.1.0
+  - @alwaysmeticulous/downloading-helpers@3.1.0
+
 ## 3.0.0
 
 ### Patch Changes

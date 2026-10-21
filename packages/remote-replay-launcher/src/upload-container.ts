@@ -66,6 +66,12 @@ export interface UploadContainerResult {
   testRun?: TestRun | null;
   message?: string;
   commentsDisabledForAuthor?: boolean;
+  /**
+   * Set when no test run was created because GitHub's primary rate limit was
+   * hit while triggering, and the server scheduled a delayed retry that will
+   * create the run once the limit resets.
+   */
+  githubRateLimitRetryScheduled?: boolean;
 }
 
 export interface PushContainerImageResult {
@@ -284,6 +290,8 @@ export const uploadContainer = async ({
       extraBasePollTimeoutMs: completeResult.extraBasePollTimeoutMs,
       message: completeResult.message,
       commentsDisabledForAuthor: completeResult.commentsDisabledForAuthor,
+      githubRateLimitRetryScheduled:
+        completeResult.githubRateLimitRetryScheduled,
     },
     retryFn: () =>
       completeUpload({
@@ -303,6 +311,8 @@ export const uploadContainer = async ({
   const baseNotFound = pollResult.baseNotFound;
   const message = pollResult.message;
   const commentsDisabledForAuthor = pollResult.commentsDisabledForAuthor;
+  const githubRateLimitRetryScheduled =
+    pollResult.githubRateLimitRetryScheduled;
 
   if (testRun) {
     const organizationName = encodeURIComponent(
@@ -331,5 +341,8 @@ export const uploadContainer = async ({
     testRun,
     ...(message ? { message } : {}),
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
+    ...(githubRateLimitRetryScheduled
+      ? { githubRateLimitRetryScheduled: true }
+      : {}),
   };
 };

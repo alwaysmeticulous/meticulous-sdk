@@ -1,4 +1,5 @@
 import type { CommandModule } from "yargs";
+import { AGENT_COMMAND_EPILOG } from "./agent-help";
 import { completeBaseRunCommand } from "./complete-base-run.command";
 import { promoteSessionsCommand } from "./promote-sessions.command";
 import { diffCommentsCommand } from "./diff-comments.command";
@@ -11,6 +12,7 @@ import { sessionsCommand } from "./sessions.command";
 import { agentSwarmRunCaseCommand } from "./agent-swarm-run-case.command";
 import { agentSwarmRunCommand } from "./agent-swarm-run.command";
 import { agentSwarmRunsCommand } from "./agent-swarm-runs.command";
+import { agentSwarmSetupBlockersCommand } from "./agent-swarm-setup-blockers.command";
 import { testRunsCommand } from "./test-runs.command";
 import { submitFeedbackCommand } from "./submit-feedback.command";
 import { testRunCheckCommand } from "./test-run-check.command";
@@ -37,7 +39,7 @@ import { ignoreCheckCommand } from "./ignore-check.command";
 export const agentCommand: CommandModule = {
   command: "agent",
   describe:
-    "Agent commands for retrieving data from and interacting with Meticulous.",
+    "For AI agents: review Meticulous test runs, visual diffs and checks, and act on them. See `meticulous agent --help` for when and how.",
   builder: (yargs) =>
     yargs
       .command(testRunForCommitCommand)
@@ -63,6 +65,7 @@ export const agentCommand: CommandModule = {
       .command(agentSwarmRunsCommand)
       .command(agentSwarmRunCommand)
       .command(agentSwarmRunCaseCommand)
+      .command(agentSwarmSetupBlockersCommand)
       .command(testRunsCommand)
       .command(testRunStatsCommand)
       .command(projectDailyStatsCommand)
@@ -86,6 +89,7 @@ export const agentCommand: CommandModule = {
           "notices still go to stderr — and stdout is always valid JSON, " +
           "including an empty array/object when there is no result.",
       })
+      .epilog(AGENT_COMMAND_EPILOG)
       .demandCommand()
       .help(),
   handler: () => {

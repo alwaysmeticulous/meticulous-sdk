@@ -4,6 +4,7 @@ import type {
   ExecuteRemoteTestRunResult,
 } from "./types";
 import { uploadContainer } from "./upload-container";
+import { describeGitHubRateLimitRetry } from "./github-rate-limit-retry";
 
 export const uploadContainerAndTriggerTestRun = async ({
   apiToken,
@@ -32,6 +33,7 @@ export const uploadContainerAndTriggerTestRun = async ({
     ...(debugContext ? { debugContext } : {}),
   });
 
+  let skipReason: ExecuteRemoteTestRunResult["skipReason"];
   let skipMessage: string | undefined;
   if (result.testRun) {
     const organizationName = encodeURIComponent(
@@ -41,21 +43,22 @@ export const uploadContainerAndTriggerTestRun = async ({
     const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${result.testRun.id}`;
     logNotice(`Test run triggered: ${testRunUrl}`);
   } else if (result.commentsDisabledForAuthor) {
+    skipReason = "comments_disabled_for_author";
     skipMessage =
       result.message ??
       "Test run skipped because CI comments and checks are disabled for this pull request author.";
     logger.info(skipMessage);
+  } else if (result.githubRateLimitRetryScheduled) {
+    skipReason = "github_rate_limit_retry_scheduled";
+    skipMessage = describeGitHubRateLimitRetry(result.message);
+    logNotice(skipMessage);
   } else {
     throw new Error(`${result.message ?? "Test run was not created"}`);
   }
 
   return {
     testRun: result.testRun ?? null,
-    ...(result.commentsDisabledForAuthor
-      ? {
-          skipReason: "comments_disabled_for_author" as const,
-          ...(skipMessage ? { message: skipMessage } : {}),
-        }
-      : {}),
+    ...(skipReason ? { skipReason } : {}),
+    ...(skipMessage ? { message: skipMessage } : {}),
   };
 };

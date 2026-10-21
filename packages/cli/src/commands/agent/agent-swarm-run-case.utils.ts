@@ -36,6 +36,12 @@ export const formatSwarmRunCase = (
       `${comparison.screenshotName}: ${joinParts([comparison.verdict, comparison.explanation])}`,
     ),
   );
+  testCase.sideDivergences?.forEach((divergence, index) =>
+    add(
+      `sideDivergences[${index}]`,
+      `${divergence.scope}: ${joinParts([divergence.reason ?? "no reason given", divergence.detail])}`,
+    ),
+  );
   const provenance = testCase.mockDataProvenance;
   if (provenance != null) {
     add(
@@ -54,6 +60,21 @@ export const formatSwarmRunCase = (
       );
       add("mockDataProvenance.strictRecheck.note", recheck.note);
     }
+  }
+  const mockFallback = testCase.mockFallback;
+  if (mockFallback != null) {
+    const { liveAttempt } = mockFallback;
+    add("mockFallback.completed", String(mockFallback.completed));
+    add("mockFallback.liveAttempt.blockedBy", liveAttempt.blockedBy);
+    add("mockFallback.liveAttempt.outcomeSummary", liveAttempt.outcomeSummary);
+    add(
+      "mockFallback.liveAttempt.setupIssue",
+      `${liveAttempt.setupIssue.category}: ${joinParts([
+        liveAttempt.setupIssue.summary,
+        liveAttempt.setupIssue.evidence,
+        liveAttempt.setupIssue.suggestedFix,
+      ])}`,
+    );
   }
   const evidence = testCase.runEvidence;
   if (evidence != null) {

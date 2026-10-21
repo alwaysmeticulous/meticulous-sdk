@@ -44,9 +44,9 @@ const baseContext = (
   githubConfigureProjectsUrl:
     "https://app.meticulous.ai/organizations/acme/integrations/github/configure-projects",
   gitlabConfigureProjectsUrl:
-    "https://app.meticulous.ai/projects/acme/web?tab=settings&section=ci",
+    "https://app.meticulous.ai/settings/acme/projects/web/repository",
   bitbucketConfigureProjectsUrl:
-    "https://app.meticulous.ai/projects/acme/web?tab=settings&section=ci",
+    "https://app.meticulous.ai/settings/acme/projects/web/repository",
   secretsUrl: null,
   secretsUrlLabel: null,
   agentIntegrationPaths: [],
@@ -144,7 +144,7 @@ describe("confirmVcsLinkIfNeeded", () => {
     expect(logged()).toContain("not linked to GitLab");
     expect(logged()).toContain("merge requests");
     expect(logged()).toContain(
-      "https://app.meticulous.ai/projects/acme/web?tab=settings&section=ci",
+      "https://app.meticulous.ai/settings/acme/projects/web/repository",
     );
   });
 

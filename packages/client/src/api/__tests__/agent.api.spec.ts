@@ -776,6 +776,18 @@ describe("getTestRunJsCoverage", () => {
       includeExecutedRanges: "true",
     });
   });
+
+  it("forwards expandedEditedLines when set", async () => {
+    await getTestRunJsCoverage(asClient(), "tr-1", {
+      expandedEditedLines: true,
+    });
+
+    expect(paramsFromLastCall()).toEqual({
+      clientVersion: String(TESTRUN_JS_COVERAGE_CLIENT_VERSION),
+      includeExecutedRanges: "true",
+      expandedEditedLines: "true",
+    });
+  });
 });
 
 describe("getProjectJsCoverage", () => {

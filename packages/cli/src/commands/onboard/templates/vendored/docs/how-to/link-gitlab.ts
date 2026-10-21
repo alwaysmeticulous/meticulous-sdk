@@ -14,7 +14,7 @@ export const linkGitLabInstructions = `
     - Alternatively, a **project access token** (Premium/Ultimate on GitLab.com) with the same scopes and **Maintainer** role works
     ([project token guide](https://docs.gitlab.com/ee/user/project/settings/project_access_tokens.html#create-a-project-access-token))
 2. In Meticulous, link the repository and paste the token:
-    - When creating a GitLab project, or from **Project settings → CI settings → Linked repository**
+    - When creating a GitLab project, or from **Settings → Repository & CI → Repository** ([open](https://app.meticulous.ai/settings?page=repository))
     - Enter your GitLab **project ID** (from **Settings → General** in GitLab), paste the access token, and configure the webhook shown after linking
 3. Add the Meticulous webhook in GitLab (**Settings → Webhooks**):
     - Use the **Webhook URL** and **Secret token** from Meticulous

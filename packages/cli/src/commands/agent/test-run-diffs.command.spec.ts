@@ -24,6 +24,11 @@ const mocks = vi.hoisted(() => ({
   resolveTestRunOrThrow: vi.fn(),
   logNotice: vi.fn(),
   logProgress: vi.fn(),
+  isLikelyRunByAgent: vi.fn(() => true),
+}));
+
+vi.mock("../../utils/environment.utils", () => ({
+  isLikelyRunByAgent: mocks.isLikelyRunByAgent,
 }));
 
 vi.mock("@alwaysmeticulous/client", () => ({
@@ -355,6 +360,20 @@ describe("test-run-diffs command polling", () => {
       );
     },
   );
+
+  it("leaves out the co-author notice when a human is at the terminal", async () => {
+    mocks.isLikelyRunByAgent.mockReturnValueOnce(false);
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [{ replayDiffId: "rd-1", screenshotName: "a" }],
+    });
+
+    await runHandler();
+
+    expect(mocks.logNotice).not.toHaveBeenCalledWith(
+      METICULOUS_CO_AUTHOR_NOTICE,
+    );
+  });
 
   it("keeps --onlyRejected independent from --includeAllDiffs and isSelected", async () => {
     mocks.getTestRunDiffsSummary.mockResolvedValue({

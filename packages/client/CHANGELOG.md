@@ -1,5 +1,41 @@
 # @alwaysmeticulous/client
 
+## 3.1.0
+
+### Minor Changes
+
+- [#15728](https://github.com/alwaysmeticulous/meticulous/pull/15728) [`e213955`](https://github.com/alwaysmeticulous/meticulous/commit/e213955972c54711f9b7b3965fcee2ee53f7552c) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agent swarm flows that the test environment blocked against a live backend can
+  be retried with mocked API responses. Result cases gain an optional
+  `mockFallback` (`AgenticRunMockFallback`) recording the blocked live attempt.
+  `agent agent-swarm-run` adds a `mockedBackend` column, `agent-swarm-run-case`
+  prints the case's `mockFallback`, and `agent agent-swarm-setup-blockers` adds a
+  `fallbackOutcome` column with how the retry ended.
+
+- [#15727](https://github.com/alwaysmeticulous/meticulous/pull/15727) [`d66fa2b`](https://github.com/alwaysmeticulous/meticulous/commit/d66fa2ba47f70076ce7e17406c63959e72d5303e) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `agent agent-swarm-setup-blockers`, which lists the test flows that Agent
+  swarm runs against a live backend couldn't verify because of the project's test
+  environment (missing test data, test-user permissions, feature flags,
+  authentication, backend health or external dependencies), with per-category
+  counts, the evidence and a suggested fix for each. The client adds
+  `getAgentSwarmSetupBlockers`.
+
+- [#15726](https://github.com/alwaysmeticulous/meticulous/pull/15726) [`2765a1a`](https://github.com/alwaysmeticulous/meticulous/commit/2765a1a5d4591304a8a344162c7915301405e11d) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agent swarm result cases gain an optional `setupIssue`, recording the test
+  environment problem (its category, a summary, the evidence and a suggested fix)
+  that blocked a case run against a live backend. Adds
+  `AGENTIC_RUN_SETUP_ISSUE_CATEGORIES`, `AgenticRunSetupIssueCategory` and
+  `AgenticRunSetupIssue`.
+
+### Patch Changes
+
+- [#15671](https://github.com/alwaysmeticulous/meticulous/pull/15671) [`7c12865`](https://github.com/alwaysmeticulous/meticulous/commit/7c12865fe691f939141400145285cca82e3f8bb9) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `sideDivergences` to `AgenticRunResultCase` and `AgentSwarmCaseResponse`: where a base-vs-head case's base run departed from the head's actions or mock data, with the case's `onSide` reason and where it happened in each side's recording. `agent agent-swarm-run-case` prints them.
+
+- [#15711](https://github.com/alwaysmeticulous/meticulous/pull/15711) [`77fa3ba`](https://github.com/alwaysmeticulous/meticulous/commit/77fa3bac2a3302fc07bb3a7586fdee68e3280f03) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `expandedEditedLines` option to `getTestRunJsCoverage`.
+
+- [#15832](https://github.com/alwaysmeticulous/meticulous/pull/15832) [`5a03e69`](https://github.com/alwaysmeticulous/meticulous/commit/5a03e69fe2971343ac867b82dd3ca18c292a0a34) Thanks [@adrikoz](https://github.com/adrikoz)! - The `ci upload-assets`, `ci upload-container`, and `ci run-with-uploaded-asset-chunks` commands no longer fail when Meticulous hits GitHub's API rate limit while starting the test run and has scheduled an automatic retry; they report it as a skip instead.
+
+- Updated dependencies [[`cb91931`](https://github.com/alwaysmeticulous/meticulous/commit/cb9193194af9901f2ecc3c9c8b5b3347958b775c), [`55e129c`](https://github.com/alwaysmeticulous/meticulous/commit/55e129c10394806241e8d1c06e96e0f9afab4b5b), [`1d8d246`](https://github.com/alwaysmeticulous/meticulous/commit/1d8d246cff84357a39e3636e7b10d6cc0df4525d), [`f522f3f`](https://github.com/alwaysmeticulous/meticulous/commit/f522f3fe3c5712d8f5b3d160bb603af772bcd971), [`598ead6`](https://github.com/alwaysmeticulous/meticulous/commit/598ead69592986e714e0a42c653e972133d23065), [`cf5e8fe`](https://github.com/alwaysmeticulous/meticulous/commit/cf5e8fed56d534f4d3dea2703a06e52a5369b39f), [`c7c35ad`](https://github.com/alwaysmeticulous/meticulous/commit/c7c35ada4f717dca17a659011f3f6b8d8907d4a0), [`af15e19`](https://github.com/alwaysmeticulous/meticulous/commit/af15e195de9e75755b314fefdb4a4b1c034d56f3), [`cb08ae9`](https://github.com/alwaysmeticulous/meticulous/commit/cb08ae9e06f9c1a9f627e5948564372ec9012299)]:
+  - @alwaysmeticulous/api@3.1.0
+  - @alwaysmeticulous/common@3.1.0
+
 ## 3.0.0
 
 ### Patch Changes

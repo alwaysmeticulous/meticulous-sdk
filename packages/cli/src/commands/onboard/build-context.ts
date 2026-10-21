@@ -100,21 +100,24 @@ const buildDashboardUrls = (options: {
     ? `${METICULOUS_APP_URL}/organizations/${encodeURIComponent(organizationName)}`
     : null;
 
+  const settingsPath =
+    organizationName && projectName
+      ? `${METICULOUS_APP_URL}/settings/${encodeURIComponent(organizationName)}/projects/${encodeURIComponent(projectName)}`
+      : null;
+
   return {
-    meticulousSettingsUrl: projectPath ? `${projectPath}?tab=settings` : null,
-    meticulousTokensUrl: projectPath
-      ? `${projectPath}?tab=settings&section=tokens`
-      : null,
+    meticulousSettingsUrl: settingsPath ? `${settingsPath}/repository` : null,
+    meticulousTokensUrl: settingsPath ? `${settingsPath}/api-tokens` : null,
     meticulousSessionsUrl: projectPath ? `${projectPath}?tab=sessions` : null,
     githubConfigureProjectsUrl: orgPath
       ? `${orgPath}/integrations/github/configure-projects`
       : null,
-    // GitLab / Bitbucket tokens are entered under Project settings → CI → Linked repository.
-    gitlabConfigureProjectsUrl: projectPath
-      ? `${projectPath}?tab=settings&section=ci`
+    // GitLab / Bitbucket tokens are entered under Settings → Repository & CI.
+    gitlabConfigureProjectsUrl: settingsPath
+      ? `${settingsPath}/repository`
       : null,
-    bitbucketConfigureProjectsUrl: projectPath
-      ? `${projectPath}?tab=settings&section=ci`
+    bitbucketConfigureProjectsUrl: settingsPath
+      ? `${settingsPath}/repository`
       : null,
   };
 };

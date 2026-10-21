@@ -228,6 +228,7 @@ describe("withMeticulous in agent-swarm-testing mode", () => {
       method: "POST",
       url: `${upstreamUrl}/items`,
       requestBody: { body: '{"name":"widget"}', truncated: false },
+      requestHeaders: { "content-type": "text/plain;charset=UTF-8" },
     });
   });
 

@@ -69,6 +69,7 @@ const runResponse = {
       status: "pass",
       regressionCount: 0,
       usedSyntheticMockData: false,
+      mockedBackend: false,
     },
     {
       caseIndex: 1,
@@ -79,6 +80,7 @@ const runResponse = {
       takeaway: "The total is wrong.",
       regressionCount: 1,
       usedSyntheticMockData: false,
+      mockedBackend: false,
     },
   ],
 } as unknown as Client.AgentSwarmRunResponse;
@@ -111,9 +113,9 @@ describe("agent agent-swarm-run", () => {
     await run(agentSwarmRunCommand, { ...defaults, swarmRunId: "run-1" });
 
     expect(logSpy.mock.calls.map((call: unknown[]) => call[0])).toEqual([
-      "caseIndex\tstatus\tblockedBy\ttitle\toutcomeSummary\ttakeaway\tregressionCount\tusedSyntheticMockData",
-      "0\tpass\t\tSearch\t\t\t0\tfalse",
-      "1\tblocked\tenvironment\tCheckout total\tThe API timed out.\tThe total is wrong.\t1\tfalse",
+      "caseIndex\tstatus\tblockedBy\ttitle\toutcomeSummary\ttakeaway\tregressionCount\tusedSyntheticMockData\tmockedBackend",
+      "0\tpass\t\tSearch\t\t\t0\tfalse\tfalse",
+      "1\tblocked\tenvironment\tCheckout total\tThe API timed out.\tThe total is wrong.\t1\tfalse\tfalse",
     ]);
     expect(mocks.logNotice).toHaveBeenCalledWith(
       "Agent swarm run run-1: succeeded (commit abc) — 2 cases: 1 pass, 1 fail, 0 blocked",
@@ -147,7 +149,7 @@ describe("agent agent-swarm-run", () => {
     });
 
     expect(logSpy.mock.calls.map((call: unknown[]) => call[0])).toEqual([
-      "caseIndex\tstatus\tblockedBy\ttitle\toutcomeSummary\ttakeaway\tregressionCount\tusedSyntheticMockData",
+      "caseIndex\tstatus\tblockedBy\ttitle\toutcomeSummary\ttakeaway\tregressionCount\tusedSyntheticMockData\tmockedBackend",
     ]);
     expect(mocks.logNotice).toHaveBeenCalledWith(
       "Agent swarm run run-1 has no cases with status fail.",

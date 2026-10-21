@@ -79,7 +79,9 @@ export interface ExecuteRemoteTestRunOptions {
 
 export interface ExecuteRemoteTestRunResult {
   testRun: TestRun | null;
-  skipReason?: "comments_disabled_for_author";
+  skipReason?:
+    | "comments_disabled_for_author"
+    | "github_rate_limit_retry_scheduled";
   message?: string;
   sourceDeploymentId?: string;
 }

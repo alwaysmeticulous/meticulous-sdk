@@ -48,7 +48,7 @@ export const main = async (): Promise<void> => {
   const cli = yargs.scriptName("meticulous").usage(
     `$0 <command>
 
-      Meticulous CLI`,
+      Meticulous CLI: record user sessions, replay them against each commit and review the visual diffs. AI agents: see \`meticulous agent --help\`.`,
   );
   const structuredCiJson = isStructuredCiJsonInvocation(process.argv.slice(2));
   if (structuredCiJson) {

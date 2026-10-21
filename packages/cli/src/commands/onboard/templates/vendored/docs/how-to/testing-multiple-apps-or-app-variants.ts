@@ -27,8 +27,8 @@ If you're using Github Actions to run Meticulous in CI you can then set up a sep
 to \`report-diffs-action\` for each Meticulous project, passing in the API token of the relevant project, and pointing it to a URL that serves the correct application.
 
 If you're using Vercel, or another service that provides preview URLs, then you'll want to configure Vercel deployments for each application separately.
-Navigate to the project settings page for each Meticulous project and configure that project to test against only the relevant Vercel deployments by
-selecting the appropriate environments in the \`Environments to Test Against\` section.
+For each Meticulous project, open [Settings → Repository & CI](https://app.meticulous.ai/settings?page=repository#github-deployments) and configure that project to test against only the relevant Vercel deployments by
+turning on only the appropriate environments under **Triggers → GitHub deployments**.
 
 ### GitHub check names with multiple projects
 

@@ -350,7 +350,7 @@ Check for the \`meticulous-is-test\` header in server-side code:
 
 **Value**: \`"1"\` when running as test
 
-**Security**: For secure detection, set a custom secret header in project settings.
+**Security**: For secure detection, set a custom secret header in [Settings → Network → Request headers](https://app.meticulous.ai/settings?page=network#request-headers).
 
 ### Next.js App Router
 

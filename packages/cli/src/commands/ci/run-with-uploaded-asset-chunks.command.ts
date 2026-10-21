@@ -10,6 +10,7 @@ import {
 import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import {
   carryCompletedUpload,
+  describeGitHubRateLimitRetry,
   runWithUploadedAssetChunks,
   withCompletedUpload,
 } from "@alwaysmeticulous/remote-replay-launcher";
@@ -296,6 +297,23 @@ const handler = async ({
           printCiJson({
             outcome: "skipped",
             reason: "comments_disabled_for_author",
+            message,
+            testRunId: null,
+            status: null,
+            ...ciUploadFields({
+              sourceDeploymentId: result.sourceDeploymentId,
+            }),
+          });
+        }
+        return;
+      }
+      if (result.githubRateLimitRetryScheduled) {
+        const message = describeGitHubRateLimitRetry(result.message);
+        logger.info(message);
+        if (json) {
+          printCiJson({
+            outcome: "skipped",
+            reason: "github_rate_limit_retry_scheduled",
             message,
             testRunId: null,
             status: null,

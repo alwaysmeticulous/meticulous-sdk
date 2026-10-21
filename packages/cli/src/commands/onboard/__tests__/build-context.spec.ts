@@ -98,9 +98,9 @@ describe("buildOnboardContext", () => {
       ciProvider: "github-actions",
       isGitHubIntegrationActive: true,
       meticulousSettingsUrl:
-        "https://app.meticulous.ai/projects/acme/web?tab=settings",
+        "https://app.meticulous.ai/settings/acme/projects/web/repository",
       meticulousTokensUrl:
-        "https://app.meticulous.ai/projects/acme/web?tab=settings&section=tokens",
+        "https://app.meticulous.ai/settings/acme/projects/web/api-tokens",
       meticulousSessionsUrl:
         "https://app.meticulous.ai/projects/acme/web?tab=sessions",
       githubConfigureProjectsUrl:
@@ -119,7 +119,7 @@ describe("buildOnboardContext", () => {
     });
 
     expect(context.meticulousSettingsUrl).toBe(
-      "https://app.meticulous.ai/projects/acme/web%20app?tab=settings",
+      "https://app.meticulous.ai/settings/acme/projects/web%20app/repository",
     );
   });
 
@@ -138,7 +138,7 @@ describe("buildOnboardContext", () => {
     expect(context.secretsUrl).toBeNull();
     expect(context.secretsUrlLabel).toBe("GitLab CI/CD variables");
     expect(context.gitlabConfigureProjectsUrl).toBe(
-      "https://app.meticulous.ai/projects/acme/web?tab=settings&section=ci",
+      "https://app.meticulous.ai/settings/acme/projects/web/repository",
     );
   });
 
@@ -156,7 +156,7 @@ describe("buildOnboardContext", () => {
     expect(context.isBitbucketIntegrationActive).toBe(false);
     expect(context.secretsUrlLabel).toBe("Bitbucket repository variables");
     expect(context.bitbucketConfigureProjectsUrl).toBe(
-      "https://app.meticulous.ai/projects/acme/web?tab=settings&section=ci",
+      "https://app.meticulous.ai/settings/acme/projects/web/repository",
     );
   });
 

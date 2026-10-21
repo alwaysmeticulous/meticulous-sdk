@@ -1,5 +1,18 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 3.1.0
+
+### Patch Changes
+
+- [#15708](https://github.com/alwaysmeticulous/meticulous/pull/15708) [`f522f3f`](https://github.com/alwaysmeticulous/meticulous/commit/f522f3fe3c5712d8f5b3d160bb603af772bcd971) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add optional `coverageExpandedEditedLines` and `coverageStatsExpandedEditedLines` locations to `TestRunDataLocations`, and treat them like the `*Pr` files when the backend withholds pull-request coverage from a test-run download.
+
+- [#15781](https://github.com/alwaysmeticulous/meticulous/pull/15781) [`598ead6`](https://github.com/alwaysmeticulous/meticulous/commit/598ead69592986e714e0a42c653e972133d23065) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add optional `coverageReplaysByFileExpandedEditedLines`, `coverageScreenshotReplaysByFileExpandedEditedLines` and `coverageByReplayExpandedEditedLines` locations to `TestRunDataLocations`, and treat them like the `*Pr` files when the backend withholds pull-request coverage from a test-run download.
+
+- Updated dependencies [[`e213955`](https://github.com/alwaysmeticulous/meticulous/commit/e213955972c54711f9b7b3965fcee2ee53f7552c), [`d66fa2b`](https://github.com/alwaysmeticulous/meticulous/commit/d66fa2ba47f70076ce7e17406c63959e72d5303e), [`2765a1a`](https://github.com/alwaysmeticulous/meticulous/commit/2765a1a5d4591304a8a344162c7915301405e11d), [`7c12865`](https://github.com/alwaysmeticulous/meticulous/commit/7c12865fe691f939141400145285cca82e3f8bb9), [`cb91931`](https://github.com/alwaysmeticulous/meticulous/commit/cb9193194af9901f2ecc3c9c8b5b3347958b775c), [`55e129c`](https://github.com/alwaysmeticulous/meticulous/commit/55e129c10394806241e8d1c06e96e0f9afab4b5b), [`1d8d246`](https://github.com/alwaysmeticulous/meticulous/commit/1d8d246cff84357a39e3636e7b10d6cc0df4525d), [`77fa3ba`](https://github.com/alwaysmeticulous/meticulous/commit/77fa3bac2a3302fc07bb3a7586fdee68e3280f03), [`f522f3f`](https://github.com/alwaysmeticulous/meticulous/commit/f522f3fe3c5712d8f5b3d160bb603af772bcd971), [`598ead6`](https://github.com/alwaysmeticulous/meticulous/commit/598ead69592986e714e0a42c653e972133d23065), [`5a03e69`](https://github.com/alwaysmeticulous/meticulous/commit/5a03e69fe2971343ac867b82dd3ca18c292a0a34), [`cf5e8fe`](https://github.com/alwaysmeticulous/meticulous/commit/cf5e8fed56d534f4d3dea2703a06e52a5369b39f), [`c7c35ad`](https://github.com/alwaysmeticulous/meticulous/commit/c7c35ada4f717dca17a659011f3f6b8d8907d4a0), [`af15e19`](https://github.com/alwaysmeticulous/meticulous/commit/af15e195de9e75755b314fefdb4a4b1c034d56f3), [`cb08ae9`](https://github.com/alwaysmeticulous/meticulous/commit/cb08ae9e06f9c1a9f627e5948564372ec9012299)]:
+  - @alwaysmeticulous/client@3.1.0
+  - @alwaysmeticulous/api@3.1.0
+  - @alwaysmeticulous/common@3.1.0
+
 ## 3.0.0
 
 ### Patch Changes

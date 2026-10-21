@@ -34,6 +34,10 @@ export const agentSwarmTestingOutboundCall = async (
           () => undefined,
         )
       : undefined;
+    const requestHeaders: Record<string, string> = {};
+    for (const [name, value] of request.headers) {
+      requestHeaders[name] = value;
+    }
     const payload: OutboundFetchAgentSwarmTestingRequest = {
       runId: ctx.runId,
       ...(ctx.frontendSessionId !== undefined
@@ -42,6 +46,7 @@ export const agentSwarmTestingOutboundCall = async (
       method: request.method,
       url: request.url,
       ...(requestBody !== undefined ? { requestBody } : {}),
+      ...(Object.keys(requestHeaders).length > 0 ? { requestHeaders } : {}),
     };
     result = await postAgentSwarmTestingOutboundFetch(
       getOriginalFetch(),

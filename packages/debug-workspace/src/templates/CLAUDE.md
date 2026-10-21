@@ -62,7 +62,9 @@ Each replay directory (`debug-data/replays/<role>/<replayId>/`) contains:
 - `timeline.ndjson` -- Detailed timeline of all replay events (user interactions, network requests,
   DOM mutations, etc.), one JSON object per line (NDJSON format). Can be 1-2MB; prefer
   `debug-data/events-index/` or `debug-data/timeline-summaries/` for compact overviews. Cookie/header
-  values on network request entries are redacted.
+  values on network request entries are redacted. Entries are in the order the replay stored them:
+  virtual time order for newer replays, the order they were reported (a network request when it
+  completed) for older ones. Stored indices (e.g. a divergence's) are positions in this file.
   Greppable with standard tools: `grep '"screenshot"' timeline.ndjson` to find screenshots,
   `grep '"pollyReplay"' timeline.ndjson` for network stubs.
 - `timeline-stats.json` -- Aggregated statistics about timeline events.
@@ -89,12 +91,15 @@ screenshot. Use this to localize which code ran around a specific diff.
 Per-replay generated summaries:
 
 - `debug-data/events-index/<role>-<replayId>.txt` -- **Use this instead of raw timeline.ndjson.**
-  One line per timeline event with index, virtual time, kind, and key data fields. Fully greppable:
+  One line per timeline event, in virtual time order, with its index in `timeline.ndjson` (`[n]`),
+  virtual time, kind, and key data fields. On older replays the indices are not in sequence, since
+  their `timeline.ndjson` is not in virtual time order. Head and base line up regardless. Fully greppable:
   `grep 'kind=screenshot' events-index/head-abc.txt` to find screenshots,
   `grep 'kind=pollyReplay' events-index/head-abc.txt` for network stubs,
   `grep 'api/v9/users' events-index/head-abc.txt` for specific API calls.
 - `debug-data/network-log/<role>-<replayId>.txt` -- Compact network request log with one line
-  per request: method, URL, status, and match result. Grep for specific endpoints.
+  per request, in the order they started: `timeline.ndjson` index, method, URL, status, and match
+  result. Grep for specific endpoints.
 - `debug-data/vt-progression/<role>-<replayId>.txt` -- One virtual time value per line, extracted
   from `logs.ndjson`. Compare head vs base with `diff`. Use this instead of parsing `logs.ndjson`
   for virtual time progression.
@@ -105,8 +110,8 @@ Per-replay generated summaries:
   `grep -i 'error' logs-index/head-abc.txt` for keyword search,
   `grep 'vt=7648' logs-index/head-abc.txt` for events at a specific virtual time.
 - `debug-data/screenshot-timeline-context/<role>-<replayId>-<screenshotId>.txt` -- Events
-  surrounding each screenshot (30 before, 10 after) from the timeline. The screenshot line is
-  marked with `>>>`. Use these to understand what happened right before a screenshot.
+  surrounding each screenshot in virtual time order (30 before, 10 after), each with its
+  `timeline.ndjson` index. The screenshot line is marked with `>>>`. Use these to understand what happened right before a screenshot.
 - `debug-data/timeline-summaries/<role>-<replayId>.txt` -- Compact summary of each replay's
 timeline: total entries, virtual time range, screenshot timestamps, event kind breakdown.
 <!-- if-snapshot-assets -->

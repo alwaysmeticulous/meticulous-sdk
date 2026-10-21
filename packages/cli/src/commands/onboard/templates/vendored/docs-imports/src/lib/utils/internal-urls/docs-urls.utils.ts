@@ -66,12 +66,16 @@ export const TESTING_MULTIPLE_APPS_URL =
 
 export const TESTING_FEATURE_FLAGS = "/docs/how-to/testing-feature-flags";
 
+export const FLAG_OVERRIDE_JAVASCRIPT_API_DOCS_URL = `${TESTING_FEATURE_FLAGS}#using-the-javascript-api`;
+
 export const FLAG_OVERRIDE_COOKIE_ANCHOR = "flag-override-cookie";
 
 export const FLAG_OVERRIDE_COOKIE_DOCS_URL = `${TESTING_FEATURE_FLAGS}#${FLAG_OVERRIDE_COOKIE_ANCHOR}`;
 
 export const FLAG_OVERRIDE_TROUBLESHOOTING_ANCHOR =
   "flag-override-troubleshooting";
+
+export const FLAG_OVERRIDE_TROUBLESHOOTING_DOCS_URL = `${TESTING_FEATURE_FLAGS}#${FLAG_OVERRIDE_TROUBLESHOOTING_ANCHOR}`;
 
 export const RECORD_AND_REPLAY_ON_DIFFERENT_ENVIRONMENTS_URL =
   "/docs/how-to/record-and-replay-on-different-environments";
@@ -81,8 +85,6 @@ export const FIX_FALSE_POSITIVES_URL = "/docs/how-to/fix-false-positive-diffs";
 export const RECORD_CUSTOM_VALUES_URL = "/docs/how-to/record-custom-values";
 
 export const RECORD_SESSION_CONTEXT_URL = "/docs/how-to/record-session-context";
-
-const IGNORE_URL_PATTERNS_URL = "/docs/how-to/ignore-url-patterns";
 
 export const TROUBLESHOOT_AUTH_URL = "/docs/how-to/troubleshoot-auth";
 export const AUTH_ENABLING_FULL_AUTH_URL =
@@ -96,6 +98,9 @@ export const RECORDER_CSP_EXCEPTIONS_URL =
 // NOTE: this URL is also used here in replay-launcher/src/launch-browser-and-replay.ts
 export const TROUBLESHOOT_REPLAY_ACCURACY_URL =
   "/docs/how-to/troubleshoot-replay-accuracy";
+
+export const TROUBLESHOOT_OLDER_BASE_COMMIT_URL =
+  "/docs/how-to/troubleshoot-older-base-commit";
 
 export const FAQ_AND_TROUBLESHOOTING_URL = "/docs/faq-and-troubleshooting";
 
@@ -152,9 +157,6 @@ export const NEXTJS_APP_ROUTER_ENSURING_DETERMINISM_URL = `/docs/frameworks/next
 
 export const CREATE_DEPLOYMENTS_ON_GITHUB_URL =
   "/docs/alternative-ci-setups/create-deployments-on-github";
-
-const TROUBLESHOOTING_FAILED_SIMULATIONS_ANCHOR =
-  "troubleshoot-failed-simulations";
 
 export const TROUBLESHOOTING_FAILED_SIMULATIONS_STEPS_ANCHOR =
   "/docs/how-to/troubleshoot-failed-simulations-steps";

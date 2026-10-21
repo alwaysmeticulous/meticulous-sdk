@@ -46,7 +46,7 @@ However having the '*${METICULOUS_GITHUB_CHECK_NAME}*' check as a required check
 
 There are two ways of solving these issues:
 
- 1. Tick the '*${INITIALIZE_WITH_SUCCESSFUL_CHECK_CHECKBOX_LABEL}*' option in your Meticulous project settings.
+ 1. Tick the '*${INITIALIZE_WITH_SUCCESSFUL_CHECK_CHECKBOX_LABEL}*' option on [Settings → Pull requests](https://app.meticulous.ai/settings?page=pull-requests) in Meticulous.
     This will cause Meticulous to register GitHub webhooks to monitor for new pull requests, new commit pushes, and for pull requests added
     to merge queues. It will then create a successful '*${METICULOUS_GITHUB_CHECK_NAME}*' check in each of these cases straight away. This
     check will start off as 'success' and turn to 'pending' when and if the Meticulous tests start running. If the Meticulous tests never run

@@ -27,6 +27,7 @@ export {
   RunWithUploadedAssetChunksOptions,
   RunWithUploadedAssetChunksResult,
 } from "./run-with-uploaded-asset-chunks";
+export { describeGitHubRateLimitRetry } from "./github-rate-limit-retry";
 export { TunnelData } from "./types";
 export {
   carryCompletedUpload,

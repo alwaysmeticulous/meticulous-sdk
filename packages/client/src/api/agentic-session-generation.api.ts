@@ -160,6 +160,51 @@ export type AgenticRunResultCaseOutcome =
 
 export type AgenticRunBlockedBy = "application" | "environment";
 
+export const AGENTIC_RUN_SETUP_ISSUE_CATEGORIES = [
+  "missingTestData",
+  "testUserPermissions",
+  "featureFlag",
+  "authentication",
+  "backendError",
+  "externalDependency",
+  "other",
+] as const;
+
+export type AgenticRunSetupIssueCategory =
+  (typeof AGENTIC_RUN_SETUP_ISSUE_CATEGORIES)[number];
+
+/**
+ * Deployment or project setup that prevented a live-backend case from being
+ * evaluated. Present only on blocked cases; product defects and test-harness
+ * limitations are not setup issues.
+ */
+export interface AgenticRunSetupIssue {
+  category: AgenticRunSetupIssueCategory;
+  /** Concise name of the missing or unhealthy prerequisite. */
+  summary: string;
+  /** Concrete observation showing that prerequisite prevented the flow. */
+  evidence: string;
+  /** Action the project owner can take to make the flow testable. */
+  suggestedFix: string;
+}
+
+/**
+ * A live-backend case that the test environment's setup blocked, retried once
+ * with the browser's API traffic served from recorded sessions. When
+ * `completed`, the case's outcome, steps and evidence are the mocked
+ * attempt's, so the backend was not tested; otherwise the mocked attempt
+ * produced no report and the case keeps the live attempt's result.
+ */
+export interface AgenticRunMockFallback {
+  completed: boolean;
+  /** The blocked live-backend attempt. */
+  liveAttempt: {
+    outcomeSummary?: string;
+    blockedBy?: AgenticRunBlockedBy;
+    setupIssue: AgenticRunSetupIssue;
+  };
+}
+
 export type AgenticRunResultCaseTag = "happy-path" | "edge-case" | "regression";
 
 export const AGENTIC_RUN_NOT_TESTABLE_CATEGORIES = [
@@ -336,6 +381,15 @@ export interface AgenticRunResultStep {
   /** @deprecated Prefer `beforeHighlightRegion`. */
   legacyActionHighlightRegion?: AgenticRunHighlightRegion;
 }
+
+/**
+ * How tightly a case exercises this pull request's change, as distinct from
+ * behaviour the change did not touch: `high` when the flow is almost entirely
+ * about the changed behaviour, `medium` when parts of the flow are unrelated to
+ * it, `low` when the flow is unrelated to the change or actively misleading
+ * about it.
+ */
+export type AgenticRunCaseRelevance = "high" | "medium" | "low";
 
 /**
  * A single user flow the agent exercised, with its outcome and the sessions it
@@ -578,6 +632,39 @@ export interface AgenticRunComparisonCheckpoint {
   head: AgenticRunComparisonCheckpointSide;
 }
 
+/** What a base-vs-head case did differently on the base than on the head. */
+export type AgenticRunSideDivergenceScope = "actions" | "mocks";
+
+/** One side of a divergence, placed in that side's recording. */
+export interface AgenticRunSideDivergenceSpan {
+  /** What this side did there, e.g. `click(button[name=save])`. */
+  actions: string[];
+  sessionId?: string;
+  /** Epoch milliseconds, like step and checkpoint timestamps. */
+  startTimestampMs?: number;
+  endTimestampMs?: number;
+}
+
+/**
+ * A point where the base run deliberately departed from the head's flow
+ * (an `onSide` branch in the test or a mock file), or departed from it
+ * without one.
+ */
+export interface AgenticRunSideDivergence {
+  scope: AgenticRunSideDivergenceScope;
+  /**
+   * The `onSide` reason: why the base could not follow the head. Absent when
+   * the sides diverged outside any `onSide` branch.
+   */
+  reason?: string;
+  /** Worker-computed account of how the sides differed. */
+  detail: string;
+  head?: AgenticRunSideDivergenceSpan;
+  base?: AgenticRunSideDivergenceSpan;
+  /** The first checkpoint either side captured after the divergence. */
+  beforeCheckpoint?: string;
+}
+
 export type AgenticRunComparisonCheckpointSide = Pick<
   AgenticRunComparisonSide,
   "sessionId" | "timestampMs" | "screenshotPath"
@@ -602,6 +689,17 @@ export interface AgenticRunResultCase {
   /** What prevented verification. Present only when `outcome` is `blocked`. */
   blockedBy?: AgenticRunBlockedBy;
   /**
+   * Actionable deployment/project setup problem that prevented a live-backend
+   * run from evaluating this case. Present only when `outcome` is `blocked`.
+   */
+  setupIssue?: AgenticRunSetupIssue;
+  /**
+   * Present when the case was blocked by the live backend's setup and retried
+   * against a mocked backend. A completed fallback's outcome, even a pass, says
+   * nothing about the backend.
+   */
+  mockFallback?: AgenticRunMockFallback;
+  /**
    * Concise user-visible account of what happened and, for a non-passing case,
    * the concrete reason. Optional for result blobs written by older workers.
    */
@@ -621,8 +719,25 @@ export interface AgenticRunResultCase {
   runEvidence?: AgenticRunEvidence;
   /** Sessions recorded while running this case. */
   sessionIds: string[];
+  /**
+   * Feature flag overrides each cited session's own run forced, keyed by
+   * session id then flag name. Worker-computed per run — never declared by the
+   * agent. Absent for blobs from older workers and cases whose runs forced no
+   * flags.
+   */
+  featureFlagOverridesBySessionId?: Record<
+    string,
+    Record<string, string | boolean>
+  >;
   /** Why this case was worth testing, e.g. which changed code it targets. */
   rationale?: string;
+  /**
+   * The case agent's own judgment of how tightly the flow exercises the pull
+   * request's change. Optional: present when self-reported relevance is on.
+   */
+  relevance?: AgenticRunCaseRelevance;
+  /** One sentence backing `relevance`, naming the evidence that decided it. */
+  relevanceRationale?: string;
   /** Independent review of the case agent's original failed verdict. */
   check?: AgenticRunCaseCheck;
   /** Whether the case drove the PR's base deployment alongside its head. */
@@ -636,6 +751,8 @@ export interface AgenticRunResultCase {
   comparisonCheckpoints?: AgenticRunComparisonCheckpoint[];
   /** The case agent's chosen default presentation of a comparison case. */
   comparisonPresentation?: AgenticRunComparisonPresentation;
+  /** Where the base run departed from the head's actions or mock data, and why. */
+  sideDivergences?: AgenticRunSideDivergence[];
   /**
    * Sessions recorded on the base deployment, for side-by-side playback only.
    * Never part of `sessionIds`, so they are not replayed or selected.
@@ -1022,6 +1139,46 @@ export const requestAgenticProgressUpload = async ({
     "agentic-session-generation/request-progress-upload",
     body,
     projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export interface GetAgenticPreplanStatusResponse {
+  /** The planning run the worker is (or was) waiting for, if one exists. */
+  runId: string | null;
+  /** The planning run's status; null when no planning run exists. */
+  status:
+    | "scheduled"
+    | "running"
+    | "succeeded"
+    | "failed"
+    | "timedOut"
+    | "cancelled"
+    | null;
+  /** Presigned download of the standalone plan, only once succeeded. */
+  planUrl?: string | undefined;
+}
+
+/**
+ * Point-in-time preplan status an execution worker polls while it
+ * bounded-waits for the planning run its launch handed it. The backend
+ * resolves the planning run from the calling run's own (project, commit).
+ */
+export const getAgenticPreplanStatus = async ({
+  client,
+  projectId,
+  signal,
+}: ProjectIdentifier & {
+  client: MeticulousClient;
+  /** Aborts the poll request (deadline or cancellation). */
+  signal?: AbortSignal | undefined;
+}): Promise<GetAgenticPreplanStatusResponse> => {
+  const { data } = await client.get<GetAgenticPreplanStatusResponse>(
+    "agentic-session-generation/preplan-status",
+    {
+      params: projectId ? { projectId } : {},
+      signal,
+    },
   );
   return data;
 };

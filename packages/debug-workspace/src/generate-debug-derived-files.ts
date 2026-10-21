@@ -2,11 +2,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import chalk from "chalk";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
+import type { PositionedTimelineEntry, TimelineEntry } from "./debug.types";
 import {
   discoverReplayDirs,
+  inVirtualTimeOrder,
   readReplayTimeline,
   type ReplayDir,
-  type TimelineEntry,
 } from "./replay-walk";
 
 const NETWORK_KINDS = new Set([
@@ -42,13 +43,13 @@ export const generateDebugDerivedFiles = (workspaceDir: string): void => {
 
     if (timelineEntries) {
       generateTimelineNdjson(replayDir, timelineEntries);
-      generateEventsIndex(debugDataDir, replayDir, timelineEntries);
-      generateNetworkLog(debugDataDir, replayDir, timelineEntries);
-      generateScreenshotTimelineContext(
-        debugDataDir,
-        replayDir,
-        timelineEntries,
-      );
+      // In virtual time order, so a replay stored in that order and one stored
+      // in the order its entries were reported line up, but numbered by
+      // position in the file, like stored indices and `timeline.ndjson`.
+      const entries = inVirtualTimeOrder(timelineEntries);
+      generateEventsIndex(debugDataDir, replayDir, entries);
+      generateNetworkLog(debugDataDir, replayDir, entries);
+      generateScreenshotTimelineContext(debugDataDir, replayDir, entries);
     }
 
     generateVtProgression(debugDataDir, replayDir);
@@ -74,10 +75,10 @@ const generateTimelineNdjson = (
 const generateEventsIndex = (
   debugDataDir: string,
   replayDir: ReplayDir,
-  entries: TimelineEntry[],
+  entries: PositionedTimelineEntry[],
 ): void => {
-  const lines = entries.map((entry, index) =>
-    formatTimelineEntry(entry, index),
+  const lines = entries.map(({ entry, fileIndex }) =>
+    formatTimelineEntry(entry, fileIndex),
   );
 
   const outDir = join(debugDataDir, "events-index");
@@ -92,15 +93,11 @@ const generateEventsIndex = (
 const generateNetworkLog = (
   debugDataDir: string,
   replayDir: ReplayDir,
-  entries: TimelineEntry[],
+  entries: PositionedTimelineEntry[],
 ): void => {
-  const lines: string[] = [];
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i];
-    if (NETWORK_KINDS.has(entry.kind)) {
-      lines.push(formatNetworkEntry(entry, i));
-    }
-  }
+  const lines = entries
+    .filter(({ entry }) => NETWORK_KINDS.has(entry.kind))
+    .map(({ entry, fileIndex }) => formatNetworkEntry(entry, fileIndex));
 
   if (lines.length === 0) {
     return;
@@ -215,49 +212,46 @@ const generateLogsIndex = (
 const generateScreenshotTimelineContext = (
   debugDataDir: string,
   replayDir: ReplayDir,
-  entries: TimelineEntry[],
+  entries: PositionedTimelineEntry[],
 ): void => {
-  const screenshotIndexes: number[] = [];
-  for (let i = 0; i < entries.length; i++) {
-    if (entries[i].kind === "screenshot") {
-      screenshotIndexes.push(i);
-    }
-  }
+  const screenshotPositions = entries.flatMap(({ entry }, position) =>
+    entry.kind === "screenshot" ? [position] : [],
+  );
 
-  if (screenshotIndexes.length === 0) {
+  if (screenshotPositions.length === 0) {
     return;
   }
 
   const outDir = join(debugDataDir, "screenshot-timeline-context");
   mkdirSync(outDir, { recursive: true });
 
-  for (const screenshotIdx of screenshotIndexes) {
-    const screenshotEntry = entries[screenshotIdx];
+  for (const screenshotPosition of screenshotPositions) {
+    const { entry: screenshotEntry, fileIndex: screenshotFileIndex } =
+      entries[screenshotPosition];
     const identifier = getScreenshotIdentifierString(screenshotEntry);
 
-    const startIdx = Math.max(0, screenshotIdx - EVENTS_BEFORE_SCREENSHOT);
-    const endIdx = Math.min(
-      entries.length - 1,
-      screenshotIdx + EVENTS_AFTER_SCREENSHOT,
+    const surrounding = entries.slice(
+      Math.max(0, screenshotPosition - EVENTS_BEFORE_SCREENSHOT),
+      screenshotPosition + EVENTS_AFTER_SCREENSHOT + 1,
     );
 
     const lines: string[] = [];
     lines.push(
-      `Screenshot: ${identifier} (index ${screenshotIdx}, vt=${formatVt(screenshotEntry)})`,
+      `Screenshot: ${identifier} (timeline.ndjson index ${screenshotFileIndex}, vt=${formatVt(screenshotEntry)})`,
     );
     lines.push(
-      `Showing events [${startIdx}..${endIdx}] (${EVENTS_BEFORE_SCREENSHOT} before, ${EVENTS_AFTER_SCREENSHOT} after)`,
+      `Showing the ${EVENTS_BEFORE_SCREENSHOT} events before and ${EVENTS_AFTER_SCREENSHOT} after it in virtual time order; [n] is each event's index in timeline.ndjson`,
     );
     lines.push("");
 
-    for (let i = startIdx; i <= endIdx; i++) {
-      const prefix = i === screenshotIdx ? ">>>" : "   ";
-      lines.push(`${prefix} ${formatTimelineEntry(entries[i], i)}`);
+    for (const { entry, fileIndex } of surrounding) {
+      const prefix = fileIndex === screenshotFileIndex ? ">>>" : "   ";
+      lines.push(`${prefix} ${formatTimelineEntry(entry, fileIndex)}`);
     }
 
     const filename = identifier
       ? `${replayDir.role}-${replayDir.replayId}-${identifier}.txt`
-      : `${replayDir.role}-${replayDir.replayId}-idx${screenshotIdx}.txt`;
+      : `${replayDir.role}-${replayDir.replayId}-idx${screenshotFileIndex}.txt`;
 
     writeFileSync(join(outDir, filename), lines.join("\n") + "\n", "utf-8");
   }
@@ -281,9 +275,12 @@ const formatVt = (entry: TimelineEntry): string => {
 const truncate = (s: string, maxLen: number): string =>
   s.length > maxLen ? s.slice(0, maxLen) + "..." : s;
 
-const formatTimelineEntry = (entry: TimelineEntry, index: number): string => {
+const formatTimelineEntry = (
+  entry: TimelineEntry,
+  fileIndex: number,
+): string => {
   const vt = formatVt(entry);
-  const base = `[${index}] vt=${vt} kind=${entry.kind}`;
+  const base = `[${fileIndex}] vt=${vt} kind=${entry.kind}`;
   const detail = getKindSpecificDetail(entry);
   return detail ? `${base} ${detail}` : base;
 };
@@ -425,9 +422,12 @@ const getKindSpecificDetail = (entry: TimelineEntry): string => {
   }
 };
 
-const formatNetworkEntry = (entry: TimelineEntry, index: number): string => {
+const formatNetworkEntry = (
+  entry: TimelineEntry,
+  fileIndex: number,
+): string => {
   const vt = formatVt(entry);
-  const base = `[${index}] vt=${vt}`;
+  const base = `[${fileIndex}] vt=${vt}`;
   const detail = getKindSpecificDetail(entry);
   return `${base} ${detail}`;
 };

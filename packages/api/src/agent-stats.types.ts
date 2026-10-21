@@ -213,7 +213,11 @@ export interface ProjectDailyPrStats {
  * as {@link TestRunEventDiffReportType} and pinned by the same assertion.
  */
 export type PrNumbersByBugPreventionCategory = Record<
-  "diff_rejected" | "diff_eliminated" | "diff_changed_and_approved",
+  | "diff_rejected"
+  | "diff_eliminated"
+  | "diff_changed_and_approved"
+  | "check_rejected"
+  | "check_eliminated",
   string[]
 >;
 
@@ -229,6 +233,14 @@ export interface ProjectDailyStatsItem {
   prRunTimeSeconds: ProjectDailyRunTimeStats;
   coverage: number | null;
   prs: ProjectDailyPrStats;
+  /**
+   * PRs with a potential bug prevented, by certainty. `high` counts rejected
+   * visual diffs and rejected check warnings (`diff_rejected`,
+   * `check_rejected`); `medium` counts diffs and check warnings that were
+   * viewed and then fixed (`diff_eliminated`, `check_eliminated`); `lower`
+   * counts `diff_changed_and_approved`. Rows computed before check catches
+   * were counted include only the visual-diff categories.
+   */
   bugsPrevented: {
     total: number;
     high: number | null;

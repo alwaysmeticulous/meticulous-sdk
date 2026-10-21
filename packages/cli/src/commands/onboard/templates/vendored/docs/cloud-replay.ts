@@ -41,7 +41,7 @@ Once the GitHub app is installed, select the system you use to generate PR previ
 Install the [Meticulous Vercel integration](${METICULOUS_VERCEL_INTEGRATION_INSTALL_URL}) and link your Vercel project in Meticulous.
 
 If you have multiple Vercel projects for your GitHub repo, or multiple environments that you deploy the same branches/commits to, then you'll
-need to let Meticulous know which environments it should run the tests against. You can do so by navigating to your project page and clicking on the *'Settings'* tab.
+need to let Meticulous know which environments it should run the tests against. You can do so under **Triggers → GitHub deployments** on [Settings → Repository & CI](https://app.meticulous.ai/settings?page=repository#github-deployments).
 
 {% /tab %}
 {% tab label="Netlify" %}

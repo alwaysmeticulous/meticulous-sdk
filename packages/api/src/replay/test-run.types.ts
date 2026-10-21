@@ -48,6 +48,9 @@ export const isPrAuthorRelevance = (
  *   edited line (IsRelevant).
  * - `html_template_sibling_coverage`: the same signal for a changed HTML
  *   template (e.g. `foo.component.ts` for `foo.component.html`) (IsRelevant).
+ * - `internationalization_sibling_coverage`: the same signal for a changed
+ *   component-co-located internationalization catalog (e.g. `Foo.tsx` for
+ *   `Foo.i18n.yml`) (IsRelevant).
  * - `mapped_sidecar_coverage`: the session's coverage-source replay covered a
  *   changed sidecar file's *own* mapped lines — the file is in the coverage
  *   index, so no sibling was needed — and covered no other edited file
@@ -92,6 +95,7 @@ export type SessionRelevanceReason =
   | "direct_coverage"
   | "stylesheet_sibling_coverage"
   | "html_template_sibling_coverage"
+  | "internationalization_sibling_coverage"
   | "mapped_sidecar_coverage"
   | "relevant_side_effect"
   | "mark_all_maybe_relevant"
@@ -230,10 +234,27 @@ export interface TestRunDataLocations {
    * PR-scoped coverage (keyed by repo file path, carrying PR-edited line
    * ranges). Omitted for callers without code-data access — a restricted-admin
    * OAuth caller without membership on the project — mirroring the webapp's
-   * prMode coverage gate.
+   * prMode coverage gate. Also omitted when the project disables source-code
+   * access, except for the test run's own workflow.
    */
   coveragePr?: S3Location;
   coverageStatsPr?: S3Location;
+  /**
+   * Expanded-edited-lines-scoped coverage (same format as `coveragePr` /
+   * `coverageStatsPr`, with replaced declarations swapped for their usage
+   * sites). Minted on put; on get, only present when the S3 object exists and
+   * the caller has code-data access.
+   */
+  coverageExpandedEditedLines?: S3Location;
+  coverageStatsExpandedEditedLines?: S3Location;
+  /**
+   * Expanded-edited-lines counterparts of `coverageReplaysByFilePr`,
+   * `coverageScreenshotReplaysByFilePr` and `coverageByReplayPr`. Same
+   * presence rules as `coverageExpandedEditedLines`.
+   */
+  coverageReplaysByFileExpandedEditedLines?: S3Location;
+  coverageScreenshotReplaysByFileExpandedEditedLines?: S3Location;
+  coverageByReplayExpandedEditedLines?: S3Location;
   /**
    * Legacy full v1 mapped artifact. No longer minted on put for new runs
    * (workers write v2 instead). On get, only present when the S3 object
@@ -267,8 +288,8 @@ export interface TestRunDataLocations {
   /**
    * `coverage-replays-by-feature-flag.json.gz`: replays keyed by each
    * customer feature flag they recorded on `replay-context`, whether or not
-   * this run overrode it. Written for every post-processed run; `byFlag` is
-   * empty when no replay recorded a flag. Minted on put. Not returned on get.
+   * this run overrode it. `byFlag` is empty when no replay recorded a flag.
+   * Minted on put. On get, only present when the S3 object exists.
    */
   coverageReplaysByFeatureFlag?: S3Location;
   appContainerLogs?: AppContainerLogsLocations;

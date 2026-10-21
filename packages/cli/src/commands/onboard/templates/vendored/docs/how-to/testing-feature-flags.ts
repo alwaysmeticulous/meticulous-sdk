@@ -59,7 +59,7 @@ Your app receives forced values through:
 - **The [JavaScript API](#using-the-javascript-api)**, for flags your browser code resolves. Meticulous starts forcing
   flags for your project once it sees your app call \`getFlagOverride\` during a replay.
 - **[A cookie your server reads](#${FLAG_OVERRIDE_COOKIE_ANCHOR})**, for flags your server resolves, for example while
-  rendering a page. Meticulous starts forcing flags once the Meticulous team enables cookie delivery for your project.
+  rendering a page. Meticulous starts forcing flags once you turn on cookie delivery for your project.
 
 ### Using the JavaScript API {% #using-the-javascript-api %}
 
@@ -133,10 +133,11 @@ it is safe to leave in production code.
 If your server resolves flags while rendering a page, it can read forced values from the
 \`meticulous_flag_overrides\` cookie instead of your app calling \`getFlagOverride\`.
 
-**Turning it on.** While we roll this out, the Meticulous team enables cookie delivery per project, so contact us to turn
-it on. Meticulous can see your app calling \`getFlagOverride\`, but it can't see your server reading a cookie, so it only
-forces flags for an app that relies on the cookie once cookie delivery is on. If your app already reads overrides from a
-cookie of its own in the format below, we can send that cookie name instead, and you won't need to change any code.
+**Turning it on.** Turn on *Send forced flags in a cookie* on
+[Settings → Feature flags](https://app.meticulous.ai/settings?page=feature-flags#flag-overrides). Meticulous can see your
+app calling \`getFlagOverride\`, but it can't see your server reading a cookie, so it only forces flags for an app that
+relies on the cookie once cookie delivery is on. If your app already reads overrides from a cookie of its own in the
+format below, set that name as the *Cookie name* there instead, and you won't need to change any code.
 
 Once it's on, every replay that forces at least one flag sets the cookie before the first page load, so it is sent on the
 very first document request and on every request after that. Its value is URL-encoded JSON in the same shape as
@@ -256,8 +257,15 @@ reports with \`recordFeatureFlag\`. Check that the helper your code uses does bo
 - **The code behind the flag has no visible effect in that session.** A forced flag can only change screenshots on pages
   the recorded session actually visits.
 
-**Meticulous shows a forced replay but no flag value next to it.** Meticulous shows the values your app reports with
-\`recordFeatureFlag\`. Record the value your helper returns, including when it came from an override.
+**A forced flag shows a question mark.** Meticulous delivered the forced value but your app didn't report a value for
+that flag with \`recordFeatureFlag\`, so it can't confirm your app used it. Record the value your helper returns,
+including when it came from an override.
+
+**A forced flag shows a warning.** Your app reported a different value from the one Meticulous forced, so the override
+didn't reach the code that reported it. Check the cases above.
+
+**A forced flag shows a dash.** Your app never asked \`getFlagOverride\` for that flag, so the JavaScript API couldn't
+deliver it. Check that your flag helper asks for each flag by the same name your app records.
 
 ## Related Pages
 

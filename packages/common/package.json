@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/common",
-  "version": "2.347.0",
+  "version": "3.1.0",
   "description": "Meticulous common utilities",
   "license": "ISC",
   "main": "dist/index.js",
@@ -17,6 +17,10 @@
     "./json": {
       "types": "./dist/json.utils.d.ts",
       "default": "./dist/json.utils.js"
+    },
+    "./virtual-time-order": {
+      "types": "./dist/virtual-time-order.utils.d.ts",
+      "default": "./dist/virtual-time-order.utils.js"
     }
   },
   "typesVersions": {
@@ -26,6 +30,9 @@
       ],
       "json": [
         "./dist/json.utils.d.ts"
+      ],
+      "virtual-time-order": [
+        "./dist/virtual-time-order.utils.d.ts"
       ]
     }
   },

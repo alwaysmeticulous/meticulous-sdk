@@ -58,6 +58,12 @@ export interface UploadAssetsResult {
   testRun?: TestRun | null;
   message?: string;
   commentsDisabledForAuthor?: boolean;
+  /**
+   * Set when no test run was created because GitHub's primary rate limit was
+   * hit while triggering, and the server scheduled a delayed retry that will
+   * create the run once the limit resets.
+   */
+  githubRateLimitRetryScheduled?: boolean;
 }
 
 /**
@@ -141,21 +147,25 @@ export const uploadAssetsFromTarStream = async (
     });
   }
 
-  const { testRun, message, commentsDisabledForAuthor } =
-    await completeUploadAndWaitForBase({
-      client,
-      uploadId,
-      commitSha,
-      baseSha,
-      hasGitDiff: !!gitDiffOutput,
-      waitForBase,
-      rewrites,
-      createDeployment,
-      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
-      multipartUploadInfo,
-      ...(projectId ? { projectId } : {}),
-      ...(debugContext ? { debugContext } : {}),
-    });
+  const {
+    testRun,
+    message,
+    commentsDisabledForAuthor,
+    githubRateLimitRetryScheduled,
+  } = await completeUploadAndWaitForBase({
+    client,
+    uploadId,
+    commitSha,
+    baseSha,
+    hasGitDiff: !!gitDiffOutput,
+    waitForBase,
+    rewrites,
+    createDeployment,
+    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+    multipartUploadInfo,
+    ...(projectId ? { projectId } : {}),
+    ...(debugContext ? { debugContext } : {}),
+  });
 
   return {
     uploadId,
@@ -163,6 +173,9 @@ export const uploadAssetsFromTarStream = async (
     testRun,
     ...(message ? { message } : {}),
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
+    ...(githubRateLimitRetryScheduled
+      ? { githubRateLimitRetryScheduled: true }
+      : {}),
   };
 };
 
@@ -195,6 +208,7 @@ const completeUploadAndWaitForBase = async ({
   testRun: TestRun | null;
   message?: string;
   commentsDisabledForAuthor?: boolean;
+  githubRateLimitRetryScheduled?: boolean;
 }> => {
   const logger = initLogger();
 
@@ -232,6 +246,8 @@ const completeUploadAndWaitForBase = async ({
         extraBasePollTimeoutMs: initialResult?.extraBasePollTimeoutMs,
         message: initialResult?.message,
         commentsDisabledForAuthor: initialResult?.commentsDisabledForAuthor,
+        githubRateLimitRetryScheduled:
+          initialResult?.githubRateLimitRetryScheduled,
       },
       retryFn: () =>
         triggerRunOnDeployment({
@@ -253,8 +269,13 @@ const completeUploadAndWaitForBase = async ({
   } catch (error) {
     throw withCompletedUpload(error, { sourceDeploymentId: uploadId });
   }
-  const { testRun, baseNotFound, message, commentsDisabledForAuthor } =
-    triggered;
+  const {
+    testRun,
+    baseNotFound,
+    message,
+    commentsDisabledForAuthor,
+    githubRateLimitRetryScheduled,
+  } = triggered;
 
   Sentry.captureMessage("Deployment assets marked as uploaded", {
     level: "debug",
@@ -271,6 +292,9 @@ const completeUploadAndWaitForBase = async ({
     testRun: testRun ?? null,
     ...(message ? { message } : {}),
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
+    ...(githubRateLimitRetryScheduled
+      ? { githubRateLimitRetryScheduled: true }
+      : {}),
   };
 };
 
@@ -377,21 +401,25 @@ const uploadAssetsStreaming = async ({
     });
   }
 
-  const { testRun, message, commentsDisabledForAuthor } =
-    await completeUploadAndWaitForBase({
-      client,
-      uploadId,
-      commitSha,
-      baseSha,
-      hasGitDiff: !!gitDiffOutput,
-      waitForBase,
-      rewrites,
-      createDeployment,
-      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
-      multipartUploadInfo,
-      ...(projectId ? { projectId } : {}),
-      ...(debugContext ? { debugContext } : {}),
-    });
+  const {
+    testRun,
+    message,
+    commentsDisabledForAuthor,
+    githubRateLimitRetryScheduled,
+  } = await completeUploadAndWaitForBase({
+    client,
+    uploadId,
+    commitSha,
+    baseSha,
+    hasGitDiff: !!gitDiffOutput,
+    waitForBase,
+    rewrites,
+    createDeployment,
+    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+    multipartUploadInfo,
+    ...(projectId ? { projectId } : {}),
+    ...(debugContext ? { debugContext } : {}),
+  });
 
   return {
     uploadId,
@@ -399,6 +427,9 @@ const uploadAssetsStreaming = async ({
     testRun,
     ...(message ? { message } : {}),
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
+    ...(githubRateLimitRetryScheduled
+      ? { githubRateLimitRetryScheduled: true }
+      : {}),
   };
 };
 
@@ -596,20 +627,24 @@ export const uploadAssetsFromZip = async ({
       });
     }
 
-    const { testRun, message, commentsDisabledForAuthor } =
-      await completeUploadAndWaitForBase({
-        client,
-        uploadId,
-        commitSha,
-        baseSha,
-        hasGitDiff: !!gitDiffOutput,
-        waitForBase,
-        rewrites,
-        createDeployment,
-        archiveType: "zip",
-        ...projectIdentifier,
-        ...(debugContext ? { debugContext } : {}),
-      });
+    const {
+      testRun,
+      message,
+      commentsDisabledForAuthor,
+      githubRateLimitRetryScheduled,
+    } = await completeUploadAndWaitForBase({
+      client,
+      uploadId,
+      commitSha,
+      baseSha,
+      hasGitDiff: !!gitDiffOutput,
+      waitForBase,
+      rewrites,
+      createDeployment,
+      archiveType: "zip",
+      ...projectIdentifier,
+      ...(debugContext ? { debugContext } : {}),
+    });
 
     return {
       uploadId,
@@ -617,6 +652,9 @@ export const uploadAssetsFromZip = async ({
       testRun,
       ...(message ? { message } : {}),
       ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
+      ...(githubRateLimitRetryScheduled
+        ? { githubRateLimitRetryScheduled: true }
+        : {}),
     };
   } finally {
     if (deleteAfterUpload) {

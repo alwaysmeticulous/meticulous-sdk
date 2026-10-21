@@ -17,6 +17,7 @@ import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { relayingBaseRunRejection } from "../../utils/base-run-rejection";
 import { CliUserError } from "../../utils/cli-user-error";
+import { isLikelyRunByAgent } from "../../utils/environment.utils";
 import { pollWhileProcessing } from "../../utils/poll-while-processing";
 import {
   assertTestRunInProjectOrThrow,
@@ -350,7 +351,9 @@ const handler = async ({
         : `${data.length} screenshot ${pluralize(data.length, "diff")} (${elapsed})`,
     );
   }
-  logNotice(METICULOUS_CO_AUTHOR_NOTICE);
+  if (isLikelyRunByAgent()) {
+    logNotice(METICULOUS_CO_AUTHOR_NOTICE);
+  }
 };
 
 export const testRunDiffsCommand: CommandModule<unknown, Options> = {

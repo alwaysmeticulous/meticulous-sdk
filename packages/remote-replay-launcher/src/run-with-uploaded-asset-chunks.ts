@@ -54,6 +54,12 @@ export interface RunWithUploadedAssetChunksResult {
    */
   allSessionsExcludedBySessionFilter?: boolean;
   commentsDisabledForAuthor?: boolean;
+  /**
+   * Set when no test run was created because GitHub's primary rate limit was
+   * hit while triggering, and the server scheduled a delayed retry that will
+   * create the run once the limit resets.
+   */
+  githubRateLimitRetryScheduled?: boolean;
   overlaps?: ChunkPathOverlap[];
   overlapsTruncated?: boolean;
   sourceDeploymentId?: string;
@@ -170,6 +176,8 @@ export const runWithUploadedAssetChunks = async ({
         allSessionsExcludedBySessionFilter:
           initialResult?.allSessionsExcludedBySessionFilter,
         commentsDisabledForAuthor: initialResult?.commentsDisabledForAuthor,
+        githubRateLimitRetryScheduled:
+          initialResult?.githubRateLimitRetryScheduled,
         overlaps: initialResult?.overlaps,
         overlapsTruncated: initialResult?.overlapsTruncated,
       },
@@ -191,6 +199,7 @@ export const runWithUploadedAssetChunks = async ({
     message,
     allSessionsExcludedBySessionFilter,
     commentsDisabledForAuthor,
+    githubRateLimitRetryScheduled,
     overlaps: triggerOverlaps,
     overlapsTruncated: triggerOverlapsTruncated,
   } = polled;
@@ -227,6 +236,9 @@ export const runWithUploadedAssetChunks = async ({
       ? { allSessionsExcludedBySessionFilter: true }
       : {}),
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
+    ...(githubRateLimitRetryScheduled
+      ? { githubRateLimitRetryScheduled: true }
+      : {}),
     ...resolvedOverlaps,
   };
 };

@@ -592,6 +592,13 @@ export interface TestRunJsCoverageOptions {
   includeCoveragePercentage?: boolean;
   /** Scope coverage to the PR diff (coverage.pr.json) instead of the whole run. */
   prDiffOnly?: boolean;
+  /**
+   * Scope coverage to the expanded edited lines
+   * (`coverage.expanded-edited-lines.json.gz`). Runs that have no
+   * expanded-edited-lines coverage fail with HTTP 404 instead of falling back
+   * to the PR diff; request `prDiffOnly` for that.
+   */
+  expandedEditedLines?: boolean;
   /** Order rows by this field; defaults to `repoFilePath`. */
   orderBy?: CoverageOrderByField;
   /**
@@ -1781,6 +1788,9 @@ export const getTestRunJsCoverage = async (
   appendCoverageOrderingParams(params, options);
   if (options?.prDiffOnly) {
     params.prDiffOnly = "true";
+  }
+  if (options?.expandedEditedLines) {
+    params.expandedEditedLines = "true";
   }
   if (options?.unionTestRunIds != null && options.unionTestRunIds.length > 0) {
     params.unionTestRunIds = options.unionTestRunIds.join(",");

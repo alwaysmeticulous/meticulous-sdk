@@ -591,6 +591,11 @@ export interface OutboundFetchAgentSwarmTestingRequest {
   url: string;
   /** Request body as captured by `readBodyWithCap`, mirroring the replay lookup. */
   requestBody?: CapturedBody;
+  /**
+   * The outbound request's headers, lower-cased as `fetch` exposes them.
+   * Absent on a recorder older than this field.
+   */
+  requestHeaders?: Record<string, string>;
 }
 
 /**

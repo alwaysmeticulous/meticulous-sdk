@@ -98,8 +98,9 @@ meticulous [command]
 | \`agent complete-base-run\` | Replay the selected sessions a base run has not run yet | Agent/programmatic use |
 | \`agent promote-sessions\` | Add sessions a pinned-session test run replayed to the selected set | Agent/programmatic use |
 | \`agent agent-swarm-runs\` | List a project's Agent swarm runs, newest first, optionally for one pull request | Agent/programmatic use |
-| \`agent agent-swarm-run\` | Get the status and list of cases for an Agent swarm run (by default the latest execution run for a test run, commit or pull request) | Agent/programmatic use |
-| \`agent agent-swarm-run-case\` | Get the full details of an Agent swarm case, with its failure check and fix prompt | Agent/programmatic use |
+| \`agent agent-swarm-run\` | Get the status and list of cases for an Agent swarm run (by default the latest execution run for a test run, commit or pull request), marking cases retried with a mocked backend | Agent/programmatic use |
+| \`agent agent-swarm-run-case\` | Get the full details of an Agent swarm case, with its failure check, fix prompt and any retry with a mocked backend | Agent/programmatic use |
+| \`agent agent-swarm-setup-blockers\` | List test flows that live-backend Agent swarm runs couldn't verify because of test environment setup, with suggested fixes and how any retry with mocks ended | Agent/programmatic use |
 | \`agent submit-feedback\` | Submit free-form feedback about Meticulous to the Meticulous team | Agent/programmatic use |
 | \`schema\` | Print the CLI command schema as JSON | Agent/programmatic use |
 
@@ -162,7 +163,7 @@ npx @alwaysmeticulous/cli ci run-with-tunnel \\
 
 **Type**: String
 **Description**: Your Meticulous API token
-**How to get**: From Meticulous dashboard project settings
+**How to get**: From [Settings → API tokens](https://app.meticulous.ai/settings?page=api-tokens) in the Meticulous dashboard
 
 **Example**:
 \`\`\`bash
