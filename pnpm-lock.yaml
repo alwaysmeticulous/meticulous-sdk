@@ -87,6 +87,15 @@ importers:
         specifier: 'catalog:'
         version: 4.1.4(@opentelemetry/api@1.9.0)(@types/node@20.19.27)(vite@7.3.6(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.2)(yaml@2.9.0))
 
+  packages/agent-traces:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.9.0
+        version: 20.19.27
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@opentelemetry/api@1.9.0)(@types/node@20.19.27)(vite@7.3.6(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.2)(yaml@2.9.0))
+
   packages/api: {}
 
   packages/backend-recorder-launcher:
@@ -165,6 +174,9 @@ importers:
 
   packages/cli:
     devDependencies:
+      '@alwaysmeticulous/agent-traces':
+        specifier: workspace:*
+        version: link:../agent-traces
       '@alwaysmeticulous/api':
         specifier: workspace:*
         version: link:../api
@@ -267,6 +279,9 @@ importers:
 
   packages/client:
     dependencies:
+      '@alwaysmeticulous/agent-traces':
+        specifier: workspace:*
+        version: link:../agent-traces
       '@alwaysmeticulous/api':
         specifier: workspace:*
         version: link:../api

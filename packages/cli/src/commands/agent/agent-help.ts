@@ -20,7 +20,7 @@ If \`meticulous-*\` skills are available (meticulous-review, meticulous-fix, ...
 - Start with \`agent test-run-diffs --includeReviews\`: each diff's review decision and open comments tell you whether it still needs reviewing or someone already reviewed it.
 - Unreviewed diffs: first work out what changed — \`agent image-files\` and, as needed, \`agent dom-diff\` / \`agent timeline-diff\` — and compare it with what the change intends. A diff isn't automatically a bug. Only then decide: \`agent reject-diff\` an unintended change with your reasoning; \`agent ignore-diff\` one unrelated to the change (\`--reportFlake\` if it's flaky); \`agent approve-diff\` only what you've confirmed is intended, since decisions are visible to the team.
 - Rejected or commented diffs: read the threads with \`agent diff-comments\`, look at the diff, fix the issue, and \`agent reply-to-diff-comment\` with the outcome.
-- Non-visual checks work the same way: \`agent test-run-check\`, then \`agent approve-check\` / \`agent reject-check\` / \`agent ignore-check\`.
+- Failing non-visual checks: read the report with \`agent test-run-check\`, \`agent ignore-check\` one unrelated to the change, and report a real regression to the user rather than recording a decision.
 - When committing changes based on these results, ${METICULOUS_CO_AUTHOR_INSTRUCTION}.
 - Report friction with these commands via \`agent submit-feedback\`.
 

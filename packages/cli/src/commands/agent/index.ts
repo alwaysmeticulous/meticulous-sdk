@@ -32,8 +32,6 @@ import { ignoreDiffCommand } from "./ignore-diff.command";
 import { createDiffCommentCommand } from "./create-diff-comment.command";
 import { replyToDiffCommentCommand } from "./reply-to-diff-comment.command";
 import { checkCommentsCommand } from "./check-comments.command";
-import { approveCheckCommand } from "./approve-check.command";
-import { rejectCheckCommand } from "./reject-check.command";
 import { ignoreCheckCommand } from "./ignore-check.command";
 
 export const agentCommand: CommandModule = {
@@ -45,8 +43,6 @@ export const agentCommand: CommandModule = {
       .command(testRunForCommitCommand)
       .command(testRunCheckCommand)
       .command(checkCommentsCommand)
-      .command(approveCheckCommand)
-      .command(rejectCheckCommand)
       .command(ignoreCheckCommand)
       .command(testRunDiffsCommand)
       .command(imageFilesCommand)

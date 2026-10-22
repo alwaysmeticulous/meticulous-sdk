@@ -8,10 +8,8 @@ import {
   type MockInstance,
   vi,
 } from "vitest";
-import { approveCheckCommand } from "../approve-check.command";
 import { checkCommentsCommand } from "../check-comments.command";
 import { ignoreCheckCommand } from "../ignore-check.command";
-import { rejectCheckCommand } from "../reject-check.command";
 
 vi.mock("../../../command-utils/sentry.utils", () => ({
   wrapHandler: (fn: (...args: unknown[]) => Promise<void>) => fn,
@@ -20,8 +18,6 @@ vi.mock("../../../command-utils/sentry.utils", () => ({
 const mocks = vi.hoisted(() => ({
   assertTestRunInProjectOrThrow: vi.fn(),
   createClientWithOAuth: vi.fn(),
-  approveCheck: vi.fn(),
-  rejectCheck: vi.fn(),
   ignoreCheck: vi.fn(),
   getCheckComments: vi.fn(),
   logNotice: vi.fn(),
@@ -34,8 +30,6 @@ vi.mock("@alwaysmeticulous/common", () => ({
 }));
 vi.mock("@alwaysmeticulous/client", () => ({
   createClientWithOAuth: mocks.createClientWithOAuth,
-  approveCheck: mocks.approveCheck,
-  rejectCheck: mocks.rejectCheck,
   ignoreCheck: mocks.ignoreCheck,
   getCheckComments: mocks.getCheckComments,
 }));
@@ -61,49 +55,28 @@ describe("check review commands", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createClientWithOAuth.mockResolvedValue({});
-    mocks.approveCheck.mockResolvedValue({});
-    mocks.rejectCheck.mockResolvedValue({});
     mocks.ignoreCheck.mockResolvedValue({});
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterEach(() => logSpy.mockRestore());
 
-  it.each([
-    ["reject-check", rejectCheckCommand, mocks.rejectCheck, "rejected"],
-    ["ignore-check", ignoreCheckCommand, mocks.ignoreCheck, "ignored"],
-  ] as const)(
-    "%s records the verdict with its reason and confirms it on stderr only",
-    async (_name, command, write, verdict) => {
-      await run(command, {
-        ...targetOptions,
-        checkType: "custom",
-        reason: "Bundle grew by 40KB",
-        json: false,
-      });
+  it("ignore-check records the verdict with its reason and confirms it on stderr only", async () => {
+    await run(ignoreCheckCommand, {
+      ...targetOptions,
+      checkType: "custom",
+      reason: "Bundle grew by 40KB",
+      json: false,
+    });
 
-      expect(write).toHaveBeenCalledWith({
-        client: expect.anything(),
-        testRunId: "tr-1",
-        checkId: "network-requests",
-        checkType: "custom",
-        reason: "Bundle grew by 40KB",
-      });
-      expect(logSpy).not.toHaveBeenCalled();
-      expect(mocks.logNotice).toHaveBeenCalledWith(`Check ${verdict}.`);
-    },
-  );
-
-  it("approve-check passes an absent reason through", async () => {
-    await run(approveCheckCommand, { ...targetOptions, json: false });
-
-    expect(mocks.approveCheck).toHaveBeenCalledWith({
+    expect(mocks.ignoreCheck).toHaveBeenCalledWith({
       client: expect.anything(),
       ...target,
-      reason: undefined,
+      checkType: "custom",
+      reason: "Bundle grew by 40KB",
     });
     expect(logSpy).not.toHaveBeenCalled();
-    expect(mocks.logNotice).toHaveBeenCalledWith("Check approved.");
+    expect(mocks.logNotice).toHaveBeenCalledWith("Check ignored.");
   });
 
   it("resolves --prNumber to the pull request's latest run", async () => {
@@ -112,7 +85,7 @@ describe("check review commands", () => {
       status: "Success",
     });
 
-    await run(rejectCheckCommand, {
+    await run(ignoreCheckCommand, {
       ...targetOptions,
       testRunId: undefined,
       prNumber: 42,
@@ -126,7 +99,7 @@ describe("check review commands", () => {
       42,
       "org/proj",
     );
-    expect(mocks.rejectCheck).toHaveBeenCalledWith({
+    expect(mocks.ignoreCheck).toHaveBeenCalledWith({
       client: expect.anything(),
       testRunId: "tr-pr",
       checkId: "network-requests",
@@ -140,7 +113,7 @@ describe("check review commands", () => {
     ["both --testRunId and --prNumber", { prNumber: 42 }],
   ])("refuses %s before logging in", async (_label, selector) => {
     await expect(
-      run(rejectCheckCommand, {
+      run(ignoreCheckCommand, {
         ...targetOptions,
         ...selector,
         reason: "Bundle grew by 40KB",
@@ -151,7 +124,7 @@ describe("check review commands", () => {
   });
 
   it("emits the MCP-identical empty object with --json", async () => {
-    await run(rejectCheckCommand, {
+    await run(ignoreCheckCommand, {
       ...targetOptions,
       reason: "Bundle grew by 40KB",
       json: true,
@@ -168,7 +141,7 @@ describe("check review commands", () => {
       {
         id: "comment-1",
         isAgentAuthored: true,
-        text: "Verdict: reject\n\nNew request",
+        text: "Verdict: ignore\n\nUnrelated request",
       },
       {
         id: "comment-2",
@@ -187,7 +160,7 @@ describe("check review commands", () => {
 
     expect(logSpy.mock.calls.map((call) => call[0])).toEqual([
       "id\tauthor\tisAgentAuthored\ttext\tisResolved",
-      'comment-1\t\ttrue\t"Verdict: reject\\n\\nNew request"\tfalse',
+      'comment-1\t\ttrue\t"Verdict: ignore\\n\\nUnrelated request"\tfalse',
       'comment-2\tAda\ttrue\t"Verdict: ignore\\n\\nFlake"\ttrue',
     ]);
   });

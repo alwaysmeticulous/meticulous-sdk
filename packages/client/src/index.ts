@@ -128,10 +128,8 @@ export {
   type AgentCheckComment,
   type AgentCheckReviewResponse,
   type AgentCheckTarget,
-  approveCheck,
   getCheckComments,
   ignoreCheck,
-  rejectCheck,
 } from "./api/agent-check-reviews.api";
 export {
   getAgentSwarmRunCase,
@@ -171,6 +169,15 @@ export type {
   TestRunsResponse,
 } from "./api/agent-test-runs.types";
 export * from "./api/github-cloud-replay.api";
+export {
+  completeAgentTraceUpload,
+  requestAgentTraceUpload,
+} from "./api/agent-traces.api";
+export {
+  type UploadAgentTraceOptions,
+  type UploadAgentTraceResult,
+  uploadAgentTrace,
+} from "./api/upload-agent-trace";
 export {
   WhoamiOrganization,
   WhoamiResponse,
@@ -289,6 +296,10 @@ export {
   PutFileToSignedUrlOptions,
   putFileToSignedUrl,
 } from "./utils/put-file-to-signed-url";
+export {
+  PutBufferToSignedUrlOptions,
+  putBufferToSignedUrl,
+} from "./utils/put-buffer-to-signed-url";
 export {
   UploadError,
   isTransientUploadError,

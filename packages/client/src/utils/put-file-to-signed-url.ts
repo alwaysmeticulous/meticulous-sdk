@@ -1,9 +1,5 @@
 import { createReadStream } from "fs";
-import type { IncomingMessage } from "http";
-import { request as httpRequest } from "http";
-import { request as httpsRequest } from "https";
-import { getProxyAgent } from "./get-proxy-agent";
-import { UploadError } from "./retry-transient-upload-errors";
+import { sendToSignedUrl } from "./send-to-signed-url";
 
 export interface PutFileToSignedUrlOptions {
   filePath: string;
@@ -13,64 +9,25 @@ export interface PutFileToSignedUrlOptions {
 }
 
 /**
- * Streams `filePath` to `signedUrl` via an HTTPS PUT.
- *
- * Uses Node's built-in `https.request` rather than `fetch` so that we
- * (a) honour `HTTPS_PROXY` via `getProxyAgent()` for customers behind
- * corporate proxies and (b) avoid relying on `fetch`'s `duplex: "half"`
- * streaming support, which is fragile across Node 18.x patch versions.
- *
- * Rejects with `UploadError` for non-200 responses so callers can pair
- * this with `retryTransientUploadErrors`.
+ * Streams `filePath` to `signedUrl` via an HTTPS PUT. Streaming avoids
+ * relying on `fetch`'s `duplex: "half"` support, which is fragile across
+ * Node 18.x patch versions.
  */
-export const putFileToSignedUrl = async ({
+export const putFileToSignedUrl = ({
   filePath,
   signedUrl,
   size,
   contentType,
-}: PutFileToSignedUrlOptions): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    // A new read stream is required on every attempt — streams cannot be replayed.
-    const fileStream = createReadStream(filePath);
-    const requestFn = signedUrl.startsWith("https:")
-      ? httpsRequest
-      : httpRequest;
-    const req = requestFn(
-      signedUrl,
-      {
-        agent: getProxyAgent(),
-        method: "PUT",
-        headers: {
-          "Content-Length": size,
-          "Content-Type": contentType,
-        },
-      },
-      (response: IncomingMessage) => {
-        let responseData = "";
-
-        response.on("data", (chunk) => {
-          responseData += chunk;
-        });
-
-        response.on("end", () => {
-          if (response.statusCode === 200) {
-            resolve();
-          } else {
-            reject(new UploadError(response.statusCode ?? 0, responseData));
-          }
-        });
-      },
-    );
-
-    req.on("error", (error) => {
-      reject(error);
-    });
-
-    fileStream.on("error", (error) => {
-      req.destroy(error);
-      reject(error instanceof Error ? error : new Error(String(error)));
-    });
-
-    fileStream.pipe(req);
+}: PutFileToSignedUrlOptions): Promise<void> =>
+  sendToSignedUrl({
+    signedUrl,
+    headers: { "Content-Length": size, "Content-Type": contentType },
+    writeBody: (request) =>
+      new Promise((resolve, reject) => {
+        // A new read stream is required on every attempt — streams cannot be replayed.
+        const fileStream = createReadStream(filePath);
+        fileStream.on("error", reject);
+        fileStream.on("end", () => resolve());
+        fileStream.pipe(request);
+      }),
   });
-};

@@ -848,6 +848,7 @@ export type AgenticRunTraceEventKind =
   | "system-prompt"
   | "user-prompt"
   | "assistant"
+  | "reasoning"
   | "tool-use"
   | "tool-result"
   | "result"

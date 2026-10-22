@@ -1,12 +1,6 @@
 import type { TestRunStatus } from "@alwaysmeticulous/api";
 import { printJson } from "../../command-utils/print-json";
-
-let cliJsonVersion = "unknown";
-
-/** Raw CLI package version, stamped onto every structured CI JSON result. */
-export const setCliJsonVersion = (version: string): void => {
-  cliJsonVersion = version;
-};
+import { getCliVersion } from "../../utils/cli-version";
 
 export interface CiUploadFields {
   sourceDeploymentId?: string;
@@ -114,7 +108,7 @@ export const isStructuredCiJsonInvocation = (
 };
 
 export const printCiJson = (value: object): void => {
-  printJson({ cliVersion: cliJsonVersion, ...value });
+  printJson({ cliVersion: getCliVersion(), ...value });
 };
 
 export const printStructuredCiFailure = (

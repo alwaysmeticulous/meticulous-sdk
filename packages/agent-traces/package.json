@@ -1,0 +1,42 @@
+{
+  "name": "@alwaysmeticulous/agent-traces",
+  "version": "3.2.0",
+  "description": "Converts coding-agent session transcripts to ATIF trajectories and prepares them for upload to Meticulous",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "build": "tsc --build tsconfig.json",
+    "dev": "tsc --build tsconfig.json --watch",
+    "format": "prettier --write src",
+    "lint": "oxlint --type-aware src",
+    "lint:fix": "oxlint --type-aware src --fix",
+    "depcheck": "depcheck --ignore-patterns=dist",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^20.9.0",
+    "vitest": "catalog:"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/agent-traces"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}

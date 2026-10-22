@@ -10,6 +10,7 @@ import { onboardCommand } from "./onboard/index";
 import { projectCommand } from "./project/index";
 import { recordCommand } from "./record/index";
 import { replayCommand } from "./replay.command";
+import { tracesCommand } from "./traces/index";
 
 /**
  * The canonical list of top-level commands. Used both to register them on the
@@ -33,6 +34,7 @@ export const CLI_COMMANDS: CommandModule<unknown, any>[] = [
   projectCommand,
   recordCommand,
   replayCommand,
+  tracesCommand,
 ];
 
 /**

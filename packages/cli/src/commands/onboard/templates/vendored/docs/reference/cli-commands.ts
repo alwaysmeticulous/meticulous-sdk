@@ -63,6 +63,7 @@ meticulous [command]
 | \`download session\` | Download a recorded session | Debugging |
 | \`download replay\` | Download a replay | Debugging |
 | \`download test-run\` | Download a test run | Debugging |
+| \`traces upload\` | Upload coding-agent session traces you already have | Agent traces |
 | \`local relevant-sessions\` | Find sessions covering the current branch's code changes | Local development |
 | \`debug replay\` | Set up a debug workspace for a single replay | Investigating a replay |
 | \`debug replay-diff\` | Set up a debug workspace for a specific replay diff | Investigating a diff |
@@ -82,8 +83,6 @@ meticulous [command]
 | \`agent timeline-diff\` | Get the timeline diff for a replay diff | Agent/programmatic use |
 | \`agent test-run-check\` | Get a builtin or custom non-visual check report for a test run, or list available check IDs with \`--availableIds\` | Agent/programmatic use |
 | \`agent check-comments\` | Get the reasons recorded with agent decisions on a non-visual check of a test run | Agent/programmatic use |
-| \`agent approve-check\` | Agent-approve a failing non-visual check, optionally with a reason, if the project allows it | Agent/programmatic use |
-| \`agent reject-check\` | Agent-reject a failing non-visual check, with a reason | Agent/programmatic use |
 | \`agent ignore-check\` | Agent-ignore a failing non-visual check as unrelated to the change, with a reason, if the project allows it | Agent/programmatic use |
 | \`agent test-run-for-commit\` | Look up the latest test run for a commit (defaults to git HEAD) | Agent/programmatic use |
 | \`agent test-runs\` | List a project's pull request test runs, or its base test runs, newest first | Agent/programmatic use |
@@ -1281,6 +1280,85 @@ npx @alwaysmeticulous/cli ci label-commit \\
   --apiToken="$METICULOUS_API_TOKEN" \\
   --labels not-relevant
 \`\`\`
+
+---
+
+## traces upload
+
+Upload coding-agent session traces you already have: Claude Code, Codex, Cursor and Pi transcripts, \`opencode export\` files, and ATIF trajectories from any harness. Each path is a trace file or a directory to search; formats are detected from file contents.
+
+### Synopsis
+
+\`\`\`bash
+npx @alwaysmeticulous/cli traces upload <paths..> [options]
+\`\`\`
+
+### Optional Flags
+
+#### \`--apiToken\`
+
+**Type**: String
+**Description**: Your Meticulous API token
+**Default**: Your login, signing in if needed
+
+---
+
+#### \`--project\`
+
+**Type**: String
+**Description**: The project (id, \`org/proj\` or \`proj\`) whose organization the traces are uploaded to
+**Default**: Your default project
+
+---
+
+#### \`--agent\`
+
+**Type**: String
+**Description**: Treat every file as this agent's format instead of detecting it: \`claude-code\`, \`codex\`, \`cursor\`, \`pi\`, \`opencode\`, or \`other\` for ATIF
+
+---
+
+#### \`--excludeToolOutputRegex\`
+
+**Type**: String (list)
+**Description**: Replace the output of every call to a tool whose name matches before uploading
+
+---
+
+#### \`--dryRun\` and \`--outputDir\`
+
+**Type**: Boolean, String
+**Description**: Convert the traces without uploading them, writing each session's ATIF trajectory, raw files and summary under \`--outputDir\`
+
+---
+
+#### \`--force\`
+
+**Type**: Boolean
+**Description**: Upload sessions even if Meticulous already has identical content for them
+
+---
+
+#### \`--json\`
+
+**Type**: Boolean
+**Description**: Print the results as JSON
+
+---
+
+### Complete Example
+
+\`\`\`bash
+npx @alwaysmeticulous/cli traces upload ~/.claude/projects ~/.codex/sessions \\
+  --project="<ORGANIZATION>/<PROJECT>"
+\`\`\`
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success - every session found was uploaded, or already had been |
+| 1 | Failure - a session failed, or no traces were found |
 
 ---
 

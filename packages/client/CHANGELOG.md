@@ -1,5 +1,27 @@
 # @alwaysmeticulous/client
 
+## 3.2.0
+
+### Minor Changes
+
+- [#15851](https://github.com/alwaysmeticulous/meticulous/pull/15851) [`7555ee0`](https://github.com/alwaysmeticulous/meticulous/commit/7555ee0b3de9777ec2da481bb060f593350bf33f) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Agents can no longer approve or reject non-visual checks, only ignore them. The
+  `meticulous agent approve-check` and `meticulous agent reject-check` commands
+  are removed, as are `approveCheck` and `rejectCheck` from the client.
+  `meticulous agent ignore-check` is no longer refused on a check a person
+  rejected, since checks can no longer be rejected.
+
+- [#15838](https://github.com/alwaysmeticulous/meticulous/pull/15838) [`73925d5`](https://github.com/alwaysmeticulous/meticulous/commit/73925d5e5bf6fcbbce222c3cc78e7b15b490bf38) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agent swarm trace events gain a `reasoning` kind in `AgenticRunTraceEventKind`,
+  recording the model's reasoning summary during a failure verifier check.
+
+- [#15939](https://github.com/alwaysmeticulous/meticulous/pull/15939) [`db89e77`](https://github.com/alwaysmeticulous/meticulous/commit/db89e774514e911d09b04cba9abec95bf43f90a8) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Adds `uploadAgentTrace`, `requestAgentTraceUpload` and
+  `completeAgentTraceUpload` for uploading agent traces, and
+  `putBufferToSignedUrl` for uploading an in-memory body to a presigned URL.
+
+### Patch Changes
+
+- Updated dependencies [[`db89e77`](https://github.com/alwaysmeticulous/meticulous/commit/db89e774514e911d09b04cba9abec95bf43f90a8), [`db89e77`](https://github.com/alwaysmeticulous/meticulous/commit/db89e774514e911d09b04cba9abec95bf43f90a8)]:
+  - @alwaysmeticulous/agent-traces@3.2.0
+
 ## 3.1.0
 
 ### Minor Changes

@@ -17,7 +17,6 @@ import { CLI_COMMANDS, GLOBAL_OPTIONS } from "./commands/all-commands";
 import {
   isStructuredCiJsonInvocation,
   printStructuredCiFailure,
-  setCliJsonVersion,
 } from "./commands/ci/ci-command-result";
 import { deprecatedAliases } from "./commands/deprecated-aliases";
 import {
@@ -25,6 +24,7 @@ import {
   schemaCommand,
 } from "./commands/schema.command";
 import { CliUserError } from "./utils/cli-user-error";
+import { setCliVersion } from "./utils/cli-version";
 
 const handleDataDir = (dataDir: string | null | undefined): void => {
   setMeticulousLocalDataDir(dataDir);
@@ -40,7 +40,7 @@ export const main = async (): Promise<void> => {
   const packageJson = JSON.parse(
     await readFile(packageJsonPath, { encoding: "utf-8" }),
   ) as { version?: unknown };
-  setCliJsonVersion(
+  setCliVersion(
     typeof packageJson.version === "string" ? packageJson.version : "unknown",
   );
   await initSentry(meticulousVersion);

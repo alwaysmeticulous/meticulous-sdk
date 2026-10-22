@@ -50,7 +50,7 @@ const handler = async ({
 export const checkCommentsCommand: CommandModule<unknown, Options> = {
   command: "check-comments",
   describe:
-    "Get the list of review comments for a given non-visual check of a test run: the reasons recorded with agent approve-check, reject-check and ignore-check decisions. Outputs a TSV table with columns id, author, isAgentAuthored, text plus the requested additional columns, in oldest-first order. Outputs only open comments by default. The text column is JSON-quoted (the only column that is) to keep multiline/tabbed comment bodies on one row.",
+    "Get the list of review comments for a given non-visual check of a test run: the reasons recorded with agent decisions on the check, such as ignore-check. Outputs a TSV table with columns id, author, isAgentAuthored, text plus the requested additional columns, in oldest-first order. Outputs only open comments by default. The text column is JSON-quoted (the only column that is) to keep multiline/tabbed comment bodies on one row.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     ...checkTargetOptions,

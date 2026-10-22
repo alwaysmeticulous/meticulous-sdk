@@ -27,32 +27,26 @@ export interface AgentCheckComment {
 /** Empty: the reason is stored with the decision rather than handed back. */
 export type AgentCheckReviewResponse = Record<string, never>;
 
-/** Record an agent review rejecting one failing check. */
-export const rejectCheck = async ({
-  reason,
-  ...target
-}: AgentCheckTarget & {
-  reason: string;
-}): Promise<AgentCheckReviewResponse> =>
-  postToCheck(target, "reject", { reason });
-
-/** Record an agent review approving one failing check, optionally with a reason. */
-export const approveCheck = async ({
-  reason,
-  ...target
-}: AgentCheckTarget & {
-  reason?: string | undefined;
-}): Promise<AgentCheckReviewResponse> =>
-  postToCheck(target, "approve", reason != null ? { reason } : {});
-
 /** Record an agent review ignoring one failing check. */
 export const ignoreCheck = async ({
+  client,
+  testRunId,
+  checkId,
+  checkType,
   reason,
-  ...target
 }: AgentCheckTarget & {
   reason: string;
-}): Promise<AgentCheckReviewResponse> =>
-  postToCheck(target, "ignore", { reason });
+}): Promise<AgentCheckReviewResponse> => {
+  const { data } = await client
+    .post(`${checkPath(testRunId, checkId)}/ignore`, {
+      reason,
+      ...(checkType != null ? { checkType } : {}),
+    })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
 
 export const getCheckComments = async ({
   client,
@@ -72,22 +66,6 @@ export const getCheckComments = async ({
   }
   const { data } = await client
     .get(`${checkPath(testRunId, checkId)}/comments`, { params })
-    .catch((error) => {
-      throw maybeEnrichFetchError(error);
-    });
-  return data;
-};
-
-const postToCheck = async <T>(
-  { client, testRunId, checkId, checkType }: AgentCheckTarget,
-  action: "reject" | "approve" | "ignore",
-  body: Record<string, string>,
-): Promise<T> => {
-  const { data } = await client
-    .post(`${checkPath(testRunId, checkId)}/${action}`, {
-      ...body,
-      ...(checkType != null ? { checkType } : {}),
-    })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
