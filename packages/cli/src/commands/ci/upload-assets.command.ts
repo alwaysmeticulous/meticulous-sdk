@@ -72,7 +72,7 @@ export const ciUploadAssetsCommand: CommandModule<unknown, Options> = {
       default: "[]",
       description:
         "URL rewrite rules. This string should be a valid JSON array in the format described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array." +
-        ' Note: if no rules are passed, or an empty list is passed, we default to the rewrite rule \'{ source: "**", destination: "/index.html" }\'.',
+        " If no rules are passed, or an empty list is passed, the project's asset rewrites are used when those are set. Otherwise every missing path is served from /index.html.",
     },
     waitForBase: {
       boolean: true,

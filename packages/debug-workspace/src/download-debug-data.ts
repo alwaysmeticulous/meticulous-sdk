@@ -141,7 +141,8 @@ const downloadReplays = async (
 // all. `playbackData` and the raw coverage variants are duplicates/derivatives
 // of data we already have; `diffs/` only stores pixel-diff PNG overlays the
 // agent can't act on (the actionable info is in `debug-data/diffs/*.summary.json`
-// and the DOM diffs).
+// and the DOM diffs); `stackTraces` holds unmapped, minified frames, while the
+// timeline's error entries carry source-mapped stacks.
 const DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES: ReadonlySet<ReplayFileType> =
   new Set<ReplayFileType>([
     "playbackData",
@@ -149,6 +150,7 @@ const DEBUG_WORKSPACE_EXCLUDED_FILE_TYPES: ReadonlySet<ReplayFileType> =
     "rawPerScreenshotCssCoverage",
     "rawPerScreenshotJsCoverage",
     "diffs",
+    "stackTraces",
   ]);
 
 // Snapshotted assets only feed optional enrichment (formatted JS/CSS and the

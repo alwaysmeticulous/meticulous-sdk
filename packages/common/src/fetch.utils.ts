@@ -13,13 +13,17 @@ const DEFAULT_PORTS: Partial<Record<string, number>> = {
 let directDispatcher: Dispatcher | undefined;
 let proxyDispatchers: Map<string, Dispatcher> | undefined;
 
+/**
+ * A caller-supplied `init.dispatcher` replaces the proxy-aware default, so
+ * that caller owns proxying for its requests.
+ */
 export const meticulousFetch = (
   input: Parameters<typeof undiciFetch>[0],
   init?: Parameters<typeof undiciFetch>[1],
 ) => {
   return undiciFetch(input, {
     ...init,
-    dispatcher: getDispatcherForInput(input),
+    dispatcher: init?.dispatcher ?? getDispatcherForInput(input),
   });
 };
 

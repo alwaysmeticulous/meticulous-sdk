@@ -8,7 +8,7 @@ export const document = `---
 
 # {% $frontmatter.title %}
 
-Meticulous recorder is a tool for recording real user sessions. The recorder captures your users' actions and any network requests
+Meticulous recorder is a tool for recording real user (and agent) sessions. The recorder captures your users' actions and any network requests
 (and responses) during their session. Please note that although plaintext passwords are redacted, the recorded network requests can
 include authorization tokens and other headers -- you should therefore only add trusted users to your Meticulous organization.
 You can either add the recorder to all environments or just internal non-production environments.

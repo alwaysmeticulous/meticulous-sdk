@@ -80,29 +80,38 @@ export const getApiToken = (
 export const getAuthToken = async (
   apiToken: string | null | undefined,
 ): Promise<string | null> => {
-  const logger = initLogger();
-
   if (apiToken) {
-    logger.debug("Authenticated via --apiToken flag");
+    logAuthSource("--apiToken flag");
     return apiToken;
   }
 
   const oauthToken = await getValidAccessToken();
   if (oauthToken) {
-    logger.debug("Authenticated via OAuth");
+    logAuthSource("OAuth");
     return oauthToken;
   }
 
   if (process.env["METICULOUS_API_TOKEN"]) {
-    logger.debug("Authenticated via METICULOUS_API_TOKEN environment variable");
+    logAuthSource("METICULOUS_API_TOKEN environment variable");
     return process.env["METICULOUS_API_TOKEN"];
   }
 
   const fileToken = readFileBasedToken();
   if (fileToken) {
-    logger.debug(`Authenticated via ${fileToken.path}`);
+    logAuthSource(fileToken.path);
     return fileToken.token;
   }
 
   return null;
+};
+
+// An OAuth client re-resolves the token on every request, so only log the
+// source when it changes (e.g. falling back once an OAuth refresh fails).
+let lastLoggedAuthSource: string | null = null;
+
+const logAuthSource = (source: string): void => {
+  if (source !== lastLoggedAuthSource) {
+    initLogger().debug(`Authenticated via ${source}`);
+    lastLoggedAuthSource = source;
+  }
 };

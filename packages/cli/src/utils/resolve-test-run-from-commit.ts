@@ -37,9 +37,10 @@ export const POLL_TIMEOUT_MS = 10 * 60_000;
  * Logs which commit a by-commit test-run lookup resolved to, with consistent
  * wording across the agent commands. The lookup is by commit, so uncommitted
  * local changes aren't reflected: when the tree is dirty it logs `commitSha
- * (ignoring local changes)` unconditionally (not just under `--verbose`) so the
- * caveat is never missed — there's no ephemeral-commit capture here, unlike
- * `upload-build`. The clean and explicit-`--commitSha` cases are `--verbose`-only.
+ * (ignoring local changes)` unconditionally (not just under `--logLevel info`)
+ * so the caveat is never missed — there's no ephemeral-commit capture here,
+ * unlike `upload-build`. The clean and explicit-`--commitSha` cases are only
+ * logged at `--logLevel info`.
  */
 export const logResolvedCommitSha = async (
   commitSha: string | undefined,
@@ -162,7 +163,7 @@ export const assertTestRunComplete = (
  * printed — with `--testRunId` to work with one.
  *
  * Logs the resolved commit (see {@link logResolvedCommitSha}) and the test run
- * id (under `--verbose`). `otherRunSelectors` names the command's alternatives
+ * id (at `--logLevel info`). `otherRunSelectors` names the command's alternatives
  * to `--commitSha` for the error when no commit can be determined.
  */
 export const resolveTestRunForCommitOrThrow = async (

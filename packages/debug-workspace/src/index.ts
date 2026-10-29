@@ -23,8 +23,8 @@ export {
   type GenerateDebugWorkspaceResult,
   type FileMetadataEntry,
   type ScreenshotMapEntry,
-  type ReplayComparisonEntry,
 } from "./generate-debug-workspace";
+export type { ReplayComparisonEntry } from "./build-replay-comparison";
 export {
   fetchDomDiffs,
   type DomDiffMap,
@@ -32,4 +32,5 @@ export {
   type FetchDomDiffsOptions,
 } from "./fetch-dom-diffs";
 export { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
+export { pickExistingPaths } from "./existing-paths";
 export { runDebugPipeline, type DebugPipelineOptions } from "./pipeline";

@@ -61,7 +61,7 @@ const commandModuleToSchema = (
     const groupOptions: Record<string, YargsOptions> = {};
     const mockYargs = createMockYargs(submodules, groupOptions);
     (cmd.builder as (y: unknown) => unknown)(mockYargs);
-    // Options declared on a group builder (e.g. agent's --verbose/--json) are
+    // Options declared on a group builder (e.g. agent's --logLevel/--json) are
     // inherited by every subcommand, so thread them down into the subcommands.
     const inherited = { ...inheritedOptions };
     for (const [key, opt] of Object.entries(groupOptions)) {
@@ -93,7 +93,11 @@ const commandModuleToSchema = (
   )) {
     options[key] = yargsOptionToSchema(opt);
   }
-  Object.assign(options, inheritedOptions);
+  // A group may redeclare a global option to change only its default (agent's
+  // --logLevel), which yargs merges into the global declaration, so merge here too.
+  for (const [key, opt] of Object.entries(inheritedOptions)) {
+    options[key] = { ...options[key], ...opt };
+  }
   for (const [key, opt] of Object.entries(ownBuilder)) {
     options[key] = yargsOptionToSchema(opt);
   }

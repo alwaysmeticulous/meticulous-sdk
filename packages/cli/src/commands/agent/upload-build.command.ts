@@ -2,7 +2,7 @@ import {
   type ContainerEnvVariable,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
-import { logNotice, logProgress } from "@alwaysmeticulous/common";
+import { logNotice } from "@alwaysmeticulous/common";
 import { uploadBuild } from "@alwaysmeticulous/remote-replay-launcher";
 import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
@@ -103,12 +103,6 @@ const handler = async ({
     });
     return;
   }
-  // The bare deploymentId is always printed (stdout) so it can be captured or
-  // piped. The labelled deploymentId goes through the logger, so it appears with
-  // --verbose (the default for `ci`) and is suppressed otherwise (the default
-  // for `agent`), leaving just the bare deploymentId. The commitSha line is
-  // logged by resolveBuildCommitSha, where its provenance is known.
-  logProgress(`deploymentId: ${result.deploymentId}`);
   console.log(result.deploymentId);
 };
 
@@ -133,7 +127,7 @@ export const uploadBuildCommand: CommandModule<unknown, Options> = {
       default: "[]",
       description:
         "URL rewrite rules (asset upload mode). A valid JSON array as described at https://github.com/vercel/serve-handler?tab=readme-ov-file#rewrites-array." +
-        ' If no rules are passed, we default to \'{ source: "**", destination: "/index.html" }\'.',
+        " If no rules are passed, the project's asset rewrites are used when those are set. Otherwise every missing path is served from /index.html.",
     },
     localImageTag: {
       string: true,

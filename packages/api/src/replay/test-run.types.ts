@@ -161,6 +161,12 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
    * If present will run the session against a local server serving up previously snapshotted assets (HTML, JS, CSS etc.) from the specified prior replay, instead of against a URL.
    */
   simulationIdForAssets?: string | undefined;
+
+  /**
+   * If true, no auxiliary viewport screenshots are taken for this session,
+   * even when the test run's screenshotting options configure them.
+   */
+  disableAuxiliaryViewportScreenshots?: boolean | undefined;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { CLI_CLIENT_ID, getRevocationEndpoint } from "./oauth-constants";
+import { parseOAuthErrorBody } from "./oauth-utils";
 
 const REVOCATION_TIMEOUT_MS = 5_000;
 
@@ -62,8 +63,8 @@ const readErrorDetail = async (response: Response): Promise<string | null> => {
   if (!body) {
     return null;
   }
-  const parsed = parseJson(body);
-  const fields = [parsed?.error, parsed?.error_description].filter(
+  const parsed = parseOAuthErrorBody(body);
+  const fields = [parsed?.error, parsed?.errorDescription].filter(
     (field): field is string => typeof field === "string" && field.length > 0,
   );
   if (fields.length === 0 && parsed != null) {
@@ -74,14 +75,4 @@ const readErrorDetail = async (response: Response): Promise<string | null> => {
   return detail.length > MAX_ERROR_BODY_LENGTH
     ? `${detail.slice(0, MAX_ERROR_BODY_LENGTH)}…`
     : detail;
-};
-
-const parseJson = (
-  body: string,
-): { error?: unknown; error_description?: unknown } | null => {
-  try {
-    return JSON.parse(body) as { error?: unknown; error_description?: unknown };
-  } catch {
-    return null;
-  }
 };

@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -107,5 +108,112 @@ describe("generateDebugDerivedFiles", () => {
         "utf-8",
       ),
     ).toBe(timelineNdjson);
+  });
+});
+
+describe("generateDebugDerivedFiles error entries", () => {
+  let workspace: string;
+
+  beforeEach(() => {
+    workspace = mkdtempSync(join(tmpdir(), "met-debug-derived-errors-"));
+  });
+
+  afterEach(() => {
+    rmSync(workspace, { recursive: true, force: true });
+  });
+
+  it("keeps a multi-line error on one events-index line, with its top source-mapped frame", () => {
+    const replayDir = join(
+      workspace,
+      DEBUG_DATA_DIRECTORY,
+      "replays",
+      "head",
+      "replay-1",
+    );
+    mkdirSync(replayDir, { recursive: true });
+    const error = {
+      kind: "error",
+      virtualTimeStart: 0,
+      virtualTimeEnd: 0,
+      data: {
+        type: "unhandled-error",
+        message: "Could not create a contributor.\nfunction0",
+        mappedStack: [
+          {
+            functionName: "findContributor",
+            file: "examples/advanced.tsx",
+            line: 146,
+            column: 1,
+            resolved: true,
+          },
+        ],
+      },
+    };
+    writeFileSync(
+      join(replayDir, "timeline.ndjson"),
+      JSON.stringify(error) + "\n",
+    );
+
+    generateDebugDerivedFiles(workspace);
+
+    expect(
+      readFileSync(
+        join(
+          workspace,
+          DEBUG_DATA_DIRECTORY,
+          "events-index",
+          "head-replay-1.txt",
+        ),
+        "utf-8",
+      ),
+    ).toBe(
+      "[0] vt=0 kind=error Could not create a contributor. function0 at findContributor (examples/advanced.tsx:146:1)\n",
+    );
+  });
+});
+
+describe("generateDebugDerivedFiles end-state screenshots", () => {
+  let workspace: string;
+
+  beforeEach(() => {
+    workspace = mkdtempSync(join(tmpdir(), "met-debug-derived-end-state-"));
+  });
+
+  afterEach(() => {
+    rmSync(workspace, { recursive: true, force: true });
+  });
+
+  it("names an end-state screenshot as its file is named", () => {
+    const debugDataDir = join(workspace, DEBUG_DATA_DIRECTORY);
+    const replayDir = join(debugDataDir, "replays", "head", "replay-1");
+    mkdirSync(replayDir, { recursive: true });
+    const screenshot = {
+      kind: "screenshot",
+      virtualTimeStart: 900,
+      virtualTimeEnd: 900,
+      data: { identifier: { type: "end-state", logicVersion: 2 } },
+    };
+    writeFileSync(
+      join(replayDir, "timeline.ndjson"),
+      JSON.stringify(screenshot) + "\n",
+    );
+
+    generateDebugDerivedFiles(workspace);
+
+    expect(
+      readFileSync(
+        join(debugDataDir, "events-index", "head-replay-1.txt"),
+        "utf-8",
+      ),
+    ).toBe("[0] vt=900 kind=screenshot id=final-state-v2\n");
+    expect(
+      existsSync(
+        join(
+          debugDataDir,
+          "screenshot-timeline-context",
+          "head-replay-1-final-state-v2.txt",
+        ),
+      ),
+    ).toBe(true);
   });
 });

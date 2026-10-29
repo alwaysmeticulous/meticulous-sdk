@@ -44,6 +44,8 @@ interface Options {
   assetsDir?: string | undefined;
   backendUrl?: string | undefined;
   backendProxyPaths?: string[] | undefined;
+  /** Only meaningful with --localImageTag and --backendUrl. */
+  backendUrlEnvVariable?: string | undefined;
   appPort?: number | undefined;
   instructionsFile?: string | undefined;
   enableLocalMocks?: boolean | undefined;
@@ -61,6 +63,7 @@ const handler = async ({
   assetsDir,
   backendUrl,
   backendProxyPaths,
+  backendUrlEnvVariable,
   appPort,
   instructionsFile,
   enableLocalMocks,
@@ -84,8 +87,31 @@ const handler = async ({
   if (enableLocalMocks && backendUrl) {
     throw new Error("--enableLocalMocks cannot be combined with --backendUrl.");
   }
-  if (appPort != null && localImageTag) {
-    throw new Error("--appPort is only supported with uploaded assets.");
+  if (
+    appPort != null &&
+    localImageTag &&
+    (!backendUrl || !backendProxyPaths?.length)
+  ) {
+    throw new Error(
+      "--appPort with a container requires --backendUrl and --backendProxyPaths.",
+    );
+  }
+  if (backendUrlEnvVariable && assetsDir) {
+    throw new Error(
+      "--backendUrlEnvVariable is only supported with --localImageTag.",
+    );
+  }
+  // The /api default moves from the yargs option into the handler so a
+  // container target defaults to env-var-only injection; an explicit
+  // --backendProxyPaths opts into the same-origin fronting proxy.
+  const proxyPaths = backendProxyPaths ?? (assetsDir != null ? ["/api"] : []);
+  if (localImageTag != null && backendUrl != null && proxyPaths.length > 0) {
+    logger.warn(
+      "--backendProxyPaths with --localImageTag is experimental: the worker " +
+        "fronts the container and proxies matching backend paths, and covers no " +
+        "server-side (SSR) fetches. If your image can route its backend traffic " +
+        "through the injected backend URL env var, that is preferred.",
+    );
   }
 
   const target = localImageTag ?? assetsDir!;
@@ -135,10 +161,11 @@ const handler = async ({
             backend: {
               url: backendUrl,
               loginOptions: collectLoginOptions(process.env),
-              proxyPaths: backendProxyPaths,
+              proxyPaths,
             },
           }
         : {}),
+      ...(backendUrlEnvVariable ? { backendUrlEnvVariable } : {}),
       ...(appPort != null ? { appPort } : {}),
       ...projectIdentifier,
     });
@@ -184,16 +211,24 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
     backendProxyPaths: {
       array: true,
       string: true,
-      default: ["/api"],
       description:
-        "Same-origin path prefixes to reverse proxy to the staging backend.",
+        "Same-origin path prefixes to reverse proxy to the staging backend. " +
+        "Defaults to /api for uploaded assets; with a container, passing it " +
+        "opts into the worker's same-origin fronting proxy (experimental).",
+    },
+    backendUrlEnvVariable: {
+      string: true,
+      description:
+        "With --localImageTag and --backendUrl: the name of the env var the " +
+        "container image reads its backend origin from at runtime. Defaults " +
+        "to METICULOUS_BACKEND_URL.",
     },
     appPort: {
       number: true,
       description:
-        "Port to serve uploaded frontend assets on. Defaults to 8000 on the worker. " +
+        "Loopback app-server port for uploaded assets or containers with --backendProxyPaths. Defaults to 8000 on the worker. " +
         "The run fails if the port is unavailable — there is no fallback — so staging " +
-        "CORS allowlists can pin http://localhost:<port>. Only supported with uploaded assets.",
+        "CORS allowlists can pin http://localhost:<port>. Container targets require --backendUrl and --backendProxyPaths.",
     },
     instructionsFile: {
       string: true,

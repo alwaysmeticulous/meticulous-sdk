@@ -3,7 +3,7 @@ import {
   submitAgentFeedback,
   type AgentFeedbackOutcome,
 } from "@alwaysmeticulous/client";
-import { logNotice, logProgress } from "@alwaysmeticulous/common";
+import { logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
@@ -54,7 +54,6 @@ const handler = async ({
   if (json) {
     printJson(result);
   } else {
-    logProgress(`feedbackId: ${result.feedbackId}`);
     console.log(result.feedbackId);
   }
   logNotice("Feedback submitted. Thank you!");

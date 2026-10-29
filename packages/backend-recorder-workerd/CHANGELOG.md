@@ -1,5 +1,12 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 3.3.0
+
+### Minor Changes
+
+- [#15923](https://github.com/alwaysmeticulous/meticulous/pull/15923) [`b1fcc8d`](https://github.com/alwaysmeticulous/meticulous/commit/b1fcc8d8a38f922c1d752c4239953958f58a93d4) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Export `parseSidecarUrl`, the check that a sidecar URL is a plain `http://` origin
+  on a loopback, docker-gateway or private-network host.
+
 ## 2.350.0
 
 ### Minor Changes

@@ -207,6 +207,9 @@ Check for feature flag SDKs:
   - How flags are evaluated (e.g., wrapper function, direct SDK calls, React hooks,
     API response consumed via context/state)
   - Where flag values first become available on the client
+  - The helper(s) components call to read a flag (the place an override wrapper goes)
+  - Whether any flags are resolved on the server (SSR, server components, server-rendered
+    HTML), since those need the override cookie rather than the browser API
 
 ### 11. Recorder Installation Target
 
@@ -658,6 +661,8 @@ Output a structured summary in this exact format:
 - Source: <third-party SDK / database/API / N/A>
 - Integration: <React hooks / direct SDK calls / wrapper function / API response via context / N/A>
 - Client entry point: <file where flag values first become available on the client, or "N/A">
+- Flag read helper(s): <function/hook and file that components call to read a flag, or "N/A">
+- Server-resolved flags: <Yes (where) / No / N/A>
 - Notes: <brief description of how flags are used>
 
 ### Recorder Installation Target

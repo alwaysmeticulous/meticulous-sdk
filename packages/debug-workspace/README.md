@@ -16,19 +16,19 @@ Given a replay diff ID or replay ID(s), this package:
    run in parallel with configurable concurrency.
 
 3. **Generates a workspace** -- Scaffolds a structured directory with:
-   - **Templates** -- `CLAUDE.md`, agents, skills, and settings copied into
+   - **Templates** -- `CLAUDE.md` and settings copied into
      `.claude/` for use with Claude Code.
    - **Derived analysis files** -- Pre-computed artifacts that make large replay data greppable
      and manageable:
      - Filtered logs (noise-stripped deterministic logs)
-     - Log diffs (raw, filtered, and summary)
      - Diff summaries (compact screenshot diff results)
      - Events index (one-line-per-event timeline summary)
      - Network log (compact request log)
      - VT progression (virtual time values for diffing)
      - Logs index (one-line-per-entry log summary)
      - Screenshot timeline context (events surrounding each screenshot)
-     - Timeline summaries, session summaries, params diffs, assets diffs
+     - Errors diffs (errors only one replay hit) and coverage diffs (head vs base JS coverage)
+     - Session summaries, assets diffs
      - Formatted assets (pretty-printed JS/CSS)
      - Screenshot DOM snapshots (per-screenshot `<name>.html` files extracted from
        `<name>.metadata.json`, written alongside each replay's `screenshots/` directory)

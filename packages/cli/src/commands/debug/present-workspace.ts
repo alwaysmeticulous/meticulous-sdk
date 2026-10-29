@@ -23,7 +23,7 @@ export const presentWorkspace = (options: PresentWorkspaceOptions): void => {
     "    debug-data/     Replay data, session recordings, diffs, and analysis artifacts",
   );
   console.log(
-    "    .claude/        AI agent context files (CLAUDE.md, rules, skills, hooks)",
+    "    .claude/        AI agent context files (CLAUDE.md, settings)",
   );
   if (projectRepoDir) {
     console.log("    project-repo/   Your codebase at the relevant commit");

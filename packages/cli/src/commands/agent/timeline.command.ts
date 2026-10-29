@@ -1,79 +1,78 @@
 import {
   createClientWithOAuth,
-  getTimelineDiff,
+  getReplayTimeline,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { requireIdArgument } from "./argument-validation.utils";
+import { logResponseNotes } from "./response-notes.utils";
+import {
+  parseKinds,
+  printTable,
+  TIMELINE_COLUMNS,
+  TIMELINE_FILTER_OPTIONS,
+  TIMELINE_PAGING_OPTIONS,
+  type TimelineFilterFlags,
+  type TimelinePagingFlags,
+} from "./timeline.utils";
 
-interface Options {
+interface Options extends TimelineFilterFlags, TimelinePagingFlags {
   apiToken?: string | null | undefined;
-  replayDiffId: string;
+  replayId: string;
   json: boolean;
 }
 
-// TSV-only compact marker per status. The JSON output (and the MCP tool) carry
-// the raw status enum in the `diff` attribute instead of this symbol.
-const STATUS_PREFIX: Record<string, string> = {
-  identical: " ",
-  removed: "-",
-  added: "+",
-  changed: "!",
-};
-
 const handler = async ({
   apiToken,
-  replayDiffId,
+  replayId,
+  kinds,
+  sinceMs,
+  untilMs,
+  screenshotName,
+  limit,
+  offset,
   json,
 }: Options): Promise<void> => {
   initLogger();
-  requireIdArgument("replayDiffId", replayDiffId);
+  requireIdArgument("replayId", replayId);
+  const parsedKinds = parseKinds(kinds);
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,
   });
 
-  const { entries } = await getTimelineDiff(client, replayDiffId);
+  const response = await getReplayTimeline(client, replayId, {
+    ...(parsedKinds != null ? { kinds: parsedKinds } : {}),
+    sinceMs,
+    untilMs,
+    screenshotName,
+    limit,
+    offset,
+  });
 
   if (json) {
-    printJson(
-      entries.map((entry) => ({
-        diff: entry.status,
-        timeMs: entry.timeMs,
-        event: entry.eventKind,
-        description: entry.description,
-      })),
-    );
-    return;
+    printJson(response.entries);
+  } else {
+    printTable(response.entries, TIMELINE_COLUMNS);
   }
-
-  console.log(["diff", "timeMs", "event", "description"].join("\t"));
-
-  for (const entry of entries) {
-    console.log(
-      [
-        STATUS_PREFIX[entry.status] ?? " ",
-        entry.timeMs,
-        entry.eventKind,
-        entry.description,
-      ].join("\t"),
-    );
-  }
+  logResponseNotes(response);
 };
 
-export const timelineDiffCommand: CommandModule<unknown, Options> = {
-  command: "timeline-diff",
+export const timelineCommand: CommandModule<unknown, Options> = {
+  command: "timeline",
   describe:
-    "Get the list of timeline event diffs for a given replay diff. Outputs a TSV table with columns diff, timeMs, event, description.",
+    "Get the list of timeline events for a given replay (default: limit to 100 rows). Outputs a TSV table with columns eventId, timeMs, kind, description, count, where description is empty for screenshots, whose eventId is their name, and count is how many identical consecutive events the row stands for (empty for one); a user event's description carries its match confidence or failure reason; the filtered and total event counts, the replay id and pagination are reported on stderr. Pass an eventId to 'agent timeline-event' for the full details of one event.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
-    replayDiffId: {
+    replayId: {
       string: true,
-      description: "The replay diff ID.",
+      description: "The replay ID.",
       demandOption: true,
     },
+    ...TIMELINE_FILTER_OPTIONS,
+    ...TIMELINE_PAGING_OPTIONS,
   },
   handler: wrapHandler(handler),
 };

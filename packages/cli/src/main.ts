@@ -12,6 +12,7 @@ import { declareClientAppInfo } from "@alwaysmeticulous/client";
 import { initSentry } from "@alwaysmeticulous/sentry";
 import yargs from "yargs";
 import { parseJsonArgs } from "./command-utils/json-args";
+import { resolveLogLevel } from "./command-utils/log-level-options";
 import { setOptions } from "./command-utils/sentry.utils";
 import { CLI_COMMANDS, GLOBAL_OPTIONS } from "./commands/all-commands";
 import {
@@ -136,15 +137,20 @@ export const main = async (): Promise<void> => {
       true,
     )
     .middleware([
-      // Explicit --logLevel wins; otherwise --verbose=false (the default for
-      // agent commands) or --json quietens progress logs.
-      (argv) =>
+      // `agent` and `download` default --logLevel to "warn"; elsewhere --json
+      // quietens progress logs unless --logLevel is passed.
+      (argv) => {
+        if (argv.verbose === true) {
+          logNotice("--verbose is deprecated; use --logLevel info instead.");
+        }
         setLogLevel(
-          argv.logLevel ??
-            (structuredCiJson || argv.verbose === false || argv.json === true
-              ? "warn"
-              : undefined),
-        ),
+          resolveLogLevel({
+            logLevel: argv.logLevel,
+            verbose: argv.verbose === true,
+            quiet: structuredCiJson || argv.json === true,
+          }),
+        );
+      },
       // `--json` reserves stdout for the result, even with an explicit
       // --logLevel.
       (argv) => {

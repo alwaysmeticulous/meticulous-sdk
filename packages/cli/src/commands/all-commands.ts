@@ -1,4 +1,5 @@
 import type { CommandModule, Options as YargsOptions } from "yargs";
+import { LOG_LEVEL_OPTION } from "../command-utils/log-level-options";
 import { agentCommand } from "./agent/index";
 import { authCommand } from "./auth/index";
 import { ciCommand } from "./ci/index";
@@ -43,11 +44,7 @@ export const CLI_COMMANDS: CommandModule<unknown, any>[] = [
  * report them without keeping a hand-maintained second copy.
  */
 export const GLOBAL_OPTIONS = {
-  logLevel: {
-    string: true,
-    choices: ["trace", "debug", "info", "warn", "error", "silent"],
-    description: "Log level",
-  },
+  logLevel: LOG_LEVEL_OPTION,
   dataDir: {
     string: true,
     description: "Where Meticulous stores data (sessions, replays, etc.)",

@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getJwtClaims, isJwtExpired, isOAuthJwt } from "../oauth-utils";
+import {
+  getJwtClaims,
+  isJwtExpired,
+  isOAuthJwt,
+  parseOAuthErrorBody,
+} from "../oauth-utils";
 
 const makeJwt = (payload: Record<string, unknown>): string => {
   const header = Buffer.from(
@@ -87,5 +92,38 @@ describe("isJwtExpired", () => {
 
   it("returns false when the token is malformed (no evidence of expiry)", () => {
     expect(isJwtExpired("not-a-jwt")).toBe(false);
+  });
+});
+
+describe("parseOAuthErrorBody", () => {
+  it("maps the error code and description", () => {
+    expect(
+      parseOAuthErrorBody(
+        JSON.stringify({
+          error: "invalid_grant",
+          error_description: "Session not active",
+        }),
+      ),
+    ).toEqual({
+      error: "invalid_grant",
+      errorDescription: "Session not active",
+    });
+  });
+
+  it("drops fields that are not strings", () => {
+    expect(
+      parseOAuthErrorBody(
+        JSON.stringify({ error: 42, error_description: null }),
+      ),
+    ).toEqual({});
+  });
+
+  it.each([
+    ["a non-JSON body", "Bad Request"],
+    ["an empty body", ""],
+    ["a JSON null body", "null"],
+    ["a JSON string body", JSON.stringify("invalid_grant")],
+  ])("returns null for %s", (_name, body) => {
+    expect(parseOAuthErrorBody(body)).toBeNull();
   });
 });

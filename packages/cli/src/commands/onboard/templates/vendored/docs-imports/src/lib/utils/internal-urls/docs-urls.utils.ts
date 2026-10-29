@@ -25,6 +25,12 @@ export const CI_SETUP_URL = "/docs/ci";
 
 export const GITHUB_ACTIONS_SETUP_URL = "/docs/github-actions-v2";
 
+/**
+ * The "Upload container image" tab on the CI setup guide. The tab label is the
+ * query value the docs tabs read.
+ */
+export const CONTAINER_UPLOAD_DOCS_URL = `${GITHUB_ACTIONS_SETUP_URL}?type=${encodeURIComponent("Upload container image")}`;
+
 export const MAKE_CHECK_BLOCKING_URL = "/docs/make-check-blocking";
 
 export const CLOUD_REPLAY_URL = "/docs/cloud-replay";

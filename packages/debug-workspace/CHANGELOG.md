@@ -1,5 +1,58 @@
 # @alwaysmeticulous/debug-workspace
 
+## 3.4.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @alwaysmeticulous/client@3.4.1
+  - @alwaysmeticulous/common@3.4.0
+  - @alwaysmeticulous/downloading-helpers@3.4.1
+
+## 3.4.0
+
+### Patch Changes
+
+- Updated dependencies [[`a8e4495`](https://github.com/alwaysmeticulous/meticulous/commit/a8e4495cb9f546db1a0e2fd4a76297cdd7018d6d), [`431c0f2`](https://github.com/alwaysmeticulous/meticulous/commit/431c0f25d979dc83b4eecc1ff95a08f02f1adc22)]:
+  - @alwaysmeticulous/client@3.4.0
+  - @alwaysmeticulous/common@3.4.0
+  - @alwaysmeticulous/downloading-helpers@3.4.0
+
+## 3.3.0
+
+### Minor Changes
+
+- [#15976](https://github.com/alwaysmeticulous/meticulous/pull/15976) [`a537d9f`](https://github.com/alwaysmeticulous/meticulous/commit/a537d9ff3a68205513206f95dd8791f36838bb5c) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Debug workspaces now point an agent at the evidence that explains a diff, and drop what didn't:
+  - New `errors-diff/`: uncaught errors, unhandled rejections and `console.error` messages of head and
+    base, grouped and marked `head-only`, `base-only` or `both`, with the top stack frames of
+    uncaught errors.
+  - New `coverage-diff/`: which of the PR's changed lines executed in each replay, files executed in
+    only one replay, and differing lines elsewhere, for the whole replay and the targeted screenshot.
+  - Both are also written for `debug replay <id> --baseReplayId <id>`, which now only warns, rather
+    than exits, when the two replays replayed different sessions, and accepts a patched copy of the
+    same session.
+  - `network-log/` lines now show the GraphQL operation, the recording that was served, how it was
+    matched (`match=exact`, `match=normalized:<step>` or `match=loose:<step>`), and
+    `SERVED-OTHER-URL`, `BODY-IGNORED`, `QUERY-IGNORED` and `PARTIAL-BATCH` markers for loose
+    matches. `events-index/` error lines show the top stack frame and stay on one line.
+  - `diffs/*.summary.json` now includes each screenshot's mismatch pixels and percentage, diff hash,
+    changed class names and, for flakes, the flake evidence.
+  - `replayComparison` in `context.json` now always reports timeline entry, network request and user
+    event counts, plus each replay's session ID; `totalAnimationFrames` is renamed `totalUserEvents`.
+  - The filtered logs no longer replace long identifiers without digits (type and class names).
+  - End-state screenshots are named `final-state…` in `events-index/` and `screenshot-timeline-context/`
+    (they were `screenshot-after-event-0000?`), the base replay's session is downloaded too when it
+    differs from head's, and `context.json` only lists paths that exist.
+  - Removed: the bundled subagents and skills, `log-diffs/`, `params-diffs/`, `timeline-summaries/`,
+    `screenshot-context/` and `stack-traces.ndjson`.
+
+### Patch Changes
+
+- Updated dependencies [[`c74d9f9`](https://github.com/alwaysmeticulous/meticulous/commit/c74d9f922ad40d98e797576dd8750369cb62aff9), [`6985e75`](https://github.com/alwaysmeticulous/meticulous/commit/6985e75d0a642d4f57e05a7d3a66130b81921478), [`371a40f`](https://github.com/alwaysmeticulous/meticulous/commit/371a40f5f78d271492c7280fcc8da9c0219688e9), [`1777587`](https://github.com/alwaysmeticulous/meticulous/commit/17775877067de20bb18b2410276466421da5aed5), [`1b76eea`](https://github.com/alwaysmeticulous/meticulous/commit/1b76eeae15a41f178be8a110f45db65d973d4d5a), [`2129f4c`](https://github.com/alwaysmeticulous/meticulous/commit/2129f4cb179ef35b605d9ba7ad199c658a785a5e), [`007b0ea`](https://github.com/alwaysmeticulous/meticulous/commit/007b0ea145ec8968a98df0bc96170f2201daf0b8), [`0859c6d`](https://github.com/alwaysmeticulous/meticulous/commit/0859c6d79ba164467e83a257539804f50cca7d17), [`72a9423`](https://github.com/alwaysmeticulous/meticulous/commit/72a94236ad76fb7f071d96c6ebe99642a62da250), [`c16a559`](https://github.com/alwaysmeticulous/meticulous/commit/c16a55984b4502a807511a5797192b3072955fa6), [`71bbbbf`](https://github.com/alwaysmeticulous/meticulous/commit/71bbbbf6301e5d375465a0cf70cc669a22deadc6)]:
+  - @alwaysmeticulous/client@3.3.0
+  - @alwaysmeticulous/common@3.3.0
+  - @alwaysmeticulous/downloading-helpers@3.3.0
+
 ## 3.2.0
 
 ### Patch Changes

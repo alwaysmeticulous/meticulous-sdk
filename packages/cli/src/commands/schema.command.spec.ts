@@ -36,12 +36,25 @@ describe("generateSchema", () => {
     // Own option.
     expect(options).toHaveProperty("commitSha");
     // Inherited from the agent group builder.
-    expect(options).toHaveProperty("verbose");
     expect(options).toHaveProperty("json");
+    expect(options.verbose).toMatchObject({ hidden: true });
+    // Global, but defaulted by the agent group builder.
+    expect(options.logLevel).toMatchObject({
+      type: "string",
+      choices: ["trace", "debug", "info", "warn", "error", "silent"],
+      default: "warn",
+    });
     // Global options attached to the root yargs instance.
     expect(options).toHaveProperty("jsonArgs");
     expect(options).toHaveProperty("dataDir");
+  });
+
+  test("a leaf command outside agent/download keeps the global logLevel with no default", () => {
+    const node = asNode(generateSchema(["ci", "run-with-tunnel"]));
+    const options = node.options ?? {};
     expect(options).toHaveProperty("logLevel");
+    expect(options.logLevel).not.toHaveProperty("default");
+    expect(options).not.toHaveProperty("verbose");
   });
 
   test("a leaf command with no builder still reports the global options", () => {
@@ -105,7 +118,7 @@ describe("resolveJsonArgsTarget", () => {
     const keys = leafKeys(["agent", "trigger-test-run"]);
     expect(keys.has("commitSha")).toBe(true); // own
     expect(keys.has("dryRun")).toBe(true); // own
-    expect(keys.has("verbose")).toBe(true); // inherited from the agent group
+    expect(keys.has("verbose")).toBe(true); // deprecated, from the agent group
     expect(keys.has("json")).toBe(true); // inherited from the agent group
     expect(keys.has("jsonArgs")).toBe(true); // global
   });

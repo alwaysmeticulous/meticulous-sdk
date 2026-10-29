@@ -1,4 +1,4 @@
-import { initLogger } from "@alwaysmeticulous/common";
+import { logNotice } from "@alwaysmeticulous/common";
 import {
   CLI_CLIENT_ID,
   getDeviceAuthorizationEndpoint,
@@ -10,6 +10,7 @@ import {
 import { generateCodeChallenge, generateCodeVerifier } from "./oauth-pkce";
 import type { StoredOAuthTokens } from "./oauth-token-store";
 import { storeOAuthTokens } from "./oauth-token-store";
+import { parseOAuthErrorBody } from "./oauth-utils";
 
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
 const SLOW_DOWN_INCREMENT_SECONDS = 5;
@@ -36,8 +37,6 @@ type DeviceTokenPollResult =
   | { kind: "slow_down" };
 
 export const performDeviceLogin = async (): Promise<StoredOAuthTokens> => {
-  const logger = initLogger();
-
   // PKCE binds the token poll to this process: Keycloak enforces the client's
   // PKCE policy on the device authorization endpoint too.
   const codeVerifier = generateCodeVerifier();
@@ -53,11 +52,11 @@ export const performDeviceLogin = async (): Promise<StoredOAuthTokens> => {
   // The URL goes on its own line: it is often relayed (copied out of a
   // terminal, or passed from a sandboxed agent to a human) and trailing text
   // or line wrapping tends to truncate it.
-  logger.info(
+  logNotice(
     `On any device, open the URL below and confirm the code ${authorization.user_code}:`,
   );
-  logger.info(`${webappBaseUrl}/cli-device-login?${cliLoginParams.toString()}`);
-  logger.info(
+  logNotice(`${webappBaseUrl}/cli-device-login?${cliLoginParams.toString()}`);
+  logNotice(
     authorization.verification_uri_complete
       ? `If that doesn't work, open ${authorization.verification_uri_complete}`
       : `If that doesn't work, open ${authorization.verification_uri} and enter the code manually: ${authorization.user_code}`,
@@ -66,7 +65,7 @@ export const performDeviceLogin = async (): Promise<StoredOAuthTokens> => {
   const tokens = await pollForTokens({ authorization, codeVerifier });
 
   storeOAuthTokens(tokens);
-  logger.info("Authentication successful.");
+  logNotice("Authentication successful.");
 
   return tokens;
 };
@@ -99,7 +98,7 @@ const requestDeviceAuthorization = async ({
     // `getDeviceAuthorizationEndpoint()`. Keycloak instead rejects the request
     // itself with `unauthorized_client` — catch that here for the same clear
     // message.
-    if (parseOAuthErrorCode(bodyText) === "unauthorized_client") {
+    if (parseOAuthErrorBody(bodyText)?.error === "unauthorized_client") {
       throw new Error(
         "The OAuth 2.0 Device Authorization Grant is not enabled for the " +
           `meticulous-cli client on this realm (${KEYCLOAK_ISSUER_URL}).`,
@@ -220,7 +219,7 @@ const requestDeviceToken = async ({
     return { kind: "pending" };
   }
 
-  const errorCode = parseOAuthErrorCode(bodyText);
+  const errorCode = parseOAuthErrorBody(bodyText)?.error;
 
   if (errorCode === "authorization_pending") {
     return { kind: "pending" };
@@ -238,14 +237,6 @@ const requestDeviceToken = async ({
   throw new Error(
     `Device token request failed: ${response.status} ${bodyText}`,
   );
-};
-
-const parseOAuthErrorCode = (bodyText: string): string | undefined => {
-  try {
-    return (JSON.parse(bodyText) as { error?: string }).error;
-  } catch {
-    return undefined;
-  }
 };
 
 const mapTokenResponse = (

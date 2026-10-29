@@ -13,7 +13,9 @@ export {
 export {
   GetSnapshotsFromTestRunOptions,
   SnapshotsFromTestRun,
+  filterBaseSnapshotFilesToHeadSessions,
   getSnapshotsFromTestRun,
+  sessionComparisonKey,
 } from "./get-snapshots-from-test-run";
 
 // Re-export the client building blocks a custom-check script needs (creating a

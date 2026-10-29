@@ -31,6 +31,7 @@ describe("custom checks SDK helpers", () => {
 
   beforeEach(() => {
     client = { get: vi.fn(), post: vi.fn(), put: vi.fn() };
+    (downloadAndAssembleSnapshots as Mock).mockReset();
   });
 
   describe("reportCustomCheckResults", () => {
@@ -149,6 +150,118 @@ describe("custom checks SDK helpers", () => {
         baseTestRunId: "base-1",
         baseSnapshots,
         headSnapshots,
+      });
+    });
+
+    it("filters baseSnapshotFiles to head sessions (matching across _p<timestamp> repair suffixes) when onlyBaseSessionsPresentInHead is true", async () => {
+      const matchedBaseFile = {
+        type: "network-requests",
+        sessionId: "2026-01-01T00:00:00.000Z_sess-a_p1780000000000",
+        key: "proj/replay-base-a/custom-checks-snapshots/network-requests.json.gz",
+      };
+      const nestedPatchedBaseFile = {
+        type: "network-requests",
+        sessionId: "2026-01-01T00:00:00.000Z_sess-b_p1780000000000_mut7b2fe4f7",
+        key: "proj/replay-base-b/custom-checks-snapshots/network-requests.json.gz",
+      };
+      const baseOnlyFile = {
+        type: "network-requests",
+        sessionId: "2026-01-01T00:00:00.000Z_sess-base-only",
+        key: "proj/replay-base-only/custom-checks-snapshots/network-requests.json.gz",
+      };
+      const otherSliceBaseFile = {
+        type: "network-requests",
+        sessionId: "2026-01-01T00:00:00.000Z_sess-a_sl1_p1780000000000",
+        key: "proj/replay-base-sl1/custom-checks-snapshots/network-requests.json.gz",
+      };
+      const headFiles = [
+        {
+          type: "network-requests",
+          sessionId: "2026-01-01T00:00:00.000Z_sess-a_p1790000000000",
+          key: "proj/replay-head-a/custom-checks-snapshots/network-requests.json.gz",
+        },
+        {
+          type: "network-requests",
+          sessionId:
+            "2026-01-01T00:00:00.000Z_sess-b_mut7b2fe4f7_p1790000000000",
+          key: "proj/replay-head-b/custom-checks-snapshots/network-requests.json.gz",
+        },
+      ];
+      const response = {
+        testRunId: "tr-1",
+        baseTestRunId: "base-1",
+        signedBaseUrl: "https://cf.example/?Signature=sig&Key-Pair-Id=k",
+        baseSnapshotFiles: [
+          matchedBaseFile,
+          nestedPatchedBaseFile,
+          baseOnlyFile,
+          otherSliceBaseFile,
+        ],
+        headSnapshotFiles: headFiles,
+      };
+      client.get.mockResolvedValue({ data: response });
+      (downloadAndAssembleSnapshots as Mock).mockResolvedValue([]);
+
+      await getSnapshotsFromTestRun({
+        client: asClient(),
+        testRunId: "tr-1",
+        snapshotTypes: ["network-requests"],
+        onlyBaseSessionsPresentInHead: true,
+      });
+
+      expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(1, {
+        signedBaseUrl: response.signedBaseUrl,
+        files: [matchedBaseFile, nestedPatchedBaseFile],
+      });
+      expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(2, {
+        signedBaseUrl: response.signedBaseUrl,
+        files: headFiles,
+      });
+    });
+
+    it("skips downloading baseSnapshotFiles when skipBaseWhenHeadEmpty is true and headSnapshotFiles is empty", async () => {
+      const response = {
+        testRunId: "tr-empty-head",
+        baseTestRunId: "base-large",
+        signedBaseUrl: "https://cf.example/?Signature=sig&Key-Pair-Id=k",
+        baseSnapshotFiles: [
+          {
+            type: "axe-accessibility",
+            sessionId: "2026-01-01T00:00:00.000Z_sess-base-1",
+            key: "proj/replay-base-1/custom-checks-snapshots/axe-accessibility.json.gz",
+          },
+          {
+            type: "axe-accessibility",
+            sessionId: "2026-01-01T00:00:00.000Z_sess-base-2",
+            key: "proj/replay-base-2/custom-checks-snapshots/axe-accessibility.json.gz",
+          },
+        ],
+        headSnapshotFiles: [],
+      };
+      client.get.mockResolvedValue({ data: response });
+      (downloadAndAssembleSnapshots as Mock).mockResolvedValue([]);
+
+      const result = await getSnapshotsFromTestRun({
+        client: asClient(),
+        testRunId: "tr-empty-head",
+        snapshotTypes: ["axe-accessibility"],
+        onlyBaseSessionsPresentInHead: false,
+        skipBaseWhenHeadEmpty: true,
+      });
+
+      expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(1, {
+        signedBaseUrl: response.signedBaseUrl,
+        files: [],
+      });
+      expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(2, {
+        signedBaseUrl: response.signedBaseUrl,
+        files: [],
+      });
+      expect(result).toEqual({
+        testRunId: "tr-empty-head",
+        baseTestRunId: "base-large",
+        baseSnapshots: [],
+        headSnapshots: [],
       });
     });
   });

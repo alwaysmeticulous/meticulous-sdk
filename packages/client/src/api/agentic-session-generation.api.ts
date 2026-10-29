@@ -28,15 +28,27 @@ export interface AgenticContainerAppTarget {
   uploadId?: string | undefined;
 
   backendContainerDeploymentId?: string | undefined;
+  /**
+   * Staging backend the container reaches itself: its origin is injected into
+   * the env var named by `backendUrlEnvVariable`, and any `proxyPaths` are
+   * routed by the worker's same-origin app server. Mutually exclusive
+   * with `backendContainerDeploymentId` and `enableLocalMocks`.
+   */
+  backend?: AgenticLiveBackend | undefined;
   /** Frontend runtime env variable receiving the backend origin. Defaults to METICULOUS_BACKEND_URL. */
   backendUrlEnvVariable?: string | undefined;
+  /** Loopback fronting-server port when proxyPaths are configured. */
+  appPort?: number | undefined;
   enableLocalMocks?: boolean | undefined;
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
 }
 
-export interface AgenticAssetsBackend {
+/** @deprecated Use AgenticLiveBackend. */
+export type AgenticAssetsBackend = AgenticLiveBackend;
+
+export interface AgenticLiveBackend {
   url: string;
   /**
    * Login credentials and options for the project's configured login flow,
@@ -58,7 +70,7 @@ export interface AgenticAssetsAppTarget {
    * `AgenticContainerAppTarget.uploadId`.
    */
   assetsUploadId?: string | undefined;
-  backend?: AgenticAssetsBackend | undefined;
+  backend?: AgenticLiveBackend | undefined;
   /** Backend container deployment in the same project. Mutually exclusive with `backend`. */
   backendContainerDeploymentId?: string | undefined;
   /**
@@ -842,7 +854,90 @@ export interface AgenticRunMetadata {
   model?: string;
   /** Number of runTest invocations across the run. */
   iterations?: number;
+  /** Who served each agent role, when the run chose them per role (local runs). */
+  models?: AgenticRunRoleModel[];
+  /** Where the worker ran; absent on cluster runs reported before this field existed. */
+  executionEnvironment?: "cluster" | "local";
+  /** How a local run was set up; present only when `executionEnvironment` is `local`. */
+  local?: AgenticRunLocalMetadata;
 }
+
+/** Stored on the run when it is created, and uploaded again with its result. */
+export interface AgenticRunLocalMetadata {
+  /** Null on a detached HEAD. */
+  branch: string | null;
+  /** The commit the change was diffed against. */
+  baseSha: string;
+  /** Whether the working tree had uncommitted changes. */
+  dirty: boolean;
+  /** Where the planner's statement of intent came from, standing in for a PR description. */
+  intentSource: "description" | "commits" | "none";
+  /** `mocks` serves the app's API from recorded sessions; `live` lets it call its own backend. */
+  network: "mocks" | "live";
+  maxParallelCases: number;
+  /** The plan's flow cap; null keeps the default. */
+  maxCases: number | null;
+}
+
+export interface AgenticRunRoleModel {
+  /** E.g. `planner`, `caseRunner`. */
+  role: string;
+  /** E.g. `openrouter`, `anthropic`. */
+  provider: string;
+  model: string;
+  effort?: string;
+  /** Whether a stand-in replaced the role's usual model for lack of a key. */
+  fallback?: boolean;
+}
+
+export interface CreateLocalAgentSwarmRunParams {
+  projectId: string;
+  /** The checked-out commit; uncommitted edits ride on top of it. */
+  commitSha: string;
+  /** The app as this machine reaches it, e.g. `http://localhost:3000`. */
+  appUrl: string;
+  local: AgenticRunLocalMetadata;
+  models: AgenticRunRoleModel[];
+  /** Markdown instructions for the agent. */
+  instructions?: string;
+  /**
+   * An earlier local run whose flows this one inherits, or `latest` for the
+   * newest successful local run on the same branch.
+   */
+  continueFrom?: string;
+}
+
+export interface CreateLocalAgentSwarmRunResponse {
+  agenticRunId: string;
+  /** The run's workflow token, for every worker callback. */
+  apiToken: string;
+  recordingToken: string;
+  organizationName: string;
+  projectName: string;
+  instructionsUrl?: string;
+  projectMemoryUrl?: string;
+  /** The run this one inherits from; absent when it starts fresh. */
+  baseRunId?: string;
+  /** The inherited run's testcases; absent when they could not be fetched. */
+  baselineTestcasesUrl?: string;
+}
+
+/**
+ * Registers a run whose worker the caller runs on their own machine. Needs an
+ * OAuth staff session; project API tokens are rejected.
+ */
+export const createLocalAgentSwarmRun = async ({
+  client,
+  ...body
+}: CreateLocalAgentSwarmRunParams & {
+  client: MeticulousClient;
+}): Promise<CreateLocalAgentSwarmRunResponse> => {
+  const { data } = await client.post<CreateLocalAgentSwarmRunResponse>(
+    "internal/agent-swarm-local-runs",
+    body,
+  );
+  return data;
+};
 
 export type AgenticRunTraceEventKind =
   | "system-prompt"
@@ -891,12 +986,62 @@ export interface AgenticRunCaseTrace extends AgenticRunTrace {
   check?: AgenticRunCaseCheck;
 }
 
-/** Transcript of the planning agent and each independently-run case agent. */
+/** What one node of an Agent swarm run's tree was assigned to do. */
+export type AgenticRunTreeBranch =
+  | {
+      type: "plan";
+      objective: string;
+      scope: string;
+      rationale: string;
+      priority: "high" | "medium" | "low";
+    }
+  | {
+      type: "testcase";
+      title: string;
+      scope: string[];
+      priority: "high" | "medium" | "low";
+      rationale?: string;
+    }
+  | { type: "inherited"; title: string; rationale?: string };
+
+/**
+ * One node of an Agent swarm run's tree. Its transcript is stored once: the
+ * root's is `AgenticRunTraces.planner`, a node that produced a case has it
+ * under that case in `AgenticRunTraces.cases`, any other node carries it here.
+ */
+export interface AgenticRunTreeNode {
+  nodeId: string;
+  /** Absent on the root. */
+  parentNodeId?: string;
+  /** Every branch the node was assigned, oldest first; the last is current. */
+  branches: AgenticRunTreeBranch[];
+  /** How the node's plan branch ended, when it ended as a plan. */
+  planOutcome?: {
+    outcome: "done" | "nothing-to-test" | "blocked";
+    description: string;
+  };
+  /** Index into `AgenticRunTraces.cases`' `caseIndex` of the case it produced. */
+  caseIndex?: number;
+  trace?: AgenticRunTrace;
+}
+
+/** Transcripts of the run's agents: the root node and each case's node. */
 export interface AgenticRunTraces {
   planner: AgenticRunTrace;
   cases: AgenticRunCaseTrace[];
+  /** The tree of nodes, when the run's worker built one. */
+  nodes?: AgenticRunTreeNode[];
   /** Independent verification traces for cases originally reported as failed. */
   checks?: AgenticRunCaseTrace[];
+}
+
+/**
+ * `checks.json`: the `check` of each `traces.checks` entry, so readers of the
+ * failure verdicts don't download the transcripts.
+ */
+export interface AgenticRunChecksBlob {
+  version: number;
+  checks: Array<{ caseIndex: number; check: AgenticRunCaseCheck }>;
 }
 
 export interface AgenticRunCoverageFile {
@@ -974,6 +1119,7 @@ export type AgenticResultArtifactKind =
   | "review"
   | "coverage"
   | "traces"
+  | "checks"
   | "plan";
 
 export interface RequestAgenticResultUploadParams extends ProjectIdentifier {
@@ -981,7 +1127,10 @@ export interface RequestAgenticResultUploadParams extends ProjectIdentifier {
   agenticRunId: string;
   /** A typed result artifact. The server derives its S3 key from this value. */
   kind: AgenticResultArtifactKind;
-  /** Size in bytes of the blob about to be PUT, signed into the URL. */
+  /**
+   * Size in bytes of the blob about to be PUT (after any `Content-Encoding`),
+   * signed into the URL.
+   */
   size: number;
 }
 
@@ -1176,6 +1325,62 @@ export const getAgenticPreplanStatus = async ({
 }): Promise<GetAgenticPreplanStatusResponse> => {
   const { data } = await client.get<GetAgenticPreplanStatusResponse>(
     "agentic-session-generation/preplan-status",
+    {
+      params: projectId ? { projectId } : {},
+      signal,
+    },
+  );
+  return data;
+};
+
+export interface AgenticChangeAnalysisLoopResult {
+  outcome: "success" | "bailed" | "skipped";
+  /** Why the loop bailed or skipped; null on success. */
+  skipReason: string | null;
+  /** Presigned download of the loop's envelope; null when it wrote none. */
+  envelopeUrl: string | null;
+}
+
+export type GetAgenticChangeAnalysisResponse =
+  | {
+      status: "ready";
+      headSha: string;
+      baseSha: string;
+      expandedEditedLines: AgenticChangeAnalysisLoopResult;
+      customerFlags: AgenticChangeAnalysisLoopResult;
+      /**
+       * The preplan step's result; its envelope is `preplan.json`. Null when
+       * the analysis records no preplan step.
+       */
+      preplan: AgenticChangeAnalysisLoopResult | null;
+    }
+  | { status: "processing" }
+  | {
+      status: "unavailable";
+      reason:
+        | "source_access_disabled"
+        | "no_base_sha"
+        | "not_started"
+        | "ended_without_result";
+    };
+
+/**
+ * Point-in-time change analysis (expanded edited lines, customer flags and
+ * the preplan) for the calling run's own commit pair, which the backend
+ * resolves from the run. `processing` means it is still running;
+ * `unavailable` means none is coming.
+ */
+export const getAgenticChangeAnalysis = async ({
+  client,
+  projectId,
+  signal,
+}: ProjectIdentifier & {
+  client: MeticulousClient;
+  /** Aborts the poll request (deadline or cancellation). */
+  signal?: AbortSignal | undefined;
+}): Promise<GetAgenticChangeAnalysisResponse> => {
+  const { data } = await client.get<GetAgenticChangeAnalysisResponse>(
+    "agentic-session-generation/change-analysis",
     {
       params: projectId ? { projectId } : {},
       signal,

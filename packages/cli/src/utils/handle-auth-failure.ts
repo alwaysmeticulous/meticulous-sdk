@@ -1,5 +1,4 @@
 import {
-  clearOAuthTokens,
   getStoredOAuthTokens,
   isAuthFailureStatus,
   isFetchError,
@@ -11,8 +10,10 @@ import { CliUserError } from "./cli-user-error";
 /**
  * Handles a 401/403 response from an OAuth-authenticated request.
  *
- * - When the stored access token is genuinely past its `exp`, clears
- *   stored tokens so the next command kicks off a fresh OAuth login.
+ * - When the stored access token is genuinely past its `exp`, it could not
+ *   be refreshed for a transient reason (a refresh token the server rejects
+ *   is cleared during the refresh), so keeps the tokens for the next command
+ *   to retry and points at `meticulous auth login` if that keeps failing.
  * - When no OAuth tokens are stored, surfaces guidance that auth is
  *   probably missing (token / login / env injection).
  * - Otherwise (e.g. issuer/audience mismatch against the configured
@@ -39,10 +40,10 @@ export const handleAuthFailure = (error: unknown): false => {
   const expired = stored ? isJwtExpired(stored.accessToken) : false;
 
   if (expired) {
-    clearOAuthTokens();
     throw new CliUserError(
       "Your stored OAuth token has expired and could not be refreshed. " +
-        "Re-run the command to start a fresh login.",
+        "Check your network connection and re-run the command; if this keeps " +
+        "happening, run `meticulous auth login`.",
       1,
       "error",
       { reason: "auth" },

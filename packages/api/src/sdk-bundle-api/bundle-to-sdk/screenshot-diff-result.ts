@@ -272,6 +272,19 @@ export interface ScreenshotDiffResultDifference extends ScreenshotDiffResultComp
    * size (~Oct 2026).
    */
   onlyImageResamplingNoise?: true;
+
+  /**
+   * True when every differing pixel lies inside an image whose bytes were
+   * served from a project pin on both sides, with the same source, paint
+   * style and box on both sides, and the pinned bytes differ: the pin was
+   * refreshed between base and head. No code change can change the bytes
+   * behind a pinned URL, so a diff like this is not caused by the change
+   * under test.
+   *
+   * Such a diff becomes a flake with evidence `pinned-image-refreshed`.
+   * Absent when false.
+   */
+  onlyRefreshedPinnedImages?: true;
 }
 
 /**
@@ -318,12 +331,15 @@ export interface ScreenshotDiffResultFlake {
  * - **diff-is-known-flake**: The diff screenshot's hash matches the hash of a flake that was previously detected by one of the methods above.
  *
  * - **image-resampling-noise**: The diff is {@link ScreenshotDiffResultDifference.onlyImageResamplingNoise}.
+ *
+ * - **pinned-image-refreshed**: The diff is {@link ScreenshotDiffResultDifference.onlyRefreshedPinnedImages}.
  */
 export type FlakeEvidence =
   | "varied-results-on-retry"
   | "varied-redacted-results-on-retry"
   | "diff-is-known-flake"
-  | "image-resampling-noise";
+  | "image-resampling-noise"
+  | "pinned-image-refreshed";
 
 export type ScreenshotDiffRetryResult =
   | SingleTryScreenshotDiffRetryResult

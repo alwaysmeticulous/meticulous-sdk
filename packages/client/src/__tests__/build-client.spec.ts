@@ -154,6 +154,44 @@ describe("buildClient token resolution", () => {
   });
 });
 
+describe("buildClient dispatcher", () => {
+  const dispatcherOfCall = (callIndex: number): unknown => {
+    const init = meticulousFetch.mock.calls[callIndex]?.[1] as {
+      dispatcher?: unknown;
+    };
+    return init.dispatcher;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    meticulousFetch.mockResolvedValue(okResponse());
+  });
+
+  it("sends every request through the given dispatcher", async () => {
+    const dispatcher = { kind: "pinned" } as never;
+    const client = buildClient(
+      "token-abc",
+      { debug: () => {} } as never,
+      undefined,
+      dispatcher,
+    );
+
+    await client.get("a");
+    await client.post("b", { x: 1 });
+
+    expect(dispatcherOfCall(0)).toBe(dispatcher);
+    expect(dispatcherOfCall(1)).toBe(dispatcher);
+  });
+
+  it("leaves the dispatcher to meticulousFetch when none is given", async () => {
+    const client = buildClient("token-abc", { debug: () => {} } as never);
+
+    await client.get("a");
+
+    expect(dispatcherOfCall(0)).toBeUndefined();
+  });
+});
+
 describe("buildClient query params", () => {
   const urlOfLastCall = (): string =>
     meticulousFetch.mock.calls.at(-1)?.[0] as string;

@@ -43,7 +43,7 @@ describe("handleAuthFailure", () => {
     expect(mocks.clearOAuthTokens).not.toHaveBeenCalled();
   });
 
-  it("clears tokens and throws when the stored JWT is past exp", () => {
+  it("keeps tokens and throws login guidance when the stored JWT is past exp", () => {
     mocks.getStoredOAuthTokens.mockReturnValue({
       accessToken: "expired-jwt",
       refreshToken: "r",
@@ -51,8 +51,10 @@ describe("handleAuthFailure", () => {
     });
     mocks.isJwtExpired.mockReturnValue(true);
 
-    expect(() => handleAuthFailure(makeFetchError(401))).toThrow(CliUserError);
-    expect(mocks.clearOAuthTokens).toHaveBeenCalledTimes(1);
+    expect(() => handleAuthFailure(makeFetchError(401))).toThrow(
+      /could not be refreshed.*meticulous auth login/s,
+    );
+    expect(mocks.clearOAuthTokens).not.toHaveBeenCalled();
   });
 
   it("keeps tokens and throws with backend message when JWT is not expired", () => {

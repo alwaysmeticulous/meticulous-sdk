@@ -53,3 +53,30 @@ export const isJwtExpired = (token: string): boolean => {
   }
   return exp * 1000 < Date.now();
 };
+
+/**
+ * Parses an RFC 6749 §5.2 error body (`{ error, error_description }`), keeping
+ * only string fields. Returns `null` for a body that is not a JSON object.
+ */
+export const parseOAuthErrorBody = (
+  body: string,
+): { error?: string; errorDescription?: string } | null => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed == null) {
+    return null;
+  }
+  const error = "error" in parsed ? parsed.error : undefined;
+  const description =
+    "error_description" in parsed ? parsed.error_description : undefined;
+  return {
+    ...(typeof error === "string" ? { error } : {}),
+    ...(typeof description === "string"
+      ? { errorDescription: description }
+      : {}),
+  };
+};

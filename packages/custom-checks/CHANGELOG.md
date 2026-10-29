@@ -1,5 +1,40 @@
 # @alwaysmeticulous/custom-checks
 
+## 3.4.1
+
+### Patch Changes
+
+- Updated dependencies [[`40da3c7`](https://github.com/alwaysmeticulous/meticulous/commit/40da3c7072da0f2bb56c992c436b98cb175c9924)]:
+  - @alwaysmeticulous/api@3.4.1
+  - @alwaysmeticulous/client@3.4.1
+  - @alwaysmeticulous/common@3.4.0
+  - @alwaysmeticulous/downloading-helpers@3.4.1
+
+## 3.4.0
+
+### Minor Changes
+
+- [#16430](https://github.com/alwaysmeticulous/meticulous/pull/16430) [`9731695`](https://github.com/alwaysmeticulous/meticulous/commit/973169566b0b58898e4dc25a399f748828359e37) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `onlyBaseSessionsPresentInHead` option to `getSnapshotsFromTestRun` to filter base snapshot downloads to sessions that also ran on the head test run (matching across network-repair `_p<timestamp>` suffixes).
+
+- [#16441](https://github.com/alwaysmeticulous/meticulous/pull/16441) [`50ca624`](https://github.com/alwaysmeticulous/meticulous/commit/50ca624235409b26c953747aadaa7b9312ffb855) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `skipBaseWhenHeadEmpty` option to `getSnapshotsFromTestRun` to skip downloading base snapshots when `headSnapshotFiles` is empty.
+
+### Patch Changes
+
+- Updated dependencies [[`a8e4495`](https://github.com/alwaysmeticulous/meticulous/commit/a8e4495cb9f546db1a0e2fd4a76297cdd7018d6d), [`431c0f2`](https://github.com/alwaysmeticulous/meticulous/commit/431c0f25d979dc83b4eecc1ff95a08f02f1adc22)]:
+  - @alwaysmeticulous/client@3.4.0
+  - @alwaysmeticulous/common@3.4.0
+  - @alwaysmeticulous/downloading-helpers@3.4.0
+
+## 3.3.0
+
+### Patch Changes
+
+- Updated dependencies [[`c74d9f9`](https://github.com/alwaysmeticulous/meticulous/commit/c74d9f922ad40d98e797576dd8750369cb62aff9), [`6985e75`](https://github.com/alwaysmeticulous/meticulous/commit/6985e75d0a642d4f57e05a7d3a66130b81921478), [`371a40f`](https://github.com/alwaysmeticulous/meticulous/commit/371a40f5f78d271492c7280fcc8da9c0219688e9), [`1777587`](https://github.com/alwaysmeticulous/meticulous/commit/17775877067de20bb18b2410276466421da5aed5), [`1b76eea`](https://github.com/alwaysmeticulous/meticulous/commit/1b76eeae15a41f178be8a110f45db65d973d4d5a), [`2129f4c`](https://github.com/alwaysmeticulous/meticulous/commit/2129f4cb179ef35b605d9ba7ad199c658a785a5e), [`007b0ea`](https://github.com/alwaysmeticulous/meticulous/commit/007b0ea145ec8968a98df0bc96170f2201daf0b8), [`0859c6d`](https://github.com/alwaysmeticulous/meticulous/commit/0859c6d79ba164467e83a257539804f50cca7d17), [`25cc5cf`](https://github.com/alwaysmeticulous/meticulous/commit/25cc5cf40c970fd655313f17d7712d9c6bdf8c78), [`72a9423`](https://github.com/alwaysmeticulous/meticulous/commit/72a94236ad76fb7f071d96c6ebe99642a62da250), [`c16a559`](https://github.com/alwaysmeticulous/meticulous/commit/c16a55984b4502a807511a5797192b3072955fa6), [`ddf2d0d`](https://github.com/alwaysmeticulous/meticulous/commit/ddf2d0d40a27fc8c5e0a80c395355e7d44c2c193), [`71bbbbf`](https://github.com/alwaysmeticulous/meticulous/commit/71bbbbf6301e5d375465a0cf70cc669a22deadc6)]:
+  - @alwaysmeticulous/client@3.3.0
+  - @alwaysmeticulous/common@3.3.0
+  - @alwaysmeticulous/api@3.3.0
+  - @alwaysmeticulous/downloading-helpers@3.3.0
+
 ## 3.2.0
 
 ### Patch Changes

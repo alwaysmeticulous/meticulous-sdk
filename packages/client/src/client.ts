@@ -6,7 +6,7 @@ import {
   meticulousFetch,
 } from "@alwaysmeticulous/common";
 import type log from "loglevel";
-import type { RequestInit } from "undici";
+import type { Dispatcher, RequestInit } from "undici";
 import { getApiToken, getAuthToken } from "./api-token.utils";
 import { maybeEnrichMissingAuthFetchError } from "./errors";
 import { performOAuthLogin } from "./oauth/oauth-login";
@@ -95,6 +95,13 @@ export interface ClientOptions {
    * Use it to attribute backend traffic to a specific consumer/version.
    */
   appInfo?: string;
+
+  /**
+   * Sends this client's requests through its own undici dispatcher instead of
+   * the process-wide pool. The dispatcher replaces the default proxy handling
+   * from `HTTP(S)_PROXY`. The caller owns its lifetime.
+   */
+  dispatcher?: Dispatcher;
 }
 
 export interface MakeRequestOptions {
@@ -249,6 +256,7 @@ export const buildClient = (
   token: TokenProvider,
   logger: log.Logger,
   appInfo?: string,
+  dispatcher?: Dispatcher,
 ): MeticulousClient => {
   const userAgent = buildUserAgent(appInfo);
   const getToken =
@@ -270,7 +278,7 @@ export const buildClient = (
       return await makeRequest<T>({
         url,
         headers,
-        options,
+        options: dispatcher != null ? { ...options, dispatcher } : options,
         config: config || {},
         logger,
       });
@@ -325,6 +333,7 @@ export const buildClient = (
 export const createClient: (options: ClientOptions) => MeticulousClient = ({
   apiToken: apiToken_,
   appInfo,
+  dispatcher,
 }) => {
   const logger = initLogger();
   const apiToken = getApiToken(apiToken_);
@@ -336,7 +345,7 @@ export const createClient: (options: ClientOptions) => MeticulousClient = ({
     logProgress("No API token found; proceeding with unauthenticated requests");
   }
 
-  return buildClient(apiToken, logger, appInfo);
+  return buildClient(apiToken, logger, appInfo, dispatcher);
 };
 
 export const isInteractiveContext = (): boolean =>
@@ -345,7 +354,10 @@ export const isInteractiveContext = (): boolean =>
 /**
  * Resolves an API token using the full auth chain (explicit token → env var →
  * stored OAuth → legacy config file), and falls back to an interactive browser
- * OAuth login when nothing is stored and the process is attached to a TTY.
+ * OAuth login when no OAuth login is stored and the process is attached to a
+ * TTY. A stored login whose refresh failed transiently is kept and does not
+ * trigger a new browser login: this returns `null`, and a later call retries
+ * the refresh.
  *
  * Returns `null` if no token can be obtained (instead of exiting). Callers
  * should proceed with unauthenticated requests — some environments inject auth
@@ -362,7 +374,9 @@ export const resolveApiTokenWithOAuth = async (
 
   const isInteractive = options.enableOAuthLogin && isInteractiveContext();
 
-  if (!apiToken && isInteractive) {
+  // A rejected refresh has already cleared the store, so this still logs in
+  // again; only a transient refresh failure leaves tokens behind.
+  if (!apiToken && isInteractive && getStoredOAuthTokens() == null) {
     const tokens = await performOAuthLogin();
     apiToken = tokens.accessToken;
   }
@@ -406,17 +420,18 @@ export const createClientWithOAuth = async (
   // token); static tokens (explicit / env var / config file) never expire, so
   // we keep using the resolved string directly to avoid re-reading it on every
   // request. Re-resolving the whole chain — rather than only `getValidAccessToken` —
-  // matters when the refresh itself fails: `getValidAccessToken` clears the
-  // stored OAuth tokens on failure, and `getAuthToken` then falls back to the
-  // METICULOUS_API_TOKEN env var / config file instead of replaying the stale
-  // initial access token.
+  // matters when the refresh itself fails: `getValidAccessToken` then returns
+  // null (clearing the stored OAuth tokens only if the server rejected the
+  // refresh token), and `getAuthToken` falls back to the METICULOUS_API_TOKEN
+  // env var / config file. Only when none of those resolve does the request
+  // reuse the initial token, so the server's 401 surfaces the auth failure.
   const usingOAuth = !options.apiToken && getStoredOAuthTokens() != null;
 
   const token: string | null | (() => Promise<string | null>) = usingOAuth
     ? async () => (await getAuthToken(options.apiToken)) ?? apiToken
     : apiToken;
 
-  return buildClient(token, initLogger(), options.appInfo);
+  return buildClient(token, initLogger(), options.appInfo, options.dispatcher);
 };
 
 const getApiUrl = () => {

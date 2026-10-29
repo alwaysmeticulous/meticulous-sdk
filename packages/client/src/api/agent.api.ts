@@ -1,4 +1,8 @@
-import type { SessionContext, TestRunStatus } from "@alwaysmeticulous/api";
+import type {
+  ScreenshotIdentifier,
+  SessionContext,
+  TestRunStatus,
+} from "@alwaysmeticulous/api";
 import { maybeEnrichFetchError } from "../errors";
 import type { MeticulousClient } from "../types/client.types";
 
@@ -989,21 +993,330 @@ export interface ScreenshotUrlsResponse {
 export const IMAGE_URLS_CLIENT_VERSION = 1;
 
 // ---------------------------------------------------------------------------
-// Timeline Diff types
+// Timeline types (timeline, timeline-diff, event, event-diff)
 // ---------------------------------------------------------------------------
 
-export interface TimelineDiffEntry {
-  status: "identical" | "removed" | "added" | "changed";
+/**
+ * v1 (no clientVersion): flat rows of both timelines. v2: kind-aware alignment
+ * with event ids, row filters and paging.
+ */
+export const TIMELINE_DIFF_CLIENT_VERSION = 2;
+
+export const MAX_TIMELINE_LIMIT = 1000;
+
+export const TIMELINE_DISPLAY_KINDS = [
+  "user",
+  "network",
+  "asset",
+  "websocket",
+  "screenshot",
+  "url",
+  "subframe",
+  "console",
+  "log",
+  "error",
+  "timeout",
+  "warning",
+  "storage",
+  "limit",
+  "container",
+  "backend",
+] as const;
+
+export type TimelineDisplayKind = (typeof TIMELINE_DISPLAY_KINDS)[number];
+
+export type TimelineDiffStatus = "identical" | "added" | "removed" | "changed";
+
+export interface TimelineRow {
+  eventId: string;
   timeMs: number;
-  eventKind: string;
-  description: string;
-  mismatchFraction?: number | null;
+  kind: TimelineDisplayKind;
+  /** Absent for screenshots, whose eventId is already their name. */
+  description?: string;
+  /** How many identical events the row stands for; omitted when one. */
+  count?: number | undefined;
+}
+
+export interface TimelineDiffEntry extends TimelineRow {
+  diff: TimelineDiffStatus;
+  changes?: string[];
+}
+
+/** `notes` carry the event counts and replay ids; the CLI relays them to stderr. */
+export interface ReplayTimelineResponse {
+  entries: TimelineRow[];
+  notes?: AgentResponseNotes;
 }
 
 export interface TimelineDiffResponse {
-  baseReplayId: string;
-  headReplayId: string;
   entries: TimelineDiffEntry[];
+  notes?: AgentResponseNotes;
+}
+
+/** One recorded target element, aligned against the replay's matched path. */
+export interface PathAlignmentRow {
+  /** `-` a target element the matcher skipped, `+` an extra replay element. */
+  marker: " " | "-" | "+";
+  /**
+   * The target element (the replay's, on a `+` row), with everything the
+   * matcher compares, as it compares it:
+   * `button:nth(1).btn[type="submit"] text="Save" firstText[0]="Save" (unscored: #save)`.
+   * `:nth` is the 0-based index among element siblings. `unscored:` holds
+   * what's recorded but not scored: the id only narrows the search, and the
+   * other attributes in it aren't compared. Values are normalized
+   * as the matcher normalizes them, including the project's configured
+   * attribute-value patterns. An id or attribute value with no stable
+   * identity is left as `[id]` / `[name]`; a value over 200 characters is cut
+   * short, ending in its full length and a hash.
+   */
+  element: string;
+  /**
+   * `12.9/24: nthChild 1, tagName 1, attributes 10, text 0`: below the
+   * maximum, what each component the target has scored.
+   */
+  score?: string;
+  /** The replay element paired with `element`, when it differs from it. */
+  matched?: string;
+  narrowing?: string;
+}
+
+export interface UserEventDetails {
+  type: string;
+  originalEventIndex?: number;
+  result: "success" | "failed" | "warning";
+  matchType?: string;
+  /** On a rejected match, that of the closest candidate turned down. */
+  confidence?: number;
+  pathMatchScore?: number;
+  maxPathMatchScore?: number;
+  isCachedSelectorMatch?: boolean;
+  waitedForTarget?: boolean;
+  selectorPatchCount?: number;
+  input?: UserEventInput;
+  coordinates?: { x: number; y: number };
+  boundingBox?: { left: number; top: number; width: number; height: number };
+  cursorMovedTo?: { x: number; y: number };
+  /** The recorded target, in the same form as {@link PathAlignmentRow.element}. */
+  target?: string;
+  match?: string;
+  /** Placed relative to the matched element (`the match's ancestor body`). */
+  elementAtCoordinates?: string;
+  /**
+   * 0-based child indices from `<body>` down to the element at the
+   * coordinates, with a `0` entry for each shadow root crossed.
+   */
+  elementAtCoordinatesPath?: number[];
+  obscuredBy?: string;
+  /**
+   * 0-based child indices from `<body>` down to the element that obscured
+   * the press, with a `0` entry for each shadow root crossed.
+   */
+  obscuredByPath?: number[];
+  clickedOnContainingAncestor?: boolean;
+  /** Elements from `<body>` down to the recorded target, not counting shadow or iframe roots. */
+  targetDepth?: number;
+  /** Elements from `<body>` down to the matched element, not counting shadow or iframe roots. */
+  matchDepth?: number;
+  path?: PathAlignmentRow[];
+  error?: { name: string; message: string };
+}
+
+/** The recorded event's inputs, only those set or not at their default. */
+export interface UserEventInput {
+  key?: string;
+  modifiers?: string[];
+  button?: number;
+  clickCount?: number;
+  deltaX?: number;
+  deltaY?: number;
+  scrollTop?: number;
+  scrollLeft?: number;
+  inputType?: string;
+  data?: string;
+  value?: string;
+  innerWidth?: number;
+  innerHeight?: number;
+}
+
+/** The `user` entry that ends a replay at its maximum duration. */
+export interface ReplayStoppedDetails {
+  type: "reached-max-duration";
+  maxDurationMs: number;
+}
+
+export interface NetworkEventDetails {
+  method: string;
+  url: string;
+  operationName?: string;
+  requestBody?: string;
+  /** Stubbed requests: the request headers matching reads; it ignores the rest. */
+  identityHeaders?: Record<string, string>;
+  outcome: string;
+  classification?: "fullMatch" | "partialMatch" | "noMatch";
+  matchIndex?: MatchIndexSummary;
+  matchedRequest?: {
+    method: string;
+    url: string;
+    operationName?: string;
+    requestBody?: string;
+    identityHeaders?: Record<string, string>;
+    /** `seq:3` from the request index, else `<time of day> #<occurrence>`. */
+    recording?: string;
+  };
+  repairSource?: string;
+  transformationsApplied?: string[];
+  status?: number;
+  responseMimeType?: string;
+  /** The headers served: the recording's, or the custom response's. */
+  responseHeaders?: Record<string, string>;
+  responseBody?: string;
+  /** Asset loads only. */
+  responseSize?: number;
+  contentHash?: string;
+  /** Stubbed requests: the recorded latency replay reproduced, in replay time. */
+  durationMs?: number;
+  /** Asset loads: the wall-clock time the load took. */
+  loadTimeMs?: number;
+  numChunks?: number;
+  completed?: boolean;
+}
+
+export interface MatchIndexSummary {
+  decision: "matched" | "partial-match" | "no-match";
+  tiers?: string[];
+  reason?: string;
+  detail?: string;
+}
+
+export interface MessageEventDetails {
+  type?: string;
+  message: string;
+  /** Source-mapped where the replay mapped it. */
+  stack?: string;
+  location?: string;
+  timeoutInMs?: number;
+  urls?: string[];
+  urlsThatHadPerformanceEntries?: string[];
+  resourceTypes?: string[];
+}
+
+export interface ScreenshotEventDetails {
+  screenshotName: string;
+  identifier: ScreenshotIdentifier;
+  /** How the replay diff found it changed, as its timeline-diff row says. */
+  change?: string;
+  mismatchFraction?: number;
+  /** Counted since the page loaded (a full-page navigation resets them). */
+  numReactCommits?: number;
+  numReactComponents?: number;
+  numReactComponentRenders?: number;
+}
+
+export interface UrlEventDetails {
+  url: string;
+  urlPattern?: string;
+  status?: number;
+  requestHeaders?: Record<string, string>;
+  responseHeaders?: Record<string, string>;
+}
+
+export interface StorageEventDetails {
+  storageType: "localStorage" | "sessionStorage";
+  key: string;
+  found?: boolean;
+  value?: string;
+}
+
+export interface LimitEventDetails {
+  entryKind: string;
+  limit: number;
+  numOmitted?: number;
+}
+
+export interface ContainerLogDetails {
+  severity?: string;
+  stream?: string;
+  source?: string;
+  message: string;
+  stackTrace?: string;
+}
+
+export interface BackendRequestDetails {
+  method: string;
+  path: string;
+  query?: string;
+  technology: string;
+  outcome: string;
+  status?: number;
+  matchTier?: string;
+}
+
+/** One section per display kind, named after it. */
+export interface TimelineEventDetails {
+  eventId: string;
+  timeMs: number;
+  /**
+   * Event diffs only: the click, key press or screenshot, shared by both
+   * replays, the event follows (`after user:12`, or `start`).
+   */
+  segment?: string;
+  kind: TimelineDisplayKind;
+  entryKind: string;
+  user?: UserEventDetails | ReplayStoppedDetails;
+  network?: NetworkEventDetails;
+  websocket?: Record<string, unknown>;
+  screenshot?: ScreenshotEventDetails;
+  url?: UrlEventDetails;
+  message?: MessageEventDetails;
+  warning?: Record<string, unknown>;
+  storage?: StorageEventDetails;
+  limit?: LimitEventDetails;
+  container?: ContainerLogDetails;
+  backend?: BackendRequestDetails;
+}
+
+/** One field of an event's details, compared between base and head. */
+export interface TimelineEventFieldDiff {
+  /** `identical`, `changed`, or `removed` / `added` when only base / head has it. */
+  diff: TimelineDiffStatus;
+  /** Its path in the event's details, e.g. `user.confidence`, `user.path[27]`. */
+  field: string;
+  base?: unknown;
+  head?: unknown;
+}
+
+export interface TimelineEventDiffResponse {
+  eventId: string;
+  fields: TimelineEventFieldDiff[];
+  notes?: AgentResponseNotes;
+}
+
+export interface TimelineFilterOptions {
+  /** Display kinds to include, or "all"; defaults to the curated high-signal set. */
+  kinds?: TimelineDisplayKind[] | "all" | undefined;
+  sinceMs?: number | undefined;
+  untilMs?: number | undefined;
+  /** Only the window between the previous screenshot and this one. */
+  screenshotName?: string | undefined;
+}
+
+export interface TimelinePagingOptions {
+  /** Rows per page; the backend defaults to 100. */
+  limit?: number | undefined;
+  offset?: number | undefined;
+}
+
+export interface TimelineOptions
+  extends TimelineFilterOptions, TimelinePagingOptions {}
+
+export interface TimelineDiffOptions extends TimelineOptions {
+  /** Return identical rows too, instead of only differences plus context. */
+  includeIdenticalEvents?: boolean | undefined;
+}
+
+export interface TimelineEventDiffOptions {
+  /** Return the identical fields too, not only those that differ. */
+  includeIdenticalFields?: boolean | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -2048,13 +2361,101 @@ export const getScreenshotUrls = async (
 export const getTimelineDiff = async (
   client: MeticulousClient,
   replayDiffId: string,
+  options: TimelineDiffOptions = {},
 ): Promise<TimelineDiffResponse> => {
+  const params: Record<string, string> = {
+    clientVersion: String(TIMELINE_DIFF_CLIENT_VERSION),
+    ...timelineQueryParams(options),
+  };
+  if (options.includeIdenticalEvents) {
+    params.includeIdenticalEvents = "true";
+  }
   const { data } = await client
-    .get(`agent/replay-diffs/${replayDiffId}/timeline-diff`)
+    .get(`agent/replay-diffs/${replayDiffId}/timeline-diff`, { params })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });
   return data;
+};
+
+export const getReplayTimeline = async (
+  client: MeticulousClient,
+  replayId: string,
+  options: TimelineOptions = {},
+): Promise<ReplayTimelineResponse> => {
+  const { data } = await client
+    .get(`agent/replays/${replayId}/timeline`, {
+      params: timelineQueryParams(options),
+    })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+export const getTimelineEvent = async (
+  client: MeticulousClient,
+  replayId: string,
+  eventId: string,
+): Promise<TimelineEventDetails> => {
+  const { data } = await client
+    .get(
+      `agent/replays/${replayId}/timeline/events/${encodeURIComponent(eventId)}`,
+    )
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+export const getTimelineEventDiff = async (
+  client: MeticulousClient,
+  replayDiffId: string,
+  eventId: string,
+  options: TimelineEventDiffOptions = {},
+): Promise<TimelineEventDiffResponse> => {
+  const { data } = await client
+    .get(
+      `agent/replay-diffs/${replayDiffId}/timeline-diff/events/${encodeURIComponent(eventId)}`,
+      {
+        params: {
+          ...(options.includeIdenticalFields
+            ? { includeIdenticalFields: "true" }
+            : {}),
+        },
+      },
+    )
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+const timelineQueryParams = (
+  options: TimelineOptions,
+): Record<string, string> => {
+  const params: Record<string, string> = {};
+  if (options.kinds === "all") {
+    params.kinds = "all";
+  } else if (options.kinds != null && options.kinds.length > 0) {
+    params.kinds = options.kinds.join(",");
+  }
+  if (options.sinceMs != null) {
+    params.sinceMs = String(options.sinceMs);
+  }
+  if (options.untilMs != null) {
+    params.untilMs = String(options.untilMs);
+  }
+  if (options.screenshotName != null) {
+    params.screenshotName = options.screenshotName;
+  }
+  if (options.limit != null) {
+    params.limit = String(options.limit);
+  }
+  if (options.offset != null) {
+    params.offset = String(options.offset);
+  }
+  return params;
 };
 
 export const getStructuredSessionData = async (

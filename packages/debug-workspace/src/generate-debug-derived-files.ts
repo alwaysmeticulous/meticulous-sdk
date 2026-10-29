@@ -3,6 +3,12 @@ import { join } from "path";
 import chalk from "chalk";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import type { PositionedTimelineEntry, TimelineEntry } from "./debug.types";
+import { formatPollyReplayDetail } from "./format-polly-replay";
+import { formatErrorStackFrames } from "./format-stack-frames";
+import {
+  screenshotIdentifierToBaseName,
+  type ScreenshotIdentifier,
+} from "./screenshot-identifier";
 import {
   discoverReplayDirs,
   inVirtualTimeOrder,
@@ -281,7 +287,8 @@ const formatTimelineEntry = (
 ): string => {
   const vt = formatVt(entry);
   const base = `[${fileIndex}] vt=${vt} kind=${entry.kind}`;
-  const detail = getKindSpecificDetail(entry);
+  // One line per event, so a multi-line message (e.g. an error's) stays greppable.
+  const detail = getKindSpecificDetail(entry).replace(/\s*\n\s*/g, " ");
   return detail ? `${base} ${detail}` : base;
 };
 
@@ -292,18 +299,8 @@ const getKindSpecificDetail = (entry: TimelineEntry): string => {
     case "screenshot":
       return `id=${formatScreenshotIdentifier(data.identifier)}`;
 
-    case "pollyReplay": {
-      const req = (data.pollyRequest as Record<string, unknown>) ?? {};
-      const reqReq = (req.request as Record<string, unknown>) ?? {};
-      const method = reqReq.method ?? "?";
-      const url = truncate(String(reqReq.url ?? "?"), 120);
-      const result = data.result ?? "?";
-      const matched = (data.matchedRequest as Record<string, unknown>) ?? {};
-      const matchedResp = (matched.response as Record<string, unknown>) ?? {};
-      const status = matchedResp.status ?? "";
-      const repair = data.repairSource ? ` repair=${data.repairSource}` : "";
-      return `${method} ${url} -> ${status} (${result})${repair}`;
-    }
+    case "pollyReplay":
+      return formatPollyReplayDetail(data);
 
     case "passedThroughNetworkRequest": {
       const req = (data.request as Record<string, unknown>) ?? {};
@@ -359,7 +356,8 @@ const getKindSpecificDetail = (entry: TimelineEntry): string => {
     case "assertionError":
     case "error": {
       const msg = truncate(String(data.message ?? data.type ?? ""), 150);
-      return msg;
+      const [topFrame] = formatErrorStackFrames(data, 1);
+      return topFrame ? `${msg} ${topFrame}` : msg;
     }
 
     case "timeoutError": {
@@ -440,11 +438,9 @@ const formatScreenshotIdentifier = (identifier: unknown): string => {
     return identifier;
   }
   if (typeof identifier === "object") {
-    const id = identifier as Record<string, unknown>;
-    if (id.variant && id.variant !== "normal") {
-      return `${id.variant}-screenshot-after-event-${String(id.eventNumber ?? "?").padStart(5, "0")}`;
-    }
-    return `screenshot-after-event-${String(id.eventNumber ?? "?").padStart(5, "0")}`;
+    return (
+      screenshotIdentifierToBaseName(identifier as ScreenshotIdentifier) ?? "?"
+    );
   }
   return String(identifier);
 };

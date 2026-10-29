@@ -68,6 +68,35 @@ describe("generateSessions container deployment", () => {
     );
   });
 
+  it("carries a staging backend and its env-var name on the container appTarget", async () => {
+    await generateSessions({
+      apiToken: "token",
+      projectId: "project123",
+      localImageTag: "app:head",
+      commitSha: "abc123",
+      backend: {
+        url: "https://staging.example.com",
+        loginOptions: { username: "u" },
+        proxyPaths: ["/api"],
+      },
+      backendUrlEnvVariable: "API_ORIGIN",
+    });
+
+    expect(completeAgenticSessionGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appTarget: expect.objectContaining({
+          type: "container",
+          backend: {
+            url: "https://staging.example.com",
+            loginOptions: { username: "u" },
+            proxyPaths: ["/api"],
+          },
+          backendUrlEnvVariable: "API_ORIGIN",
+        }),
+      }),
+    );
+  });
+
   it("does not launch Agent swarm when registration fails", async () => {
     vi.mocked(uploadBuild).mockRejectedValue(new Error("registration failed"));
 

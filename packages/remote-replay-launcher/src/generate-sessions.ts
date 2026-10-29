@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import type {
   AgenticAppTarget,
-  AgenticAssetsBackend,
+  AgenticLiveBackend,
   ContainerEnvVariable,
   ProjectIdentifier,
 } from "@alwaysmeticulous/client";
@@ -26,10 +26,16 @@ export interface GenerateSessionsOptions extends ProjectIdentifier {
   containerPort?: number | undefined;
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
-  backend?: AgenticAssetsBackend | undefined;
+  backend?: AgenticLiveBackend | undefined;
   /**
-   * Port to serve uploaded frontend assets on. Only supported with uploaded
-   * assets (not `--localImageTag`). Defaults to 8000 on the worker when omitted.
+   * Name of the env var the container image reads its backend origin from at
+   * runtime. Only meaningful with `localImageTag` and `backend`. Defaults to
+   * METICULOUS_BACKEND_URL on the backend.
+   */
+  backendUrlEnvVariable?: string | undefined;
+  /**
+   * Loopback app-server port for uploaded assets or fronted containers.
+   * Container targets require backend proxyPaths. Defaults to 8000.
    */
   appPort?: number | undefined;
 }
@@ -57,6 +63,7 @@ export const generateSessions = async ({
   containerEnv,
   containerHealthCheckEndpoint,
   backend,
+  backendUrlEnvVariable,
   appPort,
   projectId,
 }: GenerateSessionsOptions): Promise<GenerateSessionsResult> => {
@@ -70,11 +77,8 @@ export const generateSessions = async ({
   if (targetCount !== 1) {
     throw new Error("Provide exactly one of localImageTag or assetsDirectory.");
   }
-  if (backend && localImageTag) {
-    throw new Error("backend is only supported with uploaded assets.");
-  }
-  if (appPort != null && localImageTag) {
-    throw new Error("appPort is only supported with uploaded assets.");
+  if (appPort != null && localImageTag && !backend?.proxyPaths?.length) {
+    throw new Error("appPort with a container requires backend proxy paths.");
   }
 
   let uploadId: string;
@@ -95,10 +99,16 @@ export const generateSessions = async ({
     // The deployment row the upload registered: the run is keyed by it. The
     // upload id is dual-written for backends still running the pre-merge
     // launch API, which requires it and knows nothing of the row id.
+    // proxyPaths are only sent when the user passed --backendProxyPaths
+    // explicitly; the CLI applies the /api default to assets targets
+    // only, so a container run defaults to env-var injection.
     appTarget = {
       type: "container",
       projectDeploymentId: uploadedContainer.deploymentId,
       uploadId,
+      backend,
+      ...(appPort != null ? { appPort } : {}),
+      ...(backendUrlEnvVariable ? { backendUrlEnvVariable } : {}),
       enableLocalMocks,
       containerPort,
       containerEnv,
@@ -121,7 +131,7 @@ export const generateSessions = async ({
       // Dual-written for backends still running the pre-merge launch API;
       // see the container branch above.
       assetsUploadId: uploadId,
-      ...(backend ? { backend } : {}),
+      backend,
       ...(appPort != null ? { appPort } : {}),
     };
   }

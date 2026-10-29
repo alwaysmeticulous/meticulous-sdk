@@ -1,5 +1,19 @@
 # @alwaysmeticulous/session-filters
 
+## 3.4.1
+
+### Patch Changes
+
+- Updated dependencies [[`40da3c7`](https://github.com/alwaysmeticulous/meticulous/commit/40da3c7072da0f2bb56c992c436b98cb175c9924)]:
+  - @alwaysmeticulous/api@3.4.1
+
+## 3.3.0
+
+### Patch Changes
+
+- Updated dependencies [[`25cc5cf`](https://github.com/alwaysmeticulous/meticulous/commit/25cc5cf40c970fd655313f17d7712d9c6bdf8c78), [`ddf2d0d`](https://github.com/alwaysmeticulous/meticulous/commit/ddf2d0d40a27fc8c5e0a80c395355e7d44c2c193)]:
+  - @alwaysmeticulous/api@3.3.0
+
 ## 3.1.0
 
 ### Patch Changes

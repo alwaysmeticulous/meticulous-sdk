@@ -6,6 +6,8 @@ import { initLogger } from "../logger/console-logger";
 const asyncLocalDataDir = new AsyncLocalStorage<string>();
 
 let _localDataDir = "";
+// Called for every path under the data dir, so only log when the dir changes.
+let _loggedLocalDataDir = "";
 
 export const getMeticulousLocalDataDir: () => string = () => {
   const asyncDir = asyncLocalDataDir.getStore();
@@ -19,9 +21,10 @@ export const getMeticulousLocalDataDir: () => string = () => {
     logger.debug(
       `Local data dir has not been set explictly, so defaulting to ${_localDataDir}`,
     );
-  } else {
+  } else if (_localDataDir !== _loggedLocalDataDir) {
     logger.debug(`Using local data dir at ${_localDataDir}`);
   }
+  _loggedLocalDataDir = _localDataDir;
   return _localDataDir;
 };
 

@@ -102,6 +102,11 @@ export {
  * shim predates it.
  */
 export { HealthProbeEventFilter } from "./health-probe-filter";
+/**
+ * Exported for `backend-recorder-js`'s agent-swarm-testing mode, which posts outbound
+ * request headers to the sidecar and so must accept the same origins as this shim.
+ */
+export { parseSidecarUrl } from "./sidecar-url";
 export { redactRequestBody, STR_REDACTED } from "./redact-body";
 export type { CoverageMap, CoverageMapFile } from "./coverage/coverage.types";
 // __mcEnter / __mcHit are the entry points the Vite plugin's injected imports

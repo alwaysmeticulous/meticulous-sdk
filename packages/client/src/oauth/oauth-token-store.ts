@@ -1,7 +1,10 @@
+import { randomBytes } from "crypto";
 import {
   existsSync,
   mkdirSync,
   readFileSync,
+  renameSync,
+  rmSync,
   unlinkSync,
   writeFileSync,
 } from "fs";
@@ -34,13 +37,21 @@ export const getStoredOAuthTokens = (): StoredOAuthTokens | null => {
   }
 };
 
+// Written to a temp file and renamed into place, so a concurrent reader (e.g. a
+// parallel CLI process refreshing at the same time) never sees a half-written
+// file and mistakes it for a missing login.
 export const storeOAuthTokens = (tokens: StoredOAuthTokens): void => {
   if (!existsSync(getMeticulousDir())) {
     mkdirSync(getMeticulousDir(), { recursive: true });
   }
-  writeFileSync(getTokenFilePath(), JSON.stringify(tokens, null, 2), {
-    mode: 0o600,
-  });
+  const tempPath = `${getTokenFilePath()}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  try {
+    writeFileSync(tempPath, JSON.stringify(tokens, null, 2), { mode: 0o600 });
+    renameSync(tempPath, getTokenFilePath());
+  } catch (error) {
+    rmSync(tempPath, { force: true });
+    throw error;
+  }
 };
 
 export const clearOAuthTokens = (): void => {

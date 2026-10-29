@@ -159,14 +159,120 @@ describe("ci agent-test --appPort", () => {
     );
   });
 
-  it("rejects --appPort with --localImageTag", async () => {
+  it("accepts --appPort for a fronted container", async () => {
+    await runHandler({
+      localImageTag: "app:latest",
+      backendUrl: "https://staging.example.com",
+      backendProxyPaths: ["/api"],
+      appPort: 8123,
+    });
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({ appPort: 8123 }),
+    );
+  });
+
+  it("rejects --appPort with a non-proxying container", async () => {
     await expect(
       runHandler({
         localImageTag: "app:latest",
         appPort: 8001,
       }),
-    ).rejects.toThrow(/only supported with uploaded assets/);
+    ).rejects.toThrow(/requires --backendUrl and --backendProxyPaths/);
 
     expect(mocks.generateSessions).not.toHaveBeenCalled();
+  });
+});
+
+describe("ci agent-test backend with a container", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it("forwards the backend and env-var name on a container target", async () => {
+    await runHandler({
+      localImageTag: "myapp:sha",
+      backendUrl: "https://staging.example.com",
+      backendUrlEnvVariable: "API_ORIGIN",
+    });
+
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backend: expect.objectContaining({
+          url: "https://staging.example.com",
+        }),
+        backendUrlEnvVariable: "API_ORIGIN",
+      }),
+    );
+  });
+
+  it("sends no proxy paths unless they were passed explicitly", async () => {
+    await runHandler({
+      localImageTag: "myapp:sha",
+      backendUrl: "https://staging.example.com",
+    });
+
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backend: expect.objectContaining({ proxyPaths: [] }),
+      }),
+    );
+
+    mocks.generateSessions.mockClear();
+    await runHandler({
+      localImageTag: "myapp:sha",
+      backendUrl: "https://staging.example.com",
+      backendProxyPaths: ["/api", "/graphql"],
+    });
+
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backend: expect.objectContaining({
+          proxyPaths: ["/api", "/graphql"],
+        }),
+      }),
+    );
+    expect(loggerMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("experimental"),
+    );
+  });
+
+  it("keeps the /api default for assets targets", async () => {
+    await runHandler({
+      assetsDir: "dist",
+      backendUrl: "https://staging.example.com",
+    });
+
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backend: expect.objectContaining({ proxyPaths: ["/api"] }),
+      }),
+    );
+    // The experimental warning is container-only.
+    expect(loggerMock.warn).not.toHaveBeenCalled();
+  });
+
+  it("rejects --backendUrlEnvVariable with uploaded assets", async () => {
+    await expect(
+      runHandler({
+        assetsDir: "dist",
+        backendUrl: "https://staging.example.com",
+        backendUrlEnvVariable: "API_ORIGIN",
+      }),
+    ).rejects.toThrow(
+      "--backendUrlEnvVariable is only supported with --localImageTag.",
+    );
+  });
+
+  it("still rejects --enableLocalMocks with --backendUrl", async () => {
+    await expect(
+      runHandler({
+        localImageTag: "myapp:sha",
+        backendUrl: "https://staging.example.com",
+        enableLocalMocks: true,
+      }),
+    ).rejects.toThrow(
+      "--enableLocalMocks cannot be combined with --backendUrl",
+    );
   });
 });

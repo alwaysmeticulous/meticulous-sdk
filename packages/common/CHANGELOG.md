@@ -1,5 +1,17 @@
 # @alwaysmeticulous/common
 
+## 3.4.0
+
+### Patch Changes
+
+- [#16425](https://github.com/alwaysmeticulous/meticulous/pull/16425) [`431c0f2`](https://github.com/alwaysmeticulous/meticulous/commit/431c0f25d979dc83b4eecc1ff95a08f02f1adc22) Thanks [@linpengzhang](https://github.com/linpengzhang)! - `createClient` and `createClientWithOAuth` accept an optional undici `dispatcher`, so a client can send its requests through its own connection pool (for example, one connection) instead of the process-wide one. A caller-supplied dispatcher replaces the default `HTTP(S)_PROXY` handling for that client's requests.
+
+## 3.3.0
+
+### Patch Changes
+
+- [#15972](https://github.com/alwaysmeticulous/meticulous/pull/15972) [`c74d9f9`](https://github.com/alwaysmeticulous/meticulous/commit/c74d9f922ad40d98e797576dd8750369cb62aff9) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent` and `download` commands deprecate `--verbose` in favour of the global `--logLevel`, which they now default to `warn`: pass `--logLevel info` to see more logs. They also write every log line to stderr at any level, so stdout only carries the command's result. `--verbose` keeps working, with a deprecation notice, and an explicit `--logLevel` still takes precedence over it. The OAuth login's sign-in URL, device code and success message are now always printed to stderr, whatever the log level. Debug logs name the local data dir and auth source once instead of on every request, and `test-run-for-commit`, `submit-feedback` and `upload-build` no longer log a labelled copy of the id they print.
+
 ## 3.1.0
 
 ### Patch Changes

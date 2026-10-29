@@ -3,7 +3,7 @@ import {
   getTestRunForCommit,
   getTestRunForPullRequest,
 } from "@alwaysmeticulous/client";
-import { getCommitSha, logNotice, logProgress } from "@alwaysmeticulous/common";
+import { getCommitSha, logNotice } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
@@ -79,7 +79,6 @@ const handler = async ({
   if (json) {
     printJson({ ...result, status });
   } else {
-    logProgress(`testRunId: ${result.testRunId}`);
     console.log(result.testRunId);
   }
   if (status != null && isTestRunInProgress(status)) {

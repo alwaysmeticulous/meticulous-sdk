@@ -1,5 +1,19 @@
 # @alwaysmeticulous/api
 
+## 3.4.1
+
+### Patch Changes
+
+- [#16274](https://github.com/alwaysmeticulous/meticulous/pull/16274) [`40da3c7`](https://github.com/alwaysmeticulous/meticulous/commit/40da3c7072da0f2bb56c992c436b98cb175c9924) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `TestCaseReplayOptions` gains an optional `disableAuxiliaryViewportScreenshots`, which turns off auxiliary viewport screenshots for that test case only.
+
+## 3.3.0
+
+### Minor Changes
+
+- [#16132](https://github.com/alwaysmeticulous/meticulous/pull/16132) [`25cc5cf`](https://github.com/alwaysmeticulous/meticulous/commit/25cc5cf40c970fd655313f17d7712d9c6bdf8c78) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - The project daily stats' `prNumbersWithPotentialBugs` replaces `check_rejected` with `check_fixed`: a check warning someone viewed and a later commit fixed. It counts towards `bugsPrevented.medium`.
+
+- [#16127](https://github.com/alwaysmeticulous/meticulous/pull/16127) [`ddf2d0d`](https://github.com/alwaysmeticulous/meticulous/commit/ddf2d0d40a27fc8c5e0a80c395355e7d44c2c193) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `onlyRefreshedPinnedImages` to `ScreenshotDiffResultDifference`, set when every differing pixel lies in images whose bytes were served from a project pin on both sides and differ, i.e. the pin was refreshed between base and head. `FlakeEvidence` gains a `pinned-image-refreshed` variant for such diffs.
+
 ## 3.1.0
 
 ### Minor Changes

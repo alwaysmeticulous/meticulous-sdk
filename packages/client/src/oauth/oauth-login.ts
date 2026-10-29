@@ -1,5 +1,5 @@
 import { exec } from "child_process";
-import { initLogger } from "@alwaysmeticulous/common";
+import { logNotice } from "@alwaysmeticulous/common";
 import { startCallbackServer } from "./oauth-callback-server";
 import {
   CLI_CLIENT_ID,
@@ -27,8 +27,6 @@ export const performOAuthLogin = async ({
   /** Extra `intent` on the `/cli-login` URL. `onboard` hides the standard login steps. */
   intent?: typeof CLI_LOGIN_INTENT_ONBOARD;
 } = {}): Promise<StoredOAuthTokens> => {
-  const logger = initLogger();
-
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
   const state = generateState();
@@ -46,11 +44,11 @@ export const performOAuthLogin = async ({
   });
 
   if (openBrowserAutomatically) {
-    logger.info("Opening browser for authentication...");
-    logger.info(`If the browser does not open, visit: ${authUrl}`);
+    logNotice("Opening browser for authentication...");
+    logNotice(`If the browser does not open, visit: ${authUrl}`);
     openBrowser(authUrl);
   } else {
-    logger.info(
+    logNotice(
       "To authenticate, open this URL in a browser on this machine " +
         "(login completes via a local callback on 127.0.0.1, so a browser " +
         `on another machine cannot finish it):\n${authUrl}`,
@@ -72,7 +70,7 @@ export const performOAuthLogin = async ({
   });
 
   storeOAuthTokens(tokens);
-  logger.info("Authentication successful.");
+  logNotice("Authentication successful.");
 
   return tokens;
 };

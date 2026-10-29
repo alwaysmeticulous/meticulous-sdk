@@ -77,10 +77,14 @@ meticulous [command]
 | \`agent ignore-diff\` | Agent-ignore a screenshot diff as unrelated to the change and comment why; a real ignore only if the project allows it | Agent/programmatic use |
 | \`agent create-diff-comment\` | Start a review comment thread on a screenshot diff | Agent/programmatic use |
 | \`agent reply-to-diff-comment\` | Reply to a review comment thread | Agent/programmatic use |
-| \`agent dom-diff\` | Get the DOM diff for a replay-diff screenshot | Agent/programmatic use |
+| \`agent dom\` | Get the DOM snapshot of one screenshot of a replay, as captured or with noise removed, or of one element in it by \`--path\` | Agent/programmatic use |
+| \`agent dom-diff\` | Get the DOM diff for a replay-diff screenshot, with noise removed, or of one element in it by \`--path\` | Agent/programmatic use |
 | \`agent image-urls\` | Get screenshot image URLs for a replay-diff screenshot | Agent/programmatic use |
 | \`agent image-files\` | Download screenshot images to \`~/.meticulous/agent-images\` | Agent/programmatic use |
-| \`agent timeline-diff\` | Get the timeline diff for a replay diff | Agent/programmatic use |
+| \`agent timeline\` | List one replay's timeline events, with the same filters as \`timeline-diff\` | Agent/programmatic use |
+| \`agent timeline-diff\` | Get the timeline diff for a replay diff, by default only the events that differ plus the context around them | Agent/programmatic use |
+| \`agent timeline-event\` | Get the full details of one event in a replay's timeline, by \`eventId\` | Agent/programmatic use |
+| \`agent timeline-event-diff\` | Get how one event differs between the two replays of a replay diff, field by field, by \`eventId\` | Agent/programmatic use |
 | \`agent test-run-check\` | Get a builtin or custom non-visual check report for a test run, or list available check IDs with \`--availableIds\` | Agent/programmatic use |
 | \`agent check-comments\` | Get the reasons recorded with agent decisions on a non-visual check of a test run | Agent/programmatic use |
 | \`agent ignore-check\` | Agent-ignore a failing non-visual check as unrelated to the change, with a reason, if the project allows it | Agent/programmatic use |
@@ -337,6 +341,8 @@ Provide exactly one target:
 
 By default, the agent reads routes and flows to exercise from \`.meticulous/agent-swarm-instructions.md\` in the repository at the commit being tested. Use \`--instructionsFile\` to override those instructions for one CLI-launched run. With an uploaded frontend, \`--backendUrl\` proxies configured relative paths (\`--backendProxyPaths\`, default \`/api\`) to a public HTTPS staging backend. It cannot be combined with \`--enableLocalMocks\`. For absolute cross-origin requests, contact Meticulous to add the required egress policy for your project.
 
+With a container (\`--localImageTag\`), \`--backendUrl\` connects the image to the same staging backend: the origin is injected at runtime into the environment variable named by \`--backendUrlEnvVariable\` (default \`METICULOUS_BACKEND_URL\`), which your image must use to route its backend traffic. Passing \`--backendProxyPaths\` additionally opts into an experimental fronting server: the browser opens the proxy origin, backend paths go to staging and all other requests go to the container; routing inside the container through the injected variable is preferred, and server-side (SSR) fetches are only covered that way.
+
 For a pull request workflow, pass \`github.event.pull_request.head.sha || github.sha\` as \`--commitSha\`, rather than only \`github.sha\`. Use \`--dryRun\` to validate options without launching an agent.
 
 ---
@@ -392,6 +398,7 @@ npx @alwaysmeticulous/cli ci upload-assets \\
 
 **Type**: String (JSON)
 **Description**: URL rewrite rules in Vercel format
+**Default**: \`'[]'\` (uses the project's asset rewrites when set, otherwise every missing path is served from \`/index.html\`)
 **Use case**: SPA routing, redirects
 
 **Example**:
@@ -674,7 +681,7 @@ npx @alwaysmeticulous/cli ci run-with-uploaded-asset-chunks \\
 
 **Type**: String (JSON)
 **Description**: URL rewrite rules in Vercel \`serve-handler\` format.
-**Default**: \`'[]'\` (falls back to \`{ source: "**", destination: "/index.html" }\`)
+**Default**: \`'[]'\` (uses the project's asset rewrites when set, otherwise every missing path is served from \`/index.html\`)
 
 **Example**:
 \`\`\`bash

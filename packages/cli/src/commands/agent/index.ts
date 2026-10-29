@@ -1,4 +1,6 @@
+import { routeLogsToStderr } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
+import { RESULT_ONLY_LOG_OPTIONS } from "../../command-utils/log-level-options";
 import { AGENT_COMMAND_EPILOG } from "./agent-help";
 import { completeBaseRunCommand } from "./complete-base-run.command";
 import { promoteSessionsCommand } from "./promote-sessions.command";
@@ -6,6 +8,7 @@ import { diffCommentsCommand } from "./diff-comments.command";
 import { jsCoverageDiffCommand } from "./js-coverage-diff.command";
 import { jsCoverageCommand } from "./js-coverage.command";
 import { domDiffCommand } from "./screenshot-dom-diff.command";
+import { screenshotDomCommand } from "./screenshot-dom.command";
 import { imageFilesCommand } from "./screenshot-image-files.command";
 import { imageUrlsCommand } from "./screenshot-image.command";
 import { sessionsCommand } from "./sessions.command";
@@ -23,7 +26,10 @@ import {
   testRunEventStatsCommand,
   testRunStatsCommand,
 } from "./stats.command";
-import { timelineDiffCommand } from "./timeline.command";
+import { timelineDiffCommand } from "./timeline-diff.command";
+import { timelineCommand } from "./timeline.command";
+import { timelineEventCommand } from "./timeline-event.command";
+import { timelineEventDiffCommand } from "./timeline-event-diff.command";
 import { triggerTestRunCommand } from "./trigger-test-run.command";
 import { uploadBuildCommand } from "./upload-build.command";
 import { approveDiffCommand } from "./approve-diff.command";
@@ -47,8 +53,12 @@ export const agentCommand: CommandModule = {
       .command(testRunDiffsCommand)
       .command(imageFilesCommand)
       .command(imageUrlsCommand)
+      .command(screenshotDomCommand)
       .command(domDiffCommand)
+      .command(timelineCommand)
       .command(timelineDiffCommand)
+      .command(timelineEventCommand)
+      .command(timelineEventDiffCommand)
       .command(diffCommentsCommand)
       .command(approveDiffCommand)
       .command(rejectDiffCommand)
@@ -71,12 +81,8 @@ export const agentCommand: CommandModule = {
       .command(completeBaseRunCommand)
       .command(promoteSessionsCommand)
       .command(submitFeedbackCommand)
-      .option("verbose", {
-        boolean: true,
-        default: false,
-        description:
-          "Print additional logs like progress updates. Without it, only the actual output value or table is printed.",
-      })
+      .options(RESULT_ONLY_LOG_OPTIONS)
+      .middleware(routeLogsToStderr)
       .option("json", {
         boolean: true,
         default: false,

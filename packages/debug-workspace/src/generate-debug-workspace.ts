@@ -7,22 +7,26 @@ import {
   readFileSync,
   readdirSync,
   statSync,
-  unlinkSync,
   writeFileSync,
 } from "fs";
-import { basename, dirname, extname, join } from "path";
+import { dirname, extname, join } from "path";
 import type { MeticulousClient } from "@alwaysmeticulous/client";
-import {
-  getMeticulousLocalDataDir,
-  initLogger,
-} from "@alwaysmeticulous/common";
+import { initLogger } from "@alwaysmeticulous/common";
 import chalk from "chalk";
 import { format, type BuiltInParserName } from "prettier";
+import {
+  buildReplayComparison,
+  type ReplayComparisonEntry,
+} from "./build-replay-comparison";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import type { DebugContext } from "./debug.types";
+import { pickExistingPaths } from "./existing-paths";
 import { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
 import { fetchDomDiffs, type DomDiffMap } from "./fetch-dom-diffs";
+import { generateCoverageDiff } from "./generate-coverage-diff";
 import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
+import { generateDiffSummaries } from "./generate-diff-summaries";
+import { generateErrorsDiff } from "./generate-errors-diff";
 import { parseMeticulousSha } from "./meticulous-sha";
 import { readReplayTimeline } from "./replay-walk";
 import { screenshotIdentifierToFilename } from "./screenshot-identifier";
@@ -44,10 +48,6 @@ interface TimelineEntry {
   };
 }
 
-interface TimelineStatsJson {
-  countByType?: Record<string, number>;
-}
-
 export interface FileMetadataEntry {
   path: string;
   bytes: number;
@@ -63,16 +63,6 @@ export interface ScreenshotMapEntry {
   eventNumber: number | null;
   /** Name of the `before.dom` HTML file in the replay's `screenshots/`, or `null` if missing. */
   htmlFilename: string | null;
-}
-
-export interface ReplayComparisonEntry {
-  replayId: string;
-  role: string;
-  totalEvents: number | null;
-  totalNetworkRequests: number | null;
-  totalAnimationFrames: number | null;
-  totalVirtualTimeMs: number | null;
-  screenshotCount: number | null;
 }
 
 const DEFAULT_TEMPLATES_DIR = join(__dirname, "templates");
@@ -147,7 +137,6 @@ export const generateDebugWorkspace = async (
 
   redactCookiesAndHeaders(debugContext, workspaceDir);
   generateFilteredLogs(workspaceDir);
-  generateLogDiffs(debugContext, workspaceDir);
   generateDiffSummaries(workspaceDir);
   generatePrDiff(debugContext, workspaceDir);
   const hasPrDiff = existsSync(
@@ -161,9 +150,6 @@ export const generateDebugWorkspace = async (
   const conditions: MarkdownConditions = {
     hasPrDiff,
     hasPrDescription,
-    hasPrDescriptionAndDiff: hasPrDescription && hasPrDiff,
-    hasPrDescriptionOnly: hasPrDescription && !hasPrDiff,
-    hasPrDiffOnly: !hasPrDescription && hasPrDiff,
     isLocalCli,
     hasSnapshotAssets,
   };
@@ -175,9 +161,7 @@ export const generateDebugWorkspace = async (
   if (!options.skipDefaultClaudeFiles) {
     writeFileSync(join(claudeDir, "CLAUDE.md"), claudeMd);
   }
-  generateParamsDiffs(debugContext, workspaceDir);
   generateAssetsDiff(debugContext, workspaceDir);
-  generateTimelineSummaries(workspaceDir);
   generateSessionSummaries(debugContext, workspaceDir);
   if (!options.skipPrettifySnapshotAssets) {
     await prettifySnapshotAssets(workspaceDir);
@@ -190,9 +174,10 @@ export const generateDebugWorkspace = async (
     maxConcurrency: options.maxConcurrency,
   });
   generateDebugDerivedFiles(workspaceDir);
+  generateErrorsDiff(debugContext, workspaceDir);
+  generateCoverageDiff(debugContext, workspaceDir);
   const screenshotMap = buildScreenshotMap(debugContext, workspaceDir);
-  generateScreenshotContext(debugContext, workspaceDir, screenshotMap);
-  const replayComparison = buildReplayComparison(debugContext, workspaceDir);
+  const replayComparison = buildReplayComparison(workspaceDir);
   const fileMetadata = collectFileMetadata(debugContext, workspaceDir);
 
   const writeCtx = options.writeContextJson ?? defaultWriteContextJson;
@@ -247,21 +232,9 @@ const resolveTemplateFile = (
   return undefined;
 };
 
-// File names (within their template subdir) that are only relevant when a PR
-// diff is present in the workspace; skipped otherwise so the agent doesn't see
-// dangling references.
-const PR_DIFF_ONLY_AGENT_FILES = new Set<string>(["pr-analyzer.md"]);
-const PR_DIFF_ONLY_SKILL_DIRS = new Set<string>(["pr-analysis"]);
-
 interface MarkdownConditions {
   hasPrDiff: boolean;
   hasPrDescription: boolean;
-  /** Derived: PR diff AND description both available. */
-  hasPrDescriptionAndDiff: boolean;
-  /** Derived: PR description available but no PR diff. */
-  hasPrDescriptionOnly: boolean;
-  /** Derived: PR diff available but no PR description. */
-  hasPrDiffOnly: boolean;
   isLocalCli: boolean;
   hasSnapshotAssets: boolean;
 }
@@ -288,15 +261,11 @@ const copyClaudeSubdir = (
   } = {},
 ): void => {
   const destDir = join(workspaceDir, ".claude", subdir);
-  const skipNames =
-    options.conditions?.hasPrDiff === false && subdir === "agents"
-      ? PR_DIFF_ONLY_AGENT_FILES
-      : new Set<string>();
   let copied = false;
 
   const writeFromDir = (srcDir: string): void => {
     const entries = readdirSync(srcDir).filter(
-      (f) => !statSync(join(srcDir, f)).isDirectory() && !skipNames.has(f),
+      (f) => !statSync(join(srcDir, f)).isDirectory(),
     );
     if (entries.length === 0) {
       return;
@@ -357,9 +326,6 @@ const copySkills = (
   }
 
   for (const skillName of skillDirNames) {
-    if (!conditions.hasPrDiff && PR_DIFF_ONLY_SKILL_DIRS.has(skillName)) {
-      continue;
-    }
     copyClaudeSubdir(
       workspaceDir,
       join("skills", skillName),
@@ -376,9 +342,6 @@ const copySkills = (
 const CONDITION_MARKERS: Record<keyof MarkdownConditions, string> = {
   hasPrDiff: "pr-diff",
   hasPrDescription: "pr-description",
-  hasPrDescriptionAndDiff: "pr-description-and-diff",
-  hasPrDescriptionOnly: "pr-description-only",
-  hasPrDiffOnly: "pr-diff-only",
   isLocalCli: "local-cli",
   hasSnapshotAssets: "snapshot-assets",
 };
@@ -689,7 +652,7 @@ const redactCookiesAndHeadersInNdjsonFile = (filePath: string): boolean => {
 // Redacts cookie, header, and local/session storage values from the raw
 // JSON files placed into the workspace, before any other step reads or
 // diffs them. This runs first so that downstream steps (e.g.
-// `generateParamsDiffs`, `generateSessionSummaries`, `generateDebugDerivedFiles`)
+// `generateSessionSummaries`, `generateDebugDerivedFiles`)
 // never see or propagate the real values.
 // Exported for testing.
 export const redactCookiesAndHeaders = (
@@ -984,7 +947,9 @@ const LOG_NOISE_PATTERNS = [
   /\/_next\/static\/[A-Za-z0-9_-]{8,}\//g,
   /(?<=[-./])[a-f0-9]{12,}(?=\.js)/g,
   /(?<=[-./])[a-f0-9]{12,}(?=\.css)/g,
-  /(?<=["'/])[A-Za-z0-9_-]{20,}(?=["'/])/g,
+  // Quoted or path-segment IDs and hashes. Requiring a digit keeps long
+  // identifiers such as type names and class names.
+  /(?<=["'/])(?=[A-Za-z_-]*\d)[A-Za-z0-9_-]{20,}(?=["'/])/g,
 ];
 
 const POSTHOG_LINE_PATTERNS = [
@@ -1023,325 +988,6 @@ const filterLogLines = (raw: string): string => {
     filtered.push(filterLine(line));
   }
   return filtered.join("\n");
-};
-
-const generateLogDiffs = (
-  debugContext: DebugContext,
-  workspaceDir: string,
-): void => {
-  for (const diff of debugContext.replayDiffs) {
-    const headLogPath = join(
-      workspaceDir,
-      DEBUG_DATA_DIRECTORY,
-      "replays",
-      "head",
-      diff.headReplayId,
-      "logs.deterministic.txt",
-    );
-    const baseLogPath = join(
-      workspaceDir,
-      DEBUG_DATA_DIRECTORY,
-      "replays",
-      "base",
-      diff.baseReplayId,
-      "logs.deterministic.txt",
-    );
-    if (!existsSync(headLogPath) || !existsSync(baseLogPath)) {
-      continue;
-    }
-    const baseName = `${diff.headReplayId}-vs-${diff.baseReplayId}`;
-    generateLogDiffPair(baseLogPath, headLogPath, workspaceDir, baseName);
-  }
-
-  if (
-    debugContext.replayDiffs.length === 0 &&
-    debugContext.replayIds.length === 2
-  ) {
-    const [idA, idB] = debugContext.replayIds;
-    const pathA = join(
-      workspaceDir,
-      DEBUG_DATA_DIRECTORY,
-      "replays",
-      "other",
-      idA,
-      "logs.deterministic.txt",
-    );
-    const pathB = join(
-      workspaceDir,
-      DEBUG_DATA_DIRECTORY,
-      "replays",
-      "other",
-      idB,
-      "logs.deterministic.txt",
-    );
-    if (existsSync(pathA) && existsSync(pathB)) {
-      generateLogDiffPair(pathA, pathB, workspaceDir, `${idA}-vs-${idB}`);
-    }
-  }
-};
-
-const generateLogDiffPair = (
-  basePath: string,
-  headPath: string,
-  workspaceDir: string,
-  baseName: string,
-): void => {
-  const diffDir = join(workspaceDir, DEBUG_DATA_DIRECTORY, "log-diffs");
-  mkdirSync(diffDir, { recursive: true });
-
-  let rawDiff: string;
-  try {
-    rawDiff = execFileSync("diff", ["-u", basePath, headPath], {
-      encoding: "utf8",
-      maxBuffer: 10 * 1024 * 1024,
-    });
-  } catch (error: any) {
-    rawDiff = error?.stdout ?? "";
-  }
-
-  if (!rawDiff.trim()) {
-    return;
-  }
-
-  writeFileSync(join(diffDir, `${baseName}.diff`), rawDiff);
-
-  const filteredDiff = filterLogDiff(rawDiff);
-  if (filteredDiff.trim()) {
-    writeFileSync(join(diffDir, `${baseName}.filtered.diff`), filteredDiff);
-  }
-
-  const summary = summarizeLogDiff(rawDiff);
-  writeFileSync(join(diffDir, `${baseName}.summary.txt`), summary);
-};
-
-const filterLogDiff = (rawDiff: string): string => {
-  const lines = rawDiff.split("\n");
-  const filteredLines: string[] = [];
-
-  for (const line of lines) {
-    if (!line.startsWith("+") && !line.startsWith("-")) {
-      filteredLines.push(line);
-      continue;
-    }
-    if (line.startsWith("+++") || line.startsWith("---")) {
-      filteredLines.push(line);
-      continue;
-    }
-    if (isPostHogLine(line)) {
-      continue;
-    }
-    filteredLines.push(filterLine(line));
-  }
-
-  return removeIdenticalHunks(filteredLines.join("\n"));
-};
-
-const removeIdenticalHunks = (diff: string): string => {
-  const parts = diff.split(/^(@@[^@]*@@.*$)/m);
-  const result: string[] = [parts[0]];
-
-  for (let i = 1; i < parts.length; i += 2) {
-    const hunkHeader = parts[i];
-    const hunkBody = parts[i + 1] ?? "";
-
-    const addedLines: string[] = [];
-    const removedLines: string[] = [];
-
-    for (const line of hunkBody.split("\n")) {
-      if (line.startsWith("+") && !line.startsWith("+++")) {
-        addedLines.push(line.slice(1));
-      } else if (line.startsWith("-") && !line.startsWith("---")) {
-        removedLines.push(line.slice(1));
-      }
-    }
-
-    if (addedLines.join("\n") !== removedLines.join("\n")) {
-      result.push(hunkHeader);
-      result.push(hunkBody);
-    }
-  }
-
-  return result.join("");
-};
-
-interface CategoryCounts {
-  added: number;
-  removed: number;
-}
-
-const summarizeLogDiff = (rawDiff: string): string => {
-  const lines = rawDiff.split("\n");
-  let addedCount = 0;
-  let removedCount = 0;
-  let firstDivergenceLine: number | undefined;
-  const categories: Record<string, CategoryCounts> = {};
-
-  for (const line of lines) {
-    if (line.startsWith("@@")) {
-      const match = line.match(/@@ -(\d+)/);
-      if (match && firstDivergenceLine == null) {
-        firstDivergenceLine = parseInt(match[1], 10);
-      }
-      continue;
-    }
-    if (line.startsWith("+") && !line.startsWith("+++")) {
-      addedCount++;
-      categorizeLogLine(line, categories, "added");
-    } else if (line.startsWith("-") && !line.startsWith("---")) {
-      removedCount++;
-      categorizeLogLine(line, categories, "removed");
-    }
-  }
-
-  const sortedCategories = Object.entries(categories).sort(
-    ([, a], [, b]) => b.added + b.removed - (a.added + a.removed),
-  );
-
-  const parts: string[] = [
-    `Log Diff Summary`,
-    `================`,
-    ``,
-    `Total changed lines: ${addedCount + removedCount} (+${addedCount} in head, -${removedCount} in base)`,
-    `First divergence at base log line: ${firstDivergenceLine ?? "unknown"}`,
-    ``,
-    `Change categories (+ = extra in head, - = extra in base):`,
-  ];
-
-  for (const [category, counts] of sortedCategories) {
-    const total = counts.added + counts.removed;
-    const net = counts.added - counts.removed;
-    const netStr =
-      net > 0
-        ? `net +${net} in head`
-        : net < 0
-          ? `net ${net} in base`
-          : "balanced";
-    parts.push(
-      `  ${category}: ${total} lines (+${counts.added} / -${counts.removed}, ${netStr})`,
-    );
-  }
-
-  parts.push(
-    "",
-    "Tip: Read the .filtered.diff file for a version with tunnel URLs,",
-    "PostHog payloads, and S3 tokens stripped. Hunks that only differ",
-    "in these noisy values are removed entirely.",
-  );
-
-  return parts.join("\n");
-};
-
-const categorizeLogLine = (
-  line: string,
-  categories: Record<string, CategoryCounts>,
-  direction: "added" | "removed",
-): void => {
-  const content = line.slice(1);
-  const category = classifyLogContent(content);
-  const entry = categories[category] ?? { added: 0, removed: 0 };
-  entry[direction]++;
-  categories[category] = entry;
-};
-
-const classifyLogContent = (content: string): string => {
-  if (LOG_NOISE_PATTERNS.some((p) => new RegExp(p.source).test(content))) {
-    return "noise (tunnel URLs / tokens / PostHog)";
-  }
-  if (/\bfetch\b|\bXHR\b|\bnetwork\b|\brequest\b|\bresponse\b/i.test(content)) {
-    return "network";
-  }
-  if (/animation|requestAnimationFrame|rAF/i.test(content)) {
-    return "animation frames";
-  }
-  if (/screenshot/i.test(content)) {
-    return "screenshots";
-  }
-  if (/timer|setTimeout|setInterval|tick/i.test(content)) {
-    return "timers";
-  }
-  if (/navigation|navigate|pushState|replaceState|popstate/i.test(content)) {
-    return "navigation";
-  }
-  if (/priority|ordering|reorder/i.test(content)) {
-    return "priority / ordering";
-  }
-  return "other";
-};
-
-// ---------------------------------------------------------------------------
-// Diff summaries
-// ---------------------------------------------------------------------------
-
-interface DiffScreenshotResult {
-  identifier: unknown;
-  outcome: string;
-  diffToBaseScreenshot?: {
-    width?: number;
-    height?: number;
-    outcome?: string;
-    mismatchPixels?: number;
-    mismatchFraction?: number;
-    diffFullFile?: string;
-    changedSectionsClassNames?: string[];
-  };
-}
-
-const generateDiffSummaries = (workspaceDir: string): void => {
-  const diffsDir = join(workspaceDir, DEBUG_DATA_DIRECTORY, "diffs");
-  if (!existsSync(diffsDir)) {
-    return;
-  }
-
-  let count = 0;
-  const jsonFiles = readdirSync(diffsDir).filter(
-    (f) => f.endsWith(".json") && !f.endsWith(".summary.json"),
-  );
-
-  for (const file of jsonFiles) {
-    const raw = JSON.parse(readFileSync(join(diffsDir, file), "utf8")) as {
-      data?: { screenshotDiffResults?: DiffScreenshotResult[] };
-    };
-
-    const results = raw?.data?.screenshotDiffResults ?? [];
-    if (results.length === 0) {
-      continue;
-    }
-
-    const compact = results.map((r) => {
-      const dtb = r.diffToBaseScreenshot;
-      return {
-        identifier: r.identifier,
-        outcome: r.outcome,
-        ...(dtb
-          ? {
-              width: dtb.width,
-              height: dtb.height,
-              mismatchPixels: dtb.mismatchPixels,
-              mismatchFraction: dtb.mismatchFraction,
-              mismatchPercent:
-                dtb.mismatchFraction != null
-                  ? `${(dtb.mismatchFraction * 100).toFixed(4)}%`
-                  : undefined,
-              diffFullFile: dtb.diffFullFile,
-              changedSectionsClassNames: dtb.changedSectionsClassNames,
-            }
-          : {}),
-      };
-    });
-
-    const summaryFile = file.replace(".json", ".summary.json");
-    writeFileSync(
-      join(diffsDir, summaryFile),
-      JSON.stringify(compact, null, 2),
-    );
-    count++;
-  }
-
-  if (count > 0) {
-    console.log(
-      chalk.green(`  Generated ${count} compact diff summary(ies) in diffs/`),
-    );
-  }
 };
 
 // ---------------------------------------------------------------------------
@@ -1411,145 +1057,6 @@ const resolveBaseShaFromGit = (
     }
   }
   return undefined;
-};
-
-// ---------------------------------------------------------------------------
-// Params diffs
-// ---------------------------------------------------------------------------
-
-const generateParamsDiffs = (
-  debugContext: DebugContext,
-  workspaceDir: string,
-): void => {
-  const paramsFile = "launchBrowserAndReplayParams.json";
-
-  const pairs: Array<{ pathA: string; pathB: string; label: string }> = [];
-
-  for (const diff of debugContext.replayDiffs) {
-    pairs.push({
-      pathA: join(
-        workspaceDir,
-        DEBUG_DATA_DIRECTORY,
-        "replays",
-        "base",
-        diff.baseReplayId,
-        paramsFile,
-      ),
-      pathB: join(
-        workspaceDir,
-        DEBUG_DATA_DIRECTORY,
-        "replays",
-        "head",
-        diff.headReplayId,
-        paramsFile,
-      ),
-      label: `${diff.headReplayId}-vs-${diff.baseReplayId}`,
-    });
-  }
-
-  if (
-    debugContext.replayDiffs.length === 0 &&
-    debugContext.replayIds.length === 2
-  ) {
-    const [idA, idB] = debugContext.replayIds;
-    pairs.push({
-      pathA: join(
-        workspaceDir,
-        DEBUG_DATA_DIRECTORY,
-        "replays",
-        "other",
-        idA,
-        paramsFile,
-      ),
-      pathB: join(
-        workspaceDir,
-        DEBUG_DATA_DIRECTORY,
-        "replays",
-        "other",
-        idB,
-        paramsFile,
-      ),
-      label: `${idA}-vs-${idB}`,
-    });
-  }
-
-  for (const { pathA, pathB, label } of pairs) {
-    if (!existsSync(pathA) || !existsSync(pathB)) {
-      continue;
-    }
-    try {
-      const jsonA = sortedJsonString(readFileSync(pathA, "utf8"));
-      const jsonB = sortedJsonString(readFileSync(pathB, "utf8"));
-      if (jsonA === jsonB) {
-        continue;
-      }
-
-      const tmpA = join(workspaceDir, ".tmp-params-a.json");
-      const tmpB = join(workspaceDir, ".tmp-params-b.json");
-      writeFileSync(tmpA, jsonA);
-      writeFileSync(tmpB, jsonB);
-
-      let diffOutput: string;
-      try {
-        diffOutput = execFileSync("diff", ["-u", tmpA, tmpB], {
-          encoding: "utf8",
-          maxBuffer: 5 * 1024 * 1024,
-        });
-      } catch (diffError: any) {
-        diffOutput = diffError?.stdout ?? "";
-      } finally {
-        safeUnlink(tmpA);
-        safeUnlink(tmpB);
-      }
-
-      if (diffOutput.trim()) {
-        const diffsDir = join(
-          workspaceDir,
-          DEBUG_DATA_DIRECTORY,
-          "params-diffs",
-        );
-        mkdirSync(diffsDir, { recursive: true });
-        writeFileSync(join(diffsDir, `${label}.diff`), diffOutput);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`  Warning: Could not diff params for ${label}: ${message}`);
-    }
-  }
-
-  const diffsDir = join(workspaceDir, DEBUG_DATA_DIRECTORY, "params-diffs");
-  if (existsSync(diffsDir) && readdirSync(diffsDir).length > 0) {
-    console.log(
-      chalk.green("  Generated replay params diff(s) in params-diffs/"),
-    );
-  }
-};
-
-const sortedJsonString = (raw: string): string => {
-  const parsed: unknown = JSON.parse(raw);
-  return JSON.stringify(sortObjectKeys(parsed), null, 2);
-};
-
-const sortObjectKeys = (value: unknown): unknown => {
-  if (value == null || typeof value !== "object") {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.map(sortObjectKeys);
-  }
-  const sorted: Record<string, unknown> = {};
-  for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-    sorted[key] = sortObjectKeys((value as Record<string, unknown>)[key]);
-  }
-  return sorted;
-};
-
-const safeUnlink = (filePath: string): void => {
-  try {
-    unlinkSync(filePath);
-  } catch {
-    // Non-critical
-  }
 };
 
 // ---------------------------------------------------------------------------
@@ -1680,181 +1187,6 @@ const listAssetFiles = (
 
   walk(dir, "");
   return result;
-};
-
-// ---------------------------------------------------------------------------
-// Timeline summaries
-// ---------------------------------------------------------------------------
-
-const generateTimelineSummaries = (workspaceDir: string): void => {
-  const replaySubDirs = ["head", "base", "other"];
-  let count = 0;
-
-  for (const subDir of replaySubDirs) {
-    const subDirPath = join(
-      workspaceDir,
-      DEBUG_DATA_DIRECTORY,
-      "replays",
-      subDir,
-    );
-    if (!existsSync(subDirPath)) {
-      continue;
-    }
-
-    for (const replayId of readdirSync(subDirPath)) {
-      const timeline = readReplayTimeline(join(subDirPath, replayId));
-      if (timeline == null) {
-        continue;
-      }
-
-      const summary = summarizeTimeline(timeline, replayId, subDir);
-      const summaryDir = join(
-        workspaceDir,
-        DEBUG_DATA_DIRECTORY,
-        "timeline-summaries",
-      );
-      mkdirSync(summaryDir, { recursive: true });
-      writeFileSync(join(summaryDir, `${subDir}-${replayId}.txt`), summary);
-      count++;
-    }
-  }
-
-  if (count > 0) {
-    console.log(
-      chalk.green(
-        `  Generated ${count} timeline summary(ies) in timeline-summaries/`,
-      ),
-    );
-  }
-};
-
-const summarizeTimeline = (
-  timeline: TimelineEntry[],
-  replayId: string,
-  role: string,
-): string => {
-  const eventKindCounts: Record<string, number> = {};
-  const screenshotEntries: Array<{
-    filename: string;
-    virtualTime: number | undefined;
-  }> = [];
-  let navigationCount = 0;
-  let networkRequestCount = 0;
-  let animationFrameCount = 0;
-  let consoleMessageCount = 0;
-  let firstVirtualTime: number | undefined;
-  let lastVirtualTime: number | undefined;
-  const flakinessWarnings: Array<{
-    kind: string;
-    message: string;
-    virtualTime: number | undefined;
-  }> = [];
-
-  for (const entry of timeline) {
-    const kind = entry.kind;
-    eventKindCounts[kind] = (eventKindCounts[kind] ?? 0) + 1;
-
-    const vt = entry.virtualTimeStart;
-    if (vt != null) {
-      if (firstVirtualTime == null || vt < firstVirtualTime) {
-        firstVirtualTime = vt;
-      }
-      if (lastVirtualTime == null || vt > lastVirtualTime) {
-        lastVirtualTime = vt;
-      }
-    }
-
-    if (kind.startsWith("potentialFlakinessWarning")) {
-      flakinessWarnings.push({
-        kind,
-        message:
-          entry.data?.message ??
-          entry.data?.warning ??
-          JSON.stringify(entry.data ?? {}),
-        virtualTime: vt,
-      });
-    }
-
-    switch (kind) {
-      case "screenshot": {
-        const filename = entry.data?.identifier
-          ? screenshotIdentifierToFilename(entry.data.identifier)
-          : undefined;
-        screenshotEntries.push({
-          filename: filename ?? "unknown",
-          virtualTime: vt,
-        });
-        break;
-      }
-      case "initialNavigation":
-      case "navigation":
-        navigationCount++;
-        break;
-      case "pollyReplay":
-        networkRequestCount++;
-        break;
-      case "jsReplay":
-        animationFrameCount++;
-        break;
-      default:
-        if (kind.startsWith("consoleMessage")) {
-          consoleMessageCount++;
-        }
-        break;
-    }
-  }
-
-  const totalVirtualTimeMs =
-    firstVirtualTime != null && lastVirtualTime != null
-      ? lastVirtualTime - firstVirtualTime
-      : undefined;
-
-  const sortedKinds = Object.entries(eventKindCounts).sort(
-    ([, a], [, b]) => b - a,
-  );
-
-  const parts: string[] = [
-    `Timeline Summary: ${role}/${replayId}`,
-    "=".repeat(40 + role.length + replayId.length),
-    "",
-    `Total timeline entries: ${timeline.length}`,
-    `Total virtual time: ${totalVirtualTimeMs != null ? `${totalVirtualTimeMs}ms` : "unknown"}`,
-    `Virtual time range: ${firstVirtualTime ?? "?"} - ${lastVirtualTime ?? "?"}`,
-    "",
-    "Key counts:",
-    `  Screenshots: ${screenshotEntries.length}`,
-    `  Navigations: ${navigationCount}`,
-    `  Network requests: ${networkRequestCount}`,
-    `  Animation frames (jsReplay): ${animationFrameCount}`,
-    `  Console messages: ${consoleMessageCount}`,
-    "",
-    "All event kinds:",
-  ];
-
-  for (const [kind, count] of sortedKinds) {
-    parts.push(`  ${kind}: ${count}`);
-  }
-
-  if (screenshotEntries.length > 0) {
-    parts.push("", "Screenshots:");
-    for (const ss of screenshotEntries) {
-      parts.push(
-        `  ${ss.filename}  @ virtualTime ${ss.virtualTime != null ? `${ss.virtualTime}ms` : "unknown"}`,
-      );
-    }
-  }
-
-  if (flakinessWarnings.length > 0) {
-    parts.push("", "Potential flakiness warnings:");
-    for (const fw of flakinessWarnings) {
-      parts.push(
-        `  [${fw.kind}] @ virtualTime ${fw.virtualTime != null ? `${fw.virtualTime}ms` : "unknown"}`,
-      );
-      parts.push(`    ${fw.message}`);
-    }
-  }
-
-  return parts.join("\n");
 };
 
 // ---------------------------------------------------------------------------
@@ -1990,10 +1322,8 @@ const findAssetFilesRecursive = (
 };
 
 // ---------------------------------------------------------------------------
-// Screenshot map & context
+// Screenshot map
 // ---------------------------------------------------------------------------
-
-const SCREENSHOT_LOG_CONTEXT_LINES = 30;
 
 const buildScreenshotMap = (
   debugContext: DebugContext,
@@ -2060,231 +1390,6 @@ const buildScreenshotMap = (
   return map;
 };
 
-const generateScreenshotContext = (
-  debugContext: DebugContext,
-  workspaceDir: string,
-  screenshotMap: Record<string, ScreenshotMapEntry>,
-): void => {
-  if (!debugContext.screenshot) {
-    return;
-  }
-
-  const targetScreenshot = debugContext.screenshot;
-  let count = 0;
-
-  for (const diff of debugContext.replayDiffs) {
-    const headLogPath = join(
-      workspaceDir,
-      DEBUG_DATA_DIRECTORY,
-      "replays",
-      "head",
-      diff.headReplayId,
-      "logs.deterministic.txt",
-    );
-    const baseLogPath = join(
-      workspaceDir,
-      DEBUG_DATA_DIRECTORY,
-      "replays",
-      "base",
-      diff.baseReplayId,
-      "logs.deterministic.txt",
-    );
-
-    const headEntry =
-      screenshotMap[`head/${diff.headReplayId}/${targetScreenshot}`];
-    const baseEntry =
-      screenshotMap[`base/${diff.baseReplayId}/${targetScreenshot}`];
-
-    const parts: string[] = [
-      `Screenshot Context: ${targetScreenshot}`,
-      "=".repeat(40 + targetScreenshot.length),
-      "",
-    ];
-
-    if (headEntry) {
-      parts.push(
-        `HEAD (${diff.headReplayId}) @ virtualTime ${headEntry.virtualTimeStart ?? "?"}ms, event ${headEntry.eventNumber ?? "?"}:`,
-        "",
-      );
-      const headContext = extractLogContext(headLogPath, headEntry);
-      parts.push(headContext ?? "  (could not extract log context)", "");
-    }
-
-    if (baseEntry) {
-      parts.push(
-        `BASE (${diff.baseReplayId}) @ virtualTime ${baseEntry.virtualTimeStart ?? "?"}ms, event ${baseEntry.eventNumber ?? "?"}:`,
-        "",
-      );
-      const baseContext = extractLogContext(baseLogPath, baseEntry);
-      parts.push(baseContext ?? "  (could not extract log context)", "");
-    }
-
-    if (headEntry || baseEntry) {
-      const contextDir = join(
-        workspaceDir,
-        DEBUG_DATA_DIRECTORY,
-        "screenshot-context",
-      );
-      mkdirSync(contextDir, { recursive: true });
-      writeFileSync(
-        join(
-          contextDir,
-          `${diff.headReplayId}-vs-${diff.baseReplayId}-${targetScreenshot.replace(".png", "")}.txt`,
-        ),
-        parts.join("\n"),
-      );
-      count++;
-    }
-  }
-
-  if (count > 0) {
-    console.log(
-      chalk.green(
-        `  Generated screenshot context for ${targetScreenshot} in screenshot-context/`,
-      ),
-    );
-  }
-};
-
-const extractLogContext = (
-  logPath: string,
-  entry: ScreenshotMapEntry,
-): string | undefined => {
-  if (!existsSync(logPath) || entry.virtualTimeStart == null) {
-    return undefined;
-  }
-
-  const lines = readFileSync(logPath, "utf8").split("\n");
-  const targetVt = entry.virtualTimeStart;
-  let bestLine = -1;
-  let bestDist = Infinity;
-
-  for (let i = 0; i < lines.length; i++) {
-    if (!/screenshot/i.test(lines[i])) {
-      continue;
-    }
-    const vtMatch = lines[i].match(/\[virtual:\s*([\d.]+)ms\]/);
-    if (!vtMatch) {
-      continue;
-    }
-    const vt = parseFloat(vtMatch[1]);
-    const dist = Math.abs(vt - targetVt);
-    if (dist < bestDist) {
-      bestDist = dist;
-      bestLine = i;
-    }
-  }
-
-  if (bestLine < 0) {
-    return undefined;
-  }
-
-  const start = Math.max(0, bestLine - SCREENSHOT_LOG_CONTEXT_LINES);
-  const end = Math.min(
-    lines.length,
-    bestLine + SCREENSHOT_LOG_CONTEXT_LINES + 1,
-  );
-  const contextLines = lines.slice(start, end);
-  contextLines[bestLine - start] = `>>> ${contextLines[bestLine - start]}`;
-  return contextLines.join("\n");
-};
-
-// ---------------------------------------------------------------------------
-// Replay comparison
-// ---------------------------------------------------------------------------
-
-const buildReplayComparison = (
-  debugContext: DebugContext,
-  workspaceDir: string,
-): ReplayComparisonEntry[] => {
-  const entries: ReplayComparisonEntry[] = [];
-
-  for (const subDir of ["head", "base", "other"]) {
-    const subDirPath = join(
-      workspaceDir,
-      DEBUG_DATA_DIRECTORY,
-      "replays",
-      subDir,
-    );
-    if (!existsSync(subDirPath)) {
-      continue;
-    }
-
-    for (const replayId of readdirSync(subDirPath)) {
-      const replayDir = join(subDirPath, replayId);
-      const stats = extractReplayStats(replayDir);
-      entries.push({ replayId, role: subDir, ...stats });
-    }
-  }
-
-  if (entries.length >= 2) {
-    console.log(
-      chalk.green(
-        `  Generated replay comparison for ${entries.length} replay(s)`,
-      ),
-    );
-  }
-  return entries;
-};
-
-const extractReplayStats = (
-  replayDir: string,
-): Omit<ReplayComparisonEntry, "replayId" | "role"> => {
-  const stats: Omit<ReplayComparisonEntry, "replayId" | "role"> = {
-    totalEvents: null,
-    totalNetworkRequests: null,
-    totalAnimationFrames: null,
-    totalVirtualTimeMs: null,
-    screenshotCount: null,
-  };
-
-  const timelineStatsPath = join(replayDir, "timeline-stats.json");
-  if (existsSync(timelineStatsPath)) {
-    const timelineStats = JSON.parse(
-      readFileSync(timelineStatsPath, "utf8"),
-    ) as TimelineStatsJson;
-    const counts = timelineStats.countByType ?? {};
-    stats.totalEvents = Object.values(counts).reduce((sum, n) => sum + n, 0);
-    stats.totalNetworkRequests = counts["pollyReplay"] ?? null;
-    stats.totalAnimationFrames = counts["jsReplay"] ?? null;
-  }
-
-  const timeline = readReplayTimeline(replayDir);
-  if (timeline != null && timeline.length > 0) {
-    let minVt: number | undefined;
-    let maxVt: number | undefined;
-    for (const entry of timeline) {
-      const vt = entry.virtualTimeStart;
-      if (vt != null) {
-        if (minVt == null || vt < minVt) {
-          minVt = vt;
-        }
-        if (maxVt == null || vt > maxVt) {
-          maxVt = vt;
-        }
-      }
-    }
-    if (minVt != null && maxVt != null) {
-      stats.totalVirtualTimeMs = Math.round(maxVt - minVt);
-    }
-  }
-
-  const replayId = basename(replayDir);
-  const screenshotsDir = join(
-    getMeticulousLocalDataDir(),
-    "replays",
-    replayId,
-    "screenshots",
-  );
-  if (existsSync(screenshotsDir)) {
-    stats.screenshotCount = readdirSync(screenshotsDir).filter((f) =>
-      f.endsWith(".png"),
-    ).length;
-  }
-
-  return stats;
-};
-
 // ---------------------------------------------------------------------------
 // File metadata
 // ---------------------------------------------------------------------------
@@ -2301,11 +1406,9 @@ const collectFileMetadata = (
     "logs.concise.txt",
     "timeline.ndjson",
     "timeline.json",
-    "timeline-stats.json",
     "metadata.json",
     "launchBrowserAndReplayParams.json",
-    "stackTraces.json",
-    "accuracyData.json",
+    "accuracy.json",
   ];
 
   for (const subDir of ["head", "base", "other"]) {
@@ -2657,22 +1760,20 @@ const defaultWriteContextJson = (
     replayComparison,
     domDiffMap,
     paths: {
-      replays: "replays/",
-      sessions: "sessions/",
-      diffs: "diffs/",
-      logDiffs: "log-diffs/",
-      logDiffsFiltered: "log-diffs/*.filtered.diff",
-      logDiffsSummary: "log-diffs/*.summary.txt",
-      paramsDiffs: "params-diffs/",
-      assetsDiffs: "assets-diffs/",
-      timelineSummaries: "timeline-summaries/",
-      screenshotContext: "screenshot-context/",
-      domDiffs: "dom-diffs/",
-      domDiffsSummary: "dom-diffs/*.summary.txt",
-      prDiff: "pr-diff.txt",
-      prDescription: "pr-description.txt",
-      formattedAssets: "formatted-assets/",
-      testRun: "test-run/",
+      ...pickExistingPaths(join(workspaceDir, DEBUG_DATA_DIRECTORY), {
+        replays: "replays/",
+        sessions: "sessions/",
+        diffs: "diffs/",
+        assetsDiffs: "assets-diffs/",
+        errorsDiff: "errors-diff/",
+        coverageDiff: "coverage-diff/",
+        domDiffs: "dom-diffs/",
+        domDiffsSummary: "dom-diffs/*.summary.txt",
+        prDiff: "pr-diff.txt",
+        prDescription: "pr-description.txt",
+        formattedAssets: "formatted-assets/",
+        testRun: "test-run/",
+      }),
       projectRepo: projectRepoDir ? "project-repo/" : undefined,
     },
     fileMetadata,

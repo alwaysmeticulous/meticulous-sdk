@@ -216,7 +216,7 @@ export type PrNumbersByBugPreventionCategory = Record<
   | "diff_rejected"
   | "diff_eliminated"
   | "diff_changed_and_approved"
-  | "check_rejected",
+  | "check_fixed",
   string[]
 >;
 
@@ -234,11 +234,10 @@ export interface ProjectDailyStatsItem {
   prs: ProjectDailyPrStats;
   /**
    * PRs with a potential bug prevented, by certainty. `high` counts rejected
-   * visual diffs and check warnings nobody dismissed (`diff_rejected`,
-   * `check_rejected`); `medium` counts diffs that were viewed and then fixed
-   * (`diff_eliminated`); `lower` counts `diff_changed_and_approved`. Rows
-   * computed before check catches were counted include only the visual-diff
-   * categories.
+   * visual diffs (`diff_rejected`); `medium` counts diffs and check warnings
+   * that were viewed and then fixed (`diff_eliminated`, `check_fixed`);
+   * `lower` counts `diff_changed_and_approved`. Rows computed before checks
+   * needed a fix count check warnings nobody dismissed under `high` instead.
    */
   bugsPrevented: {
     total: number;

@@ -109,10 +109,3 @@ ${snippetTemplate(allEnvironmentsOpts)}
 {% /tab %}
 {% /tabs %}
 {% /code_with_project_selector %}`;
-
-const anyOtherFrameworkInstructions = recorderLoaderInstructions({
-  title: "Installing on any other framework",
-  appEntryPointDescription: "app entry point",
-  appEntryPointExampleFileName: "`index.js` or `main.js`",
-  snippetTemplate: anyOtherFrameworkSnippet,
-});

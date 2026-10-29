@@ -74,7 +74,7 @@ export const resolveBuildCommitSha = async ({
   if (await hasUncommittedChanges(gitOpts)) {
     const stashSha = await getStashCreateSha(gitOpts);
     if (stashSha) {
-      // Always surface this (not just under --verbose): the build is registered
+      // Always surface this (not just under --logLevel info): the build is registered
       // against an ephemeral, unreachable stash commit, which the user can't
       // otherwise recover.
       logNotice(
@@ -225,7 +225,7 @@ export const resolveComparisonOptions = async ({
       );
     }
     if (dirty) {
-      // Always surface this (not just under --verbose): the diff is computed
+      // Always surface this (not just under --logLevel info): the diff is computed
       // against an ephemeral stash commit rather than HEAD.
       logNotice(
         `commitSha (local, ephemeral due to dirty working tree): ${resolvedHead}`,

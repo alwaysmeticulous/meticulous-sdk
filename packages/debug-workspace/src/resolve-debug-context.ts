@@ -72,7 +72,13 @@ const resolveFromReplayDiff = async (
   const testRunId = diff.testRun?.id;
 
   const replayIds = collectUniqueIds([headReplayId, baseReplayId]);
-  const sessionIds = sessionId ? collectUniqueIds([sessionId]) : [];
+  // Head and base can replay different copies of a session (e.g. one patched
+  // by network patching), whose recorded responses differ: download both.
+  const sessionIds = collectUniqueIds(
+    [sessionId, diff.baseReplay.sessionId].filter(
+      (id): id is string => id != null,
+    ),
+  );
 
   let baseCommitSha: string | undefined;
   let executionSha: string | undefined;
@@ -167,11 +173,16 @@ const resolveFromReplayIds = async (
 
   if (validReplays.length === 2) {
     const [head, base] = validReplays;
-    if (head.sessionId && base.sessionId && head.sessionId !== base.sessionId) {
-      console.error(
-        `Error: Head replay ${head.id} (session ${head.sessionId}) and base replay ${base.id} (session ${base.sessionId}) use different sessions.`,
+    if (
+      head.sessionId &&
+      base.sessionId &&
+      stripPatchedSuffix(head.sessionId) !== stripPatchedSuffix(base.sessionId)
+    ) {
+      console.warn(
+        chalk.yellow(
+          `Warning: Head replay ${head.id} (session ${head.sessionId}) and base replay ${base.id} (session ${base.sessionId}) replayed different sessions, so they may not be comparable.`,
+        ),
       );
-      process.exit(1);
     }
   }
 
@@ -203,6 +214,10 @@ const resolveFromReplayIds = async (
 };
 
 const collectUniqueIds = (ids: string[]): string[] => [...new Set(ids)];
+
+// A session patched by network patching is `<id>_p<13-digit timestamp>`.
+const stripPatchedSuffix = (sessionId: string): string =>
+  sessionId.replace(/_p\d{13}$/, "");
 
 const formatOrgAndProject = (
   project: { name?: string; organization?: { name?: string } } | undefined,

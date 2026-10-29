@@ -1,5 +1,74 @@
 # @alwaysmeticulous/cli
 
+## 3.4.0
+
+### Patch Changes
+
+- [#16342](https://github.com/alwaysmeticulous/meticulous/pull/16342) [`a4c49e7`](https://github.com/alwaysmeticulous/meticulous/commit/a4c49e7c2ab0994f3983bc0bd1f38564c8e8652a) Thanks [@OCzarnecki](https://github.com/OCzarnecki)! - `meticulous onboard` now sets up feature flag overrides as described in [Testing Feature Flags with Meticulous](https://app.meticulous.ai/docs/how-to/testing-feature-flags), rather than only recording flag values. The install agent wraps the helper your app reads flags through so it asks `getFlagOverride` first (or layers `getAllFlagOverrides` over a flag map built in one place), consumes the override to match the helper's shape (on/off gate, value-read or equality-check), and records the value it actually returns with `recordFeatureFlag`. Flags your server resolves while rendering are pointed at the `meticulous_flag_overrides` cookie, read only when `METICULOUS_BUILD` is set so a production deployment ignores that cookie, with turning on cookie delivery listed as a manual step in the PR. Defaulting new flags to on stays an optional follow-up and is not applied.
+
+## 3.3.0
+
+### Minor Changes
+
+- [#15972](https://github.com/alwaysmeticulous/meticulous/pull/15972) [`c74d9f9`](https://github.com/alwaysmeticulous/meticulous/commit/c74d9f922ad40d98e797576dd8750369cb62aff9) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent` and `download` commands deprecate `--verbose` in favour of the global `--logLevel`, which they now default to `warn`: pass `--logLevel info` to see more logs. They also write every log line to stderr at any level, so stdout only carries the command's result. `--verbose` keeps working, with a deprecation notice, and an explicit `--logLevel` still takes precedence over it. The OAuth login's sign-in URL, device code and success message are now always printed to stderr, whatever the log level. Debug logs name the local data dir and auth source once instead of on every request, and `test-run-for-commit`, `submit-feedback` and `upload-build` no longer log a labelled copy of the id they print.
+
+- [#16135](https://github.com/alwaysmeticulous/meticulous/pull/16135) [`6985e75`](https://github.com/alwaysmeticulous/meticulous/commit/6985e75d0a642d4f57e05a7d3a66130b81921478) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `agent dom`, which prints the DOM snapshot of one screenshot of a replay (`--replayId`, `--screenshotName`), so reading the DOM a replay saw no longer means downloading the replay archive. By default the DOM is shown as it was captured, so its ids, generated class names and `data-meticulous-*` annotations (bounding boxes, paint visibility, React component names) match what the replay's selectors and timeline refer to; `--removeNoise` removes the noise `agent dom-diff` removes instead. `--path=0,2,1` prints only the element at that nth-child path from `<body>` and its descendants. Output is pretty-printed one tag per line and paged by line (100 by default, `--limit`/`--offset`), with attribute values and text over 1000 characters (ending in their length and a hash), and lines over 2000, cut short; it fails with an error naming the replay while it is still running.
+
+  `agent dom-diff` now formats its hunks as `agent dom` does, indented, comparing lines without their indentation so an element re-nested under a new wrapper isn't itself a change. Each hunk is headed by a `diff <n> at path [...]` line naming the `--path` of the element that changed (`diff 0 at path [0,2,1]`), and `--path` diffs only that element. The output is paged by line like `agent dom`, the number of differences is reported on stderr, and `--json` prints `{ diff }`, the same text.
+
+  The same is available as the MCP tools `get_dom` and `get_dom_diff` (which now returns plain text), and as `getScreenshotDom` and `getScreenshotDomDiffText` in `@alwaysmeticulous/client`.
+
+- [#14080](https://github.com/alwaysmeticulous/meticulous/pull/14080) [`371a40f`](https://github.com/alwaysmeticulous/meticulous/commit/371a40f5f78d271492c7280fcc8da9c0219688e9) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Rework `agent timeline-diff` and add `agent timeline`, `agent timeline-event` and `agent timeline-event-diff`.
+
+  `timeline-diff` now pairs base and head events by what they are — user events on the recorded event they simulate, screenshots by name, network requests per URL in time order — instead of one hash for everything, so a click whose match changed shows as a single `changed` row with the reason (`success -> failed`, `confidence 0.86 -> 0.99`, `element <a> -> <b>`, plus the bounding box when it moved too) rather than an indistinguishable removed/added pair. Repeats of an event between the same two user events or screenshots are listed once with a `count`, and as `count 3 -> 1` when the replays differ. By default only the differing rows plus their surrounding screenshots and user events are listed; `--includeIdenticalEvents` lists the identical events too. Verbose kinds are off by default: `asset` (asset loads), `subframe` (sub-frame URL changes), `log` (console output below warning level), `storage`, `limit` (the marker for timeline entries dropped past a cap) and `container`; `--kinds` selects kinds explicitly (`--kinds=all` for everything), and `--sinceMs`/`--untilMs`/`--screenshotName` narrow the window. A user event's description shows its match confidence, or why it failed: `click on (conf: 0.92) button.save`, `click on (low conf: 0.41) …`, `click on (failed: obscured) …`; a stubbed request's shows its match classification: `POST (partialMatch) /graphql (Save) -> 200`, and a request served a different response, from a different recording than in the base replay, is `changed` with `recording 17:55:15.055 [#1](https://github.com/alwaysmeticulous/meticulous/issues/1) -> 17:55:15.055 [#2](https://github.com/alwaysmeticulous/meticulous/issues/2)`. Rows are paged, 100 by default, with `--limit`/`--offset`. Every row carries a stable `eventId` (`user:<n>`, the screenshot name, or `head:<idx>`/`base:<idx>`). stdout is the table alone, so it pipes cleanly; the difference count, the filtered and total event counts, and both replay ids are reported on stderr.
+
+  `agent timeline` lists one replay's events with the same filters and columns. `agent timeline-event` shows one event in full, and `agent timeline-event-diff` only the fields that differ between the two replays, marked like `timeline-diff` rows (`! user.confidence: 0.864 -> 0.992`, `-`/`+` for a field only one side has) — for user events the match result, confidence, the inputs dispatched, coordinates, what was at the coordinates or obscured a press, and the recorded target path aligned against the matched element with per-element scores (in `timeline-event-diff` lined up on the target both replays share); for network requests the request, the matched recorded request, the response and any patching applied. All four fail with an error naming the replay while it is still running.
+
+  The same four operations are available as the MCP tools `get_timeline_diff`, `get_timeline`, `get_timeline_event` and `get_timeline_event_diff`; `get_timeline_diff` now returns the same shape as the CLI's `--json`.
+
+  `getTimelineDiff` in `@alwaysmeticulous/client` sends `clientVersion=2` and returns the new `{ entries, notes }` shape (or a `TestRunProcessingResponse` for an unfinished replay, as do the three new getters); `getReplayTimeline`, `getTimelineEvent` and `getTimelineEventDiff` are new. The backend still serves the previous response to a client that sends no `clientVersion`, so an already-published CLI is unaffected — but the `TimelineDiffResponse`/`TimelineDiffEntry` types change for anyone upgrading the library itself.
+
+- [#15890](https://github.com/alwaysmeticulous/meticulous/pull/15890) [`72a9423`](https://github.com/alwaysmeticulous/meticulous/commit/72a94236ad76fb7f071d96c6ebe99642a62da250) Thanks [@sesajad](https://github.com/sesajad)! - Agent swarm: `ci agent-test --localImageTag` supports `--backendUrl`. The origin is injected into the container's runtime env (`--backendUrlEnvVariable`, default `METICULOUS_BACKEND_URL`). Opt into `--backendProxyPaths` to front both the container and staging backend behind one browser origin (experimental): matching paths route to staging and all others to the container. Cookies and redirects are browser-native. `--appPort` sets the fronting port (default 8000); routing inside the container is still preferred for server-side requests.
+
+### Patch Changes
+
+- [#16087](https://github.com/alwaysmeticulous/meticulous/pull/16087) [`1777587`](https://github.com/alwaysmeticulous/meticulous/commit/17775877067de20bb18b2410276466421da5aed5) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent timeline-event-diff` lists a `segment` field: the click, key press or screenshot, shared by both replays, that the event follows (`after user:12`, or `start`), so an event that moved shows where to. `TimelineEventDetails` in `@alwaysmeticulous/client` gains the optional `segment`.
+
+- [#16134](https://github.com/alwaysmeticulous/meticulous/pull/16134) [`1b76eea`](https://github.com/alwaysmeticulous/meticulous/commit/1b76eeae15a41f178be8a110f45db65d973d4d5a) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `agent timeline-event` and `agent timeline-event-diff` give each element of a user event in full, as the matcher compares it (`button:nth(1).btn[type="submit"] text="Save" firstText[0]="Save" (unscored: #save)`, with the id and the attributes the matcher doesn't score last), instead of a shortened summary; a path row below its maximum score lists what each component scored (`12.9/24: nthChild 1, tagName 1, attributes 10, text 0`). They also add `targetDepth` / `matchDepth` and the child-index paths `elementAtCoordinatesPath` / `obscuredByPath`. `UserEventDetails` in `@alwaysmeticulous/client` gains these optional fields.
+
+- [#15976](https://github.com/alwaysmeticulous/meticulous/pull/15976) [`a537d9f`](https://github.com/alwaysmeticulous/meticulous/commit/a537d9ff3a68205513206f95dd8791f36838bb5c) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Debug workspaces now point an agent at the evidence that explains a diff, and drop what didn't:
+  - New `errors-diff/`: uncaught errors, unhandled rejections and `console.error` messages of head and
+    base, grouped and marked `head-only`, `base-only` or `both`, with the top stack frames of
+    uncaught errors.
+  - New `coverage-diff/`: which of the PR's changed lines executed in each replay, files executed in
+    only one replay, and differing lines elsewhere, for the whole replay and the targeted screenshot.
+  - Both are also written for `debug replay <id> --baseReplayId <id>`, which now only warns, rather
+    than exits, when the two replays replayed different sessions, and accepts a patched copy of the
+    same session.
+  - `network-log/` lines now show the GraphQL operation, the recording that was served, how it was
+    matched (`match=exact`, `match=normalized:<step>` or `match=loose:<step>`), and
+    `SERVED-OTHER-URL`, `BODY-IGNORED`, `QUERY-IGNORED` and `PARTIAL-BATCH` markers for loose
+    matches. `events-index/` error lines show the top stack frame and stay on one line.
+  - `diffs/*.summary.json` now includes each screenshot's mismatch pixels and percentage, diff hash,
+    changed class names and, for flakes, the flake evidence.
+  - `replayComparison` in `context.json` now always reports timeline entry, network request and user
+    event counts, plus each replay's session ID; `totalAnimationFrames` is renamed `totalUserEvents`.
+  - The filtered logs no longer replace long identifiers without digits (type and class names).
+  - End-state screenshots are named `final-state…` in `events-index/` and `screenshot-timeline-context/`
+    (they were `screenshot-after-event-0000?`), the base replay's session is downloaded too when it
+    differs from head's, and `context.json` only lists paths that exist.
+  - Removed: the bundled subagents and skills, `log-diffs/`, `params-diffs/`, `timeline-summaries/`,
+    `screenshot-context/` and `stack-traces.ndjson`.
+
+- [#15587](https://github.com/alwaysmeticulous/meticulous/pull/15587) [`c16a559`](https://github.com/alwaysmeticulous/meticulous/commit/c16a55984b4502a807511a5797192b3072955fa6) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Keep the OAuth login when a token refresh fails transiently. Stored tokens are
+  now only cleared when the authorization server rejects the refresh with an
+  RFC 6749 error (`invalid_grant`, `invalid_client`, ...); network errors,
+  timeouts, 5xx and 429 responses keep the login so the next command can retry
+  the refresh, instead of requiring `meticulous auth login` again. A kept login
+  no longer triggers a new browser login.
+
+- [#16131](https://github.com/alwaysmeticulous/meticulous/pull/16131) [`5b24626`](https://github.com/alwaysmeticulous/meticulous/commit/5b24626e2154a8fef8564e5ebf06c1fe35f95ae3) Thanks [@Genora51](https://github.com/Genora51)! - An asset upload that omits `--rewrites` uses the project's asset rewrites when those are set. Rules passed on the upload still win. With neither, missing paths are still served from `/index.html`.
+
 ## 3.2.0
 
 ### Minor Changes

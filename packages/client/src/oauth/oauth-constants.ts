@@ -41,8 +41,10 @@ const getOidcConfiguration = async (
   return cachedOidcConfiguration;
 };
 
-export const getTokenEndpoint = async (): Promise<string> => {
-  const config = await getOidcConfiguration();
+export const getTokenEndpoint = async (
+  signal?: AbortSignal,
+): Promise<string> => {
+  const config = await getOidcConfiguration(signal);
   return config.token_endpoint;
 };
 

@@ -9,7 +9,7 @@ let timestampsApplied = false;
 // Tracks whether a level was explicitly chosen via `setLogLevel`. In Node there
 // is no persisted level, so `setDefaultLevel` would otherwise reset the level
 // back to INFO on every `initLogger` call — clobbering an explicit `--logLevel`
-// / `--verbose` choice. Once a level is set explicitly we stop applying the
+// choice. Once a level is set explicitly we stop applying the
 // default.
 let explicitLevelSet = false;
 
@@ -36,11 +36,17 @@ export const initLogger: () => log.Logger = () => {
 
 const STDOUT_LOG_METHODS = new Set(["trace", "debug", "info", "log"]);
 
+let logsRoutedToStderr = false;
+
 /**
  * Sends every log line to stderr, so a command whose stdout carries
  * machine-readable output can still honour `--logLevel info|debug|trace`.
  */
 export const routeLogsToStderr: () => void = () => {
+  if (logsRoutedToStderr) {
+    return;
+  }
+  logsRoutedToStderr = true;
   const logger = initLogger();
   const originalFactory = logger.methodFactory;
   logger.methodFactory = (methodName, logLevel, loggerName) =>
@@ -84,7 +90,7 @@ export const setLogLevel: (logLevel: string | undefined) => void = (
 /**
  * Writes a verbose progress line to **stderr** (so stdout stays reserved for
  * machine-readable output), shown only when the logger level is INFO or more
- * verbose — i.e. under `--verbose` / `--logLevel info|debug|trace`. Use for
+ * verbose — i.e. under `--logLevel info|debug|trace`. Use for
  * step-by-step progress that should be hidden by default.
  *
  * Uses `console.error` (stderr in Node, the console in browsers) deliberately:
@@ -99,7 +105,7 @@ export const logProgress: (message: string) => void = (message) => {
 
 /**
  * Writes an always-on diagnostic line to **stderr** (shown regardless of
- * `--verbose`), so stdout stays reserved for machine-readable output. Use for
+ * log level), so stdout stays reserved for machine-readable output. Use for
  * warnings and essential notices that must always surface.
  */
 export const logNotice: (message: string) => void = (message) => {
