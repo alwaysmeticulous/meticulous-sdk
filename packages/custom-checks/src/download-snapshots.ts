@@ -23,6 +23,19 @@ export interface CustomCheckSnapshotFileToDownload {
 }
 
 /**
+ * Optional per-entry projection applied as each snapshot file is parsed, so
+ * callers that only read a subset of `data` (e.g. `network-requests` dropping
+ * `requestHeaders`, `responseHeaders`, and unused `requestBody` strings) do
+ * not retain the full parsed payload across thousands of downloaded files.
+ */
+export type SnapshotDataProjector = (snapshot: {
+  type: string;
+  sessionId: string;
+  stageDuringSession: string;
+  data: unknown;
+}) => unknown;
+
+/**
  * Downloads every snapshot file in parallel from the single signed base URL and
  * assembles them into a flat list of {@link Snapshot}s for a custom check.
  */
@@ -30,17 +43,23 @@ export const downloadAndAssembleSnapshots = async ({
   signedBaseUrl,
   files,
   concurrency = DEFAULT_DOWNLOAD_CONCURRENCY,
+  projectSnapshotData,
 }: {
   signedBaseUrl: string;
   files: CustomCheckSnapshotFileToDownload[];
   concurrency?: number;
+  projectSnapshotData?: SnapshotDataProjector;
 }): Promise<Snapshot[]> => {
   if (files.length === 0) {
     return [];
   }
   const limit = pLimit(concurrency);
   const snapshotsPerFile = await Promise.all(
-    files.map((file) => limit(() => downloadSnapshotFile(signedBaseUrl, file))),
+    files.map((file) =>
+      limit(() =>
+        downloadSnapshotFile(signedBaseUrl, file, projectSnapshotData),
+      ),
+    ),
   );
   return snapshotsPerFile.flat();
 };
@@ -58,6 +77,7 @@ export const downloadAndAssembleSnapshots = async ({
 const downloadSnapshotFile = async (
   signedBaseUrl: string,
   file: CustomCheckSnapshotFileToDownload,
+  projectSnapshotData?: SnapshotDataProjector,
 ): Promise<Snapshot[]> => {
   const url = buildSnapshotFileUrl(signedBaseUrl, file.key);
   const parsed = await downloadAndUnzipJson<unknown>(url, {
@@ -83,7 +103,14 @@ const downloadSnapshotFile = async (
     // absent for sessions without a description.
     sessionDescription: snapshot.sessionDescription ?? null,
     stageDuringSession: snapshot.stageDuringSession,
-    data: snapshot.data,
+    data: projectSnapshotData
+      ? projectSnapshotData({
+          type: file.type,
+          sessionId: file.sessionId,
+          stageDuringSession: snapshot.stageDuringSession,
+          data: snapshot.data,
+        })
+      : snapshot.data,
     // Default to 0 so built-in snapshots (written without a version) surface as
     // the documented default rather than `undefined`.
     versionNumber: snapshot.versionNumber ?? 0,

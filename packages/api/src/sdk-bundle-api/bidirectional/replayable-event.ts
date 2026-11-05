@@ -38,4 +38,13 @@ export interface ReplayableEvent {
    * release, since headless overlay scrollbars have no gutter and the press would hit content.
    */
   scrollbarGutterPress?: boolean;
+
+  /**
+   * For pointerup: the summed `movementX`/`movementY` of the held moves while the page held pointer
+   * lock since the paired press. Under pointer lock the browser freezes `clientX`/`clientY`, so the
+   * release is recorded where the press was; replay moves the held button by this offset before
+   * releasing. Undefined on older sessions, when the page never held pointer lock with a button
+   * down, and when the movement summed to zero.
+   */
+  pointerLockMovement?: { x: number; y: number };
 }

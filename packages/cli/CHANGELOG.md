@@ -1,5 +1,49 @@
 # @alwaysmeticulous/cli
 
+## 3.5.0
+
+### Minor Changes
+
+- [#16463](https://github.com/alwaysmeticulous/meticulous/pull/16463) [`8d20748`](https://github.com/alwaysmeticulous/meticulous/commit/8d20748db16fb260438293c12661f7261920570a) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent approve-diff`, `reject-diff` and `ignore-diff` take `--diffs`,
+  a JSON array of up to 100 diffs of one test run, each with the fields a single
+  diff takes. The batch is recorded all or nothing, and outputs one row per diff.
+  The client adds `reviewDiffs` and `MAX_AGENT_DIFF_DECISION_BATCH_SIZE`.
+
+### Patch Changes
+
+- [#16417](https://github.com/alwaysmeticulous/meticulous/pull/16417) [`0baa953`](https://github.com/alwaysmeticulous/meticulous/commit/0baa9533a3e3c7de6e1958ea12d7b596d97190ac) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `agent test-run-diffs` no longer asks agents to credit Meticulous as a co-author when the project has turned on the "Don't ask agents to add Meticulous as co-author on commits" setting, which the backend now reports as `disableAgentCoAuthorCredit` on complete `getTestRunDiffsSummary` responses. `meticulous agent --help` no longer includes the co-author instruction, since it can't know the project's setting.
+
+- [#16839](https://github.com/alwaysmeticulous/meticulous/pull/16839) [`4503be5`](https://github.com/alwaysmeticulous/meticulous/commit/4503be5c46e191cd38bf64e32c7cb75d86edf7d4) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agent swarm base-vs-head comparisons can now be judged `unrelated` (a real difference the pull request did not cause) or `not-comparable` (the two sides never showed the same state), as well as `regression` or `intended-change`. The client adds the `AgenticRunComparisonVisualReview` and `AgenticRunComparisonSecondLook` types (with `AgenticRunComparisonDefect` and `AgenticRunComparisonVisualDifference`) for the vision model's read of a checkpoint pair and its second look at the agent's explanation, and `AgentSwarmComparison.secondLookDisagreement`. `meticulous agent agent-swarm-run-case --help` describes the new verdicts and `secondLookDisagreement`.
+
+- [#16617](https://github.com/alwaysmeticulous/meticulous/pull/16617) [`6dd0fcd`](https://github.com/alwaysmeticulous/meticulous/commit/6dd0fcd24b84ea4fcc185e8c062fc91770032010) Thanks [@narobertson42](https://github.com/narobertson42)! - Session summaries of an auxiliary-viewport copy (session ID suffix `_aux<hash>`) now say so, like the other copies Meticulous derives from a recording.
+
+- [#16461](https://github.com/alwaysmeticulous/meticulous/pull/16461) [`af7f818`](https://github.com/alwaysmeticulous/meticulous/commit/af7f8183ef234fee59a307c0d9623289bb42396a) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Debug workspaces now index the session's recorded requests and say more about replayed user events:
+  - New `session-requests/<sessionId>.txt`: one line per recorded request in recorded order, keyed by
+    the `#<order>` that `network-log/` shows as `rec=#<order>`, with the full URL, GraphQL operation,
+    status, response size, Meticulous-patched responses, and the start of the request and response
+    bodies. It ends with the requests recorded more than once with the same method, URL and body.
+  - Session summaries of a session Meticulous derived from a recording (patched, sliced, mutated,
+    feature-flag override or mobile variant) start with what Meticulous changed.
+  - `events-index/` lines for replayed user events show the key of keyboard events, how confidently
+    the target was matched, why a failed event failed, and the target element.
+  - `network-log/` and `events-index/` no longer cut URLs short, and `events-index/` and `logs-index/`
+    no longer contain control characters.
+  - `coverage-diff/` is built from the replay diff's coverage as Meticulous maps it to repo paths (the
+    same as `agent js-coverage-diff --replayDiffId`), for the whole replay and the targeted screenshot,
+    instead of matching the PR's paths to the bundle's source paths itself, which missed files a
+    bundler places under a different directory. It lists repo files only, and is no longer generated
+    for `debug replay <id> --baseReplayId <id>`, which has no replay diff.
+  - `context.json` has `meticulousBuildsDiffer`, set when head and base were replayed by different
+    versions of Meticulous.
+  - `accuracy.json`, which current replays don't include, is no longer documented.
+
+- [#14366](https://github.com/alwaysmeticulous/meticulous/pull/14366) [`4ce314c`](https://github.com/alwaysmeticulous/meticulous/commit/4ce314ca0693e0d0b1bd6df1d192278ac4c501bf) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Handle test runs that were deliberately not executed. A run that was deferred
+  (because the pull request has already been tested on an earlier commit), or that
+  reuses an earlier commit's results, now stops waiters promptly and explains the
+  decision to make and where to make it, instead of hanging or reading as a pass.
+  Clients now declare test-run status contract v2; older clients keep receiving a
+  status they understand.
+
 ## 3.4.0
 
 ### Patch Changes

@@ -200,6 +200,18 @@ export const executeRemoteTestRun = async ({
       case "ExecutionError":
         logger.info(`Test run failed with execution error.`);
         break;
+      case "Deferred":
+        logger.info(
+          `Test run was deferred and has not been executed: this pull request has already been tested on an earlier commit. ` +
+            `Open ${completedTestRun.url} to reuse those results for this commit, or to run the tests anyway.`,
+        );
+        break;
+      case "ResultsReused":
+        logger.info(
+          `Test run was not executed: it reuses the results of an earlier commit's test run on this pull request. ` +
+            `See ${completedTestRun.url} for those results.`,
+        );
+        break;
       case "Partial":
         logger.info(
           `Test run partially completed. Some test cases may not have been executed.`,

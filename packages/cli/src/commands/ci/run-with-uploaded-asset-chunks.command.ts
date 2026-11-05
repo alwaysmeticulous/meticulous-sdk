@@ -32,6 +32,10 @@ import {
 } from "../../utils/out-of-date-client-error";
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
 import {
+  isTestRunDeferred,
+  isTestRunResultsReused,
+} from "../../utils/resolve-test-run-from-commit";
+import {
   hasGitContextForTestRunWait,
   resolveGitOptions,
 } from "./resolve-git-options";
@@ -377,6 +381,20 @@ const handler = async ({
   logger.info(
     `Test run ${testRunId} finished with status: ${completedTestRun.status}`,
   );
+  // A deferred run stops here having executed nothing, so say what it is waiting
+  // for rather than leaving a bare status that reads as a completed test run.
+  if (isTestRunDeferred(completedTestRun.status)) {
+    logger.info(
+      `The test run was deferred and has not been executed: this pull request has already been tested on an earlier commit. ` +
+        `Open ${completedTestRun.url} to reuse those results for this commit, or to run the tests anyway.`,
+    );
+  }
+  if (isTestRunResultsReused(completedTestRun.status)) {
+    logger.info(
+      `The test run was not executed: it reuses the results of an earlier commit's test run on this pull request. ` +
+        `See ${completedTestRun.url} for those results.`,
+    );
+  }
   if (json) {
     printCiJson({
       outcome: "success",

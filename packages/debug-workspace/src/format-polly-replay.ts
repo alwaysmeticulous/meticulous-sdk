@@ -1,4 +1,3 @@
-const MAX_URL_LENGTH = 120;
 const MAX_BODY_PARSE_LENGTH = 200_000;
 
 // Matching-ladder step names, from network matching's transformations.
@@ -65,7 +64,7 @@ export const formatPollyReplayDetail = (
   const operation = getGraphQLOperationNames(url, request.postData?.text);
 
   const parts = [
-    `${request.method ?? "?"} ${truncate(url, MAX_URL_LENGTH)}`,
+    `${request.method ?? "?"} ${url}`,
     ...(operation ? [`op=${operation}`] : []),
     "->",
     ...(matched?.response?.status != null
@@ -78,9 +77,7 @@ export const formatPollyReplayDetail = (
     parts.push(...formatRecording(matched));
     const matchedUrl = matched.request?.url;
     if (matchedUrl != null && getPath(matchedUrl) !== getPath(url)) {
-      parts.push(
-        `SERVED-OTHER-URL=${truncate(getPathAndQuery(matchedUrl), MAX_URL_LENGTH)}`,
-      );
+      parts.push(`SERVED-OTHER-URL=${getPathAndQuery(matchedUrl)}`);
     }
   }
 
@@ -139,7 +136,7 @@ const formatMatchStep = (step: string | undefined): string => {
 const formatDecision = (decision: MatchIndexDecision): string =>
   decision.reason ? `${decision.kind}(${decision.reason})` : `${decision.kind}`;
 
-const getGraphQLOperationNames = (
+export const getGraphQLOperationNames = (
   url: string,
   body: string | undefined,
 ): string | undefined => {
@@ -180,6 +177,3 @@ const getPathAndQuery = (url: string): string => {
   const parsed = parseUrl(url);
   return parsed ? `${parsed.pathname}${parsed.search}` : url;
 };
-
-const truncate = (s: string, maxLen: number): string =>
-  s.length > maxLen ? s.slice(0, maxLen) + "..." : s;

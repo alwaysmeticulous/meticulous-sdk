@@ -1,5 +1,38 @@
 # @alwaysmeticulous/debug-workspace
 
+## 3.5.0
+
+### Minor Changes
+
+- [#16461](https://github.com/alwaysmeticulous/meticulous/pull/16461) [`af7f818`](https://github.com/alwaysmeticulous/meticulous/commit/af7f8183ef234fee59a307c0d9623289bb42396a) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Debug workspaces now index the session's recorded requests and say more about replayed user events:
+  - New `session-requests/<sessionId>.txt`: one line per recorded request in recorded order, keyed by
+    the `#<order>` that `network-log/` shows as `rec=#<order>`, with the full URL, GraphQL operation,
+    status, response size, Meticulous-patched responses, and the start of the request and response
+    bodies. It ends with the requests recorded more than once with the same method, URL and body.
+  - Session summaries of a session Meticulous derived from a recording (patched, sliced, mutated,
+    feature-flag override or mobile variant) start with what Meticulous changed.
+  - `events-index/` lines for replayed user events show the key of keyboard events, how confidently
+    the target was matched, why a failed event failed, and the target element.
+  - `network-log/` and `events-index/` no longer cut URLs short, and `events-index/` and `logs-index/`
+    no longer contain control characters.
+  - `coverage-diff/` is built from the replay diff's coverage as Meticulous maps it to repo paths (the
+    same as `agent js-coverage-diff --replayDiffId`), for the whole replay and the targeted screenshot,
+    instead of matching the PR's paths to the bundle's source paths itself, which missed files a
+    bundler places under a different directory. It lists repo files only, and is no longer generated
+    for `debug replay <id> --baseReplayId <id>`, which has no replay diff.
+  - `context.json` has `meticulousBuildsDiffer`, set when head and base were replayed by different
+    versions of Meticulous.
+  - `accuracy.json`, which current replays don't include, is no longer documented.
+
+### Patch Changes
+
+- [#16617](https://github.com/alwaysmeticulous/meticulous/pull/16617) [`6dd0fcd`](https://github.com/alwaysmeticulous/meticulous/commit/6dd0fcd24b84ea4fcc185e8c062fc91770032010) Thanks [@narobertson42](https://github.com/narobertson42)! - Session summaries of an auxiliary-viewport copy (session ID suffix `_aux<hash>`) now say so, like the other copies Meticulous derives from a recording.
+
+- Updated dependencies [[`0baa953`](https://github.com/alwaysmeticulous/meticulous/commit/0baa9533a3e3c7de6e1958ea12d7b596d97190ac), [`83c2b73`](https://github.com/alwaysmeticulous/meticulous/commit/83c2b739e036a5cd8c184b68d2364dbfe2f38e6b), [`4503be5`](https://github.com/alwaysmeticulous/meticulous/commit/4503be5c46e191cd38bf64e32c7cb75d86edf7d4), [`85eabb8`](https://github.com/alwaysmeticulous/meticulous/commit/85eabb8c566e5ee339c5a14c478d062c7644de66), [`8d20748`](https://github.com/alwaysmeticulous/meticulous/commit/8d20748db16fb260438293c12661f7261920570a), [`4ce314c`](https://github.com/alwaysmeticulous/meticulous/commit/4ce314ca0693e0d0b1bd6df1d192278ac4c501bf), [`b6eeb0a`](https://github.com/alwaysmeticulous/meticulous/commit/b6eeb0ae8d75e067db651bde2468c7fc0102318a)]:
+  - @alwaysmeticulous/client@3.5.0
+  - @alwaysmeticulous/downloading-helpers@3.5.0
+  - @alwaysmeticulous/common@3.4.0
+
 ## 3.4.1
 
 ### Patch Changes

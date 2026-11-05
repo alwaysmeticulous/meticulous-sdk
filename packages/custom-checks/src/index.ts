@@ -17,6 +17,7 @@ export {
   getSnapshotsFromTestRun,
   sessionComparisonKey,
 } from "./get-snapshots-from-test-run";
+export type { SnapshotDataProjector } from "./download-snapshots";
 
 // Re-export the client building blocks a custom-check script needs (creating a
 // client), so everything can be imported from one package.

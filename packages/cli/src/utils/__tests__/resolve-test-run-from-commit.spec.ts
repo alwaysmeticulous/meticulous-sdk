@@ -5,8 +5,11 @@ import {
   assertTestRunComplete,
   isSessionPool,
   isTestRunComplete,
+  isTestRunDeferred,
   isTestRunFailed,
+  isTestRunInProgress,
   isTestRunPartial,
+  isTestRunResultsReused,
 } from "../resolve-test-run-from-commit";
 
 describe("isTestRunComplete", () => {
@@ -49,6 +52,37 @@ describe("isTestRunPartial", () => {
   ])("%s -> %s", (status, expected) => {
     expect(isTestRunPartial(status)).toBe(expected);
   });
+});
+
+describe("the states that exist without executing", () => {
+  test.each<[TestRunStatus, boolean]>([
+    ["Deferred", true],
+    ["ResultsReused", false],
+    ["Skipped", false],
+    ["Success", false],
+  ])("isTestRunDeferred(%s) -> %s", (status, expected) => {
+    expect(isTestRunDeferred(status)).toBe(expected);
+  });
+
+  test.each<[TestRunStatus, boolean]>([
+    ["ResultsReused", true],
+    ["Deferred", false],
+    ["Success", false],
+  ])("isTestRunResultsReused(%s) -> %s", (status, expected) => {
+    expect(isTestRunResultsReused(status)).toBe(expected);
+  });
+
+  // A waiter must stop on them (they are settled — nothing on the platform will
+  // move them on) without reporting a pass: neither is `complete`, so every
+  // command that needs results goes through assertTestRunComplete's explanation.
+  test.each<TestRunStatus>(["Deferred", "ResultsReused"])(
+    "%s is neither in progress, complete, nor a fatal failure",
+    (status) => {
+      expect(isTestRunInProgress(status)).toBe(false);
+      expect(isTestRunComplete(status)).toBe(false);
+      expect(isTestRunFailed(status)).toBe(false);
+    },
+  );
 });
 
 describe("isSessionPool", () => {
@@ -125,6 +159,24 @@ describe("assertTestRunComplete", () => {
     );
     expect(() => assertTestRunComplete("tr-1", "Partial")).toThrow(
       /is not complete \(status: Partial\)/,
+    );
+  });
+
+  test("explains the deferral, and where to decide, for Deferred", () => {
+    expect(() =>
+      assertTestRunComplete("tr-1", "Deferred", { resultName: "diffs" }),
+    ).toThrow(CliUserError);
+    expect(() => assertTestRunComplete("tr-1", "Deferred")).toThrow(
+      /was deferred and has not been executed.*reuse the results of an earlier commit/s,
+    );
+  });
+
+  test("points at the executed run for ResultsReused", () => {
+    expect(() => assertTestRunComplete("tr-1", "ResultsReused")).toThrow(
+      CliUserError,
+    );
+    expect(() => assertTestRunComplete("tr-1", "ResultsReused")).toThrow(
+      /reuses the results of an earlier commit's test run.*--testRunId/s,
     );
   });
 

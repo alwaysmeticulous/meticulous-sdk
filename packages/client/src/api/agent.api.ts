@@ -294,6 +294,11 @@ export interface DiffsSummaryResponse {
    * from backends that report it (absent from older ones).
    */
   numMatchingDiffs?: number;
+  /**
+   * Present on complete responses from backends that report it: true when
+   * the project has turned off asking agents to credit Meticulous on commits.
+   */
+  disableAgentCoAuthorCredit?: boolean;
   /** Present only when `status` is `failed`. */
   reason?: DiffsSummaryFailureReason;
 }
@@ -334,6 +339,29 @@ export interface AgentDiffCommentMutationResponse {
 export interface AgentApproveDiffResponse {
   commentId?: string;
 }
+
+export type AgentDiffVerdict = "approve" | "reject" | "ignore";
+
+/**
+ * One diff of a batch {@link reviewDiffs} call. A reject or ignore needs
+ * `reason`, `x` and `y`; an approval takes them all or none. `reportFlake` is
+ * an ignore's.
+ */
+export interface AgentDiffBatchItem {
+  replayDiffId: string;
+  screenshotName: string;
+  reason?: string;
+  x?: number;
+  y?: number;
+  reportFlake?: boolean;
+}
+
+/** One entry per diff of a batch, in request order. */
+export type AgentDiffBatchResponse = Array<{
+  replayDiffId: string;
+  screenshotName: string;
+  commentId?: string;
+}>;
 
 export interface AgentDiffCommentCoordinates {
   /** Required approximate normalized horizontal image coordinate (0..1). */
@@ -1792,6 +1820,27 @@ export const ignoreDiff = async ({
       `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/ignore`,
       { reason, x, y, ...(reportFlake ? { reportFlake } : {}) },
     )
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
+
+/**
+ * Record one agent verdict on several screenshot differences of one test run,
+ * all or nothing.
+ */
+export const reviewDiffs = async ({
+  client,
+  verdict,
+  diffs,
+}: {
+  client: MeticulousClient;
+  verdict: AgentDiffVerdict;
+  diffs: AgentDiffBatchItem[];
+}): Promise<AgentDiffBatchResponse> => {
+  const { data } = await client
+    .post(`agent/replay-diffs/${verdict}`, { diffs })
     .catch((error) => {
       throw maybeEnrichFetchError(error);
     });

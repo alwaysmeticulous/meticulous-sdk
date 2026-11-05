@@ -116,6 +116,51 @@ describe("downloadAndAssembleSnapshots", () => {
     expect(downloadAndUnzipJson).not.toHaveBeenCalled();
   });
 
+  it("applies projectSnapshotData to each parsed entry when provided", async () => {
+    (downloadAndUnzipJson as Mock).mockResolvedValue([
+      {
+        stageDuringSession: "screenshot-after-event-00001",
+        data: {
+          url: "https://app.example.com/api/items",
+          method: "GET",
+          requestHeaders: [{ name: "cookie", value: "secret" }],
+          responseHeaders: [
+            { name: "content-type", value: "application/json" },
+          ],
+        },
+      },
+    ]);
+
+    const snapshots = await downloadAndAssembleSnapshots({
+      signedBaseUrl: SIGNED_BASE_URL,
+      files: [
+        {
+          type: "network-requests",
+          sessionId: "sess-a",
+          key: "proj/replay-a/custom-checks-snapshots/network-requests.json.gz",
+        },
+      ],
+      projectSnapshotData: ({ type, sessionId, stageDuringSession, data }) => ({
+        projectedFrom: [type, sessionId, stageDuringSession].join(":"),
+        url: (data as { url?: string }).url,
+      }),
+    });
+
+    expect(snapshots).toEqual([
+      {
+        type: "network-requests",
+        sessionId: "sess-a",
+        sessionDescription: null,
+        stageDuringSession: "screenshot-after-event-00001",
+        data: {
+          projectedFrom: "network-requests:sess-a:screenshot-after-event-00001",
+          url: "https://app.example.com/api/items",
+        },
+        versionNumber: 0,
+      },
+    ]);
+  });
+
   it("throws if a downloaded file does not contain a JSON array", async () => {
     (downloadAndUnzipJson as Mock).mockResolvedValue({ notAnArray: true });
 

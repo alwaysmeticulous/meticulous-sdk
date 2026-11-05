@@ -1,5 +1,14 @@
 # @alwaysmeticulous/backend-recorder-launcher
 
+## 3.5.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @alwaysmeticulous/downloading-helpers@3.5.0
+  - @alwaysmeticulous/common@3.4.0
+  - @alwaysmeticulous/sdk-bundles-api@3.5.0
+
 ## 3.4.1
 
 ### Patch Changes

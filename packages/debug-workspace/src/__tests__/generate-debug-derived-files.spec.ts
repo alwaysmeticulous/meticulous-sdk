@@ -122,7 +122,7 @@ describe("generateDebugDerivedFiles error entries", () => {
     rmSync(workspace, { recursive: true, force: true });
   });
 
-  it("keeps a multi-line error on one events-index line, with its top source-mapped frame", () => {
+  it("keeps a multi-line error on one text-only events-index line, with its top source-mapped frame", () => {
     const replayDir = join(
       workspace,
       DEBUG_DATA_DIRECTORY,
@@ -137,7 +137,7 @@ describe("generateDebugDerivedFiles error entries", () => {
       virtualTimeEnd: 0,
       data: {
         type: "unhandled-error",
-        message: "Could not create a contributor.\nfunction0",
+        message: "Could not create a contributor.\nfunction0\u0000",
         mappedStack: [
           {
             functionName: "findContributor",
@@ -167,7 +167,7 @@ describe("generateDebugDerivedFiles error entries", () => {
         "utf-8",
       ),
     ).toBe(
-      "[0] vt=0 kind=error Could not create a contributor. function0 at findContributor (examples/advanced.tsx:146:1)\n",
+      "[0] vt=0 kind=error Could not create a contributor. function0  at findContributor (examples/advanced.tsx:146:1)\n",
     );
   });
 });

@@ -83,6 +83,22 @@ const COMPLETE_TEST_RUN_STATUS: TestRunStatus[] = ["Success", "Failure"];
 export const isTestRunComplete = (status: TestRunStatus): boolean =>
   COMPLETE_TEST_RUN_STATUS.includes(status);
 
+/**
+ * Whether the run was created but deliberately not executed, pending a decision
+ * on the test run page (reuse an earlier commit's results, or run it anyway).
+ * Settled, not in progress: waiting on one would wait forever.
+ */
+export const isTestRunDeferred = (status: TestRunStatus): boolean =>
+  status === "Deferred";
+
+/**
+ * Whether the run's page shows an earlier run's results rather than results of
+ * its own. It executed nothing, so its own results are never available under
+ * this id — the run that was executed has them.
+ */
+export const isTestRunResultsReused = (status: TestRunStatus): boolean =>
+  status === "ResultsReused";
+
 /** Statuses where the run failed fatally and won't produce usable results. */
 const FAILED_TEST_RUN_STATUS: TestRunStatus[] = ["Aborted", "ExecutionError"];
 
@@ -134,6 +150,18 @@ export const assertTestRunComplete = (
   if (status === "Skipped") {
     throw new CliUserError(
       `Test run ${testRunId} was skipped (no base test run was found, so nothing ran); ${resultName} are not available.`,
+    );
+  }
+  if (isTestRunDeferred(status)) {
+    throw new CliUserError(
+      `Test run ${testRunId} was deferred and has not been executed, so ${resultName} are not available. ` +
+        "Open its test run page to reuse the results of an earlier commit on this pull request, or to run it anyway.",
+    );
+  }
+  if (isTestRunResultsReused(status)) {
+    throw new CliUserError(
+      `Test run ${testRunId} reuses the results of an earlier commit's test run, so it has no ${resultName} of its own. ` +
+        "Pass --testRunId with the id of the run that was executed (shown on this run's test run page) to work with its results.",
     );
   }
   if (isTestRunFailed(status)) {
@@ -319,6 +347,12 @@ export const tryResolveTestRunForCommit = async (
  * Throws a `CliUserError` if the run doesn't reach a terminal status within
  * `POLL_TIMEOUT_MS`, or — unless `throwOnFailure: false` — if it finishes
  * unsuccessfully (`ExecutionError`/`Aborted`). Returns the final status.
+ *
+ * `Deferred` and `ResultsReused` count as terminal too, and are not treated as
+ * fatal failures: a deferred run is waiting on a person, not on the platform, so
+ * waiting on one here would be waiting on nothing. Neither has results of its
+ * own — callers that need results say so through {@link assertTestRunComplete},
+ * which explains each state rather than reporting it as a pass.
  *
  * `Partial` counts as terminal: a base run (session pool) sits there
  * indefinitely between the PRs that request sessions on it, so waiting for it

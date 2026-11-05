@@ -9,6 +9,9 @@
  */
 export const MAX_AGENT_DIFF_COMMENT_TEXT_LENGTH = 1_000;
 
+/** The most diffs one batch approve / reject / ignore call may decide on. */
+export const MAX_AGENT_DIFF_DECISION_BATCH_SIZE = 100;
+
 /**
  * When an agent may ignore a diff, shared by the hosted MCP server's
  * `ignore_diff` tool and the CLI's `agent ignore-diff` command.

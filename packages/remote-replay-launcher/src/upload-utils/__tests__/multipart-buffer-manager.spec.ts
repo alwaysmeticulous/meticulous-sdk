@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { MultipartBufferManager } from "../multipart-buffer-manager";
 
 describe("MultipartBufferManager", () => {
@@ -233,6 +233,21 @@ describe("MultipartBufferManager", () => {
   });
 
   describe("error handling", () => {
+    it("does not start queued uploads after an upload has failed", async () => {
+      const uploadPart = vi.fn().mockRejectedValue(new Error("upload failed"));
+      const manager = new MultipartBufferManager({
+        uploadChunkSize: CHUNK_SIZE,
+        maxConcurrentUploads: 1,
+        uploadPart,
+      });
+      manager.addChunk(Buffer.alloc(CHUNK_SIZE * 4));
+      await manager.flush(false);
+      await expect(manager.finalize()).rejects.toThrow("upload failed");
+      await vi.waitFor(() =>
+        expect(manager.waitForCapacity()).rejects.toThrow("upload failed"),
+      );
+      expect(uploadPart).toHaveBeenCalledTimes(1);
+    });
     it("should not throw during flush but propagate errors during finalize", async () => {
       const uploadError = new Error("Upload failed");
       const uploadPart = () => {
@@ -275,6 +290,153 @@ describe("MultipartBufferManager", () => {
       rejectUpload!(uploadError);
 
       await expect(finalizePromise).rejects.toThrow("Upload failed");
+    });
+  });
+
+  describe("multiple full chunks in one flush", () => {
+    it("uploads every full chunk and keeps the remainder", async () => {
+      const sizes: number[] = [];
+      const manager = new MultipartBufferManager({
+        uploadChunkSize: CHUNK_SIZE,
+        uploadPart: (buffer, partNumber) => {
+          sizes.push(buffer.length);
+          return Promise.resolve(`etag-${partNumber}`);
+        },
+        maxConcurrentUploads: 4,
+      });
+
+      manager.addChunk(Buffer.alloc(CHUNK_SIZE * 3 + 10));
+      await manager.flush(false);
+
+      expect(sizes).toEqual([CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE]);
+      expect(manager.getBufferSize()).toBe(10);
+    });
+
+    it("flags only the final piece as the last part", async () => {
+      const flags: boolean[] = [];
+      const manager = new MultipartBufferManager({
+        uploadChunkSize: CHUNK_SIZE,
+        uploadPart: (_buffer, partNumber, isLastPart) => {
+          flags.push(isLastPart);
+          return Promise.resolve(`etag-${partNumber}`);
+        },
+        maxConcurrentUploads: 4,
+      });
+
+      manager.addChunk(Buffer.alloc(CHUNK_SIZE * 2 + 10));
+      await manager.flush(true);
+
+      expect(flags).toEqual([false, false, true]);
+    });
+  });
+
+  describe("waitForCapacity", () => {
+    it("blocks while too many parts are queued and resumes as they finish", async () => {
+      const releases: Array<() => void> = [];
+      const manager = new MultipartBufferManager({
+        uploadChunkSize: CHUNK_SIZE,
+        uploadPart: (_buffer, partNumber) =>
+          new Promise<string>((resolve) => {
+            releases.push(() => resolve(`etag-${partNumber}`));
+          }),
+        maxConcurrentUploads: 1,
+      });
+
+      // 1 concurrent upload allows 2 unsettled parts.
+      manager.addChunk(Buffer.alloc(CHUNK_SIZE * 2));
+      await manager.flush(false);
+
+      let resumed = false;
+      const waiting = manager.waitForCapacity().then(() => {
+        resumed = true;
+      });
+      await new Promise((r) => setTimeout(r, 20));
+      expect(resumed).toBe(false);
+
+      releases[0]?.();
+      await waiting;
+      expect(resumed).toBe(true);
+      releases[1]?.();
+    });
+
+    it("rejects early when an upload has failed, without an unhandled rejection", async () => {
+      const manager = new MultipartBufferManager({
+        uploadChunkSize: CHUNK_SIZE,
+        uploadPart: () => Promise.reject(new Error("part failed")),
+        maxConcurrentUploads: 2,
+      });
+
+      manager.addChunk(Buffer.alloc(CHUNK_SIZE));
+      await manager.flush(false);
+      await new Promise((r) => setTimeout(r, 10));
+
+      await expect(manager.waitForCapacity()).rejects.toThrow("part failed");
+      await expect(manager.finalize()).rejects.toThrow("part failed");
+    });
+  });
+
+  describe("variable part sizes and part limit", () => {
+    it("cuts each part at the size for its part number", async () => {
+      const sizes: number[] = [];
+      const manager = new MultipartBufferManager({
+        uploadChunkSize: CHUNK_SIZE,
+        getPartSize: (partNumber) => 100 * partNumber,
+        uploadPart: (buffer, partNumber) => {
+          sizes.push(buffer.length);
+          return Promise.resolve(`etag-${partNumber}`);
+        },
+        maxConcurrentUploads: 4,
+      });
+
+      manager.addChunk(Buffer.alloc(100 + 200 + 300 + 50));
+      await manager.flush(false);
+
+      expect(sizes).toEqual([100, 200, 300]);
+      expect(manager.getNextPartSize()).toBe(400);
+      expect(manager.getBufferSize()).toBe(50);
+    });
+
+    it("throws a clear error instead of cutting a part past maxParts", () => {
+      const manager = new MultipartBufferManager({
+        uploadChunkSize: 10,
+        maxParts: 3,
+        uploadPart: (_buffer, partNumber) =>
+          Promise.resolve(`etag-${partNumber}`),
+        maxConcurrentUploads: 4,
+      });
+
+      manager.addChunk(Buffer.alloc(45));
+
+      expect(() => manager.flush(false)).toThrow(/more than 3 parts/);
+    });
+
+    it("also rejects a final partial part that would be part maxParts + 1", () => {
+      const manager = new MultipartBufferManager({
+        uploadChunkSize: 10,
+        maxParts: 3,
+        uploadPart: (_buffer, partNumber) =>
+          Promise.resolve(`etag-${partNumber}`),
+        maxConcurrentUploads: 4,
+      });
+
+      manager.addChunk(Buffer.alloc(31));
+
+      expect(() => manager.flush(true)).toThrow(/more than 3 parts/);
+    });
+
+    it("accepts exactly maxParts parts", async () => {
+      const manager = new MultipartBufferManager({
+        uploadChunkSize: 10,
+        maxParts: 3,
+        uploadPart: (_buffer, partNumber) =>
+          Promise.resolve(`etag-${partNumber}`),
+        maxConcurrentUploads: 4,
+      });
+
+      manager.addChunk(Buffer.alloc(25));
+      await manager.flush(true);
+
+      expect(await manager.finalize()).toHaveLength(3);
     });
   });
 });

@@ -264,6 +264,49 @@ describe("custom checks SDK helpers", () => {
         headSnapshots: [],
       });
     });
+
+    it("forwards projectSnapshotData to downloadAndAssembleSnapshots for both base and head", async () => {
+      const response = {
+        testRunId: "tr-1",
+        baseTestRunId: "base-1",
+        signedBaseUrl: "https://cf.example/?Signature=sig&Key-Pair-Id=k",
+        baseSnapshotFiles: [
+          {
+            type: "network-requests",
+            sessionId: "sess-a",
+            key: "proj/replay-base-a/custom-checks-snapshots/network-requests.json.gz",
+          },
+        ],
+        headSnapshotFiles: [
+          {
+            type: "network-requests",
+            sessionId: "sess-a",
+            key: "proj/replay-head-a/custom-checks-snapshots/network-requests.json.gz",
+          },
+        ],
+      };
+      client.get.mockResolvedValue({ data: response });
+      (downloadAndAssembleSnapshots as Mock).mockResolvedValue([]);
+      const projectSnapshotData = vi.fn(({ data }: { data: unknown }) => data);
+
+      await getSnapshotsFromTestRun({
+        client: asClient(),
+        testRunId: "tr-1",
+        snapshotTypes: ["network-requests"],
+        projectSnapshotData,
+      });
+
+      expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(1, {
+        signedBaseUrl: response.signedBaseUrl,
+        files: response.baseSnapshotFiles,
+        projectSnapshotData,
+      });
+      expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(2, {
+        signedBaseUrl: response.signedBaseUrl,
+        files: response.headSnapshotFiles,
+        projectSnapshotData,
+      });
+    });
   });
 
   describe("findTestRunForCustomChecks", () => {

@@ -375,6 +375,23 @@ describe("test-run-diffs command polling", () => {
     );
   });
 
+  it("leaves out the co-author notice when the project turned it off", async () => {
+    mocks.getTestRunDiffsSummary.mockResolvedValue({
+      status: "complete",
+      data: [{ replayDiffId: "rd-1", screenshotName: "a" }],
+      disableAgentCoAuthorCredit: true,
+    });
+
+    await runHandler({ json: true });
+
+    expect(mocks.logNotice).not.toHaveBeenCalledWith(
+      METICULOUS_CO_AUTHOR_NOTICE,
+    );
+    expect(logSpy.mock.calls.flat().join("\n")).not.toContain(
+      "disableAgentCoAuthorCredit",
+    );
+  });
+
   it("keeps --onlyRejected independent from --includeAllDiffs and isSelected", async () => {
     mocks.getTestRunDiffsSummary.mockResolvedValue({
       status: "complete",

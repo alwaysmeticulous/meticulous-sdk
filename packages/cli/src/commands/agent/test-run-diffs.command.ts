@@ -351,7 +351,7 @@ const handler = async ({
         : `${data.length} screenshot ${pluralize(data.length, "diff")} (${elapsed})`,
     );
   }
-  if (isLikelyRunByAgent()) {
+  if (!response.disableAgentCoAuthorCredit && isLikelyRunByAgent()) {
     logNotice(METICULOUS_CO_AUTHOR_NOTICE);
   }
 };

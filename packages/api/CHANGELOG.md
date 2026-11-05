@@ -1,5 +1,19 @@
 # @alwaysmeticulous/api
 
+## 3.5.0
+
+### Minor Changes
+
+- [#16860](https://github.com/alwaysmeticulous/meticulous/pull/16860) [`04dc41c`](https://github.com/alwaysmeticulous/meticulous/commit/04dc41c28fbb5ec907a89d26ef61172f53bc7258) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `pointerLockMovement` to `ReplayableEvent`: on a pointerup, the summed movement of the held moves while the page held pointer lock since the press, which replay applies before releasing since the recorded release sits at the press under pointer lock.
+
+- [#16595](https://github.com/alwaysmeticulous/meticulous/pull/16595) [`3da18e1`](https://github.com/alwaysmeticulous/meticulous/commit/3da18e14d2046ac9ea5595bcf6fc23a266fca405) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `onlyChangedThirdPartyFonts` to `ScreenshotDiffResultDifference`, set when every differing pixel lies in text, the DOM and its matched style rules are the same on both sides, and every font face or file that differs comes from a third-party stylesheet both sides loaded under the same URL. `FlakeEvidence` gains a `third-party-font-changed` variant for such diffs.
+
+### Patch Changes
+
+- [#16716](https://github.com/alwaysmeticulous/meticulous/pull/16716) [`106646f`](https://github.com/alwaysmeticulous/meticulous/commit/106646fbc1bf54f0fc973c17c62c395a9997035d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `onlyImageResamplingNoise` docs: a diff with this label now becomes an
+  `image-resampling-noise` flake for every project, not only for projects that
+  opted in.
+
 ## 3.4.1
 
 ### Patch Changes

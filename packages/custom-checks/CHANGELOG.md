@@ -1,5 +1,19 @@
 # @alwaysmeticulous/custom-checks
 
+## 3.5.0
+
+### Minor Changes
+
+- [#16452](https://github.com/alwaysmeticulous/meticulous/pull/16452) [`431447a`](https://github.com/alwaysmeticulous/meticulous/commit/431447a3d6136f9dc038dd2214fa38702406ced0) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add `projectSnapshotData` option to `getSnapshotsFromTestRun` and `downloadAndAssembleSnapshots` so callers can project `snapshot.data` as each snapshot archive is parsed.
+
+### Patch Changes
+
+- Updated dependencies [[`0baa953`](https://github.com/alwaysmeticulous/meticulous/commit/0baa9533a3e3c7de6e1958ea12d7b596d97190ac), [`83c2b73`](https://github.com/alwaysmeticulous/meticulous/commit/83c2b739e036a5cd8c184b68d2364dbfe2f38e6b), [`4503be5`](https://github.com/alwaysmeticulous/meticulous/commit/4503be5c46e191cd38bf64e32c7cb75d86edf7d4), [`85eabb8`](https://github.com/alwaysmeticulous/meticulous/commit/85eabb8c566e5ee339c5a14c478d062c7644de66), [`8d20748`](https://github.com/alwaysmeticulous/meticulous/commit/8d20748db16fb260438293c12661f7261920570a), [`4ce314c`](https://github.com/alwaysmeticulous/meticulous/commit/4ce314ca0693e0d0b1bd6df1d192278ac4c501bf), [`b6eeb0a`](https://github.com/alwaysmeticulous/meticulous/commit/b6eeb0ae8d75e067db651bde2468c7fc0102318a), [`106646f`](https://github.com/alwaysmeticulous/meticulous/commit/106646fbc1bf54f0fc973c17c62c395a9997035d), [`04dc41c`](https://github.com/alwaysmeticulous/meticulous/commit/04dc41c28fbb5ec907a89d26ef61172f53bc7258), [`3da18e1`](https://github.com/alwaysmeticulous/meticulous/commit/3da18e14d2046ac9ea5595bcf6fc23a266fca405)]:
+  - @alwaysmeticulous/client@3.5.0
+  - @alwaysmeticulous/api@3.5.0
+  - @alwaysmeticulous/downloading-helpers@3.5.0
+  - @alwaysmeticulous/common@3.4.0
+
 ## 3.4.1
 
 ### Patch Changes

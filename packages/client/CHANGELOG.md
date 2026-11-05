@@ -1,5 +1,37 @@
 # @alwaysmeticulous/client
 
+## 3.5.0
+
+### Minor Changes
+
+- [#16879](https://github.com/alwaysmeticulous/meticulous/pull/16879) [`83c2b73`](https://github.com/alwaysmeticulous/meticulous/commit/83c2b739e036a5cd8c184b68d2364dbfe2f38e6b) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional Agent swarm case timeline facts to run results, including timed actions, console output, run errors, network-source annotations, and base-side facts for comparison runs.
+
+- [#16839](https://github.com/alwaysmeticulous/meticulous/pull/16839) [`4503be5`](https://github.com/alwaysmeticulous/meticulous/commit/4503be5c46e191cd38bf64e32c7cb75d86edf7d4) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agent swarm base-vs-head comparisons can now be judged `unrelated` (a real difference the pull request did not cause) or `not-comparable` (the two sides never showed the same state), as well as `regression` or `intended-change`. The client adds the `AgenticRunComparisonVisualReview` and `AgenticRunComparisonSecondLook` types (with `AgenticRunComparisonDefect` and `AgenticRunComparisonVisualDifference`) for the vision model's read of a checkpoint pair and its second look at the agent's explanation, and `AgentSwarmComparison.secondLookDisagreement`. `meticulous agent agent-swarm-run-case --help` describes the new verdicts and `secondLookDisagreement`.
+
+- [#16463](https://github.com/alwaysmeticulous/meticulous/pull/16463) [`8d20748`](https://github.com/alwaysmeticulous/meticulous/commit/8d20748db16fb260438293c12661f7261920570a) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent approve-diff`, `reject-diff` and `ignore-diff` take `--diffs`,
+  a JSON array of up to 100 diffs of one test run, each with the fields a single
+  diff takes. The batch is recorded all or nothing, and outputs one row per diff.
+  The client adds `reviewDiffs` and `MAX_AGENT_DIFF_DECISION_BATCH_SIZE`.
+
+### Patch Changes
+
+- [#16417](https://github.com/alwaysmeticulous/meticulous/pull/16417) [`0baa953`](https://github.com/alwaysmeticulous/meticulous/commit/0baa9533a3e3c7de6e1958ea12d7b596d97190ac) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - `agent test-run-diffs` no longer asks agents to credit Meticulous as a co-author when the project has turned on the "Don't ask agents to add Meticulous as co-author on commits" setting, which the backend now reports as `disableAgentCoAuthorCredit` on complete `getTestRunDiffsSummary` responses. `meticulous agent --help` no longer includes the co-author instruction, since it can't know the project's setting.
+
+- [#16634](https://github.com/alwaysmeticulous/meticulous/pull/16634) [`85eabb8`](https://github.com/alwaysmeticulous/meticulous/commit/85eabb8c566e5ee339c5a14c478d062c7644de66) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `reportAgenticRunFailure` accepts an optional `failureKind`, so a worker whose pod was terminated under it can report the run as `infrastructureInterrupted` rather than as an error.
+
+- [#14366](https://github.com/alwaysmeticulous/meticulous/pull/14366) [`4ce314c`](https://github.com/alwaysmeticulous/meticulous/commit/4ce314ca0693e0d0b1bd6df1d192278ac4c501bf) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Handle test runs that were deliberately not executed. A run that was deferred
+  (because the pull request has already been tested on an earlier commit), or that
+  reuses an earlier commit's results, now stops waiters promptly and explains the
+  decision to make and where to make it, instead of hanging or reading as a pass.
+  Clients now declare test-run status contract v2; older clients keep receiving a
+  status they understand.
+
+- [#16921](https://github.com/alwaysmeticulous/meticulous/pull/16921) [`b6eeb0a`](https://github.com/alwaysmeticulous/meticulous/commit/b6eeb0ae8d75e067db651bde2468c7fc0102318a) Thanks [@claude](https://github.com/apps/claude)! - Speed up uploading static asset builds: compress on multiple threads, start uploading parts while compression is still running (8MiB parts, 16 in parallel by default, configurable with `METICULOUS_UPLOAD_CONCURRENCY`), reuse HTTP connections across uploads, and skip compressing already-compressed data.
+
+- Updated dependencies [[`106646f`](https://github.com/alwaysmeticulous/meticulous/commit/106646fbc1bf54f0fc973c17c62c395a9997035d), [`04dc41c`](https://github.com/alwaysmeticulous/meticulous/commit/04dc41c28fbb5ec907a89d26ef61172f53bc7258), [`3da18e1`](https://github.com/alwaysmeticulous/meticulous/commit/3da18e14d2046ac9ea5595bcf6fc23a266fca405)]:
+  - @alwaysmeticulous/api@3.5.0
+  - @alwaysmeticulous/common@3.4.0
+
 ## 3.4.1
 
 ### Patch Changes

@@ -71,7 +71,6 @@ Each replay directory (`debug-data/replays/<role>/<replayId>/`) contains:
   which only have the raw, bundled-code stack in `data.nativeStack`.
 - `metadata.json` -- Replay configuration, parameters, and environment info.
 - `launchBrowserAndReplayParams.json` -- The exact parameters used to launch the replay.
-- `accuracy.json` -- Replay accuracy assessment comparing to expected behavior.
 - `cookies.json` -- Cookies captured at session record time. Rarely needed; useful only when
   authentication or cookie-driven behavior is part of the investigation.
 - `mapped-coverage.json` -- JS code coverage for the whole replay, mapped back to source files.
@@ -97,6 +96,11 @@ Per-replay generated summaries:
   `grep 'kind=pollyReplay' events-index/head-abc.txt` for network stubs,
   `grep 'api/v9/users' events-index/head-abc.txt` for specific API calls. Error lines end
   with the error's top stack frame (marked `[unmapped]` when it points into bundled code).
+  Replayed user events (`kind=jsReplay`) show the event type, the key for keyboard events
+  (`key=Ctrl+X`), the result (`success`, `warning` for a low-confidence match, `failed`), how
+  confidently the target was matched (`conf=0.93`), why a failed event failed
+  (`reason=no-match-obscured`), and the target element (`target=button[aria-label=Save] "Save"`:
+  the element it was replayed on, or the recorded one if it failed).
 - `debug-data/network-log/<role>-<replayId>.txt` -- **Start here for network problems.** One
   line per request, in the order they started: `timeline.ndjson` index, method, URL, GraphQL
   operation (`op=`), status and result, and for stubbed requests the recording that was served
@@ -144,7 +148,10 @@ These files are only generated when comparing replays.
 - `debug-data/coverage-diff/<headReplayId>-vs-<baseReplayId>.txt` -- JS coverage of head vs
 base: which of the PR's added and removed lines executed, source files that executed in only
 one replay, and line ranges that differ in files the PR didn't change. Covers the whole
-replay and, when a screenshot is targeted, that screenshot's own coverage.
+replay and, when a screenshot is targeted, that screenshot's own coverage. Paths are repo
+paths, as Meticulous maps coverage to the repo, so code that maps to no repo file (e.g.
+dependencies) isn't listed; the replays' own `mapped-coverage.json` files have it under the
+bundle's source paths. Only generated for a replay diff.
 <!-- if-snapshot-assets -->
 - `debug-data/assets-diffs/<id>.txt` -- Comparison of snapshotted asset file lists between head
 and base (added/removed/changed by content hash). Not generated if assets are identical.
@@ -179,10 +186,20 @@ to diffing the two `screenshots/<baseName>.html` files directly.
 - `debug-data/session-summaries/<sessionId>.txt` -- **Start here for session investigation.** Compact
   summary of each session: URL history, user event breakdown, network request stats (methods,
   status codes, domains, failures), storage counts, WebSocket connections, custom data, session
-  context, and framework info.
+  context, and framework info. For a copy Meticulous derived from the user's recording (session
+  ID suffixes `_p<timestamp>` patched, `_sl<n>` sliced, `_mut<hash>` mutated, `_ff<hash>` feature
+  flags overridden, `_mob<hash>` mobile variant, `_aux<hash>` auxiliary-viewport copy), it starts
+  with what Meticulous changed.
+- `debug-data/session-requests/<sessionId>.txt` -- **Start here for recorded requests and
+  responses.** One line per recorded request in recorded order: `#<order>` (the `rec=#<order>` in
+  `network-log/`), recorded time, method, full URL, GraphQL operation, status, response size,
+  `patched=<source>` for responses Meticulous patched or generated, and the start of the request
+  and response bodies. Ends with the requests recorded more than once with the same method, URL
+  and body, and their orders.
 - `debug-data/sessions/<sessionId>/data.json` -- Full session recording data including user events, network
-  requests (HAR format), and application storage. Can be very large; prefer the session summary
-  or use search to find relevant portions.
+  requests (HAR format), and application storage. Often one very long line, so `grep -o` with a
+  wide `.{0,N}` context can exhaust memory: use jq instead, e.g. a recording's full bodies with
+  `jq '.pollyHAR.pollyHAR[].log.entries[] | select(._order == 12) | {request, response}' sessions/<id>/data.json`.
 - `debug-data/test-run/<testRunId>.json` -- Test run configuration, results, commit SHA, and status.
 <!-- if-pr-description -->
 - `debug-data/pr-description.txt` -- Pull request description/body.
@@ -199,6 +216,9 @@ to diffing the two `screenshots/<baseName>.html` files directly.
   network requests, replayed user events, virtual time, screenshots). Scan for head-vs-base
   drift. Different `sessionId`s mean head and base replayed different copies of the session
   (e.g. one patched), so their recorded responses can differ.
+- `meticulousBuildsDiffer` -- head and base were replayed by different versions of Meticulous's
+  replay code (`meticulousSha` vs `baseMeticulousSha`; a base replay is often reused from an
+  earlier run). Then a change in how Meticulous replays, not the PR, can explain a diff.
 - `domDiffMap` -- keyed by `"<headReplayId>-vs-<baseReplayId>/<screenshotBaseName>"`. An
   entry is present **only** for screenshots with a real DOM diff to open; each carries
   `diffPath` (3-line-context), `fullDiffPath` (full-file-context), `totalHunks`, `bytes`,
@@ -263,25 +283,30 @@ changed UI (grep it by file and symbol names from the DOM diff).
 
 ### 3b. Check network match quality
 
-A response recorded for a different request is a common root cause of diffs. When the
-replay shows "Low accuracy: Network issues", or `network-log/` has loose matches or `repair=`
-entries before the first visual difference, check them first
+A response recorded for a different request is a common root cause of diffs. When
+`network-log/` has loose matches or `repair=` entries before the first visual difference,
+check them first
 (`grep -E 'match=loose|SERVED-OTHER-URL|PARTIAL-BATCH|repair=' network-log/head-abc.txt`):
 
 - `SERVED-OTHER-URL=<path>`: the app asked for one endpoint and was served a response
   recorded for another, so its schema is likely wrong for the requesting code.
 - `match=loose:<step>`, `BODY-IGNORED`, `QUERY-IGNORED`: the request's URL, query or body didn't
   match any recording exactly, so a similar one was served. Compare the request with the
-  recording (`rec=#<order>` in the session's `data.json`) when the difference matters, e.g.
-  GraphQL variables or a new field.
+  recording (`#<order>` in `session-requests/`) when the difference matters, e.g. GraphQL
+  variables or a new field.
 - `PARTIAL-BATCH`: some operations of a batched request had no recording.
 - `repair=<source>`: the response was patched or generated by network patching rather than
   recorded.
 - Several recordings of the same request (different `rec=#<order>`) are served in recorded
   order, so a PR that adds or removes a call can shift which recording each later call gets.
 
-For details, the request's `timeline.ndjson` entry (its `[n]` index) has the full
-`data.pollyRequest` (the actual request) and `data.matchedRequest` (the recording served).
+For details, the request's `timeline.ndjson` entry (its `[n]` index, so line `n + 1`) has the
+actual request in `data.pollyRequest.request` (`.url`, `.method`, `.postData.text`) and the
+recording served in `data.matchedRequest` (`.request.url`, `.request.postData.text`,
+`.response.status`, `.response.content.text`), e.g.
+`sed -n '232p' timeline.ndjson | jq '{sent: .data.pollyRequest.request.postData.text, served: .data.matchedRequest.request.postData.text}'`.
+Long response bodies are cut short there; `session-requests/` shows their start, and the
+session's `data.json` has them in full.
 
 When you identify such a mismatch, report it as the likely root cause: the diff stems from
 network matching, not from a real code regression.
@@ -314,7 +339,9 @@ the raw timeline data. To compare two replays' logs, `diff` their `logs.determin
 ## Rules
 
 - This workspace is for analysis and investigation. Focus on understanding root causes.
+<!-- if-local-cli -->
 - When referencing files, use paths relative to this workspace root.
+<!-- end-if-local-cli -->
 - Prefer `logs.deterministic.filtered.txt` over `logs.deterministic.txt` for general
   investigation. Use the raw version only when you need unmodified output.
 - Prefer `logs.deterministic.txt` over `logs.concise.txt` when comparing between replays,

@@ -215,6 +215,11 @@ export interface AgentSwarmComparison {
   screenshotName: string;
   verdict: AgenticRunComparisonVerdict;
   explanation: string;
+  /**
+   * Set when a second vision pass found the explanation does not account for
+   * what the screenshots show: what it leaves out or contradicts.
+   */
+  secondLookDisagreement?: string;
 }
 
 /**

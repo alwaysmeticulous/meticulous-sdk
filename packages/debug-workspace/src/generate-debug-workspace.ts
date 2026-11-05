@@ -20,13 +20,16 @@ import {
 } from "./build-replay-comparison";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import type { DebugContext } from "./debug.types";
+import { describeSessionVariant } from "./describe-session-variant";
 import { pickExistingPaths } from "./existing-paths";
 import { extractScreenshotDomFiles } from "./extract-screenshot-dom-files";
 import { fetchDomDiffs, type DomDiffMap } from "./fetch-dom-diffs";
+import { fetchRepoCoverage } from "./fetch-repo-coverage";
 import { generateCoverageDiff } from "./generate-coverage-diff";
 import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
 import { generateDiffSummaries } from "./generate-diff-summaries";
 import { generateErrorsDiff } from "./generate-errors-diff";
+import { writeSessionRequests } from "./generate-session-requests";
 import { parseMeticulousSha } from "./meticulous-sha";
 import { readReplayTimeline } from "./replay-walk";
 import { screenshotIdentifierToFilename } from "./screenshot-identifier";
@@ -162,20 +165,28 @@ export const generateDebugWorkspace = async (
     writeFileSync(join(claudeDir, "CLAUDE.md"), claudeMd);
   }
   generateAssetsDiff(debugContext, workspaceDir);
-  generateSessionSummaries(debugContext, workspaceDir);
+  generateSessionFiles(debugContext, workspaceDir);
   if (!options.skipPrettifySnapshotAssets) {
     await prettifySnapshotAssets(workspaceDir);
   }
   extractScreenshotDomFiles(workspaceDir);
-  const domDiffMap = await fetchDomDiffs({
-    client,
-    debugContext,
-    workspaceDir,
-    maxConcurrency: options.maxConcurrency,
-  });
+  const [domDiffMap, repoCoverage] = await Promise.all([
+    fetchDomDiffs({
+      client,
+      debugContext,
+      workspaceDir,
+      maxConcurrency: options.maxConcurrency,
+    }),
+    fetchRepoCoverage({
+      client,
+      debugContext,
+      workspaceDir,
+      maxConcurrency: options.maxConcurrency,
+    }),
+  ]);
   generateDebugDerivedFiles(workspaceDir);
   generateErrorsDiff(debugContext, workspaceDir);
-  generateCoverageDiff(debugContext, workspaceDir);
+  generateCoverageDiff(debugContext, workspaceDir, repoCoverage);
   const screenshotMap = buildScreenshotMap(debugContext, workspaceDir);
   const replayComparison = buildReplayComparison(workspaceDir);
   const fileMetadata = collectFileMetadata(debugContext, workspaceDir);
@@ -652,7 +663,7 @@ const redactCookiesAndHeadersInNdjsonFile = (filePath: string): boolean => {
 // Redacts cookie, header, and local/session storage values from the raw
 // JSON files placed into the workspace, before any other step reads or
 // diffs them. This runs first so that downstream steps (e.g.
-// `generateSessionSummaries`, `generateDebugDerivedFiles`)
+// `generateSessionFiles`, `generateDebugDerivedFiles`)
 // never see or propagate the real values.
 // Exported for testing.
 export const redactCookiesAndHeaders = (
@@ -1408,7 +1419,6 @@ const collectFileMetadata = (
     "timeline.json",
     "metadata.json",
     "launchBrowserAndReplayParams.json",
-    "accuracy.json",
   ];
 
   for (const subDir of ["head", "base", "other"]) {
@@ -1462,6 +1472,19 @@ const collectFileMetadata = (
     if (summaryMeta) {
       entries.push(summaryMeta);
     }
+
+    const requestsMeta = getFileMetadata(
+      join(
+        workspaceDir,
+        DEBUG_DATA_DIRECTORY,
+        "session-requests",
+        `${sessionId}.txt`,
+      ),
+      `${DEBUG_DATA_DIRECTORY}/session-requests/${sessionId}.txt`,
+    );
+    if (requestsMeta) {
+      entries.push(requestsMeta);
+    }
   }
 
   return entries;
@@ -1502,6 +1525,7 @@ interface SessionDataJson {
             request?: { url?: string; method?: string };
             response?: { status?: number };
             time?: number;
+            _meticulousNetworkPatched?: string;
           }>;
         };
       }
@@ -1536,11 +1560,16 @@ interface SessionDataJson {
   };
 }
 
-const generateSessionSummaries = (
+/**
+ * Writes `session-summaries/` and `session-requests/` from each session's
+ * `data.json`, which can be several MB, so it is parsed once for both.
+ */
+const generateSessionFiles = (
   debugContext: DebugContext,
   workspaceDir: string,
 ): void => {
   let count = 0;
+  let requestIndexCount = 0;
 
   for (const sessionId of debugContext.sessionIds) {
     const dataPath = join(
@@ -1554,8 +1583,21 @@ const generateSessionSummaries = (
       continue;
     }
 
+    let raw: SessionDataJson;
     try {
-      const raw = JSON.parse(readFileSync(dataPath, "utf8")) as SessionDataJson;
+      raw = JSON.parse(readFileSync(dataPath, "utf8")) as SessionDataJson;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `  Warning: Could not read session ${sessionId}: ${message}`,
+      );
+      continue;
+    }
+
+    if (writeSessionRequests(workspaceDir, sessionId, raw)) {
+      requestIndexCount++;
+    }
+    try {
       const summary = summarizeSession(raw, sessionId);
       const summaryDir = join(
         workspaceDir,
@@ -1580,6 +1622,13 @@ const generateSessionSummaries = (
       ),
     );
   }
+  if (requestIndexCount > 0) {
+    console.log(
+      chalk.green(
+        `  Generated ${requestIndexCount} session request index(es) in session-requests/`,
+      ),
+    );
+  }
 };
 
 const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
@@ -1587,6 +1636,7 @@ const summarizeSession = (data: SessionDataJson, sessionId: string): string => {
     `Session Summary: ${sessionId}`,
     "=".repeat(20 + sessionId.length),
     "",
+    ...describeSessionVariant(sessionId, data),
   ];
 
   const win = data.userEvents?.window;
@@ -1746,6 +1796,10 @@ const defaultWriteContextJson = (
     meticulousBuildUnclean: headBuild.wasUnclean,
     baseMeticulousSha: baseBuild.sha,
     baseMeticulousBuildUnclean: baseBuild.wasUnclean,
+    meticulousBuildsDiffer:
+      headBuild.sha != null &&
+      baseBuild.sha != null &&
+      headBuild.sha !== baseBuild.sha,
     screenshot: debugContext.screenshot,
     replayDiffs: debugContext.replayDiffs.map((d) => ({
       id: d.id,
@@ -1763,6 +1817,7 @@ const defaultWriteContextJson = (
       ...pickExistingPaths(join(workspaceDir, DEBUG_DATA_DIRECTORY), {
         replays: "replays/",
         sessions: "sessions/",
+        sessionRequests: "session-requests/",
         diffs: "diffs/",
         assetsDiffs: "assets-diffs/",
         errorsDiff: "errors-diff/",

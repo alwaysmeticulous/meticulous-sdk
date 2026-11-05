@@ -255,6 +255,14 @@ export type AgenticRunStepKind =
   | "assert"
   | "other";
 
+/** A rectangle as fractions of an image's width and height. */
+export interface AgenticRunChangedRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /**
  * The region of a step's screenshot the reviewer should focus on, in CSS
  * pixels relative to the top-left of the viewport screenshot. Inferred by the
@@ -487,6 +495,110 @@ export interface AgenticRunEvidence {
   pageErrors: string[];
 }
 
+/** How a case run ended mechanically; the verdict is the case's `outcome`. */
+export type AgenticTimelineRunStatus =
+  | "completed"
+  | "failed"
+  | "timed-out"
+  | "cancelled"
+  | "invalid";
+
+/** One browser action the reported run's test performed. */
+export interface AgenticTimelineAction {
+  actionId: number;
+  kind: string;
+  detail: string;
+  urlBefore: string;
+  urlAfter?: string;
+  startTimestampMs?: number;
+  endTimestampMs?: number;
+  sessionId?: string;
+  warning?: string;
+  error?: string;
+  /** Performed by the harness (e.g. an overlay dismissal), not the test. */
+  harness?: boolean;
+}
+
+export type AgenticTimelineConsoleLevel = "error" | "warn" | "uncaught";
+
+/** One console error/warning or uncaught page error, redacted. */
+export interface AgenticTimelineConsoleEntry {
+  timestampMs: number;
+  level: AgenticTimelineConsoleLevel;
+  text: string;
+  stack?: string;
+  sourceUrl?: string;
+  /** Written by the browser itself rather than by a page `console` call. */
+  browserAuthored?: boolean;
+}
+
+/**
+ * Where a request's response came from. `recorded` and `live` are the
+ * defaults a request without an annotation takes on a mocked or unmocked side.
+ */
+export type AgenticTimelineNetworkSource =
+  | "recorded"
+  | "modified"
+  | "generated"
+  | "live"
+  | "mock-miss"
+  | "declined-continued"
+  | "passthrough"
+  | "refused";
+
+/**
+ * A request the in-page recorder's HAR cannot fully describe: an unusual mock
+ * source, a harness refusal, or traffic the recorder never sees (documents,
+ * refused sockets). Joined onto HAR entries by `(method, url, ordinal)`.
+ */
+export interface AgenticTimelineNetworkAnnotation {
+  method: string;
+  url: string;
+  /** 0-based occurrence of this `(method, url)` among the side's fetch/XHR requests. */
+  ordinal: number;
+  startedAtMs?: number;
+  durationMs?: number;
+  source: AgenticTimelineNetworkSource;
+  reason?: string;
+  resourceType?: string;
+  status?: number;
+  outcome?: "finished" | "failed" | "pending";
+}
+
+export interface AgenticTimelineRunError {
+  timestampMs?: number;
+  origin: "test" | "harness";
+  message: string;
+}
+
+/** Worker-only facts about one side of a case's reported run. */
+export interface AgenticSideTimelineFacts {
+  startedAtMs: number;
+  endedAtMs: number;
+  runStatus: AgenticTimelineRunStatus;
+  /** Sessions this run recorded; never another attempt's. */
+  sessionIds: string[];
+  /** Whether mock.ts served this side's API traffic. */
+  mocked: boolean;
+  actions: AgenticTimelineAction[];
+  console: AgenticTimelineConsoleEntry[];
+  networkAnnotations: AgenticTimelineNetworkAnnotation[];
+  errors: AgenticTimelineRunError[];
+}
+
+/**
+ * What a case's timeline needs beyond its recorded sessions, which already
+ * hold its network traffic and navigations.
+ */
+export interface AgenticCaseTimelineFacts {
+  version: 1;
+  /** The reported run. */
+  runIndex: number;
+  head: AgenticSideTimelineFacts;
+  /** Present for base-vs-head cases whose base side ran. */
+  base?: AgenticSideTimelineFacts;
+}
+
 export type AgenticRunCaseCheckVerdict = Exclude<
   AgenticRunResultCaseOutcome,
   "skipped"
@@ -582,7 +694,55 @@ export interface AgenticRunCaseCheck {
   error?: string;
 }
 
-export type AgenticRunComparisonVerdict = "regression" | "intended-change";
+/**
+ * The case agent's call on a base-vs-head difference. `unrelated` is a real
+ * difference the pull request did not cause (another commit, a flag, the
+ * environment); `not-comparable` means a side never reached the state under
+ * test. Only `regression` fails the case.
+ */
+export type AgenticRunComparisonVerdict =
+  | "regression"
+  | "intended-change"
+  | "unrelated"
+  | "not-comparable";
+
+/** A defect the visual review saw on the After (head) side. */
+export type AgenticRunComparisonDefect =
+  | "layout-broken"
+  | "text-clipped-or-overlapping"
+  | "error-or-empty-state"
+  | "stuck-loading"
+  | "broken-image"
+  | "content-missing";
+
+export interface AgenticRunComparisonVisualDifference {
+  /** One visible difference, in a product user's terms. */
+  what: string;
+  defect?: AgenticRunComparisonDefect;
+}
+
+/**
+ * What the vision model saw in a checkpoint pair, before the case agent made
+ * its call. Absent on pairs that were never classified.
+ */
+export interface AgenticRunComparisonVisualReview {
+  summary: string;
+  differences: AgenticRunComparisonVisualDifference[];
+  suggestedVerdict: AgenticRunComparisonVerdict | "noise";
+  confidence: "low" | "medium" | "high";
+}
+
+/**
+ * A second vision pass over a difference the visual review flagged but the
+ * agent did not call a regression: whether the agent's explanation accounts
+ * for what the screenshots show.
+ */
+export interface AgenticRunComparisonSecondLook {
+  agrees: boolean;
+  /** Differences the explanation leaves out or contradicts. */
+  unaccounted?: string[];
+  note?: string;
+}
 
 export type AgenticRunComparisonStatus =
   | "identical"
@@ -622,10 +782,18 @@ export interface AgenticRunScreenshotComparison {
   mismatchPixels?: number;
   mismatchFraction?: number;
   diffPath?: string;
+  /**
+   * The areas the diff marks as changed, as fractions of the diff image,
+   * largest first. Computed by the worker when it wrote the diff; absent on
+   * blobs from older workers, which a reader can rescan the diff image for.
+   */
+  regions?: AgenticRunChangedRegion[];
   base: AgenticRunComparisonSide;
   head: AgenticRunComparisonSide;
   verdict: AgenticRunComparisonVerdict;
   explanation: string;
+  visualReview?: AgenticRunComparisonVisualReview;
+  secondLook?: AgenticRunComparisonSecondLook;
   /** @deprecated Written by older workers; see `comparisonPresentation`. */
   display?: AgenticRunComparisonDisplay;
 }
@@ -642,6 +810,7 @@ export interface AgenticRunComparisonCheckpoint {
   status: AgenticRunComparisonStatus;
   base: AgenticRunComparisonCheckpointSide;
   head: AgenticRunComparisonCheckpointSide;
+  visualReview?: AgenticRunComparisonVisualReview;
 }
 
 /** What a base-vs-head case did differently on the base than on the head. */
@@ -729,6 +898,11 @@ export interface AgenticRunResultCase {
    * Present only when the case executed a test and the run left evidence.
    */
   runEvidence?: AgenticRunEvidence;
+  /**
+   * Worker-computed timeline facts of the reported run (actions, console,
+   * unusual requests) for each side. Absent for runs from before it existed.
+   */
+  caseTimeline?: AgenticCaseTimelineFacts;
   /** Sessions recorded while running this case. */
   sessionIds: string[];
   /**
@@ -1229,6 +1403,11 @@ export interface ReportAgenticRunFailureParams extends ProjectIdentifier {
   agenticRunId: string;
   /** The error that killed the run. */
   errorMessage: string;
+  /**
+   * `infrastructureInterrupted` when the worker's pod was terminated under it
+   * (SIGTERM). Defaults to `error`.
+   */
+  failureKind?: "error" | "infrastructureInterrupted";
 }
 
 /**

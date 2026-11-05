@@ -194,6 +194,15 @@ export interface TestCaseReplayOptions extends Partial<ScreenshotDiffOptions> {
  *
  * `ExecutionError` = the test run failed fatally, and didn't complete. To get accurate results it'll need to be re-run. The test run may shortly switch back
  * into 'Running' in this case, if the worker retries it.
+ *
+ * `Deferred` = created but deliberately not executed, because the project only
+ * executes once per pull request and this pull request has already had a run
+ * execute. It carries what it needs to execute later, pending a user decision to
+ * reuse an earlier commit's results or run again. Unlike `Skipped` it may still
+ * execute; unlike `Partial` it is not session-pool behaviour.
+ *
+ * `ResultsReused` = a `Deferred` run showing the results of an earlier executed
+ * run on the same pull request, read from the pinned source it links to.
  */
 export type TestRunStatus =
   | "PreProcessing"
@@ -205,7 +214,9 @@ export type TestRunStatus =
   | "Failure"
   | "Aborted"
   | "Skipped"
-  | "ExecutionError";
+  | "ExecutionError"
+  | "Deferred"
+  | "ResultsReused";
 
 /**
  * Execution of a chunk of a test run chunk.

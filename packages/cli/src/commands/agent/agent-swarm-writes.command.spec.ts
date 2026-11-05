@@ -49,7 +49,36 @@ describe("agent swarm write commands", () => {
 
   afterEach(() => logSpy.mockRestore());
 
-  it.each([createDiffCommentCommand, ignoreDiffCommand])(
+  it.each(["x", "y"])(
+    "requires --%s for ignore-diff on a single diff",
+    async (option) => {
+      await expect(
+        run(ignoreDiffCommand, {
+          replayDiffId: "rd-1",
+          screenshotName: "end-state",
+          reason: "Unrelated",
+          x: 0.4,
+          y: 0.6,
+          [option]: undefined,
+          reportFlake: false,
+          json: false,
+        }),
+      ).rejects.toThrow(`Missing required argument: ${option}`);
+    },
+  );
+
+  it("refuses --reportFlake alongside --diffs", async () => {
+    await expect(
+      run(ignoreDiffCommand, {
+        diffs: "[]",
+        reportFlake: true,
+        json: false,
+      }),
+    ).rejects.toThrow("set reportFlake on each diff");
+    expect(mocks.ignoreDiff).not.toHaveBeenCalled();
+  });
+
+  it.each([createDiffCommentCommand])(
     "requires approximate x and y coordinates",
     (command) => {
       const builder = command.builder as Record<

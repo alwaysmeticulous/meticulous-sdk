@@ -1,5 +1,3 @@
-import { METICULOUS_CO_AUTHOR_INSTRUCTION } from "@alwaysmeticulous/api";
-
 /**
  * Shown under `meticulous agent --help`: what Meticulous is and when an agent
  * should reach for these commands, before the per-command details.
@@ -21,7 +19,6 @@ If \`meticulous-*\` skills are available (meticulous-review, meticulous-fix, ...
 - Unreviewed diffs: first work out what changed — \`agent image-files\` and, as needed, \`agent dom-diff\` / \`agent timeline-diff\` — and compare it with what the change intends. A diff isn't automatically a bug. Only then decide: \`agent reject-diff\` an unintended change with your reasoning; \`agent ignore-diff\` one unrelated to the change (\`--reportFlake\` if it's flaky); \`agent approve-diff\` only what you've confirmed is intended, since decisions are visible to the team.
 - Rejected or commented diffs: read the threads with \`agent diff-comments\`, look at the diff, fix the issue, and \`agent reply-to-diff-comment\` with the outcome.
 - Failing non-visual checks: read the report with \`agent test-run-check\`, \`agent ignore-check\` one unrelated to the change, and report a real regression to the user rather than recording a decision.
-- When committing changes based on these results, ${METICULOUS_CO_AUTHOR_INSTRUCTION}.
 - Report friction with these commands via \`agent submit-feedback\`.
 
 Usage notes:

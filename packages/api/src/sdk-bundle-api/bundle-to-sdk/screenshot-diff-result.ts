@@ -266,10 +266,9 @@ export interface ScreenshotDiffResultDifference extends ScreenshotDiffResultComp
    * varies between replays of identical code, so a diff like this is very
    * likely noise rather than a change.
    *
-   * Projects that opt in turn such a diff into a flake with evidence
-   * `image-resampling-noise`; elsewhere it is a label only. Absent when
-   * false, and on screenshots captured before images recorded their natural
-   * size (~Oct 2026).
+   * Such a diff becomes a flake with evidence `image-resampling-noise`.
+   * Absent when false, and on screenshots captured before images recorded
+   * their natural size (~Oct 2026).
    */
   onlyImageResamplingNoise?: true;
 
@@ -285,6 +284,20 @@ export interface ScreenshotDiffResultDifference extends ScreenshotDiffResultComp
    * Absent when false.
    */
   onlyRefreshedPinnedImages?: true;
+
+  /**
+   * True when every differing pixel lies inside an element that paints text,
+   * the DOM and every element's matched style rules are the same on both
+   * sides, and every font face or font file that differs comes from a
+   * third-party stylesheet both sides loaded under the same URL: the
+   * stylesheet served other font files on base and head. The change under
+   * test can't decide what a third-party stylesheet serves, so a diff like
+   * this is not caused by it.
+   *
+   * Such a diff becomes a flake with evidence `third-party-font-changed`.
+   * Absent when false.
+   */
+  onlyChangedThirdPartyFonts?: true;
 }
 
 /**
@@ -333,13 +346,16 @@ export interface ScreenshotDiffResultFlake {
  * - **image-resampling-noise**: The diff is {@link ScreenshotDiffResultDifference.onlyImageResamplingNoise}.
  *
  * - **pinned-image-refreshed**: The diff is {@link ScreenshotDiffResultDifference.onlyRefreshedPinnedImages}.
+ *
+ * - **third-party-font-changed**: The diff is {@link ScreenshotDiffResultDifference.onlyChangedThirdPartyFonts}.
  */
 export type FlakeEvidence =
   | "varied-results-on-retry"
   | "varied-redacted-results-on-retry"
   | "diff-is-known-flake"
   | "image-resampling-noise"
-  | "pinned-image-refreshed";
+  | "pinned-image-refreshed"
+  | "third-party-font-changed";
 
 export type ScreenshotDiffRetryResult =
   | SingleTryScreenshotDiffRetryResult

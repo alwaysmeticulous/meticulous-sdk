@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { DEBUG_DATA_DIRECTORY } from "./debug-constants";
 import type { PositionedTimelineEntry, TimelineEntry } from "./debug.types";
 import { formatPollyReplayDetail } from "./format-polly-replay";
+import { formatSimulatedUserEvent } from "./format-simulated-user-event";
 import { formatErrorStackFrames } from "./format-stack-frames";
 import {
   screenshotIdentifierToBaseName,
@@ -193,7 +194,9 @@ const generateLogsIndex = (
     } else {
       const source = entry.source ?? "?";
       const type = entry.type ?? "?";
-      const msg = truncate(String(entry.message ?? ""), MAX_LOG_MSG_LENGTH);
+      const msg = toSingleTextLine(
+        truncate(String(entry.message ?? ""), MAX_LOG_MSG_LENGTH),
+      );
       lines.push(
         `[${lineIndex}] vt=${lastVt} source=${source} type=${type} msg=${msg}`,
       );
@@ -281,14 +284,19 @@ const formatVt = (entry: TimelineEntry): string => {
 const truncate = (s: string, maxLen: number): string =>
   s.length > maxLen ? s.slice(0, maxLen) + "..." : s;
 
+// One line per event, so a multi-line message (e.g. an error's) stays
+// greppable, and no control characters, which make grep treat the file as
+// binary.
+const toSingleTextLine = (s: string): string =>
+  s.replace(/\s*\n\s*/g, " ").replace(/\p{Cc}/gu, " ");
+
 const formatTimelineEntry = (
   entry: TimelineEntry,
   fileIndex: number,
 ): string => {
   const vt = formatVt(entry);
   const base = `[${fileIndex}] vt=${vt} kind=${entry.kind}`;
-  // One line per event, so a multi-line message (e.g. an error's) stays greppable.
-  const detail = getKindSpecificDetail(entry).replace(/\s*\n\s*/g, " ");
+  const detail = toSingleTextLine(getKindSpecificDetail(entry));
   return detail ? `${base} ${detail}` : base;
 };
 
@@ -304,25 +312,19 @@ const getKindSpecificDetail = (entry: TimelineEntry): string => {
 
     case "passedThroughNetworkRequest": {
       const req = (data.request as Record<string, unknown>) ?? {};
-      const method = req.method ?? "?";
-      const url = truncate(String(req.url ?? "?"), 120);
-      return `${method} ${url} (passed-through)`;
+      return `${req.method ?? "?"} ${String(req.url ?? "?")} (passed-through)`;
     }
 
     case "assetLoadNetworkRequest": {
       const req = (data.request as Record<string, unknown>) ?? {};
       const resp = (data.response as Record<string, unknown>) ?? {};
-      const method = req.method ?? "?";
-      const url = truncate(String(req.url ?? "?"), 120);
       const status = resp.statusCode ?? "?";
-      return `${method} ${url} -> ${status} (asset)`;
+      return `${req.method ?? "?"} ${String(req.url ?? "?")} -> ${status} (asset)`;
     }
 
     case "customResponseOverrideNetworkRequest": {
       const req = (data.request as Record<string, unknown>) ?? {};
-      const method = req.method ?? "?";
-      const url = truncate(String(req.url ?? "?"), 120);
-      return `${method} ${url} (custom-override)`;
+      return `${req.method ?? "?"} ${String(req.url ?? "?")} (custom-override)`;
     }
 
     case "consoleMessage": {
@@ -343,13 +345,9 @@ const getKindSpecificDetail = (entry: TimelineEntry): string => {
 
     case "jsReplay": {
       const event = data.event ?? "?";
-      if (event === "simulate") {
-        const userEvent = (data.userEvent as Record<string, unknown>) ?? {};
-        const eventType = userEvent.type ?? "?";
-        const result = data.result ?? "?";
-        return `${eventType} result=${result}`;
-      }
-      return `event=${event}`;
+      return event === "simulate"
+        ? formatSimulatedUserEvent(data)
+        : `event=${event}`;
     }
 
     case "fatalError":
@@ -426,8 +424,7 @@ const formatNetworkEntry = (
 ): string => {
   const vt = formatVt(entry);
   const base = `[${fileIndex}] vt=${vt}`;
-  const detail = getKindSpecificDetail(entry);
-  return `${base} ${detail}`;
+  return `${base} ${toSingleTextLine(getKindSpecificDetail(entry))}`;
 };
 
 const formatScreenshotIdentifier = (identifier: unknown): string => {

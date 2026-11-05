@@ -72,9 +72,9 @@ meticulous [command]
 | \`agent trigger-test-run\` | Trigger a test run against an uploaded build | Agent/programmatic use |
 | \`agent test-run-diffs\` | List replay diffs for a test run with summary | Agent/programmatic use |
 | \`agent diff-comments\` | Get review comments for a replay-diff screenshot | Agent/programmatic use |
-| \`agent approve-diff\` | Agent-approve a screenshot diff, optionally commenting why, if the project allows it | Agent/programmatic use |
-| \`agent reject-diff\` | Agent-reject a screenshot diff and comment why | Agent/programmatic use |
-| \`agent ignore-diff\` | Agent-ignore a screenshot diff as unrelated to the change and comment why; a real ignore only if the project allows it | Agent/programmatic use |
+| \`agent approve-diff\` | Agent-approve one or more screenshot diffs, optionally commenting why, if the project allows it | Agent/programmatic use |
+| \`agent reject-diff\` | Agent-reject one or more screenshot diffs and comment why | Agent/programmatic use |
+| \`agent ignore-diff\` | Agent-ignore one or more screenshot diffs as unrelated to the change and comment why; a real ignore only if the project allows it | Agent/programmatic use |
 | \`agent create-diff-comment\` | Start a review comment thread on a screenshot diff | Agent/programmatic use |
 | \`agent reply-to-diff-comment\` | Reply to a review comment thread | Agent/programmatic use |
 | \`agent dom\` | Get the DOM snapshot of one screenshot of a replay, as captured or with noise removed, or of one element in it by \`--path\` | Agent/programmatic use |
@@ -836,7 +836,7 @@ npx @alwaysmeticulous/cli simulate \\
 
 ---
 
-#### \`--devtools\`
+#### \`--devTools\`
 
 **Type**: Boolean
 **Description**: Open browser DevTools automatically
@@ -844,7 +844,7 @@ npx @alwaysmeticulous/cli simulate \\
 
 **Example**:
 \`\`\`bash
---devtools
+--devTools
 \`\`\`
 
 ---
@@ -861,7 +861,7 @@ npx @alwaysmeticulous/cli simulate \\
 npx @alwaysmeticulous/cli simulate \\
   --sessionId="ses_abc123..." \\
   --appUrl="http://localhost:3000" \\
-  --devtools
+  --devTools
 
 # Headless mode for CI
 npx @alwaysmeticulous/cli simulate \\

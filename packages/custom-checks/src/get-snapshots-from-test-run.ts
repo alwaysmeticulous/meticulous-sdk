@@ -6,6 +6,7 @@ import {
 import {
   downloadAndAssembleSnapshots,
   type CustomCheckSnapshotFileToDownload,
+  type SnapshotDataProjector,
 } from "./download-snapshots";
 
 export interface GetSnapshotsFromTestRunOptions {
@@ -38,6 +39,13 @@ export interface GetSnapshotsFromTestRunOptions {
    * that may inspect `baseSnapshots` even when `headSnapshots` is empty.
    */
   skipBaseWhenHeadEmpty?: boolean;
+  /**
+   * Optional per-entry projection applied to `snapshot.data` as each file is
+   * parsed so unreferenced fields can be garbage-collected immediately instead
+   * of accumulating across the assembled `baseSnapshots` / `headSnapshots`
+   * arrays.
+   */
+  projectSnapshotData?: SnapshotDataProjector;
 }
 
 export interface SnapshotsFromTestRun {
@@ -119,6 +127,7 @@ export const getSnapshotsFromTestRun = async ({
   snapshotTypes,
   onlyBaseSessionsPresentInHead = false,
   skipBaseWhenHeadEmpty = false,
+  projectSnapshotData,
 }: GetSnapshotsFromTestRunOptions): Promise<SnapshotsFromTestRun> => {
   const params = new URLSearchParams();
   for (const snapshotType of snapshotTypes) {
@@ -145,10 +154,12 @@ export const getSnapshotsFromTestRun = async ({
   const baseSnapshots = await downloadAndAssembleSnapshots({
     signedBaseUrl: data.signedBaseUrl,
     files: baseFilesToDownload,
+    ...(projectSnapshotData ? { projectSnapshotData } : {}),
   });
   const headSnapshots = await downloadAndAssembleSnapshots({
     signedBaseUrl: data.signedBaseUrl,
     files: data.headSnapshotFiles,
+    ...(projectSnapshotData ? { projectSnapshotData } : {}),
   });
 
   return {
