@@ -80,15 +80,41 @@ export interface AgenticAssetsAppTarget {
   appPort?: number | undefined;
 }
 
+/**
+ * A build already uploaded with `meticulous agent upload-build`, named by the
+ * deployment id it printed. The backend reads whether it is assets or a
+ * container (and a container's port, env and health check) from the upload.
+ */
+export interface AgenticDeploymentAppTarget {
+  type: "deployment";
+  projectDeploymentId: string;
+  /** Container deployments only. */
+  enableLocalMocks?: boolean | undefined;
+}
+
 export type AgenticAppTarget =
   | AgenticContainerAppTarget
-  | AgenticAssetsAppTarget;
+  | AgenticAssetsAppTarget
+  | AgenticDeploymentAppTarget;
 
 export interface CompleteAgenticSessionGenerationParams extends ProjectIdentifier {
   commitSha: string;
   /** Server-minted id of instructions uploaded for this trigger, if any. */
   instructionsId?: string;
   appTarget?: AgenticAppTarget | undefined;
+  /**
+   * Projects without a hosting provider only: the uploaded source bundle (see
+   * `requestAgentSwarmSourceBundleUpload`) the run reads the diff and source
+   * from. Requires `baseSha`.
+   */
+  sourceBundleId?: string;
+  /** Projects without a hosting provider only: the commit the change is diffed against. */
+  baseSha?: string;
+  /**
+   * Projects without a hosting provider only: the session-replay test run of
+   * the head build, whose base build the run compares against.
+   */
+  headTestRunId?: string;
 }
 
 export interface CompleteAgenticSessionGenerationResponse {

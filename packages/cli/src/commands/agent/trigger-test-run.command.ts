@@ -1,5 +1,9 @@
+import { readFile } from "node:fs/promises";
+import type { Project } from "@alwaysmeticulous/api";
 import {
   createClientWithOAuth,
+  getProject,
+  getTestRun,
   isOpaqueId,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
@@ -25,7 +29,9 @@ interface Options {
   deploymentId?: string | undefined;
   commitSha?: string | undefined;
   baseSha?: string | undefined;
+  baseTestRunId?: string | undefined;
   gitDiffOutput?: string | undefined;
+  gitDiffFile?: string | undefined;
   sessionIds?: string | undefined;
   maxDurationSeconds?: string | undefined;
   dontWaitForTestRunToComplete: boolean;
@@ -46,6 +52,53 @@ export const assertValidDeploymentIdArg = (
     `--deploymentId "${deploymentId}" is not a deployment id. This usually means a previous 'agent upload-build' call failed and its error output was passed through — check that it succeeded and printed a deploymentId.`,
   );
 };
+
+export const readGitDiffArg = async ({
+  gitDiffOutput,
+  gitDiffFile,
+}: {
+  gitDiffOutput: string | undefined;
+  gitDiffFile: string | undefined;
+}): Promise<string | undefined> => {
+  if (gitDiffFile == null) {
+    return gitDiffOutput;
+  }
+  if (gitDiffOutput != null) {
+    throw new CliUserError(
+      "--gitDiffOutput and --gitDiffFile are mutually exclusive.",
+    );
+  }
+  try {
+    return await readFile(gitDiffFile, "utf-8");
+  } catch (error) {
+    throw new CliUserError(
+      `Could not read --gitDiffFile ${gitDiffFile}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+};
+
+/**
+ * Whether the project has no connected repository. Such a project can't infer
+ * a base from CI, so a trigger without --baseSha/--baseTestRunId is a baseline
+ * run there instead of a comparison against the local merge-base.
+ */
+export const isProjectWithoutRepository = (
+  project: Pick<Project, "hostKind"> | null,
+): boolean => project?.hostKind === "None";
+
+/**
+ * Whether the base has to come from the server rather than from the flags or
+ * local git: only when the caller named none and supplied no diff of its own.
+ */
+export const shouldCheckForBaselineRun = ({
+  baseSha,
+  baseTestRunId,
+  gitDiffOutput,
+}: {
+  baseSha: string | undefined;
+  baseTestRunId: string | undefined;
+  gitDiffOutput: string | undefined;
+}): boolean => !baseSha && !baseTestRunId && !gitDiffOutput;
 
 /**
  * Whether the "nothing to test" short-circuit should fire: base equals head
@@ -141,7 +194,9 @@ const handler = async ({
   deploymentId,
   commitSha: commitSha_,
   baseSha: baseSha_,
-  gitDiffOutput: gitDiffOutput_,
+  baseTestRunId,
+  gitDiffOutput: gitDiffOutputArg,
+  gitDiffFile,
   sessionIds: sessionIds_,
   maxDurationSeconds: maxDurationSeconds_,
   dontWaitForTestRunToComplete,
@@ -150,12 +205,10 @@ const handler = async ({
   project,
 }: Options): Promise<void> => {
   assertValidDeploymentIdArg(deploymentId);
-  if (deploymentId && commitSha_) {
-    throw new CliUserError(
-      "--deploymentId and --commitSha are mutually exclusive. Pass --deploymentId for a build from 'agent upload-build', " +
-        "or --commitSha to find an existing deployment already uploaded for that commit.",
-    );
-  }
+  const gitDiffOutput_ = await readGitDiffArg({
+    gitDiffOutput: gitDiffOutputArg,
+    gitDiffFile,
+  });
   // With neither given, fall back to the local repo's HEAD commit, on the
   // assumption a deployment was already uploaded for it elsewhere (e.g. by CI).
   let commitSha = commitSha_;
@@ -188,23 +241,59 @@ const handler = async ({
       `--sessionIds contains duplicate session ID(s): ${duplicates.join(", ")}`,
     );
   }
+  // A dry run doesn't contact the server, so it can't tell a baseline run
+  // apart or look up a --baseTestRunId's commit.
+  const isBaselineRun =
+    !dryRun &&
+    shouldCheckForBaselineRun({
+      baseSha: baseSha_,
+      baseTestRunId,
+      gitDiffOutput: gitDiffOutput_,
+    }) &&
+    isProjectWithoutRepository(
+      await getProject(
+        await createClientWithOAuth({ apiToken, enableOAuthLogin: true }),
+        project,
+      ),
+    );
+  // The diff for a pinned base run is against that run's commit.
+  const explicitBaseSha =
+    baseTestRunId && !baseSha_ && !dryRun
+      ? (
+          await getTestRun({
+            client: await createClientWithOAuth({
+              apiToken,
+              enableOAuthLogin: true,
+            }),
+            testRunId: baseTestRunId,
+          })
+        ).commitSha
+      : baseSha_;
   // Every custom trigger gets a git diff (used by Relevant Session Execution),
   // computed against `commitSha` when we have one (--commitSha mode, explicit
   // or inferred above) or freshly resolved from local HEAD otherwise
-  // (--deploymentId mode).
+  // (--deploymentId mode). A baseline run has no base to diff against.
   const { baseSha, gitDiffOutput, head, headIsEphemeral } =
-    await resolveComparisonOptions({
-      baseSha: baseSha_,
-      gitDiffOutput: gitDiffOutput_,
-      commitSha,
-    });
+    isBaselineRun || (baseTestRunId && !explicitBaseSha)
+      ? {
+          baseSha: undefined,
+          gitDiffOutput: undefined,
+          head: undefined,
+          headIsEphemeral: false,
+        }
+      : await resolveComparisonOptions({
+          baseSha: explicitBaseSha,
+          gitDiffOutput: gitDiffOutput_,
+          commitSha,
+        });
   // A test run is only useful with a base to compare against, and the backend
-  // refuses to create a baseless run, so require a base up front — even
-  // though it may end up unused for comparison below (a same-SHA re-run with
-  // pinned --sessionIds runs head-only with no base).
-  if (!baseSha) {
+  // refuses to create a baseless run outside a project with no repository, so
+  // require a base up front — even though it may end up unused for comparison
+  // below (a same-SHA re-run with pinned --sessionIds runs head-only with no
+  // base).
+  if (!baseSha && !baseTestRunId && !isBaselineRun) {
     throw new CliUserError(
-      "A base is required: pass --baseSha, or run from a local git checkout so it can be inferred from the merge-base with the origin default branch.",
+      "A base is required: pass --baseSha or --baseTestRunId, or run from a local git checkout so it can be inferred from the merge-base with the origin default branch.",
     );
   }
 
@@ -226,6 +315,7 @@ const handler = async ({
     );
   }
   if (
+    baseSha != null &&
     shouldSkipAsNothingToTest({
       commitSha,
       effectiveHead,
@@ -251,7 +341,7 @@ const handler = async ({
 
   if (dryRun) {
     logNotice(
-      `Dry run: would trigger a test run for ${deploymentDescriptor} (base: ${baseSha})` +
+      `Dry run: would trigger a test run for ${deploymentDescriptor} (base: ${baseTestRunId ? `test run ${baseTestRunId}` : baseSha})` +
         (hasPinnedSessionIds
           ? ` for ${sessionIds.length} explicitly-specified session(s)`
           : ""),
@@ -267,14 +357,20 @@ const handler = async ({
     enableOAuthLogin: true,
   });
 
-  logProgress(`Triggering test run for ${deploymentDescriptor}...`);
+  logProgress(
+    isBaselineRun
+      ? `Triggering a baseline test run (no base) for ${deploymentDescriptor}: this project has no connected repository...`
+      : `Triggering test run for ${deploymentDescriptor}...`,
+  );
 
   let testRunId: string | null;
   try {
     const { testRun, headCommitSha } = await triggerTestRun({
       apiToken: apiToken_,
-      ...(deploymentId ? { deploymentId } : { commitSha }),
-      baseSha,
+      ...(deploymentId ? { deploymentId } : {}),
+      ...(commitSha ? { commitSha } : {}),
+      ...(baseSha ? { baseSha } : {}),
+      ...(baseTestRunId ? { baseTestRunId } : {}),
       ...(gitDiffOutput ? { gitDiffOutput } : {}),
       ...(hasPinnedSessionIds ? { sessionIds } : {}),
       ...(maxDurationSeconds !== undefined ? { maxDurationSeconds } : {}),
@@ -338,13 +434,13 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
     deploymentId: {
       string: true,
       description:
-        "The deployment to test, as returned by 'agent upload-build'. Mutually exclusive with --commitSha. " +
+        "The deployment to test, as returned by 'agent upload-build'. With --commitSha too, that is checked to be the deployment's commit and the git diff is computed for it instead of the local HEAD. " +
         "When both are omitted, the local repo's HEAD commit is used to look up an existing deployment (requires a clean working tree).",
     },
     commitSha: {
       string: true,
       description:
-        "Alternative to --deploymentId: finds the most recent deployment already uploaded for this commit in the project " +
+        "Alternative to --deploymentId (or, alongside it, the deployment's commit): finds the most recent deployment already uploaded for this commit in the project " +
         "(e.g. by an earlier CI run). Useful for re-running against a commit that has already gone through Meticulous, " +
         "e.g. to test the coverage impact of --sessionIds. A git diff against --baseSha is computed for this commit " +
         "(git history must have it locally) unless you pass --gitDiffOutput yourself. " +
@@ -355,12 +451,25 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
       description:
         "The base commit SHA to compare against. If omitted, it's inferred from the local repo (the current directory) as the merge-base " +
         "with the origin default branch. Every trigger gets a git diff against this base (used by Relevant Session Execution) — " +
-        "against --commitSha when using it, or the local repo's head commit with --deploymentId — unless you pass --gitDiffOutput yourself.",
+        "against --commitSha when using it, or the local repo's head commit with --deploymentId — unless you pass --gitDiffOutput yourself. " +
+        "On a project with no connected repository, omitting both this and --baseTestRunId triggers a baseline run instead: it replays the project's sessions with nothing to compare against, " +
+        "and later runs whose --baseSha is its commit compare against it, even while it is still running.",
+    },
+    baseTestRunId: {
+      string: true,
+      description:
+        "Alternative to looking the base up by --baseSha: the test run to compare against, e.g. one triggered earlier on the base commit. " +
+        "--baseSha, if also given, must be its commit; when omitted, the git diff is computed against that run's commit.",
     },
     gitDiffOutput: {
       string: true,
       description:
         "Raw git diff output between the base and the head commit (the deployment's commit, or --commitSha). Requires --baseSha.",
+    },
+    gitDiffFile: {
+      string: true,
+      description:
+        "Alternative to --gitDiffOutput: a file holding the raw git diff output, for a diff too large to pass as an argument. Requires --baseSha.",
     },
     sessionIds: {
       string: true,

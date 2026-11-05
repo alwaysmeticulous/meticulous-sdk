@@ -1,5 +1,29 @@
 # @alwaysmeticulous/cli
 
+## 3.6.0
+
+### Minor Changes
+
+- [#17065](https://github.com/alwaysmeticulous/meticulous/pull/17065) [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous ci agent-test` can run Agent swarm on a project with no connected GitHub, GitLab or Bitbucket repository: `--uploadSource` (on by default for such projects) uploads the source of `--baseSha..--commitSha` from `--repoDirectory` as a git bundle of the two trees, and `--headTestRunId` names the session-replay test run to compare against. `--deploymentId` reuses a build uploaded with `meticulous agent upload-build`, `--repoDirectory` can now be combined with `--commitSha`, a launched run prints `Agent swarm run: <id>`, and `--json` prints the result as JSON.
+
+- [#17065](https://github.com/alwaysmeticulous/meticulous/pull/17065) [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Add `meticulous try`: with only a Meticulous login, creates a trial project and has Claude Code build the app, record sessions and backtest Meticulous against recently merged PRs. Adds the `selfOnboard` client function.
+
+- [#17065](https://github.com/alwaysmeticulous/meticulous/pull/17065) [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous agent trigger-test-run` takes `--baseTestRunId` to compare against a specific test run, `--gitDiffFile` to read the diff from a file, and accepts `--commitSha` alongside `--deploymentId` as the deployment's commit. On a project with no connected repository, omitting both `--baseSha` and `--baseTestRunId` triggers a baseline run that later runs on that commit compare against.
+
+- [#17065](https://github.com/alwaysmeticulous/meticulous/pull/17065) [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous try` handles apps behind a login: the agent picks how to sign in (a dev auth bypass, a browser login, test credentials or a token) and pauses once for the user. New `meticulous try login` opens a browser for the user to log in and saves its cookies and local storage as a storage state; `meticulous record session --storageState <file>` starts recordings signed in with it.
+
+- [#17065](https://github.com/alwaysmeticulous/meticulous/pull/17065) [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous crawl` can now run unattended: `--headless` runs the browser headless, `--nonInteractive` never waits for input (skipping the manual login pause, and exiting with code 2 if every page the crawl reached had a login-like URL or was on another origin), `--storageState` loads cookies and local storage from a Playwright storage state or a cookie array so signed-in pages can be crawled, and `--outputFile` writes the recorded session ids as JSON. `meticulous record session` gains `--headless` for use with `--remoteDebuggingPort`.
+
+### Patch Changes
+
+- [#17100](https://github.com/alwaysmeticulous/meticulous/pull/17100) [`5e8b50b`](https://github.com/alwaysmeticulous/meticulous/commit/5e8b50b1a635acef3ace4b63a7cbde12fac08cc7) Thanks [@alexivanov](https://github.com/alexivanov)! - `meticulous debug` now only passes a commit SHA to git when it is a hex git object id, and runs git without a shell. Replays whose commit SHA is not a valid object id skip the project repo worktree and PR diff.
+
+- [#16928](https://github.com/alwaysmeticulous/meticulous/pull/16928) [`01b64ff`](https://github.com/alwaysmeticulous/meticulous/commit/01b64ffd853f366769b0dff26aa1a3ec2614b025) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - A 401/403 for a request sent without credentials now says why none was sent (not logged in, stored login expired, revoked or removed mid-command, or its refresh failed, with the refresh error) and leads with `meticulous auth login`, offering `--apiToken` / `METICULOUS_API_TOKEN` only for CI and other unattended use. For commands that authenticate with an API token only, it says when your stored login was not used (asking for `--apiToken` / `METICULOUS_API_TOKEN`) or has expired. It no longer claims an API token is "probably missing".
+
+  A 401/403 for a request that did carry a credential now fails every CLI command with an auth error saying that credential was rejected or lacks access, with advice for the kind of credential sent (your login or an API token), instead of a raw request error and the `--help` tip. The client throws these as `RejectedCredentialsError` (with `credentialKind`, and the message `maybeEnrichFetchError` already gave such errors), exported alongside `isRejectedCredentialsError`. The tunnel client's authentication errors use the same guidance.
+
+- [#17031](https://github.com/alwaysmeticulous/meticulous/pull/17031) [`b3b222b`](https://github.com/alwaysmeticulous/meticulous/commit/b3b222b34e2acb9df5ce5acb0a6d8f5c14edd6dc) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - When a test run trigger hit a GitHub server error and the server scheduled a retry, say the run will be created once GitHub recovers rather than once the rate limit resets, and report it in `--json` output with the skip reason `github_server_error_retry_scheduled`.
+
 ## 3.5.0
 
 ### Minor Changes

@@ -1,0 +1,184 @@
+import { join } from "path";
+import chalk from "chalk";
+import type { CommandModule } from "yargs";
+import { wrapHandler } from "../../command-utils/sentry.utils";
+import { CliUserError } from "../../utils/cli-user-error";
+import { repoRootFrom } from "./shared/helper-options";
+import { writeTryContext } from "./shared/try-context";
+import { buildTryContext } from "./start/build-try-context";
+import { defaultTryPrompt } from "./start/kickoff-prompt";
+import {
+  assertClaudeInstalled,
+  launchTryAgent,
+  printTryManualLaunch,
+} from "./start/launch-try-agent";
+import { materializeTryWorkspace } from "./start/materialize-try-workspace";
+import { deriveProjectName, detectPackageManager } from "./start/repo-facts";
+import { resolveTryApp } from "./start/resolve-try-app";
+import { selfOnboardProject } from "./start/self-onboard-project";
+
+const MIN_PRS = 5;
+const MAX_PRS = 10;
+
+interface StartOptions {
+  cwd: string | undefined;
+  app: string | undefined;
+  model: string;
+  prs: number;
+  prompt: string | undefined;
+  headless: boolean;
+  printOnly: boolean;
+}
+
+const handler = async (options: StartOptions): Promise<void> => {
+  const repoRoot = repoRootFrom(options.cwd);
+  if (!options.printOnly) {
+    assertClaudeInstalled();
+  }
+
+  const apps = await resolveTryApp({ projectRoot: repoRoot, app: options.app });
+  const repoName = deriveProjectName(repoRoot);
+  const onboarded = await selfOnboardProject(repoName);
+  const packageManager = detectPackageManager([
+    repoRoot,
+    ...(apps.selectedApp ? [join(repoRoot, apps.selectedApp.path)] : []),
+  ]);
+
+  const workspaceDir = materializeTryWorkspace({ repoRoot, packageManager });
+  const context = buildTryContext({
+    repoRoot,
+    workspaceDir,
+    repoName,
+    onboarded,
+    apps,
+    packageManager,
+    prCount: options.prs,
+  });
+  writeTryContext(repoRoot, context);
+
+  printSummary({
+    projectLabel: `${onboarded.organization.name}/${onboarded.project.name}`,
+    projectUrl: context.projectUrl,
+    created: onboarded.created,
+    workspaceDir,
+    prCount: options.prs,
+  });
+
+  const prompt =
+    options.prompt ?? defaultTryPrompt({ headless: options.headless });
+  if (options.printOnly) {
+    printTryManualLaunch({
+      workspaceDir,
+      projectRoot: repoRoot,
+      model: options.model,
+      prompt,
+    });
+    return;
+  }
+  const exitCode = launchTryAgent({
+    workspaceDir,
+    projectRoot: repoRoot,
+    model: options.model,
+    prompt,
+    headless: options.headless,
+    apiToken: onboarded.apiToken,
+  });
+  printNextSteps(context.projectUrl);
+  if (exitCode !== 0) {
+    throw new CliUserError(
+      `Claude Code exited with code ${exitCode}.`,
+      exitCode,
+      "warn",
+    );
+  }
+};
+
+const printSummary = (options: {
+  projectLabel: string;
+  projectUrl: string;
+  created: boolean;
+  workspaceDir: string;
+  prCount: number;
+}): void => {
+  console.log("");
+  console.log(
+    `${options.created ? "Created" : "Reusing"} trial project ${chalk.cyan(options.projectLabel)} — ${chalk.cyan(options.projectUrl)}`,
+  );
+  console.log(chalk.dim(`  Workspace: ${options.workspaceDir} (gitignored)`));
+  console.log("");
+  console.log(chalk.bold("What happens next"));
+  console.log(
+    `  Claude Code builds and serves your app, records sessions of it, then replays them and runs Agent swarm against ${options.prCount} recently merged PRs to show what Meticulous would have caught.`,
+  );
+  console.log(
+    `  ${chalk.yellow("This usually takes 30–60 minutes")} — keep this terminal open. Nothing is committed or pushed.`,
+  );
+  console.log(
+    chalk.dim("  Model usage is billed to your own Claude Code account."),
+  );
+  console.log("");
+};
+
+const printNextSteps = (projectUrl: string): void => {
+  console.log("");
+  console.log(chalk.bold("Next steps"));
+  console.log(
+    `  Results: ${chalk.cyan(projectUrl)} (or \`meticulous try results\`)`,
+  );
+  console.log(
+    `  Set Meticulous up on every PR in CI: ${chalk.cyan("meticulous onboard")}`,
+  );
+  console.log("  Remove the backtest worktrees: `meticulous try cleanup`");
+  console.log("");
+};
+
+export const tryStartCommand: CommandModule<unknown, StartOptions> = {
+  command: ["start", "$0"],
+  describe:
+    "Create a trial Meticulous project and let Claude Code backtest Meticulous against this repo's recent PRs",
+  builder: {
+    cwd: {
+      string: true,
+      description: "Path to the application repository (defaults to cwd)",
+    },
+    app: {
+      string: true,
+      description:
+        "Frontend app path or package name in a monorepo (e.g. `apps/web`). Skips the app picker.",
+    },
+    model: {
+      string: true,
+      default: "opus",
+      description: "Claude model to run the trial with",
+    },
+    prs: {
+      number: true,
+      default: 8,
+      description: `How many recently merged PRs to backtest (${MIN_PRS}-${MAX_PRS})`,
+      coerce: (value: number): number => {
+        if (!Number.isInteger(value) || value < MIN_PRS || value > MAX_PRS) {
+          throw new CliUserError(
+            `--prs must be an integer between ${MIN_PRS} and ${MAX_PRS}.`,
+          );
+        }
+        return value;
+      },
+    },
+    prompt: {
+      string: true,
+      description: "Override the kickoff prompt",
+    },
+    headless: {
+      boolean: true,
+      default: false,
+      description: "Run Claude Code non-interactively (-p)",
+    },
+    printOnly: {
+      boolean: true,
+      default: false,
+      description:
+        "Only create the project and workspace, and print how to start Claude Code",
+    },
+  },
+  handler: wrapHandler(handler),
+};

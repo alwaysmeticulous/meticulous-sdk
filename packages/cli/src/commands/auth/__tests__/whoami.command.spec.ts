@@ -7,6 +7,8 @@ import {
   it,
   vi,
 } from "vitest";
+import type * as Client from "@alwaysmeticulous/client";
+import { MissingCredentialsError } from "@alwaysmeticulous/client";
 import { whoamiCommand } from "../whoami.command";
 
 // Make wrapHandler a passthrough so handler errors propagate directly to tests
@@ -34,11 +36,17 @@ vi.mock("@alwaysmeticulous/common", () => ({
   logNotice: mocks.logNotice,
 }));
 
-vi.mock("@alwaysmeticulous/client", () => ({
-  getAuthToken: mocks.getAuthToken,
-  createClientWithOAuth: mocks.createClientWithOAuth,
-  getAgentWhoami: mocks.getAgentWhoami,
-}));
+vi.mock("@alwaysmeticulous/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof Client>();
+  return {
+    MissingCredentialsError: actual.MissingCredentialsError,
+    isMissingCredentialsError: actual.isMissingCredentialsError,
+    MISSING_AUTH_GUIDANCE: actual.MISSING_AUTH_GUIDANCE,
+    getAuthToken: mocks.getAuthToken,
+    createClientWithOAuth: mocks.createClientWithOAuth,
+    getAgentWhoami: mocks.getAgentWhoami,
+  };
+});
 
 vi.mock("../../../utils/handle-auth-failure", () => ({
   handleAuthFailure: vi.fn().mockReturnValue(false),
@@ -54,6 +62,17 @@ const runHandler = (args: { json?: boolean } = {}) =>
 let logSpy: ReturnType<typeof vi.spyOn>;
 const stdoutText = () => logSpy.mock.calls.flat().join("\n");
 const noticeText = () => mocks.logNotice.mock.calls.flat().join("\n");
+
+const missingCredentials = (
+  status: number,
+  reason: Client.MissingCredentialReason,
+): Client.MissingCredentialsError =>
+  new MissingCredentialsError(
+    Object.assign(new Error(`HTTP ${status}`), {
+      response: { status, statusText: "", data: null, headers: {} },
+    }),
+    reason,
+  );
 
 const OAUTH_WHOAMI = {
   authenticatedVia: "oauth" as const,
@@ -229,16 +248,52 @@ describe("whoami command", () => {
     });
 
     it("errors with not-logged-in guidance when nothing is injected", async () => {
-      mocks.getAgentWhoami.mockRejectedValue(new Error("HTTP 401"));
+      mocks.getAgentWhoami.mockRejectedValue(
+        missingCredentials(401, { kind: "not-logged-in" }),
+      );
 
       await expect(runHandler()).rejects.toThrow(/Not logged in/);
     });
 
     it("prints nothing to stdout before throwing not-logged-in with --json", async () => {
-      mocks.getAgentWhoami.mockRejectedValue(new Error("HTTP 401"));
+      mocks.getAgentWhoami.mockRejectedValue(
+        missingCredentials(401, { kind: "not-logged-in" }),
+      );
 
       await expect(runHandler({ json: true })).rejects.toThrow(/Not logged in/);
       expect(stdoutText()).toBe("");
+    });
+
+    it("says why a stored login could not be used instead of 'Not logged in'", async () => {
+      mocks.getAgentWhoami.mockRejectedValue(
+        missingCredentials(401, {
+          kind: "refresh-failed",
+          detail: "fetch failed",
+        }),
+      );
+
+      const caught = await runHandler().catch((error: unknown) => error);
+
+      expect(caught).toBeInstanceOf(Error);
+      expect(String(caught)).toMatch(/refreshing it failed \(fetch failed\)/);
+      expect(String(caught)).not.toMatch(/Not logged in/);
+    });
+
+    it("reports 'Not logged in' for the 403 the backend sends a header-less request", async () => {
+      mocks.getAgentWhoami.mockRejectedValue(
+        missingCredentials(403, { kind: "not-logged-in" }),
+      );
+
+      await expect(runHandler()).rejects.toThrow(/Not logged in\./);
+    });
+
+    it("rethrows server and network errors instead of reporting 'Not logged in'", async () => {
+      const serverError = Object.assign(new Error("HTTP 500"), {
+        response: { status: 500, statusText: "", data: null, headers: {} },
+      });
+      mocks.getAgentWhoami.mockRejectedValue(serverError);
+
+      await expect(runHandler()).rejects.toBe(serverError);
     });
 
     it("omits the Pinned project line when the injected credentials have no selected project", async () => {

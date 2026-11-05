@@ -30,3 +30,6 @@ export const onboardTemplatesDir = join(
   "onboard",
   "templates",
 );
+
+/** Templates vendored for `meticulous try` (CLAUDE.md, agents, skills). */
+export const tryTemplatesDir = join(__dirname, "commands", "try", "templates");

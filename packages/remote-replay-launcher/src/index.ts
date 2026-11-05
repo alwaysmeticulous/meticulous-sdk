@@ -19,6 +19,14 @@ export {
   GenerateSessionsResult,
 } from "./generate-sessions";
 export {
+  createSourceBundle,
+  SourceBundle,
+} from "./source-bundle/create-source-bundle";
+export {
+  uploadSourceBundle,
+  UploadedSourceBundle,
+} from "./source-bundle/upload-source-bundle";
+export {
   uploadAssetChunk,
   UploadAssetChunkOptions,
 } from "./upload-asset-chunk";
@@ -27,7 +35,11 @@ export {
   RunWithUploadedAssetChunksOptions,
   RunWithUploadedAssetChunksResult,
 } from "./run-with-uploaded-asset-chunks";
-export { describeGitHubRateLimitRetry } from "./github-rate-limit-retry";
+export {
+  describeGitHubRateLimitRetry,
+  getGitHubDelayedRetrySkipReason,
+  type GitHubDelayedRetrySkipReason,
+} from "./github-rate-limit-retry";
 export { TunnelData } from "./types";
 export {
   carryCompletedUpload,

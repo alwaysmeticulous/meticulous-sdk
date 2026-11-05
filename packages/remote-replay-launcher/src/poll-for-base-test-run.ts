@@ -31,6 +31,8 @@ type PollResult = {
    * the run once the limit resets.
    */
   githubRateLimitRetryScheduled?: boolean | undefined;
+  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
+  githubServerErrorRetryScheduled?: boolean | undefined;
   overlaps?: ChunkPathOverlap[] | undefined;
   overlapsTruncated?: boolean | undefined;
 };
@@ -75,6 +77,8 @@ export const pollWhileBaseNotFound = async ({
   let commentsDisabledForAuthor = initialResult.commentsDisabledForAuthor;
   let githubRateLimitRetryScheduled =
     initialResult.githubRateLimitRetryScheduled;
+  let githubServerErrorRetryScheduled =
+    initialResult.githubServerErrorRetryScheduled;
   // Server-driven extension of the polling window (per-project feature flag).
   // Tracked across retries so a change in the server's answer takes effect.
   let extraBasePollTimeoutMs = initialResult.extraBasePollTimeoutMs;
@@ -121,6 +125,8 @@ export const pollWhileBaseNotFound = async ({
         retryResult.allSessionsExcludedBySessionFilter;
       commentsDisabledForAuthor = retryResult.commentsDisabledForAuthor;
       githubRateLimitRetryScheduled = retryResult.githubRateLimitRetryScheduled;
+      githubServerErrorRetryScheduled =
+        retryResult.githubServerErrorRetryScheduled;
       extraBasePollTimeoutMs = retryResult.extraBasePollTimeoutMs;
       overlaps = retryResult.overlaps;
       overlapsTruncated = retryResult.overlapsTruncated;
@@ -136,6 +142,8 @@ export const pollWhileBaseNotFound = async ({
       commentsDisabledForAuthor = fallbackResult.commentsDisabledForAuthor;
       githubRateLimitRetryScheduled =
         fallbackResult.githubRateLimitRetryScheduled;
+      githubServerErrorRetryScheduled =
+        fallbackResult.githubServerErrorRetryScheduled;
       overlaps = fallbackResult.overlaps;
       overlapsTruncated = fallbackResult.overlapsTruncated;
       baseNotFound = fallbackResult.baseNotFound ?? false;
@@ -149,6 +157,7 @@ export const pollWhileBaseNotFound = async ({
     allSessionsExcludedBySessionFilter,
     commentsDisabledForAuthor,
     githubRateLimitRetryScheduled,
+    githubServerErrorRetryScheduled,
     overlaps,
     overlapsTruncated,
   };

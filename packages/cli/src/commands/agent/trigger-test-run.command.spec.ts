@@ -1,7 +1,13 @@
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import {
   assertValidDeploymentIdArg,
+  isProjectWithoutRepository,
   parseMaxDurationSecondsArg,
+  readGitDiffArg,
+  shouldCheckForBaselineRun,
   shouldRejectMaxDurationWithoutSessionIds,
   shouldSkipAsNothingToTest,
   shouldWarnOfHeadDrift,
@@ -227,5 +233,69 @@ describe("shouldRejectMaxDurationWithoutSessionIds", () => {
         hasPinnedSessionIds: false,
       }),
     ).toBe(false);
+  });
+});
+
+describe("readGitDiffArg", () => {
+  test("passes --gitDiffOutput through when there is no file", async () => {
+    await expect(
+      readGitDiffArg({ gitDiffOutput: "diff", gitDiffFile: undefined }),
+    ).resolves.toBe("diff");
+  });
+
+  test("reads --gitDiffFile", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "git-diff-arg-"));
+    const path = join(dir, "change.diff");
+    await writeFile(path, "diff --git a/x b/x\n");
+    await expect(
+      readGitDiffArg({ gitDiffOutput: undefined, gitDiffFile: path }),
+    ).resolves.toBe("diff --git a/x b/x\n");
+  });
+
+  test("rejects both at once", async () => {
+    await expect(
+      readGitDiffArg({ gitDiffOutput: "diff", gitDiffFile: "change.diff" }),
+    ).rejects.toThrow(/mutually exclusive/);
+  });
+
+  test("reports a file that can't be read", async () => {
+    await expect(
+      readGitDiffArg({
+        gitDiffOutput: undefined,
+        gitDiffFile: "/nonexistent/change.diff",
+      }),
+    ).rejects.toThrow(/Could not read --gitDiffFile/);
+  });
+});
+
+describe("isProjectWithoutRepository", () => {
+  test("is true only for a project with no repository host", () => {
+    expect(isProjectWithoutRepository({ hostKind: "None" })).toBe(true);
+    expect(isProjectWithoutRepository({ hostKind: "GitHub" })).toBe(false);
+  });
+
+  test("is false when the backend doesn't report a host kind or the project is unknown", () => {
+    expect(isProjectWithoutRepository({})).toBe(false);
+    expect(isProjectWithoutRepository(null)).toBe(false);
+  });
+});
+
+describe("shouldCheckForBaselineRun", () => {
+  test("checks only when no base and no diff were given", () => {
+    expect(
+      shouldCheckForBaselineRun({
+        baseSha: undefined,
+        baseTestRunId: undefined,
+        gitDiffOutput: undefined,
+      }),
+    ).toBe(true);
+  });
+
+  test.each([
+    { baseSha: "base", baseTestRunId: undefined, gitDiffOutput: undefined },
+    { baseSha: undefined, baseTestRunId: "tr-1", gitDiffOutput: undefined },
+    { baseSha: undefined, baseTestRunId: undefined, gitDiffOutput: "diff" },
+  ])("does not check when given %o", (options) => {
+    expect(shouldCheckForBaselineRun(options)).toBe(false);
   });
 });

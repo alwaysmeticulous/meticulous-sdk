@@ -2,6 +2,8 @@ import {
   createClientWithOAuth,
   getAgentWhoami,
   getAuthToken,
+  isMissingCredentialsError,
+  MISSING_AUTH_GUIDANCE,
 } from "@alwaysmeticulous/client";
 import type { AgentWhoamiResponse } from "@alwaysmeticulous/client";
 import { initLogger, logNotice } from "@alwaysmeticulous/common";
@@ -48,16 +50,25 @@ export const whoamiCommand: CommandModule<unknown, Options> = {
 
     // No local token: some environments inject credentials into outbound
     // requests instead, so the call still doubles as the probe for that — it
-    // succeeds when injection is working and 401s when there is simply no
-    // credential at all.
+    // succeeds when injection is working and is refused when there is simply
+    // no credential at all.
     if (!apiToken) {
-      const injected = await getAgentWhoami(client).catch(() => null);
+      const injected = await getAgentWhoami(client).catch((error: unknown) => {
+        if (!isMissingCredentialsError(error)) {
+          throw error;
+        }
+        // The backend answers a request with no Authorization header with a
+        // 403, so neither status tells a rejected injected credential apart
+        // from never having logged in.
+        if (error.missingReason.kind === "not-logged-in") {
+          return null;
+        }
+        // A stored login that expired, was revoked or failed to refresh is
+        // not the same as never having logged in; the error says which it was.
+        throw new CliUserError(error.message, 1, "error", { reason: "auth" });
+      });
       if (!injected) {
-        throw new CliUserError(
-          "Not logged in. Run `meticulous auth login`, or set " +
-            "METICULOUS_API_TOKEN. In terminals without a browser, use " +
-            "`meticulous auth login --non-interactive`.",
-        );
+        throw new CliUserError(`Not logged in. ${MISSING_AUTH_GUIDANCE}`);
       }
       const selectedProject = injected.selectedProject;
       if (json) {

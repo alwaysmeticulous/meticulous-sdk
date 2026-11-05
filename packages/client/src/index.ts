@@ -241,6 +241,13 @@ export {
   clearOAuthDefaultProject,
 } from "./api/oauth.api";
 export {
+  SelfOnboardError,
+  type SelfOnboardErrorKind,
+  type SelfOnboardRequest,
+  type SelfOnboardResponse,
+  selfOnboard,
+} from "./api/self-onboard.api";
+export {
   GetRepoUrlOptions,
   RepoUrlResponse,
   getProject,
@@ -308,6 +315,7 @@ export {
   getApiToken,
   getAuthToken,
   readFileBasedToken,
+  resolveAuthToken,
 } from "./api-token.utils";
 export {
   ClientOptions,
@@ -433,6 +441,7 @@ export {
   AgenticLiveBackend,
   AgenticAssetsBackend,
   AgenticContainerAppTarget,
+  AgenticDeploymentAppTarget,
   completeAgenticSessionGeneration,
   AgenticRunResultCaseOutcome,
   AGENTIC_RUN_SETUP_ISSUE_CATEGORIES,
@@ -576,8 +585,22 @@ export {
   isFetchError,
   maybeEnrichFetchError,
   maybeEnrichMissingAuthFetchError,
-  MISSING_AUTH_GUIDANCE,
 } from "./errors";
+export {
+  isMissingCredentialsError,
+  MISSING_AUTH_GUIDANCE,
+  MissingCredentialsError,
+} from "./missing-credentials";
+export {
+  isRejectedCredentialsError,
+  RejectedCredentialsError,
+} from "./rejected-credentials";
+export type {
+  AuthTokenResolution,
+  MissingCredentialReason,
+  SentCredentialKind,
+} from "./auth-resolution.types";
+export type { OAuthUnavailableReason } from "./oauth/oauth-refresh.types";
 export {
   CoverageSummary,
   CoverageSummarySelection,
@@ -593,3 +616,10 @@ export {
  * @deprecated Prefer importing `TestRunDataLocations` from `@alwaysmeticulous/api` instead of `@alwaysmeticulous/client`.
  */
 export { TestRunDataLocations } from "@alwaysmeticulous/api";
+export {
+  AGENT_SWARM_SOURCE_BUNDLE_BASE_BRANCH,
+  AGENT_SWARM_SOURCE_BUNDLE_HEAD_BRANCH,
+  RequestAgentSwarmSourceBundleUploadParams,
+  RequestAgentSwarmSourceBundleUploadResponse,
+  requestAgentSwarmSourceBundleUpload,
+} from "./api/agent-swarm-source-bundle.api";

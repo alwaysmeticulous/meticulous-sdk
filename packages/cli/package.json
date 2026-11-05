@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/cli",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "The Meticulous CLI",
   "license": "ISC",
   "main": "dist/index.js",
@@ -15,7 +15,7 @@
   "scripts": {
     "clean": "rimraf dist tsconfig.tsbuildinfo",
     "build": "rimraf dist tsconfig.tsbuildinfo && tsc --project tsconfig.json --emitDeclarationOnly && node scripts/bundle.mjs",
-    "postbuild": "node scripts/copy-onboard-templates.mjs && node scripts/verify-bundle.mjs",
+    "postbuild": "node scripts/copy-onboard-templates.mjs && node scripts/copy-try-templates.mjs && node scripts/verify-bundle.mjs",
     "dev": "tsc --build tsconfig.json --watch",
     "format": "prettier --write src",
     "lint": "oxlint --type-aware src",

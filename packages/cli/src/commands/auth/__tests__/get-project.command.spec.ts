@@ -28,7 +28,7 @@ vi.mock("@alwaysmeticulous/client", () => ({
   getStoredOAuthTokens: mocks.getStoredOAuthTokens,
   isJwtExpired: mocks.isJwtExpired,
   clearOAuthTokens: mocks.clearOAuthTokens,
-  MISSING_AUTH_GUIDANCE: "guidance",
+  isMissingCredentialsError: () => false,
 }));
 
 const runHandler = (args: { json?: boolean } = {}) =>

@@ -11,6 +11,7 @@ import type {
   LocalTunnelOptions,
   TunnelInfo,
 } from "../types";
+import { buildTunnelAuthFailureMessage } from "../utils/auth-failure-message";
 import type { WorkerInitOptions } from "./tunnel-worker.entrypoint";
 
 const DEFAULT_HOST = "https://tunnels.meticulous.ai";
@@ -162,9 +163,10 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
           if (res.status === 401 || res.status === 403) {
             return cb(
               new Error(
-                `Authentication failed (HTTP ${res.status}). An API token is ` +
-                  "probably missing or invalid. Set METICULOUS_API_TOKEN, " +
-                  "pass --apiToken, or run `meticulous auth login`.",
+                buildTunnelAuthFailureMessage({
+                  status: res.status,
+                  sentCredential: Boolean(opt.apiToken),
+                }),
               ),
             );
           }
@@ -186,9 +188,10 @@ export class Tunnel extends (EventEmitter as new () => TypedEmitter<TunnelEvents
           if (err.message?.includes("Unauthorized")) {
             return cb(
               new Error(
-                "Authentication failed. An API token is probably missing or " +
-                  "invalid. Set METICULOUS_API_TOKEN, pass --apiToken, or run " +
-                  "`meticulous auth login`.",
+                buildTunnelAuthFailureMessage({
+                  status: null,
+                  sentCredential: Boolean(opt.apiToken),
+                }),
               ),
             );
           }

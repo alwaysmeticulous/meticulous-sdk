@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CliUserError } from "../utils/cli-user-error";
 import { OutOfDateCLIError } from "../utils/out-of-date-client-error";
@@ -21,6 +22,14 @@ vi.mock("@alwaysmeticulous/client", () => ({
     error !== null &&
     "response" in error &&
     "message" in error,
+  isAuthFailureStatus: (status: number | undefined) =>
+    status === 401 || status === 403,
+  isMissingCredentialsError: (error: unknown) =>
+    error instanceof Error && error.name === "MissingCredentialsError",
+  isRejectedCredentialsError: (error: unknown) =>
+    error instanceof Error && error.name === "RejectedCredentialsError",
+  getStoredOAuthTokens: () => ({ accessToken: "stored-login" }),
+  isJwtExpired: () => false,
 }));
 vi.mock("@alwaysmeticulous/sentry", () => ({
   SENTRY_FLUSH_TIMEOUT: { toMillis: () => 1 },
@@ -35,6 +44,20 @@ vi.mock("@sentry/node", () => ({
 const fetchError = (status: number): Error =>
   Object.assign(new Error("Request failed"), {
     response: { status, data: { message: "Server message" } },
+  });
+
+const missingCredentialsError = (): Error =>
+  Object.assign(new Error("Authentication failed (HTTP 401): log in"), {
+    name: "MissingCredentialsError",
+    missingReason: { kind: "not-logged-in" },
+    response: { status: 401, data: { message: "Unauthorized" } },
+  });
+
+const rejectedApiTokenError = (): Error =>
+  Object.assign(new Error("No access to this project\n\nGET /api/x"), {
+    name: "RejectedCredentialsError",
+    credentialKind: "api-token",
+    response: { status: 403, data: { message: "No access to this project" } },
   });
 
 describe("wrapHandler structured errors", () => {
@@ -138,6 +161,53 @@ describe("wrapHandler structured errors", () => {
     expect(
       JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0])),
     ).toEqual(printed);
+  });
+
+  it("reports a request sent without credentials as a user auth error", async () => {
+    const error = missingCredentialsError();
+    const handler = wrapHandler(() => Promise.reject(error), {
+      structuredErrors: true,
+    });
+
+    await expect(handler({ json: true })).rejects.toThrow("exit:1");
+
+    expect(
+      JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0])),
+    ).toEqual({
+      cliVersion: "unknown",
+      outcome: "failed",
+      reason: "auth",
+      message: error.message,
+    });
+    expect(logger.error.mock.calls).toEqual([[error.message]]);
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(Sentry.captureException).not.toHaveBeenCalled();
+  });
+
+  it("reports a rejected credential from any command as a user auth error", async () => {
+    const handler = wrapHandler(() => Promise.reject(rejectedApiTokenError()), {
+      structuredErrors: true,
+    });
+
+    await expect(handler({ json: true })).rejects.toThrow("exit:1");
+
+    const expectedMessage =
+      "Authentication failed (HTTP 403): No access to this project\n" +
+      "The credential sent with this request was rejected, or does not have " +
+      "access to this project or resource. Check the API token in use " +
+      "(--apiToken, METICULOUS_API_TOKEN or the Meticulous config file), or " +
+      "run `meticulous auth login` to use your own login instead.";
+    expect(
+      JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0])),
+    ).toEqual({
+      cliVersion: "unknown",
+      outcome: "failed",
+      reason: "auth",
+      message: expectedMessage,
+    });
+    expect(logger.error.mock.calls).toEqual([[expectedMessage]]);
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(Sentry.captureException).not.toHaveBeenCalled();
   });
 
   it("does not print JSON unless structured errors are enabled", async () => {

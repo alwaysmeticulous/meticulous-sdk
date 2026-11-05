@@ -4,6 +4,7 @@ export {
   UNCLEAN_SHA_SUFFIX,
   type ParsedMeticulousSha,
 } from "./meticulous-sha";
+export { isValidGitCommitSha } from "./git-commit-sha";
 export {
   DEBUG_DATA_DIRECTORY,
   DEBUG_SESSIONS_DIR_NAME,

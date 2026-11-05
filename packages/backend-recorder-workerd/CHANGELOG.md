@@ -1,5 +1,11 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 3.6.0
+
+### Patch Changes
+
+- [#17084](https://github.com/alwaysmeticulous/meticulous/pull/17084) [`4d68e48`](https://github.com/alwaysmeticulous/meticulous/commit/4d68e4861a519d7ec3e9a5f8198aa777e7df52f9) Thanks [@dennysem](https://github.com/dennysem)! - The Agent swarm be-mock protocol types gain two optional fields: `BeMockInstallMessage.recordedDefaultSessionIds`, the recorded sessions whose backend calls answer what an installed be-mock leaves unanswered, and `BeMockCall.recordedSessionId` on a call answered that way. The shim's behaviour and the sidecar protocol version are unchanged.
+
 ## 3.3.0
 
 ### Minor Changes

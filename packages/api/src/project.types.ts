@@ -9,6 +9,11 @@ export interface Project {
   recordingToken: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * The repository host the project is linked to; `"None"` for a project with
+   * no connected repository. Optional for older backends.
+   */
+  hostKind?: "None" | "GitHub" | "GitLab" | "Bitbucket";
   isGitHubIntegrationActive?: boolean;
   /** Whether the project is linked to a GitLab repository (hostKind + project id). */
   isGitLabIntegrationActive?: boolean;

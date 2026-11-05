@@ -1,6 +1,6 @@
 import type { ContainerEnvVariable } from "@alwaysmeticulous/client";
 import { resolveApiTokenWithOAuth } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import { initLogger, routeLogsToStderr } from "@alwaysmeticulous/common";
 import { generateSessions } from "@alwaysmeticulous/remote-replay-launcher";
 import * as Sentry from "@sentry/node";
 import type { CommandModule } from "yargs";
@@ -10,7 +10,14 @@ import {
   isOutOfDateClientError,
   OutOfDateCLIError,
 } from "../../utils/out-of-date-client-error";
+import { CliUserError } from "../../utils/cli-user-error";
 import { resolveProjectIdentifier } from "../../utils/resolve-project-identifier";
+import { assertValidDeploymentIdArg } from "../agent/trigger-test-run.command";
+import { printJson } from "../../command-utils/print-json";
+import {
+  resolveCheckedOutCommit,
+  resolveUploadSource,
+} from "./agent-test-source.utils";
 import { resolveGitOptions } from "./resolve-git-options";
 
 const STAGING_ENV_PREFIX = "METICULOUS_STAGING_";
@@ -42,6 +49,10 @@ interface Options {
   repoDirectory?: string | undefined;
   localImageTag?: string | undefined;
   assetsDir?: string | undefined;
+  deploymentId?: string | undefined;
+  baseSha?: string | undefined;
+  uploadSource?: boolean | undefined;
+  headTestRunId?: string | undefined;
   backendUrl?: string | undefined;
   backendProxyPaths?: string[] | undefined;
   /** Only meaningful with --localImageTag and --backendUrl. */
@@ -53,6 +64,7 @@ interface Options {
   containerEnv?: ContainerEnvVariable[] | undefined;
   containerHealthCheckEndpoint?: string | undefined;
   dryRun?: boolean;
+  json?: boolean;
 }
 
 const handler = async ({
@@ -61,6 +73,10 @@ const handler = async ({
   repoDirectory,
   localImageTag,
   assetsDir,
+  deploymentId,
+  baseSha,
+  uploadSource: uploadSource_,
+  headTestRunId,
   backendUrl,
   backendProxyPaths,
   backendUrlEnvVariable,
@@ -71,18 +87,45 @@ const handler = async ({
   containerEnv,
   containerHealthCheckEndpoint,
   dryRun,
+  json,
 }: Options): Promise<void> => {
+  if (json) {
+    routeLogsToStderr();
+  }
   const logger = initLogger();
 
-  const { commitSha } = await resolveGitOptions({
-    commitSha: commitSha_,
-    baseSha: undefined,
-    gitDiffOutput: undefined,
-    repoDirectory,
-  });
-  const targets = [localImageTag, assetsDir].filter(Boolean);
+  // With both, --repoDirectory is the checkout the source is read from and
+  // --commitSha names the head, which that checkout must have checked out.
+  const { commitSha } =
+    commitSha_ && repoDirectory
+      ? {
+          commitSha: await resolveCheckedOutCommit({
+            repoDirectory,
+            commitSha: commitSha_,
+          }),
+        }
+      : await resolveGitOptions({
+          commitSha: commitSha_,
+          baseSha: undefined,
+          gitDiffOutput: undefined,
+          repoDirectory,
+        });
+  const targets = [localImageTag, assetsDir, deploymentId].filter(Boolean);
   if (targets.length !== 1) {
-    throw new Error("Provide exactly one of --localImageTag or --assetsDir.");
+    throw new CliUserError(
+      "Provide exactly one of --localImageTag, --assetsDir or --deploymentId.",
+    );
+  }
+  assertValidDeploymentIdArg(deploymentId);
+  if (deploymentId && (backendUrl || containerPort != null || containerEnv)) {
+    throw new CliUserError(
+      "--deploymentId reuses an uploaded build as it was uploaded: it cannot be combined with --backendUrl, --containerPort or --containerEnv.",
+    );
+  }
+  if (uploadSource_ === true && (!repoDirectory || !baseSha)) {
+    throw new CliUserError(
+      "--uploadSource requires --repoDirectory and --baseSha.",
+    );
   }
   if (enableLocalMocks && backendUrl) {
     throw new Error("--enableLocalMocks cannot be combined with --backendUrl.");
@@ -114,7 +157,7 @@ const handler = async ({
     );
   }
 
-  const target = localImageTag ?? assetsDir!;
+  const target = localImageTag ?? assetsDir ?? `deployment ${deploymentId}`;
   logger.info(
     `Launching agentic PR testing with ${target} for commit ${commitSha}`,
   );
@@ -144,13 +187,34 @@ const handler = async ({
   });
 
   const projectIdentifier = await resolveProjectIdentifier(apiToken_);
+  const uploadSource = await resolveUploadSource({
+    uploadSource: uploadSource_,
+    apiToken: apiToken_,
+    projectId: projectIdentifier.projectId,
+  });
+  if (uploadSource && (!repoDirectory || !baseSha)) {
+    throw new CliUserError(
+      "This project has no connected GitHub, GitLab or Bitbucket repository, so Agent swarm reads the change from source you upload: pass --repoDirectory and --baseSha (or --no-uploadSource to launch without source access, which fails).",
+    );
+  }
+  if (!uploadSource && baseSha) {
+    logger.warn(
+      "--baseSha is only used with --uploadSource; this project's base comes from its hosting provider.",
+    );
+  }
 
+  let result: Awaited<ReturnType<typeof generateSessions>>;
   try {
-    await generateSessions({
+    result = await generateSessions({
       apiToken: apiToken_,
       localImageTag,
       assetsDirectory: assetsDir,
+      deploymentId,
       commitSha,
+      ...(uploadSource && repoDirectory && baseSha
+        ? { sourceSnapshot: { repoDirectory, baseSha } }
+        : {}),
+      ...(headTestRunId ? { headTestRunId } : {}),
       ...(instructionsFile ? { instructionsFile } : {}),
       enableLocalMocks,
       containerPort,
@@ -176,6 +240,25 @@ const handler = async ({
       throw error;
     }
   }
+  const swarmRunId = result.agenticRunId ?? null;
+  if (json) {
+    printJson({
+      swarmRunId,
+      commitSha,
+      ...(deploymentId ? { deploymentId } : {}),
+      ...(result.uploadId ? { uploadId: result.uploadId } : {}),
+      ...(result.message ? { message: result.message } : {}),
+    });
+    return;
+  }
+  if (swarmRunId != null) {
+    // A stable line for scripts to parse; the rest is for people.
+    console.log(`Agent swarm run: ${swarmRunId}`);
+    logger.info(
+      `Get its results with: meticulous agent agent-swarm-run --swarmRunId ${swarmRunId}` +
+        ` (and each case's with: meticulous agent agent-swarm-run-case --swarmRunId ${swarmRunId} --caseIndex <n>)`,
+    );
+  }
 };
 
 export const ciAgentTestCommand: CommandModule<unknown, Options> = {
@@ -189,8 +272,29 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
     repoDirectory: {
       string: true,
       description:
-        "The path to a git repository. Automatically infers --commitSha from the repo. " +
-        "Cannot be combined with --commitSha.",
+        "The path to a git repository (or worktree). Infers --commitSha from the repo when --commitSha is not given. " +
+        "With --uploadSource, the checkout the source of --baseSha..--commitSha is packaged from.",
+    },
+    deploymentId: {
+      string: true,
+      description:
+        "A build already uploaded with `meticulous agent upload-build` (the deploymentId it printed), instead of uploading --assetsDir or --localImageTag again.",
+    },
+    baseSha: {
+      string: true,
+      description:
+        "With --uploadSource: the commit the change is diffed against, e.g. the merged pull request's base.",
+    },
+    uploadSource: {
+      boolean: true,
+      description:
+        "Upload the source of --baseSha..--commitSha from --repoDirectory (as a git bundle of the two trees, without history) so Agent swarm can read the diff and code. " +
+        "Defaults to on for projects with no connected GitHub, GitLab or Bitbucket repository, which have no other source. Only committed changes are uploaded.",
+    },
+    headTestRunId: {
+      string: true,
+      description:
+        "Projects without a hosting provider: the session-replay test run of this build, so Agent swarm compares against that run's base build.",
     },
     localImageTag: {
       string: true,
@@ -266,6 +370,12 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
     dryRun: {
       boolean: true,
       description: "Validate the options and exit without launching a run.",
+    },
+    json: {
+      boolean: true,
+      description:
+        "Print the result as JSON on stdout: swarmRunId (null when the launch was skipped or deferred, with the reason in message), commitSha, and the deploymentId or uploadId. " +
+        "Without it, a launched run prints a line 'Agent swarm run: <id>'.",
     },
   },
   handler: wrapHandler(handler),

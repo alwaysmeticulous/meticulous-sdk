@@ -1,14 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getAuthToken } from "../api-token.utils";
+import { getAuthToken, resolveAuthToken } from "../api-token.utils";
+
+const NOT_LOGGED_IN = {
+  accessToken: null,
+  reason: { kind: "not-logged-in" },
+} as const;
 
 const mocks = vi.hoisted(() => ({
-  getValidAccessToken: vi.fn(),
+  resolveOAuthAccessToken: vi.fn(),
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
 }));
 
 vi.mock("../oauth/oauth-refresh", () => ({
-  getValidAccessToken: mocks.getValidAccessToken,
+  resolveOAuthAccessToken: mocks.resolveOAuthAccessToken,
 }));
 
 vi.mock("fs", () => ({
@@ -22,7 +27,7 @@ describe("getAuthToken precedence", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env["METICULOUS_API_TOKEN"];
-    mocks.getValidAccessToken.mockResolvedValue(null);
+    mocks.resolveOAuthAccessToken.mockResolvedValue(NOT_LOGGED_IN);
     mocks.existsSync.mockReturnValue(false);
   });
 
@@ -43,16 +48,20 @@ describe("getAuthToken precedence", () => {
 
   it("prefers an explicit --apiToken over everything else", async () => {
     process.env["METICULOUS_API_TOKEN"] = "env-token";
-    mocks.getValidAccessToken.mockResolvedValue("oauth-token");
+    mocks.resolveOAuthAccessToken.mockResolvedValue({
+      accessToken: "oauth-token",
+    });
     withFileToken("file-token");
 
     expect(await getAuthToken("flag-token")).toBe("flag-token");
-    expect(mocks.getValidAccessToken).not.toHaveBeenCalled();
+    expect(mocks.resolveOAuthAccessToken).not.toHaveBeenCalled();
   });
 
   it("prefers OAuth over the env var and config file", async () => {
     process.env["METICULOUS_API_TOKEN"] = "env-token";
-    mocks.getValidAccessToken.mockResolvedValue("oauth-token");
+    mocks.resolveOAuthAccessToken.mockResolvedValue({
+      accessToken: "oauth-token",
+    });
     withFileToken("file-token");
 
     expect(await getAuthToken(null)).toBe("oauth-token");
@@ -73,5 +82,55 @@ describe("getAuthToken precedence", () => {
 
   it("returns null when no credential is available", async () => {
     expect(await getAuthToken(null)).toBeNull();
+  });
+});
+
+describe("resolveAuthToken", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("METICULOUS_API_TOKEN", "");
+    mocks.existsSync.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("reports why the OAuth login was unusable when nothing else is set", async () => {
+    mocks.resolveOAuthAccessToken.mockResolvedValue({
+      accessToken: null,
+      reason: { kind: "refresh-failed", detail: "HTTP 503" },
+    });
+
+    expect(await resolveAuthToken(null)).toEqual({
+      token: null,
+      missingReason: { kind: "refresh-failed", detail: "HTTP 503" },
+    });
+  });
+
+  it("returns the env token without a reason when the OAuth login is unusable", async () => {
+    vi.stubEnv("METICULOUS_API_TOKEN", "env-token");
+    mocks.resolveOAuthAccessToken.mockResolvedValue({
+      accessToken: null,
+      reason: { kind: "login-rejected", detail: "HTTP 400: invalid_grant" },
+    });
+
+    expect(await resolveAuthToken(null)).toEqual({ token: "env-token" });
+  });
+
+  it("treats an empty OAuth access token as no login, falling back to the env token", async () => {
+    vi.stubEnv("METICULOUS_API_TOKEN", "env-token");
+    mocks.resolveOAuthAccessToken.mockResolvedValue({ accessToken: "" });
+
+    expect(await resolveAuthToken(null)).toEqual({ token: "env-token" });
+  });
+
+  it("explains an empty OAuth access token as not logged in when nothing else is set", async () => {
+    mocks.resolveOAuthAccessToken.mockResolvedValue({ accessToken: "" });
+
+    expect(await resolveAuthToken(null)).toEqual({
+      token: null,
+      missingReason: { kind: "not-logged-in" },
+    });
   });
 });

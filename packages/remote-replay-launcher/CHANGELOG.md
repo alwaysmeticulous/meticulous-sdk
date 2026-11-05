@@ -1,5 +1,23 @@
 # @alwaysmeticulous/remote-replay-launcher
 
+## 3.6.0
+
+### Minor Changes
+
+- [#17065](https://github.com/alwaysmeticulous/meticulous/pull/17065) [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous ci agent-test` can run Agent swarm on a project with no connected GitHub, GitLab or Bitbucket repository: `--uploadSource` (on by default for such projects) uploads the source of `--baseSha..--commitSha` from `--repoDirectory` as a git bundle of the two trees, and `--headTestRunId` names the session-replay test run to compare against. `--deploymentId` reuses a build uploaded with `meticulous agent upload-build`, `--repoDirectory` can now be combined with `--commitSha`, a launched run prints `Agent swarm run: <id>`, and `--json` prints the result as JSON.
+
+- [#17065](https://github.com/alwaysmeticulous/meticulous/pull/17065) [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous agent trigger-test-run` takes `--baseTestRunId` to compare against a specific test run, `--gitDiffFile` to read the diff from a file, and accepts `--commitSha` alongside `--deploymentId` as the deployment's commit. On a project with no connected repository, omitting both `--baseSha` and `--baseTestRunId` triggers a baseline run that later runs on that commit compare against.
+
+### Patch Changes
+
+- [#17031](https://github.com/alwaysmeticulous/meticulous/pull/17031) [`b3b222b`](https://github.com/alwaysmeticulous/meticulous/commit/b3b222b34e2acb9df5ce5acb0a6d8f5c14edd6dc) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - When a test run trigger hit a GitHub server error and the server scheduled a retry, say the run will be created once GitHub recovers rather than once the rate limit resets, and report it in `--json` output with the skip reason `github_server_error_retry_scheduled`.
+
+- Updated dependencies [[`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b), [`01b64ff`](https://github.com/alwaysmeticulous/meticulous/commit/01b64ffd853f366769b0dff26aa1a3ec2614b025), [`b3b222b`](https://github.com/alwaysmeticulous/meticulous/commit/b3b222b34e2acb9df5ce5acb0a6d8f5c14edd6dc), [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b), [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b), [`9be7df6`](https://github.com/alwaysmeticulous/meticulous/commit/9be7df69fd83b25652ae8012af2027982e25d5ec)]:
+  - @alwaysmeticulous/client@3.6.0
+  - @alwaysmeticulous/api@3.6.0
+  - @alwaysmeticulous/tunnels-client@3.6.0
+  - @alwaysmeticulous/common@3.4.0
+
 ## 3.5.0
 
 ### Patch Changes

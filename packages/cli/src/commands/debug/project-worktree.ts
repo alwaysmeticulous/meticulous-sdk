@@ -1,7 +1,10 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
-import type { DebugContext } from "@alwaysmeticulous/debug-workspace";
+import {
+  isValidGitCommitSha,
+  type DebugContext,
+} from "@alwaysmeticulous/debug-workspace";
 import chalk from "chalk";
 
 interface CreateProjectWorktreeOptions {
@@ -34,6 +37,15 @@ export const createProjectWorktree = (
     return undefined;
   }
 
+  if (!isValidGitCommitSha(commitSha)) {
+    console.log(
+      chalk.gray(
+        "  Commit SHA is not a valid git object id -- skipping project repo worktree.",
+      ),
+    );
+    return undefined;
+  }
+
   const projectRepoDir = join(workspaceDir, "project-repo");
 
   try {
@@ -48,10 +60,11 @@ export const createProjectWorktree = (
         `  Creating project repo worktree at ${commitSha.slice(0, 8)}...`,
       ),
     );
-    execSync(`git worktree add --detach "${projectRepoDir}" ${commitSha}`, {
-      cwd: gitRoot,
-      stdio: "pipe",
-    });
+    execFileSync(
+      "git",
+      ["worktree", "add", "--detach", projectRepoDir, commitSha],
+      { cwd: gitRoot, stdio: "pipe" },
+    );
     console.log(chalk.green(`  Project repo worktree created.`));
     return projectRepoDir;
   } catch (error) {
@@ -82,7 +95,7 @@ export const removeProjectWorktree = (workspaceDir: string): void => {
   }
 
   try {
-    execSync(`git worktree remove --force "${projectRepoDir}"`, {
+    execFileSync("git", ["worktree", "remove", "--force", projectRepoDir], {
       cwd: gitRoot,
       stdio: "pipe",
     });
@@ -93,7 +106,7 @@ export const removeProjectWorktree = (workspaceDir: string): void => {
 
 const detectGitRoot = (): string | undefined => {
   try {
-    return execSync("git rev-parse --show-toplevel", {
+    return execFileSync("git", ["rev-parse", "--show-toplevel"], {
       encoding: "utf8",
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();
@@ -103,7 +116,7 @@ const detectGitRoot = (): string | undefined => {
 };
 
 const fetchSha = (repoPath: string, sha: string): void => {
-  execSync(`git fetch origin ${sha}`, {
+  execFileSync("git", ["fetch", "origin", sha], {
     cwd: repoPath,
     stdio: "pipe",
   });

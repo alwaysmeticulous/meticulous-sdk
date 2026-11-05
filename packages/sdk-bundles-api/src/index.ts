@@ -73,6 +73,8 @@ export {
 export { MeticulousPrivateApi } from "./window-api/private-window-api";
 export {
   CrawlExplorationMode,
+  CrawlStorageToSeed,
+  RunCrawlBundleCapabilities,
   RunCrawlOptions,
   RunCrawlResult,
 } from "./crawler/sdk-to-bundle/run-crawl";

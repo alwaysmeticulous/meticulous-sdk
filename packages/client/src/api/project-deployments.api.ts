@@ -137,10 +137,12 @@ export interface CompleteAssetUploadResponse {
   commentsDisabledForAuthor?: boolean;
   /**
    * Set when no test run was created because GitHub's primary rate limit was
-   * hit while triggering, and the server scheduled a delayed retry that will
-   * create the run once the limit resets.
+   * hit, or GitHub returned a 5xx, while triggering, and the server scheduled a
+   * delayed retry that will create the run later.
    */
   githubRateLimitRetryScheduled?: boolean;
+  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
+  githubServerErrorRetryScheduled?: boolean;
   /**
    * When set alongside `baseNotFound`, the server is asking the client to
    * extend its default base-polling window by this many milliseconds.
@@ -173,10 +175,12 @@ export interface CompleteContainerUploadResponse {
   commentsDisabledForAuthor?: boolean;
   /**
    * Set when no test run was created because GitHub's primary rate limit was
-   * hit while triggering, and the server scheduled a delayed retry that will
-   * create the run once the limit resets.
+   * hit, or GitHub returned a 5xx, while triggering, and the server scheduled a
+   * delayed retry that will create the run later.
    */
   githubRateLimitRetryScheduled?: boolean;
+  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
+  githubServerErrorRetryScheduled?: boolean;
   /**
    * When set alongside `baseNotFound`, the server is asking the client to
    * extend its default base-polling window by this many milliseconds.
@@ -263,6 +267,7 @@ const REQUEST_IDENTIFIER_FIELDS = [
   "deploymentId",
   "commitSha",
   "baseSha",
+  "baseTestRunId",
 ] as const;
 
 const assertRequestIdentifiersAreOpaque = (body: object): void => {
@@ -776,11 +781,21 @@ export interface AgentTriggerTestRunParams extends AgentProjectOverride {
   deploymentId?: string;
   /**
    * Alternative to `deploymentId`: resolves to the most recent non-ephemeral
-   * deployment already uploaded for this commit in the project.
+   * deployment already uploaded for this commit in the project. Alongside
+   * `deploymentId`, the backend instead checks it is that deployment's commit.
    */
   commitSha?: string;
-  /** Required: an agent (custom-trigger) run is only useful with a base. */
-  baseSha: string;
+  /**
+   * The base commit to compare against. Required unless `baseTestRunId` is
+   * set, or the project has no connected repository: there, omitting both
+   * triggers a baseline run that later runs on its commit compare against.
+   */
+  baseSha?: string;
+  /**
+   * The test run to compare against, instead of looking one up by `baseSha`
+   * (which, if also set, must be its commit).
+   */
+  baseTestRunId?: string;
   /**
    * Optional explicit set of sessions to replay. When provided, the run replays
    * exactly these sessions (for both head and base) instead of the project's

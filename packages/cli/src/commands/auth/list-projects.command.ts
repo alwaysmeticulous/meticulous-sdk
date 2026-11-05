@@ -64,10 +64,10 @@ export const listProjectsCommand: CommandModule<unknown, Options> = {
 const loginForListing = async (): Promise<string> => {
   if (!isInteractiveContext()) {
     throw new CliUserError(
-      "`meticulous auth list-projects` needs credentials: pass --apiToken, set " +
-        "METICULOUS_API_TOKEN, or log in with `meticulous auth login " +
-        "--non-interactive` (or run this from an interactive terminal to log " +
-        "in via the browser).",
+      "`meticulous auth list-projects` needs credentials: log in with " +
+        "`meticulous auth login --non-interactive` (or run this from an " +
+        "interactive terminal to log in via the browser), or for CI and " +
+        "other unattended use pass --apiToken or set METICULOUS_API_TOKEN.",
     );
   }
 

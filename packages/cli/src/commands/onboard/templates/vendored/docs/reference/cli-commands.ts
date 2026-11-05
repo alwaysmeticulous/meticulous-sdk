@@ -887,6 +887,8 @@ Crawl your app from one or more start URLs to record sessions and create a test 
 
 Passing several start URLs crawls each of them in turn in the same browser, so a single login covers the whole list, and each URL is opened by a full page load so that it records a session of its own.
 
+To run the crawl unattended (for example from a script or a coding agent), pass \`--nonInteractive\` (and optionally \`--headless\`): it then never waits for input, signs in with the cookies and local storage from \`--storageState\` if given, and can write the recorded session ids to \`--outputFile\`.
+
 {% callout type="warning" %}
 Recording starts as soon as the browser opens, so the login flow (including any credentials you type) is recorded as part of the first session.
 {% /callout %}
@@ -948,8 +950,50 @@ npx @alwaysmeticulous/cli crawl \\
 #### \`--skipTestRun\`
 
 **Type**: Boolean
-**Description**: Don't create a test run from the recorded sessions
+**Description**: Don't create a test run from the recorded sessions. Pass it when crawling a local URL such as \`http://localhost:3000\`, which the Meticulous cloud can't reach to replay against
 **Default**: false
+
+---
+
+#### \`--headless\`
+
+**Type**: Boolean
+**Description**: Run the browser headless. There is then no manual login pause, so pass \`--storageState\` for apps that require a login
+**Default**: false
+
+---
+
+#### \`--nonInteractive\`
+
+**Type**: Boolean
+**Description**: Never wait for input: skip the manual login pause and start crawling straight away. If every page the crawl reaches has a login-like URL (such as \`/login\`, \`/signin\` or \`/auth\`) or is on a different origin (such as a hosted identity provider), the command exits with code 2. A login form served at an ordinary URL, such as \`/\`, is not detected
+**Default**: false
+
+---
+
+#### \`--storageState\`
+
+**Type**: String (path)
+**Description**: A JSON file of cookies and local storage to load into the browser before crawling, so signed-in pages can be crawled without a manual login. Accepts either a [Playwright storage state](https://playwright.dev/docs/auth) (\`{ cookies, origins }\`, as written by \`context.storageState({ path })\`) or an array of Puppeteer / Chrome DevTools cookies. Only the local storage of the first \`--startUrl\`'s origin is used
+
+---
+
+#### \`--outputFile\`
+
+**Type**: String (path)
+**Description**: Write a JSON summary of the crawl to this path, whether or not it succeeds in recording sessions:
+
+\`\`\`json
+{
+  "sessionIds": ["..."],
+  "startUrls": ["http://localhost:3000"],
+  "numSessions": 12,
+  "uniqueUrlCount": 9,
+  "loginWallDetected": false
+}
+\`\`\`
+
+\`loginWallDetected\` is \`null\` when it couldn't be determined.
 
 ---
 
@@ -975,6 +1019,15 @@ npx @alwaysmeticulous/cli crawl \\
   --startUrl="https://app.example.com/settings" \\
   --startUrl="https://app.example.com/billing" \\
   --crawlingTimeoutSeconds=600
+
+# Unattended: crawl a local dev server headless, signed in from a saved storage state
+npx @alwaysmeticulous/cli crawl \\
+  --startUrl="http://localhost:3000" \\
+  --headless \\
+  --nonInteractive \\
+  --skipTestRun \\
+  --storageState=./storage-state.json \\
+  --outputFile=./crawl-result.json
 \`\`\`
 
 When the browser opens, log in if your app requires it, then press Enter in the terminal to start crawling. Once the crawl finishes the CLI prints the URL of the created test run.
@@ -987,6 +1040,7 @@ When the browser opens, log in if your app requires it, then press Enter in the 
 |------|---------|
 | 0 | Crawl completed successfully |
 | 1 | Crawl failed or no sessions were recorded |
+| 2 | With \`--nonInteractive\` or \`--headless\`, every page the crawl reached had a login-like URL or another origin: pass (or refresh) \`--storageState\` |
 
 ---
 

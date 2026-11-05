@@ -463,6 +463,11 @@ export type BeMockCall = {
       /** interceptRequest's response was served. */
       outcome: "mock";
       response: { statusCode: number; body: string };
+      /**
+       * Set when interceptRequest left the call unanswered and the recorded
+       * backend default served it: the recorded session the response came from.
+       */
+      recordedSessionId?: string;
     }
   | {
       /**
@@ -501,6 +506,13 @@ export interface BeMockInstallMessage {
   frontendSessionId: string;
   /** The compiled, self-contained sandbox bundle to install. */
   code: string;
+  /**
+   * Recorded sessions whose backend calls answer what the module leaves
+   * unanswered, before the call passes through: the run's recorded backend
+   * default, which the worker fills with the sessions the case's `state.ts`
+   * loaded, in load order. Absent or empty: unanswered calls pass through.
+   */
+  recordedDefaultSessionIds?: string[];
 }
 
 /**

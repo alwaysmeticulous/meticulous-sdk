@@ -1,5 +1,16 @@
 # @alwaysmeticulous/tunnels-client
 
+## 3.6.0
+
+### Patch Changes
+
+- [#16928](https://github.com/alwaysmeticulous/meticulous/pull/16928) [`01b64ff`](https://github.com/alwaysmeticulous/meticulous/commit/01b64ffd853f366769b0dff26aa1a3ec2614b025) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - A 401/403 for a request sent without credentials now says why none was sent (not logged in, stored login expired, revoked or removed mid-command, or its refresh failed, with the refresh error) and leads with `meticulous auth login`, offering `--apiToken` / `METICULOUS_API_TOKEN` only for CI and other unattended use. For commands that authenticate with an API token only, it says when your stored login was not used (asking for `--apiToken` / `METICULOUS_API_TOKEN`) or has expired. It no longer claims an API token is "probably missing".
+
+  A 401/403 for a request that did carry a credential now fails every CLI command with an auth error saying that credential was rejected or lacks access, with advice for the kind of credential sent (your login or an API token), instead of a raw request error and the `--help` tip. The client throws these as `RejectedCredentialsError` (with `credentialKind`, and the message `maybeEnrichFetchError` already gave such errors), exported alongside `isRejectedCredentialsError`. The tunnel client's authentication errors use the same guidance.
+
+- Updated dependencies []:
+  - @alwaysmeticulous/common@3.4.0
+
 ## 3.4.0
 
 ### Patch Changes

@@ -1,3 +1,19 @@
+import type {
+  AuthTokenResolution,
+  MissingCredentialReason,
+} from "./auth-resolution.types";
+import { explainMissingApiToken } from "./explain-missing-api-token";
+import { describeFetchError } from "./fetch-error-message";
+import {
+  isMissingCredentialsError,
+  MissingCredentialsError,
+} from "./missing-credentials";
+import {
+  credentialKindOf,
+  isRejectedCredentialsError,
+  RejectedCredentialsError,
+} from "./rejected-credentials";
+
 export interface FetchError extends Error {
   response?:
     | {
@@ -22,38 +38,12 @@ export const isFetchError = (error: any): error is FetchError => {
 export const isAuthFailureStatus = (status: number | undefined): boolean =>
   status === 401 || status === 403;
 
-/**
- * Guidance shown when a request fails with 401 and the CLI/client did not
- * attach an Authorization header. 401 means the request had no credentials
- * at all, so this is unambiguous.
- */
-export const MISSING_AUTH_GUIDANCE =
-  "An API token is probably missing or invalid. Set METICULOUS_API_TOKEN, " +
-  "pass --apiToken, or run `meticulous auth login`.";
-
-/**
- * Guidance shown when a request fails with 403 and the CLI/client did not
- * attach an Authorization header. Unlike 401, a 403 here can also mean an
- * intermediary (e.g. an egress proxy in a sandboxed agent environment)
- * injected a credential of the wrong type for this endpoint (e.g. a project
- * API token against an OAuth-only route) — not that credentials were
- * missing entirely.
- */
-export const WRONG_CREDENTIAL_TYPE_GUIDANCE =
-  "An API token is probably missing, invalid, or an injected credential was " +
-  "rejected as the wrong type for this endpoint. Set METICULOUS_API_TOKEN, " +
-  "pass --apiToken, or run `meticulous auth login`.";
-
-const isMissingAuthGuidanceApplied = (message: string): boolean =>
-  message.includes(MISSING_AUTH_GUIDANCE) ||
-  message.includes(WRONG_CREDENTIAL_TYPE_GUIDANCE);
-
 export const maybeEnrichFetchError = <T = unknown>(error: T): T => {
   if (isFetchError(error)) {
-    // buildClient may already have applied missing-auth guidance via
-    // maybeEnrichMissingAuthFetchError. Rebuilding from the response body
-    // would discard that guidance, so leave those errors alone.
-    if (isMissingAuthGuidanceApplied(error.message)) {
+    // buildClient may already have explained an auth failure. Rebuilding from
+    // the response body would discard that explanation (or, for a rejected
+    // credential, which kind of credential was sent), so leave those alone.
+    if (isMissingCredentialsError(error) || isRejectedCredentialsError(error)) {
       return error;
     }
     return enrichFetchError(error) as T;
@@ -62,49 +52,61 @@ export const maybeEnrichFetchError = <T = unknown>(error: T): T => {
 };
 
 /**
- * When a request was made without an Authorization header and the server
- * responded 401/403, rewrite the error message with missing-auth guidance.
- * Returns the original error unchanged otherwise.
+ * When a request was sent without an Authorization header (the token
+ * resolution produced none) and the server responded 401/403, replaces the
+ * error with a {@link MissingCredentialsError} explaining why no credential
+ * was sent and how to log in. Returns the original error unchanged otherwise.
+ *
+ * `credential` also accepts a boolean (whether an Authorization header was
+ * sent) for compatibility with earlier versions. A missing token that no
+ * resolution explains (`false`, or an empty token) is explained by the stored
+ * OAuth login at the time of the failure: no login, an expired one, or one the
+ * caller does not use because it authenticates with an API token only.
  */
 export const maybeEnrichMissingAuthFetchError = <T = unknown>(
   error: T,
-  hadAuthorizationHeader: boolean,
+  credential: boolean | AuthTokenResolution,
 ): T => {
-  if (hadAuthorizationHeader || !isFetchError(error)) {
+  if (!isFetchError(error) || !isAuthFailureStatus(error.response?.status)) {
     return error;
   }
-  const status = error.response?.status;
-  if (!isAuthFailureStatus(status)) {
+  const missingReason = getMissingCredentialReason(credential);
+  if (missingReason === null) {
     return error;
   }
+  return new MissingCredentialsError(error, missingReason) as T;
+};
 
-  const guidance =
-    status === 403 ? WRONG_CREDENTIAL_TYPE_GUIDANCE : MISSING_AUTH_GUIDANCE;
-  const newError = new Error(
-    `Authentication failed (HTTP ${status}). ${guidance}`,
-  ) as FetchError;
-  newError.response = error.response;
-  newError.config = error.config;
-  return newError as T;
+/**
+ * When a request that carried `sentToken` got a 401/403, replaces the error
+ * with a {@link RejectedCredentialsError} saying which kind of credential was
+ * rejected. Returns the original error unchanged otherwise.
+ */
+export const maybeTagRejectedCredentialsError = <T = unknown>(
+  error: T,
+  sentToken: string,
+): T => {
+  if (!isFetchError(error) || !isAuthFailureStatus(error.response?.status)) {
+    return error;
+  }
+  return new RejectedCredentialsError(error, credentialKindOf(sentToken)) as T;
+};
+
+const getMissingCredentialReason = (
+  credential: boolean | AuthTokenResolution,
+): MissingCredentialReason | null => {
+  if (typeof credential === "boolean") {
+    return credential ? null : explainMissingApiToken();
+  }
+  if (credential.token === null) {
+    return credential.missingReason;
+  }
+  // An empty token is sent as no Authorization header at all.
+  return credential.token ? null : explainMissingApiToken();
 };
 
 const enrichFetchError = (error: FetchError) => {
-  const errorMessage = (error.response?.data as { message?: unknown } | null)
-    ?.message;
-  const requestAndResponse = requestAndResponseToString(
-    error.config ?? null,
-    error.response ?? null,
-  );
-  let message: string;
-  if (errorMessage && typeof errorMessage === "string") {
-    message = errorMessage;
-    if (requestAndResponse) {
-      message += `\n\n${requestAndResponse}`;
-    }
-  } else {
-    message = requestAndResponse;
-  }
-
+  const message = describeFetchError(error);
   if (!message) {
     return error;
   }
@@ -113,53 +115,4 @@ const enrichFetchError = (error: FetchError) => {
   newError.response = error.response;
   newError.config = error.config;
   return newError;
-};
-
-const requestAndResponseToString = (
-  request: { url: string; method?: string } | null,
-  response: { status: number; statusText: string; data: any } | null,
-) => {
-  if (!request || !request.url) {
-    return "";
-  }
-  if (response == null) {
-    return `${requestToString(request)}`;
-  }
-  return `${requestToString(request)} returned ${responseToString(response)})`;
-};
-
-const requestToString = (request: { method?: string; url: string }) => {
-  return `${request.method?.toUpperCase()}${request.method ? " " : ""}${
-    request.url
-  }`;
-};
-
-const responseToString = (response: {
-  status: number;
-  statusText: string;
-  data: any;
-}) => {
-  const dataAsString = dataToString(response.data);
-  return `${response.status} ${response.statusText}${
-    dataAsString ? ` (${dataAsString})` : ""
-  }`;
-};
-
-const dataToString = (data: unknown) => {
-  if (typeof data === "string") {
-    return truncate(data, 50);
-  }
-  if (!data) {
-    return String(data);
-  }
-  try {
-    return truncate(JSON.stringify(data), 50);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_e) {
-    return "";
-  }
-};
-
-const truncate = (str: string, maxLength: number) => {
-  return str.length > maxLength ? str.slice(0, maxLength) + "..." : str;
 };

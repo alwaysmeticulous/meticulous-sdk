@@ -300,6 +300,54 @@ describe("getValidAccessToken", () => {
     );
   });
 
+  const networkError = (code: string) =>
+    new TypeError("fetch failed", {
+      cause: Object.assign(new Error(`write ${code}`), { code }),
+    });
+
+  it("retries a token request that failed before reaching the server", async () => {
+    mocks.getStoredOAuthTokens.mockReturnValue(expiredTokens());
+    fetchMock
+      .mockResolvedValueOnce(discoveryResponse())
+      .mockRejectedValueOnce(networkError("EPIPE"))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { access_token: "new-access", expires_in: 300 }),
+      );
+    const getValidAccessToken = await importGetValidAccessToken();
+
+    await expect(getValidAccessToken()).resolves.toBe("new-access");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(TOKEN_ENDPOINT);
+    expect(logMocks.warn).not.toHaveBeenCalled();
+  });
+
+  it("does not retry a token request the server may have received", async () => {
+    mocks.getStoredOAuthTokens.mockReturnValue(expiredTokens());
+    fetchMock
+      .mockResolvedValueOnce(discoveryResponse())
+      .mockRejectedValueOnce(networkError("ECONNRESET"));
+    const getValidAccessToken = await importGetValidAccessToken();
+
+    await expect(getValidAccessToken()).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(mocks.clearOAuthTokens).not.toHaveBeenCalled();
+  });
+
+  it("gives up after a bounded number of unsent-request retries", async () => {
+    mocks.getStoredOAuthTokens.mockReturnValue(expiredTokens());
+    fetchMock
+      .mockResolvedValueOnce(discoveryResponse())
+      .mockRejectedValue(networkError("ECONNREFUSED"));
+    const getValidAccessToken = await importGetValidAccessToken();
+
+    await expect(getValidAccessToken()).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(mocks.clearOAuthTokens).not.toHaveBeenCalled();
+    expect(logMocks.warn).toHaveBeenCalledWith(
+      expect.stringContaining("write ECONNREFUSED"),
+    );
+  });
+
   it("returns the still-valid access token when a refresh inside the expiry buffer fails", async () => {
     mocks.getStoredOAuthTokens.mockReturnValue(
       expiredTokens({ expiresAt: nowSeconds() + 10 }),
@@ -369,5 +417,83 @@ describe("getValidAccessToken", () => {
     const discoverySignal = fetchMock.mock.calls[0]?.[1]?.signal;
     expect(discoverySignal).toBeInstanceOf(AbortSignal);
     expect(fetchMock.mock.calls[1]?.[1]?.signal).toBe(discoverySignal);
+  });
+
+  describe("resolveOAuthAccessToken reasons", () => {
+    const importResolve = async () => {
+      const module = await import("../oauth-refresh");
+      return module.resolveOAuthAccessToken;
+    };
+
+    it("reports not-logged-in when no tokens are stored", async () => {
+      mocks.getStoredOAuthTokens.mockReturnValue(null);
+      const resolve = await importResolve();
+
+      await expect(resolve()).resolves.toEqual({
+        accessToken: null,
+        reason: { kind: "not-logged-in" },
+      });
+    });
+
+    it("reports login-expired when there is no refresh token", async () => {
+      mocks.getStoredOAuthTokens.mockReturnValue(
+        expiredTokens({ refreshToken: "" }),
+      );
+      const resolve = await importResolve();
+
+      await expect(resolve()).resolves.toEqual({
+        accessToken: null,
+        reason: { kind: "login-expired" },
+      });
+    });
+
+    it("reports login-rejected with the server's reason", async () => {
+      mocks.getStoredOAuthTokens.mockReturnValue(expiredTokens());
+      mockRefreshResponse(jsonResponse(400, { error: "invalid_grant" }));
+      const resolve = await importResolve();
+
+      await expect(resolve()).resolves.toEqual({
+        accessToken: null,
+        reason: { kind: "login-rejected", detail: "HTTP 400: invalid_grant" },
+      });
+    });
+
+    it("reports refresh-failed with the failure for a transient error", async () => {
+      mocks.getStoredOAuthTokens.mockReturnValue(expiredTokens());
+      mockRefreshResponse(textResponse(503, ""));
+      const resolve = await importResolve();
+
+      await expect(resolve()).resolves.toEqual({
+        accessToken: null,
+        reason: { kind: "refresh-failed", detail: "HTTP 503" },
+      });
+    });
+
+    it("reports refresh-failed, not a rejection, when another process renewed the login concurrently", async () => {
+      mocks.getStoredOAuthTokens
+        .mockReturnValueOnce(expiredTokens())
+        .mockReturnValueOnce(expiredTokens({ refreshToken: "refresh-2" }));
+      mockRefreshResponse(jsonResponse(400, { error: "invalid_grant" }));
+      const resolve = await importResolve();
+
+      await expect(resolve()).resolves.toEqual({
+        accessToken: null,
+        reason: {
+          kind: "refresh-failed",
+          detail:
+            "HTTP 400: invalid_grant; another Meticulous process renewed your login at the same time",
+        },
+      });
+      expect(mocks.clearOAuthTokens).not.toHaveBeenCalled();
+    });
+
+    it("returns the access token without a reason when it is usable", async () => {
+      mocks.getStoredOAuthTokens.mockReturnValue(
+        expiredTokens({ expiresAt: nowSeconds() + 3600 }),
+      );
+      const resolve = await importResolve();
+
+      await expect(resolve()).resolves.toEqual({ accessToken: "old-access" });
+    });
   });
 });

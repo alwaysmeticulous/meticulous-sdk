@@ -5,20 +5,24 @@ import {
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
-import { fetchAsset } from "@alwaysmeticulous/downloading-helpers";
-import type {
-  CrawlExplorationMode,
-  RunCrawlOptions,
-  RunCrawlResult,
-} from "@alwaysmeticulous/sdk-bundles-api";
+import type { CrawlExplorationMode } from "@alwaysmeticulous/sdk-bundles-api";
 import type { CommandModule } from "yargs";
 import { OPTIONS } from "../command-utils/common-options";
 import { wrapHandler } from "../command-utils/sentry.utils";
 import { resolveProjectIdentifier } from "../utils/resolve-project-identifier";
-
-const RUN_CRAWL_BUNDLE_PATH = "crawler/v1/run-crawl.bundle.js";
+import {
+  isLocalUrl,
+  loadStorageToSeed,
+  parseStartUrls,
+  printSummary,
+  waitForEnter,
+} from "./crawl/crawl-command.utils";
+import { buildCrawlReport, writeCrawlReport } from "./crawl/crawl-report";
+import { loadRunCrawlBundle } from "./crawl/load-run-crawl-bundle";
 
 const TIME_TO_WAIT_FOR_UPLOADS_MS = 20_000;
+
+export const LOGIN_REQUIRED_EXIT_CODE = 2;
 
 interface Options {
   apiToken: string | null | undefined;
@@ -27,6 +31,10 @@ interface Options {
   maxNumSessions: number;
   explorationMode: CrawlExplorationMode;
   skipTestRun: boolean;
+  headless: boolean;
+  nonInteractive: boolean;
+  storageState: string | null | undefined;
+  outputFile: string | null | undefined;
 }
 
 const handler = async ({
@@ -36,6 +44,10 @@ const handler = async ({
   maxNumSessions,
   explorationMode,
   skipTestRun,
+  headless,
+  nonInteractive,
+  storageState,
+  outputFile,
 }: Options): Promise<void> => {
   const logger = initLogger();
 
@@ -44,6 +56,8 @@ const handler = async ({
     logger.error("No valid start URLs provided. Exiting.");
     process.exit(1);
   }
+
+  const storageToSeed = await loadStorageToSeed(storageState, startUrls[0]);
 
   // Resolve the full auth chain (explicit token → OAuth → env var → legacy
   // config file), triggering an interactive browser login when nothing is
@@ -67,27 +81,29 @@ const handler = async ({
     process.exit(1);
   }
 
+  const { runCrawl, capabilities } = await loadRunCrawlBundle();
+  if (storageToSeed != null && !capabilities.storageToSeed) {
+    logger.error(
+      "The crawler downloaded from Meticulous doesn't support --storageState yet. Retry later, or omit --storageState.",
+    );
+    process.exit(1);
+  }
+  if (headless && !capabilities.headless) {
+    logger.warn(
+      "The crawler downloaded from Meticulous doesn't support --headless yet, so the browser will open in a visible window.",
+    );
+  }
+
   logger.info(
     `Crawling ${
       startUrls.length === 1 ? startUrls[0] : `${startUrls.length} URLs`
     }, recording sessions into project ${project.organization.name}/${project.name}...`,
   );
 
-  const onReadyForManualLogin = () => {
-    logger.info("");
-    logger.info(
-      "A browser window has opened at your start URL. If your app requires login, log in now.",
-    );
-    logger.info(
-      "(warning: recording has already started, so the login will be part of the recorded session and may store credentials)",
-    );
-    logger.info("Once you're ready, press Enter here to start crawling...");
-    return new Promise<void>((resolve) => {
-      process.stdin.once("data", () => resolve());
-    });
-  };
+  // Nobody can log in to a headless browser, so only pause for a login when headed and interactive.
+  const waitForManualLogin = !nonInteractive && !headless;
 
-  const { sessionIds, uniqueUrlCount } = await runCrawl({
+  const result = await runCrawl({
     apiToken: resolvedApiToken,
     projectId,
     // `startUrl` is sent alongside `startUrls` so that a crawler bundle predating
@@ -97,22 +113,47 @@ const handler = async ({
     crawlingTimeoutSeconds,
     maxNumSessions,
     explorationMode,
-    onReadyForManualLogin,
+    onReadyForManualLogin: waitForManualLogin ? waitForEnter : undefined,
+    headless,
+    storageToSeed,
     logLevel: logger.getLevel(),
   });
 
-  logger.info(
-    `Recorded ${sessionIds.length} sessions over ${uniqueUrlCount} unique URLs.`,
-  );
+  const report = buildCrawlReport(result, startUrls);
+  if (outputFile) {
+    await writeCrawlReport(outputFile, report);
+  }
+  printSummary(report, outputFile);
+  const { sessionIds } = report;
 
   if (sessionIds.length === 0) {
     logger.error("No sessions were recorded. Exiting.");
     process.exit(1);
   }
 
+  if (report.loginWallDetected) {
+    if (!waitForManualLogin) {
+      logger.error(
+        storageToSeed != null
+          ? "The crawl only reached login pages even with --storageState: it has likely expired, or is for a different origin than the first --startUrl. Capture a fresh one and retry."
+          : "The crawl only reached login pages: your app requires a login. Log in once in a browser, save its storage state (cookies and local storage) to a file, and retry with --storageState <file>.",
+      );
+      process.exit(LOGIN_REQUIRED_EXIT_CODE);
+    }
+    logger.warn(
+      "The crawl only reached login pages, so the recorded sessions are unlikely to be useful.",
+    );
+  }
+
   if (skipTestRun) {
     logger.info("Skipping test run creation (--skipTestRun).");
     process.exit(0);
+  }
+
+  if (isLocalUrl(startUrls[0])) {
+    logger.warn(
+      `The test run will replay against ${startUrls[0]}, which the Meticulous cloud can't reach. Pass --skipTestRun to only record sessions.`,
+    );
   }
 
   logger.info("Waiting 20 seconds for any remaining uploads to complete...");
@@ -146,37 +187,12 @@ const handler = async ({
   process.exit(0);
 };
 
-/**
- * Drops duplicates, which would otherwise each burn part of the crawling budget,
- * and rejects anything that isn't a URL up front rather than several minutes into
- * a crawl.
- */
-const parseStartUrls = (startUrls: string[]): string[] => {
-  const logger = initLogger();
-  const valid = startUrls.filter((url) => {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      logger.error(`Skipping '${url}': not a valid URL.`);
-      return false;
-    }
-  });
-  return [...new Set(valid)];
-};
-
-const runCrawl = async (options: RunCrawlOptions): Promise<RunCrawlResult> => {
-  const bundleLocation = await fetchAsset(RUN_CRAWL_BUNDLE_PATH);
-
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return (await require(bundleLocation)).runCrawl(options);
-};
-
 export const crawlCommand: CommandModule<unknown, Options> = {
   command: "crawl",
   describe:
     "Crawl your app to record sessions and create a Meticulous test run. " +
-    "Opens a browser at the given start URL and lets you log in manually before crawling starts. " +
+    "Opens a browser at the given start URL and lets you log in manually before crawling starts " +
+    "(with --nonInteractive or --headless it crawls straight away, signed in via --storageState if given). " +
     "Pass --startUrl more than once to crawl a list of URLs in the same browser, and so behind the same login.",
   builder: {
     apiToken: OPTIONS.apiToken,
@@ -217,6 +233,37 @@ export const crawlCommand: CommandModule<unknown, Options> = {
       boolean: true,
       description: "Don't create a test run from the recorded sessions",
       default: false,
+    },
+    headless: {
+      boolean: true,
+      description:
+        "Run the browser headless. There is then no manual login pause, so pass " +
+        "--storageState for apps that require a login.",
+      default: false,
+    },
+    nonInteractive: {
+      boolean: true,
+      description:
+        "Never wait for input: skip the manual login pause and start crawling straight " +
+        `away. Exits with code ${LOGIN_REQUIRED_EXIT_CODE} if every page the crawl reached had a ` +
+        "login-like URL (such as /login, /signin or /auth) or was on another origin. A login " +
+        "form served at an ordinary URL is not detected.",
+      default: false,
+    },
+    storageState: {
+      string: true,
+      description:
+        "Path to a JSON file of cookies and local storage to load into the browser " +
+        "before crawling, so that signed-in pages can be crawled without a manual " +
+        "login. Accepts a Playwright storage state ({ cookies, origins }) or an array " +
+        "of Puppeteer / Chrome DevTools cookies. Only the local storage of the first " +
+        "--startUrl's origin is used.",
+    },
+    outputFile: {
+      string: true,
+      description:
+        "Write a JSON summary of the crawl to this path: { sessionIds, startUrls, " +
+        "numSessions, uniqueUrlCount, loginWallDetected }",
     },
   },
   handler: wrapHandler(handler),

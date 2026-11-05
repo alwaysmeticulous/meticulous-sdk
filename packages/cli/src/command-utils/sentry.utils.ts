@@ -1,4 +1,8 @@
-import { isFetchError } from "@alwaysmeticulous/client";
+import {
+  isFetchError,
+  isMissingCredentialsError,
+  isRejectedCredentialsError,
+} from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
 import { readCompletedUpload } from "@alwaysmeticulous/remote-replay-launcher";
 import { SENTRY_FLUSH_TIMEOUT } from "@alwaysmeticulous/sentry";
@@ -11,6 +15,7 @@ import {
   type CiUploadFields,
 } from "../commands/ci/ci-command-result";
 import { CliUserError } from "../utils/cli-user-error";
+import { toAuthFailureCliUserError } from "../utils/handle-auth-failure";
 import { OutOfDateCLIError } from "../utils/out-of-date-client-error";
 
 export const setOptions: (options: unknown) => void = (options) => {
@@ -55,10 +60,11 @@ export const wrapHandler = function wrapHandler_<T>(
 };
 
 const reportHandlerError = (
-  error: unknown,
+  rawError: unknown,
   { json }: { json: boolean },
 ): number => {
   const logger = initLogger();
+  const error = toCliUserErrorIfExpected(rawError);
 
   // User-facing errors: message already explains what to do, and the
   // failure is expected (no Sentry, no --help tip, no stack).
@@ -119,6 +125,21 @@ const reportHandlerError = (
   );
   Sentry.captureException(error);
   return 1;
+};
+
+// A 401/403 from the Meticulous API client is explained by the client (why
+// no credential was sent) or by which credential it rejected, so report it like
+// any other user error. Other 401/403s (e.g. a presigned upload URL) are not
+// tagged and stay unexpected.
+const toCliUserErrorIfExpected = (error: unknown): unknown => {
+  if (!isMissingCredentialsError(error) && !isRejectedCredentialsError(error)) {
+    return error;
+  }
+  return (
+    toAuthFailureCliUserError(error, {
+      sourceDeploymentId: readCompletedUpload(error)?.sourceDeploymentId,
+    }) ?? error
+  );
 };
 
 const uploadFieldsFromError = (error: unknown): CiUploadFields => {

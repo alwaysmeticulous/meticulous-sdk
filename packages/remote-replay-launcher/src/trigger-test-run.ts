@@ -12,7 +12,7 @@ import { uploadBufferToSignedUrl } from "./asset-upload-utils";
 export interface TriggerTestRunOptions extends AgentProjectOverride {
   apiToken: string | null | undefined;
   /**
-   * The deployment to test, as returned by `uploadBuild`. Exactly one of
+   * The deployment to test, as returned by `uploadBuild`. At least one of
    * `deploymentId` or `commitSha` must be provided.
    */
   deploymentId?: string | undefined;
@@ -21,11 +21,21 @@ export interface TriggerTestRunOptions extends AgentProjectOverride {
    * deployment already uploaded for this commit in the project. Can be
    * combined with `gitDiffOutput`: the diff upload resolves `commitSha` to a
    * deployment first, and that resolved id is then reused for the trigger
-   * call too, so both requests target the same deployment row.
+   * call too, so both requests target the same deployment row. Alongside
+   * `deploymentId`, it is instead checked to be that deployment's commit.
    */
   commitSha?: string | undefined;
-  /** Required: an agent (custom-trigger) run is only useful with a base. */
-  baseSha: string;
+  /**
+   * The base commit to compare against. Required unless `baseTestRunId` is
+   * set, or the project has no connected repository: there, omitting both
+   * triggers a baseline run that later runs on its commit compare against.
+   */
+  baseSha?: string | undefined;
+  /**
+   * The test run to compare against, instead of looking one up by `baseSha`
+   * (which, if also set, must be its commit).
+   */
+  baseTestRunId?: string | undefined;
   /** Raw `git diff base..head` output. */
   gitDiffOutput?: string | undefined;
   /**
@@ -51,21 +61,21 @@ export interface TriggerTestRunResult {
 }
 
 /**
- * Builds the `{ deploymentId }` or `{ commitSha }` param to spread into a
- * request body — exactly one of the two is ever sent, since the backend
- * treats both-or-neither as a client error.
+ * Builds the `{ deploymentId }` / `{ commitSha }` params to spread into a
+ * request body. Both are sent when both are known: the backend then resolves
+ * the deployment by id and checks it was built from `commitSha`.
  */
 const identifierParams = (
   deploymentId: string | undefined,
   commitSha: string | undefined,
-): { deploymentId: string } | { commitSha: string } => {
-  if (deploymentId) {
-    return { deploymentId };
+): { deploymentId?: string; commitSha?: string } => {
+  if (!deploymentId && !commitSha) {
+    throw new Error("Provide either deploymentId or commitSha.");
   }
-  if (commitSha) {
-    return { commitSha };
-  }
-  throw new Error("Provide either deploymentId or commitSha.");
+  return {
+    ...(deploymentId ? { deploymentId } : {}),
+    ...(commitSha ? { commitSha } : {}),
+  };
 };
 
 /**
@@ -75,22 +85,25 @@ const identifierParams = (
  * The backend resolves the base synchronously and the agent endpoint fails
  * (HTTP 422) rather than producing a baseless run, so there is no client-side
  * base polling: a single trigger call either returns a run with a base, or
- * rejects with a clear error.
+ * rejects with a clear error. The one exception is a deliberate baseline run
+ * (no base given) on a project with no connected repository.
  */
 export const triggerTestRun = async ({
   apiToken: apiToken_,
   deploymentId,
   commitSha,
   baseSha,
+  baseTestRunId,
   gitDiffOutput,
   sessionIds,
   maxDurationSeconds,
   project,
 }: TriggerTestRunOptions): Promise<TriggerTestRunResult> => {
-  if (Boolean(deploymentId) === Boolean(commitSha)) {
-    throw new Error(
-      "Exactly one of deploymentId or commitSha must be provided.",
-    );
+  if (!deploymentId && !commitSha) {
+    throw new Error("At least one of deploymentId or commitSha is required.");
+  }
+  if (gitDiffOutput && !baseSha) {
+    throw new Error("gitDiffOutput requires baseSha.");
   }
   const apiToken = getApiToken(apiToken_);
   const client = createClient({ apiToken });
@@ -101,7 +114,7 @@ export const triggerTestRun = async ({
   // closing the race window where a newer deployment for that commit could be
   // uploaded between the two calls.
   let resolvedDeploymentId = deploymentId;
-  if (gitDiffOutput) {
+  if (gitDiffOutput && baseSha) {
     const buffer = Buffer.from(gitDiffOutput, "utf-8");
     logProgress(`Uploading git diff (${buffer.length} bytes)...`);
     const { uploadUrl, deploymentId: uploadedDeploymentId } =
@@ -120,8 +133,11 @@ export const triggerTestRun = async ({
 
   const result = await agentTriggerTestRun({
     client,
-    ...identifierParams(resolvedDeploymentId, commitSha),
-    baseSha,
+    ...(resolvedDeploymentId && resolvedDeploymentId !== deploymentId
+      ? { deploymentId: resolvedDeploymentId }
+      : identifierParams(deploymentId, commitSha)),
+    ...(baseSha ? { baseSha } : {}),
+    ...(baseTestRunId ? { baseTestRunId } : {}),
     // Forward the list whenever it's present (even if empty) rather than
     // silently dropping an empty one: "provided" means "pin exactly these", so
     // an empty list is a caller mistake the backend rejects with a clear 400.

@@ -7,8 +7,12 @@ import {
 } from "@alwaysmeticulous/common";
 import type log from "loglevel";
 import type { Dispatcher, RequestInit } from "undici";
-import { getApiToken, getAuthToken } from "./api-token.utils";
-import { maybeEnrichMissingAuthFetchError } from "./errors";
+import { getApiToken, resolveAuthToken } from "./api-token.utils";
+import type { AuthTokenResolution } from "./auth-resolution.types";
+import {
+  maybeEnrichMissingAuthFetchError,
+  maybeTagRejectedCredentialsError,
+} from "./errors";
 import { performOAuthLogin } from "./oauth/oauth-login";
 import { getStoredOAuthTokens } from "./oauth/oauth-token-store";
 import { isOAuthJwt } from "./oauth/oauth-utils";
@@ -242,14 +246,19 @@ export const makeRequest = async <T>(
   });
 };
 
+type StaticToken = string | null | AuthTokenResolution;
+
 /**
- * The token to authenticate requests with. A plain string is used as-is for the
- * client's lifetime; a provider function is invoked on every request so the
- * token can be refreshed (e.g. short-lived OAuth access tokens). `null` means
+ * The token to authenticate requests with. A static token is used as-is for
+ * the client's lifetime; a provider function is invoked on every request so the
+ * token can be refreshed (e.g. short-lived OAuth access tokens). No token means
  * the request is sent without an Authorization header (some environments
- * inject auth themselves).
+ * inject auth themselves); an {@link AuthTokenResolution} without a token says
+ * why, for the error if the server then rejects the request. A bare `null`
+ * comes from the static token chain (explicit token → METICULOUS_API_TOKEN →
+ * config file), so such a rejection is explained by the stored OAuth login.
  */
-type TokenProvider = string | null | (() => Promise<string | null>);
+type TokenProvider = StaticToken | (() => Promise<StaticToken>);
 
 // Exported for unit testing; not re-exported from the package index.
 export const buildClient = (
@@ -259,19 +268,22 @@ export const buildClient = (
   dispatcher?: Dispatcher,
 ): MeticulousClient => {
   const userAgent = buildUserAgent(appInfo);
-  const getToken =
-    typeof token === "function" ? token : () => Promise.resolve(token);
+  const getToken = async (): Promise<StaticToken> =>
+    typeof token === "function" ? token() : token;
   const makeRequestWithToken = async <T>(
     url: string,
     options: RequestInit = {},
     config?: RequestConfig<any>,
   ): Promise<Response<T>> => {
     const resolvedToken = await getToken();
+    const sentToken = isAuthTokenResolution(resolvedToken)
+      ? resolvedToken.token
+      : resolvedToken;
     const headers: Record<string, string> = {
       "user-agent": userAgent,
     };
-    if (resolvedToken) {
-      headers.authorization = resolvedToken;
+    if (sentToken) {
+      headers.authorization = sentToken;
     }
 
     try {
@@ -283,7 +295,13 @@ export const buildClient = (
         logger,
       });
     } catch (error) {
-      throw maybeEnrichMissingAuthFetchError(error, Boolean(resolvedToken));
+      if (sentToken) {
+        throw maybeTagRejectedCredentialsError(error, sentToken);
+      }
+      throw maybeEnrichMissingAuthFetchError(
+        error,
+        isAuthTokenResolution(resolvedToken) ? resolvedToken : false,
+      );
     }
   };
 
@@ -367,25 +385,37 @@ export const isInteractiveContext = (): boolean =>
  */
 export const resolveApiTokenWithOAuth = async (
   options: ClientOptions & { enableOAuthLogin?: boolean },
-): Promise<string | null> => {
+): Promise<string | null> =>
+  (await resolveAuthTokenWithOAuthLogin(options)).token;
+
+/**
+ * {@link resolveApiTokenWithOAuth}, keeping why no token resolved so a
+ * client built from it can explain a later 401/403.
+ */
+const resolveAuthTokenWithOAuthLogin = async (
+  options: ClientOptions & { enableOAuthLogin?: boolean },
+): Promise<AuthTokenResolution> => {
   const logger = initLogger();
 
-  let apiToken = await getAuthToken(options.apiToken);
+  let resolution = await resolveAuthToken(options.apiToken);
 
   const isInteractive = options.enableOAuthLogin && isInteractiveContext();
 
   // A rejected refresh has already cleared the store, so this still logs in
   // again; only a transient refresh failure leaves tokens behind.
-  if (!apiToken && isInteractive && getStoredOAuthTokens() == null) {
+  if (!resolution.token && isInteractive && getStoredOAuthTokens() == null) {
     const tokens = await performOAuthLogin();
-    apiToken = tokens.accessToken;
+    resolution = { token: tokens.accessToken };
   }
 
-  if (!apiToken) {
+  if (!resolution.token) {
     // See the matching logProgress in createClient for why not logger.debug.
-    logProgress("No API token found; proceeding with unauthenticated requests");
-    return null;
+    logProgress(
+      "No usable Meticulous login or API token found; proceeding with unauthenticated requests",
+    );
+    return resolution;
   }
+  const apiToken = resolution.token;
 
   // Best-effort, one-time upgrade of the pre-backend local
   // `selected-project.json` into the backend-persisted default. This is the
@@ -402,7 +432,7 @@ export const resolveApiTokenWithOAuth = async (
     );
   }
 
-  return apiToken;
+  return resolution;
 };
 
 export const createClientWithOAuth = async (
@@ -410,29 +440,49 @@ export const createClientWithOAuth = async (
 ): Promise<MeticulousClient> => {
   // Resolve once up front: this performs the interactive browser login when
   // needed (and any post-login project auto-select).
-  const apiToken = await resolveApiTokenWithOAuth(options);
+  const initial = await resolveAuthTokenWithOAuthLogin(options);
 
   // OAuth access tokens are short-lived, so a client that bakes in a single
   // token starts failing once it expires — e.g. during a long poll loop waiting
   // for a test run to complete. When the token came from OAuth, install a
   // provider that re-resolves the full auth chain per request via
-  // `getAuthToken` (which auto-refreshes the OAuth token via the stored refresh
+  // `resolveAuthToken` (which auto-refreshes the OAuth token via the stored refresh
   // token); static tokens (explicit / env var / config file) never expire, so
   // we keep using the resolved string directly to avoid re-reading it on every
   // request. Re-resolving the whole chain — rather than only `getValidAccessToken` —
   // matters when the refresh itself fails: `getValidAccessToken` then returns
   // null (clearing the stored OAuth tokens only if the server rejected the
-  // refresh token), and `getAuthToken` falls back to the METICULOUS_API_TOKEN
-  // env var / config file. Only when none of those resolve does the request
-  // reuse the initial token, so the server's 401 surfaces the auth failure.
+  // refresh token), and `resolveAuthToken` falls back to the METICULOUS_API_TOKEN
+  // env var / config file. When none of those resolve, the request goes out
+  // without credentials, so a 401/403 is explained by why the login was lost
+  // (expired, rejected, cleared) rather than by the server rejecting a stale
+  // token.
   const usingOAuth = !options.apiToken && getStoredOAuthTokens() != null;
 
-  const token: string | null | (() => Promise<string | null>) = usingOAuth
-    ? async () => (await getAuthToken(options.apiToken)) ?? apiToken
-    : apiToken;
+  const token: TokenProvider = usingOAuth
+    ? async () => reresolveOAuthToken(options.apiToken)
+    : initial;
 
   return buildClient(token, initLogger(), options.appInfo, options.dispatcher);
 };
+
+const reresolveOAuthToken = async (
+  apiToken: string | null | undefined,
+): Promise<AuthTokenResolution> => {
+  const current = await resolveAuthToken(apiToken);
+  if (current.token !== null) {
+    return current;
+  }
+  // A login was stored when this client was created, so finding none now
+  // means it was removed mid-command rather than never having existed.
+  return current.missingReason.kind === "not-logged-in"
+    ? { token: null, missingReason: { kind: "login-cleared" } }
+    : current;
+};
+
+const isAuthTokenResolution = (
+  token: StaticToken,
+): token is AuthTokenResolution => token != null && typeof token === "object";
 
 const getApiUrl = () => {
   if (process.env["METICULOUS_API_URL"]) {

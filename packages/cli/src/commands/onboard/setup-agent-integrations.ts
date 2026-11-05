@@ -475,7 +475,7 @@ const isPrecreatedSkillsDirPath = (path: string): boolean =>
   path === ".agents/skills/" ||
   path === ".cursor/skills/";
 
-const mergeJsonMcp = (
+export const mergeJsonMcp = (
   projectRoot: string,
   relativePath: string,
   serverConfig: Record<string, unknown>,

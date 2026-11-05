@@ -18,6 +18,16 @@ const mocks = vi.hoisted(() => ({
   resolveProjectIdentifier: vi.fn(() =>
     Promise.resolve({ projectId: "project" }),
   ),
+  resolveUploadSource: vi.fn(
+    ({ uploadSource }: { uploadSource: boolean | undefined }) =>
+      Promise.resolve(uploadSource ?? false),
+  ),
+  resolveCheckedOutCommit: vi.fn(() => Promise.resolve("a".repeat(40))),
+}));
+
+vi.mock("./agent-test-source.utils", () => ({
+  resolveUploadSource: mocks.resolveUploadSource,
+  resolveCheckedOutCommit: mocks.resolveCheckedOutCommit,
 }));
 
 vi.mock("../../command-utils/sentry.utils", () => ({
@@ -274,5 +284,98 @@ describe("ci agent-test backend with a container", () => {
     ).rejects.toThrow(
       "--enableLocalMocks cannot be combined with --backendUrl",
     );
+  });
+});
+
+describe("ci agent-test on a project without a hosting provider", () => {
+  const BASE_SHA = "b".repeat(40);
+  const HEAD_SHA = "a".repeat(40);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("reuses an uploaded deployment, reads the source from --repoDirectory at --commitSha, and uploads it by default", async () => {
+    mocks.resolveUploadSource.mockResolvedValueOnce(true);
+
+    await runHandler({
+      deploymentId: "deployment1",
+      commitSha: HEAD_SHA,
+      repoDirectory: "/work/head",
+      baseSha: BASE_SHA,
+      headTestRunId: "testrun1",
+      enableLocalMocks: true,
+    });
+
+    expect(mocks.resolveCheckedOutCommit).toHaveBeenCalledWith({
+      repoDirectory: "/work/head",
+      commitSha: HEAD_SHA,
+    });
+    expect(mocks.resolveGitOptions).not.toHaveBeenCalled();
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deploymentId: "deployment1",
+        commitSha: HEAD_SHA,
+        sourceSnapshot: { repoDirectory: "/work/head", baseSha: BASE_SHA },
+        headTestRunId: "testrun1",
+        enableLocalMocks: true,
+      }),
+    );
+  });
+
+  it("does not upload source for a project with a hosting provider", async () => {
+    await runHandler({ assetsDir: "dist" });
+
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.not.objectContaining({ sourceSnapshot: expect.anything() }),
+    );
+  });
+
+  it("asks for --baseSha when it must upload the source", async () => {
+    mocks.resolveUploadSource.mockResolvedValueOnce(true);
+
+    await expect(
+      runHandler({
+        assetsDir: "dist",
+        commitSha: HEAD_SHA,
+        repoDirectory: "/work/head",
+      }),
+    ).rejects.toThrow("--baseSha");
+    expect(mocks.generateSessions).not.toHaveBeenCalled();
+  });
+
+  it("refuses more than one build", async () => {
+    await expect(
+      runHandler({ assetsDir: "dist", deploymentId: "deployment1" }),
+    ).rejects.toThrow("exactly one of");
+  });
+
+  it("prints the swarm run id on a stable line", async () => {
+    mocks.generateSessions.mockResolvedValueOnce({
+      uploadId: "upload",
+      agenticRunId: "swarmrun1",
+    } as never);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await runHandler({ assetsDir: "dist" });
+
+    expect(log).toHaveBeenCalledWith("Agent swarm run: swarmrun1");
+    log.mockRestore();
+  });
+
+  it("prints the result as JSON with --json", async () => {
+    mocks.generateSessions.mockResolvedValueOnce({
+      agenticRunId: "swarmrun1",
+    } as never);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await runHandler({ deploymentId: "deployment1", json: true });
+
+    expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toEqual({
+      swarmRunId: "swarmrun1",
+      commitSha: "abc123",
+      deploymentId: "deployment1",
+    });
+    log.mockRestore();
   });
 });

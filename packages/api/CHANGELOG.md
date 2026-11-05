@@ -1,5 +1,15 @@
 # @alwaysmeticulous/api
 
+## 3.6.0
+
+### Minor Changes
+
+- [#17065](https://github.com/alwaysmeticulous/meticulous/pull/17065) [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous agent trigger-test-run` takes `--baseTestRunId` to compare against a specific test run, `--gitDiffFile` to read the diff from a file, and accepts `--commitSha` alongside `--deploymentId` as the deployment's commit. On a project with no connected repository, omitting both `--baseSha` and `--baseTestRunId` triggers a baseline run that later runs on that commit compare against.
+
+### Patch Changes
+
+- [#17065](https://github.com/alwaysmeticulous/meticulous/pull/17065) [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous ci agent-test` can run Agent swarm on a project with no connected GitHub, GitLab or Bitbucket repository: `--uploadSource` (on by default for such projects) uploads the source of `--baseSha..--commitSha` from `--repoDirectory` as a git bundle of the two trees, and `--headTestRunId` names the session-replay test run to compare against. `--deploymentId` reuses a build uploaded with `meticulous agent upload-build`, `--repoDirectory` can now be combined with `--commitSha`, a launched run prints `Agent swarm run: <id>`, and `--json` prints the result as JSON.
+
 ## 3.5.0
 
 ### Minor Changes

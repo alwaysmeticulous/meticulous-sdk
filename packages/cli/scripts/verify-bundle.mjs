@@ -43,6 +43,7 @@ for (const asset of [
   "main.js",
   "tunnel-worker.entrypoint.js",
   "commands/onboard/templates/CLAUDE.md",
+  "commands/try/templates/CLAUDE.md",
   ...BUNDLED_ASSETS.map(({ name, marker }) => join(name, marker)),
 ]) {
   if (!existsSync(join(distDir, asset))) {

@@ -7,6 +7,7 @@ import type {
   ContainerEnvVariable,
   ProjectIdentifier,
 } from "@alwaysmeticulous/client";
+import type { GitHubDelayedRetrySkipReason } from "./github-rate-limit-retry";
 
 export interface TunnelData {
   url: string;
@@ -79,9 +80,7 @@ export interface ExecuteRemoteTestRunOptions {
 
 export interface ExecuteRemoteTestRunResult {
   testRun: TestRun | null;
-  skipReason?:
-    | "comments_disabled_for_author"
-    | "github_rate_limit_retry_scheduled";
+  skipReason?: "comments_disabled_for_author" | GitHubDelayedRetrySkipReason;
   message?: string;
   sourceDeploymentId?: string;
 }

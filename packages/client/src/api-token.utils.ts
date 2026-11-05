@@ -4,7 +4,8 @@ import {
   getMeticulousLocalDataDir,
   initLogger,
 } from "@alwaysmeticulous/common";
-import { getValidAccessToken } from "./oauth/oauth-refresh";
+import type { AuthTokenResolution } from "./auth-resolution.types";
+import { resolveOAuthAccessToken } from "./oauth/oauth-refresh";
 
 interface PersonalConfig {
   apiToken?: string;
@@ -79,30 +80,44 @@ export const getApiToken = (
  */
 export const getAuthToken = async (
   apiToken: string | null | undefined,
-): Promise<string | null> => {
+): Promise<string | null> => (await resolveAuthToken(apiToken)).token;
+
+/**
+ * Like {@link getAuthToken}, but when no token resolves it also says why — the
+ * OAuth login's state, since the env var and config file are simply unset — so
+ * a later 401/403 can be explained instead of guessed at.
+ */
+export const resolveAuthToken = async (
+  apiToken: string | null | undefined,
+): Promise<AuthTokenResolution> => {
   if (apiToken) {
     logAuthSource("--apiToken flag");
-    return apiToken;
+    return { token: apiToken };
   }
 
-  const oauthToken = await getValidAccessToken();
-  if (oauthToken) {
+  const oauth = await resolveOAuthAccessToken();
+  if (oauth.accessToken) {
     logAuthSource("OAuth");
-    return oauthToken;
+    return { token: oauth.accessToken };
   }
 
   if (process.env["METICULOUS_API_TOKEN"]) {
     logAuthSource("METICULOUS_API_TOKEN environment variable");
-    return process.env["METICULOUS_API_TOKEN"];
+    return { token: process.env["METICULOUS_API_TOKEN"] };
   }
 
   const fileToken = readFileBasedToken();
   if (fileToken) {
     logAuthSource(fileToken.path);
-    return fileToken.token;
+    return { token: fileToken.token };
   }
 
-  return null;
+  return {
+    token: null,
+    // A stored login with an empty access token is no usable login.
+    missingReason:
+      oauth.accessToken === null ? oauth.reason : { kind: "not-logged-in" },
+  };
 };
 
 // An OAuth client re-resolves the token on every request, so only log the

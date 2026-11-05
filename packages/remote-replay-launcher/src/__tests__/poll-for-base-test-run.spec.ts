@@ -75,12 +75,14 @@ describe("pollWhileBaseNotFound", () => {
         testRun: null,
         baseNotFound: false,
         githubRateLimitRetryScheduled: true,
+        githubServerErrorRetryScheduled: true,
       },
       retryFn,
       fallbackFn,
     });
 
     expect(result.githubRateLimitRetryScheduled).toBe(true);
+    expect(result.githubServerErrorRetryScheduled).toBe(true);
     expect(retryFn).not.toHaveBeenCalled();
     expect(fallbackFn).not.toHaveBeenCalled();
   });

@@ -13,13 +13,30 @@ import {
 import { initLogger } from "@alwaysmeticulous/common";
 import * as Sentry from "@sentry/node";
 import { uploadAgenticInstructionsToS3 } from "./asset-upload-utils";
+import { uploadSourceBundle } from "./source-bundle/upload-source-bundle";
 import { uploadBuild } from "./upload-build";
 
 export interface GenerateSessionsOptions extends ProjectIdentifier {
   apiToken: string | null | undefined;
   localImageTag?: string | undefined;
   assetsDirectory?: string | undefined;
+  /**
+   * A build already uploaded with `agent upload-build`, instead of uploading
+   * `localImageTag` or `assetsDirectory` again.
+   */
+  deploymentId?: string | undefined;
   commitSha: string;
+  /**
+   * Projects without a hosting provider: upload the source of the change from
+   * `baseSha` to `commitSha` in `repoDirectory`, which the run reads its diff
+   * and source from.
+   */
+  sourceSnapshot?: { repoDirectory: string; baseSha: string } | undefined;
+  /**
+   * Projects without a hosting provider: the session-replay test run of this
+   * build, whose base build the run compares against.
+   */
+  headTestRunId?: string | undefined;
   /** Path to a markdown file with instructions for the agent (login details, accounts, etc). */
   instructionsFile?: string | undefined;
   enableLocalMocks?: boolean | undefined;
@@ -41,7 +58,8 @@ export interface GenerateSessionsOptions extends ProjectIdentifier {
 }
 
 export interface GenerateSessionsResult {
-  uploadId: string;
+  /** Absent when the launch reused an uploaded `deploymentId`. */
+  uploadId?: string;
   agenticRunId?: string | null;
   message?: string;
 }
@@ -56,7 +74,10 @@ export const generateSessions = async ({
   apiToken: apiToken_,
   localImageTag,
   assetsDirectory,
+  deploymentId,
   commitSha,
+  sourceSnapshot,
+  headTestRunId,
   instructionsFile,
   enableLocalMocks,
   containerPort,
@@ -73,18 +94,40 @@ export const generateSessions = async ({
   const client = createClient({ apiToken });
   const projectIdentifier = projectId ? { projectId } : {};
 
-  const targetCount = [localImageTag, assetsDirectory].filter(Boolean).length;
+  const targetCount = [localImageTag, assetsDirectory, deploymentId].filter(
+    Boolean,
+  ).length;
   if (targetCount !== 1) {
-    throw new Error("Provide exactly one of localImageTag or assetsDirectory.");
+    throw new Error(
+      "Provide exactly one of localImageTag, assetsDirectory or deploymentId.",
+    );
   }
   if (appPort != null && localImageTag && !backend?.proxyPaths?.length) {
     throw new Error("appPort with a container requires backend proxy paths.");
   }
 
-  let uploadId: string;
+  // Before the build, so a commit missing from the checkout fails fast.
+  const uploadedSource =
+    sourceSnapshot == null
+      ? undefined
+      : await uploadSourceBundle({
+          client,
+          repoDirectory: sourceSnapshot.repoDirectory,
+          baseSha: sourceSnapshot.baseSha,
+          headSha: commitSha,
+          ...projectIdentifier,
+        });
+
+  let uploadId: string | undefined;
   let imageReference: string | undefined;
   let appTarget: AgenticAppTarget;
-  if (localImageTag) {
+  if (deploymentId) {
+    appTarget = {
+      type: "deployment",
+      projectDeploymentId: deploymentId,
+      ...(enableLocalMocks == null ? {} : { enableLocalMocks }),
+    };
+  } else if (localImageTag) {
     const uploadedContainer = await uploadBuild({
       apiToken,
       commitSha,
@@ -151,9 +194,16 @@ export const generateSessions = async ({
   logger.info("Launching agentic session generation workflow...");
   const result = await completeAgenticSessionGeneration({
     client,
-    commitSha,
+    commitSha: uploadedSource?.headSha ?? commitSha,
     ...(instructionsId ? { instructionsId } : {}),
     appTarget,
+    ...(uploadedSource == null
+      ? {}
+      : {
+          sourceBundleId: uploadedSource.sourceBundleId,
+          baseSha: uploadedSource.baseSha,
+        }),
+    ...(headTestRunId ? { headTestRunId } : {}),
     ...projectIdentifier,
   });
 
@@ -161,6 +211,7 @@ export const generateSessions = async ({
     level: "debug",
     extra: {
       uploadId,
+      deploymentId,
       commitSha,
       agenticRunId: result.agenticRunId,
       ...(imageReference ? { imageReference } : {}),
@@ -171,14 +222,16 @@ export const generateSessions = async ({
     logger.info(result.message);
   } else {
     logger.info(
-      `Agentic session generation launched. Upload ID: ${uploadId}${
-        result.agenticRunId ? `, agentic run: ${result.agenticRunId}` : ""
-      }`,
+      `Agentic session generation launched. ${
+        uploadId == null
+          ? `Deployment: ${deploymentId}`
+          : `Upload ID: ${uploadId}`
+      }${result.agenticRunId ? `, agentic run: ${result.agenticRunId}` : ""}`,
     );
   }
 
   return {
-    uploadId,
+    ...(uploadId == null ? {} : { uploadId }),
     agenticRunId: result.agenticRunId ?? null,
     ...(result.message ? { message: result.message } : {}),
   };

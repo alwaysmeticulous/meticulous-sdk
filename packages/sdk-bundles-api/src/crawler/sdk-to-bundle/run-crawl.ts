@@ -1,3 +1,5 @@
+import type { Cookie, StorageEntry } from "@alwaysmeticulous/api";
+
 /**
  * How the crawler spends its time on each page it reaches.
  *
@@ -67,7 +69,42 @@ export interface RunCrawlOptions {
    */
   onReadyForManualLogin?: (() => Promise<void>) | undefined;
 
+  /**
+   * Whether to run the browser headless. Defaults to `false`.
+   *
+   * Optional so that a CLI predating this option keeps working. A bundle predating it
+   * ignores it and runs headed: check {@link RunCrawlBundleCapabilities.headless}.
+   */
+  headless?: boolean | undefined;
+
+  /**
+   * Cookies, local storage and session storage to seed into the browser before the
+   * first start URL is loaded, e.g. to crawl signed-in pages without a manual login.
+   * Only exposed to pages on the same origin as the first start URL.
+   *
+   * A bundle predating this option ignores it: check
+   * {@link RunCrawlBundleCapabilities.storageToSeed}.
+   */
+  storageToSeed?: CrawlStorageToSeed | undefined;
+
   logLevel: string | number;
+}
+
+export interface CrawlStorageToSeed {
+  cookies: Cookie[];
+  localStorageEntries: StorageEntry[];
+  sessionStorageEntries: StorageEntry[];
+}
+
+/**
+ * Exported by the run-crawl bundle as `runCrawlCapabilities`, so that a CLI can tell
+ * whether the bundle it loaded from the CDN understands an option before relying on
+ * it. A bundle predating this export supports none of the options listed here.
+ */
+export interface RunCrawlBundleCapabilities {
+  headless?: boolean;
+  storageToSeed?: boolean;
+  visitedUrls?: boolean;
 }
 
 export interface RunCrawlResult {
@@ -80,4 +117,10 @@ export interface RunCrawlResult {
    * The number of unique URLs visited during the crawl.
    */
   uniqueUrlCount: number;
+
+  /**
+   * The unique URLs visited during the crawl, in the order first seen. Absent from
+   * bundles predating it.
+   */
+  visitedUrls?: string[] | undefined;
 }

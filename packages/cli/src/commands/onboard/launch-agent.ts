@@ -11,6 +11,8 @@ import {
 
 /** Agents we can launch to actually run the install. */
 export type LaunchableAgent = "claude" | "codex";
+
+export type ClaudePermissionMode = "acceptEdits" | "auto";
 /** Tools that can apply the install (Cursor is not offered in the picker). */
 export type OnboardTool = LaunchableAgent;
 export type OnboardAgentChoice = OnboardTool | "auto";
@@ -206,6 +208,10 @@ export const launchOnboardTool = (options: {
   prompt: string;
   headless: boolean;
   auto: boolean;
+  /** Overrides the Claude permission mode that `auto` would otherwise select. */
+  claudePermissionMode?: ClaudePermissionMode;
+  /** Extra environment for the agent process, e.g. a project-scoped token. */
+  env?: Record<string, string>;
 }): number => {
   const { tool, projectRoot, workspaceDir } = options;
 
@@ -227,6 +233,8 @@ export const launchOnboardTool = (options: {
     prompt: options.prompt,
     headless: options.headless,
     auto: options.auto,
+    claudePermissionMode: options.claudePermissionMode,
+    env: options.env ?? {},
   });
 };
 
@@ -238,6 +246,8 @@ const launchAgent = (options: {
   prompt: string;
   headless: boolean;
   auto: boolean;
+  claudePermissionMode: ClaudePermissionMode | undefined;
+  env: Record<string, string>;
 }): number => {
   const { tool, workspaceDir, projectRoot, headless, auto, prompt } = options;
   const model = options.model ?? (tool === "claude" ? "opus" : undefined);
@@ -247,6 +257,7 @@ const launchAgent = (options: {
     prompt,
     headless,
     auto,
+    claudePermissionMode: options.claudePermissionMode,
     projectRoot,
   });
 
@@ -265,7 +276,7 @@ const launchAgent = (options: {
   const result = spawnSync(TOOL_COMMAND[tool], args, {
     cwd: workspaceDir,
     stdio: "inherit",
-    env: { ...process.env },
+    env: { ...process.env, ...options.env },
   });
 
   if (result.error) {
@@ -446,6 +457,7 @@ const buildAgentArgs = (options: {
   prompt: string;
   headless: boolean;
   auto: boolean;
+  claudePermissionMode: ClaudePermissionMode | undefined;
   projectRoot: string;
 }): string[] => {
   const { tool, model, prompt, headless, auto, projectRoot } = options;
@@ -453,7 +465,11 @@ const buildAgentArgs = (options: {
   const addDir = ["--add-dir", projectRoot];
 
   if (tool === "claude") {
-    const autoArgs = auto ? ["--permission-mode", "acceptEdits"] : [];
+    const permissionMode =
+      options.claudePermissionMode ?? (auto ? "acceptEdits" : undefined);
+    const autoArgs = permissionMode
+      ? ["--permission-mode", permissionMode]
+      : [];
     if (headless) {
       return ["-p", prompt, ...modelArgs, ...autoArgs, ...addDir];
     }

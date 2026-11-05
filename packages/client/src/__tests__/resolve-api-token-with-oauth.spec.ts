@@ -5,12 +5,17 @@ import { resolveApiTokenWithOAuth } from "../client";
 // Never touch the real ~/.meticulous: token store, login and migration are all
 // mocked.
 const mocks = vi.hoisted(() => ({
-  getAuthToken: vi.fn(),
+  resolveAuthToken: vi.fn(),
   getApiToken: vi.fn(),
   getStoredOAuthTokens: vi.fn(),
   performOAuthLogin: vi.fn(),
   migrateLegacySelectedProjectIfPresent: vi.fn(),
 }));
+
+const NOT_LOGGED_IN = {
+  token: null,
+  missingReason: { kind: "not-logged-in" },
+} as const;
 
 vi.mock("@alwaysmeticulous/common", async (importOriginal) => {
   const actual = await importOriginal<typeof Common>();
@@ -18,7 +23,7 @@ vi.mock("@alwaysmeticulous/common", async (importOriginal) => {
 });
 
 vi.mock("../api-token.utils", () => ({
-  getAuthToken: mocks.getAuthToken,
+  resolveAuthToken: mocks.resolveAuthToken,
   getApiToken: mocks.getApiToken,
 }));
 
@@ -42,7 +47,7 @@ describe("resolveApiTokenWithOAuth", () => {
     vi.clearAllMocks();
     vi.stubEnv("CI", "");
     process.stdin.isTTY = true;
-    mocks.getAuthToken.mockResolvedValue(null);
+    mocks.resolveAuthToken.mockResolvedValue(NOT_LOGGED_IN);
   });
 
   afterEach(() => {

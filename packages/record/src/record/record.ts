@@ -2,9 +2,9 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { ensureBrowser } from "@alwaysmeticulous/browser-installer";
 import { initLogger } from "@alwaysmeticulous/common";
-import type { Browser, PuppeteerNode } from "puppeteer-core";
+import type { Browser, Page, PuppeteerNode } from "puppeteer-core";
 import puppeteer, { launch } from "puppeteer-core";
-import type { RecordSessionOptions } from "../types";
+import type { RecordSessionOptions, RecordStorageToSeed } from "../types";
 import {
   buildRecordChromeLaunchArgs,
   DEFAULT_NAVIGATION_TIMEOUT_MS,
@@ -33,8 +33,15 @@ export const recordSession = async ({
   appUrl,
   maxPayloadSize,
   remoteDebuggingPort,
+  headless,
+  storageToSeed,
 }: RecordSessionOptions) => {
   const logger = initLogger();
+
+  if (storageToSeed && !appUrl) {
+    throw new Error("storageToSeed requires appUrl");
+  }
+  const cookieDirToSync = storageToSeed ? null : cookieDir;
 
   logger.info("Opening browser...");
 
@@ -92,7 +99,7 @@ export const recordSession = async ({
   const browser: Browser = await launch({
     executablePath,
     defaultViewport,
-    headless: false,
+    headless: headless ?? false,
     devtools: devTools || false,
     // External agents need WebSocket CDP access via --remote-debugging-port.
     ...(remoteDebuggingPort != null ? { pipe: false } : {}),
@@ -119,11 +126,19 @@ export const recordSession = async ({
     await page.setBypassCSP(true);
   }
 
+  if (storageToSeed?.cookies.length) {
+    await context.setCookie(...storageToSeed.cookies);
+  }
+  const seedLocalStorageScriptId =
+    storageToSeed && appUrl
+      ? await seedLocalStorageOnFirstLoad(page, storageToSeed, appUrl)
+      : null;
+
   // Restore cookies when not in incognito context
-  if (!useIncognito && cookieDir) {
-    await mkdir(cookieDir, { recursive: true });
+  if (!useIncognito && cookieDirToSync) {
+    await mkdir(cookieDirToSync, { recursive: true });
     const cookiesStr = await readFile(
-      join(cookieDir, COOKIE_FILENAME),
+      join(cookieDirToSync, COOKIE_FILENAME),
       "utf-8",
     ).catch(() => "");
     if (cookiesStr) {
@@ -147,6 +162,9 @@ export const recordSession = async ({
   });
 
   await page.goto(appUrl ?? INITIAL_METICULOUS_RECORD_DOCS_URL);
+  if (seedLocalStorageScriptId) {
+    await page.removeScriptToEvaluateOnNewDocument(seedLocalStorageScriptId);
+  }
 
   logger.info("Browser ready");
   if (remoteDebuggingPort != null) {
@@ -171,10 +189,10 @@ export const recordSession = async ({
             onDetectedSession(sessionId);
           }
         }
-        if (!useIncognito && cookieDir) {
+        if (!useIncognito && cookieDirToSync) {
           const cookies = await page.cookies();
           await writeFile(
-            join(cookieDir, COOKIE_FILENAME),
+            join(cookieDirToSync, COOKIE_FILENAME),
             JSON.stringify(cookies, null, 2),
             "utf-8",
           );
@@ -197,4 +215,32 @@ export const recordSession = async ({
   clearInterval(interval);
 
   await browser.close();
+};
+
+/**
+ * Registered before the recorder snippet so the snippet and the app see the seeded
+ * entries; removed after the first navigation so later loads keep the app's own
+ * changes (e.g. a logout or a refreshed token).
+ */
+const seedLocalStorageOnFirstLoad = async (
+  page: Page,
+  storageToSeed: RecordStorageToSeed,
+  appUrl: string,
+): Promise<string | null> => {
+  if (storageToSeed.localStorageEntries.length === 0) {
+    return null;
+  }
+  const { identifier } = await page.evaluateOnNewDocument(
+    (origin: string, entries: { key: string; value: string }[]) => {
+      if (window.location.origin !== origin) {
+        return;
+      }
+      for (const { key, value } of entries) {
+        window.localStorage.setItem(key, value);
+      }
+    },
+    new URL(appUrl).origin,
+    storageToSeed.localStorageEntries,
+  );
+  return identifier;
 };

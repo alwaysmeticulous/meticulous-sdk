@@ -1,5 +1,16 @@
 # @alwaysmeticulous/debug-workspace
 
+## 3.6.0
+
+### Patch Changes
+
+- [#17100](https://github.com/alwaysmeticulous/meticulous/pull/17100) [`5e8b50b`](https://github.com/alwaysmeticulous/meticulous/commit/5e8b50b1a635acef3ace4b63a7cbde12fac08cc7) Thanks [@alexivanov](https://github.com/alexivanov)! - `meticulous debug` now only passes a commit SHA to git when it is a hex git object id, and runs git without a shell. Replays whose commit SHA is not a valid object id skip the project repo worktree and PR diff.
+
+- Updated dependencies [[`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b), [`01b64ff`](https://github.com/alwaysmeticulous/meticulous/commit/01b64ffd853f366769b0dff26aa1a3ec2614b025), [`b3b222b`](https://github.com/alwaysmeticulous/meticulous/commit/b3b222b34e2acb9df5ce5acb0a6d8f5c14edd6dc), [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b), [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b), [`9be7df6`](https://github.com/alwaysmeticulous/meticulous/commit/9be7df69fd83b25652ae8012af2027982e25d5ec)]:
+  - @alwaysmeticulous/client@3.6.0
+  - @alwaysmeticulous/downloading-helpers@3.6.0
+  - @alwaysmeticulous/common@3.4.0
+
 ## 3.5.0
 
 ### Minor Changes

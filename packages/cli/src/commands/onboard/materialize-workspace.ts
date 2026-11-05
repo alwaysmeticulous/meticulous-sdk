@@ -297,7 +297,11 @@ const copyDocIntoWorkspace = (
   );
 };
 
-const ensureGitignoreEntry = (projectRoot: string, entry: string): void => {
+export const ensureGitignoreEntry = (
+  projectRoot: string,
+  entry: string,
+  comment = "# Meticulous AI onboard workspace",
+): void => {
   const relativeGitignore = ".gitignore";
   const line = `${entry}/`;
 
@@ -323,6 +327,6 @@ const ensureGitignoreEntry = (projectRoot: string, entry: string): void => {
   writeFileSafeSync(
     projectRoot,
     relativeGitignore,
-    `${content}${suffix}\n# Meticulous AI onboard workspace\n${line}\n`,
+    `${content}${suffix}\n${comment}\n${line}\n`,
   );
 };

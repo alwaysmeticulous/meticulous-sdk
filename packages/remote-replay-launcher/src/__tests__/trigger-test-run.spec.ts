@@ -117,7 +117,7 @@ describe("triggerTestRun", () => {
         apiToken: "token",
         baseSha: "base-1",
       }),
-    ).rejects.toThrow(/Exactly one of deploymentId or commitSha/);
+    ).rejects.toThrow(/At least one of deploymentId or commitSha/);
     expect(agentTriggerTestRun).not.toHaveBeenCalled();
   });
 
@@ -159,15 +159,50 @@ describe("triggerTestRun", () => {
     );
   });
 
-  it("rejects when both deploymentId and commitSha are provided", async () => {
+  it("sends both deploymentId and commitSha so the backend can check they match", async () => {
+    await triggerTestRun({
+      apiToken: "token",
+      deploymentId: "dep-1",
+      commitSha: "sha-1",
+      baseSha: "base-1",
+    });
+
+    expect(agentTriggerTestRun).toHaveBeenCalledWith(
+      expect.objectContaining({ deploymentId: "dep-1", commitSha: "sha-1" }),
+    );
+  });
+
+  it("triggers without a base when neither baseSha nor baseTestRunId is given", async () => {
+    await triggerTestRun({ apiToken: "token", deploymentId: "dep-1" });
+
+    expect(agentTriggerTestRun).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        baseSha: expect.anything(),
+        baseTestRunId: expect.anything(),
+      }),
+    );
+  });
+
+  it("forwards baseTestRunId", async () => {
+    await triggerTestRun({
+      apiToken: "token",
+      deploymentId: "dep-1",
+      baseTestRunId: "tr-base",
+    });
+
+    expect(agentTriggerTestRun).toHaveBeenCalledWith(
+      expect.objectContaining({ baseTestRunId: "tr-base" }),
+    );
+  });
+
+  it("rejects a diff without a base", async () => {
     await expect(
       triggerTestRun({
         apiToken: "token",
         deploymentId: "dep-1",
-        commitSha: "sha-1",
-        baseSha: "base-1",
+        gitDiffOutput: "diff --git a b",
       }),
-    ).rejects.toThrow(/Exactly one of deploymentId or commitSha/);
-    expect(agentTriggerTestRun).not.toHaveBeenCalled();
+    ).rejects.toThrow(/gitDiffOutput requires baseSha/);
+    expect(agentUploadGitDiffBuild).not.toHaveBeenCalled();
   });
 });

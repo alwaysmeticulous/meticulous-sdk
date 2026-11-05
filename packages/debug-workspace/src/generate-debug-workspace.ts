@@ -30,6 +30,7 @@ import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
 import { generateDiffSummaries } from "./generate-diff-summaries";
 import { generateErrorsDiff } from "./generate-errors-diff";
 import { writeSessionRequests } from "./generate-session-requests";
+import { isValidGitCommitSha } from "./git-commit-sha";
 import { parseMeticulousSha } from "./meticulous-sha";
 import { readReplayTimeline } from "./replay-walk";
 import { screenshotIdentifierToFilename } from "./screenshot-identifier";
@@ -1016,13 +1017,13 @@ const generatePrDiff = (
 
   const headSha = debugContext.commitSha;
   const baseSha = debugContext.baseCommitSha;
-  if (!headSha) {
+  if (!isValidGitCommitSha(headSha)) {
     return;
   }
 
   const effectiveBaseSha =
     baseSha ?? resolveBaseShaFromGit(projectRepoDir, headSha);
-  if (!effectiveBaseSha) {
+  if (!isValidGitCommitSha(effectiveBaseSha)) {
     return;
   }
 

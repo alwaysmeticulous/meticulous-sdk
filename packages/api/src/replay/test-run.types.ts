@@ -322,6 +322,8 @@ export interface TestRun {
   id: string;
   status: TestRunStatus;
   project: Project;
+  /** The commit the run tested. */
+  commitSha?: string;
   configData: {
     testCases?: TestCase[];
     /**

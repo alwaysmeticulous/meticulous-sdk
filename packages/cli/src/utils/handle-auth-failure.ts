@@ -3,72 +3,106 @@ import {
   isAuthFailureStatus,
   isFetchError,
   isJwtExpired,
-  MISSING_AUTH_GUIDANCE,
+  isMissingCredentialsError,
+  isRejectedCredentialsError,
+  type SentCredentialKind,
 } from "@alwaysmeticulous/client";
-import { CliUserError } from "./cli-user-error";
+import { CliUserError, type CliUserErrorMetadata } from "./cli-user-error";
 
 /**
- * Handles a 401/403 response from an OAuth-authenticated request.
- *
- * - When the stored access token is genuinely past its `exp`, it could not
- *   be refreshed for a transient reason (a refresh token the server rejects
- *   is cleared during the refresh), so keeps the tokens for the next command
- *   to retry and points at `meticulous auth login` if that keeps failing.
- * - When no OAuth tokens are stored, surfaces guidance that auth is
- *   probably missing (token / login / env injection).
- * - Otherwise (e.g. issuer/audience mismatch against the configured
- *   backend), keeps the tokens and surfaces the backend's actual
- *   rejection message plus a pointer to `meticulous auth logout`.
- *
- * Throws `CliUserError` when the error is an auth failure, so the
- * command exits non-zero via `wrapHandler`. Returns `false` (no throw)
- * when the error is not an auth failure — the caller should rethrow.
+ * Handles a 401/403 response by throwing the {@link toAuthFailureCliUserError}
+ * explanation, so the command exits non-zero via `wrapHandler`. Returns
+ * `false` (no throw) when the error is not an auth failure — the caller should
+ * rethrow.
  *
  * Typical use at a call site:
  *   try { ... } catch (error) { handleAuthFailure(error); throw error; }
  */
 export const handleAuthFailure = (error: unknown): false => {
+  const authFailure = toAuthFailureCliUserError(error);
+  if (authFailure) {
+    throw authFailure;
+  }
+  return false;
+};
+
+/**
+ * Explains a 401/403 as a `CliUserError`, or returns `null` when the error is
+ * not an auth failure.
+ *
+ * - When the request went out without credentials, the client already
+ *   explained why (not logged in, login expired/revoked/removed/not used,
+ *   refresh failed) and how to authenticate; surfaces that as-is.
+ * - Otherwise a credential was sent and rejected (e.g. issuer/audience
+ *   mismatch against the configured backend, or no access to the project).
+ *   The client tags which kind of credential that was; for an untagged error
+ *   (e.g. from a client built by an older copy of the package) it is inferred
+ *   from whether an OAuth login is stored.
+ *   - For an OAuth login whose stored access token is genuinely past its
+ *     `exp`, it could not be refreshed for a transient reason (a refresh token
+ *     the server rejects is cleared during the refresh), so keeps the tokens
+ *     for the next command to retry and points at `meticulous auth login` if
+ *     that keeps failing.
+ *   - Otherwise keeps the tokens and surfaces the backend's actual rejection
+ *     message plus what to check for that kind of credential.
+ */
+export const toAuthFailureCliUserError = (
+  error: unknown,
+  metadata: Pick<CliUserErrorMetadata, "sourceDeploymentId"> = {},
+): CliUserError | null => {
   if (!isFetchError(error)) {
-    return false;
+    return null;
   }
   const status = error.response?.status;
   if (!isAuthFailureStatus(status)) {
-    return false;
+    return null;
+  }
+  const authError = (message: string) =>
+    new CliUserError(message, 1, "error", { ...metadata, reason: "auth" });
+
+  if (isMissingCredentialsError(error)) {
+    return authError(error.message);
   }
 
   const stored = getStoredOAuthTokens();
-  const expired = stored ? isJwtExpired(stored.accessToken) : false;
+  const credentialKind = isRejectedCredentialsError(error)
+    ? error.credentialKind
+    : inferCredentialKind(stored != null);
 
-  if (expired) {
-    throw new CliUserError(
+  if (
+    credentialKind === "oauth-login" &&
+    stored &&
+    isJwtExpired(stored.accessToken)
+  ) {
+    return authError(
       "Your stored OAuth token has expired and could not be refreshed. " +
         "Check your network connection and re-run the command; if this keeps " +
         "happening, run `meticulous auth login`.",
-      1,
-      "error",
-      { reason: "auth" },
     );
   }
 
   const serverMessage = extractServerMessage(error.response?.data);
   const detail = serverMessage ? `: ${serverMessage}` : ".";
 
-  if (!stored) {
-    throw new CliUserError(
-      `Authentication failed (HTTP ${status})${detail}\n${MISSING_AUTH_GUIDANCE}`,
-      1,
-      "error",
-      { reason: "auth" },
-    );
-  }
-
-  throw new CliUserError(
+  return authError(
     `Authentication failed (HTTP ${status})${detail}\n` +
-      "If the token is stale, run `meticulous auth logout` and re-run the command.",
-    1,
-    "error",
-    { reason: "auth" },
+      "The credential sent with this request was rejected, or does not have " +
+      "access to this project or resource. " +
+      REJECTED_CREDENTIAL_ADVICE[credentialKind],
   );
+};
+
+const inferCredentialKind = (hasStoredLogin: boolean): SentCredentialKind =>
+  hasStoredLogin ? "oauth-login" : "api-token";
+
+const REJECTED_CREDENTIAL_ADVICE: Record<SentCredentialKind, string> = {
+  "oauth-login":
+    "If your login is stale, run `meticulous auth logout` and re-run the " +
+    "command.",
+  "api-token":
+    "Check the API token in use (--apiToken, METICULOUS_API_TOKEN or the " +
+    "Meticulous config file), or run `meticulous auth login` to use your own " +
+    "login instead.",
 };
 
 /**

@@ -1,5 +1,19 @@
 # @alwaysmeticulous/record
 
+## 3.6.0
+
+### Minor Changes
+
+- [#17065](https://github.com/alwaysmeticulous/meticulous/pull/17065) [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous try` handles apps behind a login: the agent picks how to sign in (a dev auth bypass, a browser login, test credentials or a token) and pauses once for the user. New `meticulous try login` opens a browser for the user to log in and saves its cookies and local storage as a storage state; `meticulous record session --storageState <file>` starts recordings signed in with it.
+
+- [#17065](https://github.com/alwaysmeticulous/meticulous/pull/17065) [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous crawl` can now run unattended: `--headless` runs the browser headless, `--nonInteractive` never waits for input (skipping the manual login pause, and exiting with code 2 if every page the crawl reached had a login-like URL or was on another origin), `--storageState` loads cookies and local storage from a Playwright storage state or a cookie array so signed-in pages can be crawled, and `--outputFile` writes the recorded session ids as JSON. `meticulous record session` gains `--headless` for use with `--remoteDebuggingPort`.
+
+### Patch Changes
+
+- Updated dependencies [[`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b), [`6ea9951`](https://github.com/alwaysmeticulous/meticulous/commit/6ea9951a885052fb707e28fd6e373bf47d06638b)]:
+  - @alwaysmeticulous/api@3.6.0
+  - @alwaysmeticulous/common@3.4.0
+
 ## 3.5.0
 
 ### Patch Changes
