@@ -1,5 +1,18 @@
 # @alwaysmeticulous/client
 
+## 3.8.0
+
+### Minor Changes
+
+- [#17073](https://github.com/alwaysmeticulous/meticulous/pull/17073) [`7eb70b1`](https://github.com/alwaysmeticulous/meticulous/commit/7eb70b1488d0523fd42515ba84f54321713c2061) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional `visualFindings` to Agent swarm case results: visual defects (clipped or overlapping text, overflow, misalignment, uneven spacing) on a case's screenshots, with the `AgenticRunVisualFinding` and `AgenticRunVisualFindingTier` types. Also adds optional `failures` (`AgenticRunCaseFailure`): each failure of a case with its own check verdict, and `sameCauseAs` on `AgenticRunCaseCheck`. Each failure's check is carried, by failure id, as `failureChecks` (`AgenticRunCaseFailureCheck`) on `AgenticRunCaseTrace` and on the checks blob's entries.
+
+### Patch Changes
+
+- [#17184](https://github.com/alwaysmeticulous/meticulous/pull/17184) [`868a23b`](https://github.com/alwaysmeticulous/meticulous/commit/868a23b4f6ecd2915d2278b9473e19c05795ee17) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add `takeawayMedia` and `evidenceToken` to `AgenticRunSummary`, optional `chapters` on featured-flow media, and a `takeawayMedia` option on `attachAgenticFeaturedFlowMedia`, so an agentic run can attach videos for more than one takeaway and serve its takeaways' screenshots in pull request comments.
+
+- Updated dependencies [[`0a5a386`](https://github.com/alwaysmeticulous/meticulous/commit/0a5a386af577efebbc71583a13c70ffd7845e11a)]:
+  - @alwaysmeticulous/common@3.8.0
+
 ## 3.7.0
 
 ### Minor Changes

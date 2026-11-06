@@ -23,3 +23,6 @@ export const absoluteTryPath = (
   repoRoot: string,
   relativePath: string,
 ): string => join(repoRoot, relativePath);
+
+/** Marks the root `.gitignore` entry as ours, so `cleanup` only removes what `try` added. */
+export const TRY_GITIGNORE_COMMENT = "# Meticulous try workspace";

@@ -35,11 +35,18 @@ const cleanupHandler = (options: CleanupOptions): void => {
   const workspace = removeTryWorkspace(repoRoot);
   printResult(
     options.json,
-    { removedWorkspace: workspace.removed, removed: workspace.worktrees },
+    {
+      removedWorkspace: workspace.removed,
+      removed: workspace.worktrees,
+      removedGitignoreEntry: workspace.removedGitignoreEntry,
+    },
     () => [
       workspace.removed
         ? `Removed ${TRY_WORKDIR}/ (including ${workspace.worktrees.length} worktree(s))`
         : `No ${TRY_WORKDIR}/ workspace to remove`,
+      ...(workspace.removedGitignoreEntry
+        ? [`Removed the ${TRY_WORKDIR}/ entry from .gitignore`]
+        : []),
     ],
   );
 };
@@ -72,7 +79,7 @@ const removeLoginState = (repoRoot: string): boolean => {
 
 export const cleanupCommand: CommandModule<unknown, CleanupOptions> = {
   command: "cleanup",
-  describe: `Remove the whole ${TRY_WORKDIR}/ workspace: backtest worktrees, saved login state, recipe and results. Re-running \`${CLI_COMMAND} try\` reuses the trial project.`,
+  describe: `Remove the whole ${TRY_WORKDIR}/ workspace (backtest worktrees, saved login state, recipe and results) and the .gitignore entry for it. Re-running \`${CLI_COMMAND} try\` reuses the trial project.`,
   builder: {
     ...HELPER_OPTIONS,
     keepWorkspace: {

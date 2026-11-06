@@ -8,6 +8,7 @@ import {
 import { runGit } from "../shared/run-git";
 import { TRY_WORKDIR } from "../shared/try-paths";
 import { deleteInBackground, tryRename } from "./discard-dirs";
+import { removeTryGitignoreEntry } from "./remove-gitignore-entry";
 import { listTryWorktreeNames, removeAllTryWorktrees } from "./worktrees";
 
 const DELETING_PREFIX = `${TRY_WORKDIR}-deleting-`;
@@ -16,9 +17,24 @@ const DELETING_PREFIX = `${TRY_WORKDIR}-deleting-`;
  * Removes the whole `.meticulous-try/` workspace and unregisters its
  * worktrees. The directory is renamed first (instant; a `*` .gitignore written
  * into it just before keeps the renamed copy out of `git status`), then deleted
- * in the background. Returns the names of the worktrees it held.
+ * in the background, and the root .gitignore entry `try` added is removed.
+ * Returns the names of the worktrees it held.
  */
 export const removeTryWorkspace = (
+  repoRoot: string,
+): {
+  removed: boolean;
+  worktrees: string[];
+  removedGitignoreEntry: boolean;
+} => {
+  const workspace = removeWorkspaceDir(repoRoot);
+  return {
+    ...workspace,
+    removedGitignoreEntry: removeTryGitignoreEntry(repoRoot),
+  };
+};
+
+const removeWorkspaceDir = (
   repoRoot: string,
 ): { removed: boolean; worktrees: string[] } => {
   const workspace = resolveSafeWritePath(repoRoot, TRY_WORKDIR);

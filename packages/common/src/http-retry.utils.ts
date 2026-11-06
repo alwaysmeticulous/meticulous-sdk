@@ -34,6 +34,10 @@ const RETRYABLE_NETWORK_ERROR_CODES = new Set([
   "ETIMEDOUT",
   "ECONNREFUSED",
   "ENOTFOUND",
+  // The peer closed the socket mid-write. Usually a stale keep-alive connection
+  // the server closed while idle (e.g. after a long-running command sat idle),
+  // so retrying is reasonable.
+  "EPIPE",
   // undici-specific codes (surfaced via fetch's cause chain)
   "UND_ERR_CONNECT_TIMEOUT",
   "UND_ERR_HEADERS_TIMEOUT",

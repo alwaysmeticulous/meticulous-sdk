@@ -63,6 +63,16 @@ describe("defaultShouldRetry", () => {
     expect(defaultShouldRetry(error)).toBe(true);
   });
 
+  it("retries EPIPE from writing to a keep-alive socket the server closed", () => {
+    const error = new TypeError("fetch failed");
+    (error as TypeError & { cause?: unknown }).cause = {
+      code: "EPIPE",
+      syscall: "write",
+    };
+
+    expect(defaultShouldRetry(error)).toBe(true);
+  });
+
   it("retries transient OpenSSL handshake errors from undici fetch", () => {
     const packetLengthError = new TypeError("fetch failed");
     (packetLengthError as TypeError & { cause?: unknown }).cause = {
@@ -101,6 +111,15 @@ describe("isLostConnectionError", () => {
     const error = new TypeError("fetch failed");
     (error as TypeError & { cause?: unknown }).cause = {
       code: "UND_ERR_SOCKET",
+    };
+    expect(isLostConnectionError(error)).toBe(true);
+  });
+
+  it("recognises EPIPE wrapped in an undici socket error", () => {
+    const error = new TypeError("fetch failed");
+    (error as TypeError & { cause?: unknown }).cause = {
+      code: "UND_ERR_SOCKET",
+      cause: { code: "EPIPE", syscall: "write" },
     };
     expect(isLostConnectionError(error)).toBe(true);
   });

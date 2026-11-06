@@ -715,9 +715,51 @@ export interface AgenticRunCaseCheck {
   recommendedFix?: string;
   citations?: AgenticRunCaseCheckCitation[];
   revisedStepIndexes?: number[];
+  /**
+   * On one of a case's `failures`: the id of another failure with the same
+   * root cause, whose check carries the diagnosis and fix.
+   */
+  sameCauseAs?: string;
   model: string;
   /** Present when checking could not complete and the original verdict was kept. */
   error?: string;
+}
+
+/**
+ * What one failure of a case is: a failed step, a base-vs-head regression
+ * (which also fails the step that captured it), or a broken visual finding.
+ */
+export type AgenticRunCaseFailureKind = "step" | "comparison" | "visual";
+
+/** One thing that failed a case, and the independent check's verdict on it. */
+export interface AgenticRunCaseFailure {
+  /**
+   * Stable within the case's result: `step-<index>`,
+   * `comparison-<screenshotName>` or `visual-<finding key>`.
+   */
+  id: string;
+  kind: AgenticRunCaseFailureKind;
+  /** The step it failed: the failed step, or the one that took its screenshot. */
+  stepIndex?: number;
+  /** The comparison's or finding's screenshot. */
+  screenshotName?: string;
+  /** The finding's `key`, for a visual failure. */
+  visualFindingKey?: string;
+  /** What failed, as the case agent or visual review reported it. */
+  summary: string;
+  /** `fail` while upheld, including when it was never checked. */
+  outcome: AgenticRunCaseCheckVerdict;
+  /**
+   * Source-sensitive: never in the result blob. Readers join it from the
+   * checks artifact or the traces, by `id`.
+   */
+  check?: AgenticRunCaseCheck;
+}
+
+/** One failure's check, as the checks artifact and the traces carry it. */
+export interface AgenticRunCaseFailureCheck {
+  failureId: string;
+  check: AgenticRunCaseCheck;
 }
 
 /**
@@ -877,6 +919,48 @@ export type AgenticRunComparisonCheckpointSide = Pick<
   "sessionId" | "timestampMs" | "screenshotPath"
 >;
 
+/**
+ * `broken`: something cannot be read or used. `inconsistent`: it works, but
+ * is visibly off from its neighbours.
+ */
+export type AgenticRunVisualFindingTier = "broken" | "inconsistent";
+
+/**
+ * A visual defect on one of the case's screenshots, measured by the worker's
+ * layout check and confirmed by a vision review. A `broken` one fails the
+ * step that took the screenshot and, on a passing case, the case; an
+ * `inconsistent` one is only a suggestion.
+ */
+export interface AgenticRunVisualFinding {
+  /**
+   * Identifies the same issue on the same element across runs, from its kind
+   * and the element's identity, so feedback on it can carry over.
+   */
+  key: string;
+  screenshotName: string;
+  /** The head screenshot the finding is on. */
+  screenshotPath: string;
+  tier: AgenticRunVisualFindingTier;
+  /** What the layout check measured, e.g. `clipped-text`. */
+  kind: string;
+  /** One plain sentence naming what is wrong and where. */
+  summary: string;
+  /** The area that shows the issue, as fractions of the screenshot. */
+  box: AgenticRunChangedRegion;
+  /**
+   * The base screenshot showed no such issue. False when there was nothing
+   * to compare against, so the finding is only known to be on the area the
+   * case highlighted.
+   */
+  newAgainstBase: boolean;
+  /**
+   * The base screenshot `box` was checked against, set when the finding is
+   * new against a base screenshot of the same size, so `box` frames the same
+   * area on both.
+   */
+  baseScreenshotPath?: string;
+}
+
 export const AGENTIC_RUN_CASE_PROPERTY_KINDS = [
   "becomes-true",
   "stays-true",
@@ -1025,6 +1109,19 @@ export interface AgenticRunResultCase {
   comparisonPresentation?: AgenticRunComparisonPresentation;
   /** Where the base run departed from the head's actions or mock data, and why. */
   sideDivergences?: AgenticRunSideDivergence[];
+  /** Visual defects on the reported run's screenshots; absent when none were found. */
+  visualFindings?: AgenticRunVisualFinding[];
+  /**
+   * Set when only the visual review failed the case: the agent's own steps
+   * passed. Such a case keeps its saved test.
+   */
+  failedBy?: "visual-review";
+  /**
+   * Each thing that failed the case, with its own verdict from the
+   * independent check. Present on a failed case of a project with visual
+   * review; `check` then summarises the first upheld failure.
+   */
+  failures?: AgenticRunCaseFailure[];
   /**
    * Sessions recorded on the base deployment, for side-by-side playback only.
    * Never part of `sessionIds`, so they are not replayed or selected.
@@ -1042,10 +1139,24 @@ export interface AgenticRunSummaryTakeaway {
   caseIndex: number;
   /** Short, agent-written finding grounded in that case's result. */
   text: string;
+  /**
+   * The finding as a terse claim, like a commit subject, used as its heading
+   * where `text` follows as the explanation. Absent from older workers.
+   */
+  headline?: string;
   /** Index of the step that best demonstrates the finding. */
   stepIndex?: number;
   /** Preferred way to present the evidence in the review overview. */
   media?: "screenshot" | "video";
+}
+
+/** A point in an exported flow video where one of its steps begins. */
+export interface AgenticRunVideoChapter {
+  stepIndex: number;
+  /** The step's description, as the video's caption shows it. */
+  label: string;
+  /** Milliseconds into the exported video. */
+  offsetMs: number;
 }
 
 /** Durable media generated for the summary's highest-priority flow. */
@@ -1055,6 +1166,14 @@ export interface AgenticRunFeaturedFlowMedia {
   /** Workdir-relative artifact paths uploaded beside the result blob. */
   gifPath: string;
   mp4Path: string;
+  /** Where each step begins in the video. Absent from older workers. */
+  chapters?: AgenticRunVideoChapter[];
+}
+
+/** Media rendered for a takeaway after the first, which chose video. */
+export interface AgenticRunTakeawayMedia extends AgenticRunFeaturedFlowMedia {
+  /** Index into `takeaways`; always 1 or more. */
+  takeawayIndex: number;
 }
 
 /** Agent-written summary of the completed run. */
@@ -1065,6 +1184,13 @@ export interface AgenticRunSummary {
    * summaries without takeaways, missing recordings, and encoding failures.
    */
   featuredFlowMedia?: AgenticRunFeaturedFlowMedia;
+  /** Best-effort playback for later takeaways that chose video. */
+  takeawayMedia?: AgenticRunTakeawayMedia[];
+  /**
+   * Unguessable capability for the takeaways' still screenshots, checked by
+   * the public evidence endpoint. Absent from older workers.
+   */
+  evidenceToken?: string;
 }
 
 export type AgentSwarmMemoryCandidateCategory =
@@ -1244,6 +1370,8 @@ export interface AgenticRunCaseTrace extends AgenticRunTrace {
   caseTitle: string;
   /** Source-sensitive checker result, present only in the private traces blob. */
   check?: AgenticRunCaseCheck;
+  /** Each checked failure's own check, when the case's failures were checked one by one. */
+  failureChecks?: AgenticRunCaseFailureCheck[];
 }
 
 /** What one node of an Agent swarm run's tree was assigned to do. */
@@ -1301,7 +1429,11 @@ export interface AgenticRunTraces {
  */
 export interface AgenticRunChecksBlob {
   version: number;
-  checks: Array<{ caseIndex: number; check: AgenticRunCaseCheck }>;
+  checks: Array<{
+    caseIndex: number;
+    check: AgenticRunCaseCheck;
+    failureChecks?: AgenticRunCaseFailureCheck[];
+  }>;
 }
 
 export interface AgenticRunCoverageFile {
@@ -1472,6 +1604,8 @@ export interface AttachAgenticFeaturedFlowMediaParams extends ProjectIdentifier 
    * rendering failed, which still ends the wait.
    */
   featuredFlowMedia?: AgenticRunFeaturedFlowMedia;
+  /** Videos rendered for later takeaways, already uploaded the same way. */
+  takeawayMedia?: AgenticRunTakeawayMedia[];
 }
 
 /**

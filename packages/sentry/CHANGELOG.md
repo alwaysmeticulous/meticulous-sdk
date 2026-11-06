@@ -1,5 +1,12 @@
 # @alwaysmeticulous/sentry
 
+## 3.8.0
+
+### Patch Changes
+
+- Updated dependencies [[`0a5a386`](https://github.com/alwaysmeticulous/meticulous/commit/0a5a386af577efebbc71583a13c70ffd7845e11a)]:
+  - @alwaysmeticulous/common@3.8.0
+
 ## 3.7.0
 
 ### Patch Changes

@@ -13,7 +13,11 @@ import {
   mergeJsonMcp,
 } from "../../onboard/setup-agent-integrations";
 import type { PackageManager } from "../shared/try-context";
-import { TRY_PATHS, TRY_WORKDIR } from "../shared/try-paths";
+import {
+  TRY_GITIGNORE_COMMENT,
+  TRY_PATHS,
+  TRY_WORKDIR,
+} from "../shared/try-paths";
 import { buildTrySettings } from "./try-settings";
 
 /**
@@ -45,7 +49,7 @@ export const materializeTryWorkspace = (options: {
   mkdirSafeSync(repoRoot, TRY_PATHS.worktrees);
   mkdirSafeSync(repoRoot, TRY_PATHS.builds);
 
-  ensureGitignoreEntry(repoRoot, TRY_WORKDIR, "# Meticulous try workspace");
+  ensureGitignoreEntry(repoRoot, TRY_WORKDIR, TRY_GITIGNORE_COMMENT);
   return resolveSafeWritePath(repoRoot, TRY_WORKDIR);
 };
 

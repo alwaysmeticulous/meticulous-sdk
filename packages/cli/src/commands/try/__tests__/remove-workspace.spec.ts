@@ -3,6 +3,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   readdirSync,
   realpathSync,
   rmSync,
@@ -11,6 +12,8 @@ import {
 import { tmpdir } from "os";
 import { join } from "path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ensureGitignoreEntry } from "../../onboard/materialize-workspace";
+import { TRY_GITIGNORE_COMMENT, TRY_WORKDIR } from "../shared/try-paths";
 import { removeTryWorkspace } from "../worktree/remove-workspace";
 import { createTryWorktree } from "../worktree/worktrees";
 
@@ -64,6 +67,7 @@ describe("removeTryWorkspace", () => {
     expect(result).toEqual({
       removed: true,
       worktrees: ["pr-1-base", "pr-1-head"],
+      removedGitignoreEntry: false,
     });
     expect(existsSync(join(repo, ".meticulous-try"))).toBe(false);
     expect(git(repo, "worktree", "list", "--porcelain")).not.toContain(
@@ -91,6 +95,19 @@ describe("removeTryWorkspace", () => {
     expect(git(repo, "status", "--porcelain")).toBe("");
   });
 
+  it("removes the .gitignore entry try added, leaving git status as it was", () => {
+    const repo = makeRepoWithWorkspace();
+    writeFileSync(join(repo, ".gitignore"), "dist\n");
+    git(repo, "add", ".gitignore");
+    git(repo, "commit", "-q", "-m", "ignore dist");
+    ensureGitignoreEntry(repo, TRY_WORKDIR, TRY_GITIGNORE_COMMENT);
+    createTryWorktree({ repoRoot: repo, sha: "HEAD", name: "pr-1-base" });
+
+    expect(removeTryWorkspace(repo).removedGitignoreEntry).toBe(true);
+    expect(readFileSync(join(repo, ".gitignore"), "utf8")).toBe("dist\n");
+    expect(git(repo, "status", "--porcelain")).toBe("");
+  });
+
   it("reports nothing to remove and sweeps copies left by an interrupted run", async () => {
     const repo = makeRepoWithWorkspace();
     rmSync(join(repo, ".meticulous-try"), { recursive: true });
@@ -98,7 +115,11 @@ describe("removeTryWorkspace", () => {
       recursive: true,
     });
 
-    expect(removeTryWorkspace(repo)).toEqual({ removed: false, worktrees: [] });
+    expect(removeTryWorkspace(repo)).toEqual({
+      removed: false,
+      worktrees: [],
+      removedGitignoreEntry: false,
+    });
     await vi.waitFor(
       () => {
         expect(deletingCopies(repo)).toEqual([]);

@@ -1,5 +1,11 @@
 # @alwaysmeticulous/common
 
+## 3.8.0
+
+### Patch Changes
+
+- [#17196](https://github.com/alwaysmeticulous/meticulous/pull/17196) [`0a5a386`](https://github.com/alwaysmeticulous/meticulous/commit/0a5a386af577efebbc71583a13c70ffd7845e11a) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `defaultShouldRetry` and `isLostConnectionError` now treat `EPIPE` as a lost connection, so a request written to a keep-alive connection the server had already closed is retried instead of failing with `TypeError: fetch failed`. This happened to the first request after a long-running command sat idle. `EPIPE` usually means such a stale connection, though a server can also cause it by rejecting a request before reading its whole body; retrying is reasonable either way.
+
 ## 3.7.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @alwaysmeticulous/cli
 
+## 3.8.0
+
+### Patch Changes
+
+- [#17215](https://github.com/alwaysmeticulous/meticulous/pull/17215) [`16e3da1`](https://github.com/alwaysmeticulous/meticulous/commit/16e3da16e4820bbe3c89acad45bdbffd3e3e50d1) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous try`: with `--printOnly`, the printed Claude Code command now puts the directory the `meticulous` binary was run from back on `PATH`, so the agent's `meticulous …` commands work when the CLI was run through npx rather than installed globally. `meticulous try cleanup` now also removes the `.meticulous-try/` entry that `try` added to the repo's root `.gitignore` (or the `.gitignore` itself, if `try` created it and git does not track it).
+
 ## 3.7.0
 
 ### Patch Changes

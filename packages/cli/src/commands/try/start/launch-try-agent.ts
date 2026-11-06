@@ -1,4 +1,6 @@
+import { existsSync } from "fs";
 import { constants, setPriority } from "os";
+import { delimiter, join } from "path";
 import chalk from "chalk";
 import { CliUserError } from "../../../utils/cli-user-error";
 import { isToolInstalled, launchOnboardTool } from "../../onboard/launch-agent";
@@ -70,6 +72,8 @@ export const printTryManualLaunch = (options: {
   const tokenFromContext = `"$(node -p "require('./try-context.json').apiToken")"`;
   const nice =
     options.lowPriority && process.platform !== "win32" ? "nice -n 10 " : "";
+  const cliBinDir = findCliBinDir();
+  const path = cliBinDir ? `PATH="${cliBinDir}:$PATH" ` : "";
   console.log("");
   console.log(chalk.bold.green("Meticulous try workspace ready!"));
   console.log(`  ${chalk.cyan("Workspace:")} ${options.workspaceDir}`);
@@ -78,7 +82,30 @@ export const printTryManualLaunch = (options: {
   console.log(chalk.bold("  Start it in Claude Code:"));
   console.log("");
   console.log(
-    `    cd "${options.workspaceDir}" && METICULOUS_API_TOKEN=${tokenFromContext} ${nice}claude "${escapedPrompt}" --model ${options.model} --permission-mode auto --add-dir "${options.projectRoot}"`,
+    `    cd "${options.workspaceDir}" && ${path}METICULOUS_API_TOKEN=${tokenFromContext} ${nice}claude "${escapedPrompt}" --model ${options.model} --permission-mode auto --add-dir "${options.projectRoot}"`,
   );
   console.log("");
+  if (!cliBinDir) {
+    console.log(
+      chalk.yellow(
+        `  The agent runs \`meticulous …\` commands: install the CLI globally first (npm install -g @alwaysmeticulous/cli).`,
+      ),
+    );
+    console.log("");
+  }
+};
+
+/**
+ * The directory the `meticulous` binary resolves from in this process. Under
+ * npx that is npx's own bin directory, which is on PATH only for this process
+ * and its children, so a command the user runs later must add it back. The
+ * printed command is POSIX shell, which cannot take a Windows path, so Windows
+ * users get the install hint instead.
+ */
+const findCliBinDir = (): string | null => {
+  if (process.platform === "win32") {
+    return null;
+  }
+  const dirs = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
+  return dirs.find((dir) => existsSync(join(dir, "meticulous"))) ?? null;
 };
