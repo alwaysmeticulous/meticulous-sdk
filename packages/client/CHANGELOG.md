@@ -1,5 +1,18 @@
 # @alwaysmeticulous/client
 
+## 3.7.0
+
+### Minor Changes
+
+- [#17078](https://github.com/alwaysmeticulous/meticulous/pull/17078) [`92047d9`](https://github.com/alwaysmeticulous/meticulous/commit/92047d99c6f14949b6ecb52738fa65429c80be76) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional Agent swarm case properties to run results: the claims the planner asked a case to try to disprove, and the case's verdict on each with the steps that measured it.
+
+### Patch Changes
+
+- [#16974](https://github.com/alwaysmeticulous/meticulous/pull/16974) [`3c455bf`](https://github.com/alwaysmeticulous/meticulous/commit/3c455bfca1115cacd45929f29e55a42ad2695299) Thanks [@narobertson42](https://github.com/narobertson42)! - Add `attachAgenticFeaturedFlowMedia`, and a `featuredFlowMediaPending` option on `completeAgenticRunResult`, so an agentic run can report its result before its featured-flow media has finished rendering and attach the media afterwards.
+
+- Updated dependencies [[`1816951`](https://github.com/alwaysmeticulous/meticulous/commit/18169516e72102ebbf6548cc41f7234568872be3)]:
+  - @alwaysmeticulous/common@3.7.0
+
 ## 3.6.0
 
 ### Minor Changes

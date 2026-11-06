@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/common",
-  "version": "3.4.0",
+  "version": "3.7.0",
   "description": "Meticulous common utilities",
   "license": "ISC",
   "main": "dist/index.js",
@@ -13,6 +13,10 @@
     "./constants": {
       "types": "./dist/constants.d.ts",
       "default": "./dist/constants.js"
+    },
+    "./git-commit-sha": {
+      "types": "./dist/git-commit-sha.utils.d.ts",
+      "default": "./dist/git-commit-sha.utils.js"
     },
     "./json": {
       "types": "./dist/json.utils.d.ts",
@@ -27,6 +31,9 @@
     "*": {
       "constants": [
         "./dist/constants.d.ts"
+      ],
+      "git-commit-sha": [
+        "./dist/git-commit-sha.utils.d.ts"
       ],
       "json": [
         "./dist/json.utils.d.ts"

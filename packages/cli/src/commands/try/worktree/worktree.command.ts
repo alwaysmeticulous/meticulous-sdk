@@ -1,4 +1,3 @@
-import { existsSync, rmSync } from "fs";
 import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../../command-utils/sentry.utils";
 import { CliUserError } from "../../../utils/cli-user-error";
@@ -8,12 +7,7 @@ import {
   printResult,
   repoRootFrom,
 } from "../shared/helper-options";
-import { TRY_PATHS, absoluteTryPath } from "../shared/try-paths";
-import {
-  createTryWorktree,
-  removeAllTryWorktrees,
-  removeTryWorktree,
-} from "./worktrees";
+import { createTryWorktree, removeTryWorktree } from "./worktrees";
 
 interface WorktreeOptions {
   cwd: string | undefined;
@@ -21,6 +15,7 @@ interface WorktreeOptions {
   sha: string | undefined;
   name: string | undefined;
   remove: string | undefined;
+  clean: string[] | undefined;
 }
 
 const worktreeHandler = (options: WorktreeOptions): void => {
@@ -43,6 +38,7 @@ const worktreeHandler = (options: WorktreeOptions): void => {
     repoRoot,
     sha: options.sha,
     name: options.name,
+    cleanPaths: options.clean ?? [],
   });
   printResult(options.json, worktree, () => [worktree.path]);
 };
@@ -50,7 +46,7 @@ const worktreeHandler = (options: WorktreeOptions): void => {
 export const worktreeCommand: CommandModule<unknown, WorktreeOptions> = {
   command: "worktree",
   describe:
-    "Create a detached git worktree at a commit under .meticulous-try/worktrees/<name> (prints its path), or remove one",
+    "Check out a commit in a detached git worktree under .meticulous-try/worktrees/<name> (prints its path), switching an existing one in place so its install is kept; --json also reports whether install inputs changed. Or remove one",
   builder: {
     ...HELPER_OPTIONS,
     sha: { string: true, description: "Commit to check out" },
@@ -59,38 +55,12 @@ export const worktreeCommand: CommandModule<unknown, WorktreeOptions> = {
       description: "Worktree name, e.g. pr-123-base / pr-123-head",
     },
     remove: { string: true, description: "Name of a worktree to remove" },
+    clean: {
+      string: true,
+      array: true,
+      description:
+        "Worktree-relative paths to delete after checking out, e.g. the build output dir, so a previous commit's build is never reused",
+    },
   },
   handler: wrapHandler(syncHandler(worktreeHandler)),
-};
-
-interface CleanupOptions {
-  cwd: string | undefined;
-  json: boolean;
-}
-
-const cleanupHandler = (options: CleanupOptions): void => {
-  const repoRoot = repoRootFrom(options.cwd);
-  const removed = removeAllTryWorktrees(repoRoot);
-  const removedLoginState = removeLoginState(repoRoot);
-  printResult(options.json, { removed, removedLoginState }, () => [
-    `Removed ${removed.length} worktree(s)`,
-    ...(removedLoginState ? ["Removed the saved login state"] : []),
-  ]);
-};
-
-const removeLoginState = (repoRoot: string): boolean => {
-  const path = absoluteTryPath(repoRoot, TRY_PATHS.authState);
-  if (!existsSync(path)) {
-    return false;
-  }
-  rmSync(path);
-  return true;
-};
-
-export const cleanupCommand: CommandModule<unknown, CleanupOptions> = {
-  command: "cleanup",
-  describe:
-    "Remove every worktree under .meticulous-try/worktrees/ and the login state saved by `meticulous try login`",
-  builder: { ...HELPER_OPTIONS },
-  handler: wrapHandler(syncHandler(cleanupHandler)),
 };

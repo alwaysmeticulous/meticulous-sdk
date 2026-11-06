@@ -21,17 +21,33 @@ integration, CI changes or commits.
    manager, denylist for git writes) and `.mcp.json` (onboard's `mergeJsonMcp`). Writes go
    through onboard's `safe-repo-fs` (no symlink escapes).
 4. `shared/try-context.ts` — `try-context.json`, mode 0600 (holds the project API token).
-5. `start/launch-try-agent.ts` — launches Claude Code through onboard's `launchOnboardTool`
+5. `start/confirm-launch.ts` — in an interactive, non-`--headless` run, asks before starting
+   Claude Code (which takes over the terminal), so the user can read the summary first.
+6. `start/launch-try-agent.ts` — launches Claude Code through onboard's `launchOnboardTool`
    with `METICULOUS_API_TOKEN` in its env, so every `meticulous …` command the agent and its
-   subagents run is scoped to the trial project. `--printOnly` prints a launch command that
-   reads the token from the context file instead of printing it.
+   subagents run is scoped to the trial project. By default (`--lowPriority`) it first lowers
+   its own CPU priority, which Claude Code and every install, build and browser it starts
+   inherit. `--printOnly` prints a launch command that reads the token from the context file
+   instead of printing it.
 
 ## The agent's playbook (`templates/`)
 
 Copied into `dist/` by `scripts/copy-try-templates.mjs` and versioned with the CLI.
-`CLAUDE.md` defines four phases, each with a skill: build & serve (saves a recipe), record
-coverage (crawler + `session-recorder` subagents over CDP), backtest PRs (one `pr-backtester`
-subagent per PR, launched in parallel), report.
+`CLAUDE.md` defines five phases, each with a skill: build & serve (saves a recipe), record
+coverage (crawler + `session-recorder` subagents over CDP), check replays (local `simulate`,
+then a cloud baseline plus a second run of the same build that must show no diffs; a code
+change that makes replays work is saved with `replay-fix save` and cherry-picked into every
+backtest's base and head), backtest PRs (one `pr-backtester`
+subagent per PR, launched in parallel with its rank), report (early findings once the first PRs
+finish, then the full report, which ends with every likely bug and a direct link to it). App
+bugs the agents notice while recording go to `recording-bugs/`, one file each, and are reported
+too. Both subagents run on Sonnet (`model:` in their frontmatter).
+
+To keep the machine usable, each backtester builds base then head in one worktree (switched in
+place, so the install and build caches carry over and the second install is usually skipped)
+and holds a build slot (`slots/`) around every install and build. `buildSlots` in
+try-context.json (about one per 4 cores and 4 GiB, `--buildSlots` to override) caps how many
+run at once; waiting backtesters get slots in rank order.
 
 Apps behind a login go through the `try-app-login` skill before recording: the agent looks for a
 dev auth bypass first, then picks a mechanism by where the app keeps its session — browser login
@@ -41,14 +57,16 @@ for the user. Only recording needs the login: replays restore the recorded state
 
 ## Helpers for the agent
 
-| Subcommand             | Code             | Notes                                                                                                                                                                                                                                                                                       |
-| ---------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `candidate-prs`        | `candidate-prs/` | Pure git. `read-git-history` → `parse-git-log` → `detect-merged-prs` (GitHub/GitLab/Bitbucket merges, `(#N)` squashes) → `score-candidates` (UI files via `classify-files`, size, refactors, `detect-bug-signals`: reverts and follow-up fixes within 14 days). Saves `candidate-prs.json`. |
-| `login`                | `login/`         | Opens a visible browser for the user to log in and, when they close it, saves its cookies and local storage as a Playwright storage state (0600) to `.meticulous-try/auth/storage-state.json`. Prints names only.                                                                           |
-| `worktree` / `cleanup` | `worktree/`      | Detached worktrees under `.meticulous-try/worktrees/`. `cleanup` also deletes the saved login state.                                                                                                                                                                                        |
-| `recipe save/show`     | `recipe/`        | Validated build recipe (`build-recipe.ts`); env var names only.                                                                                                                                                                                                                             |
-| `wait-for-sessions`    | `sessions/`      | Polls `getSessions` until N ingested; saves `sessions.json`.                                                                                                                                                                                                                                |
-| `results`              | `results/`       | Joins `backtests/pr-<n>.json` records (written by `pr-backtester`) and candidates with the project's test runs and Agent swarm runs (`aggregate-results.ts`).                                                                                                                               |
+| Subcommand              | Code             | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `candidate-prs`         | `candidate-prs/` | Pure git. `read-git-history` → `parse-git-log` → `detect-merged-prs` (GitHub/GitLab/Bitbucket merges, `(#N)` squashes) → `score-candidates` (UI files via `classify-files`, size, refactors, `detect-bug-signals`: reverts and follow-up fixes within 14 days). Saves `candidate-prs.json`.                                                                                                                                                                                                                                                                                                                             |
+| `login`                 | `login/`         | Opens a visible browser for the user to log in and, when they close it, saves its cookies and local storage as a Playwright storage state (0600) to `.meticulous-try/auth/storage-state.json`. Prints names only.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `worktree` / `cleanup`  | `worktree/`      | Detached worktrees under `.meticulous-try/worktrees/`; an existing one is switched to the new commit in place (`git checkout --force`, then `git clean -fd`, so it matches the commit while ignored files such as node_modules stay), and `--json` reports the changed install inputs (`install-inputs.ts`). `cleanup` deletes the whole `.meticulous-try/` workspace (refused from inside it); `cleanup --keepWorkspace`, which the agent runs, only deletes the worktrees and saved login state. Either way directories are moved aside and deleted by a detached process (`discard-dirs.ts`), so it returns at once. |
+| `recipe save/show`      | `recipe/`        | Validated build recipe (`build-recipe.ts`); env var names only.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `replay-fix save/apply` | `replay-fix/`    | `save` commits exactly `--paths` in a try worktree on its detached HEAD with a fixed "Meticulous try" identity (no branch moves), folding a re-save into one commit on the original parent, and records it in `replay-fix.json`. `apply` checks the fix's diff with `git apply --check` and only then applies it (working tree only, no commit); a conflict changes nothing and lists the files, other uncommitted edits are kept, and an already-applied fix counts as applied.                                                                                                                                        |
+| `slot acquire/release`  | `slots/`         | Lock files under `.meticulous-try/slots/`: a fixed number of held slots, a queue ordered by rank then arrival, a lease after which an unreleased slot is reclaimed. `acquire` waits at most 9 minutes (under Claude Code's foreground command limit) and keeps the waiter's place for the next call.                                                                                                                                                                                                                                                                                                                    |
+| `wait-for-sessions`     | `sessions/`      | Polls `getSessions` until N ingested; saves `sessions.json`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `results`               | `results/`       | Joins `backtests/pr-<n>.json` records (written by `pr-backtester`) and candidates with the project's test runs and Agent swarm runs (`aggregate-results.ts`). `--waitFor N` stops polling once N PRs have finished, for the early report. Each PR gets one `runUrl` (the head test run, whose page also holds the Agent swarm tab) and each failing swarm case a direct `?tab=agent-swarm&case=case-<i>` link.                                                                                                                                                                                                          |
 
 Helpers resolve the repo root from any cwd, including inside a try worktree
 (`shared/run-git.ts`), and take the project token from `--apiToken`, `METICULOUS_API_TOKEN`
@@ -56,8 +74,8 @@ or `try-context.json` (`shared/try-client.ts`).
 
 ## Commands the playbook depends on
 
-The templates call `meticulous crawl` (`--nonInteractive`, `--outputFile`, `--storageState`),
-`record session` (`--remoteDebuggingPort`, `--storageState`),
+The templates call `meticulous crawl` (`--headless`, `--nonInteractive`, `--outputFile`, `--storageState`),
+`record session` (`--remoteDebuggingPort`, `--headless`, `--storageState`),
 `agent upload-build`, `agent trigger-test-run` (`--baseTestRunId`) and `ci agent-test`
 (`--deploymentId`, `--baseSha`, `--uploadSource`, `--headTestRunId`). If those flags change,
 update `templates/` too; the templates tell the agent to fall back via `--help` when a flag is

@@ -1,5 +1,20 @@
 # @alwaysmeticulous/debug-workspace
 
+## 3.7.0
+
+### Minor Changes
+
+- [#17128](https://github.com/alwaysmeticulous/meticulous/pull/17128) [`1816951`](https://github.com/alwaysmeticulous/meticulous/commit/18169516e72102ebbf6548cc41f7234568872be3) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `isGitCommitSha` (also importable from `@alwaysmeticulous/common/git-commit-sha`), accepting full or abbreviated SHA-1 and SHA-256 commit SHAs, which narrows to the new branded `GitCommitSha` type. The known sentinel commit SHAs (`SESSION_SELECTION_TEST_RUN_COMMIT_SHA`, `EXPERIMENT_TEST_RUN_COMMIT_SHA`, `SENTINEL_COMMIT_SHAS`) are now exported from `@alwaysmeticulous/common`.
+
+  `DebugContext.commitSha` and `baseCommitSha` in `@alwaysmeticulous/debug-workspace` are now typed `GitCommitSha`, so a context must come from `resolveDebugContext` or have its SHAs checked with `isGitCommitSha` or the new `toGitCommitSha`. `meticulous debug` drops a commit SHA that isn't one when it loads the debug context, logging the rejected value (sentinels are dropped silently, and a `-snapshot-<id>` suffix is stripped so the underlying commit is used), so it never reaches git or the workspace's `context.json`; an invalid base commit SHA now falls back to the merge-base for the PR diff. The git commands it runs also pass `--end-of-options`. `isValidGitCommitSha` is deprecated in favour of `isGitCommitSha` from `@alwaysmeticulous/common`.
+
+### Patch Changes
+
+- Updated dependencies [[`92047d9`](https://github.com/alwaysmeticulous/meticulous/commit/92047d99c6f14949b6ecb52738fa65429c80be76), [`3c455bf`](https://github.com/alwaysmeticulous/meticulous/commit/3c455bfca1115cacd45929f29e55a42ad2695299), [`1816951`](https://github.com/alwaysmeticulous/meticulous/commit/18169516e72102ebbf6548cc41f7234568872be3)]:
+  - @alwaysmeticulous/client@3.7.0
+  - @alwaysmeticulous/common@3.7.0
+  - @alwaysmeticulous/downloading-helpers@3.7.0
+
 ## 3.6.0
 
 ### Patch Changes

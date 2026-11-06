@@ -877,6 +877,55 @@ export type AgenticRunComparisonCheckpointSide = Pick<
   "sessionId" | "timestampMs" | "screenshotPath"
 >;
 
+export const AGENTIC_RUN_CASE_PROPERTY_KINDS = [
+  "becomes-true",
+  "stays-true",
+] as const;
+
+export type AgenticRunCasePropertyKind =
+  (typeof AGENTIC_RUN_CASE_PROPERTY_KINDS)[number];
+
+/**
+ * A claim the planner asked a case to try to disprove: something the pull
+ * request should make true (`becomes-true`) or must leave true (`stays-true`).
+ */
+export interface AgenticRunCaseProperty {
+  kind: AgenticRunCasePropertyKind;
+  /** The claim about user-visible behaviour or layout, in plain language. */
+  statement: string;
+  /** The observation that would show it false, and the conditions to run it under. */
+  disproveBy: string;
+}
+
+export const AGENTIC_RUN_PROPERTY_VERDICTS = [
+  "held",
+  "violated",
+  "inconclusive",
+] as const;
+
+/**
+ * `held`: measured under the conditions it names and not shown false.
+ * `violated`: a measurement showed it false. `inconclusive`: the case could
+ * not measure it, or what it could measure does not decide it.
+ */
+export type AgenticRunPropertyVerdict =
+  (typeof AGENTIC_RUN_PROPERTY_VERDICTS)[number];
+
+/** The case's verdict on one of its `properties`. */
+export interface AgenticRunPropertyResult {
+  /** Index into the case's `properties`. */
+  propertyIndex: number;
+  verdict: AgenticRunPropertyVerdict;
+  /** One sentence naming the measured value and the condition behind the verdict. */
+  evidence: string;
+  /**
+   * Indices into the case's `steps` that carry the measurement: a failed step
+   * for `violated`, a passing assert step for `held`. May be empty only for
+   * `inconclusive`.
+   */
+  stepIndices: number[];
+}
+
 export interface AgenticRunResultCase {
   /** Short human-readable name of the flow, unique within this run. */
   title: string;
@@ -943,6 +992,17 @@ export interface AgenticRunResultCase {
   >;
   /** Why this case was worth testing, e.g. which changed code it targets. */
   rationale?: string;
+  /**
+   * The claims the planner asked this case to try to disprove. Absent for
+   * blobs from older workers and cases planned without any.
+   */
+  properties?: AgenticRunCaseProperty[];
+  /**
+   * The case agent's verdict on each of `properties`, in property order.
+   * Absent when the case has no properties, and may be absent when it was
+   * blocked or skipped before it could measure them.
+   */
+  propertyResults?: AgenticRunPropertyResult[];
   /**
    * The case agent's own judgment of how tightly the flow exercises the pull
    * request's change. Optional: present when self-reported relevance is on.
@@ -1377,6 +1437,12 @@ export interface CompleteAgenticRunResultParams extends ProjectIdentifier {
    * over the runs that produced test flows.
    */
   hasTestFlows?: boolean;
+  /**
+   * The worker is still rendering the summary's featured-flow media and will
+   * send it with {@link attachAgenticFeaturedFlowMedia}. The run's workflow
+   * token stays valid until then, and the completion webhook waits for it.
+   */
+  featuredFlowMediaPending?: boolean;
 }
 
 /**
@@ -1392,6 +1458,37 @@ export const completeAgenticRunResult = async ({
 }): Promise<ReportAgenticRunResultResponse> => {
   const { data } = await client.post<ReportAgenticRunResultResponse>(
     "agentic-session-generation/complete-result",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export interface AttachAgenticFeaturedFlowMediaParams extends ProjectIdentifier {
+  /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
+  agenticRunId: string;
+  /**
+   * The rendered media, already uploaded with the run's artifacts. Omitted when
+   * rendering failed, which still ends the wait.
+   */
+  featuredFlowMedia?: AgenticRunFeaturedFlowMedia;
+}
+
+/**
+ * Ends the wait a `featuredFlowMediaPending` result started: adds the media to
+ * the reported summary, refreshes what shows it, and revokes the run's
+ * workflow token. `recorded: false` when the run was not waiting for media,
+ * for example because the backend gave up on it.
+ */
+export const attachAgenticFeaturedFlowMedia = async ({
+  client,
+  projectId,
+  ...body
+}: AttachAgenticFeaturedFlowMediaParams & {
+  client: MeticulousClient;
+}): Promise<ReportAgenticRunResultResponse> => {
+  const { data } = await client.post<ReportAgenticRunResultResponse>(
+    "agentic-session-generation/attach-featured-flow-media",
     body,
     projectIdQuery(projectId),
   );

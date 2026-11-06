@@ -24,6 +24,8 @@ vi.mock("../download-snapshots", () => ({
 const testRun = (id: string, status: TestRunStatus): TestRun =>
   ({ id, status }) as unknown as TestRun;
 
+const ANY_STRING_POOL: unknown = expect.any(Map);
+
 describe("custom checks SDK helpers", () => {
   let client: { get: Mock; post: Mock; put: Mock };
   const asClient = (): MeticulousClient =>
@@ -140,11 +142,19 @@ describe("custom checks SDK helpers", () => {
       expect(downloadAndAssembleSnapshots).toHaveBeenCalledWith({
         signedBaseUrl: response.signedBaseUrl,
         files: response.baseSnapshotFiles,
+        side: "base",
+        stringPool: ANY_STRING_POOL,
       });
       expect(downloadAndAssembleSnapshots).toHaveBeenCalledWith({
         signedBaseUrl: response.signedBaseUrl,
         files: response.headSnapshotFiles,
+        side: "head",
+        stringPool: ANY_STRING_POOL,
       });
+      // Base and head share one pool, so a string both sides repeat is held once.
+      const [[baseCall], [headCall]] = vi.mocked(downloadAndAssembleSnapshots)
+        .mock.calls;
+      expect(headCall.stringPool).toBe(baseCall.stringPool);
       expect(result).toEqual({
         testRunId: "tr-1",
         baseTestRunId: "base-1",
@@ -212,10 +222,14 @@ describe("custom checks SDK helpers", () => {
       expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(1, {
         signedBaseUrl: response.signedBaseUrl,
         files: [matchedBaseFile, nestedPatchedBaseFile],
+        side: "base",
+        stringPool: ANY_STRING_POOL,
       });
       expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(2, {
         signedBaseUrl: response.signedBaseUrl,
         files: headFiles,
+        side: "head",
+        stringPool: ANY_STRING_POOL,
       });
     });
 
@@ -252,10 +266,14 @@ describe("custom checks SDK helpers", () => {
       expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(1, {
         signedBaseUrl: response.signedBaseUrl,
         files: [],
+        side: "base",
+        stringPool: ANY_STRING_POOL,
       });
       expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(2, {
         signedBaseUrl: response.signedBaseUrl,
         files: [],
+        side: "head",
+        stringPool: ANY_STRING_POOL,
       });
       expect(result).toEqual({
         testRunId: "tr-empty-head",
@@ -299,11 +317,15 @@ describe("custom checks SDK helpers", () => {
       expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(1, {
         signedBaseUrl: response.signedBaseUrl,
         files: response.baseSnapshotFiles,
+        side: "base",
+        stringPool: ANY_STRING_POOL,
         projectSnapshotData,
       });
       expect(downloadAndAssembleSnapshots).toHaveBeenNthCalledWith(2, {
         signedBaseUrl: response.signedBaseUrl,
         files: response.headSnapshotFiles,
+        side: "head",
+        stringPool: ANY_STRING_POOL,
         projectSnapshotData,
       });
     });

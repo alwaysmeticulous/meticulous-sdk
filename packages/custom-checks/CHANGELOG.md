@@ -1,5 +1,20 @@
 # @alwaysmeticulous/custom-checks
 
+## 3.7.0
+
+### Minor Changes
+
+- [#17191](https://github.com/alwaysmeticulous/meticulous/pull/17191) [`cc1ae28`](https://github.com/alwaysmeticulous/meticulous/commit/cc1ae28bae7ae3a373b14db5958047b5a5cb501d) Thanks [@linpengzhang](https://github.com/linpengzhang)! - `getSnapshotsFromTestRun` holds much less memory for large test runs:
+  - Every string in the downloaded snapshots is deduplicated as each file is parsed, with base and head sharing one copy of each value. Snapshot files repeat the same strings across stages and sessions, so this typically cuts the memory the assembled snapshots retain by a factor of three or more. Values are unchanged, and frozen objects a projector returns are left as they are.
+  - `projectSnapshotData` now also receives `side` (`"base"` or `"head"`), so a projector can drop fields it only reads from one side. The new `SnapshotSide` type is exported.
+
+### Patch Changes
+
+- Updated dependencies [[`92047d9`](https://github.com/alwaysmeticulous/meticulous/commit/92047d99c6f14949b6ecb52738fa65429c80be76), [`3c455bf`](https://github.com/alwaysmeticulous/meticulous/commit/3c455bfca1115cacd45929f29e55a42ad2695299), [`1816951`](https://github.com/alwaysmeticulous/meticulous/commit/18169516e72102ebbf6548cc41f7234568872be3)]:
+  - @alwaysmeticulous/client@3.7.0
+  - @alwaysmeticulous/common@3.7.0
+  - @alwaysmeticulous/downloading-helpers@3.7.0
+
 ## 3.6.0
 
 ### Patch Changes

@@ -13,6 +13,7 @@ import {
 } from "../shared/helper-options";
 import { TRY_PATHS } from "../shared/try-paths";
 import { validateRecipe, type BuildRecipe } from "./build-recipe";
+import { CLI_COMMAND } from "../shared/cli-command";
 
 interface SaveOptions {
   cwd: string | undefined;
@@ -50,7 +51,7 @@ const showHandler = (options: ShowOptions): void => {
   );
   if (!recipe) {
     throw new CliUserError(
-      "No build recipe saved yet. Save one with `meticulous try recipe save --file <json>`.",
+      `No build recipe saved yet. Save one with \`${CLI_COMMAND} try recipe save --file <json>\`.`,
     );
   }
   printResult(options.json, recipe, () => [JSON.stringify(recipe, null, 2)]);

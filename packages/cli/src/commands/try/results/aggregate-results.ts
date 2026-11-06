@@ -112,11 +112,22 @@ const buildPrResult = (
     (record.headTestRunId != null && headTestRun == null) ||
     (record.swarmRunId != null && swarmRun == null);
 
+  const runUrl = headTestRun?.url ?? swarmRun?.url ?? null;
+
   return {
     prNumber: record.prNumber,
     title: record.title ?? candidate?.title ?? "",
     baseSha: record.baseSha,
     headSha: record.headSha,
+    runUrl,
+    failingCases: (swarmRun?.failingCases ?? []).map((testCase) => ({
+      ...testCase,
+      url: swarmCaseUrl({
+        runUrl: runUrl ?? "",
+        onTestRunPage: headTestRun != null,
+        caseIndex: testCase.caseIndex,
+      }),
+    })),
     bugSignals,
     baseTestRun,
     headTestRun,
@@ -126,6 +137,24 @@ const buildPrResult = (
     findingsScore: scoreFindings({ headTestRun, swarmRun, bugSignals }),
   };
 };
+
+/**
+ * The test run page shows the swarm under its Agent swarm tab; a swarm run
+ * without a head test run has its own page. Both select a case with `case`.
+ */
+const swarmCaseUrl = (options: {
+  runUrl: string;
+  onTestRunPage: boolean;
+  caseIndex: number;
+}): string => {
+  const caseParam = `case=${encodeURIComponent(toSwarmCaseId(options.caseIndex))}`;
+  return options.onTestRunPage
+    ? `${options.runUrl}?tab=agent-swarm&${caseParam}`
+    : `${options.runUrl}?${caseParam}`;
+};
+
+/** Matches the web app's case ids (`toAgentSwarmCaseId`). */
+const toSwarmCaseId = (caseIndex: number): string => `case-${caseIndex}`;
 
 /** By recorded id when there is one, else the newest run on that commit. */
 const pickRun = <T extends { id: string; commitSha: string }>(

@@ -9,6 +9,7 @@ import {
   type SelfOnboardResponse,
 } from "@alwaysmeticulous/client";
 import { CliUserError } from "../../../utils/cli-user-error";
+import { CLI_COMMAND } from "../shared/cli-command";
 
 /**
  * Signs the user in (browser OAuth, onboarding variant of the login page) and
@@ -35,8 +36,8 @@ const ensureOAuthAccessToken = async (): Promise<string> => {
   }
   if (!isInteractiveContext()) {
     throw new CliUserError(
-      "`meticulous try` needs you to be logged in to Meticulous. Run it in an interactive terminal " +
-        "so it can open a browser, or run `meticulous auth login --device` first on a remote machine.",
+      `\`${CLI_COMMAND} try\` needs you to be logged in to Meticulous. Run it in an interactive terminal ` +
+        `so it can open a browser, or run \`${CLI_COMMAND} auth login --device\` first on a remote machine.`,
     );
   }
   console.log("Opening the browser to sign in to Meticulous…");
@@ -53,7 +54,7 @@ const toCliUserError = (error: SelfOnboardError): CliUserError => {
     case "project-limit-reached":
       return new CliUserError(
         `Could not create a trial project: ${error.message}\n` +
-          "Re-run `meticulous try` in a repo you already tried to reuse its project, or contact support@meticulous.ai.",
+          `Re-run \`${CLI_COMMAND} try\` in a repo you already tried to reuse its project, or contact support@meticulous.ai.`,
       );
     case "not-logged-in":
       return new CliUserError(error.message);

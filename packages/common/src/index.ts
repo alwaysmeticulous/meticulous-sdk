@@ -36,6 +36,13 @@ export {
   getStashCreateSha,
 } from "./commit-sha.utils";
 export {
+  isGitCommitSha,
+  type GitCommitSha,
+  SESSION_SELECTION_TEST_RUN_COMMIT_SHA,
+  EXPERIMENT_TEST_RUN_COMMIT_SHA,
+  SENTINEL_COMMIT_SHAS,
+} from "./git-commit-sha.utils";
+export {
   executeWithRetry,
   defaultShouldRetry,
   isLostConnectionError,

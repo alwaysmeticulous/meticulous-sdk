@@ -18,6 +18,7 @@ interface Options {
   json: boolean;
   apiToken: string | undefined;
   waitSeconds: number;
+  waitFor: number | undefined;
 }
 
 const handler = async (options: Options): Promise<void> => {
@@ -27,18 +28,25 @@ const handler = async (options: Options): Promise<void> => {
     repoRoot,
   });
   const fetch = () => fetchTryResults({ client, repoRoot, context });
-  const results = await pollUntilDone(fetch, options.waitSeconds);
+  const results = await pollUntilDone(fetch, {
+    waitSeconds: options.waitSeconds,
+    waitFor: options.waitFor,
+  });
   printResult(options.json, results, () => formatResults(results));
 };
 
 const pollUntilDone = async (
   fetch: () => Promise<TryResults>,
-  waitSeconds: number,
+  options: { waitSeconds: number; waitFor: number | undefined },
 ): Promise<TryResults> => {
-  const deadline = Date.now() + waitSeconds * 1000;
+  const deadline = Date.now() + options.waitSeconds * 1000;
   for (;;) {
     const results = await fetch();
-    if (results.allDone || Date.now() + POLL_INTERVAL_MS > deadline) {
+    if (
+      results.allDone ||
+      (options.waitFor != null && countFinished(results) >= options.waitFor) ||
+      Date.now() + POLL_INTERVAL_MS > deadline
+    ) {
       return results;
     }
     const running = results.prs.filter((pr) => pr.pending).length;
@@ -46,6 +54,10 @@ const pollUntilDone = async (
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
 };
+
+/** PRs whose head test run exists and whose runs have all finished. */
+const countFinished = (results: TryResults): number =>
+  results.prs.filter((pr) => pr.headTestRun != null && !pr.pending).length;
 
 export const resultsCommand: CommandModule<unknown, Options> = {
   command: "results",
@@ -58,6 +70,11 @@ export const resultsCommand: CommandModule<unknown, Options> = {
       default: 0,
       description:
         "Keep polling until every backtest has finished, for at most this many seconds",
+    },
+    waitFor: {
+      number: true,
+      description:
+        "With --waitSeconds, stop polling as soon as this many PRs have finished, for an early report",
     },
   },
   handler: wrapHandler(handler),

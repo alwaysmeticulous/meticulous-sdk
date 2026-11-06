@@ -41,6 +41,7 @@ describe("downloadAndAssembleSnapshots", () => {
 
     const snapshots = await downloadAndAssembleSnapshots({
       signedBaseUrl: SIGNED_BASE_URL,
+      side: "base",
       files,
     });
 
@@ -91,6 +92,7 @@ describe("downloadAndAssembleSnapshots", () => {
       "proj/replay-a/custom-checks-snapshots/network-requests.json.gz";
     const snapshots = await downloadAndAssembleSnapshots({
       signedBaseUrl: SIGNED_BASE_URL,
+      side: "base",
       files: [{ type: "network-requests", sessionId: "sess-a", key }],
     });
 
@@ -109,6 +111,7 @@ describe("downloadAndAssembleSnapshots", () => {
   it("returns no snapshots and does not download when there are no files", async () => {
     const snapshots = await downloadAndAssembleSnapshots({
       signedBaseUrl: SIGNED_BASE_URL,
+      side: "base",
       files: [],
     });
 
@@ -133,6 +136,7 @@ describe("downloadAndAssembleSnapshots", () => {
 
     const snapshots = await downloadAndAssembleSnapshots({
       signedBaseUrl: SIGNED_BASE_URL,
+      side: "base",
       files: [
         {
           type: "network-requests",
@@ -140,8 +144,14 @@ describe("downloadAndAssembleSnapshots", () => {
           key: "proj/replay-a/custom-checks-snapshots/network-requests.json.gz",
         },
       ],
-      projectSnapshotData: ({ type, sessionId, stageDuringSession, data }) => ({
-        projectedFrom: [type, sessionId, stageDuringSession].join(":"),
+      projectSnapshotData: ({
+        type,
+        sessionId,
+        stageDuringSession,
+        data,
+        side,
+      }) => ({
+        projectedFrom: [side, type, sessionId, stageDuringSession].join(":"),
         url: (data as { url?: string }).url,
       }),
     });
@@ -153,12 +163,49 @@ describe("downloadAndAssembleSnapshots", () => {
         sessionDescription: null,
         stageDuringSession: "screenshot-after-event-00001",
         data: {
-          projectedFrom: "network-requests:sess-a:screenshot-after-event-00001",
+          projectedFrom:
+            "base:network-requests:sess-a:screenshot-after-event-00001",
           url: "https://app.example.com/api/items",
         },
         versionNumber: 0,
       },
     ]);
+  });
+
+  it("deduplicates equal strings across entries and files through the given pool", async () => {
+    // Fresh copies per file, as JSON.parse produces.
+    (downloadAndUnzipJson as Mock).mockImplementation(() =>
+      Promise.resolve(
+        JSON.parse(
+          JSON.stringify([
+            {
+              stageDuringSession: "final-state",
+              sessionDescription: "Opened settings",
+              data: { nodes: [{ html: "<img>" }, { html: "<img>" }] },
+            },
+          ]),
+        ),
+      ),
+    );
+    const stringPool = new Map<string, string>();
+
+    const snapshots = await downloadAndAssembleSnapshots({
+      signedBaseUrl: SIGNED_BASE_URL,
+      side: "head",
+      stringPool,
+      files: [
+        { type: "axe-accessibility", sessionId: "sess-a", key: "a.json.gz" },
+        { type: "axe-accessibility", sessionId: "sess-b", key: "b.json.gz" },
+      ],
+    });
+
+    expect(snapshots.map((snapshot) => snapshot.data)).toEqual([
+      { nodes: [{ html: "<img>" }, { html: "<img>" }] },
+      { nodes: [{ html: "<img>" }, { html: "<img>" }] },
+    ]);
+    expect([...stringPool.keys()].sort()).toEqual(
+      ["<img>", "Opened settings", "final-state"].sort(),
+    );
   });
 
   it("throws if a downloaded file does not contain a JSON array", async () => {
@@ -167,6 +214,7 @@ describe("downloadAndAssembleSnapshots", () => {
     await expect(
       downloadAndAssembleSnapshots({
         signedBaseUrl: SIGNED_BASE_URL,
+        side: "base",
         files: [
           {
             type: "network-requests",

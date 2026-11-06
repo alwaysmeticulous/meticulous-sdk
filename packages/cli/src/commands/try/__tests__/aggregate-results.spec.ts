@@ -108,6 +108,14 @@ describe("aggregateResults", () => {
       swarmRun: { id: "s2" },
       bugSignals: ['reverted 3d later: Revert "PR 2"'],
       pending: false,
+      runUrl: "https://app/test-runs/tr-h2",
+      failingCases: [
+        {
+          caseIndex: 1,
+          title: "Date picker",
+          url: "https://app/test-runs/tr-h2?tab=agent-swarm&case=case-1",
+        },
+      ],
     });
     expect(results.prs[1].headTestRun?.id).toBe("tr-h1-old");
     expect(results.otherTestRuns.map((run) => run.id)).toEqual([
@@ -115,6 +123,32 @@ describe("aggregateResults", () => {
       "tr-unrelated",
     ]);
     expect(results.allDone).toBe(true);
+  });
+
+  it("links a swarm run without a head test run to its own page", () => {
+    const results = aggregateResults({
+      projectUrl: null,
+      backtests: [{ prNumber: 3, baseSha: "b3", headSha: "h3" }],
+      candidates: [],
+      testRuns: [],
+      swarmRuns: [
+        swarmRun("s3", "h3", {
+          failingCases: [
+            {
+              caseIndex: 0,
+              title: "Checkout",
+              summary: null,
+              regressionCount: 0,
+            },
+          ],
+        }),
+      ],
+    });
+
+    expect(results.prs[0]).toMatchObject({
+      runUrl: "https://app/swarm/s3",
+      failingCases: [{ url: "https://app/swarm/s3?case=case-0" }],
+    });
   });
 
   it("marks PRs pending while runs are in progress or not yet listed", () => {

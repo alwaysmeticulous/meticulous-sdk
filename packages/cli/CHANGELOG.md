@@ -1,5 +1,23 @@
 # @alwaysmeticulous/cli
 
+## 3.7.0
+
+### Patch Changes
+
+- [#17128](https://github.com/alwaysmeticulous/meticulous/pull/17128) [`1816951`](https://github.com/alwaysmeticulous/meticulous/commit/18169516e72102ebbf6548cc41f7234568872be3) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `isGitCommitSha` (also importable from `@alwaysmeticulous/common/git-commit-sha`), accepting full or abbreviated SHA-1 and SHA-256 commit SHAs, which narrows to the new branded `GitCommitSha` type. The known sentinel commit SHAs (`SESSION_SELECTION_TEST_RUN_COMMIT_SHA`, `EXPERIMENT_TEST_RUN_COMMIT_SHA`, `SENTINEL_COMMIT_SHAS`) are now exported from `@alwaysmeticulous/common`.
+
+  `DebugContext.commitSha` and `baseCommitSha` in `@alwaysmeticulous/debug-workspace` are now typed `GitCommitSha`, so a context must come from `resolveDebugContext` or have its SHAs checked with `isGitCommitSha` or the new `toGitCommitSha`. `meticulous debug` drops a commit SHA that isn't one when it loads the debug context, logging the rejected value (sentinels are dropped silently, and a `-snapshot-<id>` suffix is stripped so the underlying commit is used), so it never reaches git or the workspace's `context.json`; an invalid base commit SHA now falls back to the merge-base for the PR diff. The git commands it runs also pass `--end-of-options`. `isValidGitCommitSha` is deprecated in favour of `isGitCommitSha` from `@alwaysmeticulous/common`.
+
+- [#17123](https://github.com/alwaysmeticulous/meticulous/pull/17123) [`2f888df`](https://github.com/alwaysmeticulous/meticulous/commit/2f888dfe4a4d963efabbbec326747629609b9810) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous try`:
+  - Refers to commands as `npx @alwaysmeticulous/cli …` in its output, errors and help text.
+  - Runs every recording browser headless; only `try login` opens a visible browser, for the user to log in.
+  - Asks before starting Claude Code, so the summary stays on screen until the user is ready.
+  - `try cleanup` now removes the whole `.meticulous-try/` workspace and returns immediately, deleting files in the background. `--keepWorkspace` keeps the previous behaviour of only removing the worktrees and saved login state.
+  - Lighter backtests: each PR builds base then head in one worktree switched in place, skipping the second install when no lockfile changed; installs and builds share a few build slots (`try slot`, `--buildSlots` to override); Claude Code and everything it starts run at low CPU priority (`--no-lowPriority` to turn off); the backtest and recording subagents run on Sonnet.
+  - Early findings: the agent reports the first two PRs as soon as they finish (`try results --waitFor`), then the full report.
+  - The report links each PR once, to its run, and ends with the bugs found, each linked directly (Agent swarm case, replay diff, or recorded session). Bugs the agent notices while recording are kept in `recording-bugs/` and reported too.
+  - New phase after recording: the agent checks that the recorded sessions replay cleanly (locally, then by replaying the same build twice in the cloud and expecting no diffs). If they do not, it adjusts the build or app until they do and saves any code change with `try replay-fix save`; every backtest applies it to both base and head with `try replay-fix apply`.
+
 ## 3.6.0
 
 ### Minor Changes

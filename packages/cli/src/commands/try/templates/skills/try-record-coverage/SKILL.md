@@ -6,7 +6,7 @@ description: Phase 2 of `meticulous try` — record 15–30 Meticulous sessions 
 # Phase 2 — Record coverage
 
 Goal: 15–30 ingested sessions that together cover the app's main routes and flows, so the
-backtests in phase 3 replay meaningful journeys — **especially the pages the candidate PRs
+backtests in phase 4 replay meaningful journeys — **especially the pages the candidate PRs
 touched**. Budget: ~15 minutes. The app from phase 1 must still be serving on
 `http://localhost:<port>` (`meticulous try recipe show` has the port).
 
@@ -56,6 +56,16 @@ the flows (one session per flow, with concrete steps and any test data), and —
 a login — either the storage-state path or the credentials-file path and login route from the
 login skill. They report back session ids and event counts.
 
+## Note bugs as you go
+
+Recording is the first time anyone clicks through the whole app, so it often turns up real
+bugs. Whenever you or a `session-recorder` hit one (an error overlay, a crash, an action that
+does nothing or errors, broken layout, wrong data), write it to `recording-bugs/` as the
+`session-recorder` agent describes, one file per bug, with the URL, steps, what happened and
+the session id when there is one. Leave out failures caused by the trial setup (missing
+backend, env vars or secrets, login walls). The final report lists every one of them, so do
+not wait until the end to write them down.
+
 ## 4. Wait for ingestion
 
 Sessions take a few minutes to ingest. Once the crawler and recorders are done:
@@ -65,11 +75,12 @@ meticulous try wait-for-sessions --min <N> --timeoutSeconds 900 --json
 ```
 
 with `N` ≈ 80% of what was recorded (some short sessions are dropped). It saves the ingested
-session ids to `sessions.json`, which phase 3 passes to every test run. If it times out with
+session ids to `sessions.json`, which phases 3 and 4 pass to every test run. If it times out with
 fewer than 10, record more of the uncovered flows rather than continuing with thin coverage.
 
-Then stop the local server and any backend you started for recording (phase 3 builds and
-serves nothing locally).
+Then stop any backend you started for recording (replays stub the network), but keep the app
+itself serving: phase 3 replays sessions against it, and stops it when done.
 
 Done when: `sessions.json` lists ≥ 15 sessions (≥ 10 at the very least). Tell the user how many
-sessions you recorded and which areas they cover, in one or two lines.
+sessions you recorded and which areas they cover, in one or two lines, and mention any bugs
+you noted in `recording-bugs/`.

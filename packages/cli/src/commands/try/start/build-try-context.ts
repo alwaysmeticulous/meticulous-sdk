@@ -14,6 +14,7 @@ export const buildTryContext = (options: {
   apps: TryAppSelection;
   packageManager: PackageManager | null;
   prCount: number;
+  buildSlots: number;
 }): TryContextJson => {
   const { repoRoot, onboarded, apps } = options;
   const selectedAppAbsolutePath = apps.selectedApp
@@ -37,6 +38,7 @@ export const buildTryContext = (options: {
       ? detectFramework(selectedAppAbsolutePath)
       : null,
     prCount: options.prCount,
+    buildSlots: options.buildSlots,
     paths: {
       recipe: absoluteTryPath(repoRoot, TRY_PATHS.recipe),
       candidates: absoluteTryPath(repoRoot, TRY_PATHS.candidates),
@@ -44,6 +46,8 @@ export const buildTryContext = (options: {
       builds: absoluteTryPath(repoRoot, TRY_PATHS.builds),
       worktrees: absoluteTryPath(repoRoot, TRY_PATHS.worktrees),
       backtests: absoluteTryPath(repoRoot, TRY_PATHS.backtests),
+      recordingBugs: absoluteTryPath(repoRoot, TRY_PATHS.recordingBugs),
+      replayFix: absoluteTryPath(repoRoot, TRY_PATHS.replayFix),
       authState: absoluteTryPath(repoRoot, TRY_PATHS.authState),
     },
   };

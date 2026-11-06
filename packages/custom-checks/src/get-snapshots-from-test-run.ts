@@ -43,7 +43,8 @@ export interface GetSnapshotsFromTestRunOptions {
    * Optional per-entry projection applied to `snapshot.data` as each file is
    * parsed so unreferenced fields can be garbage-collected immediately instead
    * of accumulating across the assembled `baseSnapshots` / `headSnapshots`
-   * arrays.
+   * arrays. Called with `side: "base"` for base files and `side: "head"` for
+   * head files.
    */
   projectSnapshotData?: SnapshotDataProjector;
 }
@@ -151,14 +152,19 @@ export const getSnapshotsFromTestRun = async ({
           })
         : data.baseSnapshotFiles;
 
+  const stringPool = new Map<string, string>();
   const baseSnapshots = await downloadAndAssembleSnapshots({
     signedBaseUrl: data.signedBaseUrl,
     files: baseFilesToDownload,
+    side: "base",
+    stringPool,
     ...(projectSnapshotData ? { projectSnapshotData } : {}),
   });
   const headSnapshots = await downloadAndAssembleSnapshots({
     signedBaseUrl: data.signedBaseUrl,
     files: data.headSnapshotFiles,
+    side: "head",
+    stringPool,
     ...(projectSnapshotData ? { projectSnapshotData } : {}),
   });
 

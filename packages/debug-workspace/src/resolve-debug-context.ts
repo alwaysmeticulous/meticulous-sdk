@@ -1,7 +1,8 @@
 import type { MeticulousClient } from "@alwaysmeticulous/client";
 import { getReplayDiff, getTestRun } from "@alwaysmeticulous/client";
 import chalk from "chalk";
-import type { DebugContext } from "./debug.types";
+import type { DebugContext, UnvalidatedDebugContext } from "./debug.types";
+import { toGitCommitSha } from "./git-commit-sha";
 
 interface ReplayApiResponse {
   id: string;
@@ -38,7 +39,7 @@ export const resolveDebugContext = async (
       options.replayDiffId,
       options.sessionId,
     );
-    return { ...context, ...overrides };
+    return withValidCommitShas({ ...context, ...overrides });
   }
 
   console.log(
@@ -49,14 +50,24 @@ export const resolveDebugContext = async (
     options.replayIds,
     options.sessionId,
   );
-  return { ...context, ...overrides };
+  return withValidCommitShas({ ...context, ...overrides });
 };
+
+// The project commit SHAs (`commitSha`, `baseCommitSha`) come from API records
+// and end up as git arguments in the project repo (here and via context.json).
+const withValidCommitShas = (
+  context: UnvalidatedDebugContext,
+): DebugContext => ({
+  ...context,
+  commitSha: toGitCommitSha(context.commitSha, "commit SHA"),
+  baseCommitSha: toGitCommitSha(context.baseCommitSha, "base commit SHA"),
+});
 
 const resolveFromReplayDiff = async (
   client: MeticulousClient,
   replayDiffId: string,
   sessionIdOverride: string | undefined,
-): Promise<DebugContext> => {
+): Promise<UnvalidatedDebugContext> => {
   console.log(chalk.cyan(`  Fetching replay diff ${replayDiffId}...`));
   const diff = await getReplayDiff(client, replayDiffId);
   if (!diff) {
@@ -145,7 +156,7 @@ const resolveFromReplayIds = async (
   client: MeticulousClient,
   replayIds: string[],
   sessionIdOverride: string | undefined,
-): Promise<DebugContext> => {
+): Promise<UnvalidatedDebugContext> => {
   console.log(
     chalk.cyan(`  Fetching details for ${replayIds.length} replay(s)...`),
   );

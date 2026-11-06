@@ -3,21 +3,30 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
+  readFileSync,
   realpathSync,
   rmSync,
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { findCandidatePrs } from "../candidate-prs/find-candidate-prs";
 import { toGitSince } from "../candidate-prs/read-git-history";
 import { resolveRepoRoot } from "../shared/run-git";
+import { emptyTrashInBackground } from "../worktree/discard-dirs";
+import type * as DiscardDirs from "../worktree/discard-dirs";
 import {
   createTryWorktree,
   removeAllTryWorktrees,
   removeTryWorktree,
 } from "../worktree/worktrees";
+
+vi.mock("../worktree/discard-dirs", async (importOriginal) => ({
+  ...(await importOriginal<typeof DiscardDirs>()),
+  emptyTrashInBackground: vi.fn(),
+}));
 
 const dirs: string[] = [];
 
@@ -38,11 +47,13 @@ const git = (cwd: string, ...args: string[]): string =>
     },
   ).trim();
 
+const GITIGNORE = ".meticulous-try/\nnode_modules/\ndist/\n";
+
 const makeRepo = (): string => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "try-git-")));
   dirs.push(dir);
   git(dir, "init", "-q", "-b", "main");
-  writeFileSync(join(dir, ".gitignore"), ".meticulous-try/\n");
+  writeFileSync(join(dir, ".gitignore"), GITIGNORE);
   git(dir, "add", ".");
   git(dir, "commit", "-q", "-m", "init");
   return dir;
@@ -146,7 +157,7 @@ describe("toGitSince", () => {
 });
 
 describe("try worktrees", () => {
-  it("creates, reuses, recreates and removes detached worktrees", () => {
+  it("creates, reuses, switches in place and removes detached worktrees", () => {
     const repo = makeRepo();
     const first = git(repo, "rev-parse", "HEAD");
     const second = writeAndCommit(repo, "src/A.tsx", "a", "A (#1)");
@@ -156,7 +167,12 @@ describe("try worktrees", () => {
       sha: first,
       name: "pr-1-base",
     });
-    expect(created).toMatchObject({ reused: false, sha: first });
+    expect(created).toMatchObject({
+      reused: false,
+      sha: first,
+      previousSha: null,
+      installInputsChanged: null,
+    });
     expect(created.path).toBe(
       join(repo, ".meticulous-try", "worktrees", "pr-1-base"),
     );
@@ -171,7 +187,14 @@ describe("try worktrees", () => {
       sha: second.slice(0, 10),
       name: "pr-1-base",
     });
-    expect(moved).toMatchObject({ reused: false, sha: second });
+    expect(moved).toMatchObject({
+      reused: true,
+      sha: second,
+      previousSha: first,
+      installInputsChanged: [],
+    });
+    expect(moved.path).toBe(created.path);
+    expect(git(moved.path, "rev-parse", "HEAD")).toBe(second);
 
     expect(resolveRepoRoot(moved.path)).toBe(repo);
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
@@ -182,6 +205,70 @@ describe("try worktrees", () => {
     ).toBe(true);
     expect(removeAllTryWorktrees(repo)).toEqual(["pr-1-base"]);
     expect(existsSync(moved.path)).toBe(false);
+    expect(git(repo, "worktree", "list", "--porcelain")).not.toContain(
+      ".meticulous-try",
+    );
+    expect(readdirSync(join(repo, ".meticulous-try", "trash")).sort()).toEqual([
+      expect.stringMatching(/^pr-1-base-/),
+      expect.stringMatching(/^pr-1-head-/),
+    ]);
+    expect(vi.mocked(emptyTrashInBackground)).toHaveBeenCalledWith(repo);
+  });
+
+  it("keeps the install when switching, reports changed install inputs and cleans build output", () => {
+    const repo = makeRepo();
+    const base = git(repo, "rev-parse", "HEAD");
+    const featureOnly = writeAndCommit(repo, "src/B.tsx", "b", "B (#2)");
+    const lockfileBump = writeAndCommit(
+      repo,
+      "apps/web/pnpm-lock.yaml",
+      "lockfileVersion: 9\n",
+      "bump deps (#3)",
+    );
+
+    const worktree = createTryWorktree({
+      repoRoot: repo,
+      sha: base,
+      name: "pr-2",
+    });
+    mkdirSync(join(worktree.path, "node_modules", "pkg"), { recursive: true });
+    mkdirSync(join(worktree.path, "dist"), { recursive: true });
+    writeFileSync(join(worktree.path, "dist", "index.html"), "base build");
+    writeFileSync(join(worktree.path, ".gitignore"), "edited by a build step");
+    writeFileSync(join(worktree.path, "src-added-by-fix.ts"), "untracked");
+
+    const head = createTryWorktree({
+      repoRoot: repo,
+      sha: featureOnly,
+      name: "pr-2",
+      cleanPaths: ["dist"],
+    });
+    expect(head.installInputsChanged).toEqual([]);
+    expect(existsSync(join(worktree.path, "node_modules", "pkg"))).toBe(true);
+    expect(existsSync(join(worktree.path, "dist"))).toBe(false);
+    expect(existsSync(join(worktree.path, "src-added-by-fix.ts"))).toBe(false);
+    expect(readFileSync(join(worktree.path, ".gitignore"), "utf8")).toBe(
+      GITIGNORE,
+    );
+
+    expect(
+      createTryWorktree({ repoRoot: repo, sha: lockfileBump, name: "pr-2" })
+        .installInputsChanged,
+    ).toEqual(["apps/web/pnpm-lock.yaml"]);
+  });
+
+  it("refuses to clean the worktree itself or its .git", () => {
+    const repo = makeRepo();
+    for (const cleanPath of ["./", ".", ".git", "../escape"]) {
+      expect(() =>
+        createTryWorktree({
+          repoRoot: repo,
+          sha: "HEAD",
+          name: "pr-3",
+          cleanPaths: [cleanPath],
+        }),
+      ).toThrow(/Refusing/);
+    }
   });
 
   it("rejects unsafe names and unknown commits", () => {

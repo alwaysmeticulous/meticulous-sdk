@@ -2,10 +2,13 @@ import type { CommandModule } from "yargs";
 import { candidatePrsCommand } from "./candidate-prs/candidate-prs.command";
 import { loginCommand } from "./login/login.command";
 import { recipeCommand } from "./recipe/recipe.command";
+import { replayFixCommand } from "./replay-fix/replay-fix.command";
 import { resultsCommand } from "./results/results.command";
 import { waitForSessionsCommand } from "./sessions/wait-for-sessions.command";
+import { slotCommand } from "./slots/slot.command";
 import { tryStartCommand } from "./start.command";
-import { cleanupCommand, worktreeCommand } from "./worktree/worktree.command";
+import { cleanupCommand } from "./worktree/cleanup.command";
+import { worktreeCommand } from "./worktree/worktree.command";
 
 export const tryCommand: CommandModule = {
   command: "try",
@@ -19,6 +22,8 @@ export const tryCommand: CommandModule = {
       .command(worktreeCommand)
       .command(cleanupCommand)
       .command(recipeCommand)
+      .command(replayFixCommand)
+      .command(slotCommand)
       .command(waitForSessionsCommand)
       .command(resultsCommand)
       .help(),

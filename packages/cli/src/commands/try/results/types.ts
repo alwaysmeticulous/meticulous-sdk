@@ -46,11 +46,23 @@ export interface SwarmRunSummary {
   url: string;
 }
 
+/** A failing Agent swarm case with a link that opens it directly. */
+export interface LinkedFailingCase extends SwarmFailingCase {
+  url: string;
+}
+
 export interface PrResult {
   prNumber: number;
   title: string;
   baseSha: string;
   headSha: string;
+  /**
+   * The one link to show the user for this PR: the head test run, whose page
+   * also holds the Agent swarm tab, or the swarm run when there is no head run.
+   */
+  runUrl: string | null;
+  /** Failing Agent swarm cases, each linking straight to the case. */
+  failingCases: LinkedFailingCase[];
   bugSignals: string[];
   baseTestRun: TestRunSummary | null;
   headTestRun: TestRunSummary | null;

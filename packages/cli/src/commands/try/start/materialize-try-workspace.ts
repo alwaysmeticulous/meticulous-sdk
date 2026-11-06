@@ -41,6 +41,7 @@ export const materializeTryWorkspace = (options: {
     url: METICULOUS_MCP_URL,
   });
   mkdirSafeSync(repoRoot, TRY_PATHS.backtests);
+  mkdirSafeSync(repoRoot, TRY_PATHS.recordingBugs);
   mkdirSafeSync(repoRoot, TRY_PATHS.worktrees);
   mkdirSafeSync(repoRoot, TRY_PATHS.builds);
 

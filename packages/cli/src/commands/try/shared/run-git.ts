@@ -5,12 +5,17 @@ import { CliUserError } from "../../../utils/cli-user-error";
 const MAX_GIT_OUTPUT_BYTES = 256 * 1024 * 1024;
 
 /** Runs git with literal arguments (never through a shell) and returns stdout. */
-export const runGit = (cwd: string, args: string[]): string =>
+export const runGit = (
+  cwd: string,
+  args: string[],
+  env?: Record<string, string>,
+): string =>
   execFileSync("git", args, {
     cwd,
     encoding: "utf8",
     maxBuffer: MAX_GIT_OUTPUT_BYTES,
     stdio: ["ignore", "pipe", "pipe"],
+    ...(env ? { env: { ...process.env, ...env } } : {}),
   });
 
 export const tryRunGit = (cwd: string, args: string[]): string | null => {

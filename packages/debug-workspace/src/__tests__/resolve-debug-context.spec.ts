@@ -1,12 +1,16 @@
 import type { MeticulousClient } from "@alwaysmeticulous/client";
-import { getReplayDiff } from "@alwaysmeticulous/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getReplayDiff, getTestRun } from "@alwaysmeticulous/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveDebugContext } from "../resolve-debug-context";
 
 vi.mock("@alwaysmeticulous/client", () => ({
   getReplayDiff: vi.fn(),
   getTestRun: vi.fn(),
 }));
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const resolve = () =>
   resolveDebugContext({
@@ -41,6 +45,95 @@ describe("resolveDebugContext from a replay diff", () => {
     mockReplayDiff("session", "session");
 
     expect((await resolve()).sessionIds).toEqual(["session"]);
+  });
+});
+
+describe("resolveDebugContext commit SHAs", () => {
+  const HEAD_SHA = "df7aad61870c8d6a1a64daa62f444256c78b7740";
+  const BASE_SHA = "a".repeat(64);
+
+  beforeEach(() => {
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  const resolveWithShas = (commitSha: string, baseCommitSha: string) => {
+    vi.mocked(getReplayDiff).mockResolvedValue({
+      headReplay: { id: "head-1", sessionId: "s", commitSha },
+      baseReplay: { id: "base-1", sessionId: "s" },
+      testRun: { id: "tr-1" },
+    } as Awaited<ReturnType<typeof getReplayDiff>>);
+    vi.mocked(getTestRun).mockResolvedValue({
+      configData: { arguments: { baseCommitSha } },
+    } as unknown as Awaited<ReturnType<typeof getTestRun>>);
+    return resolve();
+  };
+
+  it("keeps valid SHA-1 and SHA-256 commit SHAs", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const context = await resolveWithShas(HEAD_SHA, BASE_SHA);
+
+    expect(context.commitSha).toBe(HEAD_SHA);
+    expect(context.baseCommitSha).toBe(BASE_SHA);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("strips a -snapshot-<id> suffix to use the underlying commit", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const context = await resolveWithShas(
+      `${HEAD_SHA}-snapshot-5898853`,
+      `${BASE_SHA}-snapshot-12`,
+    );
+
+    expect(context.commitSha).toBe(HEAD_SHA);
+    expect(context.baseCommitSha).toBe(BASE_SHA);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "--output=/tmp/x",
+    `${HEAD_SHA};touch /tmp/x`,
+    `${HEAD_SHA}-unclean`,
+    "none",
+    "--output=x-snapshot-1",
+    `${HEAD_SHA}-snapshot-abc`,
+  ])("drops the invalid commit SHA %j and says so", async (sha) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const context = await resolveWithShas(sha, sha);
+
+    expect(context.commitSha).toBeUndefined();
+    expect(context.baseCommitSha).toBeUndefined();
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(JSON.stringify(sha)),
+    );
+  });
+
+  it.each(["unknown", "experiment"])(
+    "drops the sentinel commit SHA %j without warning",
+    async (sha) => {
+      const warn = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => undefined);
+
+      const context = await resolveWithShas(sha, sha);
+
+      expect(context.commitSha).toBeUndefined();
+      expect(context.baseCommitSha).toBeUndefined();
+      expect(warn).not.toHaveBeenCalled();
+    },
+  );
+
+  it("treats an empty commit SHA as absent without warning", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const context = await resolveWithShas("", "");
+
+    expect(context.commitSha).toBeUndefined();
+    expect(context.baseCommitSha).toBeUndefined();
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 

@@ -1,6 +1,7 @@
 import type { Snapshot } from "@alwaysmeticulous/api";
 import { downloadAndUnzipJson } from "@alwaysmeticulous/downloading-helpers";
 import pLimit from "p-limit";
+import { internStrings } from "./intern-strings";
 
 /** How many snapshot files to download and parse in parallel. */
 const DEFAULT_DOWNLOAD_CONCURRENCY = 20;
@@ -22,33 +23,47 @@ export interface CustomCheckSnapshotFileToDownload {
   key: string;
 }
 
+/** Which test run of the comparison a snapshot file belongs to. */
+export type SnapshotSide = "base" | "head";
+
 /**
  * Optional per-entry projection applied as each snapshot file is parsed, so
  * callers that only read a subset of `data` (e.g. `network-requests` dropping
  * `requestHeaders`, `responseHeaders`, and unused `requestBody` strings) do
  * not retain the full parsed payload across thousands of downloaded files.
+ * `side` lets a caller keep fields it only reads from one side, such as
+ * report-only detail that is never read from the base run.
  */
 export type SnapshotDataProjector = (snapshot: {
   type: string;
   sessionId: string;
   stageDuringSession: string;
   data: unknown;
+  side: SnapshotSide;
 }) => unknown;
 
 /**
  * Downloads every snapshot file in parallel from the single signed base URL and
  * assembles them into a flat list of {@link Snapshot}s for a custom check.
+ *
+ * Every string in the assembled snapshots is deduplicated through
+ * `stringPool` (see {@link internStrings}); pass the same pool for both sides
+ * of a comparison so base and head share one copy of each value.
  */
 export const downloadAndAssembleSnapshots = async ({
   signedBaseUrl,
   files,
+  side,
   concurrency = DEFAULT_DOWNLOAD_CONCURRENCY,
   projectSnapshotData,
+  stringPool = new Map(),
 }: {
   signedBaseUrl: string;
   files: CustomCheckSnapshotFileToDownload[];
+  side: SnapshotSide;
   concurrency?: number;
   projectSnapshotData?: SnapshotDataProjector;
+  stringPool?: Map<string, string>;
 }): Promise<Snapshot[]> => {
   if (files.length === 0) {
     return [];
@@ -57,7 +72,13 @@ export const downloadAndAssembleSnapshots = async ({
   const snapshotsPerFile = await Promise.all(
     files.map((file) =>
       limit(() =>
-        downloadSnapshotFile(signedBaseUrl, file, projectSnapshotData),
+        downloadSnapshotFile({
+          signedBaseUrl,
+          file,
+          side,
+          projectSnapshotData,
+          stringPool,
+        }),
       ),
     ),
   );
@@ -74,11 +95,19 @@ export const downloadAndAssembleSnapshots = async ({
  * these concurrently inside a worker whose disk is shared with every other
  * activity on the pod.
  */
-const downloadSnapshotFile = async (
-  signedBaseUrl: string,
-  file: CustomCheckSnapshotFileToDownload,
-  projectSnapshotData?: SnapshotDataProjector,
-): Promise<Snapshot[]> => {
+const downloadSnapshotFile = async ({
+  signedBaseUrl,
+  file,
+  side,
+  projectSnapshotData,
+  stringPool,
+}: {
+  signedBaseUrl: string;
+  file: CustomCheckSnapshotFileToDownload;
+  side: SnapshotSide;
+  projectSnapshotData: SnapshotDataProjector | undefined;
+  stringPool: Map<string, string>;
+}): Promise<Snapshot[]> => {
   const url = buildSnapshotFileUrl(signedBaseUrl, file.key);
   const parsed = await downloadAndUnzipJson<unknown>(url, {
     timeoutMs: DOWNLOAD_TIMEOUT_MS,
@@ -101,16 +130,23 @@ const downloadSnapshotFile = async (
     sessionId: file.sessionId,
     // Persisted at replay time (see CustomCheckSnapshot.sessionDescription);
     // absent for sessions without a description.
-    sessionDescription: snapshot.sessionDescription ?? null,
-    stageDuringSession: snapshot.stageDuringSession,
-    data: projectSnapshotData
-      ? projectSnapshotData({
-          type: file.type,
-          sessionId: file.sessionId,
-          stageDuringSession: snapshot.stageDuringSession,
-          data: snapshot.data,
-        })
-      : snapshot.data,
+    sessionDescription: internStrings(
+      snapshot.sessionDescription ?? null,
+      stringPool,
+    ),
+    stageDuringSession: internStrings(snapshot.stageDuringSession, stringPool),
+    data: internStrings(
+      projectSnapshotData
+        ? projectSnapshotData({
+            type: file.type,
+            sessionId: file.sessionId,
+            stageDuringSession: snapshot.stageDuringSession,
+            data: snapshot.data,
+            side,
+          })
+        : snapshot.data,
+      stringPool,
+    ),
     // Default to 0 so built-in snapshots (written without a version) surface as
     // the documented default rather than `undefined`.
     versionNumber: snapshot.versionNumber ?? 0,

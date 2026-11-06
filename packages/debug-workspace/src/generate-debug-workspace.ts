@@ -11,7 +11,11 @@ import {
 } from "fs";
 import { dirname, extname, join } from "path";
 import type { MeticulousClient } from "@alwaysmeticulous/client";
-import { initLogger } from "@alwaysmeticulous/common";
+import {
+  initLogger,
+  isGitCommitSha,
+  type GitCommitSha,
+} from "@alwaysmeticulous/common";
 import chalk from "chalk";
 import { format, type BuiltInParserName } from "prettier";
 import {
@@ -30,7 +34,6 @@ import { generateDebugDerivedFiles } from "./generate-debug-derived-files";
 import { generateDiffSummaries } from "./generate-diff-summaries";
 import { generateErrorsDiff } from "./generate-errors-diff";
 import { writeSessionRequests } from "./generate-session-requests";
-import { isValidGitCommitSha } from "./git-commit-sha";
 import { parseMeticulousSha } from "./meticulous-sha";
 import { readReplayTimeline } from "./replay-walk";
 import { screenshotIdentifierToFilename } from "./screenshot-identifier";
@@ -1016,14 +1019,14 @@ const generatePrDiff = (
   }
 
   const headSha = debugContext.commitSha;
-  const baseSha = debugContext.baseCommitSha;
-  if (!isValidGitCommitSha(headSha)) {
+  if (!headSha) {
     return;
   }
 
   const effectiveBaseSha =
-    baseSha ?? resolveBaseShaFromGit(projectRepoDir, headSha);
-  if (!isValidGitCommitSha(effectiveBaseSha)) {
+    debugContext.baseCommitSha ??
+    resolveBaseShaFromGit(projectRepoDir, headSha);
+  if (!effectiveBaseSha) {
     return;
   }
 
@@ -1031,7 +1034,7 @@ const generatePrDiff = (
   try {
     diffOutput = execFileSync(
       "git",
-      ["diff", `${effectiveBaseSha}..${headSha}`],
+      ["diff", "--end-of-options", `${effectiveBaseSha}..${headSha}`],
       { cwd: projectRepoDir, encoding: "utf8", maxBuffer: 50 * 1024 * 1024 },
     );
   } catch (error: any) {
@@ -1053,15 +1056,16 @@ const generatePrDiff = (
 
 const resolveBaseShaFromGit = (
   repoDir: string,
-  headSha: string,
-): string | undefined => {
+  headSha: GitCommitSha,
+): GitCommitSha | undefined => {
   for (const branch of ["origin/main", "origin/master"]) {
     try {
-      const mergeBase = execFileSync("git", ["merge-base", branch, headSha], {
-        cwd: repoDir,
-        encoding: "utf8",
-      }).trim();
-      if (mergeBase) {
+      const mergeBase = execFileSync(
+        "git",
+        ["merge-base", "--end-of-options", branch, headSha],
+        { cwd: repoDir, encoding: "utf8" },
+      ).trim();
+      if (isGitCommitSha(mergeBase)) {
         return mergeBase;
       }
     } catch {

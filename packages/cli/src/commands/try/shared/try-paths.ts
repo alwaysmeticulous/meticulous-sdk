@@ -10,7 +10,11 @@ export const TRY_PATHS = {
   sessions: join(TRY_WORKDIR, "sessions.json"),
   builds: join(TRY_WORKDIR, "builds"),
   worktrees: join(TRY_WORKDIR, "worktrees"),
+  trash: join(TRY_WORKDIR, "trash"),
+  slots: join(TRY_WORKDIR, "slots"),
   backtests: join(TRY_WORKDIR, "backtests"),
+  recordingBugs: join(TRY_WORKDIR, "recording-bugs"),
+  replayFix: join(TRY_WORKDIR, "replay-fix.json"),
   authState: join(TRY_WORKDIR, "auth", "storage-state.json"),
   claude: join(TRY_WORKDIR, ".claude"),
 } as const;

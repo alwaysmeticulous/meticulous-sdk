@@ -2,6 +2,7 @@ import { createClient } from "@alwaysmeticulous/client";
 import type { MeticulousClient } from "@alwaysmeticulous/client";
 import { CliUserError } from "../../../utils/cli-user-error";
 import { readTryContext, type TryContextJson } from "./try-context";
+import { CLI_COMMAND } from "./cli-command";
 
 /**
  * A client scoped to the try project. The agent gets the token as
@@ -20,7 +21,7 @@ export const createTryClient = (options: {
     context?.apiToken;
   if (!apiToken) {
     throw new CliUserError(
-      "No Meticulous project token found. Run `meticulous try` first (it writes .meticulous-try/try-context.json), " +
+      `No Meticulous project token found. Run \`${CLI_COMMAND} try\` first (it writes .meticulous-try/try-context.json), ` +
         "or pass --apiToken.",
     );
   }

@@ -1,5 +1,12 @@
 # @alwaysmeticulous/record
 
+## 3.7.0
+
+### Patch Changes
+
+- Updated dependencies [[`1816951`](https://github.com/alwaysmeticulous/meticulous/commit/18169516e72102ebbf6548cc41f7234568872be3)]:
+  - @alwaysmeticulous/common@3.7.0
+
 ## 3.6.0
 
 ### Minor Changes

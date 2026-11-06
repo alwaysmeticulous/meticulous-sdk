@@ -9,6 +9,7 @@ import {
   resolveSafeWritePath,
 } from "../../onboard/safe-repo-fs";
 import { TRY_PATHS, absoluteTryPath } from "./try-paths";
+import { CLI_COMMAND } from "./cli-command";
 
 export type PackageManager = "pnpm" | "yarn" | "npm" | "bun";
 
@@ -30,6 +31,8 @@ export interface TryContextJson {
   discoveredApps: DiscoveredApp[];
   frameworkDetection: FrameworkDetection | null;
   prCount: number;
+  /** How many installs and builds may run at once (`meticulous try slot`). */
+  buildSlots: number;
   paths: {
     recipe: string;
     candidates: string;
@@ -37,6 +40,10 @@ export interface TryContextJson {
     builds: string;
     worktrees: string;
     backtests: string;
+    /** One markdown file per app bug noticed while recording. */
+    recordingBugs: string;
+    /** Written by `meticulous try replay-fix save`; absent until a fix is needed. */
+    replayFix: string;
     /** Written by `meticulous try login`; absent until the user has logged in. */
     authState: string;
   };
@@ -79,7 +86,7 @@ export const readTryContext = (repoRoot: string): TryContextJson | null => {
     return JSON.parse(readFileSync(path, "utf8")) as TryContextJson;
   } catch {
     throw new CliUserError(
-      `${path} is not valid JSON. Delete it and re-run \`meticulous try\`.`,
+      `${path} is not valid JSON. Delete it and re-run \`${CLI_COMMAND} try\`.`,
     );
   }
 };

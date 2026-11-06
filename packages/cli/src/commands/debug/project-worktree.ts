@@ -1,10 +1,8 @@
 import { execFileSync } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
-import {
-  isValidGitCommitSha,
-  type DebugContext,
-} from "@alwaysmeticulous/debug-workspace";
+import type { GitCommitSha } from "@alwaysmeticulous/common";
+import type { DebugContext } from "@alwaysmeticulous/debug-workspace";
 import chalk from "chalk";
 
 interface CreateProjectWorktreeOptions {
@@ -37,15 +35,6 @@ export const createProjectWorktree = (
     return undefined;
   }
 
-  if (!isValidGitCommitSha(commitSha)) {
-    console.log(
-      chalk.gray(
-        "  Commit SHA is not a valid git object id -- skipping project repo worktree.",
-      ),
-    );
-    return undefined;
-  }
-
   const projectRepoDir = join(workspaceDir, "project-repo");
 
   try {
@@ -62,7 +51,14 @@ export const createProjectWorktree = (
     );
     execFileSync(
       "git",
-      ["worktree", "add", "--detach", projectRepoDir, commitSha],
+      [
+        "worktree",
+        "add",
+        "--detach",
+        "--end-of-options",
+        projectRepoDir,
+        commitSha,
+      ],
       { cwd: gitRoot, stdio: "pipe" },
     );
     console.log(chalk.green(`  Project repo worktree created.`));
@@ -115,8 +111,8 @@ const detectGitRoot = (): string | undefined => {
   }
 };
 
-const fetchSha = (repoPath: string, sha: string): void => {
-  execFileSync("git", ["fetch", "origin", sha], {
+const fetchSha = (repoPath: string, sha: GitCommitSha): void => {
+  execFileSync("git", ["fetch", "--end-of-options", "origin", sha], {
     cwd: repoPath,
     stdio: "pipe",
   });

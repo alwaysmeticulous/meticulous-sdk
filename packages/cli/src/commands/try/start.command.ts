@@ -1,4 +1,5 @@
 import { join } from "path";
+import { isInteractiveContext } from "@alwaysmeticulous/client";
 import chalk from "chalk";
 import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
@@ -6,6 +7,7 @@ import { CliUserError } from "../../utils/cli-user-error";
 import { repoRootFrom } from "./shared/helper-options";
 import { writeTryContext } from "./shared/try-context";
 import { buildTryContext } from "./start/build-try-context";
+import { confirmLaunch } from "./start/confirm-launch";
 import { defaultTryPrompt } from "./start/kickoff-prompt";
 import {
   assertClaudeInstalled,
@@ -16,6 +18,8 @@ import { materializeTryWorkspace } from "./start/materialize-try-workspace";
 import { deriveProjectName, detectPackageManager } from "./start/repo-facts";
 import { resolveTryApp } from "./start/resolve-try-app";
 import { selfOnboardProject } from "./start/self-onboard-project";
+import { defaultBuildSlots } from "./slots/default-build-slots";
+import { CLI_COMMAND } from "./shared/cli-command";
 
 const MIN_PRS = 5;
 const MAX_PRS = 10;
@@ -28,6 +32,8 @@ interface StartOptions {
   prompt: string | undefined;
   headless: boolean;
   printOnly: boolean;
+  buildSlots: number | undefined;
+  lowPriority: boolean;
 }
 
 const handler = async (options: StartOptions): Promise<void> => {
@@ -53,6 +59,7 @@ const handler = async (options: StartOptions): Promise<void> => {
     apps,
     packageManager,
     prCount: options.prs,
+    buildSlots: options.buildSlots ?? defaultBuildSlots(),
   });
   writeTryContext(repoRoot, context);
 
@@ -72,7 +79,14 @@ const handler = async (options: StartOptions): Promise<void> => {
       projectRoot: repoRoot,
       model: options.model,
       prompt,
+      lowPriority: options.lowPriority,
     });
+    return;
+  }
+  if (!options.headless && isInteractiveContext() && !(await confirmLaunch())) {
+    console.log(
+      `Not started. Re-run \`${CLI_COMMAND} try\` when you're ready: it reuses this trial project.`,
+    );
     return;
   }
   const exitCode = launchTryAgent({
@@ -82,6 +96,7 @@ const handler = async (options: StartOptions): Promise<void> => {
     prompt,
     headless: options.headless,
     apiToken: onboarded.apiToken,
+    lowPriority: options.lowPriority,
   });
   printNextSteps(context.projectUrl);
   if (exitCode !== 0) {
@@ -123,12 +138,14 @@ const printNextSteps = (projectUrl: string): void => {
   console.log("");
   console.log(chalk.bold("Next steps"));
   console.log(
-    `  Results: ${chalk.cyan(projectUrl)} (or \`meticulous try results\`)`,
+    `  Results: ${chalk.cyan(projectUrl)} (or \`${CLI_COMMAND} try results\`)`,
   );
   console.log(
-    `  Set Meticulous up on every PR in CI: ${chalk.cyan("meticulous onboard")}`,
+    `  Set Meticulous up on every PR in CI: ${chalk.cyan(`${CLI_COMMAND} onboard`)}`,
   );
-  console.log("  Remove the backtest worktrees: `meticulous try cleanup`");
+  console.log(
+    `  When you're done, remove the trial workspace (.meticulous-try/): \`${CLI_COMMAND} try cleanup\``,
+  );
   console.log("");
 };
 
@@ -178,6 +195,23 @@ export const tryStartCommand: CommandModule<unknown, StartOptions> = {
       default: false,
       description:
         "Only create the project and workspace, and print how to start Claude Code",
+    },
+    buildSlots: {
+      number: true,
+      description:
+        "How many installs and builds may run at once (default: about one per 4 cores and 4 GiB of RAM)",
+      coerce: (value: number | undefined): number | undefined => {
+        if (value != null && (!Number.isInteger(value) || value < 1)) {
+          throw new CliUserError("--buildSlots must be a positive integer.");
+        }
+        return value;
+      },
+    },
+    lowPriority: {
+      boolean: true,
+      default: true,
+      description:
+        "Run Claude Code, and the builds and browsers it starts, at low CPU priority so the machine stays responsive (--no-lowPriority to turn off)",
     },
   },
   handler: wrapHandler(handler),

@@ -1,3 +1,4 @@
+import type { GitCommitSha } from "@alwaysmeticulous/common";
 import type { ScreenshotIdentifier } from "./screenshot-identifier";
 
 export interface TimelineEntry {
@@ -32,11 +33,20 @@ export interface DebugContext {
   sessionIds: string[];
   projectId: string | undefined;
   orgAndProject: string;
-  commitSha: string | undefined;
-  baseCommitSha: string | undefined;
+  commitSha: GitCommitSha | undefined;
+  baseCommitSha: GitCommitSha | undefined;
   testRunStatus: string | undefined;
   screenshot: string | undefined;
   meticulousSha: string | undefined;
   baseMeticulousSha: string | undefined;
   executionSha: string | undefined;
 }
+
+/** A `DebugContext` whose commit SHAs are still raw API values. */
+export type UnvalidatedDebugContext = Omit<
+  DebugContext,
+  "commitSha" | "baseCommitSha"
+> & {
+  commitSha: string | undefined;
+  baseCommitSha: string | undefined;
+};

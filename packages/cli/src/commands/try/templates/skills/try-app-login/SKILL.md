@@ -102,5 +102,5 @@ on a login wall.
   the first `--startUrl`'s origin, so make that the app).
 - Recorders: pass the storage-state path (A/C) or the credentials file path (B) to every
   `session-recorder`; they add `--storageState` to `meticulous record session`.
-- Tell the user in one line which mechanism you used. `meticulous try cleanup` deletes the saved
+- Tell the user in one line which mechanism you used. `meticulous try cleanup --keepWorkspace` deletes the saved
   login state at the end; also delete `auth/credentials.env` if you created one.
