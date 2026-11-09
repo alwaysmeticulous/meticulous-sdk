@@ -8,6 +8,8 @@ import { waitForSessionsCommand } from "./sessions/wait-for-sessions.command";
 import { slotCommand } from "./slots/slot.command";
 import { tryStartCommand } from "./start.command";
 import { cleanupCommand } from "./worktree/cleanup.command";
+import { prewarmCommand } from "./worktree/prewarm.command";
+import { snapshotBuildCommand } from "./worktree/snapshot-build.command";
 import { worktreeCommand } from "./worktree/worktree.command";
 
 export const tryCommand: CommandModule = {
@@ -20,6 +22,8 @@ export const tryCommand: CommandModule = {
       .command(candidatePrsCommand)
       .command(loginCommand)
       .command(worktreeCommand)
+      .command(prewarmCommand)
+      .command(snapshotBuildCommand)
       .command(cleanupCommand)
       .command(recipeCommand)
       .command(replayFixCommand)

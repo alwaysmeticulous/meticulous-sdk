@@ -1,8 +1,9 @@
 import { readFileSync } from "fs";
-import { resolve } from "path";
+import { join, resolve } from "path";
 import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../../command-utils/sentry.utils";
 import { CliUserError } from "../../../utils/cli-user-error";
+import { mkdirSafeSync } from "../../onboard/safe-repo-fs";
 import {
   HELPER_OPTIONS,
   syncHandler,
@@ -34,9 +35,16 @@ const saveHandler = (options: SaveOptions): void => {
     TRY_PATHS.recipe,
     validation.recipe,
   );
-  printResult(options.json, { path, recipe: validation.recipe }, () => [
+  const recipe = withResolvedCacheEnv(repoRoot, validation.recipe);
+  printResult(options.json, { path, recipe }, () => [
     `Saved build recipe to ${path}`,
   ]);
+};
+
+/** A recipe as printed: `cacheEnv` as stored, plus the paths to actually export. */
+type ShownRecipe = BuildRecipe & {
+  /** Each cacheEnv entry resolved to an absolute, already-created directory. */
+  cacheEnvResolved: Record<string, string>;
 };
 
 interface ShowOptions {
@@ -45,17 +53,36 @@ interface ShowOptions {
 }
 
 const showHandler = (options: ShowOptions): void => {
-  const recipe = readWorkspaceJson<BuildRecipe>(
-    repoRootFrom(options.cwd),
-    TRY_PATHS.recipe,
-  );
-  if (!recipe) {
+  const repoRoot = repoRootFrom(options.cwd);
+  const stored = readWorkspaceJson<BuildRecipe>(repoRoot, TRY_PATHS.recipe);
+  if (!stored) {
     throw new CliUserError(
       `No build recipe saved yet. Save one with \`${CLI_COMMAND} try recipe save --file <json>\`.`,
     );
   }
+  const recipe = withResolvedCacheEnv(repoRoot, stored);
   printResult(options.json, recipe, () => [JSON.stringify(recipe, null, 2)]);
 };
+
+/**
+ * Stored cacheEnv paths are relative to the shared cache dir; what callers
+ * export must be absolute. Both outputs add them as `cacheEnvResolved` (and
+ * create the dirs, so a build can use them straight away), keeping `cacheEnv`
+ * itself as stored so the printed recipe round-trips through `recipe save`.
+ */
+const withResolvedCacheEnv = (
+  repoRoot: string,
+  recipe: BuildRecipe,
+): ShownRecipe => ({
+  ...recipe,
+  cacheEnv: recipe.cacheEnv ?? {},
+  cacheEnvResolved: Object.fromEntries(
+    Object.entries(recipe.cacheEnv ?? {}).map(([name, relativePath]) => [
+      name,
+      mkdirSafeSync(repoRoot, join(TRY_PATHS.cache, relativePath)),
+    ]),
+  ),
+});
 
 const parseJsonFile = (file: string): unknown => {
   try {

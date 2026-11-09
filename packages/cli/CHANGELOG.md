@@ -1,5 +1,17 @@
 # @alwaysmeticulous/cli
 
+## 3.9.0
+
+### Minor Changes
+
+- [#17286](https://github.com/alwaysmeticulous/meticulous/pull/17286) [`a767155`](https://github.com/alwaysmeticulous/meticulous/commit/a767155e0470d57bed9c82fd9bfe3a24c26eb383) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Speed up `meticulous try` on large codebases. Build slots now lease a small pool of warm worktrees (`slot-<n>`) instead of each backtested PR creating its own, and `slot acquire --sha` leases the free worktree closest in history to the commit about to be built, so checkouts switch in place and rebuilds stay incremental. A brand-new worktree seeds its `node_modules` by copying them from an existing checkout whose install matches the commit (copy-on-write where the filesystem supports it), so the install is skipped outright. The new `meticulous try snapshot-build` command moves a build's output out of the worktree (an instant rename) so uploads no longer hold a build slot. Build recipes gain `cacheEnv` for sharing content-hash-keyed build caches (e.g. Turborepo, Nx) across every build, and the agent playbook now insists on per-package scoped build commands in monorepos. Worktree checkouts run with one `checkout.workers` per core, and the new `meticulous try prewarm` command creates every missing slot worktree concurrently ahead of the backtests, so checkout time is paid once, in parallel, during otherwise idle phases.
+
+### Patch Changes
+
+- [#17179](https://github.com/alwaysmeticulous/meticulous/pull/17179) [`b94a43e`](https://github.com/alwaysmeticulous/meticulous/commit/b94a43ee58672f8f5f25623ad875622693830d6a) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - The git diff the CLI computes for a custom test-run trigger (and for `local relevant-sessions`) now has a fixed format, whatever the user's git config: `a/`/`b/` path prefixes even with `diff.noprefix` or `diff.mnemonicPrefix`, paths from the repo root even with `diff.relative`, unquoted non-ASCII paths, no colour, external diff or textconv driver, submodule bumps as file sections even with `diff.submodule`, and renames paired however many files changed. It is no longer trimmed, and no longer fails past 1 MiB. `--gitDiffOutput` and `--gitDiffFile` now say how to compute a diff the same way.
+
+- [#17239](https://github.com/alwaysmeticulous/meticulous/pull/17239) [`22ef511`](https://github.com/alwaysmeticulous/meticulous/commit/22ef51159642abf78c955e8fa57adadfa7792e77) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous try` now asks on a re-run whether to continue with the existing `.meticulous-try/` workspace; answering no removes it and starts from scratch in a brand-new trial project.
+
 ## 3.8.0
 
 ### Patch Changes

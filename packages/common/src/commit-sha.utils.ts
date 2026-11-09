@@ -213,15 +213,77 @@ export const getUntrackedFiles = async (options?: {
  * Returns the raw `git diff` output between baseSha and either a specific commit or the working tree.
  * - If headSha is provided: `git diff baseSha headSha`
  * - If headSha is omitted: `git diff baseSha` (compares to working tree)
+ *
+ * Its format is pinned by {@link getGitDiffArgs}, and the output is returned
+ * as git wrote it, untrimmed.
  */
 export const getGitDiff = async (
   baseSha: string,
   headSha: string | undefined,
   options?: { cwd?: string },
-): Promise<string> => {
-  const args = headSha ? ["diff", baseSha, headSha] : ["diff", baseSha];
-  return execFilePromise("git", args, options?.cwd);
-};
+): Promise<string> =>
+  execGitDiff(
+    getGitDiffArgs(headSha ? [baseSha, headSha] : [baseSha]),
+    options?.cwd,
+  );
+
+/**
+ * The arguments for a `git diff` whose format the user's git config can't
+ * change, as Meticulous parses it: `a/` and `b/` path prefixes (whatever
+ * `diff.noprefix` or `diff.mnemonicPrefix` say), unquoted non-ASCII paths,
+ * paths from the repo root even when run in a subdirectory (`diff.relative`),
+ * no colour, external diff or textconv driver, submodule bumps as file
+ * sections rather than commit logs (`diff.submodule`), and renames paired
+ * however many files changed (`diff.renameLimit`). Matches how Meticulous diffs
+ * commits on its side.
+ */
+export const getGitDiffArgs = (
+  revisions: string[],
+  extraDiffArgs: string[] = [],
+): string[] => [
+  "-c",
+  "core.quotePath=false",
+  "-c",
+  "diff.renameLimit=0",
+  "-c",
+  "diff.relative=false",
+  "diff",
+  "--no-color",
+  "--no-ext-diff",
+  "--no-textconv",
+  "--submodule=short",
+  "--src-prefix=a/",
+  "--dst-prefix=b/",
+  "-M",
+  ...extraDiffArgs,
+  ...revisions,
+];
+
+/**
+ * The `git diff` command to suggest to someone passing a diff themselves:
+ * {@link getGitDiffArgs} from `<baseSha>` to `<head>`.
+ */
+export const RECOMMENDED_GIT_DIFF_COMMAND = `git ${getGitDiffArgs(["<baseSha>", "<head>"]).join(" ")}`;
+
+/** Well past the largest diff Meticulous accepts, rather than `execFile`'s 1 MiB default. */
+const GIT_DIFF_MAX_BUFFER_BYTES = 256 * 1024 * 1024;
+
+/** Runs `git` with `args`, returning its output as written. */
+export const execGitDiff = (args: string[], cwd?: string): Promise<string> =>
+  new Promise((resolve, reject) => {
+    execFile(
+      "git",
+      args,
+      { encoding: "utf-8", cwd, maxBuffer: GIT_DIFF_MAX_BUFFER_BYTES },
+      (error, output) => {
+        if (error) {
+          reject(error instanceof Error ? error : new Error(String(error)));
+          return;
+        }
+        resolve(output);
+      },
+    );
+  });
 
 /**
  * Captures the current index + working tree as a real (unreferenced) commit via

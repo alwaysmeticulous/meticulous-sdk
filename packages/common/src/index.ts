@@ -33,6 +33,9 @@ export {
   hasUncommittedChanges,
   getUntrackedFiles,
   getGitDiff,
+  getGitDiffArgs,
+  execGitDiff,
+  RECOMMENDED_GIT_DIFF_COMMAND,
   getStashCreateSha,
 } from "./commit-sha.utils";
 export {

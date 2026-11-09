@@ -10,23 +10,69 @@ import {
 } from "@alwaysmeticulous/client";
 import { CliUserError } from "../../../utils/cli-user-error";
 import { CLI_COMMAND } from "../shared/cli-command";
+import { MAX_PROJECT_NAME_LENGTH } from "./repo-facts";
+
+/**
+ * Self-onboarded organizations are capped at 25 projects server-side, so after
+ * this many distinct names either one was free (and got created) or the
+ * backend's project-limit-reached error already surfaced.
+ */
+const MAX_NEW_PROJECT_NAME_ATTEMPTS = 26;
 
 /**
  * Signs the user in (browser OAuth, onboarding variant of the login page) and
  * creates — or, on a re-run, returns — their trial organization and project.
- * Always uses the OAuth login, never METICULOUS_API_TOKEN: self-onboarding is
- * an account-level action and a project token may belong to another project.
+ * With `forceNewProject` a brand-new project is created instead of reusing one
+ * with the same name. Always uses the OAuth login, never METICULOUS_API_TOKEN:
+ * self-onboarding is an account-level action and a project token may belong to
+ * another project.
  */
 export const selfOnboardProject = async (
   projectName: string,
+  options: { forceNewProject?: boolean } = {},
 ): Promise<SelfOnboardResponse> => {
   const accessToken = await ensureOAuthAccessToken();
   const client = createClient({ apiToken: accessToken });
   try {
-    return await selfOnboard(client, { projectName });
+    return options.forceNewProject
+      ? await selfOnboardNewProject(projectName, (name) =>
+          selfOnboard(client, { projectName: name }),
+        )
+      : await selfOnboard(client, { projectName });
   } catch (error) {
     throw error instanceof SelfOnboardError ? toCliUserError(error) : error;
   }
+};
+
+/**
+ * The self-onboard endpoint returns the existing project when the name is
+ * already taken, so to force a new one walk `name`, `name-2`, `name-3`, …
+ * until the response says it was created.
+ */
+export const selfOnboardNewProject = async (
+  baseName: string,
+  onboard: (projectName: string) => Promise<SelfOnboardResponse>,
+): Promise<SelfOnboardResponse> => {
+  for (let attempt = 1; attempt <= MAX_NEW_PROJECT_NAME_ATTEMPTS; attempt++) {
+    const response = await onboard(nthProjectName(baseName, attempt));
+    if (response.created) {
+      return response;
+    }
+  }
+  throw new CliUserError(
+    "Could not create a new trial project: every candidate project name is already taken. " +
+      "Contact support@meticulous.ai.",
+  );
+};
+
+export const nthProjectName = (baseName: string, attempt: number): string => {
+  if (attempt === 1) {
+    return baseName;
+  }
+  const suffix = `-${attempt}`;
+  // Trim the base rather than the suffix, so every attempt stays distinct
+  // after the backend truncates to its own name-length cap.
+  return `${baseName.slice(0, MAX_PROJECT_NAME_LENGTH - suffix.length)}${suffix}`;
 };
 
 const ensureOAuthAccessToken = async (): Promise<string> => {

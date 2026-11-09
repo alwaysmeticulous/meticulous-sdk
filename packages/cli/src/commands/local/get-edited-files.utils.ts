@@ -1,23 +1,9 @@
-import { execFile } from "child_process";
 import type { EditedFileWithLines } from "@alwaysmeticulous/client";
+import { execGitDiff, getGitDiffArgs } from "@alwaysmeticulous/common";
 import parseDiff from "parse-diff";
 
-export const getGitDiff = (baseSha: string, cwd?: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    execFile(
-      "git",
-      ["diff", baseSha, "--unified=0"],
-      { encoding: "utf-8", cwd },
-      (error, output) => {
-        if (error) {
-          reject(error instanceof Error ? error : new Error(String(error)));
-          return;
-        }
-        resolve(output);
-      },
-    );
-  });
-};
+export const getGitDiff = (baseSha: string, cwd?: string): Promise<string> =>
+  execGitDiff(getGitDiffArgs([baseSha], ["--unified=0"]), cwd);
 
 /**
  * Parse a unified git diff into old-file line ranges per file.

@@ -666,7 +666,7 @@ npx @alwaysmeticulous/cli ci run-with-uploaded-asset-chunks \\
 #### \`--gitDiffOutput\`
 
 **Type**: String
-**Description**: Raw git diff output between the base and head commits. Requires \`--baseSha\`. Cannot be combined with \`--repoDirectory\`.
+**Description**: Raw git diff output between the base and head commits. Requires \`--baseSha\`. Cannot be combined with \`--repoDirectory\`. Compute it as the CLI does when it infers the diff, so your git config can't change its format: \`git -c core.quotePath=false -c diff.renameLimit=0 -c diff.relative=false diff --no-color --no-ext-diff --no-textconv --submodule=short --src-prefix=a/ --dst-prefix=b/ -M <baseSha> <head>\`.
 
 ---
 

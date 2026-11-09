@@ -66,6 +66,10 @@ export const isPrAuthorRelevance = (
  *   no diff/result, so it likely failed there (NotRelevant).
  * - `new_relative_to_coverage_source`: absent from the coverage source
  *   entirely, so relevance is unknown and we run it (IsRelevant).
+ * - `unknown_in_tiered_coverage`: the coverage source's tiered coverage lists
+ *   the session but holds no usable coverage of it (never measured, or its
+ *   measurement could not be moved to the source's commit), so relevance is
+ *   unknown and we run it (IsRelevant).
  * - `flag_override_source_relevance`: a `_ff` session in the golden set with
  *   no replay of its own in the coverage source took the coverage-derived
  *   relevance of the session it was minted from.
@@ -102,6 +106,7 @@ export type SessionRelevanceReason =
   | "no_coverage_or_not_chosen"
   | "failed_in_coverage_source"
   | "new_relative_to_coverage_source"
+  | "unknown_in_tiered_coverage"
   | "flag_override_source_relevance"
   | "previous_pr_run_relevance"
   | "refinement_blast_radius_union"

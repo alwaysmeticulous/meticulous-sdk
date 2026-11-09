@@ -1,5 +1,13 @@
 # @alwaysmeticulous/common
 
+## 3.9.0
+
+### Patch Changes
+
+- [#17269](https://github.com/alwaysmeticulous/meticulous/pull/17269) [`edc03ae`](https://github.com/alwaysmeticulous/meticulous/commit/edc03ae79409eb4e76d28317c867bed0a60b8511) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `executeWithRetry` takes an optional `signal`: once it aborts, no further attempt starts and a pending backoff ends at once instead of holding the process for up to the rest of the wait. The client passes a request's abort signal through, so a request aborted while waiting to retry rejects immediately.
+
+- [#17179](https://github.com/alwaysmeticulous/meticulous/pull/17179) [`b94a43e`](https://github.com/alwaysmeticulous/meticulous/commit/b94a43ee58672f8f5f25623ad875622693830d6a) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - The git diff the CLI computes for a custom test-run trigger (and for `local relevant-sessions`) now has a fixed format, whatever the user's git config: `a/`/`b/` path prefixes even with `diff.noprefix` or `diff.mnemonicPrefix`, paths from the repo root even with `diff.relative`, unquoted non-ASCII paths, no colour, external diff or textconv driver, submodule bumps as file sections even with `diff.submodule`, and renames paired however many files changed. It is no longer trimmed, and no longer fails past 1 MiB. `--gitDiffOutput` and `--gitDiffFile` now say how to compute a diff the same way.
+
 ## 3.8.0
 
 ### Patch Changes

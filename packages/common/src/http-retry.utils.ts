@@ -10,6 +10,8 @@ export interface RetryOptions {
   shouldRetry?: (error: any) => boolean;
   logger?: log.Logger;
   operationDescription?: string;
+  /** Once aborted, no further attempt starts and a pending backoff ends at once. */
+  signal?: AbortSignal | undefined;
 }
 
 const DEFAULT_MAX_RETRIES = 3;
@@ -150,6 +152,7 @@ export const executeWithRetry = async <T>(
     shouldRetry = defaultShouldRetry,
     logger,
     operationDescription,
+    signal,
   } = options;
 
   let lastError: any;
@@ -160,7 +163,11 @@ export const executeWithRetry = async <T>(
     } catch (error) {
       lastError = error;
 
-      if (attempt < maxRetries && shouldRetry(error)) {
+      if (
+        attempt < maxRetries &&
+        signal?.aborted !== true &&
+        shouldRetry(error)
+      ) {
         const delay = computeRetryDelayMs(attempt, {
           retryDelay,
           maxRetryDelay,
@@ -173,7 +180,9 @@ export const executeWithRetry = async <T>(
             } of ${maxRetries + 1}): ${operationDescription ? `${operationDescription}: ` : ""}${describeRetriedError(error)}`,
           );
         }
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        if (!(await sleepUnlessAborted(delay, signal))) {
+          break;
+        }
       } else {
         break;
       }
@@ -182,6 +191,30 @@ export const executeWithRetry = async <T>(
 
   throw lastError;
 };
+
+/**
+ * Resolves `true` after `delayMs`, or `false` as soon as `signal` aborts. The
+ * timer is cleared on abort, so an abandoned backoff can't hold the process.
+ */
+const sleepUnlessAborted = (
+  delayMs: number,
+  signal: AbortSignal | undefined,
+): Promise<boolean> =>
+  new Promise((resolve) => {
+    if (signal?.aborted === true) {
+      resolve(false);
+      return;
+    }
+    const onAbort = (): void => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve(true);
+    }, delayMs);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 
 /**
  * The retried error only escapes if every attempt fails, so without this the

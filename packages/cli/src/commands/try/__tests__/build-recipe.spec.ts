@@ -21,9 +21,47 @@ describe("validateRecipe", () => {
         ...STATIC_RECIPE,
         containerPort: null,
         healthCheckPath: null,
+        cacheEnv: {},
         notes: "",
       },
     });
+  });
+
+  it("accepts cacheEnv entries with relative cache paths", () => {
+    const result = validateRecipe({
+      ...STATIC_RECIPE,
+      cacheEnv: { TURBO_CACHE_DIR: "turbo", NX_CACHE_DIRECTORY: "nx/cache" },
+    });
+    expect(result.ok && result.recipe.cacheEnv).toEqual({
+      TURBO_CACHE_DIR: "turbo",
+      NX_CACHE_DIRECTORY: "nx/cache",
+    });
+  });
+
+  it("round-trips a shown recipe: cacheEnvResolved is ignored and cacheEnv stays relative", () => {
+    const result = validateRecipe({
+      ...STATIC_RECIPE,
+      cacheEnv: { TURBO_CACHE_DIR: "turbo" },
+      cacheEnvResolved: {
+        TURBO_CACHE_DIR: "/repo/.meticulous-try/cache/turbo",
+      },
+    });
+    expect(result.ok && result.recipe.cacheEnv).toEqual({
+      TURBO_CACHE_DIR: "turbo",
+    });
+    expect(result.ok && result.recipe).not.toHaveProperty("cacheEnvResolved");
+  });
+
+  it.each([
+    [{ TURBO_CACHE_DIR: "/var/cache" }],
+    [{ TURBO_CACHE_DIR: "../escape" }],
+    [{ TURBO_CACHE_DIR: "a/../../b" }],
+    [{ "not a name": "turbo" }],
+    [{ TURBO_CACHE_DIR: 7 }],
+  ])("rejects unsafe cacheEnv %j", (cacheEnv) => {
+    const result = validateRecipe({ ...STATIC_RECIPE, cacheEnv });
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.errors[0]).toMatch(/cacheEnv/);
   });
 
   it("accepts a container recipe without an output dir", () => {

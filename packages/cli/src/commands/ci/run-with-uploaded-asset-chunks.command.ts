@@ -7,7 +7,11 @@ import {
   IN_PROGRESS_TEST_RUN_STATUS,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
-import { initLogger, logNotice } from "@alwaysmeticulous/common";
+import {
+  initLogger,
+  logNotice,
+  RECOMMENDED_GIT_DIFF_COMMAND,
+} from "@alwaysmeticulous/common";
 import {
   carryCompletedUpload,
   describeGitHubRateLimitRetry,
@@ -430,7 +434,8 @@ export const ciRunWithUploadedAssetChunksCommand: CommandModule<
     gitDiffOutput: {
       string: true,
       description:
-        "Raw git diff output between the base and head commits. Requires --baseSha. Cannot be combined with --repoDirectory.",
+        "Raw git diff output between the base and head commits. Requires --baseSha. Cannot be combined with --repoDirectory. " +
+        `Compute it as the CLI does when it infers the diff, so your git config can't change its format: \`${RECOMMENDED_GIT_DIFF_COMMAND}\`.`,
     },
     repoDirectory: {
       string: true,

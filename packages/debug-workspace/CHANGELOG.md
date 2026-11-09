@@ -1,5 +1,14 @@
 # @alwaysmeticulous/debug-workspace
 
+## 3.9.0
+
+### Patch Changes
+
+- Updated dependencies [[`edc03ae`](https://github.com/alwaysmeticulous/meticulous/commit/edc03ae79409eb4e76d28317c867bed0a60b8511), [`b94a43e`](https://github.com/alwaysmeticulous/meticulous/commit/b94a43ee58672f8f5f25623ad875622693830d6a), [`edc03ae`](https://github.com/alwaysmeticulous/meticulous/commit/edc03ae79409eb4e76d28317c867bed0a60b8511)]:
+  - @alwaysmeticulous/common@3.9.0
+  - @alwaysmeticulous/client@3.9.0
+  - @alwaysmeticulous/downloading-helpers@3.9.0
+
 ## 3.8.0
 
 ### Patch Changes

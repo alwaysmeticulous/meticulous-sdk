@@ -1,6 +1,15 @@
-import { readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "fs";
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "fs";
 import { join } from "path";
 import { setTimeout as sleep } from "timers/promises";
+import { mkdirSafeSync } from "../../onboard/safe-repo-fs";
+import { TRY_PATHS } from "../shared/try-paths";
 
 /**
  * A fixed number of build slots shared by every backtester through lock files,
@@ -39,6 +48,9 @@ interface Waiter {
 const POLL_MS = 1_000;
 const WAITER_STALE_MS = 30_000;
 
+/** After this long a slot that was never released is handed to the next waiter. */
+export const DEFAULT_LEASE_SECONDS = 45 * 60;
+
 export const acquireBuildSlot = async (options: {
   dirs: SlotDirs;
   slotCount: number;
@@ -46,6 +58,12 @@ export const acquireBuildSlot = async (options: {
   rank: number;
   waitSeconds: number;
   leaseSeconds: number;
+  /**
+   * Preference order over the free slots (most preferred first), e.g. the slot
+   * whose warm worktree is closest to the commit about to be built. Slots are
+   * claimed in this order; a racing waiter falls through to the next one.
+   */
+  orderFreeSlots?: ((freeSlots: number[]) => number[]) | undefined;
 }): Promise<AcquireResult> => {
   const startedAt = Date.now();
   for (;;) {
@@ -66,6 +84,51 @@ export const acquireBuildSlot = async (options: {
   }
 };
 
+export const slotDirs = (repoRoot: string): SlotDirs => ({
+  held: mkdirSafeSync(repoRoot, `${TRY_PATHS.slots}/held`),
+  waiting: mkdirSafeSync(repoRoot, `${TRY_PATHS.slots}/waiting`),
+});
+
+/**
+ * Claims one specific slot without queueing, for work bound to that slot's own
+ * worktree (prewarming it). Returns false when the slot is validly held.
+ */
+export const tryClaimSlot = (
+  dirs: SlotDirs,
+  slot: number,
+  owner: string,
+  leaseSeconds: number,
+): boolean => {
+  const path = join(dirs.held, `${slot}.json`);
+  if (existsSync(path)) {
+    const holder = readJson<Holder>(path) ?? unreadableHolder(path);
+    if (Date.now() - holder.acquiredAt < leaseSeconds * 1000) {
+      return false;
+    }
+    rmSync(path, { force: true });
+  }
+  const holder: Holder = { owner, rank: 0, acquiredAt: Date.now() };
+  return createExclusive(path, holder);
+};
+
+/**
+ * Slots currently held (lease not yet expired), without mutating any state.
+ * Used to rule out a slot's worktree as a node_modules seed donor while its
+ * holder may be mid-install.
+ */
+export const listHeldSlots = (
+  heldDir: string,
+  leaseSeconds: number,
+): number[] => {
+  if (!existsSync(heldDir)) {
+    return [];
+  }
+  const now = Date.now();
+  return readHolders(heldDir)
+    .filter((entry) => now - entry.holder.acquiredAt < leaseSeconds * 1000)
+    .map((entry) => entry.slot);
+};
+
 export const releaseBuildSlot = (dirs: SlotDirs, owner: string): boolean => {
   rmSync(waiterPath(dirs, owner), { force: true });
   const held = readHolders(dirs.held).filter(
@@ -83,6 +146,7 @@ const tryAcquire = (options: {
   owner: string;
   rank: number;
   leaseSeconds: number;
+  orderFreeSlots?: ((freeSlots: number[]) => number[]) | undefined;
 }): { slot: number | null; ahead: number } => {
   const { dirs, owner } = options;
   const now = Date.now();
@@ -113,7 +177,7 @@ const tryAcquire = (options: {
     return { slot: null, ahead };
   }
   const holder: Holder = { owner, rank: options.rank, acquiredAt: now };
-  for (const slot of freeSlots) {
+  for (const slot of options.orderFreeSlots?.(freeSlots) ?? freeSlots) {
     if (createExclusive(join(dirs.held, `${slot}.json`), holder)) {
       rmSync(waiterPath(dirs, owner), { force: true });
       return { slot, ahead: 0 };

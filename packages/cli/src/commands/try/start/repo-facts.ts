@@ -3,7 +3,7 @@ import { basename, join } from "path";
 import { detectRepoUrl } from "../../onboard/git-repo-info";
 import type { PackageManager } from "../shared/try-context";
 
-const MAX_PROJECT_NAME_LENGTH = 100;
+export const MAX_PROJECT_NAME_LENGTH = 100;
 
 /** The repository's name (from the origin remote, else the directory name). */
 export const deriveProjectName = (

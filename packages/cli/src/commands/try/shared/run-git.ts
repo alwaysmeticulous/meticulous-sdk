@@ -1,8 +1,11 @@
-import { execFileSync } from "child_process";
+import { execFile, execFileSync } from "child_process";
 import { normalize, sep } from "path";
+import { promisify } from "util";
 import { CliUserError } from "../../../utils/cli-user-error";
 
 const MAX_GIT_OUTPUT_BYTES = 256 * 1024 * 1024;
+
+const execFileAsync = promisify(execFile);
 
 /** Runs git with literal arguments (never through a shell) and returns stdout. */
 export const runGit = (
@@ -21,6 +24,30 @@ export const runGit = (
 export const tryRunGit = (cwd: string, args: string[]): string | null => {
   try {
     return runGit(cwd, args).trim();
+  } catch {
+    return null;
+  }
+};
+
+/** `runGit` without blocking the event loop, so git calls can run concurrently. */
+export const runGitAsync = async (
+  cwd: string,
+  args: string[],
+): Promise<string> =>
+  (
+    await execFileAsync("git", args, {
+      cwd,
+      encoding: "utf8",
+      maxBuffer: MAX_GIT_OUTPUT_BYTES,
+    })
+  ).stdout;
+
+export const tryRunGitAsync = async (
+  cwd: string,
+  args: string[],
+): Promise<string | null> => {
+  try {
+    return (await runGitAsync(cwd, args)).trim();
   } catch {
     return null;
   }

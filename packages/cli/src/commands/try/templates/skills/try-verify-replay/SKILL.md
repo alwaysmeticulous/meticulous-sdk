@@ -28,15 +28,19 @@ errors, requests that were not stubbed, and replays that ended early. Fix proble
 
 ## 2. Cloud check — the same path the backtests use
 
-1. Build HEAD in its own worktree, from the recipe, inside a build slot (see the `pr-backtester`
-   agent for the slot commands):
+1. Build HEAD from the recipe, inside a build slot and its leased worktree (see the
+   `pr-backtester` agent for the full slot/worktree/snapshot flow):
 
    ```bash
-   meticulous try worktree --name replay-check --sha HEAD --clean <outputDir> --json
-   meticulous try replay-fix apply --worktree replay-check --json   # no-op until a fix exists
+   meticulous try slot acquire --owner replay-check --sha HEAD --json   # leases worktree slot-<n>
+   meticulous try worktree --name <worktree.name> --sha HEAD --clean <outputDir> --json
+   meticulous try replay-fix apply --worktree <worktree.name> --json   # no-op until a fix exists
    ```
 
-   Install, build, and upload it exactly as `pr-backtester` does.
+   Install (only if the worktree output says so), build, snapshot
+   (`meticulous try snapshot-build`), release the slot, and upload from the snapshot exactly as
+   `pr-backtester` does. The worktree you warm up here is the one the backtesters reuse in
+   phase 4.
 
 2. Trigger a baseline run, then a second run of the **same deployment** compared against it:
 
@@ -48,7 +52,14 @@ errors, requests that were not stubbed, and replays that ended early. Fix proble
      --dontWaitForTestRunToComplete --json                                    # run B
    ```
 
-3. When run B has finished (`meticulous agent test-run-diffs --testRunId <runB> --json`; check
+3. While the runs execute in the cloud, warm up the other build slots' worktrees in the
+   background (Bash `run_in_background`) so phase 4 does not pay for checkouts one by one:
+
+   ```bash
+   meticulous try prewarm --json   # creates missing slot worktrees in parallel; safe to re-run
+   ```
+
+4. When run B has finished (`meticulous agent test-run-diffs --testRunId <runB> --json`; check
    `--help` for how it reports a run that is still processing), it should have **no diffs**: the
    code is identical, so every diff is a replay problem. Look at each one
    (`meticulous agent image-files`) to see what differs. Also check run A finished successfully
@@ -72,10 +83,11 @@ Typical causes, and where the fix goes:
   that ignore reduced motion, random ids or ordering in what is rendered, live clocks;
   a third-party script or websocket that fails during replay and shows an error): prefer a
   switch the app already has (a test or CI mode, an env flag). Otherwise make the smallest code
-  change that makes the replay deterministic, in the `replay-check` worktree, and save it:
+  change that makes the replay deterministic, in the worktree you built in (re-acquire the slot
+  if you released it, so no backtester switches it under you), and save it:
 
   ```bash
-  meticulous try replay-fix save --worktree replay-check --paths <changed files> \
+  meticulous try replay-fix save --worktree <worktree.name> --paths <changed files> \
     --message "<what it changes and why replays need it>" --json
   ```
 

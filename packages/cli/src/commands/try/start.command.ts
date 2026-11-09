@@ -5,8 +5,12 @@ import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { CliUserError } from "../../utils/cli-user-error";
 import { repoRootFrom } from "./shared/helper-options";
-import { writeTryContext } from "./shared/try-context";
+import { readTryContext, writeTryContext } from "./shared/try-context";
 import { buildTryContext } from "./start/build-try-context";
+import {
+  confirmContinueWithExistingWorkspace,
+  hasExistingTryWorkspace,
+} from "./start/confirm-existing-workspace";
 import { confirmLaunch } from "./start/confirm-launch";
 import { defaultTryPrompt } from "./start/kickoff-prompt";
 import {
@@ -19,7 +23,12 @@ import { deriveProjectName, detectPackageManager } from "./start/repo-facts";
 import { resolveTryApp } from "./start/resolve-try-app";
 import { selfOnboardProject } from "./start/self-onboard-project";
 import { defaultBuildSlots } from "./slots/default-build-slots";
+import {
+  assertNotInsideTryWorkspace,
+  removeTryWorkspace,
+} from "./worktree/remove-workspace";
 import { CLI_COMMAND } from "./shared/cli-command";
+import { TRY_WORKDIR } from "./shared/try-paths";
 
 const MIN_PRS = 5;
 const MAX_PRS = 10;
@@ -42,9 +51,28 @@ const handler = async (options: StartOptions): Promise<void> => {
     assertClaudeInstalled();
   }
 
+  const startFresh = await shouldDiscardExistingWorkspace(options, repoRoot);
+  if (startFresh) {
+    assertNotInsideTryWorkspace(
+      repoRoot,
+      `Run \`${CLI_COMMAND} try\` from the repository root to start fresh.`,
+    );
+    removeTryWorkspace(repoRoot);
+    console.log(
+      `Removed ${TRY_WORKDIR}/ — starting from scratch in a new trial project.`,
+    );
+  }
+
   const apps = await resolveTryApp({ projectRoot: repoRoot, app: options.app });
   const repoName = deriveProjectName(repoRoot);
-  const onboarded = await selfOnboardProject(repoName);
+  // A continued run must stay in the project the workspace was created for,
+  // which a previous fresh start may have given a suffixed name.
+  const previousProjectName = startFresh
+    ? null
+    : readTryContext(repoRoot)?.project.name;
+  const onboarded = await selfOnboardProject(previousProjectName ?? repoName, {
+    forceNewProject: startFresh,
+  });
   const packageManager = detectPackageManager([
     repoRoot,
     ...(apps.selectedApp ? [join(repoRoot, apps.selectedApp.path)] : []),
@@ -106,6 +134,24 @@ const handler = async (options: StartOptions): Promise<void> => {
       "warn",
     );
   }
+};
+
+/**
+ * A re-run over an existing `.meticulous-try/` workspace asks whether to keep
+ * it; answering no discards it so the run starts from scratch in a new trial
+ * project. Non-interactive runs keep the old behavior of reusing it.
+ */
+const shouldDiscardExistingWorkspace = async (
+  options: StartOptions,
+  repoRoot: string,
+): Promise<boolean> => {
+  if (!hasExistingTryWorkspace(repoRoot)) {
+    return false;
+  }
+  if (options.headless || !isInteractiveContext()) {
+    return false;
+  }
+  return !(await confirmContinueWithExistingWorkspace());
 };
 
 const printSummary = (options: {

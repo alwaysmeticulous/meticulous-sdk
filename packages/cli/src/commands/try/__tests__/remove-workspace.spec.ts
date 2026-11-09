@@ -59,8 +59,8 @@ const deletingCopies = (repo: string): string[] =>
 describe("removeTryWorkspace", () => {
   it("removes the workspace and its worktrees at once, deleting files in the background", async () => {
     const repo = makeRepoWithWorkspace();
-    createTryWorktree({ repoRoot: repo, sha: "HEAD", name: "pr-1-base" });
-    createTryWorktree({ repoRoot: repo, sha: "HEAD", name: "pr-1-head" });
+    await createTryWorktree({ repoRoot: repo, sha: "HEAD", name: "pr-1-base" });
+    await createTryWorktree({ repoRoot: repo, sha: "HEAD", name: "pr-1-head" });
 
     const result = removeTryWorkspace(repo);
 
@@ -82,26 +82,26 @@ describe("removeTryWorkspace", () => {
     );
   });
 
-  it("keeps the renamed copy out of git status even without the workspace's own .gitignore", () => {
+  it("keeps the renamed copy out of git status even without the workspace's own .gitignore", async () => {
     const repo = makeRepoWithWorkspace();
     rmSync(join(repo, ".meticulous-try", ".gitignore"));
     writeFileSync(join(repo, ".gitignore"), ".meticulous-try/\n");
     git(repo, "add", ".gitignore");
     git(repo, "commit", "-q", "-m", "ignore workspace");
-    createTryWorktree({ repoRoot: repo, sha: "HEAD", name: "pr-1-base" });
+    await createTryWorktree({ repoRoot: repo, sha: "HEAD", name: "pr-1-base" });
 
     removeTryWorkspace(repo);
 
     expect(git(repo, "status", "--porcelain")).toBe("");
   });
 
-  it("removes the .gitignore entry try added, leaving git status as it was", () => {
+  it("removes the .gitignore entry try added, leaving git status as it was", async () => {
     const repo = makeRepoWithWorkspace();
     writeFileSync(join(repo, ".gitignore"), "dist\n");
     git(repo, "add", ".gitignore");
     git(repo, "commit", "-q", "-m", "ignore dist");
     ensureGitignoreEntry(repo, TRY_WORKDIR, TRY_GITIGNORE_COMMENT);
-    createTryWorktree({ repoRoot: repo, sha: "HEAD", name: "pr-1-base" });
+    await createTryWorktree({ repoRoot: repo, sha: "HEAD", name: "pr-1-base" });
 
     expect(removeTryWorkspace(repo).removedGitignoreEntry).toBe(true);
     expect(readFileSync(join(repo, ".gitignore"), "utf8")).toBe("dist\n");

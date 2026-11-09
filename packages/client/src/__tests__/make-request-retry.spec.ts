@@ -88,6 +88,44 @@ describe("makeRequest caller abort signal", () => {
     expect(meticulousFetch).toHaveBeenCalledTimes(1);
   });
 
+  it("clears its request timeout when the caller aborts", async () => {
+    vi.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      meticulousFetch.mockImplementation(
+        (_url: unknown, init?: { signal?: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("Aborted", "AbortError")),
+            );
+          }),
+      );
+
+      const promise = request({ signal: controller.signal });
+      const assertion = expect(promise).rejects.toThrow("Aborted");
+      expect(vi.getTimerCount()).toBe(1);
+      controller.abort();
+      await assertion;
+
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears its request timeout when fetch fails", async () => {
+    vi.useFakeTimers();
+    try {
+      meticulousFetch.mockRejectedValue(severedConnection());
+
+      await expect(request({ retry: false })).rejects.toThrow("fetch failed");
+
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does not re-attempt when the caller aborts mid-retry-schedule", async () => {
     const controller = new AbortController();
     meticulousFetch.mockImplementation(
@@ -105,5 +143,29 @@ describe("makeRequest caller abort signal", () => {
     await expect(promise).rejects.toThrow("fetch failed");
 
     expect(meticulousFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("ends a pending backoff at once when the caller aborts during it", async () => {
+    vi.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      meticulousFetch.mockRejectedValue(severedConnection());
+
+      const promise = request({
+        signal: controller.signal,
+        retry: { maxRetries: 3, retryDelay: 10_000 },
+      });
+      const assertion = expect(promise).rejects.toThrow("fetch failed");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(vi.getTimerCount()).toBe(1);
+
+      controller.abort();
+      await assertion;
+
+      expect(vi.getTimerCount()).toBe(0);
+      expect(meticulousFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

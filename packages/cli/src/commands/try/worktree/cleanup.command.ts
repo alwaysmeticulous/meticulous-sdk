@@ -1,8 +1,6 @@
-import { existsSync, realpathSync, rmSync } from "fs";
-import { isAbsolute, relative } from "path";
+import { existsSync, rmSync } from "fs";
 import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../../command-utils/sentry.utils";
-import { CliUserError } from "../../../utils/cli-user-error";
 import { CLI_COMMAND } from "../shared/cli-command";
 import {
   HELPER_OPTIONS,
@@ -11,7 +9,11 @@ import {
   syncHandler,
 } from "../shared/helper-options";
 import { TRY_PATHS, TRY_WORKDIR, absoluteTryPath } from "../shared/try-paths";
-import { removeTryWorkspace } from "./remove-workspace";
+import { emptyTrashInBackground, moveToTrash } from "./discard-dirs";
+import {
+  assertNotInsideTryWorkspace,
+  removeTryWorkspace,
+} from "./remove-workspace";
 import { removeAllTryWorktrees } from "./worktrees";
 
 interface CleanupOptions {
@@ -25,13 +27,25 @@ const cleanupHandler = (options: CleanupOptions): void => {
   if (options.keepWorkspace) {
     const removed = removeAllTryWorktrees(repoRoot);
     const removedLoginState = removeLoginState(repoRoot);
-    printResult(options.json, { removed, removedLoginState }, () => [
-      `Removed ${removed.length} worktree(s)`,
-      ...(removedLoginState ? ["Removed the saved login state"] : []),
-    ]);
+    const removedBuildArtifacts = removeBuildArtifacts(repoRoot);
+    printResult(
+      options.json,
+      { removed, removedLoginState, removedBuildArtifacts },
+      () => [
+        `Removed ${removed.length} worktree(s)`,
+        ...(removedBuildArtifacts.length > 0
+          ? [`Removed ${removedBuildArtifacts.join(" and ")}`]
+          : []),
+        ...(removedLoginState ? ["Removed the saved login state"] : []),
+      ],
+    );
     return;
   }
-  assertNotInsideWorkspace(repoRoot);
+  assertNotInsideTryWorkspace(
+    repoRoot,
+    "Run this from the repository root, " +
+      "or pass --keepWorkspace to only remove the worktrees and saved login state.",
+  );
   const workspace = removeTryWorkspace(repoRoot);
   printResult(
     options.json,
@@ -51,21 +65,23 @@ const cleanupHandler = (options: CleanupOptions): void => {
   );
 };
 
-const assertNotInsideWorkspace = (repoRoot: string): void => {
-  const workspace = absoluteTryPath(repoRoot, TRY_WORKDIR);
-  if (!existsSync(workspace)) {
-    return;
+/** Build output snapshots and the shared build cache: only useful while backtests run. */
+const removeBuildArtifacts = (repoRoot: string): string[] => {
+  const removed: string[] = [];
+  for (const relativePath of [TRY_PATHS.buildOutputs, TRY_PATHS.cache]) {
+    const path = absoluteTryPath(repoRoot, relativePath);
+    if (!existsSync(path)) {
+      continue;
+    }
+    if (!moveToTrash(repoRoot, path)) {
+      rmSync(path, { recursive: true, force: true });
+    }
+    removed.push(relativePath);
   }
-  const relativeCwd = relative(
-    realpathSync(workspace),
-    realpathSync(process.cwd()),
-  );
-  if (!relativeCwd.startsWith("..") && !isAbsolute(relativeCwd)) {
-    throw new CliUserError(
-      `Refusing to delete ${TRY_WORKDIR}/ from inside it. Run this from the repository root, ` +
-        "or pass --keepWorkspace to only remove the worktrees and saved login state.",
-    );
+  if (removed.length > 0) {
+    emptyTrashInBackground(repoRoot);
   }
+  return removed;
 };
 
 const removeLoginState = (repoRoot: string): boolean => {

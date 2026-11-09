@@ -32,12 +32,18 @@ without waiting for approval.
 
 ## 2. The machine is shared
 
-Each backtester builds its base and head in one worktree and runs every install and build in a
-shared build slot (`meticulous try slot`; `buildSlots` in try-context.json, about one per 4
-cores), so launching every PR at once never runs more installs or builds than the machine can
-take. The most promising PRs get slots first. The trial project accepts at most 20 test runs per
-hour (two per PR, fewer when PRs share commits), so never go above 10 PRs or retry a whole PR
-more than once.
+Every install and build runs in a shared build slot (`meticulous try slot`; `buildSlots` in
+try-context.json, about one per 4 cores), so launching every PR at once never runs more installs
+or builds than the machine can take. Each slot leases a warm worktree (`slot-<n>`) whose
+`node_modules` and build caches carry over between backtesters, so there are only as many
+checkouts and installs as slots, not one per PR — the backtesters build in whichever worktree
+their slot hands them. The most promising PRs get slots first. The trial project accepts at most
+20 test runs per hour (two per PR, fewer when PRs share commits), so never go above 10 PRs or
+retry a whole PR more than once.
+
+If phase 3 did not run it, start `meticulous try prewarm --json` in the background now (Bash
+`run_in_background`, do not wait for it): it creates every missing slot worktree in parallel so
+the backtesters find them warm. It is safe alongside them — it skips held slots.
 
 ## 3. Launch one `pr-backtester` per PR — in a single message
 
@@ -63,7 +69,8 @@ every PR should have a head test run and an Agent swarm run (pending is fine). F
 backtester that failed, read its error: retry once yourself if it is a transient upload or
 network failure, or drop the PR and say why if its old commit simply does not build.
 
-Then free disk and processes: `meticulous try cleanup --keepWorkspace` (removes every worktree), and stop any
-leftover containers you started (`docker ps --filter name=try-`).
+Then free disk and processes: `meticulous try cleanup --keepWorkspace` (removes every worktree,
+the build-output snapshots and the shared build cache), and stop any leftover containers you
+started (`docker ps --filter name=try-`).
 
 Done when: every picked PR has a record in `backtests/` with ids or an explained error.

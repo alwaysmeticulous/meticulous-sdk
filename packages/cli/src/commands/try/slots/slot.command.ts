@@ -1,7 +1,6 @@
 import type { CommandModule } from "yargs";
 import { wrapHandler } from "../../../command-utils/sentry.utils";
 import { CliUserError } from "../../../utils/cli-user-error";
-import { mkdirSafeSync } from "../../onboard/safe-repo-fs";
 import {
   HELPER_OPTIONS,
   printResult,
@@ -9,24 +8,26 @@ import {
   syncHandler,
 } from "../shared/helper-options";
 import { readTryContext } from "../shared/try-context";
-import { TRY_PATHS } from "../shared/try-paths";
+import { resolveCommit } from "../worktree/worktrees";
 import {
   acquireBuildSlot,
+  DEFAULT_LEASE_SECONDS,
   releaseBuildSlot,
-  type SlotDirs,
+  slotDirs,
 } from "./build-slots";
 import { defaultBuildSlots } from "./default-build-slots";
+import { orderFreeSlotsByAffinity, slotWorktreeInfo } from "./slot-worktrees";
 
 const OWNER = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 /** Below Claude Code's 10-minute limit on a foreground command. */
 const DEFAULT_WAIT_SECONDS = 540;
-const DEFAULT_LEASE_SECONDS = 45 * 60;
 
 interface AcquireOptions {
   cwd: string | undefined;
   json: boolean;
   owner: string;
   rank: number;
+  sha: string | undefined;
   waitSeconds: number;
   leaseSeconds: number;
 }
@@ -40,6 +41,7 @@ interface ReleaseOptions {
 const acquireHandler = async (options: AcquireOptions): Promise<void> => {
   const repoRoot = repoRootFrom(options.cwd);
   const slotCount = readTryContext(repoRoot)?.buildSlots ?? defaultBuildSlots();
+  const targetSha = options.sha ? resolveCommit(repoRoot, options.sha) : null;
   const result = await acquireBuildSlot({
     dirs: slotDirs(repoRoot),
     slotCount,
@@ -47,10 +49,14 @@ const acquireHandler = async (options: AcquireOptions): Promise<void> => {
     rank: options.rank,
     waitSeconds: options.waitSeconds,
     leaseSeconds: options.leaseSeconds,
+    orderFreeSlots: orderFreeSlotsByAffinity({ repoRoot, targetSha }),
   });
-  printResult(options.json, { ...result, slotCount }, () => [
-    result.acquired
-      ? `Acquired build slot ${result.slot} of ${slotCount} after ${result.waitedSeconds}s`
+  const worktree =
+    result.slot != null ? slotWorktreeInfo(repoRoot, result.slot) : null;
+  printResult(options.json, { ...result, slotCount, worktree }, () => [
+    result.acquired && worktree
+      ? `Acquired build slot ${result.slot} of ${slotCount} after ${result.waitedSeconds}s; ` +
+        `its worktree is ${worktree.name} (${worktree.sha ? `at ${worktree.sha.slice(0, 12)}` : "not created yet"})`
       : `No build slot free after ${result.waitedSeconds}s (${result.ahead} waiting ahead); run this again to keep your place`,
   ]);
 };
@@ -65,11 +71,6 @@ const releaseHandler = (options: ReleaseOptions): void => {
     released ? "Released the build slot" : "No build slot held by that owner",
   ]);
 };
-
-const slotDirs = (repoRoot: string): SlotDirs => ({
-  held: mkdirSafeSync(repoRoot, `${TRY_PATHS.slots}/held`),
-  waiting: mkdirSafeSync(repoRoot, `${TRY_PATHS.slots}/waiting`),
-});
 
 const assertOwner = (owner: string): string => {
   if (!OWNER.test(owner)) {
@@ -89,7 +90,7 @@ const OWNER_OPTION = {
 const slotAcquireCommand: CommandModule<unknown, AcquireOptions> = {
   command: "acquire",
   describe:
-    "Wait for a free build slot (installs and builds share a few, so they never all run at once). Prints acquired: false if none came free in time; run it again to keep your place",
+    "Wait for a free build slot (installs and builds share a few, so they never all run at once). Each slot leases the warm worktree slot-<n>, whose install and build caches carry over between holders. Prints acquired: false if none came free in time; run it again to keep your place",
   builder: {
     ...HELPER_OPTIONS,
     owner: OWNER_OPTION,
@@ -98,6 +99,11 @@ const slotAcquireCommand: CommandModule<unknown, AcquireOptions> = {
       default: 100,
       description:
         "Queue priority, lower first: the PR's rank, so the most promising PRs finish first",
+    },
+    sha: {
+      string: true,
+      description:
+        "The commit about to be built; the free slot whose worktree is closest to it in history is leased, so the switch and rebuild stay small",
     },
     waitSeconds: {
       number: true,
@@ -124,7 +130,7 @@ const slotReleaseCommand: CommandModule<unknown, ReleaseOptions> = {
 export const slotCommand: CommandModule = {
   command: "slot",
   describe:
-    "Share a few build slots between backtesters so installs and builds don't all run at once",
+    "Share a few build slots (each leasing a warm slot-<n> worktree) between backtesters so installs and builds don't all run at once",
   builder: (yargs) =>
     yargs
       .command(slotAcquireCommand)

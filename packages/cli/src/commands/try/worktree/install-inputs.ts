@@ -5,7 +5,7 @@ import { runGit } from "../shared/run-git";
  * change that alters dependencies also changes the lockfile, so manifests
  * themselves are left out: most PRs edit package.json scripts or versions only.
  */
-const INSTALL_INPUT_PATHSPECS = [
+export const INSTALL_INPUT_PATHSPECS = [
   ":(glob)**/package-lock.json",
   ":(glob)**/npm-shrinkwrap.json",
   ":(glob)**/pnpm-lock.yaml",

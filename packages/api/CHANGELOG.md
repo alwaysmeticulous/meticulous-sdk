@@ -1,5 +1,17 @@
 # @alwaysmeticulous/api
 
+## 3.9.0
+
+### Minor Changes
+
+- [#17094](https://github.com/alwaysmeticulous/meticulous/pull/17094) [`20228a4`](https://github.com/alwaysmeticulous/meticulous/commit/20228a42b42f5424de07b077fefd22aa860df5a7) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `onlyRefreshedPinnedFonts` to `ScreenshotDiffResultDifference`, set instead of `onlyChangedThirdPartyFonts` when the diff qualifies for it and every differing stylesheet and font file was served from a project pin on both sides and some of those pinned bytes differ, i.e. the pin was refreshed between base and head. `FlakeEvidence` gains a `pinned-font-refreshed` variant for such diffs.
+
+  Add `onlyChangedThirdPartyImages` to `ScreenshotDiffResultDifference`, set when every differing pixel lies in images both sides fetched live from a third-party host under the same URL with different bytes. It is recorded only, to judge whether such diffs should be hidden later: the diff stays a diff.
+
+### Patch Changes
+
+- [#17183](https://github.com/alwaysmeticulous/meticulous/pull/17183) [`3ea5d35`](https://github.com/alwaysmeticulous/meticulous/commit/3ea5d359b8bd7db6cc11115b8912bb5fa338fd90) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add the `unknown_in_tiered_coverage` session relevance reason.
+
 ## 3.6.0
 
 ### Minor Changes

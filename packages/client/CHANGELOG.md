@@ -1,5 +1,17 @@
 # @alwaysmeticulous/client
 
+## 3.9.0
+
+### Patch Changes
+
+- [#17269](https://github.com/alwaysmeticulous/meticulous/pull/17269) [`edc03ae`](https://github.com/alwaysmeticulous/meticulous/commit/edc03ae79409eb4e76d28317c867bed0a60b8511) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `executeWithRetry` takes an optional `signal`: once it aborts, no further attempt starts and a pending backoff ends at once instead of holding the process for up to the rest of the wait. The client passes a request's abort signal through, so a request aborted while waiting to retry rejects immediately.
+
+- [#17269](https://github.com/alwaysmeticulous/meticulous/pull/17269) [`edc03ae`](https://github.com/alwaysmeticulous/meticulous/commit/edc03ae79409eb4e76d28317c867bed0a60b8511) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - A request that fails or is aborted before a response arrives now clears its timeout timer, which otherwise kept the calling process alive for up to the rest of the request timeout.
+
+- Updated dependencies [[`edc03ae`](https://github.com/alwaysmeticulous/meticulous/commit/edc03ae79409eb4e76d28317c867bed0a60b8511), [`b94a43e`](https://github.com/alwaysmeticulous/meticulous/commit/b94a43ee58672f8f5f25623ad875622693830d6a), [`20228a4`](https://github.com/alwaysmeticulous/meticulous/commit/20228a42b42f5424de07b077fefd22aa860df5a7), [`3ea5d35`](https://github.com/alwaysmeticulous/meticulous/commit/3ea5d359b8bd7db6cc11115b8912bb5fa338fd90)]:
+  - @alwaysmeticulous/common@3.9.0
+  - @alwaysmeticulous/api@3.9.0
+
 ## 3.8.0
 
 ### Minor Changes

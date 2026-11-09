@@ -18,6 +18,14 @@ export interface BuildRecipe {
   healthCheckPath: string | null;
   /** Names only: values stay in the user's environment. */
   envVarNames: string[];
+  /**
+   * Env vars that point the build tool at a shared, content-hash-keyed cache
+   * (e.g. TURBO_CACHE_DIR, NX_CACHE_DIRECTORY), mapped to a path relative to
+   * `.meticulous-try/cache/`. Exported for every install and build so all
+   * worktrees share one cache. `recipe show` adds the absolute paths to
+   * export as a separate `cacheEnvResolved` field.
+   */
+  cacheEnv: Record<string, string>;
   backend: { mode: BackendMode; notes: string };
   notes: string;
 }
@@ -52,6 +60,7 @@ export const validateRecipe = (input: unknown): RecipeValidation => {
   const containerPort = optionalPort(raw, "containerPort", errors);
   const healthCheckPath = optionalString(raw, "healthCheckPath", errors);
   const envVarNames = validateEnvVarNames(raw["envVarNames"], errors);
+  const cacheEnv = validateCacheEnv(raw["cacheEnv"], errors);
   const backend = validateBackend(raw["backend"], errors);
   const notes = optionalString(raw, "notes", errors) ?? "";
 
@@ -71,6 +80,7 @@ export const validateRecipe = (input: unknown): RecipeValidation => {
       containerPort,
       healthCheckPath,
       envVarNames,
+      cacheEnv,
       backend,
       notes,
     },
@@ -157,6 +167,38 @@ const validateEnvVarNames = (value: unknown, errors: string[]): string[] => {
     return [];
   }
   return value as string[];
+};
+
+/** Forward slashes only; no absolute paths or `..`, so it stays under cache/. */
+const CACHE_PATH = /^(?!.*(^|\/)\.\.($|\/))[A-Za-z0-9._-][A-Za-z0-9._\-/]*$/;
+
+const validateCacheEnv = (
+  value: unknown,
+  errors: string[],
+): Record<string, string> => {
+  if (value == null) {
+    return {};
+  }
+  if (typeof value !== "object" || Array.isArray(value)) {
+    errors.push(
+      'cacheEnv must map env var names to cache-relative paths, e.g. { "TURBO_CACHE_DIR": "turbo" }',
+    );
+    return {};
+  }
+  const entries = Object.entries(value as Record<string, unknown>);
+  const invalid = entries.filter(
+    ([name, path]) =>
+      !ENV_VAR_NAME.test(name) ||
+      typeof path !== "string" ||
+      !CACHE_PATH.test(path),
+  );
+  if (invalid.length > 0) {
+    errors.push(
+      "cacheEnv entries must be an env var name and a relative path under the shared cache dir (letters, digits, '.', '_', '-' and '/'; no '..')",
+    );
+    return {};
+  }
+  return Object.fromEntries(entries) as Record<string, string>;
 };
 
 const validateBackend = (

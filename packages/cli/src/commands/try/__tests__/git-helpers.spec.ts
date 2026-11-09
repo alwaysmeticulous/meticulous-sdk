@@ -157,12 +157,12 @@ describe("toGitSince", () => {
 });
 
 describe("try worktrees", () => {
-  it("creates, reuses, switches in place and removes detached worktrees", () => {
+  it("creates, reuses, switches in place and removes detached worktrees", async () => {
     const repo = makeRepo();
     const first = git(repo, "rev-parse", "HEAD");
     const second = writeAndCommit(repo, "src/A.tsx", "a", "A (#1)");
 
-    const created = createTryWorktree({
+    const created = await createTryWorktree({
       repoRoot: repo,
       sha: first,
       name: "pr-1-base",
@@ -178,11 +178,16 @@ describe("try worktrees", () => {
     );
     expect(git(created.path, "rev-parse", "HEAD")).toBe(first);
     expect(
-      createTryWorktree({ repoRoot: repo, sha: first, name: "pr-1-base" })
-        .reused,
+      (
+        await createTryWorktree({
+          repoRoot: repo,
+          sha: first,
+          name: "pr-1-base",
+        })
+      ).reused,
     ).toBe(true);
 
-    const moved = createTryWorktree({
+    const moved = await createTryWorktree({
       repoRoot: repo,
       sha: second.slice(0, 10),
       name: "pr-1-base",
@@ -199,7 +204,7 @@ describe("try worktrees", () => {
     expect(resolveRepoRoot(moved.path)).toBe(repo);
     expect(git(repo, "rev-parse", "--abbrev-ref", "HEAD")).toBe("main");
 
-    createTryWorktree({ repoRoot: repo, sha: second, name: "pr-1-head" });
+    await createTryWorktree({ repoRoot: repo, sha: second, name: "pr-1-head" });
     expect(
       removeTryWorktree({ repoRoot: repo, name: "pr-1-head" }).removed,
     ).toBe(true);
@@ -215,7 +220,7 @@ describe("try worktrees", () => {
     expect(vi.mocked(emptyTrashInBackground)).toHaveBeenCalledWith(repo);
   });
 
-  it("keeps the install when switching, reports changed install inputs and cleans build output", () => {
+  it("keeps the install when switching, reports changed install inputs and cleans build output", async () => {
     const repo = makeRepo();
     const base = git(repo, "rev-parse", "HEAD");
     const featureOnly = writeAndCommit(repo, "src/B.tsx", "b", "B (#2)");
@@ -226,7 +231,7 @@ describe("try worktrees", () => {
       "bump deps (#3)",
     );
 
-    const worktree = createTryWorktree({
+    const worktree = await createTryWorktree({
       repoRoot: repo,
       sha: base,
       name: "pr-2",
@@ -237,7 +242,7 @@ describe("try worktrees", () => {
     writeFileSync(join(worktree.path, ".gitignore"), "edited by a build step");
     writeFileSync(join(worktree.path, "src-added-by-fix.ts"), "untracked");
 
-    const head = createTryWorktree({
+    const head = await createTryWorktree({
       repoRoot: repo,
       sha: featureOnly,
       name: "pr-2",
@@ -252,35 +257,40 @@ describe("try worktrees", () => {
     );
 
     expect(
-      createTryWorktree({ repoRoot: repo, sha: lockfileBump, name: "pr-2" })
-        .installInputsChanged,
+      (
+        await createTryWorktree({
+          repoRoot: repo,
+          sha: lockfileBump,
+          name: "pr-2",
+        })
+      ).installInputsChanged,
     ).toEqual(["apps/web/pnpm-lock.yaml"]);
   });
 
-  it("refuses to clean the worktree itself or its .git", () => {
+  it("refuses to clean the worktree itself or its .git", async () => {
     const repo = makeRepo();
     for (const cleanPath of ["./", ".", ".git", "../escape"]) {
-      expect(() =>
+      await expect(
         createTryWorktree({
           repoRoot: repo,
           sha: "HEAD",
           name: "pr-3",
           cleanPaths: [cleanPath],
         }),
-      ).toThrow(/Refusing/);
+      ).rejects.toThrow(/Refusing/);
     }
   });
 
-  it("rejects unsafe names and unknown commits", () => {
+  it("rejects unsafe names and unknown commits", async () => {
     const repo = makeRepo();
-    expect(() =>
+    await expect(
       createTryWorktree({ repoRoot: repo, sha: "HEAD", name: "../escape" }),
-    ).toThrow(/Invalid worktree name/);
-    expect(() =>
+    ).rejects.toThrow(/Invalid worktree name/);
+    await expect(
       createTryWorktree({ repoRoot: repo, sha: "deadbeef", name: "x" }),
-    ).toThrow(/not found/);
-    expect(() =>
+    ).rejects.toThrow(/not found/);
+    await expect(
       createTryWorktree({ repoRoot: repo, sha: "--help", name: "x" }),
-    ).toThrow(/Invalid commit/);
+    ).rejects.toThrow(/Invalid commit/);
   });
 });

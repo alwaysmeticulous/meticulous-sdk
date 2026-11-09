@@ -1,7 +1,6 @@
 import {
   initLogger,
   executeWithRetry,
-  defaultShouldRetry,
   logProgress,
   meticulousFetch,
 } from "@alwaysmeticulous/common";
@@ -137,13 +136,17 @@ const makeSingleRequest = async <T>(
   const timeoutId = setTimeout(() => {
     controller.abort();
   }, timeout ?? DEFAULT_TIMEOUT);
-  const response = await meticulousFetch(url, {
-    ...options,
-    signal: controller.signal,
-  });
-  clearTimeout(timeoutId);
-  if (callerSignal != null) {
-    callerSignal.removeEventListener("abort", forwardAbort);
+  let response: Awaited<ReturnType<typeof meticulousFetch>>;
+  try {
+    response = await meticulousFetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    // Also on a failed or aborted fetch: the timer is ref'd, so leaking it
+    // would keep the caller's process alive for the rest of the timeout.
+    clearTimeout(timeoutId);
+    callerSignal?.removeEventListener("abort", forwardAbort);
   }
   const responseHeaders: Record<string, string> = {};
   response.headers.forEach((value: string, key: string) => {
@@ -235,11 +238,10 @@ export const makeRequest = async <T>(
   }
 
   return await executeWithRetry(attempt, {
-    // A caller-aborted request is never re-attempted: the deadline or
-    // cancellation that aborted it stands even if the network error looks
-    // transient.
-    shouldRetry: (error) =>
-      config.signal?.aborted === true ? false : defaultShouldRetry(error),
+    // A caller-aborted request is never re-attempted, even mid-backoff: the
+    // deadline or cancellation that aborted it stands even if the network
+    // error looks transient.
+    signal: config.signal,
     logger,
     operationDescription: `${requestInit.method ?? "GET"} ${new URL(finalUrl).pathname}`,
     ...config.retry,

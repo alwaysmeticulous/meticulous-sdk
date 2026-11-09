@@ -295,9 +295,36 @@ export interface ScreenshotDiffResultDifference extends ScreenshotDiffResultComp
    * this is not caused by it.
    *
    * Such a diff becomes a flake with evidence `third-party-font-changed`.
-   * Absent when false.
+   * Absent when false, and when
+   * {@link ScreenshotDiffResultDifference.onlyRefreshedPinnedFonts} is set
+   * instead.
    */
   onlyChangedThirdPartyFonts?: true;
+
+  /**
+   * True when the diff qualifies for
+   * {@link ScreenshotDiffResultDifference.onlyChangedThirdPartyFonts} and
+   * every differing stylesheet and font file involved was served from a
+   * project pin on both sides, and some of those pinned bytes differ: the pin
+   * was refreshed between base and head. Exactly one of the two is set.
+   *
+   * Such a diff becomes a flake with evidence `pinned-font-refreshed`.
+   * Absent when false.
+   */
+  onlyRefreshedPinnedFonts?: true;
+
+  /**
+   * True when every differing pixel lies inside an image both sides fetched
+   * live from another host than the app's under the same URL, with the same
+   * source, paint style and box on both sides, and the fetched bytes differ:
+   * the third party served another image.
+   *
+   * Shadow only: the diff stays a diff, nothing acts on this yet. It is
+   * recorded to judge whether such diffs should be hidden automatically
+   * later. Only checked when no check that hides a diff matched it. Absent
+   * when false.
+   */
+  onlyChangedThirdPartyImages?: true;
 }
 
 /**
@@ -347,6 +374,8 @@ export interface ScreenshotDiffResultFlake {
  *
  * - **pinned-image-refreshed**: The diff is {@link ScreenshotDiffResultDifference.onlyRefreshedPinnedImages}.
  *
+ * - **pinned-font-refreshed**: The diff is {@link ScreenshotDiffResultDifference.onlyRefreshedPinnedFonts}.
+ *
  * - **third-party-font-changed**: The diff is {@link ScreenshotDiffResultDifference.onlyChangedThirdPartyFonts}.
  */
 export type FlakeEvidence =
@@ -355,6 +384,7 @@ export type FlakeEvidence =
   | "diff-is-known-flake"
   | "image-resampling-noise"
   | "pinned-image-refreshed"
+  | "pinned-font-refreshed"
   | "third-party-font-changed";
 
 export type ScreenshotDiffRetryResult =

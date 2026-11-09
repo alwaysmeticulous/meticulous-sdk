@@ -53,9 +53,9 @@ const makeRepo = (): { repo: string; base: string; head: string } => {
 };
 
 describe("replay fix", () => {
-  it("saves the given files as one commit and applies it uncommitted to an older commit", () => {
+  it("saves the given files as one commit and applies it uncommitted to an older commit", async () => {
     const { repo, base, head } = makeRepo();
-    const fixTree = createTryWorktree({
+    const fixTree = await createTryWorktree({
       repoRoot: repo,
       sha: head,
       name: "replay-fix",
@@ -83,7 +83,7 @@ describe("replay fix", () => {
     expect(git(repo, "branch", "--list")).toBe("* main");
     expect(git(repo, "rev-parse", "main")).toBe(head);
 
-    const backtest = createTryWorktree({
+    const backtest = await createTryWorktree({
       repoRoot: repo,
       sha: base,
       name: "pr-1",
@@ -98,9 +98,9 @@ describe("replay fix", () => {
     expect(git(backtest.path, "rev-parse", "HEAD")).toBe(base);
   });
 
-  it("folds a second save into a single commit on the original parent", () => {
+  it("folds a second save into a single commit on the original parent", async () => {
     const { repo, head } = makeRepo();
-    const fixTree = createTryWorktree({
+    const fixTree = await createTryWorktree({
       repoRoot: repo,
       sha: head,
       name: "replay-fix",
@@ -129,9 +129,9 @@ describe("replay fix", () => {
     expect(git(repo, "rev-parse", `${second.commitSha}^`)).toBe(head);
   });
 
-  it("reports a conflict, keeping the worktree and its other uncommitted edits unchanged", () => {
+  it("reports a conflict, keeping the worktree and its other uncommitted edits unchanged", async () => {
     const { repo, head } = makeRepo();
-    const fixTree = createTryWorktree({
+    const fixTree = await createTryWorktree({
       repoRoot: repo,
       sha: head,
       name: "replay-fix",
@@ -144,7 +144,7 @@ describe("replay fix", () => {
       message: "fix",
     });
     const later = commitFile(repo, "src/app.ts", "export const app = 3;\n");
-    const backtest = createTryWorktree({
+    const backtest = await createTryWorktree({
       repoRoot: repo,
       sha: later,
       name: "pr-2",
@@ -165,9 +165,9 @@ describe("replay fix", () => {
     );
   });
 
-  it("keeps other uncommitted edits when applying, and treats a second apply as done", () => {
+  it("keeps other uncommitted edits when applying, and treats a second apply as done", async () => {
     const { repo, base, head } = makeRepo();
-    const fixTree = createTryWorktree({
+    const fixTree = await createTryWorktree({
       repoRoot: repo,
       sha: head,
       name: "replay-fix",
@@ -179,7 +179,7 @@ describe("replay fix", () => {
       paths: ["src/app.ts"],
       message: "fix",
     });
-    const backtest = createTryWorktree({
+    const backtest = await createTryWorktree({
       repoRoot: repo,
       sha: base,
       name: "pr-4",
@@ -203,9 +203,9 @@ describe("replay fix", () => {
     );
   });
 
-  it("applies a fix that adds a file to both base and head of one worktree", () => {
+  it("applies a fix that adds a file to both base and head of one worktree", async () => {
     const { repo, base, head } = makeRepo();
-    const fixTree = createTryWorktree({
+    const fixTree = await createTryWorktree({
       repoRoot: repo,
       sha: head,
       name: "replay-fix",
@@ -222,11 +222,11 @@ describe("replay fix", () => {
       message: "fix with a new file",
     });
 
-    createTryWorktree({ repoRoot: repo, sha: base, name: "pr-5" });
+    await createTryWorktree({ repoRoot: repo, sha: base, name: "pr-5" });
     expect(applyReplayFix({ repoRoot: repo, worktree: "pr-5" }).applied).toBe(
       true,
     );
-    const switched = createTryWorktree({
+    const switched = await createTryWorktree({
       repoRoot: repo,
       sha: head,
       name: "pr-5",
@@ -242,9 +242,9 @@ describe("replay fix", () => {
     );
   });
 
-  it("does nothing when no fix was saved, and refuses an empty save", () => {
+  it("does nothing when no fix was saved, and refuses an empty save", async () => {
     const { repo, head } = makeRepo();
-    createTryWorktree({ repoRoot: repo, sha: head, name: "pr-3" });
+    await createTryWorktree({ repoRoot: repo, sha: head, name: "pr-3" });
     expect(applyReplayFix({ repoRoot: repo, worktree: "pr-3" })).toEqual({
       applied: false,
       reason: "no-fix",

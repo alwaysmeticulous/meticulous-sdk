@@ -9,6 +9,8 @@ export const TRY_PATHS = {
   candidates: join(TRY_WORKDIR, "candidate-prs.json"),
   sessions: join(TRY_WORKDIR, "sessions.json"),
   builds: join(TRY_WORKDIR, "builds"),
+  buildOutputs: join(TRY_WORKDIR, "builds", "outputs"),
+  cache: join(TRY_WORKDIR, "cache"),
   worktrees: join(TRY_WORKDIR, "worktrees"),
   trash: join(TRY_WORKDIR, "trash"),
   slots: join(TRY_WORKDIR, "slots"),

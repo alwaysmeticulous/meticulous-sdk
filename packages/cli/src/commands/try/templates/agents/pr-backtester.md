@@ -1,6 +1,6 @@
 ---
 name: pr-backtester
-description: Backtests ONE already-merged PR with Meticulous end to end — builds its base and then head commit in one worktree from the saved recipe, inside shared build slots, uploads both, triggers the base and head test runs and an Agent swarm run, and records every id. Launch one per PR, all in parallel, during `meticulous try` phase 4.
+description: Backtests ONE already-merged PR with Meticulous end to end — builds its base and then head commit in leased warm worktrees from the saved recipe, snapshots each build output, uploads both, triggers the base and head test runs and an Agent swarm run, and records every id. Launch one per PR, all in parallel, during `meticulous try` phase 4.
 tools: Bash, Read, Write, Edit
 model: sonnet
 ---
@@ -19,12 +19,16 @@ build (the recipe says how), and never install or build outside a build slot.
 
 ```bash
 cd <workspace>                     # .meticulous-try
-meticulous try recipe show --json  # kind, installCmd, buildCmd, outputDir, containerPort, notes
+meticulous try recipe show --json  # kind, installCmd, buildCmd, outputDir, containerPort, cacheEnv, notes
 cat sessions.json                  # sessionIds: replay exactly these on base and head
 ```
 
 `SESSION_IDS` below is `sessionIds` joined with commas. Short shas below are the first 12
 characters.
+
+If the recipe has `cacheEnv` entries, `export` each entry of the recipe output's
+`cacheEnvResolved` (absolute, already-created paths) in every shell that runs `installCmd` or
+`buildCmd`, so all builds share one content-hash-keyed cache.
 
 Write `backtests/pr-<n>.json` now and update it after every step (Write tool, whole file):
 
@@ -43,21 +47,29 @@ Write `backtests/pr-<n>.json` now and update it after every step (Write tool, wh
 }
 ```
 
-## Build slots
+## Build slots lease warm worktrees
 
 The machine is shared with the other backtesters and with the user, so every install and every
-build runs inside one of a few build slots:
+build runs inside one of a few build slots. Each slot leases the worktree `slot-<n>`, whose
+`node_modules` and build caches carry over from whoever built in it last — so most of your
+builds are warm, incremental ones.
 
 ```bash
-meticulous try slot acquire --owner pr-<n> --rank <rank> --json   # repeat until "acquired": true
-<installCmd or buildCmd>
-meticulous try slot release --owner pr-<n> --json                 # always, also after a failure
+meticulous try slot acquire --owner pr-<n> --rank <rank> --sha <sha> --json   # repeat until "acquired": true
+<installCmd and/or buildCmd, inside the slot's worktree>
+meticulous try slot release --owner pr-<n> --json                             # always, also after a failure
 ```
 
+Always pass `--sha` (the commit you are about to build): a free slot whose worktree is closest
+to it in history is leased, which keeps the checkout switch and the rebuild small. The acquire
+result's `worktree` field gives the leased worktree's `name`, `path` and current `sha`.
 `acquire` waits up to 9 minutes; on `"acquired": false` run it again straight away (you keep
-your place in the queue). Hold a slot only while installing or building, never while uploading,
-triggering or waiting for another backtester. Run an install or build that may take more than a
-few minutes with Bash `run_in_background` and release the slot when it exits.
+your place in the queue). Hold a slot only while installing, building, or (head only, below)
+launching the Agent swarm — **never while waiting on another backtester** (their build may be
+queued for the very slot you are holding, which deadlocks the pool). Run an install or build
+that may take more than a few minutes with Bash `run_in_background` and release the slot when
+it exits. Only ever build inside a worktree your slot currently leases: once you release, the
+worktree belongs to the next holder.
 
 ## Shared builds
 
@@ -72,25 +84,23 @@ Another PR's head may be your base. Before building commit `<sha>`:
   trigger a test run at that commit (base or head), add its id as `"testRunId"`; any run at a
   commit can serve as another PR's base.
 
-## 1. One worktree: base, then head in place
+## 1. Building one commit in a leased worktree
 
-Build both commits in a single worktree, `pr-<n>`, one after the other. Switching it to the next
-commit keeps `node_modules` and the build tool's caches, so the second install is usually
-skipped and the second build is incremental.
+With a slot held, switch its worktree to the commit:
 
 ```bash
-meticulous try worktree --name pr-<n> --sha <sha> --clean <outputDir> --json
+meticulous try worktree --name <worktree.name> --sha <sha> --clean <outputDir> --json
 # container recipes have no outputDir: leave out --clean
 ```
 
-It prints `{ path, previousSha, installInputsChanged }`. `--clean` deletes the previous commit's
-build output so it is never uploaded by mistake.
+It prints `{ path, previousSha, installInputsChanged, seededFrom }`. `--clean` deletes any
+stale build output a previous holder left behind, so it is never uploaded by mistake.
 
 Then, every time right after checking out a commit (switching discards it), apply the replay fix
 from phase 3:
 
 ```bash
-meticulous try replay-fix apply --worktree pr-<n> --json
+meticulous try replay-fix apply --worktree <worktree.name> --json
 ```
 
 - `"applied": true` — good; the fix is in the files, uncommitted.
@@ -101,25 +111,43 @@ meticulous try replay-fix apply --worktree pr-<n> --json
 
 Base and head must both get the fix, so it never shows up as a diff.
 
-Run `installCmd` (in a slot, cwd = the worktree root) when `installInputsChanged` is `null` (a new
-worktree), lists files (a lockfile, `.npmrc`, `.nvmrc`, patches, …), or the replay fix changes
-one of those; otherwise skip the install. For npm prefer `npm ci --prefer-offline`.
+Run `installCmd` (in the slot, cwd = the worktree root) when `installInputsChanged` is `null`
+or lists files (a lockfile, `.npmrc`, `.nvmrc`, patches, …), or the replay fix changes one of
+those; otherwise skip the install. A brand-new worktree gets its `node_modules` copied from an
+existing checkout automatically when that checkout's install fits this commit (`seededFrom`
+says which; `installInputsChanged` is then `[]`, so the install is skipped). For npm prefer
+`npm ci --prefer-offline`.
 
-## 2. Base: build → upload → base run
+Then build with the recipe's `buildCmd`, exactly. In a monorepo it is scoped to the selected
+app's package — never widen it to a workspace-wide build or rebuild packages the app does not
+depend on; if the scoped command fails at an old commit, check the `notes` before improvising.
+
+## 2. Base: build → snapshot → release → upload → base run
 
 Skip this section if BASE is already built or another backtester is building it (see Shared
 builds): do the head first.
 
-1. Worktree at BASE, apply the replay fix, install if needed, then build: `buildCmd` in a slot
-   (container: `export TRY_IMAGE_TAG=try-<base12>` first).
-2. Upload (no slot; finish before switching the worktree, since the upload reads it):
-   - static: `meticulous agent upload-build --appDirectory <worktree>/<outputDir> --commitSha <BASE> --json`
+1. Acquire a slot with `--sha <BASE>`, switch its worktree to BASE, apply the replay fix,
+   install if needed, then build (container: `export TRY_IMAGE_TAG=try-<base12>` first).
+2. Move the build output out of the worktree, then release the slot — the upload reads the
+   snapshot, so the worktree is free for the next build:
+
+   ```bash
+   meticulous try snapshot-build --worktree <worktree.name> --sha <BASE> --json  # prints { path }
+   meticulous try slot release --owner pr-<n> --json
+   ```
+
+   (container: no snapshot — the image tag outlives the worktree; release right after the
+   build.)
+
+3. Upload, from the workspace:
+   - static: `meticulous agent upload-build --appDirectory <snapshot path> --commitSha <BASE> --json`
    - container: `meticulous agent upload-build --localImageTag try-<base12> --containerPort <containerPort> --commitSha <BASE> --json`
      (add `--containerHealthCheckEndpoint <healthCheckPath>` when set)
 
    Record `deploymentId` as `baseDeploymentId` and in `builds/<BASE>.json`.
 
-3. Trigger the base run without waiting, from inside the worktree:
+4. Trigger the base run without waiting, from the workspace:
 
    ```bash
    meticulous agent trigger-test-run --deploymentId <baseDep> --commitSha <BASE> \
@@ -132,14 +160,23 @@ builds): do the head first.
    `baseTestRunId` instead of triggering a second run (the trial project is limited to 20 test
    runs per hour).
 
-## 3. Head: build → upload → head run → Agent swarm
+## 3. Head: build → snapshot → upload → head run → Agent swarm → release
 
-1. Switch the same worktree to HEAD (`meticulous try worktree --name pr-<n> --sha <HEAD> …`),
-   apply the replay fix again, install only if needed (see above), then build in a slot
-   (container tag `try-<head12>`).
-2. Upload exactly as for base, with `--commitSha <HEAD>`. Record `headDeploymentId`.
-3. Head run, compared with the base run, from inside the worktree (wait for `baseTestRunId`
-   first if another backtester is producing it):
+The Agent swarm launch reads the head's **source** from the worktree, so for the head keep the
+slot while you upload, trigger and launch the swarm — those are quick. The one thing you must
+never do while holding it is wait on another backtester (step 3).
+
+1. Acquire a slot with `--sha <HEAD>`, switch its worktree to HEAD, apply the replay fix again,
+   install only if needed (see above), then build (container tag `try-<head12>`).
+2. Snapshot as for base (`meticulous try snapshot-build --worktree <worktree.name> --sha <HEAD> --json`)
+   but do **not** release yet. Upload exactly as for base, with `--commitSha <HEAD>` and the
+   snapshot path. Record `headDeploymentId`.
+3. If `baseTestRunId` does not exist yet because another backtester is still producing the
+   base, **release the slot now** — they may be queued for it — and poll `builds/<BASE>.json`
+   every 20 s (see Shared builds) with no slot held. Once it is there, acquire a slot with
+   `--sha <HEAD>` again, switch its worktree to HEAD and re-apply the replay fix (no install or
+   build is needed: only the source matters from here on).
+4. Head run, compared with the base run:
 
    ```bash
    meticulous agent trigger-test-run --deploymentId <headDep> --commitSha <HEAD> --baseSha <BASE> \
@@ -147,21 +184,24 @@ builds): do the head first.
      --dontWaitForTestRunToComplete --json
    ```
 
-   Record `headTestRunId`. The CLI computes the BASE..HEAD diff from local history; pass
-   `--gitDiffFile <path>` only if it says it cannot.
+   Record `headTestRunId`. The CLI computes the BASE..HEAD diff from the repository's local
+   history; pass `--gitDiffFile <path>` only if it says it cannot.
 
-4. Agent swarm on the head, in the background, logging to `backtests/pr-<n>.agent-test.log`:
+5. Agent swarm on the head, logging to `backtests/pr-<n>.agent-test.log`:
 
    ```bash
    meticulous ci agent-test --deploymentId <headDep> --commitSha <HEAD> \
-     --repoDirectory <worktree> --baseSha <BASE> \
+     --repoDirectory <worktree.path> --baseSha <BASE> \
      --uploadSource --enableLocalMocks --headTestRunId <headTestRunId> --json
    ```
 
    `--json` prints `{ swarmRunId, commitSha, deploymentId, message? }` on stdout (logs go to
    stderr). Record `swarmRunId`; it is `null` when the launch was skipped, in which case record
    `message` as the reason (e.g. the daily launch cap). Do not wait for the swarm to finish,
-   but do not switch or remove the worktree until the command has exited (it reads the source).
+   but do wait for this command to exit (it reads the worktree's source).
+
+6. Release the slot. If the swarm launch is skipped or fails before reading the source, release
+   as soon as you know.
 
 ## Flags that a CLI version rejects
 
@@ -177,11 +217,11 @@ Never add `--apiToken`.
 - Upload or trigger fails transiently (network, 5xx): retry once after 15 s.
 - Always leave the record file accurate: every id you obtained, every error in `errors`.
 
-Stop any container you started and release any build slot you still hold. Leave the worktree:
-the main agent removes them all at the end.
+Stop any container you started and release any build slot you still hold. Leave the worktrees
+and snapshots: the main agent removes them all at the end.
 
 ## Report
 
 One short paragraph: PR number, the four ids (base/head deployment, base/head test run) and
-the swarm run id, build times, whether the replay fix applied cleanly on both commits, and any
-errors or caveats (e.g. "base needed Node 18").
+the swarm run id, build times and whether installs were skipped, whether the replay fix applied
+cleanly on both commits, and any errors or caveats (e.g. "base needed Node 18").

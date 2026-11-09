@@ -28,7 +28,11 @@ const makeDirs = (): SlotDirs => {
 const acquire = (
   dirs: SlotDirs,
   owner: string,
-  options: { rank?: number; leaseSeconds?: number } = {},
+  options: {
+    rank?: number;
+    leaseSeconds?: number;
+    orderFreeSlots?: (freeSlots: number[]) => number[];
+  } = {},
 ) =>
   acquireBuildSlot({
     dirs,
@@ -37,6 +41,7 @@ const acquire = (
     rank: options.rank ?? 100,
     waitSeconds: 0,
     leaseSeconds: options.leaseSeconds ?? 3600,
+    orderFreeSlots: options.orderFreeSlots,
   });
 
 describe("build slots", () => {
@@ -99,6 +104,17 @@ describe("build slots", () => {
       acquired: false,
       ahead: 0,
     });
+  });
+
+  it("claims free slots in the caller's preference order, falling back when one is taken", async () => {
+    const dirs = makeDirs();
+    const reversed = (slots: number[]) => [...slots].reverse();
+    expect(
+      await acquire(dirs, "pr-1", { orderFreeSlots: reversed }),
+    ).toMatchObject({ acquired: true, slot: 1 });
+    expect(
+      await acquire(dirs, "pr-2", { orderFreeSlots: reversed }),
+    ).toMatchObject({ acquired: true, slot: 0 });
   });
 
   it("reclaims a slot whose lease has expired", async () => {

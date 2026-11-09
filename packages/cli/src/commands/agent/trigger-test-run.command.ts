@@ -7,7 +7,11 @@ import {
   isOpaqueId,
   resolveApiTokenWithOAuth,
 } from "@alwaysmeticulous/client";
-import { logNotice, logProgress } from "@alwaysmeticulous/common";
+import {
+  logNotice,
+  logProgress,
+  RECOMMENDED_GIT_DIFF_COMMAND,
+} from "@alwaysmeticulous/common";
 import { triggerTestRun } from "@alwaysmeticulous/remote-replay-launcher";
 import type { CommandModule } from "yargs";
 import { OPTIONS } from "../../command-utils/common-options";
@@ -464,12 +468,13 @@ export const triggerTestRunCommand: CommandModule<unknown, Options> = {
     gitDiffOutput: {
       string: true,
       description:
-        "Raw git diff output between the base and the head commit (the deployment's commit, or --commitSha). Requires --baseSha.",
+        "Raw git diff output between the base and the head commit (the deployment's commit, or --commitSha). Requires --baseSha. " +
+        `Compute it as the CLI does when it infers the diff, so your git config can't change its format: \`${RECOMMENDED_GIT_DIFF_COMMAND}\`.`,
     },
     gitDiffFile: {
       string: true,
       description:
-        "Alternative to --gitDiffOutput: a file holding the raw git diff output, for a diff too large to pass as an argument. Requires --baseSha.",
+        "Alternative to --gitDiffOutput: a file holding the raw git diff output, computed the same way, for a diff too large to pass as an argument. Requires --baseSha.",
     },
     sessionIds: {
       string: true,

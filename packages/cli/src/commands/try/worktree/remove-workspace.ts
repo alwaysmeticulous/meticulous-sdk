@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
-import { existsSync, readdirSync, rmSync } from "fs";
-import { join } from "path";
+import { existsSync, readdirSync, realpathSync, rmSync } from "fs";
+import { isAbsolute, join, relative } from "path";
+import { CliUserError } from "../../../utils/cli-user-error";
 import {
   resolveSafeWritePath,
   writeFileSafeSync,
@@ -12,6 +13,26 @@ import { removeTryGitignoreEntry } from "./remove-gitignore-entry";
 import { listTryWorktreeNames, removeAllTryWorktrees } from "./worktrees";
 
 const DELETING_PREFIX = `${TRY_WORKDIR}-deleting-`;
+
+/** Deleting the workspace from a cwd inside it would pull the floor out from under the caller. */
+export const assertNotInsideTryWorkspace = (
+  repoRoot: string,
+  remedy: string,
+): void => {
+  const workspace = join(repoRoot, TRY_WORKDIR);
+  if (!existsSync(workspace)) {
+    return;
+  }
+  const relativeCwd = relative(
+    realpathSync(workspace),
+    realpathSync(process.cwd()),
+  );
+  if (!relativeCwd.startsWith("..") && !isAbsolute(relativeCwd)) {
+    throw new CliUserError(
+      `Refusing to delete ${TRY_WORKDIR}/ from inside it. ${remedy}`,
+    );
+  }
+};
 
 /**
  * Removes the whole `.meticulous-try/` workspace and unregisters its
