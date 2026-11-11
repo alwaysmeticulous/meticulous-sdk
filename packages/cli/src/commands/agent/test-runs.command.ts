@@ -28,6 +28,7 @@ const BUILTIN_CHECK_IDS = [
 interface Options {
   apiToken?: string | null | undefined;
   project?: string | undefined;
+  testRunIds?: string | undefined;
   prNumber?: string | undefined;
   baseTestRuns?: boolean | undefined;
   latestPerPullRequest?: boolean | undefined;
@@ -54,6 +55,7 @@ interface Column {
 const handler = async ({
   apiToken,
   project,
+  testRunIds,
   prNumber,
   baseTestRuns,
   latestPerPullRequest,
@@ -87,6 +89,7 @@ const handler = async ({
 
   const response = await getTestRuns(client, {
     project,
+    testRunIds,
     prNumber,
     baseTestRuns,
     latestPerPullRequest,
@@ -155,11 +158,16 @@ const handler = async ({
       withCheckIssuesOnly === true ||
       createdSince != null ||
       createdUntil != null;
-    const message = describeNoTestRuns({ prNumber, baseTestRuns, filtered });
+    const message = describeNoTestRuns({
+      testRunIds,
+      prNumber,
+      baseTestRuns,
+      filtered,
+    });
     // Only an unfiltered empty list suggests the wrong project, matching the
     // get_test_runs MCP tool.
     logNotice(
-      filtered || prNumber != null
+      filtered || prNumber != null || testRunIds != null
         ? message
         : await appendProjectSelectionHint(message, client, project),
     );
@@ -175,14 +183,21 @@ const optionalColumn = (
   included ? [{ header, value: (testRun) => value(testRun) ?? "" }] : [];
 
 const describeNoTestRuns = ({
+  testRunIds,
   prNumber,
   baseTestRuns,
   filtered,
 }: {
+  testRunIds: string | undefined;
   prNumber: string | undefined;
   baseTestRuns: boolean | undefined;
   filtered: boolean;
 }): string => {
+  // The request fails unless every ID is a pull request test run of the
+  // project, so only the other options can leave none.
+  if (testRunIds != null) {
+    return "None of these test runs match the other options.";
+  }
   const items =
     prNumber != null
       ? `test runs for pull request ${prNumber}`
@@ -196,7 +211,7 @@ export const testRunsCommand: CommandModule<unknown, Options> = {
   command: "test-runs",
   describe:
     "Get the list of pull request test runs for a given project, newest first (default: limit to 100 test runs). " +
-    "Alternatively, lists base test runs if --baseTestRuns is set. " +
+    "Alternatively, lists base test runs if --baseTestRuns is set, or specific pull request test runs if --testRunIds is set. " +
     "Outputs a TSV table with columns id, createdAt, status, commitSha, prNumber plus the requested additional columns.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
@@ -204,6 +219,12 @@ export const testRunsCommand: CommandModule<unknown, Options> = {
       string: true,
       description:
         "The project to list test runs for (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s).",
+    },
+    testRunIds: {
+      string: true,
+      conflicts: "baseTestRuns",
+      description:
+        "Output only these comma-separated test runs, which must be pull request test runs of the project: the request fails, naming them, if any ID isn't one. Not accepted alongside --baseTestRuns.",
     },
     prNumber: {
       string: true,

@@ -17,7 +17,9 @@ const KICKOFF_PROMPT =
   "in parallel — one `pr-backtester` subagent per pr, all launched in a single message, in the background when you can; " +
   "(5) post early findings as soon as the first prs finish, then report the results, leading with the most compelling findings. " +
   "never commit, push, switch branches or edit tracked files in the repository: everything you create lives " +
-  "under `.meticulous-try/`. METICULOUS_API_TOKEN is already set for the trial project — never print it.";
+  "under `.meticulous-try/`. METICULOUS_API_TOKEN is already set for the trial project — never print it. " +
+  "other trials may be running on this machine at the same time: run `meticulous try preflight` before anything else, " +
+  "and use `meticulous try free-port` and the trial's `dockerPrefix` instead of fixed ports and container names.";
 
 const HEADLESS_SUFFIX =
   " this run is non-interactive: never wait for an answer. if you are truly blocked (secrets or test " +

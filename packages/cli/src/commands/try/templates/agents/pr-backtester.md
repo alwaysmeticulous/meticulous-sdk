@@ -9,7 +9,8 @@ You backtest exactly one PR: `prNumber`, `rank` (1 = most promising), `baseSha` 
 default branch just before it landed) and `headSha` (HEAD, the commit that landed it), given in
 your prompt. Other
 backtesters are running at the same time on other PRs. `METICULOUS_API_TOKEN` is set for the
-trial project — never print it or pass `--apiToken`. Never modify the user's checkout: you
+trial project — never print it or pass `--apiToken`. If your prompt says to prefix `meticulous`
+commands with `. <workspace>/agent-env.sh && `, do so for every one. Never modify the user's checkout: you
 work only in worktrees under `.meticulous-try/worktrees/`.
 
 Be fast and light: never wait on a test run or Agent swarm to finish, never rediscover how to
@@ -79,6 +80,20 @@ Another PR's head may be your base. Before building commit `<sha>`:
 - Otherwise claim it: `mkdir builds/<sha>.lock`. If that fails, another backtester is building
   it: do your other commit first, then poll `builds/<sha>.json` every 20 s (up to 30 min) and
   reuse its `deploymentId`; if it records `"error"`, fail the same way.
+- Poll with one Bash call that loops and exits by itself — a bare `sleep` followed by another
+  command is refused, and you have no Monitor tool. Give the call a 600000 ms timeout (the
+  maximum) so it stays in the foreground:
+
+  ```bash
+  for i in $(seq 1 28); do [ -f builds/<sha>.json ] && break; sleep 20; done; cat builds/<sha>.json
+  ```
+
+  Re-run it until the file appears or 30 minutes have passed. Wait for a field (e.g. `testRunId`)
+  the same way, testing it with `grep -q`.
+
+- Only ever touch your own claims: remove a `builds/<sha>.lock` you created, never a glob of
+  them, and never stop processes by name (`pkill npm`, `pkill -f …`) — every other backtester
+  runs the same commands. To stop something you started, kill its pid.
 - After uploading, write `builds/<sha>.json`:
   `{ "sha": "<full>", "deploymentId": "<id>" }` (or `{ "sha": "…", "error": "…" }`). Once you
   trigger a test run at that commit (base or head), add its id as `"testRunId"`; any run at a
@@ -128,7 +143,8 @@ Skip this section if BASE is already built or another backtester is building it 
 builds): do the head first.
 
 1. Acquire a slot with `--sha <BASE>`, switch its worktree to BASE, apply the replay fix,
-   install if needed, then build (container: `export TRY_IMAGE_TAG=try-<base12>` first).
+   install if needed, then build (container: `export TRY_IMAGE_TAG=<dockerPrefix>:<base12>`
+   first, `dockerPrefix` from `try-context.json`).
 2. Move the build output out of the worktree, then release the slot — the upload reads the
    snapshot, so the worktree is free for the next build:
 
@@ -142,7 +158,7 @@ builds): do the head first.
 
 3. Upload, from the workspace:
    - static: `meticulous agent upload-build --appDirectory <snapshot path> --commitSha <BASE> --json`
-   - container: `meticulous agent upload-build --localImageTag try-<base12> --containerPort <containerPort> --commitSha <BASE> --json`
+   - container: `meticulous agent upload-build --localImageTag <dockerPrefix>:<base12> --containerPort <containerPort> --commitSha <BASE> --json`
      (add `--containerHealthCheckEndpoint <healthCheckPath>` when set)
 
    Record `deploymentId` as `baseDeploymentId` and in `builds/<BASE>.json`.
@@ -157,7 +173,7 @@ builds): do the head first.
    With no `--baseSha` / `--baseTestRunId` this is a baseline run: it replays the sessions with
    nothing to compare against and becomes the base for the head run. Record `testRunId` as
    `baseTestRunId`. If `builds/<BASE>.json` already has a `testRunId`, use that as
-   `baseTestRunId` instead of triggering a second run (the trial project is limited to 20 test
+   `baseTestRunId` instead of triggering a second run (the trial project is limited to 200 test
    runs per hour).
 
 ## 3. Head: build → snapshot → upload → head run → Agent swarm → release
@@ -167,7 +183,7 @@ slot while you upload, trigger and launch the swarm — those are quick. The one
 never do while holding it is wait on another backtester (step 3).
 
 1. Acquire a slot with `--sha <HEAD>`, switch its worktree to HEAD, apply the replay fix again,
-   install only if needed (see above), then build (container tag `try-<head12>`).
+   install only if needed (see above), then build (container tag `<dockerPrefix>:<head12>`).
 2. Snapshot as for base (`meticulous try snapshot-build --worktree <worktree.name> --sha <HEAD> --json`)
    but do **not** release yet. Upload exactly as for base, with `--commitSha <HEAD>` and the
    snapshot path. Record `headDeploymentId`.
@@ -215,6 +231,8 @@ Never add `--apiToken`.
   (e.g. the Node version the commit's `.nvmrc` pins, or `--legacy-peer-deps`), never by editing
   tracked files. If it still fails, record the error and stop — do not burn time.
 - Upload or trigger fails transiently (network, 5xx): retry once after 15 s.
+- Trigger rejected with HTTP 429 (the project's test-run rate limit): release any slot you hold
+  and retry every 2 minutes, for up to 30 minutes, then record it in `errors`.
 - Always leave the record file accurate: every id you obtained, every error in `errors`.
 
 Stop any container you started and release any build slot you still hold. Leave the worktrees

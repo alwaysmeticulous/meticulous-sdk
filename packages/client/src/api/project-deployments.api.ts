@@ -137,12 +137,10 @@ export interface CompleteAssetUploadResponse {
   commentsDisabledForAuthor?: boolean;
   /**
    * Set when no test run was created because GitHub's primary rate limit was
-   * hit, or GitHub returned a 5xx, while triggering, and the server scheduled a
-   * delayed retry that will create the run later.
+   * hit while triggering, and the server scheduled a delayed retry that will
+   * create the run once the limit resets.
    */
   githubRateLimitRetryScheduled?: boolean;
-  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
-  githubServerErrorRetryScheduled?: boolean;
   /**
    * When set alongside `baseNotFound`, the server is asking the client to
    * extend its default base-polling window by this many milliseconds.
@@ -175,12 +173,10 @@ export interface CompleteContainerUploadResponse {
   commentsDisabledForAuthor?: boolean;
   /**
    * Set when no test run was created because GitHub's primary rate limit was
-   * hit, or GitHub returned a 5xx, while triggering, and the server scheduled a
-   * delayed retry that will create the run later.
+   * hit while triggering, and the server scheduled a delayed retry that will
+   * create the run once the limit resets.
    */
   githubRateLimitRetryScheduled?: boolean;
-  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
-  githubServerErrorRetryScheduled?: boolean;
   /**
    * When set alongside `baseNotFound`, the server is asking the client to
    * extend its default base-polling window by this many milliseconds.

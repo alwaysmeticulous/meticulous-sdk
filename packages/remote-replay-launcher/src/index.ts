@@ -35,11 +35,7 @@ export {
   RunWithUploadedAssetChunksOptions,
   RunWithUploadedAssetChunksResult,
 } from "./run-with-uploaded-asset-chunks";
-export {
-  describeGitHubRateLimitRetry,
-  getGitHubDelayedRetrySkipReason,
-  type GitHubDelayedRetrySkipReason,
-} from "./github-rate-limit-retry";
+export { describeGitHubRateLimitRetry } from "./github-rate-limit-retry";
 export { TunnelData } from "./types";
 export {
   carryCompletedUpload,

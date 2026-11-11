@@ -72,8 +72,6 @@ export interface UploadContainerResult {
    * create the run once the limit resets.
    */
   githubRateLimitRetryScheduled?: boolean;
-  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
-  githubServerErrorRetryScheduled?: boolean;
 }
 
 export interface PushContainerImageResult {
@@ -294,8 +292,6 @@ export const uploadContainer = async ({
       commentsDisabledForAuthor: completeResult.commentsDisabledForAuthor,
       githubRateLimitRetryScheduled:
         completeResult.githubRateLimitRetryScheduled,
-      githubServerErrorRetryScheduled:
-        completeResult.githubServerErrorRetryScheduled,
     },
     retryFn: () =>
       completeUpload({
@@ -317,8 +313,6 @@ export const uploadContainer = async ({
   const commentsDisabledForAuthor = pollResult.commentsDisabledForAuthor;
   const githubRateLimitRetryScheduled =
     pollResult.githubRateLimitRetryScheduled;
-  const githubServerErrorRetryScheduled =
-    pollResult.githubServerErrorRetryScheduled;
 
   if (testRun) {
     const organizationName = encodeURIComponent(
@@ -349,9 +343,6 @@ export const uploadContainer = async ({
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
     ...(githubRateLimitRetryScheduled
       ? { githubRateLimitRetryScheduled: true }
-      : {}),
-    ...(githubServerErrorRetryScheduled
-      ? { githubServerErrorRetryScheduled: true }
       : {}),
   };
 };

@@ -18,14 +18,18 @@ export const assertClaudeInstalled = (): void => {
   }
 };
 
-/** Launches Claude Code in the workspace with the trial project's token in its environment. */
+/**
+ * Launches Claude Code in the workspace with `env` (`buildTryAgentEnv`): the
+ * trial project's token, plus a data dir without the user's OAuth login so the
+ * token is what every `meticulous …` command authenticates with.
+ */
 export const launchTryAgent = (options: {
   workspaceDir: string;
   projectRoot: string;
   model: string;
   prompt: string;
   headless: boolean;
-  apiToken: string;
+  env: Record<string, string>;
   lowPriority: boolean;
 }): number => {
   if (options.lowPriority) {
@@ -40,7 +44,7 @@ export const launchTryAgent = (options: {
     headless: options.headless,
     auto: false,
     claudePermissionMode: "auto",
-    env: { METICULOUS_API_TOKEN: options.apiToken },
+    env: options.env,
   });
 };
 
@@ -58,8 +62,9 @@ const lowerOwnPriority = (): void => {
 };
 
 /**
- * The token is read from try-context.json at launch time rather than printed,
- * so it never lands in terminal scrollback.
+ * The printed command sources `agent-env.sh`, which reads the token from
+ * try-context.json at launch time, so it never lands in terminal scrollback,
+ * and pins the same data dir and endpoints as a direct launch.
  */
 export const printTryManualLaunch = (options: {
   workspaceDir: string;
@@ -69,7 +74,6 @@ export const printTryManualLaunch = (options: {
   lowPriority: boolean;
 }): void => {
   const escapedPrompt = options.prompt.replace(/(["\\$`])/g, "\\$1");
-  const tokenFromContext = `"$(node -p "require('./try-context.json').apiToken")"`;
   const nice =
     options.lowPriority && process.platform !== "win32" ? "nice -n 10 " : "";
   const cliBinDir = findCliBinDir();
@@ -82,7 +86,7 @@ export const printTryManualLaunch = (options: {
   console.log(chalk.bold("  Start it in Claude Code:"));
   console.log("");
   console.log(
-    `    cd "${options.workspaceDir}" && ${path}METICULOUS_API_TOKEN=${tokenFromContext} ${nice}claude "${escapedPrompt}" --model ${options.model} --permission-mode auto --add-dir "${options.projectRoot}"`,
+    `    cd "${options.workspaceDir}" && . ./agent-env.sh && ${path}${nice}claude "${escapedPrompt}" --model ${options.model} --permission-mode auto --add-dir "${options.projectRoot}"`,
   );
   console.log("");
   if (!cliBinDir) {

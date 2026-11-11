@@ -1,0 +1,37 @@
+{
+  "name": "@alwaysmeticulous/public-prompts",
+  "version": "3.10.0",
+  "description": "LLM prompts used by Meticulous code that runs outside Meticulous's infrastructure, such as the crawler",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "build": "tsc --build tsconfig.json",
+    "dev": "tsc --build tsconfig.json --watch",
+    "format": "prettier --write src",
+    "lint": "oxlint --type-aware src",
+    "lint:fix": "oxlint --type-aware src --fix",
+    "depcheck": "depcheck --ignore-patterns=dist"
+  },
+  "author": {
+    "name": "The Meticulous Team",
+    "email": "eng@meticulous.ai",
+    "url": "https://meticulous.ai"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "homepage": "https://github.com/alwaysmeticulous/meticulous-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk.git",
+    "directory": "packages/public-prompts"
+  },
+  "bugs": {
+    "url": "https://github.com/alwaysmeticulous/meticulous-sdk/issues"
+  }
+}

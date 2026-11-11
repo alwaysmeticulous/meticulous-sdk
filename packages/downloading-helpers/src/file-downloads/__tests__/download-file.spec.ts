@@ -108,6 +108,34 @@ describe("downloadFile", () => {
     }
   });
 
+  it("backs off and retries when the presigned URL answers 503 SlowDown", async () => {
+    const requestTimes: number[] = [];
+    const server = http.createServer((_req, res) => {
+      requestTimes.push(Date.now());
+      if (requestTimes.length === 1) {
+        res.writeHead(503);
+        res.end("SlowDown");
+        return;
+      }
+      res.writeHead(200);
+      res.end("Hello World");
+    });
+    const { url, close } = await listenOnEphemeralPort(server);
+
+    try {
+      await downloadFile(url, "file.txt", { showProgressBar: false });
+
+      expect(await readFile("file.txt", "utf8")).toBe("Hello World");
+      expect(requestTimes).toHaveLength(2);
+      expect(requestTimes[1] - requestTimes[0]).toBeGreaterThanOrEqual(900);
+    } finally {
+      await close();
+      if (existsSync("file.txt")) {
+        await rm("file.txt");
+      }
+    }
+  });
+
   it("times out on a too slow file download", async () => {
     const server = http.createServer((_req, res) => {
       res.write("Helloooooo");
@@ -400,10 +428,10 @@ describe("streamDownloadAndExtractTar", () => {
     expect(caughtError!.message).toContain("timed out");
   }, 15_000);
 
-  it("preserves the underlying error when retries are exhausted (not generic AbortError)", async () => {
+  it("preserves the underlying error when the request fails (not generic AbortError)", async () => {
     const server = http.createServer((_req, res) => {
-      res.writeHead(500, { "Content-Type": "text/plain" });
-      res.end("internal server error");
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("not found");
     });
 
     await new Promise<void>((resolve) => server.listen(1240, resolve));
@@ -421,7 +449,7 @@ describe("streamDownloadAndExtractTar", () => {
 
     expect(caughtError).not.toBeNull();
     expect(caughtError!.name).not.toBe("AbortError");
-    expect(caughtError!.message).toMatch(/500/);
+    expect(caughtError!.message).toMatch(/404/);
   });
 
   describe("with extractConcurrency > 1 (parallel writes)", () => {
@@ -849,6 +877,111 @@ describe("streamDownloadAndInflateTar", () => {
       }
     },
   );
+
+  it("backs off and retries the request when the presigned URL answers 503 SlowDown", async () => {
+    await writeFile(join(sourceDir, "hello.txt"), "Hello World");
+    const compressed = await createRawDeflatedTar(sourceDir);
+
+    const requestTimes: number[] = [];
+    const server = http.createServer((_req, res) => {
+      requestTimes.push(Date.now());
+      if (requestTimes.length === 1) {
+        res.writeHead(503);
+        res.end("SlowDown");
+        return;
+      }
+      res.writeHead(200, { "Content-Length": compressed.length.toString() });
+      res.end(compressed);
+    });
+    const { url, close } = await listenOnEphemeralPort(server);
+
+    try {
+      const stats = await streamDownloadAndInflateTar(url, outputTarPath);
+
+      expect(stats.compressedBytes).toBe(compressed.length);
+      expect(requestTimes).toHaveLength(2);
+      expect(requestTimes[1] - requestTimes[0]).toBeGreaterThanOrEqual(900);
+    } finally {
+      await close();
+    }
+  });
+
+  it("does not retry a failed request in the outer loop", async () => {
+    let requestCount = 0;
+    const server = http.createServer((_req, res) => {
+      requestCount += 1;
+      res.writeHead(404);
+      res.end("not found");
+    });
+    const { url, close } = await listenOnEphemeralPort(server);
+
+    try {
+      await expect(
+        streamDownloadAndInflateTar(url, outputTarPath, {
+          maxRetries: 3,
+          retryDelay: 1,
+        }),
+      ).rejects.toThrow("status code 404");
+      expect(requestCount).toBe(1);
+    } finally {
+      await close();
+    }
+  });
+
+  it("retries a first-data timeout in the outer loop", async () => {
+    await writeFile(join(sourceDir, "hello.txt"), "Hello World");
+    const compressed = await createRawDeflatedTar(sourceDir);
+
+    let requestCount = 0;
+    const server = http.createServer((_req, res) => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        return;
+      }
+      res.writeHead(200, { "Content-Length": compressed.length.toString() });
+      res.end(compressed);
+    });
+    const { url, close } = await listenOnEphemeralPort(server);
+
+    try {
+      const stats = await streamDownloadAndInflateTar(url, outputTarPath, {
+        firstDataTimeoutInMs: 200,
+        maxRetries: 1,
+        retryDelay: 1,
+      });
+
+      expect(stats.compressedBytes).toBe(compressed.length);
+      expect(requestCount).toBe(2);
+    } finally {
+      server.closeAllConnections();
+      await close();
+    }
+  });
+
+  it("stops waiting out the request's backoff once the total timeout fires", async () => {
+    let requestCount = 0;
+    const server = http.createServer((_req, res) => {
+      requestCount += 1;
+      res.writeHead(503);
+      res.end("SlowDown");
+    });
+    const { url, close } = await listenOnEphemeralPort(server);
+    const startedAt = Date.now();
+
+    try {
+      await expect(
+        streamDownloadAndInflateTar(url, outputTarPath, {
+          totalTimeoutInMs: 200,
+          maxRetries: 3,
+        }),
+      ).rejects.toThrow("timed out after 200ms");
+      // The first backoff alone is at least 1s.
+      expect(Date.now() - startedAt).toBeLessThan(900);
+      expect(requestCount).toBe(1);
+    } finally {
+      await close();
+    }
+  });
 
   it("reports the wire bytes to a supplied progress bar, rolling back a failed attempt", async () => {
     await writeFile(join(sourceDir, "big.txt"), "A".repeat(2 * 1024 * 1024));

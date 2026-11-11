@@ -41,7 +41,9 @@ Fall back to a **container** only when the app needs a server at runtime (Next.j
 Router with server rendering, Remix, Nuxt SSR, SvelteKit node adapter, full-stack apps). Use
 the repo's `Dockerfile` if it has one; otherwise write one under `.meticulous-try/` (never in
 the repo) and build with `-f`. Container builds must tag the image `$TRY_IMAGE_TAG`, e.g.
-`docker build -t "$TRY_IMAGE_TAG" -f .meticulous-try/Dockerfile .`.
+`docker build -t "$TRY_IMAGE_TAG" -f .meticulous-try/Dockerfile .`. Always set it to
+`<dockerPrefix>:<commit12>` (`dockerPrefix` from `try-context.json`), so concurrent trials never
+share an image.
 
 **In a monorepo, scope `buildCmd` to the selected app** and its dependency closure — never the
 whole workspace: `pnpm --filter <app>... build`, `turbo run build --filter=<app>...`,
@@ -108,11 +110,12 @@ login, note where the session is kept (cookies, local storage, …) and follow
    starts by copying `node_modules` from an existing checkout, so it is usually the seed for
    all backtest builds.
 2. Build. Time it — later phases rebuild per commit, so note anything slow.
-3. Serve the build **in the background** (Bash `run_in_background`) on a fixed free port
-   (check with `lsof -ti tcp:<port>`):
+3. Serve the build **in the background** (Bash `run_in_background`) on a port from
+   `meticulous try free-port` (never a well-known one like 3000 or 4173: another trial may be
+   using it):
    - static: `npx --yes serve -s <outputDir> -l <port>` (SPA fallback on), or the framework's
      `preview` script if it serves the build output
-   - container: `docker run -d --rm --name try-app -p <port>:<containerPort> "$TRY_IMAGE_TAG"`
+   - container: `docker run -d --rm --name <dockerPrefix>-app -p <port>:<containerPort> "$TRY_IMAGE_TAG"`
 4. Verify it renders real content, not a shell or an error page:
    `curl -sf http://localhost:<port>/ | head -c 2000`, then one or two deep routes. For SPAs the
    HTML is a shell, so confirm in phase 2's first browser snapshot that the page shows real UI
@@ -157,3 +160,17 @@ var, a monorepo filter) in `notes`.
 
 Done when: the app serves real content at `http://localhost:<port>` and `meticulous try recipe
 show` prints the recipe. Tell the user the build kind, port and backend mode in one line.
+
+## 6. Warm the backtest worktrees
+
+Once `candidate-prs` has finished, start this in the background (Bash `run_in_background`, do
+not wait for it) before moving on to phase 2:
+
+```bash
+meticulous try prewarm --json   # creates missing slot worktrees in parallel; safe to re-run
+```
+
+It checks out every build slot's worktree at the candidate PRs' base commits, copying
+`node_modules` from the install you just made, so phases 3 and 4 find them warm instead of
+paying for checkouts one by one. Start it only now, not while a build runs: its checkouts would
+compete with the build and skew its timing.

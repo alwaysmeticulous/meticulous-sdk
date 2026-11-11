@@ -13,10 +13,12 @@ import {
   mergeJsonMcp,
 } from "../../onboard/setup-agent-integrations";
 import type { PackageManager } from "../shared/try-context";
+import { buildAgentEnvScript } from "../shared/agent-env-script";
 import {
   TRY_GITIGNORE_COMMENT,
   TRY_PATHS,
   TRY_WORKDIR,
+  absoluteTryPath,
 } from "../shared/try-paths";
 import { buildTrySettings } from "./try-settings";
 
@@ -29,16 +31,31 @@ import { buildTrySettings } from "./try-settings";
 export const materializeTryWorkspace = (options: {
   repoRoot: string;
   packageManager: PackageManager | null;
+  /** Non-secret environment for every Claude Code session in the workspace. */
+  agentEnv: Record<string, string>;
 }): string => {
   const { repoRoot } = options;
   mkdirSafeSync(repoRoot, TRY_PATHS.claude);
+  mkdirSafeSync(repoRoot, TRY_PATHS.agentDataDir);
+  writeFileSafeSync(
+    repoRoot,
+    TRY_PATHS.agentEnvScript,
+    buildAgentEnvScript({
+      pinnedEnv: options.agentEnv,
+      contextPath: absoluteTryPath(repoRoot, TRY_PATHS.context),
+    }),
+  );
   writeFileSafeSync(repoRoot, join(TRY_WORKDIR, ".gitignore"), "*\n");
 
   copyTemplateTree(repoRoot, tryTemplatesDir, TRY_PATHS.claude);
   writeFileSafeSync(
     repoRoot,
     join(TRY_PATHS.claude, "settings.json"),
-    JSON.stringify(buildTrySettings(options.packageManager), null, 2) + "\n",
+    JSON.stringify(
+      buildTrySettings(options.packageManager, options.agentEnv),
+      null,
+      2,
+    ) + "\n",
   );
   mergeJsonMcp(repoRoot, join(TRY_WORKDIR, ".mcp.json"), {
     type: "http",

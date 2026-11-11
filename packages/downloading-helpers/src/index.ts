@@ -45,6 +45,7 @@ export {
   type InflateTarDownloadStats,
 } from "./file-downloads/download-file";
 export { downloadAndUnzipJson } from "./file-downloads/download-and-unzip-json";
+export { createPresignedUrlRetryConfig } from "./file-downloads/presigned-url-retry";
 export {
   unzipSingleEntry,
   unzipSingleEntryToJson,

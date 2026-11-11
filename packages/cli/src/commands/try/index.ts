@@ -1,6 +1,8 @@
 import type { CommandModule } from "yargs";
 import { candidatePrsCommand } from "./candidate-prs/candidate-prs.command";
 import { loginCommand } from "./login/login.command";
+import { freePortCommand } from "./ports/free-port.command";
+import { preflightCommand } from "./preflight/preflight.command";
 import { recipeCommand } from "./recipe/recipe.command";
 import { replayFixCommand } from "./replay-fix/replay-fix.command";
 import { resultsCommand } from "./results/results.command";
@@ -19,6 +21,8 @@ export const tryCommand: CommandModule = {
   builder: (yargs) =>
     yargs
       .command(tryStartCommand)
+      .command(preflightCommand)
+      .command(freePortCommand)
       .command(candidatePrsCommand)
       .command(loginCommand)
       .command(worktreeCommand)

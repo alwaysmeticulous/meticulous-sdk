@@ -23,7 +23,7 @@ export const HELPER_OPTIONS_WITH_TOKEN = {
   apiToken: {
     ...OPTIONS.apiToken,
     description:
-      "Project API token. Defaults to METICULOUS_API_TOKEN, then .meticulous-try/try-context.json",
+      "Project API token. Defaults to .meticulous-try/try-context.json, then METICULOUS_API_TOKEN",
   },
 } as const;
 

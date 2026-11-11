@@ -6,8 +6,6 @@ import { initLogger } from "@alwaysmeticulous/common";
 import {
   carryCompletedUpload,
   describeGitHubRateLimitRetry,
-  getGitHubDelayedRetrySkipReason,
-  type GitHubDelayedRetrySkipReason,
   uploadAssetsAndTriggerTestRun,
   uploadContainer,
   withCompletedUpload,
@@ -195,7 +193,9 @@ type UploadResult = {
   | { testRunId: string }
   | {
       testRunId: null;
-      skipReason: "comments_disabled_for_author" | GitHubDelayedRetrySkipReason;
+      skipReason:
+        | "comments_disabled_for_author"
+        | "github_rate_limit_retry_scheduled";
       message: string;
     }
 );
@@ -355,16 +355,11 @@ const runContainerUpload = async ({
         };
       }
       if (result.githubRateLimitRetryScheduled) {
-        const message = describeGitHubRateLimitRetry(
-          result.message,
-          result.githubServerErrorRetryScheduled,
-        );
+        const message = describeGitHubRateLimitRetry(result.message);
         logger.info(message);
         return {
           testRunId: null,
-          skipReason: getGitHubDelayedRetrySkipReason(
-            result.githubServerErrorRetryScheduled,
-          ),
+          skipReason: "github_rate_limit_retry_scheduled",
           message,
           fields,
         };

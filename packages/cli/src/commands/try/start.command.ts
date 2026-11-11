@@ -28,7 +28,12 @@ import {
   removeTryWorkspace,
 } from "./worktree/remove-workspace";
 import { CLI_COMMAND } from "./shared/cli-command";
-import { TRY_WORKDIR } from "./shared/try-paths";
+import {
+  buildTryAgentEnv,
+  buildTryAgentPinnedEnv,
+  readEndpointsFromEnv,
+} from "./shared/try-agent-env";
+import { TRY_PATHS, TRY_WORKDIR, absoluteTryPath } from "./shared/try-paths";
 
 const MIN_PRS = 5;
 const MAX_PRS = 10;
@@ -78,7 +83,15 @@ const handler = async (options: StartOptions): Promise<void> => {
     ...(apps.selectedApp ? [join(repoRoot, apps.selectedApp.path)] : []),
   ]);
 
-  const workspaceDir = materializeTryWorkspace({ repoRoot, packageManager });
+  const endpoints = readEndpointsFromEnv();
+  const workspaceDir = materializeTryWorkspace({
+    repoRoot,
+    packageManager,
+    agentEnv: buildTryAgentPinnedEnv({
+      agentDataDir: absoluteTryPath(repoRoot, TRY_PATHS.agentDataDir),
+      endpoints,
+    }),
+  });
   const context = buildTryContext({
     repoRoot,
     workspaceDir,
@@ -88,6 +101,7 @@ const handler = async (options: StartOptions): Promise<void> => {
     packageManager,
     prCount: options.prs,
     buildSlots: options.buildSlots ?? defaultBuildSlots(),
+    endpoints,
   });
   writeTryContext(repoRoot, context);
 
@@ -123,7 +137,7 @@ const handler = async (options: StartOptions): Promise<void> => {
     model: options.model,
     prompt,
     headless: options.headless,
-    apiToken: onboarded.apiToken,
+    env: buildTryAgentEnv(context),
     lowPriority: options.lowPriority,
   });
   printNextSteps(context.projectUrl);

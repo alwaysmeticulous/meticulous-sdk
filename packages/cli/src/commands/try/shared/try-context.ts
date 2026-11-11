@@ -33,6 +33,17 @@ export interface TryContextJson {
   prCount: number;
   /** How many installs and builds may run at once (`meticulous try slot`). */
   buildSlots: number;
+  /**
+   * The Meticulous endpoints the trial project was created against, pinned in
+   * the agent's environment so a different value in the user's shell can't
+   * send the agent's commands elsewhere. Null means the built-in default.
+   */
+  endpoints: TryEndpoints;
+  /**
+   * Prefix for every Docker container and image this trial creates, unique to
+   * the trial project so concurrent trials never stop each other's containers.
+   */
+  dockerPrefix: string;
   paths: {
     recipe: string;
     candidates: string;
@@ -46,7 +57,14 @@ export interface TryContextJson {
     replayFix: string;
     /** Written by `meticulous try login`; absent until the user has logged in. */
     authState: string;
+    /** The agent's `METICULOUS_DIR`, with no OAuth login in it. */
+    agentDataDir: string;
   };
+}
+
+export interface TryEndpoints {
+  apiUrl: string | null;
+  snippetsBaseUrl: string | null;
 }
 
 /** try-context.json holds the project API token, so only its owner may read it. */

@@ -1,5 +1,15 @@
 # @alwaysmeticulous/remote-replay-launcher
 
+## 3.10.0
+
+### Patch Changes
+
+- [#17487](https://github.com/alwaysmeticulous/meticulous/pull/17487) [`f473a3c`](https://github.com/alwaysmeticulous/meticulous/commit/f473a3c238d9d784b850ff58c9110cbf016c2f35) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Revert the GitHub server-error retry wording: a scheduled trigger retry is again reported only as a GitHub rate-limit retry, and the `github_server_error_retry_scheduled` skip reason is removed.
+
+- Updated dependencies [[`eb2c588`](https://github.com/alwaysmeticulous/meticulous/commit/eb2c5883b55d502bb2233ac66ae0a0143e6d494f), [`1270a0a`](https://github.com/alwaysmeticulous/meticulous/commit/1270a0af3340dbb398760f3480f07fb473198532), [`9b48030`](https://github.com/alwaysmeticulous/meticulous/commit/9b480308dd78c19fabce81c3a4478a10ea7304f2), [`6ec8da3`](https://github.com/alwaysmeticulous/meticulous/commit/6ec8da32a9385e374f845745a52540b6e5cb88aa), [`f1a6523`](https://github.com/alwaysmeticulous/meticulous/commit/f1a652378e8a44d0b4267fdabb67002841f28487), [`f473a3c`](https://github.com/alwaysmeticulous/meticulous/commit/f473a3c238d9d784b850ff58c9110cbf016c2f35)]:
+  - @alwaysmeticulous/client@3.10.0
+  - @alwaysmeticulous/common@3.9.0
+
 ## 3.9.0
 
 ### Patch Changes

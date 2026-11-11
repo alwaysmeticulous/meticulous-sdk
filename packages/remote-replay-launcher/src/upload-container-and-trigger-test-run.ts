@@ -4,10 +4,7 @@ import type {
   ExecuteRemoteTestRunResult,
 } from "./types";
 import { uploadContainer } from "./upload-container";
-import {
-  describeGitHubRateLimitRetry,
-  getGitHubDelayedRetrySkipReason,
-} from "./github-rate-limit-retry";
+import { describeGitHubRateLimitRetry } from "./github-rate-limit-retry";
 
 export const uploadContainerAndTriggerTestRun = async ({
   apiToken,
@@ -52,13 +49,8 @@ export const uploadContainerAndTriggerTestRun = async ({
       "Test run skipped because CI comments and checks are disabled for this pull request author.";
     logger.info(skipMessage);
   } else if (result.githubRateLimitRetryScheduled) {
-    skipReason = getGitHubDelayedRetrySkipReason(
-      result.githubServerErrorRetryScheduled,
-    );
-    skipMessage = describeGitHubRateLimitRetry(
-      result.message,
-      result.githubServerErrorRetryScheduled,
-    );
+    skipReason = "github_rate_limit_retry_scheduled";
+    skipMessage = describeGitHubRateLimitRetry(result.message);
     logNotice(skipMessage);
   } else {
     throw new Error(`${result.message ?? "Test run was not created"}`);

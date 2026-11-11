@@ -400,6 +400,12 @@ export interface AgenticRunResultStep {
    */
   highlight?: string;
   /**
+   * Worker-internal reason a passing or failing assertion is left without a
+   * highlight, such as a result that fills the page. Removed before the result
+   * blob is persisted.
+   */
+  noHighlightReason?: string;
+  /**
    * Worker-internal substring of the step's URL the model wants highlighted.
    * Resolved into `urlHighlightRange`, then dropped before the blob is persisted.
    */
@@ -787,6 +793,12 @@ export interface AgenticRunComparisonVisualDifference {
   /** One visible difference, in a product user's terms. */
   what: string;
   defect?: AgenticRunComparisonDefect;
+  /**
+   * Where it is, as fractions of the diff image: the changed pixels inside
+   * the area the visual review pointed at. Absent when it pointed nowhere, or
+   * nothing changed there.
+   */
+  box?: AgenticRunChangedRegion;
 }
 
 /**
@@ -856,6 +868,14 @@ export interface AgenticRunScreenshotComparison {
    * blobs from older workers, which a reader can rescan the diff image for.
    */
   regions?: AgenticRunChangedRegion[];
+  /**
+   * The areas the verdict rests on, as fractions of the diff image: for a
+   * regression the differences showing a defect (all of them when none
+   * does), for any other change every difference the visual review listed,
+   * and none when it is not comparable. Absent when some of those
+   * differences could not be placed; readers then show `regions`.
+   */
+  highlights?: AgenticRunChangedRegion[];
   base: AgenticRunComparisonSide;
   head: AgenticRunComparisonSide;
   verdict: AgenticRunComparisonVerdict;
@@ -1342,6 +1362,11 @@ export interface AgenticRunTraceEvent {
   toolName?: string;
   toolUseId?: string;
   isError?: boolean;
+  /**
+   * Chars of text the run left out of {@link text}, when it recorded the
+   * event as a size-only placeholder (e.g. untraced reasoning).
+   */
+  omittedChars?: number;
 }
 
 export interface AgenticRunTraceUsage {
@@ -1494,6 +1519,20 @@ export interface AgenticRunResultBlob {
   memoryCandidates?: AgentSwarmMemoryCandidate[];
   /** Present when the agent determined no browser flow can exercise the change. */
   notTestable?: AgenticRunNotTestable;
+  /**
+   * Flows the pull request stopped testing, on this commit or an earlier one,
+   * because they blocked on consecutive commits. Absent when there are none.
+   */
+  retiredTestcases?: AgenticRunRetiredTestcase[];
+}
+
+/** A flow a pull request retired because it kept blocking. */
+export interface AgenticRunRetiredTestcase {
+  title: string;
+  /** What blocked its last run, when known. */
+  blockedBy?: "application" | "environment";
+  /** Why its last run was blocked, when known. */
+  summary?: string;
 }
 
 export interface ReportAgenticRunResultResponse {
@@ -1569,6 +1608,12 @@ export interface CompleteAgenticRunResultParams extends ProjectIdentifier {
    * over the runs that produced test flows.
    */
   hasTestFlows?: boolean;
+  /**
+   * Whether the run inherited testcases from an earlier run. Only used to tag
+   * the coverage telemetry measured asynchronously, which the worker's own
+   * `inherited_cases` tag cannot reach.
+   */
+  inheritedCases?: boolean;
   /**
    * The worker is still rendering the summary's featured-flow media and will
    * send it with {@link attachAgenticFeaturedFlowMedia}. The run's workflow

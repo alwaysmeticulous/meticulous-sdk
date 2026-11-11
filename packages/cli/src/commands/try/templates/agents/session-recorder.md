@@ -7,7 +7,8 @@ model: sonnet
 
 You record **one Meticulous session per flow** you were given, against the locally served app,
 on the CDP port you were given. `METICULOUS_API_TOKEN` is already set for the trial project —
-never print it or pass `--apiToken`.
+never print it or pass `--apiToken`. If your prompt says to prefix `meticulous` commands with
+`. <workspace>/agent-env.sh && `, do so for every one.
 
 ## Preflight
 
@@ -26,6 +27,7 @@ use `agent-browser connect <port>` and tell the caller you could not run in para
 
    ```bash
    meticulous record session --remoteDebuggingPort=<port> --headless --no-incognito \
+     --width 1440 --height 900 \
      --appUrl="http://localhost:<appPort>/<start-route>"
    # signed in via a saved login: add --storageState <path you were given>
    ```
@@ -40,6 +42,10 @@ use `agent-browser connect <port>` and tell the caller you could not run in para
    - interact with refs as `@e12` (never `@ref=e12`), take a fresh snapshot after anything
      opens or navigates
    - type with `type @eN "text"` (records key events), not `fill`
+   - act only through `click`, `type`, `press`, `scroll` and `open`: the recorder captures
+     input events, so anything done through `eval` (a JS `.click()`, setting a value, calling
+     `history.push`) leaves no event and the replay cannot follow it. If a click does nothing,
+     `scrollintoview @eN` and click again; never fall back to `eval`
    - complete the flow as a real user would, including one realistic validation error where
      the form has validation, then success
    - scroll long pages; open menus/tabs/dialogs along the way
@@ -53,7 +59,10 @@ use `agent-browser connect <port>` and tell the caller you could not run in para
    ```
 
    Then wait (up to 45 s) for that `meticulous record session` process to exit before starting
-   the next flow. Never `kill -9` the recorder itself.
+   the next flow. If it is still running after that (it can hang on "detached Frame" errors
+   once its Chrome is gone), stop it with a plain `kill <pid>` of that one process — the flush
+   above has already sent the session (phase 2's `wait-for-sessions` confirms it landed). Never `kill -9` it, and never `pkill` by name: other
+   recorders and trials run the same command.
 
 If CDP never comes up or a flow fails twice, skip it and move on. If the page shows an error
 overlay, a blank screen or a login wall you were not told how to pass, stop and report it —

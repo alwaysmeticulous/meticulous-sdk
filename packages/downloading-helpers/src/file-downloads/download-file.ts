@@ -21,6 +21,7 @@ import type {
   TrackedDownloadStream,
 } from "./download-progress";
 import { createDownloadProgressBar } from "./download-progress";
+import { createPresignedUrlRetryConfig } from "./presigned-url-retry";
 import { safeExtractZip } from "./safe-extract-zip";
 
 const promisifiedFinished = promisify(finished);
@@ -58,7 +59,10 @@ export const downloadFile = async (
   const downloadContentRetryDelay = opts.downloadContentRetryDelay ?? 1000;
 
   const client = axios.create({ timeout: firstDataTimeoutInMs });
-  axiosRetry(client, { retries: 3, shouldResetTimeout: true });
+  axiosRetry(
+    client,
+    createPresignedUrlRetryConfig({ shouldResetTimeout: true }),
+  );
   const source = axios.CancelToken.source();
 
   const response = await client.request({
@@ -193,8 +197,16 @@ export const downloadAndExtractFile: (
 
 export interface StreamDownloadAndExtractTarOptions {
   firstDataTimeoutInMs?: number;
+  /** Caps each attempt, including the request's own retries. */
   totalTimeoutInMs?: number;
+  /**
+   * Retries of a first-data timeout, or of a failure after the response has
+   * started: mid-stream, or while decompressing or extracting. Any other failed
+   * request is retried with backoff by {@link createPresignedUrlRetryConfig}
+   * instead, and not again here.
+   */
   maxRetries?: number;
+  /** Delay before each of the `maxRetries` retries. */
   retryDelay?: number;
   /**
    * Number of concurrent file writes to issue during extraction. Defaults to
@@ -295,10 +307,14 @@ const streamDownloadAndExtractTarImpl = async (
         ),
       );
     }, totalTimeoutInMs);
+    let responseReceived = false;
 
     try {
       const client = axios.create({ timeout: firstDataTimeoutInMs });
-      axiosRetry(client, { retries: 3, shouldResetTimeout: true });
+      axiosRetry(
+        client,
+        createPresignedUrlRetryConfig({ shouldResetTimeout: true }),
+      );
 
       await mkdir(extractPath, { recursive: true });
 
@@ -308,6 +324,7 @@ const streamDownloadAndExtractTarImpl = async (
         responseType: "stream",
         signal: abortController.signal,
       });
+      responseReceived = true;
 
       if (extractConcurrency > 1) {
         return await extractTarWithParallelWrites({
@@ -341,7 +358,10 @@ const streamDownloadAndExtractTarImpl = async (
       abortController.abort();
       await rm(extractPath, { recursive: true, force: true }).catch(() => {});
 
-      if (attempt >= maxRetries) {
+      if (
+        !isRetriedByOuterLoop(error, responseReceived) ||
+        attempt >= maxRetries
+      ) {
         const errToThrow =
           wasAbortedBeforeCleanup && reasonBeforeCleanup instanceof Error
             ? reasonBeforeCleanup
@@ -360,8 +380,16 @@ const streamDownloadAndExtractTarImpl = async (
 
 export interface StreamDownloadAndInflateTarOptions {
   firstDataTimeoutInMs?: number;
+  /** Caps each attempt, including the request's own retries. */
   totalTimeoutInMs?: number;
+  /**
+   * Retries of a first-data timeout, or of a failure after the response has
+   * started: mid-stream, or while inflating or writing. Any other failed
+   * request is retried with backoff by {@link createPresignedUrlRetryConfig}
+   * instead, and not again here.
+   */
   maxRetries?: number;
+  /** Delay before each of the `maxRetries` retries. */
   retryDelay?: number;
   /**
    * Bar to report compressed bytes into as they arrive. Pass the same bar to
@@ -440,10 +468,14 @@ export const streamDownloadAndInflateTar = async (
       );
     }, totalTimeoutInMs);
     let progress: TrackedDownloadStream | undefined;
+    let responseReceived = false;
 
     try {
       const client = axios.create({ timeout: firstDataTimeoutInMs });
-      axiosRetry(client, { retries: 3, shouldResetTimeout: true });
+      axiosRetry(
+        client,
+        createPresignedUrlRetryConfig({ shouldResetTimeout: true }),
+      );
 
       await mkdir(dirname(outputTarFilePath), { recursive: true });
 
@@ -453,6 +485,7 @@ export const streamDownloadAndInflateTar = async (
         responseType: "stream",
         signal: abortController.signal,
       });
+      responseReceived = true;
 
       const stats: InflateTarDownloadStats = {
         compressedBytes: 0,
@@ -490,7 +523,10 @@ export const streamDownloadAndInflateTar = async (
       abortController.abort();
       await rm(outputTarFilePath, { force: true }).catch(() => {});
 
-      if (attempt >= maxRetries) {
+      if (
+        !isRetriedByOuterLoop(error, responseReceived) ||
+        attempt >= maxRetries
+      ) {
         const errToThrow =
           wasAbortedBeforeCleanup && reasonBeforeCleanup instanceof Error
             ? reasonBeforeCleanup
@@ -506,6 +542,18 @@ export const streamDownloadAndInflateTar = async (
     }
   }
 };
+
+/**
+ * axios-retry never retries a timed-out request (`ECONNABORTED`), so a
+ * first-data timeout is left to the tar downloaders' outer loop. Other request
+ * failures have already been retried with backoff.
+ */
+const isRetriedByOuterLoop = (
+  error: unknown,
+  responseReceived: boolean,
+): boolean =>
+  responseReceived ||
+  (axios.isAxiosError(error) && error.code === "ECONNABORTED");
 
 const DEFAULT_FILE_MODE = 0o644;
 

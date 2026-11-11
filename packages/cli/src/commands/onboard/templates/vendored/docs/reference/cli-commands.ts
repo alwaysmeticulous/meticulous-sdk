@@ -89,7 +89,7 @@ meticulous [command]
 | \`agent check-comments\` | Get the reasons recorded with agent decisions on a non-visual check of a test run | Agent/programmatic use |
 | \`agent ignore-check\` | Agent-ignore a failing non-visual check as unrelated to the change, with a reason, if the project allows it | Agent/programmatic use |
 | \`agent test-run-for-commit\` | Look up the latest test run for a commit (defaults to git HEAD) | Agent/programmatic use |
-| \`agent test-runs\` | List a project's pull request test runs, or its base test runs, newest first | Agent/programmatic use |
+| \`agent test-runs\` | List a project's pull request test runs, its base test runs, or specific pull request test runs, newest first | Agent/programmatic use |
 | \`agent sessions\` | List a project's recorded sessions, newest first by default, optionally narrowed to the selected set | Agent/programmatic use |
 | \`agent test-run-stats\` | Export reporting statistics for a project's test runs | Agent/programmatic use |
 | \`agent project-daily-stats\` | Export daily project reporting statistics | Agent/programmatic use |

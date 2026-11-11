@@ -9,6 +9,13 @@ Recorded sessions capture the cookies, local storage and network responses they 
 **only recording needs a login** — replays and backtests reuse what was recorded. Settle this
 once, before phase 2, and reuse the result in every crawl and recorder.
 
+One exception: when the app's **server** verifies a short-lived session token on every request
+(server-rendered pages behind Clerk, Auth0, Supabase, Firebase, NextAuth JWTs, …), a replay hours
+later sends the recorded, expired token, and the server redirects to a login or loops trying to
+refresh it. Phase 3 checks for this; the fix is usually a trial-only replay fix that accepts the
+recorded token (e.g. a clock-skew allowance or a local JWT key, switched on by an env var only
+the trial build sets).
+
 ## 1. Look for a way in that needs nothing from the user
 
 Spend ≤ 3 minutes on the repo before asking (read, do not edit tracked files):
@@ -86,10 +93,11 @@ With A or C, start one recorder with the saved state and confirm a protected rou
 signed in (with B, the first `session-recorder` flow is the check):
 
 ```bash
-meticulous record session --remoteDebuggingPort 9229 --headless --storageState auth/storage-state.json \
+meticulous try free-port    # <cdpPort>
+meticulous record session --remoteDebuggingPort <cdpPort> --headless --storageState auth/storage-state.json \
   --appUrl http://localhost:<port>/<protected-route>    # background
-agent-browser --cdp 9229 wait 3000 && agent-browser --cdp 9229 snapshot -i
-lsof -ti tcp:9229 -sTCP:LISTEN | xargs kill
+agent-browser --cdp <cdpPort> wait 3000 && agent-browser --cdp <cdpPort> snapshot -i
+lsof -ti tcp:<cdpPort> -sTCP:LISTEN | xargs kill
 ```
 
 If it shows the login page, the state is wrong (wrong origin, expired, or kept in session

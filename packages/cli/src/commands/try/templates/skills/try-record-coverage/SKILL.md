@@ -51,7 +51,8 @@ edit → delete", "checkout with a coupon", "settings: toggle theme and save", "
 filters and pagination".
 
 Split the flows across **2–3 `session-recorder` subagents launched in a single message**, each
-with its own CDP port (9222, 9223, 9224) and 2–4 flows. Give each: the base URL, the port,
+with its own CDP port (get them with `meticulous try free-port --count 3`; never fixed ports,
+since another trial may be recording on this machine) and 2–4 flows. Give each: the base URL, the port,
 the flows (one session per flow, with concrete steps and any test data), and — if the app needs
 a login — either the storage-state path or the credentials-file path and login route from the
 login skill. They report back session ids and event counts.

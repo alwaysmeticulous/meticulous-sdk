@@ -458,6 +458,7 @@ export {
   AGENTIC_RUN_NOT_TESTABLE_CATEGORIES,
   AgenticRunNotTestableCategory,
   AgenticRunNotTestable,
+  AgenticRunRetiredTestcase,
   AgenticRunMockDataProvenance,
   AgenticRunBackendFailureKind,
   AgenticRunBackendFailure,

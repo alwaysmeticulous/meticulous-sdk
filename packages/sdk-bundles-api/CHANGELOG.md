@@ -1,5 +1,11 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 3.10.0
+
+### Patch Changes
+
+- [#17448](https://github.com/alwaysmeticulous/meticulous/pull/17448) [`ac815bf`](https://github.com/alwaysmeticulous/meticulous/commit/ac815bf38cd915be5399bd358559ca4b64328c1a) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `InProgressTestRunChunk.markTestRunChunkAsFailed` accepts an optional `interrupted` flag, for a worker that is being stopped rather than failing on its own.
+
 ## 3.9.0
 
 ### Patch Changes

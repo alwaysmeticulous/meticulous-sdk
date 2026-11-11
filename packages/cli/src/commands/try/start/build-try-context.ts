@@ -2,7 +2,11 @@ import type { SelfOnboardResponse } from "@alwaysmeticulous/client";
 import { METICULOUS_APP_URL } from "../../onboard/build-context";
 import { detectFramework } from "../../onboard/detect-framework";
 import { resolveSelectedAppAbsolutePath } from "../../onboard/discover-apps";
-import type { PackageManager, TryContextJson } from "../shared/try-context";
+import type {
+  PackageManager,
+  TryContextJson,
+  TryEndpoints,
+} from "../shared/try-context";
 import { TRY_PATHS, absoluteTryPath } from "../shared/try-paths";
 import type { TryAppSelection } from "./resolve-try-app";
 
@@ -15,6 +19,7 @@ export const buildTryContext = (options: {
   packageManager: PackageManager | null;
   prCount: number;
   buildSlots: number;
+  endpoints: TryEndpoints;
 }): TryContextJson => {
   const { repoRoot, onboarded, apps } = options;
   const selectedAppAbsolutePath = apps.selectedApp
@@ -39,6 +44,8 @@ export const buildTryContext = (options: {
       : null,
     prCount: options.prCount,
     buildSlots: options.buildSlots,
+    endpoints: options.endpoints,
+    dockerPrefix: dockerPrefixFor(onboarded.project.id),
     paths: {
       recipe: absoluteTryPath(repoRoot, TRY_PATHS.recipe),
       candidates: absoluteTryPath(repoRoot, TRY_PATHS.candidates),
@@ -49,6 +56,11 @@ export const buildTryContext = (options: {
       recordingBugs: absoluteTryPath(repoRoot, TRY_PATHS.recordingBugs),
       replayFix: absoluteTryPath(repoRoot, TRY_PATHS.replayFix),
       authState: absoluteTryPath(repoRoot, TRY_PATHS.authState),
+      agentDataDir: absoluteTryPath(repoRoot, TRY_PATHS.agentDataDir),
     },
   };
 };
+
+/** Lowercase, since Docker image repository names must be. */
+export const dockerPrefixFor = (projectId: string): string =>
+  `meticulous-try-${projectId.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;

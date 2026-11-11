@@ -14,8 +14,14 @@ import {
   DEFAULT_LEASE_SECONDS,
   releaseBuildSlot,
   slotDirs,
+  WAITER_STALE_MS,
 } from "./build-slots";
 import { defaultBuildSlots } from "./default-build-slots";
+import {
+  defaultMachineRegistryDir,
+  registerSlotWorkspace,
+  sharedSlotCount,
+} from "./machine-slot-share";
 import { orderFreeSlotsByAffinity, slotWorktreeInfo } from "./slot-worktrees";
 
 const OWNER = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
@@ -40,11 +46,23 @@ interface ReleaseOptions {
 
 const acquireHandler = async (options: AcquireOptions): Promise<void> => {
   const repoRoot = repoRootFrom(options.cwd);
-  const slotCount = readTryContext(repoRoot)?.buildSlots ?? defaultBuildSlots();
+  const configuredSlots =
+    readTryContext(repoRoot)?.buildSlots ?? defaultBuildSlots();
   const targetSha = options.sha ? resolveCommit(repoRoot, options.sha) : null;
+  const dirs = slotDirs(repoRoot);
+  const registryDir = defaultMachineRegistryDir();
+  registerSlotWorkspace(registryDir, dirs);
   const result = await acquireBuildSlot({
-    dirs: slotDirs(repoRoot),
-    slotCount,
+    dirs,
+    slotCount: (now) =>
+      sharedSlotCount({
+        registryDir,
+        ownDirs: dirs,
+        slotCount: configuredSlots,
+        leaseSeconds: options.leaseSeconds,
+        waiterStaleMs: WAITER_STALE_MS,
+        now,
+      }),
     owner: assertOwner(options.owner),
     rank: options.rank,
     waitSeconds: options.waitSeconds,
@@ -53,9 +71,13 @@ const acquireHandler = async (options: AcquireOptions): Promise<void> => {
   });
   const worktree =
     result.slot != null ? slotWorktreeInfo(repoRoot, result.slot) : null;
-  printResult(options.json, { ...result, slotCount, worktree }, () => [
+  const sharedNote =
+    result.slotCount < configuredSlots
+      ? ` (${configuredSlots} shared with other trials running on this machine)`
+      : "";
+  printResult(options.json, { ...result, configuredSlots, worktree }, () => [
     result.acquired && worktree
-      ? `Acquired build slot ${result.slot} of ${slotCount} after ${result.waitedSeconds}s; ` +
+      ? `Acquired build slot ${result.slot} of ${result.slotCount}${sharedNote} after ${result.waitedSeconds}s; ` +
         `its worktree is ${worktree.name} (${worktree.sha ? `at ${worktree.sha.slice(0, 12)}` : "not created yet"})`
       : `No build slot free after ${result.waitedSeconds}s (${result.ahead} waiting ahead); run this again to keep your place`,
   ]);

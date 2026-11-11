@@ -1,5 +1,17 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 3.10.0
+
+### Patch Changes
+
+- [#17289](https://github.com/alwaysmeticulous/meticulous/pull/17289) [`16728dd`](https://github.com/alwaysmeticulous/meticulous/commit/16728dd1b7727a0bb982bf8b0cfd9afe3fb90258) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `downloadFile`, `streamDownloadAndExtractTar`, `streamDownloadAndExtractTarGz` and `streamDownloadAndInflateTar` now back off exponentially (about 1s, 2s, 4s, 8s, 16s) between retries of a failed request, instead of retrying three times back to back, so a `503 SlowDown` from S3 no longer exhausts every attempt within milliseconds. Each delay is capped at 30s, including one asked for by `Retry-After`. `downloadAndUnzipJson` now uses the same retry policy (previously 3 retries starting at about 2s). The retry options are exported via `createPresignedUrlRetryConfig(overrides?)`, which returns a fresh config object on each call.
+
+  The tar stream downloaders' `maxRetries` and `retryDelay` now only cover first-data timeouts and failures after the response has started (mid-stream, decompressing or writing). Any other request that still fails after its own retries is no longer re-run by that outer loop.
+
+- Updated dependencies [[`eb2c588`](https://github.com/alwaysmeticulous/meticulous/commit/eb2c5883b55d502bb2233ac66ae0a0143e6d494f), [`1270a0a`](https://github.com/alwaysmeticulous/meticulous/commit/1270a0af3340dbb398760f3480f07fb473198532), [`9b48030`](https://github.com/alwaysmeticulous/meticulous/commit/9b480308dd78c19fabce81c3a4478a10ea7304f2), [`6ec8da3`](https://github.com/alwaysmeticulous/meticulous/commit/6ec8da32a9385e374f845745a52540b6e5cb88aa), [`f1a6523`](https://github.com/alwaysmeticulous/meticulous/commit/f1a652378e8a44d0b4267fdabb67002841f28487), [`f473a3c`](https://github.com/alwaysmeticulous/meticulous/commit/f473a3c238d9d784b850ff58c9110cbf016c2f35)]:
+  - @alwaysmeticulous/client@3.10.0
+  - @alwaysmeticulous/common@3.9.0
+
 ## 3.9.0
 
 ### Patch Changes

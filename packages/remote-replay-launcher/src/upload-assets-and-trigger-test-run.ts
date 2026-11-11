@@ -1,10 +1,7 @@
 import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import { uploadAssets, uploadAssetsFromZip } from "./asset-upload-utils";
 import { withCompletedUpload } from "./completed-upload";
-import {
-  describeGitHubRateLimitRetry,
-  getGitHubDelayedRetrySkipReason,
-} from "./github-rate-limit-retry";
+import { describeGitHubRateLimitRetry } from "./github-rate-limit-retry";
 import type {
   UploadAssetsAndTriggerTestRunOptions,
   ExecuteRemoteTestRunResult,
@@ -64,13 +61,8 @@ export const uploadAssetsAndTriggerTestRun = async ({
       "Test run skipped because CI comments and checks are disabled for this pull request author.";
     logger.info(skipMessage);
   } else if (result.githubRateLimitRetryScheduled) {
-    skipReason = getGitHubDelayedRetrySkipReason(
-      result.githubServerErrorRetryScheduled,
-    );
-    skipMessage = describeGitHubRateLimitRetry(
-      result.message,
-      result.githubServerErrorRetryScheduled,
-    );
+    skipReason = "github_rate_limit_retry_scheduled";
+    skipMessage = describeGitHubRateLimitRetry(result.message);
     logNotice(skipMessage);
   } else {
     throw withCompletedUpload(

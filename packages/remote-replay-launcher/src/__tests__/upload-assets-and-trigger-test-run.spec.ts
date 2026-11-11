@@ -51,24 +51,6 @@ describe("uploadAssetsAndTriggerTestRun", () => {
     expect(result.message).toContain("created automatically");
   });
 
-  it("resolves with a server-error-retry skip worded for a GitHub outage", async () => {
-    vi.mocked(uploadAssets).mockResolvedValue({
-      uploadId: "upload-1",
-      archiveType: "tar.d",
-      testRun: null,
-      githubRateLimitRetryScheduled: true,
-      githubServerErrorRetryScheduled: true,
-      message:
-        "GitHub returned a server error (HTTP 502); scheduled a retry in ~60s.",
-    });
-
-    const result = await uploadAssetsAndTriggerTestRun(options);
-
-    expect(result.skipReason).toBe("github_server_error_retry_scheduled");
-    expect(result.message).toContain("once GitHub recovers");
-    expect(result.message).not.toContain("limit resets");
-  });
-
   it("still rejects on a bare no-test-run response", async () => {
     vi.mocked(uploadAssets).mockResolvedValue({
       uploadId: "upload-1",

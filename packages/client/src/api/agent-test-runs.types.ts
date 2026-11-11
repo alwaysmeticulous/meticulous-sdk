@@ -48,6 +48,12 @@ export interface TestRunsResponse {
 
 export interface GetTestRunsOptions {
   project?: string | undefined;
+  /**
+   * Comma-separated test run ids, each of which must be a PR test run of the
+   * project; the server rejects the request, naming any id that isn't one.
+   * Not with `baseTestRuns`, which the server rejects too.
+   */
+  testRunIds?: string | undefined;
   prNumber?: string | undefined;
   /** List the runs that aren't associated with a PR instead of the PR runs. */
   baseTestRuns?: boolean | undefined;

@@ -3,6 +3,7 @@ import { join } from "path";
 import {
   getAgentSwarmRun,
   getAgentSwarmRuns,
+  getTestRun,
   getTestRunDiffsSummaryCounts,
   getTestRuns,
   isAgentSwarmRunProcessingResponse,
@@ -38,14 +39,24 @@ export const fetchTryResults = async (options: {
     ? `${METICULOUS_APP_URL}/projects/${encodeURIComponent(context.organization.name)}/${encodeURIComponent(context.project.name)}`
     : null;
 
-  const [testRuns, swarmRuns] = await Promise.all([
+  const backtests = readBacktestRecords(repoRoot);
+  const [listedTestRuns, swarmRuns] = await Promise.all([
     fetchTestRuns(client, projectPath),
     fetchSwarmRuns(client, projectPath),
   ]);
+  const testRuns = [
+    ...listedTestRuns,
+    ...(await fetchUnlistedRecordedRuns(
+      client,
+      projectPath,
+      backtests,
+      listedTestRuns,
+    )),
+  ];
 
   return aggregateResults({
     projectUrl: projectPath,
-    backtests: readBacktestRecords(repoRoot),
+    backtests,
     candidates:
       readWorkspaceJson<CandidatePrsResult>(repoRoot, TRY_PATHS.candidates)
         ?.candidates ?? [],
@@ -83,16 +94,56 @@ const fetchTestRuns = async (
       commitSha: run.commitSha,
       status: run.status,
       diffCount: run.diffCount ?? (await lookUpDiffCount(client, run)),
-      url: projectPath
-        ? `${projectPath}/test-runs/${run.id}`
-        : `${METICULOUS_APP_URL}/test-runs/${run.id}`,
+      url: testRunUrl(projectPath, run.id),
     })),
   );
 };
 
+/**
+ * The listings can leave out runs the backtesters triggered (e.g. a comparison
+ * run with no pull request while it is still running), so every recorded id
+ * they miss is looked up directly.
+ */
+const fetchUnlistedRecordedRuns = async (
+  client: MeticulousClient,
+  projectPath: string | null,
+  backtests: BacktestRecord[],
+  listed: TestRunSummary[],
+): Promise<TestRunSummary[]> => {
+  const listedIds = new Set(listed.map((run) => run.id));
+  const missingIds = [
+    ...new Set(
+      backtests
+        .flatMap((record) => [record.baseTestRunId, record.headTestRunId])
+        .filter((id): id is string => id != null && !listedIds.has(id)),
+    ),
+  ];
+  const runs = await Promise.all(
+    missingIds.map(async (testRunId): Promise<TestRunSummary | null> => {
+      const run = await getTestRun({ client, testRunId }).catch(() => null);
+      if (!run) {
+        return null;
+      }
+      return {
+        id: run.id,
+        commitSha: run.commitSha ?? "",
+        status: run.status,
+        diffCount: await lookUpDiffCount(client, run),
+        url: testRunUrl(projectPath, run.id),
+      };
+    }),
+  );
+  return runs.filter((run): run is TestRunSummary => run != null);
+};
+
+const testRunUrl = (projectPath: string | null, testRunId: string): string =>
+  projectPath
+    ? `${projectPath}/test-runs/${testRunId}`
+    : `${METICULOUS_APP_URL}/test-runs/${testRunId}`;
+
 const lookUpDiffCount = async (
   client: MeticulousClient,
-  run: TestRunListItem,
+  run: Pick<TestRunListItem, "id" | "status">,
 ): Promise<number | null> => {
   if (run.status !== "Success" && run.status !== "Failure") {
     return null;

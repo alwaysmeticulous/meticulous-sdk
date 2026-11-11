@@ -24,6 +24,7 @@ describe("getTestRuns", () => {
   it("maps every option to its query param", async () => {
     await getTestRuns(asClient(), {
       project: "my-org/my-proj",
+      testRunIds: "tr-1,tr-2",
       prNumber: "17",
       status: "Failure,Success",
       createdSince: "2026-06-01",
@@ -43,6 +44,7 @@ describe("getTestRuns", () => {
     expect(client.get).toHaveBeenCalledWith("agent/projects/test-runs", {
       params: {
         project: "my-org/my-proj",
+        testRunIds: "tr-1,tr-2",
         prNumber: "17",
         status: "Failure,Success",
         checkIds: "accessibility",

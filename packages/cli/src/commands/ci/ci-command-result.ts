@@ -23,7 +23,6 @@ export const ciUploadFields = (fields: {
 export type CiSkipReason =
   | "comments_disabled_for_author"
   | "github_rate_limit_retry_scheduled"
-  | "github_server_error_retry_scheduled"
   | "all_sessions_excluded"
   | "nothing_to_test"
   | "dry_run";

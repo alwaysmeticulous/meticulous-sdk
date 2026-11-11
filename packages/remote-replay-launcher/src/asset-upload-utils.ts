@@ -64,8 +64,6 @@ export interface UploadAssetsResult {
    * create the run once the limit resets.
    */
   githubRateLimitRetryScheduled?: boolean;
-  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
-  githubServerErrorRetryScheduled?: boolean;
 }
 
 /**
@@ -154,7 +152,6 @@ export const uploadAssetsFromTarStream = async (
     message,
     commentsDisabledForAuthor,
     githubRateLimitRetryScheduled,
-    githubServerErrorRetryScheduled,
   } = await completeUploadAndWaitForBase({
     client,
     uploadId,
@@ -178,9 +175,6 @@ export const uploadAssetsFromTarStream = async (
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
     ...(githubRateLimitRetryScheduled
       ? { githubRateLimitRetryScheduled: true }
-      : {}),
-    ...(githubServerErrorRetryScheduled
-      ? { githubServerErrorRetryScheduled: true }
       : {}),
   };
 };
@@ -215,8 +209,6 @@ const completeUploadAndWaitForBase = async ({
   message?: string;
   commentsDisabledForAuthor?: boolean;
   githubRateLimitRetryScheduled?: boolean;
-  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
-  githubServerErrorRetryScheduled?: boolean;
 }> => {
   const logger = initLogger();
 
@@ -256,8 +248,6 @@ const completeUploadAndWaitForBase = async ({
         commentsDisabledForAuthor: initialResult?.commentsDisabledForAuthor,
         githubRateLimitRetryScheduled:
           initialResult?.githubRateLimitRetryScheduled,
-        githubServerErrorRetryScheduled:
-          initialResult?.githubServerErrorRetryScheduled,
       },
       retryFn: () =>
         triggerRunOnDeployment({
@@ -285,7 +275,6 @@ const completeUploadAndWaitForBase = async ({
     message,
     commentsDisabledForAuthor,
     githubRateLimitRetryScheduled,
-    githubServerErrorRetryScheduled,
   } = triggered;
 
   Sentry.captureMessage("Deployment assets marked as uploaded", {
@@ -305,9 +294,6 @@ const completeUploadAndWaitForBase = async ({
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
     ...(githubRateLimitRetryScheduled
       ? { githubRateLimitRetryScheduled: true }
-      : {}),
-    ...(githubServerErrorRetryScheduled
-      ? { githubServerErrorRetryScheduled: true }
       : {}),
   };
 };
@@ -420,7 +406,6 @@ const uploadAssetsStreaming = async ({
     message,
     commentsDisabledForAuthor,
     githubRateLimitRetryScheduled,
-    githubServerErrorRetryScheduled,
   } = await completeUploadAndWaitForBase({
     client,
     uploadId,
@@ -444,9 +429,6 @@ const uploadAssetsStreaming = async ({
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
     ...(githubRateLimitRetryScheduled
       ? { githubRateLimitRetryScheduled: true }
-      : {}),
-    ...(githubServerErrorRetryScheduled
-      ? { githubServerErrorRetryScheduled: true }
       : {}),
   };
 };
@@ -650,7 +632,6 @@ export const uploadAssetsFromZip = async ({
       message,
       commentsDisabledForAuthor,
       githubRateLimitRetryScheduled,
-      githubServerErrorRetryScheduled,
     } = await completeUploadAndWaitForBase({
       client,
       uploadId,
@@ -673,9 +654,6 @@ export const uploadAssetsFromZip = async ({
       ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
       ...(githubRateLimitRetryScheduled
         ? { githubRateLimitRetryScheduled: true }
-        : {}),
-      ...(githubServerErrorRetryScheduled
-        ? { githubServerErrorRetryScheduled: true }
         : {}),
     };
   } finally {

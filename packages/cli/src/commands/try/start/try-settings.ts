@@ -83,6 +83,9 @@ const DENY = [
   "Bash(git branch -D:*)",
   "Bash(gh pr create:*)",
   "Bash(glab mr create:*)",
+  "Bash(meticulous auth set-project:*)",
+  "Bash(meticulous auth login:*)",
+  "mcp__Meticulous__set_project",
 ];
 
 const packageManagerAllow = (
@@ -104,11 +107,16 @@ const packageManagerAllow = (
  * Permissions for the try workspace, in the style of onboard's settings: an
  * allowlist for everything the playbook runs (the Meticulous CLI, worktrees,
  * the repo's package manager, Docker, local dev servers and browser driving)
- * so the run is not interrupted by prompts, plus a denylist for git writes.
+ * so the run is not interrupted by prompts, plus a denylist for git writes and
+ * for changing the user's account-wide default project. `env` repeats the
+ * agent's pinned, non-secret environment, so a session started by hand in the
+ * workspace still uses the trial's data dir and endpoints.
  */
 export const buildTrySettings = (
   packageManager: PackageManager | null,
+  env: Record<string, string>,
 ): Record<string, unknown> => ({
+  env,
   permissions: {
     defaultMode: "default",
     allow: [...BASE_ALLOW, ...packageManagerAllow(packageManager)],

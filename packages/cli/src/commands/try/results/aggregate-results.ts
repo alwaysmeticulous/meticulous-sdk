@@ -40,15 +40,20 @@ export const aggregateResults = (options: {
   const records = mergeRecords(backtests, candidates);
 
   const prs = records
-    .map((record) =>
+    .map(({ record, recorded }) =>
       buildPrResult(record, candidatesByPr.get(record.prNumber), {
         testRuns,
         swarmRuns,
+        recorded,
       }),
     )
     .filter(
       (pr) =>
-        pr.headTestRun || pr.swarmRun || pr.baseTestRun || pr.errors.length > 0,
+        pr.headTestRun ||
+        pr.swarmRun ||
+        pr.baseTestRun ||
+        pr.errors.length > 0 ||
+        pr.pending,
     )
     .sort(
       (a, b) => b.findingsScore - a.findingsScore || b.prNumber - a.prNumber,
@@ -72,17 +77,20 @@ export const aggregateResults = (options: {
 const mergeRecords = (
   backtests: BacktestRecord[],
   candidates: CandidatePr[],
-): BacktestRecord[] => {
-  const recorded = new Set(backtests.map((record) => record.prNumber));
+): Array<{ record: BacktestRecord; recorded: boolean }> => {
+  const recordedPrs = new Set(backtests.map((record) => record.prNumber));
   return [
-    ...backtests,
+    ...backtests.map((record) => ({ record, recorded: true })),
     ...candidates
-      .filter((candidate) => !recorded.has(candidate.prNumber))
+      .filter((candidate) => !recordedPrs.has(candidate.prNumber))
       .map((candidate) => ({
-        prNumber: candidate.prNumber,
-        title: candidate.title,
-        baseSha: candidate.baseSha,
-        headSha: candidate.headSha,
+        record: {
+          prNumber: candidate.prNumber,
+          title: candidate.title,
+          baseSha: candidate.baseSha,
+          headSha: candidate.headSha,
+        },
+        recorded: false,
       })),
   ];
 };
@@ -90,7 +98,11 @@ const mergeRecords = (
 const buildPrResult = (
   record: BacktestRecord,
   candidate: CandidatePr | undefined,
-  runs: { testRuns: TestRunSummary[]; swarmRuns: SwarmRunSummary[] },
+  runs: {
+    testRuns: TestRunSummary[];
+    swarmRuns: SwarmRunSummary[];
+    recorded: boolean;
+  },
 ): PrResult => {
   const headTestRun = pickRun(
     runs.testRuns,
@@ -105,7 +117,13 @@ const buildPrResult = (
   const swarmRun = pickRun(runs.swarmRuns, record.swarmRunId, record.headSha);
   const bugSignals = describeBugSignals(candidate);
 
+  // A backtester still building has written its record but triggered nothing yet.
+  const stillBuilding =
+    runs.recorded &&
+    record.headTestRunId == null &&
+    (record.errors ?? []).length === 0;
   const pending =
+    stillBuilding ||
     (headTestRun != null &&
       !TERMINAL_TEST_RUN_STATUSES.has(headTestRun.status)) ||
     (swarmRun != null && !TERMINAL_SWARM_STATUSES.has(swarmRun.status)) ||

@@ -149,6 +149,7 @@ describe("test-runs command", () => {
   it("passes every option through to the client call", async () => {
     await runHandler({
       project: "org/proj",
+      testRunIds: "tr-1,tr-2",
       prNumber: "17",
       status: "Failure",
       createdSince: "2026-09-01",
@@ -166,6 +167,7 @@ describe("test-runs command", () => {
       {},
       {
         project: "org/proj",
+        testRunIds: "tr-1,tr-2",
         prNumber: "17",
         baseTestRuns: undefined,
         latestPerPullRequest: true,
@@ -212,6 +214,14 @@ describe("test-runs command", () => {
       { status: "Failure" },
       "No pull request test runs matching the filters found for this project.",
     ],
+    [
+      { testRunIds: "tr-1", status: "Failure" },
+      "None of these test runs match the other options.",
+    ],
+    [
+      { testRunIds: "tr-1", prNumber: "17" },
+      "None of these test runs match the other options.",
+    ],
   ])("explains an empty first page for %j", async (args, message) => {
     mocks.getTestRuns.mockResolvedValue({ testRuns: [] });
 
@@ -227,6 +237,7 @@ describe("test-runs command", () => {
     [{ latestPerPullRequest: true }, true],
     [{ offset: 0 }, true],
     [{ prNumber: "17" }, false],
+    [{ testRunIds: "tr-1" }, false],
     [{ status: "Failure" }, false],
     [{ withDiffsOnly: true }, false],
     [{ withCheckIssuesOnly: true }, false],
@@ -272,6 +283,7 @@ describe("test-runs command", () => {
 
     it.each([
       [["--prNumber", "17", "--baseTestRuns"]],
+      [["--testRunIds", "tr-1", "--baseTestRuns"]],
       [["--includeBaseTestRunId", "--baseTestRuns"]],
       [["--includeDiffCount", "--baseTestRuns"]],
       [["--includeDurationSeconds", "--baseTestRuns"]],

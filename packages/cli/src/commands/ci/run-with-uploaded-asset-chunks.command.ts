@@ -15,7 +15,6 @@ import {
 import {
   carryCompletedUpload,
   describeGitHubRateLimitRetry,
-  getGitHubDelayedRetrySkipReason,
   runWithUploadedAssetChunks,
   withCompletedUpload,
 } from "@alwaysmeticulous/remote-replay-launcher";
@@ -317,17 +316,12 @@ const handler = async ({
         return;
       }
       if (result.githubRateLimitRetryScheduled) {
-        const message = describeGitHubRateLimitRetry(
-          result.message,
-          result.githubServerErrorRetryScheduled,
-        );
+        const message = describeGitHubRateLimitRetry(result.message);
         logger.info(message);
         if (json) {
           printCiJson({
             outcome: "skipped",
-            reason: getGitHubDelayedRetrySkipReason(
-              result.githubServerErrorRetryScheduled,
-            ),
+            reason: "github_rate_limit_retry_scheduled",
             message,
             testRunId: null,
             status: null,

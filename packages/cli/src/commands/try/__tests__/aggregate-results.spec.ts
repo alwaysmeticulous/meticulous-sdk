@@ -166,6 +166,20 @@ describe("aggregateResults", () => {
     expect(results.allDone).toBe(false);
   });
 
+  it("is not done while a backtester has written its record but triggered nothing yet", () => {
+    const results = aggregateResults({
+      projectUrl: null,
+      backtests: [{ prNumber: 1, baseSha: "b1", headSha: "h1" }],
+      candidates: [candidate(9)],
+      testRuns: [],
+      swarmRuns: [],
+    });
+    expect(results.prs.map((pr) => [pr.prNumber, pr.pending])).toEqual([
+      [1, true],
+    ]);
+    expect(results.allDone).toBe(false);
+  });
+
   it("keeps PRs whose backtest failed so the error is reported, and drops candidates with no runs", () => {
     const results = aggregateResults({
       projectUrl: null,

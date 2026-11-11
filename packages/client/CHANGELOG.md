@@ -1,5 +1,26 @@
 # @alwaysmeticulous/client
 
+## 3.10.0
+
+### Minor Changes
+
+- [#17298](https://github.com/alwaysmeticulous/meticulous/pull/17298) [`eb2c588`](https://github.com/alwaysmeticulous/meticulous/commit/eb2c5883b55d502bb2233ac66ae0a0143e6d494f) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent test-runs` takes `--testRunIds` to list just those test runs, and `getTestRuns` takes the matching `testRunIds` option. Each must be a pull request test run of the project; the call fails, naming them, if any ID isn't one.
+
+- [#17506](https://github.com/alwaysmeticulous/meticulous/pull/17506) [`1270a0a`](https://github.com/alwaysmeticulous/meticulous/commit/1270a0af3340dbb398760f3480f07fb473198532) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agent swarm screenshot comparisons gain `highlights`, the areas their verdict rests on, and each visual review difference gains a `box` saying where it is. Show `highlights` in place of `regions` when present.
+
+- [#17536](https://github.com/alwaysmeticulous/meticulous/pull/17536) [`6ec8da3`](https://github.com/alwaysmeticulous/meticulous/commit/6ec8da32a9385e374f845745a52540b6e5cb88aa) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Agentic run result blobs can carry `retiredTestcases`: the flows a pull request stopped testing because they blocked on consecutive commits.
+
+- [#17349](https://github.com/alwaysmeticulous/meticulous/pull/17349) [`f1a6523`](https://github.com/alwaysmeticulous/meticulous/commit/f1a652378e8a44d0b4267fdabb67002841f28487) Thanks [@sesajad](https://github.com/sesajad)! - Agentic run trace events can carry `omittedChars`: the size in chars of text a run recorded as a size-only placeholder — untraced reasoning — instead of in full.
+
+### Patch Changes
+
+- [#17413](https://github.com/alwaysmeticulous/meticulous/pull/17413) [`9b48030`](https://github.com/alwaysmeticulous/meticulous/commit/9b480308dd78c19fabce81c3a4478a10ea7304f2) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Add optional `inheritedCases` on `completeAgenticRunResult`.
+
+- [#17487](https://github.com/alwaysmeticulous/meticulous/pull/17487) [`f473a3c`](https://github.com/alwaysmeticulous/meticulous/commit/f473a3c238d9d784b850ff58c9110cbf016c2f35) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Revert the GitHub server-error retry wording: a scheduled trigger retry is again reported only as a GitHub rate-limit retry, and the `github_server_error_retry_scheduled` skip reason is removed.
+
+- Updated dependencies []:
+  - @alwaysmeticulous/common@3.9.0
+
 ## 3.9.0
 
 ### Patch Changes

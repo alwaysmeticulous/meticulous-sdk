@@ -6,8 +6,9 @@ import type {
 } from "./agent-test-runs.types";
 
 // Lists the project's user-visible test runs, newest first: the PR runs by
-// default, or with `baseTestRuns` the runs without a PR that PR runs are
-// compared against. `limit` is always applied server-side (default 100).
+// default, with `baseTestRuns` the runs without a PR that PR runs are
+// compared against, or with `testRunIds` just those PR runs. `limit` is
+// always applied server-side (default 100).
 export const getTestRuns = async (
   client: MeticulousClient,
   options: GetTestRunsOptions = {},
@@ -40,6 +41,7 @@ export const getTestRuns = async (
 
 const STRING_PARAMS = [
   "project",
+  "testRunIds",
   "prNumber",
   "status",
   "checkIds",

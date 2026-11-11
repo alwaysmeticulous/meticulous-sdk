@@ -1,5 +1,23 @@
 # @alwaysmeticulous/cli
 
+## 3.10.0
+
+### Minor Changes
+
+- [#17298](https://github.com/alwaysmeticulous/meticulous/pull/17298) [`eb2c588`](https://github.com/alwaysmeticulous/meticulous/commit/eb2c5883b55d502bb2233ac66ae0a0143e6d494f) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `meticulous agent test-runs` takes `--testRunIds` to list just those test runs, and `getTestRuns` takes the matching `testRunIds` option. Each must be a pull request test run of the project; the call fails, naming them, if any ID isn't one.
+
+- [#17314](https://github.com/alwaysmeticulous/meticulous/pull/17314) [`1e2bb96`](https://github.com/alwaysmeticulous/meticulous/commit/1e2bb969e908efe9b5e5949febd3d61cf89cf1bb) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous try`: concurrent trials in different repositories no longer interfere. The agent now runs with its own Meticulous data dir, so its commands always use the trial project's token instead of your login's default project, and the API and snippets URLs the trial was created with are pinned. New `meticulous try preflight` checks this from the agent's shell before any upload, and `meticulous try free-port` replaces fixed ports. Docker containers and images are named per trial, and build slots are split between trials building on the same machine.
+
+### Patch Changes
+
+- [#17487](https://github.com/alwaysmeticulous/meticulous/pull/17487) [`f473a3c`](https://github.com/alwaysmeticulous/meticulous/commit/f473a3c238d9d784b850ff58c9110cbf016c2f35) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - Revert the GitHub server-error retry wording: a scheduled trigger retry is again reported only as a GitHub rate-limit retry, and the `github_server_error_retry_scheduled` skip reason is removed.
+
+- [#17330](https://github.com/alwaysmeticulous/meticulous/pull/17330) [`a484dc4`](https://github.com/alwaysmeticulous/meticulous/commit/a484dc4351fd6d4fed8d9421057ee7f0ac7d6279) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous try`: the trial project's cloud test-run limit is now 200 per hour (was 20), and the agent's playbook says so.
+
+- [#17310](https://github.com/alwaysmeticulous/meticulous/pull/17310) [`a7a3d0e`](https://github.com/alwaysmeticulous/meticulous/commit/a7a3d0ee41f47cefa5a3fcf02314ed3f540c9b1f) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous try` now has the agent start `meticulous try prewarm` in the background as soon as phase 1 (build & serve) finishes, rather than during phase 3's cloud wait, so the slot worktrees are checked out while sessions are being recorded and phase 3's own build no longer waits on them.
+
+- [#17346](https://github.com/alwaysmeticulous/meticulous/pull/17346) [`5f1d25c`](https://github.com/alwaysmeticulous/meticulous/commit/5f1d25c1109a854d39b9d11f1ecd59ee8a47d7aa) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `meticulous try`: `try results` no longer reports every backtest done while backtesters are still building, and looks up recorded test runs the listings miss. The playbook's replay check now replays an older session, reads the cloud run's server logs and gives the same-build comparison a no-op diff so it really compares; recordings use a desktop viewport and never drive the page through `eval`; cleanup waits until after the final report.
+
 ## 3.9.0
 
 ### Minor Changes

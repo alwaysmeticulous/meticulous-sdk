@@ -20,6 +20,12 @@ import { materializeTryWorkspace } from "../start/materialize-try-workspace";
 import { deriveProjectName, detectPackageManager } from "../start/repo-facts";
 import { buildTrySettings } from "../start/try-settings";
 
+const AGENT_ENV = {
+  METICULOUS_DIR: "/repo/.meticulous-try/meticulous-home",
+  METICULOUS_API_URL: "",
+  METICULOUS_SNIPPETS_BASE_URL: "",
+};
+
 const dirs: string[] = [];
 
 const makeDir = (): string => {
@@ -42,12 +48,15 @@ describe("materializeTryWorkspace", () => {
     const workspace = materializeTryWorkspace({
       repoRoot: repo,
       packageManager: "pnpm",
+      agentEnv: AGENT_ENV,
     });
 
     expect(workspace).toBe(join(repo, ".meticulous-try"));
     for (const file of [
       ".gitignore",
       ".mcp.json",
+      "agent-env.sh",
+      "meticulous-home",
       ".claude/CLAUDE.md",
       ".claude/settings.json",
       ".claude/agents/pr-backtester.md",
@@ -71,14 +80,28 @@ describe("materializeTryWorkspace", () => {
     const settings = JSON.parse(
       readFileSync(join(workspace, ".claude/settings.json"), "utf8"),
     ) as {
+      env: Record<string, string>;
       permissions: { allow: string[] };
     };
     expect(settings.permissions.allow).toContain("Bash(pnpm:*)");
+    expect(settings.env).toEqual(AGENT_ENV);
+    const envScript = readFileSync(join(workspace, "agent-env.sh"), "utf8");
+    expect(envScript).toContain(
+      "export METICULOUS_DIR='/repo/.meticulous-try/meticulous-home'",
+    );
+    expect(envScript).toContain("export METICULOUS_API_URL=''");
+    expect(envScript).toContain(
+      `require(process.argv[1]).apiToken' '${join(workspace, "try-context.json")}'`,
+    );
     expect(readFileSync(join(repo, ".gitignore"), "utf8")).toContain(
       ".meticulous-try/",
     );
 
-    materializeTryWorkspace({ repoRoot: repo, packageManager: "pnpm" });
+    materializeTryWorkspace({
+      repoRoot: repo,
+      packageManager: "pnpm",
+      agentEnv: AGENT_ENV,
+    });
     expect(
       readFileSync(join(repo, ".gitignore"), "utf8").match(
         /\.meticulous-try\//g,
@@ -91,7 +114,11 @@ describe("materializeTryWorkspace", () => {
     const elsewhere = makeDir();
     symlinkSync(elsewhere, join(repo, ".meticulous-try"));
     expect(() =>
-      materializeTryWorkspace({ repoRoot: repo, packageManager: null }),
+      materializeTryWorkspace({
+        repoRoot: repo,
+        packageManager: null,
+        agentEnv: AGENT_ENV,
+      }),
     ).toThrow(/symlink/);
   });
 });
@@ -111,19 +138,24 @@ describe("try-context.json", () => {
 
 describe("buildTrySettings", () => {
   it("allows only the detected package manager and denies git writes", () => {
-    const settings = buildTrySettings("yarn") as {
+    const settings = buildTrySettings("yarn", {}) as {
       permissions: { allow: string[]; deny: string[] };
     };
     expect(settings.permissions.allow).toContain("Bash(yarn:*)");
     expect(settings.permissions.allow).not.toContain("Bash(pnpm:*)");
     expect(settings.permissions.allow).toContain("Bash(meticulous:*)");
     expect(settings.permissions.deny).toEqual(
-      expect.arrayContaining(["Bash(git push:*)", "Bash(git commit:*)"]),
+      expect.arrayContaining([
+        "Bash(git push:*)",
+        "Bash(git commit:*)",
+        "Bash(meticulous auth set-project:*)",
+        "mcp__Meticulous__set_project",
+      ]),
     );
   });
 
   it("allows every package manager when none was detected", () => {
-    const settings = buildTrySettings(null) as {
+    const settings = buildTrySettings(null, {}) as {
       permissions: { allow: string[] };
     };
     for (const manager of ["npm", "pnpm", "yarn", "bun"]) {

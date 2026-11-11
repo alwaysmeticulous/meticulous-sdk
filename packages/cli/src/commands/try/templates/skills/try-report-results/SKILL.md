@@ -88,6 +88,10 @@ Keep it under ~45 lines. Structure:
    If there are none, say "No bugs found" plainly; never pad this list with expected changes or
    noise.
 
+After the report, run `meticulous try cleanup --keepWorkspace` (removes every worktree, the
+build-output snapshots, the shared build cache and the saved login). Not earlier: a finding may
+need a rebuild or another recording before you can report it.
+
 If nothing compelling was found, say so plainly, show what Meticulous did verify (screens
 compared, flows the agents exercised and passed), and suggest the most promising gap (e.g.
 recording the flows behind login).
