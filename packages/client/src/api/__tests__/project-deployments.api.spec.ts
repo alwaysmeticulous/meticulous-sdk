@@ -7,6 +7,8 @@ import {
   agentUploadGitDiffBuild,
   completeContainerUpload,
   downloadProjectDeployment,
+  getDeploymentSourceMapArtifactDownloadUrl,
+  getDeploymentSourceMapMappingArtifact,
   requestDeploymentSourceMapArtifactUpload,
   triggerDeploymentSourceMapIngestion,
 } from "../project-deployments.api";
@@ -264,6 +266,47 @@ describe("triggerDeploymentSourceMapIngestion", () => {
       {},
       undefined,
     );
+  });
+});
+
+describe("source-map artifact reads", () => {
+  const MAPPING_URL = "project-deployments/dep-1/source-map-mapping-artifact";
+  const MAP_URL = `${MAPPING_URL}/maps/abc`;
+
+  it.each([
+    [
+      "getDeploymentSourceMapMappingArtifact",
+      MAPPING_URL,
+      (client: MeticulousClient, options: object) =>
+        getDeploymentSourceMapMappingArtifact({
+          client,
+          projectDeploymentId: "dep-1",
+          ...options,
+        }),
+    ],
+    [
+      "getDeploymentSourceMapArtifactDownloadUrl",
+      MAP_URL,
+      (client: MeticulousClient, options: object) =>
+        getDeploymentSourceMapArtifactDownloadUrl({
+          client,
+          projectDeploymentId: "dep-1",
+          sourceMapSha256: "abc",
+          ...options,
+        }),
+    ],
+  ])("%s passes timeout and retry through", async (_name, url, read) => {
+    const get = vi.fn().mockResolvedValue({ data: null });
+    const client = { get } as unknown as MeticulousClient;
+
+    await read(client, { timeoutMs: 5_000, retry: { maxRetries: 1 } });
+    await read(client, {});
+
+    expect(get).toHaveBeenNthCalledWith(1, url, {
+      timeout: 5_000,
+      retry: { maxRetries: 1 },
+    });
+    expect(get).toHaveBeenNthCalledWith(2, url, undefined);
   });
 });
 

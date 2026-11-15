@@ -3,6 +3,7 @@ import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { type MeticulousExecutionContext, withMeticulous } from "../index";
 import {
+  type AgentSwarmTestingPassthroughReport,
   AGENT_SWARM_TESTING_RUN_ID_ENV_KEY,
   AGENT_SWARM_TESTING_SIDECAR_URL_ENV_KEY,
   FRONTEND_SESSION_ID_HEADER,
@@ -34,6 +35,9 @@ let upstreamUrl: string;
 
 let upstreamHits: number;
 let intercepts: OutboundFetchAgentSwarmTestingRequest[];
+let passthroughReports: AgentSwarmTestingPassthroughReport[];
+/** Work the shim handed to ctx.waitUntil, so a test can wait for its reports. */
+let backgroundWork: Promise<unknown>[];
 /** Per-test override of how the fake interceptor answers. */
 let interceptHandler: (
   payload: OutboundFetchAgentSwarmTestingRequest,
@@ -96,6 +100,18 @@ beforeAll(async () => {
           .end(JSON.stringify(interceptHandler(payload)));
         return;
       }
+      if (
+        req.method === "POST" &&
+        path === "/v1/agent-swarm-testing/passthrough-result"
+      ) {
+        passthroughReports.push(
+          JSON.parse(
+            Buffer.concat(chunks).toString("utf-8"),
+          ) as AgentSwarmTestingPassthroughReport,
+        );
+        res.writeHead(204).end();
+        return;
+      }
       res.writeHead(404).end();
     });
   });
@@ -121,6 +137,8 @@ afterAll(async () => {
 beforeEach(() => {
   upstreamHits = 0;
   intercepts = [];
+  passthroughReports = [];
+  backgroundWork = [];
   replayRoutesAvailable = false;
   interceptResponseStatus = null;
   interceptHandler = () => ({
@@ -132,7 +150,9 @@ beforeEach(() => {
 });
 
 const makeCtx = (): MeticulousExecutionContext => ({
-  waitUntil: () => {},
+  waitUntil: (promise) => {
+    backgroundWork.push(promise);
+  },
 });
 
 /**
@@ -247,6 +267,68 @@ describe("withMeticulous in agent-swarm-testing mode", () => {
     expect(result.status).toBe(201);
     expect(result.body).toBe('{"from":"real-upstream"}');
     expect(upstreamHits).toBe(1);
+  });
+
+  it("reports the real service's status for a passthrough that asked for it", async () => {
+    interceptHandler = () => ({ outcome: "passthrough", callId: "call-1" });
+
+    const result = await callWorker({ sessionId: "session-7" });
+    await Promise.all(backgroundWork);
+
+    expect(result.status).toBe(201);
+    expect(passthroughReports).toEqual([
+      {
+        runId: RUN_ID,
+        frontendSessionId: "session-7",
+        callId: "call-1",
+        result: { statusCode: 201 },
+      },
+    ]);
+  });
+
+  it("reports the error of a passthrough the real service never answered", async () => {
+    interceptHandler = () => ({ outcome: "passthrough", callId: "call-2" });
+    // A port nothing listens on refuses the connection, like a dependency
+    // not deployed beside the app.
+    const closedServer = http.createServer();
+    const closedUrl = await listen(closedServer);
+    await close(closedServer);
+
+    await expect(
+      withMeticulous({
+        fetch: async () => fetch(`${closedUrl}/unreachable`),
+      }).fetch(
+        new Request("http://worker.local/page", {
+          headers: { [FRONTEND_SESSION_ID_HEADER]: "session-8" },
+        }),
+        {
+          [AGENT_SWARM_TESTING_SIDECAR_URL_ENV_KEY]: interceptorUrl,
+          [AGENT_SWARM_TESTING_RUN_ID_ENV_KEY]: RUN_ID,
+        },
+        makeCtx(),
+      ),
+    ).rejects.toThrow();
+    await Promise.all(backgroundWork);
+
+    expect(passthroughReports).toHaveLength(1);
+    expect(passthroughReports[0]).toMatchObject({
+      callId: "call-2",
+      frontendSessionId: "session-8",
+    });
+    const { result } = passthroughReports[0];
+    // Node's fetch says only "fetch failed"; the cause names the refused port.
+    expect("error" in result && result.error).toMatch(
+      /^fetch failed \(cause: .*ECONNREFUSED.*\)$/,
+    );
+  });
+
+  it("sends no report for a passthrough without a call id", async () => {
+    interceptHandler = () => ({ outcome: "passthrough" });
+
+    await callWorker();
+    await Promise.all(backgroundWork);
+
+    expect(passthroughReports).toEqual([]);
   });
 
   it("passes the call through when the interceptor is unreachable", async () => {

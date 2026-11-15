@@ -6,6 +6,8 @@ import {
 } from "./with-meticulous";
 
 export type {
+  AgentSwarmTestingPassthroughReport,
+  AgentSwarmTestingPassthroughResult,
   BeMockCall,
   BeMockCallsReport,
   BeMockFailedMessage,
@@ -47,6 +49,7 @@ export {
   SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_CALLS_PATH,
   SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_PATH,
   SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH,
+  SIDECAR_AGENT_SWARM_TESTING_PASSTHROUGH_RESULT_PATH,
   SIDECAR_EVENTS_PATH,
   SIDECAR_PROTOCOL_VERSION,
   SIDECAR_PROTOCOL_VERSION_HEADER,

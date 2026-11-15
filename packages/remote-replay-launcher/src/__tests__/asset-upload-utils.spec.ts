@@ -2,6 +2,7 @@ import type { TestRunTriggerDebugContext } from "@alwaysmeticulous/api";
 import {
   completeAssetUpload,
   createClient,
+  putFileToSignedUrl,
   requestAssetUpload,
 } from "@alwaysmeticulous/client";
 import { triggerRunOnDeployment } from "@alwaysmeticulous/client/dist/api/project-deployments.api";
@@ -124,6 +125,53 @@ describe("uploadAssetsFromZip", () => {
     );
     expect(triggerRunOnDeployment).toHaveBeenCalledWith(
       expect.not.objectContaining({ debugContext: expect.anything() }),
+    );
+  });
+
+  it("skips uploading zip bytes and completing when requestAssetUpload returns alreadyUploaded", async () => {
+    vi.mocked(requestAssetUpload).mockResolvedValue({
+      uploadId: "upload-reused",
+      uploadUrl: "",
+      alreadyUploaded: true,
+      testRun: TEST_RUN,
+      message: "Reusing recent deployment.",
+    } as never);
+
+    const result = await uploadAssetsFromZip({
+      apiToken: "test-token",
+      zipPath: "/tmp/app.zip",
+      commitSha: "abc123def456",
+      waitForBase: false,
+    });
+
+    expect(requestAssetUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        size: 1234,
+        commitSha: "abc123def456",
+        deduplicateCommitUpload: true,
+      }),
+    );
+    expect(putFileToSignedUrl).not.toHaveBeenCalled();
+    expect(completeAssetUpload).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      uploadId: "upload-reused",
+      archiveType: "zip",
+      testRun: TEST_RUN,
+      message: "Reusing recent deployment.",
+    });
+  });
+
+  it("does not request deduplication when gitDiffOutput or baseSha is supplied", async () => {
+    await uploadAssetsFromZip({
+      apiToken: "test-token",
+      zipPath: "/tmp/app.zip",
+      commitSha: "abc123def456",
+      baseSha: "base-sha",
+      waitForBase: false,
+    });
+
+    expect(requestAssetUpload).toHaveBeenCalledWith(
+      expect.not.objectContaining({ deduplicateCommitUpload: true }),
     );
   });
 });

@@ -1,5 +1,41 @@
 # @alwaysmeticulous/cli
 
+## 3.11.0
+
+### Minor Changes
+
+- [#17689](https://github.com/alwaysmeticulous/meticulous/pull/17689) [`fd06dd3`](https://github.com/alwaysmeticulous/meticulous/commit/fd06dd344b159f15de673548cad4487a3cfd008a) Thanks [@adrikoz](https://github.com/adrikoz)! - Harden `meticulous crawl`:
+  - New `--project <id | org/proj | proj>` flag chooses which project sessions are recorded into (one-off override of the OAuth default; must match a project-scoped API token's project).
+  - New repeatable `--allowedPathPrefix <path>` flag restricts the crawl to URLs under the given path prefix(es) on the start URL's origin.
+  - `crawl` now exits non-zero when the crawler crashes before finishing. Sessions recorded before the crash are still listed and written to `--outputFile` (which now includes a `crawlerFailed` field), but no test run is created.
+  - Stopping a crawl (session cap, timeout or Ctrl+C) now shuts the browser down gracefully after a short flush delay, so sessions in flight are no longer lost.
+  - Fixed an unhandled `Target closed` rejection that could kill the crawler mid-run on pages with iframes or popups.
+
+- [#17591](https://github.com/alwaysmeticulous/meticulous/pull/17591) [`166f0b7`](https://github.com/alwaysmeticulous/meticulous/commit/166f0b78f33802cccd752952f6bad585ec3279d4) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add optional commit-upload deduplication support so repeat CI asset and container uploads for the same commit within a short window can reuse an existing healthy deployment and test run instead of re-uploading artifacts.
+
+- [#17620](https://github.com/alwaysmeticulous/meticulous/pull/17620) [`8f6ae99`](https://github.com/alwaysmeticulous/meticulous/commit/8f6ae99147399e84b1492a024f038b0744f1ae44) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - When a test run trigger hits a GitHub server error and the server schedules a retry, report it as a skip that says the run will be created once GitHub recovers (rather than once the rate limit resets), with the `--json` skip reason `github_server_error_retry_scheduled`. Older clients keep working: clients from 3.1.0 report the same retry as a rate-limit skip, and older clients are answered with a placeholder test run instead.
+
+### Patch Changes
+
+- [#17353](https://github.com/alwaysmeticulous/meticulous/pull/17353) [`78c51f8`](https://github.com/alwaysmeticulous/meticulous/commit/78c51f811b985790e47a588a8bd0d2cf6d46152a) Thanks [@sesajad](https://github.com/sesajad)! - Allow `ci agent-test --previewUrl` to launch Agent swarm against a hosted frontend URL directly, without uploading a build.
+
+- [#17295](https://github.com/alwaysmeticulous/meticulous/pull/17295) [`0068fd5`](https://github.com/alwaysmeticulous/meticulous/commit/0068fd5042b0110d8bd8490128e13f5da3157bf9) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Upgrade to puppeteer-core 25.16.0 and `@puppeteer/browsers` 3.2.6, so local replays and recordings
+  download Chrome for Testing 156.0.8078.47 (was 154.0.8037.57), matching cloud replays.
+
+  `@alwaysmeticulous/browser-installer` no longer depends on puppeteer-core at runtime: the Chrome
+  build it installs is now a constant in the package.
+
+  `@alwaysmeticulous/record` still depends on puppeteer-core, which since 25.13 depends on
+  `chromium-bidi@157.0.8090-0`. From 157.0.8080-0 onwards, chromium-bidi is published without npm
+  provenance (earlier versions had it), so pnpm projects with `trustPolicy: no-downgrade` reject it
+  with `ERR_PNPM_TRUST_DOWNGRADE`. Puppeteer only loads chromium-bidi when launching Chrome with
+  `protocol: "webDriverBiDi"`, which Meticulous never does. If your project hits this, either add
+  `chromium-bidi@157.0.8090-0` to `trustPolicyExclude`, or remove the package with the pnpm override
+  `"chromium-bidi": "-"` (the override isn't safe if you bundle puppeteer-core with esbuild, because
+  esbuild follows puppeteer's import of chromium-bidi).
+
+- [#17364](https://github.com/alwaysmeticulous/meticulous/pull/17364) [`c25728c`](https://github.com/alwaysmeticulous/meticulous/commit/c25728c4b8f5e1653912bacf93116907771256b0) Thanks [@sesajad](https://github.com/sesajad)! - Allow `ci agent-test --previewUrl --basePreviewUrl --baseSha` to launch Agent swarm comparing an explicit pair of hosted preview URLs.
+
 ## 3.10.0
 
 ### Minor Changes

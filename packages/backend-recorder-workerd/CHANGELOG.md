@@ -1,5 +1,11 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 3.11.0
+
+### Minor Changes
+
+- [#17538](https://github.com/alwaysmeticulous/meticulous/pull/17538) [`6a60afd`](https://github.com/alwaysmeticulous/meticulous/commit/6a60afd0baea504623405cfa7278bf5eeb41971a) Thanks [@dennysem](https://github.com/dennysem)! - In agent-swarm testing mode, report how each passed-through outbound call ended (its status, or the error it failed with) to the interceptor when the interceptor asks for it.
+
 ## 3.6.0
 
 ### Patch Changes

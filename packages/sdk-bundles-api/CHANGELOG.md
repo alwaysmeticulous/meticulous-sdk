@@ -1,5 +1,21 @@
 # @alwaysmeticulous/sdk-bundles-api
 
+## 3.11.0
+
+### Minor Changes
+
+- [#17689](https://github.com/alwaysmeticulous/meticulous/pull/17689) [`fd06dd3`](https://github.com/alwaysmeticulous/meticulous/commit/fd06dd344b159f15de673548cad4487a3cfd008a) Thanks [@adrikoz](https://github.com/adrikoz)! - Harden `meticulous crawl`:
+  - New `--project <id | org/proj | proj>` flag chooses which project sessions are recorded into (one-off override of the OAuth default; must match a project-scoped API token's project).
+  - New repeatable `--allowedPathPrefix <path>` flag restricts the crawl to URLs under the given path prefix(es) on the start URL's origin.
+  - `crawl` now exits non-zero when the crawler crashes before finishing. Sessions recorded before the crash are still listed and written to `--outputFile` (which now includes a `crawlerFailed` field), but no test run is created.
+  - Stopping a crawl (session cap, timeout or Ctrl+C) now shuts the browser down gracefully after a short flush delay, so sessions in flight are no longer lost.
+  - Fixed an unhandled `Target closed` rejection that could kill the crawler mid-run on pages with iframes or popups.
+
+### Patch Changes
+
+- Updated dependencies [[`4564a97`](https://github.com/alwaysmeticulous/meticulous/commit/4564a97ceeb059883af35e94c3f619789adafbb5), [`eb6fd58`](https://github.com/alwaysmeticulous/meticulous/commit/eb6fd58f7a4bf6f3b78367c52e1cd82cca125436)]:
+  - @alwaysmeticulous/api@3.11.0
+
 ## 3.10.0
 
 ### Patch Changes

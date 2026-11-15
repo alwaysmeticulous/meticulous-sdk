@@ -1,5 +1,15 @@
 # @alwaysmeticulous/api
 
+## 3.11.0
+
+### Minor Changes
+
+- [#17384](https://github.com/alwaysmeticulous/meticulous/pull/17384) [`eb6fd58`](https://github.com/alwaysmeticulous/meticulous/commit/eb6fd58f7a4bf6f3b78367c52e1cd82cca125436) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `clipboardText` to `ReplayableEvent`: on a paste, the clipboard's plain text, which replay pastes. Apps that insert a paste themselves, such as rich-text editors, fire no input event carrying the text.
+
+### Patch Changes
+
+- [#17723](https://github.com/alwaysmeticulous/meticulous/pull/17723) [`4564a97`](https://github.com/alwaysmeticulous/meticulous/commit/4564a97ceeb059883af35e94c3f619789adafbb5) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Document that `coverage_curve_cap` also marks IsRelevant sessions relabelled NotRelevant when the counted IsRelevant sessions alone exceed the RSE executed-sessions cap.
+
 ## 3.9.0
 
 ### Minor Changes

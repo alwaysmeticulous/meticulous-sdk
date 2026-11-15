@@ -25,6 +25,18 @@ export interface GenerateSessionsOptions extends ProjectIdentifier {
    * `localImageTag` or `assetsDirectory` again.
    */
   deploymentId?: string | undefined;
+  /**
+   * A public HTTPS URL the customer serves itself, loaded directly by the
+   * run's browser; nothing is uploaded or registered.
+   */
+  previewUrl?: string | undefined;
+  /**
+   * An explicit base preview URL to compare `previewUrl` against, with
+   * `baseSha` naming the revision it serves. Requires `previewUrl`.
+   */
+  basePreviewUrl?: string | undefined;
+  /** The revision `basePreviewUrl` serves; required with it. */
+  baseSha?: string | undefined;
   commitSha: string;
   /**
    * Projects without a hosting provider: upload the source of the change from
@@ -58,7 +70,10 @@ export interface GenerateSessionsOptions extends ProjectIdentifier {
 }
 
 export interface GenerateSessionsResult {
-  /** Absent when the launch reused an uploaded `deploymentId`. */
+  /**
+   * Absent when nothing was uploaded: a launch that reused an uploaded
+   * `deploymentId`, or one against a `previewUrl`.
+   */
   uploadId?: string;
   agenticRunId?: string | null;
   message?: string;
@@ -75,6 +90,9 @@ export const generateSessions = async ({
   localImageTag,
   assetsDirectory,
   deploymentId,
+  previewUrl,
+  basePreviewUrl,
+  baseSha,
   commitSha,
   sourceSnapshot,
   headTestRunId,
@@ -94,12 +112,29 @@ export const generateSessions = async ({
   const client = createClient({ apiToken });
   const projectIdentifier = projectId ? { projectId } : {};
 
-  const targetCount = [localImageTag, assetsDirectory, deploymentId].filter(
-    Boolean,
-  ).length;
+  const targetCount = [
+    localImageTag,
+    assetsDirectory,
+    deploymentId,
+    previewUrl,
+  ].filter(Boolean).length;
   if (targetCount !== 1) {
     throw new Error(
-      "Provide exactly one of localImageTag, assetsDirectory or deploymentId.",
+      "Provide exactly one of localImageTag, assetsDirectory, deploymentId or previewUrl.",
+    );
+  }
+  if (
+    previewUrl &&
+    (backend ||
+      backendUrlEnvVariable ||
+      appPort != null ||
+      containerPort != null ||
+      containerEnv ||
+      containerHealthCheckEndpoint ||
+      enableLocalMocks != null)
+  ) {
+    throw new Error(
+      "previewUrl cannot be combined with backend or container options.",
     );
   }
   if (appPort != null && localImageTag && !backend?.proxyPaths?.length) {
@@ -120,8 +155,26 @@ export const generateSessions = async ({
 
   let uploadId: string | undefined;
   let imageReference: string | undefined;
+
   let appTarget: AgenticAppTarget;
-  if (deploymentId) {
+  if (previewUrl) {
+    if (basePreviewUrl && !baseSha) {
+      throw new Error(
+        "basePreviewUrl requires baseSha: the revision it serves.",
+      );
+    }
+    if (basePreviewUrl && !previewUrl) {
+      throw new Error("basePreviewUrl requires previewUrl.");
+    }
+    // Nothing to upload or register: the run's browser loads the URL as the
+    // customer serves it, and compares against the base preview if one is
+    // named.
+    appTarget = {
+      type: "url",
+      url: previewUrl,
+      ...(basePreviewUrl ? { baseUrl: basePreviewUrl } : {}),
+    };
+  } else if (deploymentId) {
     appTarget = {
       type: "deployment",
       projectDeploymentId: deploymentId,
@@ -192,6 +245,8 @@ export const generateSessions = async ({
   }
 
   logger.info("Launching agentic session generation workflow...");
+  const launchBaseSha =
+    uploadedSource?.baseSha ?? (basePreviewUrl == null ? undefined : baseSha);
   const result = await completeAgenticSessionGeneration({
     client,
     commitSha: uploadedSource?.headSha ?? commitSha,
@@ -199,10 +254,8 @@ export const generateSessions = async ({
     appTarget,
     ...(uploadedSource == null
       ? {}
-      : {
-          sourceBundleId: uploadedSource.sourceBundleId,
-          baseSha: uploadedSource.baseSha,
-        }),
+      : { sourceBundleId: uploadedSource.sourceBundleId }),
+    ...(launchBaseSha == null ? {} : { baseSha: launchBaseSha }),
     ...(headTestRunId ? { headTestRunId } : {}),
     ...projectIdentifier,
   });
@@ -212,6 +265,7 @@ export const generateSessions = async ({
     extra: {
       uploadId,
       deploymentId,
+      previewUrl,
       commitSha,
       agenticRunId: result.agenticRunId,
       ...(imageReference ? { imageReference } : {}),
@@ -221,12 +275,16 @@ export const generateSessions = async ({
   if (result.message && !result.agenticRunId) {
     logger.info(result.message);
   } else {
+    const targetDescription =
+      uploadId != null
+        ? `Upload ID: ${uploadId}`
+        : appTarget.type === "url"
+          ? `URL: ${appTarget.url}`
+          : `Deployment: ${appTarget.projectDeploymentId}`;
     logger.info(
-      `Agentic session generation launched. ${
-        uploadId == null
-          ? `Deployment: ${deploymentId}`
-          : `Upload ID: ${uploadId}`
-      }${result.agenticRunId ? `, agentic run: ${result.agenticRunId}` : ""}`,
+      `Agentic session generation launched. ${targetDescription}${
+        result.agenticRunId ? `, agentic run: ${result.agenticRunId}` : ""
+      }`,
     );
   }
 

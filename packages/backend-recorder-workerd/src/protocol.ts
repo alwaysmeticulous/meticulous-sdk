@@ -451,8 +451,8 @@ export const SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_CALLS_PATH =
 
 /**
  * One outbound call an installed be-mock was offered, and what came of it. A
- * passed-through call's real response is not observed: the sidecar only takes
- * the module's decision.
+ * passed-through call's real outcome is known only once the shim reports it
+ * (see `result`).
  */
 export type BeMockCall = {
   method: string;
@@ -476,8 +476,39 @@ export type BeMockCall = {
        */
       outcome: "passthrough";
       error?: string;
+      /**
+       * What the real service answered, as the shim reported it. Absent while
+       * the call is in flight, or when the shim predates
+       * {@link SIDECAR_AGENT_SWARM_TESTING_PASSTHROUGH_RESULT_PATH}.
+       */
+      result?: AgentSwarmTestingPassthroughResult;
     }
 );
+
+/**
+ * How a passed-through call ended: the real service's status, or the error the
+ * call failed with before any response (a refused connection, say).
+ */
+export type AgentSwarmTestingPassthroughResult =
+  | { statusCode: number }
+  | { error: string };
+
+/**
+ * Agent-swarm-testing route the shim `POST`s a passed-through call's
+ * {@link AgentSwarmTestingPassthroughReport} to, when the interceptor's
+ * passthrough answer carried a `callId`. Fire-and-forget: the call's own
+ * response never waits on it, and a 404 (an older sidecar) is ignored.
+ */
+export const SIDECAR_AGENT_SWARM_TESTING_PASSTHROUGH_RESULT_PATH =
+  "/v1/agent-swarm-testing/passthrough-result";
+
+export interface AgentSwarmTestingPassthroughReport {
+  runId: string;
+  frontendSessionId?: string;
+  /** The `callId` of the interceptor's passthrough answer. */
+  callId: string;
+  result: AgentSwarmTestingPassthroughResult;
+}
 
 export interface BeMockCallsReport {
   /** In completion order (the module finished deciding). */
@@ -622,4 +653,11 @@ export type OutboundFetchAgentSwarmTestingResponse =
       body: string;
       headers: Record<string, string>;
     }
-  | { outcome: "passthrough" };
+  | {
+      outcome: "passthrough";
+      /**
+       * Set when the interceptor wants to hear how the call ended: the shim
+       * then reports it to {@link SIDECAR_AGENT_SWARM_TESTING_PASSTHROUGH_RESULT_PATH}.
+       */
+      callId?: string;
+    };

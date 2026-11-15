@@ -8,13 +8,19 @@ export interface CrawlReport {
   uniqueUrlCount: number;
   /** `null` when the crawler bundle didn't report the URLs it visited. */
   loginWallDetected: boolean | null;
+
+  /**
+   * True when the crawler crashed before it finished: the recorded sessions are
+   * still listed but the crawl is incomplete. Absent from bundles predating it.
+   */
+  crawlerFailed?: boolean | undefined;
 }
 
 const LOGIN_PATH_PATTERN =
   /(^|[/#_.-])(log[-_]?in|sign[-_]?in|sign[-_]?on|sign[-_]?up|register|auth|authenticate|authorize|oauth2?|sso|forgot[-_]?password|reset[-_]?password)([/?#_.-]|$)/i;
 
 export const buildCrawlReport = (
-  { sessionIds, uniqueUrlCount, visitedUrls }: RunCrawlResult,
+  { sessionIds, uniqueUrlCount, visitedUrls, crawlerFailed }: RunCrawlResult,
   startUrls: string[],
 ): CrawlReport => ({
   sessionIds,
@@ -23,6 +29,7 @@ export const buildCrawlReport = (
   uniqueUrlCount,
   loginWallDetected:
     visitedUrls != null ? detectLoginWall(visitedUrls, startUrls) : null,
+  crawlerFailed,
 });
 
 /**

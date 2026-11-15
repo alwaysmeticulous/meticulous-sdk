@@ -23,15 +23,22 @@ export interface ProjectIdentifier {
 
 export interface RequestAssetUploadParams extends ProjectIdentifier {
   size: number;
+  commitSha?: string | undefined;
+  deduplicateCommitUpload?: boolean | undefined;
 }
 
 export interface RequestAssetUploadResponse {
   uploadId: string;
   uploadUrl: string;
+  alreadyUploaded?: boolean;
+  testRun?: TestRun;
+  message?: string;
 }
 
 export interface RequestMultipartAssetUploadParams extends ProjectIdentifier {
   archiveType: DeploymentArchiveType;
+  commitSha?: string | undefined;
+  deduplicateCommitUpload?: boolean | undefined;
 }
 
 export interface RequestMultipartAssetUploadResponse {
@@ -39,6 +46,9 @@ export interface RequestMultipartAssetUploadResponse {
   awsUploadId: string;
   uploadPartUrls: string[];
   uploadChunkSize: number;
+  alreadyUploaded?: boolean;
+  testRun?: TestRun;
+  message?: string;
 }
 
 export interface RequestUploadPartParams extends ProjectIdentifier {
@@ -88,6 +98,7 @@ export interface TriggerDeploymentSourceMapIngestionResponse {
 export interface GetDeploymentSourceMapMappingArtifactParams {
   projectDeploymentId: string;
   timeoutMs?: number | undefined;
+  retry?: RequestConfig<unknown>["retry"];
 }
 
 export interface GetDeploymentSourceMapMappingArtifactResponse {
@@ -98,6 +109,7 @@ export interface GetDeploymentSourceMapArtifactDownloadUrlParams {
   projectDeploymentId: string;
   sourceMapSha256: string;
   timeoutMs?: number | undefined;
+  retry?: RequestConfig<unknown>["retry"];
 }
 
 export interface GetDeploymentSourceMapArtifactDownloadUrlResponse {
@@ -114,6 +126,7 @@ export interface CompleteAssetUploadParams extends ProjectIdentifier {
   createDeployment?: boolean;
   multipartUploadInfo?: MultiPartUploadInfo;
   debugContext?: TestRunTriggerDebugContext | undefined;
+  forceUpload?: boolean | undefined;
 }
 
 export interface ChunkPathOverlap {
@@ -125,6 +138,7 @@ export interface ChunkPathOverlap {
 export interface CompleteAssetUploadResponse {
   testRun?: TestRun;
   baseNotFound?: boolean;
+  reusedSourceDeploymentId?: string;
   /**
    * Set when no test run was created solely because the `sessionFilter` passed
    * on the trigger excluded every session that would otherwise have run.
@@ -137,10 +151,12 @@ export interface CompleteAssetUploadResponse {
   commentsDisabledForAuthor?: boolean;
   /**
    * Set when no test run was created because GitHub's primary rate limit was
-   * hit while triggering, and the server scheduled a delayed retry that will
-   * create the run once the limit resets.
+   * hit, or GitHub returned a 5xx, while triggering, and the server scheduled a
+   * delayed retry that will create the run later.
    */
   githubRateLimitRetryScheduled?: boolean;
+  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
+  githubServerErrorRetryScheduled?: boolean;
   /**
    * When set alongside `baseNotFound`, the server is asking the client to
    * extend its default base-polling window by this many milliseconds.
@@ -164,19 +180,23 @@ export interface CompleteContainerUploadParams extends ProjectIdentifier {
   containerHealthCheckEndpoint?: string | undefined;
   companionAssetsInfo?: CompanionAssetsInfo | undefined;
   debugContext?: TestRunTriggerDebugContext | undefined;
+  forceUpload?: boolean | undefined;
 }
 
 export interface CompleteContainerUploadResponse {
   testRun?: TestRun;
   message?: string;
   baseNotFound?: boolean;
+  reusedSourceDeploymentId?: string;
   commentsDisabledForAuthor?: boolean;
   /**
    * Set when no test run was created because GitHub's primary rate limit was
-   * hit while triggering, and the server scheduled a delayed retry that will
-   * create the run once the limit resets.
+   * hit, or GitHub returned a 5xx, while triggering, and the server scheduled a
+   * delayed retry that will create the run later.
    */
   githubRateLimitRetryScheduled?: boolean;
+  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
+  githubServerErrorRetryScheduled?: boolean;
   /**
    * When set alongside `baseNotFound`, the server is asking the client to
    * extend its default base-polling window by this many milliseconds.
@@ -212,12 +232,22 @@ export interface TriggerCallOptions {
   retry?: RequestConfig<unknown>["retry"];
 }
 
-const triggerRequestConfig = (
-  projectId: string | undefined,
-  { retry }: TriggerCallOptions,
-): RequestConfig<unknown> | undefined => {
+/**
+ * Combines the optional `projectId` query, request timeout and retry policy
+ * into a `RequestConfig`, or `undefined` when none of them is set.
+ */
+const buildRequestConfig = ({
+  projectId,
+  timeoutMs,
+  retry,
+}: {
+  projectId?: string | undefined;
+  timeoutMs?: number | undefined;
+  retry?: RequestConfig<unknown>["retry"];
+}): RequestConfig<unknown> | undefined => {
   const config = {
     ...projectIdQuery(projectId),
+    ...(timeoutMs != null ? { timeout: timeoutMs } : {}),
     ...(retry === undefined ? {} : { retry }),
   };
   return Object.keys(config).length > 0 ? config : undefined;
@@ -374,13 +404,14 @@ export const getDeploymentSourceMapMappingArtifact = async ({
   client,
   projectDeploymentId,
   timeoutMs,
+  retry,
 }: GetDeploymentSourceMapMappingArtifactParams & {
   client: MeticulousClient;
 }): Promise<GetDeploymentSourceMapMappingArtifactResponse | null> => {
   const { data } =
     await client.get<GetDeploymentSourceMapMappingArtifactResponse | null>(
       `project-deployments/${encodeURIComponent(projectDeploymentId)}/source-map-mapping-artifact`,
-      timeoutMs != null ? { timeout: timeoutMs } : undefined,
+      buildRequestConfig({ timeoutMs, retry }),
     );
   return data;
 };
@@ -394,13 +425,14 @@ export const getDeploymentSourceMapArtifactDownloadUrl = async ({
   projectDeploymentId,
   sourceMapSha256,
   timeoutMs,
+  retry,
 }: GetDeploymentSourceMapArtifactDownloadUrlParams & {
   client: MeticulousClient;
 }): Promise<GetDeploymentSourceMapArtifactDownloadUrlResponse | null> => {
   const { data } =
     await client.get<GetDeploymentSourceMapArtifactDownloadUrlResponse | null>(
       `project-deployments/${encodeURIComponent(projectDeploymentId)}/source-map-mapping-artifact/maps/${encodeURIComponent(sourceMapSha256)}`,
-      timeoutMs != null ? { timeout: timeoutMs } : undefined,
+      buildRequestConfig({ timeoutMs, retry }),
     );
   return data;
 };
@@ -434,7 +466,7 @@ export const triggerRunOnDeployment = async ({
   const { data } = await client.post<CompleteAssetUploadResponse>(
     "project-deployments/trigger-run",
     body,
-    triggerRequestConfig(projectId, { retry }),
+    buildRequestConfig({ projectId, retry }),
   );
   return data;
 };
@@ -451,7 +483,7 @@ export const completeAssetUpload = async ({
   const { data } = await client.post<CompleteAssetUploadResponse>(
     "project-deployments/complete-asset-upload-and-maybe-trigger-run",
     body,
-    triggerRequestConfig(projectId, { retry }),
+    buildRequestConfig({ projectId, retry }),
   );
   return data;
 };
@@ -469,7 +501,7 @@ export const completeContainerUpload = async ({
     const { data } = await client.post<CompleteContainerUploadResponse>(
       "project-deployments/complete-container-upload",
       body,
-      triggerRequestConfig(projectId, { retry }),
+      buildRequestConfig({ projectId, retry }),
     );
     return data;
   } catch (error) {
@@ -591,7 +623,7 @@ export const triggerRunWithUploadedAssetChunks = async ({
   const { data } = await client.post<CompleteAssetUploadResponse>(
     "project-deployments/trigger-run-with-uploaded-asset-chunks",
     body,
-    triggerRequestConfig(projectId, { retry }),
+    buildRequestConfig({ projectId, retry }),
   );
   return data;
 };

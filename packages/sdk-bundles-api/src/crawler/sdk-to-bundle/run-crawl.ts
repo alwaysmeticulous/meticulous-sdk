@@ -87,6 +87,18 @@ export interface RunCrawlOptions {
    */
   storageToSeed?: CrawlStorageToSeed | undefined;
 
+  /**
+   * If non-empty, only URLs on the start URL's origin whose path sits under one of
+   * these prefixes are crawled: links to anywhere else are dropped, and a click that
+   * lands outside is backtracked like an off-origin navigation. Prefixes match at a
+   * path-segment boundary: `/agents` covers `/agents` and `/agents/x` but not
+   * `/agentsfoo`.
+   *
+   * A bundle predating this option ignores it: check
+   * {@link RunCrawlBundleCapabilities.allowedPathPrefixes}.
+   */
+  allowedPathPrefixes?: string[] | undefined;
+
   logLevel: string | number;
 }
 
@@ -105,6 +117,8 @@ export interface RunCrawlBundleCapabilities {
   headless?: boolean;
   storageToSeed?: boolean;
   visitedUrls?: boolean;
+  allowedPathPrefixes?: true;
+  crawlerFailed?: true;
 }
 
 export interface RunCrawlResult {
@@ -123,4 +137,11 @@ export interface RunCrawlResult {
    * bundles predating it.
    */
   visitedUrls?: string[] | undefined;
+
+  /**
+   * True when the crawler process crashed (or had to be force-killed) before it
+   * finished: the returned sessions were still recorded but the crawl is incomplete.
+   * Absent from bundles predating it — treat as `false`.
+   */
+  crawlerFailed?: boolean | undefined;
 }

@@ -277,6 +277,36 @@ describe("getOrFetchReplayArchive — excludeFileTypes", () => {
     expect(existsSync(markerPath())).toBe(true);
   });
 
+  it("makes a single API request per fresh download: download-urls, without reading the replay first", async () => {
+    await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive(
+        {} as never,
+        REPLAY_ID,
+        "post-process-including-css-coverage",
+      ),
+    );
+
+    expect(getReplay as Mock).not.toHaveBeenCalled();
+    expect(getReplayV3DownloadUrls as Mock).toHaveBeenCalledTimes(1);
+    expect(getReplayV3DownloadUrls as Mock).toHaveBeenCalledWith(
+      {},
+      REPLAY_ID,
+      expect.objectContaining({
+        includeScreenshots: false,
+        includeDiffs: false,
+      }),
+    );
+  });
+
+  it("propagates the download-urls error for a replay that isn't v3", async () => {
+    (getReplayV3DownloadUrls as Mock).mockRejectedValue(
+      new Error("Replay is not v3"),
+    );
+
+    await expect(run()).rejects.toThrow("Replay is not v3");
+    expect(existsSync(markerPath())).toBe(false);
+  });
+
   it("hits the cache short-circuit when the marker says 'everything' and no exclusions are set", async () => {
     // Pre-seed the marker as if a prior unfiltered run completed.
     await mkdir(replayDir(), { recursive: true });
@@ -606,6 +636,21 @@ describe("getOrFetchReplayArchive — replay with no artifacts", () => {
     expect(isReplayHasNoArtifactsError(error)).toBe(true);
     expect(error).toBeInstanceOf(ReplayHasNoArtifactsError);
     expect((error as ReplayHasNoArtifactsError).replayId).toBe(REPLAY_ID);
+  });
+
+  it("fails rather than reporting no artifacts for a replay the token can't read", async () => {
+    // download-urls also 404s on a permission miss; GET replays/:id tells the
+    // two apart.
+    (getReplay as Mock).mockResolvedValue(null);
+
+    const error = await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive({} as never, REPLAY_ID, "everything"),
+    ).catch((e: unknown) => e);
+
+    expect(isReplayHasNoArtifactsError(error)).toBe(false);
+    expect((error as Error).message).toContain(
+      "not found, or this API token cannot read it",
+    );
   });
 
   it("does not mark the replay as downloaded", async () => {

@@ -64,6 +64,8 @@ export interface UploadAssetsResult {
    * create the run once the limit resets.
    */
   githubRateLimitRetryScheduled?: boolean;
+  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
+  githubServerErrorRetryScheduled?: boolean;
 }
 
 /**
@@ -130,13 +132,25 @@ export const uploadAssetsFromTarStream = async (
     debugContext,
   } = opts;
 
-  const { uploadId, multipartUploadInfo } = await uploadAssetBytesFromTarStream(
-    {
-      client,
-      tarStream,
-      ...(projectId ? { projectId } : {}),
-    },
-  );
+  const canDeduplicate =
+    createDeployment && Boolean(commitSha) && !baseSha && !gitDiffOutput;
+  const uploadBytesResult = await uploadAssetBytesFromTarSource({
+    client,
+    tarStream,
+    ...(projectId ? { projectId } : {}),
+    ...(canDeduplicate ? { commitSha, deduplicateCommitUpload: true } : {}),
+  });
+  if ("alreadyUploaded" in uploadBytesResult) {
+    return {
+      uploadId: uploadBytesResult.uploadId,
+      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+      testRun: uploadBytesResult.testRun,
+      ...(uploadBytesResult.message
+        ? { message: uploadBytesResult.message }
+        : {}),
+    };
+  }
+  const { uploadId, multipartUploadInfo } = uploadBytesResult;
 
   if (gitDiffOutput) {
     await uploadGitDiffToS3({
@@ -148,10 +162,12 @@ export const uploadAssetsFromTarStream = async (
   }
 
   const {
+    effectiveUploadId,
     testRun,
     message,
     commentsDisabledForAuthor,
     githubRateLimitRetryScheduled,
+    githubServerErrorRetryScheduled,
   } = await completeUploadAndWaitForBase({
     client,
     uploadId,
@@ -168,13 +184,16 @@ export const uploadAssetsFromTarStream = async (
   });
 
   return {
-    uploadId,
+    uploadId: effectiveUploadId,
     archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     testRun,
     ...(message ? { message } : {}),
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
     ...(githubRateLimitRetryScheduled
       ? { githubRateLimitRetryScheduled: true }
+      : {}),
+    ...(githubServerErrorRetryScheduled
+      ? { githubServerErrorRetryScheduled: true }
       : {}),
   };
 };
@@ -205,10 +224,13 @@ const completeUploadAndWaitForBase = async ({
   multipartUploadInfo?: MultiPartUploadInfo;
   debugContext?: TestRunTriggerDebugContext;
 }): Promise<{
+  effectiveUploadId: string;
   testRun: TestRun | null;
   message?: string;
   commentsDisabledForAuthor?: boolean;
   githubRateLimitRetryScheduled?: boolean;
+  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
+  githubServerErrorRetryScheduled?: boolean;
 }> => {
   const logger = initLogger();
 
@@ -239,7 +261,7 @@ const completeUploadAndWaitForBase = async ({
         }),
       { ...DEPLOYMENT_IN_PROGRESS_RETRY, logger },
     );
-    return pollWhileBaseNotFound({
+    const pollResult = await pollWhileBaseNotFound({
       initialResult: {
         testRun: initialResult?.testRun ?? null,
         baseNotFound: initialResult?.baseNotFound,
@@ -248,6 +270,8 @@ const completeUploadAndWaitForBase = async ({
         commentsDisabledForAuthor: initialResult?.commentsDisabledForAuthor,
         githubRateLimitRetryScheduled:
           initialResult?.githubRateLimitRetryScheduled,
+        githubServerErrorRetryScheduled:
+          initialResult?.githubServerErrorRetryScheduled,
       },
       retryFn: () =>
         triggerRunOnDeployment({
@@ -261,6 +285,10 @@ const completeUploadAndWaitForBase = async ({
           mustHaveBase: false,
         }),
     });
+    return {
+      ...pollResult,
+      effectiveUploadId: initialResult?.reusedSourceDeploymentId ?? uploadId,
+    };
   };
 
   let triggered: Awaited<ReturnType<typeof triggerRun>>;
@@ -275,25 +303,31 @@ const completeUploadAndWaitForBase = async ({
     message,
     commentsDisabledForAuthor,
     githubRateLimitRetryScheduled,
+    effectiveUploadId,
+    githubServerErrorRetryScheduled,
   } = triggered;
 
   Sentry.captureMessage("Deployment assets marked as uploaded", {
     level: "debug",
     extra: {
-      uploadId: uploadId,
+      uploadId: effectiveUploadId,
       commitSha: commitSha,
       testRunId: testRun?.id,
       baseNotFound: baseNotFound,
     },
   });
-  logger.info(`Deployment assets ${uploadId} marked as uploaded`);
+  logger.info(`Deployment assets ${effectiveUploadId} marked as uploaded`);
 
   return {
+    effectiveUploadId,
     testRun: testRun ?? null,
     ...(message ? { message } : {}),
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
     ...(githubRateLimitRetryScheduled
       ? { githubRateLimitRetryScheduled: true }
+      : {}),
+    ...(githubServerErrorRetryScheduled
+      ? { githubServerErrorRetryScheduled: true }
       : {}),
   };
 };
@@ -304,6 +338,15 @@ const completeUploadAndWaitForBase = async ({
  * build — it does NOT register a deployment or trigger a run. Shared by the
  * deprecated fused path and the build/trigger split (`uploadBuild`).
  */
+type UploadAssetBytesFromTarSourceResult =
+  | { uploadId: string; multipartUploadInfo: MultiPartUploadInfo }
+  | {
+      alreadyUploaded: true;
+      uploadId: string;
+      testRun: TestRun;
+      message?: string;
+    };
+
 export const uploadAssetBytesFromDirectory = async ({
   client,
   folderPath,
@@ -311,8 +354,19 @@ export const uploadAssetBytesFromDirectory = async ({
 }: ProjectIdentifier & {
   client: ReturnType<typeof createClient>;
   folderPath: string;
-}): Promise<{ uploadId: string; multipartUploadInfo: MultiPartUploadInfo }> =>
-  uploadAssetBytesFromTarSource({ client, folderPath, projectId });
+}): Promise<{ uploadId: string; multipartUploadInfo: MultiPartUploadInfo }> => {
+  const result = await uploadAssetBytesFromTarSource({
+    client,
+    folderPath,
+    projectId,
+  });
+  if ("alreadyUploaded" in result) {
+    throw new Error(
+      "Unexpected alreadyUploaded response when deduplicateCommitUpload was not requested",
+    );
+  }
+  return result;
+};
 
 /**
  * Streams an already-built tar (e.g. read directly out of a Docker image) to
@@ -327,27 +381,61 @@ export const uploadAssetBytesFromTarStream = async ({
 }: ProjectIdentifier & {
   client: ReturnType<typeof createClient>;
   tarStream: NodeJS.ReadableStream;
-}): Promise<{ uploadId: string; multipartUploadInfo: MultiPartUploadInfo }> =>
-  uploadAssetBytesFromTarSource({ client, tarStream, projectId });
+}): Promise<{ uploadId: string; multipartUploadInfo: MultiPartUploadInfo }> => {
+  const result = await uploadAssetBytesFromTarSource({
+    client,
+    tarStream,
+    projectId,
+  });
+  if ("alreadyUploaded" in result) {
+    throw new Error(
+      "Unexpected alreadyUploaded response when deduplicateCommitUpload was not requested",
+    );
+  }
+  return result;
+};
 
 const uploadAssetBytesFromTarSource = async ({
   client,
   folderPath,
   tarStream,
   projectId,
+  commitSha,
+  deduplicateCommitUpload,
 }: ProjectIdentifier & {
   client: ReturnType<typeof createClient>;
   folderPath?: string | undefined;
   tarStream?: NodeJS.ReadableStream | undefined;
-}): Promise<{ uploadId: string; multipartUploadInfo: MultiPartUploadInfo }> => {
+  commitSha?: string | undefined;
+  deduplicateCommitUpload?: boolean | undefined;
+}): Promise<UploadAssetBytesFromTarSourceResult> => {
   const logger = initLogger();
 
+  const multipartResponse = await requestMultipartAssetUpload({
+    client,
+    archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+    ...(projectId ? { projectId } : {}),
+    ...(commitSha ? { commitSha } : {}),
+    ...(deduplicateCommitUpload ? { deduplicateCommitUpload: true } : {}),
+  });
+
+  if (multipartResponse.alreadyUploaded && multipartResponse.testRun) {
+    logger.info(
+      multipartResponse.message ??
+        `Reusing recent deployment ${multipartResponse.uploadId} for commit ${commitSha ?? "unknown"}`,
+    );
+    return {
+      alreadyUploaded: true,
+      uploadId: multipartResponse.uploadId,
+      testRun: multipartResponse.testRun,
+      ...(multipartResponse.message
+        ? { message: multipartResponse.message }
+        : {}),
+    };
+  }
+
   const { uploadId, awsUploadId, uploadPartUrls, uploadChunkSize } =
-    await requestMultipartAssetUpload({
-      client,
-      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
-      ...(projectId ? { projectId } : {}),
-    });
+    multipartResponse;
 
   logger.info(`Starting streaming upload for deployment ${uploadId}`);
 
@@ -384,13 +472,25 @@ const uploadAssetsStreaming = async ({
   client: ReturnType<typeof createClient>;
   folderPath: string;
 }): Promise<UploadAssetsResult> => {
-  const { uploadId, multipartUploadInfo } = await uploadAssetBytesFromDirectory(
-    {
-      client,
-      folderPath,
-      ...(projectId ? { projectId } : {}),
-    },
-  );
+  const canDeduplicate =
+    createDeployment && Boolean(commitSha) && !baseSha && !gitDiffOutput;
+  const uploadBytesResult = await uploadAssetBytesFromTarSource({
+    client,
+    folderPath,
+    ...(projectId ? { projectId } : {}),
+    ...(canDeduplicate ? { commitSha, deduplicateCommitUpload: true } : {}),
+  });
+  if ("alreadyUploaded" in uploadBytesResult) {
+    return {
+      uploadId: uploadBytesResult.uploadId,
+      archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
+      testRun: uploadBytesResult.testRun,
+      ...(uploadBytesResult.message
+        ? { message: uploadBytesResult.message }
+        : {}),
+    };
+  }
+  const { uploadId, multipartUploadInfo } = uploadBytesResult;
 
   if (gitDiffOutput) {
     await uploadGitDiffToS3({
@@ -402,10 +502,12 @@ const uploadAssetsStreaming = async ({
   }
 
   const {
+    effectiveUploadId,
     testRun,
     message,
     commentsDisabledForAuthor,
     githubRateLimitRetryScheduled,
+    githubServerErrorRetryScheduled,
   } = await completeUploadAndWaitForBase({
     client,
     uploadId,
@@ -422,13 +524,16 @@ const uploadAssetsStreaming = async ({
   });
 
   return {
-    uploadId,
+    uploadId: effectiveUploadId,
     archiveType: UPLOAD_ARCHIVE_FILE_FORMAT,
     testRun,
     ...(message ? { message } : {}),
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
     ...(githubRateLimitRetryScheduled
       ? { githubRateLimitRetryScheduled: true }
+      : {}),
+    ...(githubServerErrorRetryScheduled
+      ? { githubServerErrorRetryScheduled: true }
       : {}),
   };
 };
@@ -575,14 +680,62 @@ export const uploadAssetBytesFromZip = async ({
   client: ReturnType<typeof createClient>;
   zipPath: string;
 }): Promise<{ uploadId: string }> => {
+  const result = await uploadAssetBytesFromZipWithDeduplication({
+    client,
+    zipPath,
+    projectId,
+  });
+  if ("alreadyUploaded" in result) {
+    throw new Error(
+      "Unexpected alreadyUploaded response when deduplicateCommitUpload was not requested",
+    );
+  }
+  return result;
+};
+
+const uploadAssetBytesFromZipWithDeduplication = async ({
+  client,
+  zipPath,
+  projectId,
+  commitSha,
+  deduplicateCommitUpload,
+}: ProjectIdentifier & {
+  client: ReturnType<typeof createClient>;
+  zipPath: string;
+  commitSha?: string | undefined;
+  deduplicateCommitUpload?: boolean | undefined;
+}): Promise<
+  | { uploadId: string }
+  | {
+      alreadyUploaded: true;
+      uploadId: string;
+      testRun: TestRun;
+      message?: string;
+    }
+> => {
   const logger = initLogger();
   const fileStats = await stat(zipPath);
   const fileSize = fileStats.size;
-  const { uploadId, uploadUrl } = await requestAssetUpload({
+  const uploadResponse = await requestAssetUpload({
     client,
     size: fileSize,
     ...(projectId ? { projectId } : {}),
+    ...(commitSha ? { commitSha } : {}),
+    ...(deduplicateCommitUpload ? { deduplicateCommitUpload: true } : {}),
   });
+  if (uploadResponse.alreadyUploaded && uploadResponse.testRun) {
+    logger.info(
+      uploadResponse.message ??
+        `Reusing recent deployment ${uploadResponse.uploadId} for commit ${commitSha ?? "unknown"}`,
+    );
+    return {
+      alreadyUploaded: true,
+      uploadId: uploadResponse.uploadId,
+      testRun: uploadResponse.testRun,
+      ...(uploadResponse.message ? { message: uploadResponse.message } : {}),
+    };
+  }
+  const { uploadId, uploadUrl } = uploadResponse;
   await uploadFileToSignedUrl(zipPath, uploadUrl, fileSize);
   logger.info(`Deployment assets ${uploadId} uploaded successfully`);
   return { uploadId };
@@ -612,11 +765,25 @@ export const uploadAssetsFromZip = async ({
   const projectIdentifier = projectId ? { projectId } : {};
 
   try {
-    const { uploadId } = await uploadAssetBytesFromZip({
+    const canDeduplicate =
+      createDeployment && Boolean(commitSha) && !baseSha && !gitDiffOutput;
+    const uploadZipResult = await uploadAssetBytesFromZipWithDeduplication({
       client,
       zipPath,
       ...projectIdentifier,
+      ...(canDeduplicate ? { commitSha, deduplicateCommitUpload: true } : {}),
     });
+    if ("alreadyUploaded" in uploadZipResult) {
+      return {
+        uploadId: uploadZipResult.uploadId,
+        archiveType: "zip",
+        testRun: uploadZipResult.testRun,
+        ...(uploadZipResult.message
+          ? { message: uploadZipResult.message }
+          : {}),
+      };
+    }
+    const { uploadId } = uploadZipResult;
 
     if (gitDiffOutput) {
       await uploadGitDiffToS3({
@@ -628,10 +795,12 @@ export const uploadAssetsFromZip = async ({
     }
 
     const {
+      effectiveUploadId,
       testRun,
       message,
       commentsDisabledForAuthor,
       githubRateLimitRetryScheduled,
+      githubServerErrorRetryScheduled,
     } = await completeUploadAndWaitForBase({
       client,
       uploadId,
@@ -647,13 +816,16 @@ export const uploadAssetsFromZip = async ({
     });
 
     return {
-      uploadId,
+      uploadId: effectiveUploadId,
       archiveType: "zip",
       testRun,
       ...(message ? { message } : {}),
       ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
       ...(githubRateLimitRetryScheduled
         ? { githubRateLimitRetryScheduled: true }
+        : {}),
+      ...(githubServerErrorRetryScheduled
+        ? { githubServerErrorRetryScheduled: true }
         : {}),
     };
   } finally {

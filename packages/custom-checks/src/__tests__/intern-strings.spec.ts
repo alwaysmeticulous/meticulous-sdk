@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { internStrings, MAX_POOLED_STRINGS } from "../intern-strings";
 
+/** Reports a full pool without allocating a million entries, which can exceed the test timeout on CI. */
+class FullPool extends Map<string, string> {
+  override get size(): number {
+    return MAX_POOLED_STRINGS;
+  }
+}
+
 describe("internStrings", () => {
   it("pools every string in nested objects and arrays without changing values", () => {
     const pool = new Map<string, string>();
@@ -33,19 +40,14 @@ describe("internStrings", () => {
   });
 
   it("stops growing the pool at MAX_POOLED_STRINGS but still returns every value", () => {
-    const pool = new Map<string, string>();
-    for (let index = 0; index < MAX_POOLED_STRINGS; index++) {
-      const pooled = String(index);
-      pool.set(pooled, pooled);
-    }
+    const pool = new FullPool([["7", "7"]]);
     const value = { known: "7", unseen: "not-yet-pooled" };
 
     expect(internStrings(value, pool)).toEqual({
       known: "7",
       unseen: "not-yet-pooled",
     });
-    expect(pool.size).toBe(MAX_POOLED_STRINGS);
-    expect(pool.has("not-yet-pooled")).toBe(false);
+    expect([...pool.keys()]).toEqual(["7"]);
   });
 
   it("leaves frozen containers untouched but still walks their children", () => {

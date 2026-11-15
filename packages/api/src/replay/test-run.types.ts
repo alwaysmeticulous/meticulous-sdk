@@ -86,11 +86,14 @@ export const isPrAuthorRelevance = (
  * - `rse_skipped_sampling`: relevance never ran, and an operator load-shedding
  *   override marked the session MaybeRelevant so the standard sampling would
  *   shed it (MaybeRelevant).
- * - `coverage_curve_cap`: relevance never ran, and the session sits outside
- *   the greedy prefix that reaches 95% of the golden set's own coverage
- *   curve, so the RSE-skip cap dropped it (NotRelevant). The prefix is those
- *   session ids; `rankPosition` is not a dense 1..N. Sessions inside the
- *   prefix stay unannotated.
+ * - `coverage_curve_cap`: dropped by a cap derived from the greedy prefix that
+ *   reaches 95% of the golden set's own coverage curve (NotRelevant). Either
+ *   relevance never ran and the session sits outside that prefix, so the
+ *   RSE-skip cap dropped it (the prefix is those session ids; `rankPosition`
+ *   is not a dense 1..N, and sessions inside the prefix stay unannotated); or
+ *   relevance ran, but the counted IsRelevant sessions alone exceeded the
+ *   executed-sessions cap (the prefix's length, floor 50), so this session was
+ *   one of the excess relabelled NotRelevant.
  * - `direct_feature_flag`: a `_ff` extra minted because the coverage-source
  *   replay recorded a detected flag (IsRelevant). Stamped at mint time, after
  *   Relevant Session Execution has already emitted its selection mix.

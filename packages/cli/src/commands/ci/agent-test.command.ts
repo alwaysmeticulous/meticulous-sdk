@@ -50,6 +50,8 @@ interface Options {
   localImageTag?: string | undefined;
   assetsDir?: string | undefined;
   deploymentId?: string | undefined;
+  previewUrl?: string | undefined;
+  basePreviewUrl?: string | undefined;
   baseSha?: string | undefined;
   uploadSource?: boolean | undefined;
   headTestRunId?: string | undefined;
@@ -74,6 +76,8 @@ const handler = async ({
   localImageTag,
   assetsDir,
   deploymentId,
+  previewUrl,
+  basePreviewUrl,
   baseSha,
   uploadSource: uploadSource_,
   headTestRunId,
@@ -110,16 +114,44 @@ const handler = async ({
           gitDiffOutput: undefined,
           repoDirectory,
         });
-  const targets = [localImageTag, assetsDir, deploymentId].filter(Boolean);
+  const targets = [localImageTag, assetsDir, deploymentId, previewUrl].filter(
+    Boolean,
+  );
   if (targets.length !== 1) {
     throw new CliUserError(
-      "Provide exactly one of --localImageTag, --assetsDir or --deploymentId.",
+      "Provide exactly one of --localImageTag, --assetsDir, --deploymentId or --previewUrl.",
     );
   }
-  assertValidDeploymentIdArg(deploymentId);
-  if (deploymentId && (backendUrl || containerPort != null || containerEnv)) {
+
+  if (
+    previewUrl &&
+    (backendUrl ||
+      backendProxyPaths ||
+      backendUrlEnvVariable ||
+      appPort != null ||
+      containerPort != null ||
+      containerEnv ||
+      containerHealthCheckEndpoint ||
+      enableLocalMocks != null)
+  )
     throw new CliUserError(
-      "--deploymentId reuses an uploaded build as it was uploaded: it cannot be combined with --backendUrl, --containerPort or --containerEnv.",
+      "--previewUrl cannot be combined with backend or container options.",
+    );
+  if (basePreviewUrl && (!previewUrl || !baseSha))
+    throw new CliUserError(
+      "--basePreviewUrl requires --previewUrl and --baseSha (the revision served by the base URL).",
+    );
+  assertValidDeploymentIdArg(deploymentId);
+  if (
+    deploymentId &&
+    (backendUrl ||
+      containerPort != null ||
+      containerEnv ||
+      containerHealthCheckEndpoint ||
+      appPort != null)
+  ) {
+    throw new CliUserError(
+      "--deploymentId reuses an uploaded build as it was uploaded: it cannot be combined with --backendUrl, --containerPort, --containerEnv, --containerHealthCheckEndpoint or --appPort.",
     );
   }
   if (uploadSource_ === true && (!repoDirectory || !baseSha)) {
@@ -157,7 +189,10 @@ const handler = async ({
     );
   }
 
-  const target = localImageTag ?? assetsDir ?? `deployment ${deploymentId}`;
+  const target =
+    localImageTag ??
+    assetsDir ??
+    (previewUrl ? "preview URL" : `deployment ${deploymentId}`);
   logger.info(
     `Launching agentic PR testing with ${target} for commit ${commitSha}`,
   );
@@ -197,9 +232,9 @@ const handler = async ({
       "This project has no connected GitHub, GitLab or Bitbucket repository, so Agent swarm reads the change from source you upload: pass --repoDirectory and --baseSha (or --no-uploadSource to launch without source access, which fails).",
     );
   }
-  if (!uploadSource && baseSha) {
+  if (!uploadSource && baseSha && !basePreviewUrl) {
     logger.warn(
-      "--baseSha is only used with --uploadSource; this project's base comes from its hosting provider.",
+      "--baseSha is only used with --uploadSource (or --basePreviewUrl); this project's base comes from its hosting provider.",
     );
   }
 
@@ -210,6 +245,8 @@ const handler = async ({
       localImageTag,
       assetsDirectory: assetsDir,
       deploymentId,
+      previewUrl,
+      ...(basePreviewUrl ? { basePreviewUrl, baseSha } : {}),
       commitSha,
       ...(uploadSource && repoDirectory && baseSha
         ? { sourceSnapshot: { repoDirectory, baseSha } }
@@ -246,6 +283,7 @@ const handler = async ({
       swarmRunId,
       commitSha,
       ...(deploymentId ? { deploymentId } : {}),
+      ...(previewUrl ? { previewUrl } : {}),
       ...(result.uploadId ? { uploadId: result.uploadId } : {}),
       ...(result.message ? { message: result.message } : {}),
     });
@@ -275,6 +313,16 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
         "The path to a git repository (or worktree). Infers --commitSha from the repo when --commitSha is not given. " +
         "With --uploadSource, the checkout the source of --baseSha..--commitSha is packaged from.",
     },
+    previewUrl: {
+      string: true,
+      description:
+        "Public HTTPS URL of the frontend, loaded directly by the run's browser instead of uploading a build.",
+    },
+    basePreviewUrl: {
+      string: true,
+      description:
+        "Explicit base preview URL to compare --previewUrl against. Requires --baseSha: the revision the base URL serves.",
+    },
     deploymentId: {
       string: true,
       description:
@@ -283,7 +331,7 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
     baseSha: {
       string: true,
       description:
-        "With --uploadSource: the commit the change is diffed against, e.g. the merged pull request's base.",
+        "With --basePreviewUrl: the revision the base preview serves. With --uploadSource: the commit the change is diffed against, e.g. the merged pull request's base.",
     },
     uploadSource: {
       boolean: true,
@@ -374,7 +422,7 @@ export const ciAgentTestCommand: CommandModule<unknown, Options> = {
     json: {
       boolean: true,
       description:
-        "Print the result as JSON on stdout: swarmRunId (null when the launch was skipped or deferred, with the reason in message), commitSha, and the deploymentId or uploadId. " +
+        "Print the result as JSON on stdout: swarmRunId (null when the launch was skipped or deferred, with the reason in message), commitSha, and the deploymentId, previewUrl or uploadId. " +
         "Without it, a launched run prints a line 'Agent swarm run: <id>'.",
     },
   },

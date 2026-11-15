@@ -1,6 +1,7 @@
 import { warnOnce } from "./log";
 import { getOriginalFetch } from "./original-fetch";
 import {
+  type AgentSwarmTestingPassthroughReport,
   type CaptureEvent,
   type CaptureEventsPayload,
   type CoverageReportRequest,
@@ -11,6 +12,7 @@ import {
   type ReplaySessionInfoResponse,
   SIDECAR_EVENTS_PATH,
   SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH,
+  SIDECAR_AGENT_SWARM_TESTING_PASSTHROUGH_RESULT_PATH,
   SIDECAR_PROTOCOL_VERSION,
   SIDECAR_PROTOCOL_VERSION_HEADER,
   SIDECAR_REPLAY_COVERAGE_PATH,
@@ -335,6 +337,41 @@ export const postAgentSwarmTestingOutboundFetch = async (
       error,
     );
     return undefined;
+  }
+};
+
+/**
+ * Reports how one passed-through call ended. Runs under `ctx.waitUntil`, off the call's own
+ * response path, and never rejects: an older sidecar's 404 or an unreachable one only costs
+ * the agent this call's outcome.
+ */
+export const postAgentSwarmTestingPassthroughResult = async (
+  fetchFn: FetchFn,
+  sidecarUrl: string,
+  payload: AgentSwarmTestingPassthroughReport,
+): Promise<void> => {
+  try {
+    await withTimeout(AGENT_SWARM_TESTING_TIMEOUT_MS, async (signal) => {
+      const response = await fetchFn(
+        `${sidecarUrl}${SIDECAR_AGENT_SWARM_TESTING_PASSTHROUGH_RESULT_PATH}`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            [SIDECAR_PROTOCOL_VERSION_HEADER]: SIDECAR_PROTOCOL_VERSION,
+          },
+          body: JSON.stringify(payload),
+          signal,
+        },
+      );
+      await response.arrayBuffer().catch(() => undefined);
+    });
+  } catch (error) {
+    warnOnce(
+      "agent-swarm-testing-passthrough-result-unreachable",
+      "Could not report a passed-through call's outcome to the Meticulous interceptor.",
+      error,
+    );
   }
 };
 

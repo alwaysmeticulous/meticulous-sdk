@@ -1,4 +1,5 @@
 import { SNIPPETS_BASE_URL } from "./constants";
+import { stopIntercepting } from "./early-network-recorder";
 import { getSnippetVersionFolder } from "./get-snippet-version-folder";
 import type { LoaderOptions } from "./loader.types";
 import type { PrivateWindowApi } from "./private-window-api";
@@ -65,6 +66,31 @@ const unsafeLoadAndStartRecorder = ({
   disableTrackerId,
   maxPayloadSize,
 }: LoaderOptions): Promise<Recorder> => {
+  const resolvedRecordingToken = [recordingToken, projectId].find((token) =>
+    token?.trim(),
+  );
+  if (resolvedRecordingToken == null) {
+    // Sessions recorded without a token can never be associated with a
+    // project, so don't load the recorder at all.
+    console.warn(
+      "Meticulous: no recording token was provided, so the Meticulous recorder was not loaded.",
+    );
+    // Nothing will take over the early network recorder (if installed), so
+    // drop what it has buffered instead of holding it in memory. In Agent
+    // swarm the worker installed it and records under its own token, so it
+    // must be left running.
+    if (!window.Meticulous?.isRunningInAgentSwarm) {
+      stopIntercepting().catch((error: unknown) => {
+        console.error(error);
+      });
+    }
+    return Promise.resolve({
+      stopRecording: async () => {
+        // No op: we never started recording
+      },
+    });
+  }
+
   let abandoned = false;
 
   return new Promise<Recorder>((resolve, reject) => {
@@ -108,7 +134,7 @@ const unsafeLoadAndStartRecorder = ({
 
     // Setup configuration
     const typedWindow = window;
-    typedWindow.METICULOUS_RECORDING_TOKEN = recordingToken ?? projectId;
+    typedWindow.METICULOUS_RECORDING_TOKEN = resolvedRecordingToken;
 
     if (uploadIntervalMs !== undefined) {
       typedWindow.METICULOUS_UPLOAD_INTERVAL_MS = uploadIntervalMs;

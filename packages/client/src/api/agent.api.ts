@@ -2553,7 +2553,8 @@ export type SessionSource =
   | "cli-login-flow"
   | "cli-login-flow-application-storage"
   | "crawler"
-  | "agentic-session-generation";
+  | "agentic-session-generation"
+  | "agentic-crawler";
 
 /** One row of the recent-sessions listing. */
 export interface SessionListItem {

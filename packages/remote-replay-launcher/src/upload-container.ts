@@ -72,6 +72,8 @@ export interface UploadContainerResult {
    * create the run once the limit resets.
    */
   githubRateLimitRetryScheduled?: boolean;
+  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
+  githubServerErrorRetryScheduled?: boolean;
 }
 
 export interface PushContainerImageResult {
@@ -79,6 +81,16 @@ export interface PushContainerImageResult {
   uploadId: string;
   imageReference: string;
 }
+
+type PushContainerImageOrReuseResult =
+  | PushContainerImageResult
+  | {
+      alreadyUploaded: true;
+      client: ReturnType<typeof createClient>;
+      uploadId: string;
+      testRun: TestRun;
+      message?: string;
+    };
 
 /**
  * Verifies, tags and pushes the local Docker image to the Meticulous registry,
@@ -96,6 +108,32 @@ export const pushContainerImage = async ({
   localImageTag: string;
   projectId?: string | undefined;
 }): Promise<PushContainerImageResult> => {
+  const result = await pushContainerImageWithDeduplication({
+    apiToken: apiToken_,
+    localImageTag,
+    projectId,
+  });
+  if ("alreadyUploaded" in result) {
+    throw new Error(
+      "Unexpected alreadyUploaded response when deduplicateCommitUpload was not requested",
+    );
+  }
+  return result;
+};
+
+const pushContainerImageWithDeduplication = async ({
+  apiToken: apiToken_,
+  localImageTag,
+  projectId,
+  commitSha,
+  deduplicateCommitUpload,
+}: {
+  apiToken: string | null | undefined;
+  localImageTag: string;
+  projectId?: string | undefined;
+  commitSha?: string | undefined;
+  deduplicateCommitUpload?: boolean | undefined;
+}): Promise<PushContainerImageOrReuseResult> => {
   const apiToken = getApiToken(apiToken_);
   const client = createClient({ apiToken });
 
@@ -120,7 +158,27 @@ export const pushContainerImage = async ({
   const registryAuth = await getRegistryAuth({
     client,
     ...projectIdentifier,
+    ...(commitSha ? { commitSha } : {}),
+    ...(deduplicateCommitUpload ? { deduplicateCommitUpload: true } : {}),
   });
+
+  if (
+    deduplicateCommitUpload &&
+    registryAuth.alreadyUploaded &&
+    registryAuth.testRun
+  ) {
+    logProgress(
+      registryAuth.message ??
+        `Reusing recent container deployment ${registryAuth.uploadId} for commit ${commitSha ?? "unknown"}`,
+    );
+    return {
+      alreadyUploaded: true,
+      client,
+      uploadId: registryAuth.uploadId,
+      testRun: registryAuth.testRun,
+      ...(registryAuth.message ? { message: registryAuth.message } : {}),
+    };
+  }
 
   const {
     uploadId,
@@ -167,11 +225,30 @@ export const uploadContainer = async ({
 }: UploadContainerOptions): Promise<UploadContainerResult> => {
   const projectIdentifier = projectId ? { projectId } : {};
 
-  const { client, uploadId, imageReference } = await pushContainerImage({
+  const canDeduplicate = Boolean(commitSha) && !baseSha && !gitDiffOutput;
+  const pushResult = await pushContainerImageWithDeduplication({
     apiToken: apiToken_,
     localImageTag,
     projectId,
+    ...(canDeduplicate ? { commitSha, deduplicateCommitUpload: true } : {}),
   });
+  if ("alreadyUploaded" in pushResult) {
+    const testRun = pushResult.testRun;
+    if (testRun.project?.organization?.name && testRun.project?.name) {
+      const organizationName = encodeURIComponent(
+        testRun.project.organization.name,
+      );
+      const projectName = encodeURIComponent(testRun.project.name);
+      const testRunUrl = `https://app.meticulous.ai/projects/${organizationName}/${projectName}/test-runs/${testRun.id}`;
+      logNotice(`Test run triggered: ${testRunUrl}`);
+    }
+    return {
+      uploadId: pushResult.uploadId,
+      testRun,
+      ...(pushResult.message ? { message: pushResult.message } : {}),
+    };
+  }
+  const { client, uploadId, imageReference } = pushResult;
 
   logProgress(
     `Completing container upload ${uploadId} for commit ${commitSha} and triggering test run...`,
@@ -292,6 +369,8 @@ export const uploadContainer = async ({
       commentsDisabledForAuthor: completeResult.commentsDisabledForAuthor,
       githubRateLimitRetryScheduled:
         completeResult.githubRateLimitRetryScheduled,
+      githubServerErrorRetryScheduled:
+        completeResult.githubServerErrorRetryScheduled,
     },
     retryFn: () =>
       completeUpload({
@@ -313,6 +392,8 @@ export const uploadContainer = async ({
   const commentsDisabledForAuthor = pollResult.commentsDisabledForAuthor;
   const githubRateLimitRetryScheduled =
     pollResult.githubRateLimitRetryScheduled;
+  const githubServerErrorRetryScheduled =
+    pollResult.githubServerErrorRetryScheduled;
 
   if (testRun) {
     const organizationName = encodeURIComponent(
@@ -334,15 +415,19 @@ export const uploadContainer = async ({
     },
   });
 
-  logProgress(`Container upload completed. Upload ID: ${uploadId}`);
+  const effectiveUploadId = completeResult.reusedSourceDeploymentId ?? uploadId;
+  logProgress(`Container upload completed. Upload ID: ${effectiveUploadId}`);
 
   return {
-    uploadId,
+    uploadId: effectiveUploadId,
     testRun,
     ...(message ? { message } : {}),
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
     ...(githubRateLimitRetryScheduled
       ? { githubRateLimitRetryScheduled: true }
+      : {}),
+    ...(githubServerErrorRetryScheduled
+      ? { githubServerErrorRetryScheduled: true }
       : {}),
   };
 };

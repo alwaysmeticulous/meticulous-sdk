@@ -92,10 +92,25 @@ export interface AgenticDeploymentAppTarget {
   enableLocalMocks?: boolean | undefined;
 }
 
+/**
+ * A public HTTPS URL the customer serves itself, loaded directly by the run's
+ * browser. No build is uploaded and no deployment row is required.
+ */
+export interface AgenticUrlAppTarget {
+  type: "url";
+  url: string;
+  /**
+   * An explicit base preview URL to compare against, with the launch's
+   * baseSha naming the revision it serves. Row-less, like the head URL.
+   */
+  baseUrl?: string | undefined;
+}
+
 export type AgenticAppTarget =
   | AgenticContainerAppTarget
   | AgenticAssetsAppTarget
-  | AgenticDeploymentAppTarget;
+  | AgenticDeploymentAppTarget
+  | AgenticUrlAppTarget;
 
 export interface CompleteAgenticSessionGenerationParams extends ProjectIdentifier {
   commitSha: string;
@@ -108,7 +123,10 @@ export interface CompleteAgenticSessionGenerationParams extends ProjectIdentifie
    * from. Requires `baseSha`.
    */
   sourceBundleId?: string;
-  /** Projects without a hosting provider only: the commit the change is diffed against. */
+  /**
+   * The revision a URL app target's `baseUrl` serves, or (for projects without
+   * a hosting provider) the commit the uploaded source is diffed against.
+   */
   baseSha?: string;
   /**
    * Projects without a hosting provider only: the session-replay test run of
@@ -240,6 +258,11 @@ export interface AgenticRunMockFallback {
     outcomeSummary?: string;
     blockedBy?: AgenticRunBlockedBy;
     setupIssue: AgenticRunSetupIssue;
+    /**
+     * Set when the live attempt ran on this earlier commit: this run skipped
+     * the live backend because the case's last mocked retry passed.
+     */
+    commitSha?: string;
   };
 }
 
@@ -501,11 +524,18 @@ export interface AgenticRunBackendFailure {
   endpoint: string;
   /** The HTTP status, for `http-error` and `slow`. */
   status?: number;
-  /** The browser's failure text, for `network-error`. */
+  /** The failure text, for `network-error`. */
   error?: string;
   count: number;
   /** Longest time a matching request took or, for `hung`, had been waiting. */
   maxDurationMs?: number;
+  /**
+   * Set when the failure is the app backend's own account of an outbound call
+   * that passed through to a real service, reported from inside the app's
+   * process rather than observed by the harness. Absent for the browser's
+   * requests, which the harness observed.
+   */
+  reportedBy?: "app-backend";
 }
 
 /**
@@ -517,8 +547,8 @@ export interface AgenticRunEvidence {
   /**
    * Data requests that failed, hung, or were very slow, most frequent first.
    * Excludes mock misses and requests the harness refused, which are reported
-   * elsewhere. Always empty on runs that use local mocks, whose responses come
-   * from mock.ts rather than a backend.
+   * elsewhere. On runs that use local mocks, whose browser responses come from
+   * mock.ts, only failures `reportedBy` the app backend are listed.
    */
   backendFailures: AgenticRunBackendFailure[];
   /** Total failing requests, including any beyond those listed. */
@@ -732,27 +762,64 @@ export interface AgenticRunCaseCheck {
 }
 
 /**
- * What one failure of a case is: a failed step, a base-vs-head regression
- * (which also fails the step that captured it), or a broken visual finding.
+ * What one failure of a case is: a failed step, a defect visible in a
+ * base-vs-head difference, or a defect visible on After alone.
  */
 export type AgenticRunCaseFailureKind = "step" | "comparison" | "visual";
+
+/** A range of lines in the pull request's head revision. */
+export interface AgenticRunCodeRange {
+  path: string;
+  startLine: number;
+  endLine: number;
+}
+
+/**
+ * What in the pull request's change produces one or more of a case's
+ * failures, as the case agent traced it.
+ */
+export interface AgenticRunCaseCause {
+  /** Stable within the case's result, e.g. `C1`. */
+  id: string;
+  /** Lines the pull request changed that produce it; the worker checked each touches the diff. */
+  changedLines: AgenticRunCodeRange[];
+  /** Unchanged lines the mechanism runs through. */
+  otherLines?: AgenticRunCodeRange[];
+  /** One or two plain sentences: how those lines produce what users see. */
+  mechanism: string;
+}
+
+/** One place a failure shows: a step and, for a visible defect, the screenshot and mark. */
+export interface AgenticRunCaseFailureOccurrence {
+  stepIndex: number;
+  screenshotName?: string;
+  /** The visual review's mark it shows, by `AgenticRunVisualMark.id`. */
+  markId?: string;
+  /** The comparison difference it shows, 1-based into `visualReview.differences`. */
+  difference?: number;
+}
 
 /** One thing that failed a case, and the independent check's verdict on it. */
 export interface AgenticRunCaseFailure {
   /**
-   * Stable within the case's result: `step-<index>`,
-   * `comparison-<screenshotName>` or `visual-<finding key>`.
+   * Stable within the case's result: the case agent's id (e.g. `F1`) for a
+   * failure it reported, `step-<index>` for a failed step none accounts for,
+   * or, on older blobs, `comparison-<screenshotName>` or `visual-<finding key>`.
    */
   id: string;
   kind: AgenticRunCaseFailureKind;
-  /** The step it failed: the failed step, or the one that took its screenshot. */
+  /** The step it failed: its earliest occurrence's. */
   stepIndex?: number;
-  /** The comparison's or finding's screenshot. */
+  /** The earliest occurrence's screenshot, for a visible defect. */
   screenshotName?: string;
-  /** The finding's `key`, for a visual failure. */
+  /** The finding's `key`, for a visual failure on older blobs. */
   visualFindingKey?: string;
-  /** What failed, as the case agent or visual review reported it. */
+  /** What failed, as the case agent reported it. */
   summary: string;
+  /** Every place it shows, earliest first; absent on older blobs. */
+  occurrences?: AgenticRunCaseFailureOccurrence[];
+  /** The `causes` entry that produces it; absent for a functional failure with none. */
+  causeId?: string;
   /** `fail` while upheld, including when it was never checked. */
   outcome: AgenticRunCaseCheckVerdict;
   /**
@@ -760,6 +827,181 @@ export interface AgenticRunCaseFailure {
    * checks artifact or the traces, by `id`.
    */
   check?: AgenticRunCaseCheck;
+}
+
+/**
+ * How strongly the visual review flags something: `broken` must be failed or
+ * explained, `soft` becomes a warning unless failed, and `state` (a loading
+ * indicator, error message, empty state or blank region on After alone) must
+ * be failed or explained, without judging whether it looks broken.
+ */
+export type AgenticRunVisualMarkClass = "broken" | "soft" | "state";
+
+/**
+ * Where a mark comes from: the defect review saw a defect, one on an area
+ * the layout check measured, or a state.
+ */
+export type AgenticRunVisualMarkSource =
+  | "looks-broken"
+  | "confirmed-defect"
+  | "state";
+
+/** A state an After screenshot shows, reported without judging whether it belongs. */
+export type AgenticRunAfterState =
+  | "loading-indicator"
+  | "error-message"
+  | "empty-state"
+  | "blank-region";
+
+/** A visual defect the defect review can name on an After screenshot. */
+export type AgenticRunVisualDefectKind =
+  | "page-overflow"
+  | "clipped-text"
+  | "overflowing-text"
+  | "overlapping-text"
+  | "covered-control"
+  | "broken-image"
+  | "stretched-image"
+  | "raw-template-text"
+  | "misplaced-element"
+  | "near-miss-alignment"
+  | "uneven-spacing"
+  | "odd-one-out";
+
+/**
+ * The case agent's decision on a mark. `failure`: part of one of the case's
+ * failures. `intended`: the pull request means it to look this way.
+ * `unrelated`: the pull request did not cause it. `unattributed`: it looks
+ * broken but the agent could not trace it to the change. `expected`: a state
+ * the flow should show.
+ */
+export type AgenticRunVisualMarkDecision =
+  | "failure"
+  | "intended"
+  | "unrelated"
+  | "unattributed"
+  | "expected";
+
+/** Why a mark is not the pull request's doing. */
+export type AgenticRunUnrelatedReason =
+  | "on-pr-base"
+  | "environment"
+  | "other-commit";
+
+/**
+ * The blind second look at an area the first look said looks broken: told
+ * neither what was seen there nor anything about the change.
+ */
+export interface AgenticRunFixedCheck {
+  looksBroken: "broken" | "not-broken" | "unclear";
+  what: string;
+  confidence: "low" | "medium" | "high";
+  /** Not broken at medium or high confidence, so the mark may be called intended. */
+  cleared: boolean;
+}
+
+/** One thing the visual review flagged on the reported run, and what became of it. */
+export interface AgenticRunVisualMark {
+  /**
+   * Stable within the case's result: `checkout#d2` on a difference,
+   * `receipt#x1` on a defect, `receipt#s1` on a state, `checkout#m3` on a
+   * measurement alone.
+   */
+  id: string;
+  class: AgenticRunVisualMarkClass;
+  source: AgenticRunVisualMarkSource;
+  /** The defect, state or measured issue kind. */
+  kind: string;
+  /** What the first look saw, in a product user's terms. */
+  summary: string;
+  screenshotName: string;
+  /** The head screenshot, at its run-wide artifact path. */
+  screenshotPath: string;
+  /** The comparison difference it is on, 1-based. */
+  difference?: number;
+  /** The visual finding it is, by `AgenticRunVisualFinding.key`. */
+  findingKey?: string;
+  /** Other screenshots the same finding is on, joined into this mark. */
+  alsoOn?: string[];
+  /** Where it is, as fractions of the screenshot. */
+  box?: AgenticRunChangedRegion;
+  /** Absent on a soft mark the agent did not fail, which became a warning. */
+  decision?: AgenticRunVisualMarkDecision;
+  failureId?: string;
+  reasonCategory?: AgenticRunUnrelatedReason;
+  /** The agent's reason for a decision other than failure. */
+  reason?: string;
+  /** Code the agent cited to show it is intended. */
+  code?: AgenticRunCodeRange[];
+  fixedCheck?: AgenticRunFixedCheck;
+}
+
+/** Something reviewers should look at that does not fail the case. */
+export interface AgenticRunCaseWarning {
+  summary: string;
+  /**
+   * `soft-mark`: a mark too weak to fail on. `state`: a state the agent did
+   * not call expected. `unattributed`: looks broken, not traced to the
+   * change. `unrelated`: looks broken, and the agent says the change did not
+   * cause it. `agent`: the case agent's own. `coverage`: screenshots the
+   * visual review did not reach.
+   */
+  source:
+    | "soft-mark"
+    | "state"
+    | "unattributed"
+    | "unrelated"
+    | "agent"
+    | "coverage";
+  stepIndex?: number;
+  screenshotName?: string;
+  markId?: string;
+}
+
+/**
+ * Whether the visual review looked at a screenshot of the reported run:
+ * `reviewed` by a call of its own, `cached` from an identical earlier one,
+ * `noise` (an unchanged DOM settled it), `capped` past the review budget,
+ * or `failed`.
+ */
+export type AgenticRunScreenshotReviewStatus =
+  | "reviewed"
+  | "cached"
+  | "noise"
+  | "capped"
+  | "failed";
+
+export interface AgenticRunScreenshotCoverage {
+  screenshotName: string;
+  status: AgenticRunScreenshotReviewStatus;
+  /** A screenshot with no base side to compare with. */
+  afterOnly?: true;
+  /**
+   * Reviewed, but the review listed more differences, defects or states than
+   * it keeps, so some of what it saw is not among the case's marks.
+   */
+  partial?: true;
+}
+
+/** What one screenshot is inspected for. */
+export type AgenticRunInspectionTarget =
+  | "difference"
+  | "defect"
+  | "state"
+  | "measurement"
+  | "text"
+  | "whole";
+
+/** An answer to the case agent's own question about a screenshot. */
+export interface AgenticRunVisualInspection {
+  screenshotName: string;
+  target: AgenticRunInspectionTarget;
+  /** The mark id, difference number or text the target names. */
+  targetRef?: string;
+  question?: string;
+  answer: string;
+  looksBroken: "yes" | "no" | "unclear";
+  confidence: "low" | "medium" | "high";
 }
 
 /** One failure's check, as the checks artifact and the traces carry it. */
@@ -771,17 +1013,23 @@ export interface AgenticRunCaseFailureCheck {
 /**
  * The case agent's call on a base-vs-head difference. `unrelated` is a real
  * difference the pull request did not cause (another commit, a flag, the
- * environment); `not-comparable` means a side never reached the state under
- * test. Only `regression` fails the case.
+ * environment); `unattributed` looks broken but could not be traced to the
+ * change; `not-comparable` means a side never reached the state under test.
+ * Only `regression` fails the case.
  */
 export type AgenticRunComparisonVerdict =
   | "regression"
   | "intended-change"
   | "unrelated"
+  | "unattributed"
   | "not-comparable";
 
-/** A defect the visual review saw on the After (head) side. */
+/**
+ * A defect the visual review saw on the After (head) side, in the
+ * difference. Older workers wrote the six tags after the defect kinds.
+ */
 export type AgenticRunComparisonDefect =
+  | AgenticRunVisualDefectKind
   | "layout-broken"
   | "text-clipped-or-overlapping"
   | "error-or-empty-state"
@@ -789,16 +1037,33 @@ export type AgenticRunComparisonDefect =
   | "broken-image"
   | "content-missing";
 
+/** A verdict on one numbered difference of a pair. */
+export type AgenticRunComparisonDifferenceVerdictValue = Exclude<
+  AgenticRunComparisonVerdict,
+  "not-comparable"
+>;
+
 export interface AgenticRunComparisonVisualDifference {
   /** One visible difference, in a product user's terms. */
   what: string;
   defect?: AgenticRunComparisonDefect;
+  /** Text the vision model saw on After in or next to the difference. */
+  anchor?: string;
   /**
-   * Where it is, as fractions of the diff image: the changed pixels inside
-   * the area the visual review pointed at. Absent when it pointed nowhere, or
-   * nothing changed there.
+   * Where it is on After, as fractions of the screenshot: the changed pixels
+   * inside the area the visual review pointed at, else the box of `anchor`.
+   * Absent when neither was found.
    */
   box?: AgenticRunChangedRegion;
+}
+
+/**
+ * The case agent's verdict on one difference of the visual review, by its
+ * 1-based position in `visualReview.differences`.
+ */
+export interface AgenticRunComparisonDifferenceVerdict {
+  difference: number;
+  verdict: AgenticRunComparisonDifferenceVerdictValue;
 }
 
 /**
@@ -808,7 +1073,12 @@ export interface AgenticRunComparisonVisualDifference {
 export interface AgenticRunComparisonVisualReview {
   summary: string;
   differences: AgenticRunComparisonVisualDifference[];
-  suggestedVerdict: AgenticRunComparisonVerdict | "noise";
+  /**
+   * Set when the pair reads as `noise` or `not-comparable`; absent when the
+   * vision model saw a real difference, whose verdicts are the case agent's.
+   * Older workers also wrote a suggested verdict here.
+   */
+  suggestedVerdict?: AgenticRunComparisonVerdict | "noise";
   confidence: "low" | "medium" | "high";
 }
 
@@ -870,17 +1140,28 @@ export interface AgenticRunScreenshotComparison {
   regions?: AgenticRunChangedRegion[];
   /**
    * The areas the verdict rests on, as fractions of the diff image: for a
-   * regression the differences showing a defect (all of them when none
-   * does), for any other change every difference the visual review listed,
+   * regression the differences `differenceVerdicts` calls regressions (all
+   * of them when it calls none), for any other change every difference the
+   * visual review listed,
    * and none when it is not comparable. Absent when some of those
    * differences could not be placed; readers then show `regions`.
    */
   highlights?: AgenticRunChangedRegion[];
   base: AgenticRunComparisonSide;
   head: AgenticRunComparisonSide;
+  /**
+   * The pair's verdict. When `differenceVerdicts` is present it is derived
+   * from them: a regression if any difference is one.
+   */
   verdict: AgenticRunComparisonVerdict;
   explanation: string;
   visualReview?: AgenticRunComparisonVisualReview;
+  /**
+   * One verdict per difference in `visualReview.differences`; absent when
+   * the pair is not-comparable, had no visual review, or on older blobs.
+   */
+  differenceVerdicts?: AgenticRunComparisonDifferenceVerdict[];
+  /** @deprecated Written by older workers, which double-checked dismissals with a second vision pass. */
   secondLook?: AgenticRunComparisonSecondLook;
   /** @deprecated Written by older workers; see `comparisonPresentation`. */
   display?: AgenticRunComparisonDisplay;
@@ -979,6 +1260,11 @@ export interface AgenticRunVisualFinding {
    * area on both.
    */
   baseScreenshotPath?: string;
+  /**
+   * The 1-based difference, in its screenshot's comparison
+   * `visualReview.differences`, that this finding shows.
+   */
+  difference?: number;
 }
 
 export const AGENTIC_RUN_CASE_PROPERTY_KINDS = [
@@ -1132,16 +1418,25 @@ export interface AgenticRunResultCase {
   /** Visual defects on the reported run's screenshots; absent when none were found. */
   visualFindings?: AgenticRunVisualFinding[];
   /**
-   * Set when only the visual review failed the case: the agent's own steps
-   * passed. Such a case keeps its saved test.
+   * @deprecated Written by older workers, where the visual review could fail
+   * a case on its own. A case now fails only on what its agent reports.
    */
   failedBy?: "visual-review";
   /**
    * Each thing that failed the case, with its own verdict from the
-   * independent check. Present on a failed case of a project with visual
-   * review; `check` then summarises the first upheld failure.
+   * independent check. `check` then summarises the first upheld failure.
    */
   failures?: AgenticRunCaseFailure[];
+  /** What in the change produces the case's failures; each failure names one by `causeId`. */
+  causes?: AgenticRunCaseCause[];
+  /** What the visual review flagged on the reported run, with the decision on each. */
+  marks?: AgenticRunVisualMark[];
+  /** Things reviewers should look at that do not fail the case. */
+  warnings?: AgenticRunCaseWarning[];
+  /** Whether the visual review looked at each of the reported run's screenshots. */
+  visualCoverage?: AgenticRunScreenshotCoverage[];
+  /** The case agent's own questions about the reported run's screenshots, answered. */
+  inspections?: AgenticRunVisualInspection[];
   /**
    * Sessions recorded on the base deployment, for side-by-side playback only.
    * Never part of `sessionIds`, so they are not replayed or selected.

@@ -1,5 +1,14 @@
 # @alwaysmeticulous/recorder-loader
 
+## 3.11.0
+
+### Patch Changes
+
+- [#17515](https://github.com/alwaysmeticulous/meticulous/pull/17515) [`0834ed9`](https://github.com/alwaysmeticulous/meticulous/commit/0834ed9ce69bc25a1d43d64809b6992e28d336bf) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - `tryLoadAndStartRecorder` (and the deprecated `loadAndStartRecorder`) no longer loads the recorder when the recording token is empty or missing. Sessions recorded without a token can't be associated with a project, so they were uploaded but never showed up. It now logs a warning and resolves with a no-op `stopRecording`, as it already does when loading takes longer than `maxMsToBlockFor`. If the early network recorder was installed (`tryInstallMeticulousIntercepts`), it is stopped too, dropping the network data it had buffered in memory. An empty `recordingToken` no longer hides a non-empty (deprecated) `projectId`.
+
+- Updated dependencies [[`fd06dd3`](https://github.com/alwaysmeticulous/meticulous/commit/fd06dd344b159f15de673548cad4487a3cfd008a)]:
+  - @alwaysmeticulous/sdk-bundles-api@3.11.0
+
 ## 3.10.0
 
 ### Patch Changes

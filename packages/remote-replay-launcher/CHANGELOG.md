@@ -1,5 +1,31 @@
 # @alwaysmeticulous/remote-replay-launcher
 
+## 3.11.2
+
+### Patch Changes
+
+- Updated dependencies [[`098c492`](https://github.com/alwaysmeticulous/meticulous/commit/098c492acf325566e84768d69f9711d332728a38)]:
+  - @alwaysmeticulous/client@3.11.2
+
+## 3.11.0
+
+### Minor Changes
+
+- [#17591](https://github.com/alwaysmeticulous/meticulous/pull/17591) [`166f0b7`](https://github.com/alwaysmeticulous/meticulous/commit/166f0b78f33802cccd752952f6bad585ec3279d4) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add optional commit-upload deduplication support so repeat CI asset and container uploads for the same commit within a short window can reuse an existing healthy deployment and test run instead of re-uploading artifacts.
+
+- [#17620](https://github.com/alwaysmeticulous/meticulous/pull/17620) [`8f6ae99`](https://github.com/alwaysmeticulous/meticulous/commit/8f6ae99147399e84b1492a024f038b0744f1ae44) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - When a test run trigger hits a GitHub server error and the server schedules a retry, report it as a skip that says the run will be created once GitHub recovers (rather than once the rate limit resets), with the `--json` skip reason `github_server_error_retry_scheduled`. Older clients keep working: clients from 3.1.0 report the same retry as a rate-limit skip, and older clients are answered with a placeholder test run instead.
+
+### Patch Changes
+
+- [#17353](https://github.com/alwaysmeticulous/meticulous/pull/17353) [`78c51f8`](https://github.com/alwaysmeticulous/meticulous/commit/78c51f811b985790e47a588a8bd0d2cf6d46152a) Thanks [@sesajad](https://github.com/sesajad)! - Allow `ci agent-test --previewUrl` to launch Agent swarm against a hosted frontend URL directly, without uploading a build.
+
+- [#17364](https://github.com/alwaysmeticulous/meticulous/pull/17364) [`c25728c`](https://github.com/alwaysmeticulous/meticulous/commit/c25728c4b8f5e1653912bacf93116907771256b0) Thanks [@sesajad](https://github.com/sesajad)! - Allow `ci agent-test --previewUrl --basePreviewUrl --baseSha` to launch Agent swarm comparing an explicit pair of hosted preview URLs.
+
+- Updated dependencies [[`f6d52f7`](https://github.com/alwaysmeticulous/meticulous/commit/f6d52f76f136297c4f7a26dd654cd38956a3638a), [`f6d52f7`](https://github.com/alwaysmeticulous/meticulous/commit/f6d52f76f136297c4f7a26dd654cd38956a3638a), [`fddeb00`](https://github.com/alwaysmeticulous/meticulous/commit/fddeb00f282f9ba196217664860431492a316b6a), [`6a60afd`](https://github.com/alwaysmeticulous/meticulous/commit/6a60afd0baea504623405cfa7278bf5eeb41971a), [`4564a97`](https://github.com/alwaysmeticulous/meticulous/commit/4564a97ceeb059883af35e94c3f619789adafbb5), [`166f0b7`](https://github.com/alwaysmeticulous/meticulous/commit/166f0b78f33802cccd752952f6bad585ec3279d4), [`8f6ae99`](https://github.com/alwaysmeticulous/meticulous/commit/8f6ae99147399e84b1492a024f038b0744f1ae44), [`78c51f8`](https://github.com/alwaysmeticulous/meticulous/commit/78c51f811b985790e47a588a8bd0d2cf6d46152a), [`eb6fd58`](https://github.com/alwaysmeticulous/meticulous/commit/eb6fd58f7a4bf6f3b78367c52e1cd82cca125436), [`9bf953b`](https://github.com/alwaysmeticulous/meticulous/commit/9bf953b5e72f268e14982582c8a8a8708442774f), [`c25728c`](https://github.com/alwaysmeticulous/meticulous/commit/c25728c4b8f5e1653912bacf93116907771256b0)]:
+  - @alwaysmeticulous/client@3.11.0
+  - @alwaysmeticulous/api@3.11.0
+  - @alwaysmeticulous/common@3.9.0
+
 ## 3.10.0
 
 ### Patch Changes

@@ -138,7 +138,11 @@ describe("uploadContainer", () => {
     expect(mockImage.push).toHaveBeenCalled();
 
     // Verify API calls
-    expect(getRegistryAuth).toHaveBeenCalledWith({ client: mockClient });
+    expect(getRegistryAuth).toHaveBeenCalledWith({
+      client: mockClient,
+      commitSha: "abc123def456",
+      deduplicateCommitUpload: true,
+    });
     expect(completeContainerUpload).toHaveBeenCalledWith({
       client: mockClient,
       uploadId: "upload-123",
@@ -440,5 +444,43 @@ describe("uploadContainer", () => {
     await rejection;
     expect(mockImage.push).toHaveBeenCalledTimes(3);
     vi.useRealTimers();
+  });
+
+  it("skips pushing image and completing upload when getRegistryAuth returns alreadyUploaded", async () => {
+    const reusedRun = {
+      id: "test-run-reused",
+      project: {
+        name: "test-project",
+        organization: { name: "test-org" },
+      },
+    };
+    (getRegistryAuth as any).mockResolvedValue({
+      registryUrl: "",
+      projectName: "test-project",
+      robotAccountName: "",
+      robotAccountSecret: "",
+      expiresAt: "2024-12-31T23:59:59Z",
+      uploadId: "upload-reused",
+      imageReference: "",
+      alreadyUploaded: true,
+      testRun: reusedRun,
+      message: "Reusing recent container deployment.",
+    });
+
+    const result = await uploadContainer({
+      apiToken: "test-token",
+      localImageTag: "myapp:latest",
+      commitSha: "abc123def456",
+      waitForBase: false,
+    });
+
+    expect(mockImage.tag).not.toHaveBeenCalled();
+    expect(mockImage.push).not.toHaveBeenCalled();
+    expect(completeContainerUpload).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      uploadId: "upload-reused",
+      testRun: reusedRun,
+      message: "Reusing recent container deployment.",
+    });
   });
 });

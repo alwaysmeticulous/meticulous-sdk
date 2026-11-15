@@ -41,6 +41,9 @@ const result = await build({
         build.onResolve({ filter: /^prettier$/ }, () => ({
           path: join(packageRoot, "scripts", "prettier-shim.ts"),
         }));
+        build.onResolve({ filter: /^chromium-bidi(?:\/.*)?$/ }, () => ({
+          path: join(packageRoot, "scripts", "chromium-bidi-shim.ts"),
+        }));
         build.onResolve(
           { filter: /^puppeteer-core(?:\/.*)?$/ },
           ({ path }) => ({

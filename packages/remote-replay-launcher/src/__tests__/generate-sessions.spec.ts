@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateSessions } from "../generate-sessions";
 import { uploadBuild } from "../upload-build";
 
+const info = vi.hoisted(() => vi.fn());
 vi.mock("@alwaysmeticulous/client", () => ({
   completeAgenticSessionGeneration: vi.fn(),
   createClient: vi.fn(),
@@ -14,7 +15,7 @@ vi.mock("@alwaysmeticulous/client", () => ({
 vi.mock("@alwaysmeticulous/common", () => ({
   initLogger: () => ({
     debug: vi.fn(),
-    info: vi.fn(),
+    info,
     warn: vi.fn(),
     error: vi.fn(),
   }),
@@ -173,5 +174,74 @@ describe("generateSessions appTarget deployment reference", () => {
         },
       }),
     );
+  });
+});
+
+describe("preview URL target", () => {
+  it("launches against the URL directly, without uploading or registering anything", async () => {
+    vi.clearAllMocks();
+    vi.mocked(createClient).mockReturnValue({} as never);
+    vi.mocked(completeAgenticSessionGeneration).mockResolvedValue({
+      agenticRunId: "run",
+    });
+    await generateSessions({
+      apiToken: "token",
+      projectId: "project",
+      previewUrl: "https://head.example.com",
+      commitSha: "a".repeat(40),
+    });
+    expect(completeAgenticSessionGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appTarget: {
+          type: "url",
+          url: "https://head.example.com",
+        },
+      }),
+    );
+    expect(info).toHaveBeenCalledWith(
+      expect.stringContaining("URL: https://head.example.com"),
+    );
+    expect(uploadBuild).not.toHaveBeenCalled();
+  });
+
+  it("launches an explicit URL pair with the base URL on the app target", async () => {
+    vi.clearAllMocks();
+    vi.mocked(createClient).mockReturnValue({} as never);
+    vi.mocked(completeAgenticSessionGeneration).mockResolvedValue({
+      agenticRunId: "run",
+    });
+    await generateSessions({
+      apiToken: "token",
+      projectId: "project",
+      previewUrl: "https://head.example.com",
+      basePreviewUrl: "https://base.example.com",
+      baseSha: "b".repeat(40),
+      commitSha: "a".repeat(40),
+    });
+    expect(completeAgenticSessionGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseSha: "b".repeat(40),
+        appTarget: {
+          type: "url",
+          url: "https://head.example.com",
+          baseUrl: "https://base.example.com",
+        },
+      }),
+    );
+  });
+
+  it("rejects a base URL without baseSha", async () => {
+    vi.clearAllMocks();
+    vi.mocked(createClient).mockReturnValue({} as never);
+    await expect(
+      generateSessions({
+        apiToken: "token",
+        projectId: "project",
+        previewUrl: "https://head.example.com",
+        basePreviewUrl: "https://base.example.com",
+        commitSha: "a".repeat(40),
+      }),
+    ).rejects.toThrow(/baseSha/);
+    expect(completeAgenticSessionGeneration).not.toHaveBeenCalled();
   });
 });

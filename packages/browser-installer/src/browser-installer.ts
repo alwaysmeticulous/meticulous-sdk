@@ -13,7 +13,7 @@ import {
   getInstalledBrowsers,
 } from "@puppeteer/browsers";
 import chalk from "chalk";
-import { PUPPETEER_REVISIONS } from "puppeteer-core/lib/puppeteer/revisions.js";
+import { CHROME_BUILD_ID } from "./chrome-build-id";
 
 const INSTALL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_INSTALL_RETRIES = 3;
@@ -68,7 +68,7 @@ export const ensureBrowser = async (
     validateCacheDir(process.env.PUPPETEER_CACHE_DIR) ||
     path.join(os.homedir(), ".cache", "puppeteer");
   const overrideBuildId = getOverrideChromeBuildId();
-  const buildId = overrideBuildId ?? PUPPETEER_REVISIONS.chrome;
+  const buildId = overrideBuildId ?? CHROME_BUILD_ID;
 
   const installedExecutable = await findInstalledBrowser({
     browserType,
@@ -89,7 +89,7 @@ export const ensureBrowser = async (
     chalk.gray(
       overrideBuildId
         ? `Using Chrome version from METICULOUS_CHROME_BUILD_ID: ${buildId}`
-        : `Using Chrome version from puppeteer-core: ${buildId}`,
+        : `Using pinned Chrome version: ${buildId}`,
     ),
   );
   console.log(

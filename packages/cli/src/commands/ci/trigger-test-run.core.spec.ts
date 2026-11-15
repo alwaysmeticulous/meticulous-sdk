@@ -3,6 +3,7 @@ import type * as RemoteReplayLauncher from "@alwaysmeticulous/remote-replay-laun
 import {
   readCompletedUpload,
   uploadAssetsAndTriggerTestRun,
+  uploadContainer,
   withCompletedUpload,
 } from "@alwaysmeticulous/remote-replay-launcher";
 import { CliUserError } from "../../utils/cli-user-error";
@@ -30,6 +31,8 @@ vi.mock("@alwaysmeticulous/remote-replay-launcher", async (importOriginal) => {
     carryCompletedUpload: actual.carryCompletedUpload,
     readCompletedUpload: actual.readCompletedUpload,
     withCompletedUpload: actual.withCompletedUpload,
+    describeGitHubRateLimitRetry: actual.describeGitHubRateLimitRetry,
+    getGitHubDelayedRetrySkipReason: actual.getGitHubDelayedRetrySkipReason,
     uploadAssetsAndTriggerTestRun: vi.fn(),
     uploadContainer: vi.fn(),
   };
@@ -169,6 +172,44 @@ describe("triggerTestRun CI outcomes", () => {
       outcome: "skipped",
       reason: "github_rate_limit_retry_scheduled",
     });
+  });
+
+  it("returns a server-error-retry skip", async () => {
+    vi.mocked(uploadAssetsAndTriggerTestRun).mockResolvedValue({
+      testRun: null,
+      skipReason: "github_server_error_retry_scheduled",
+      message: "GitHub returned a server error; a retry has been scheduled.",
+    });
+
+    await expect(triggerTestRun(options)).resolves.toMatchObject({
+      outcome: "skipped",
+      reason: "github_server_error_retry_scheduled",
+    });
+  });
+
+  it("returns a server-error-retry skip for a container upload, without blaming a rate limit", async () => {
+    vi.mocked(uploadContainer).mockResolvedValue({
+      uploadId: "upload-1",
+      testRun: null,
+      githubRateLimitRetryScheduled: true,
+      githubServerErrorRetryScheduled: true,
+      message:
+        "GitHub returned a server error (HTTP 503); scheduled a retry in ~60s.",
+    } as never);
+
+    const result = await triggerTestRun({
+      waitForBase: true,
+      waitForTestRunToComplete: false,
+      json: false,
+      localImageTag: "app:latest",
+    } as never);
+
+    expect(result).toMatchObject({
+      outcome: "skipped",
+      reason: "github_server_error_retry_scheduled",
+    });
+    expect(JSON.stringify(result)).toContain("once GitHub recovers");
+    expect(JSON.stringify(result)).not.toContain("limit resets");
   });
 
   it("skips before uploading when there is nothing to test", async () => {

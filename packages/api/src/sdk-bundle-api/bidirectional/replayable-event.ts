@@ -47,4 +47,13 @@ export interface ReplayableEvent {
    * down, and when the movement summed to zero.
    */
   pointerLockMovement?: { x: number; y: number };
+
+  /**
+   * For paste: the clipboard's plain text, which replay pastes. Apps that insert a paste themselves
+   * (rich-text editors) fire no `insertFromPaste` input carrying it. Never recorded for password
+   * fields or inside redacted elements. Undefined on older sessions, for untrusted
+   * (script-dispatched) pastes, for file pastes (whose plain text is just the file names), when the
+   * clipboard held no plain text, and for very large pastes.
+   */
+  clipboardText?: string;
 }

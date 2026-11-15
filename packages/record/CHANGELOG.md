@@ -1,5 +1,29 @@
 # @alwaysmeticulous/record
 
+## 3.11.0
+
+### Patch Changes
+
+- [#17295](https://github.com/alwaysmeticulous/meticulous/pull/17295) [`0068fd5`](https://github.com/alwaysmeticulous/meticulous/commit/0068fd5042b0110d8bd8490128e13f5da3157bf9) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Upgrade to puppeteer-core 25.16.0 and `@puppeteer/browsers` 3.2.6, so local replays and recordings
+  download Chrome for Testing 156.0.8078.47 (was 154.0.8037.57), matching cloud replays.
+
+  `@alwaysmeticulous/browser-installer` no longer depends on puppeteer-core at runtime: the Chrome
+  build it installs is now a constant in the package.
+
+  `@alwaysmeticulous/record` still depends on puppeteer-core, which since 25.13 depends on
+  `chromium-bidi@157.0.8090-0`. From 157.0.8080-0 onwards, chromium-bidi is published without npm
+  provenance (earlier versions had it), so pnpm projects with `trustPolicy: no-downgrade` reject it
+  with `ERR_PNPM_TRUST_DOWNGRADE`. Puppeteer only loads chromium-bidi when launching Chrome with
+  `protocol: "webDriverBiDi"`, which Meticulous never does. If your project hits this, either add
+  `chromium-bidi@157.0.8090-0` to `trustPolicyExclude`, or remove the package with the pnpm override
+  `"chromium-bidi": "-"` (the override isn't safe if you bundle puppeteer-core with esbuild, because
+  esbuild follows puppeteer's import of chromium-bidi).
+
+- Updated dependencies [[`4564a97`](https://github.com/alwaysmeticulous/meticulous/commit/4564a97ceeb059883af35e94c3f619789adafbb5), [`eb6fd58`](https://github.com/alwaysmeticulous/meticulous/commit/eb6fd58f7a4bf6f3b78367c52e1cd82cca125436), [`0068fd5`](https://github.com/alwaysmeticulous/meticulous/commit/0068fd5042b0110d8bd8490128e13f5da3157bf9)]:
+  - @alwaysmeticulous/api@3.11.0
+  - @alwaysmeticulous/browser-installer@3.11.0
+  - @alwaysmeticulous/common@3.9.0
+
 ## 3.9.0
 
 ### Patch Changes

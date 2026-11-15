@@ -9,9 +9,10 @@ import type { CrawlExplorationMode } from "@alwaysmeticulous/sdk-bundles-api";
 import type { CommandModule } from "yargs";
 import { OPTIONS } from "../command-utils/common-options";
 import { wrapHandler } from "../command-utils/sentry.utils";
-import { resolveProjectIdentifier } from "../utils/resolve-project-identifier";
+import { resolveCrawlProjectId } from "./crawl/resolve-crawl-project";
 import {
   isLocalUrl,
+  isPathUnderAllowedPrefixes,
   loadStorageToSeed,
   parseStartUrls,
   printSummary,
@@ -26,6 +27,7 @@ export const LOGIN_REQUIRED_EXIT_CODE = 2;
 
 interface Options {
   apiToken: string | null | undefined;
+  project: string | undefined;
   startUrl: string[];
   crawlingTimeoutSeconds: number;
   maxNumSessions: number;
@@ -35,10 +37,12 @@ interface Options {
   nonInteractive: boolean;
   storageState: string | null | undefined;
   outputFile: string | null | undefined;
+  allowedPathPrefix: string[] | undefined;
 }
 
 const handler = async ({
   apiToken,
+  project: projectOption,
   startUrl,
   crawlingTimeoutSeconds,
   maxNumSessions,
@@ -48,6 +52,7 @@ const handler = async ({
   nonInteractive,
   storageState,
   outputFile,
+  allowedPathPrefix,
 }: Options): Promise<void> => {
   const logger = initLogger();
 
@@ -57,23 +62,43 @@ const handler = async ({
     process.exit(1);
   }
 
+  if (allowedPathPrefix != null && allowedPathPrefix.length > 0) {
+    const outOfPrefix = startUrls.filter(
+      (url) =>
+        !isPathUnderAllowedPrefixes(new URL(url).pathname, allowedPathPrefix),
+    );
+    if (outOfPrefix.length > 0) {
+      logger.error(
+        `--startUrl ${outOfPrefix.join(", ")} ${
+          outOfPrefix.length === 1 ? "is" : "are"
+        } outside every --allowedPathPrefix. Adjust the prefixes or the start URLs.`,
+      );
+      process.exit(1);
+    }
+  }
+
   const storageToSeed = await loadStorageToSeed(storageState, startUrls[0]);
 
   // Resolve the full auth chain (explicit token → OAuth → env var → legacy
   // config file), triggering an interactive browser login when nothing is
   // stored. OAuth tokens are user-scoped, so the project to record into is
-  // resolved from the user's default project (`meticulous auth set-project`).
+  // resolved from the user's default project (`meticulous auth set-project`)
+  // unless --project overrides it.
   const resolvedApiToken = await resolveApiTokenWithOAuth({
     apiToken,
     enableOAuthLogin: true,
   });
-  const { projectId } = await resolveProjectIdentifier(resolvedApiToken);
   // Use the OAuth-aware client so the short-lived access token is refreshed
   // per request — the test-run creation happens after a potentially long
   // crawl, well past the access token's lifetime.
   const client = await createClientWithOAuth({
     apiToken,
     enableOAuthLogin: true,
+  });
+  const projectId = await resolveCrawlProjectId({
+    client,
+    apiToken: resolvedApiToken,
+    project: projectOption,
   });
   const project = await getProject(client, projectId);
   if (!project) {
@@ -85,6 +110,16 @@ const handler = async ({
   if (storageToSeed != null && !capabilities.storageToSeed) {
     logger.error(
       "The crawler downloaded from Meticulous doesn't support --storageState yet. Retry later, or omit --storageState.",
+    );
+    process.exit(1);
+  }
+  if (
+    allowedPathPrefix != null &&
+    allowedPathPrefix.length > 0 &&
+    !capabilities.allowedPathPrefixes
+  ) {
+    logger.error(
+      "The crawler downloaded from Meticulous doesn't support --allowedPathPrefix yet. Retry later, or omit --allowedPathPrefix.",
     );
     process.exit(1);
   }
@@ -116,6 +151,7 @@ const handler = async ({
     onReadyForManualLogin: waitForManualLogin ? waitForEnter : undefined,
     headless,
     storageToSeed,
+    allowedPathPrefixes: allowedPathPrefix,
     logLevel: logger.getLevel(),
   });
 
@@ -125,6 +161,13 @@ const handler = async ({
   }
   printSummary(report, outputFile);
   const { sessionIds } = report;
+
+  if (result.crawlerFailed) {
+    logger.error(
+      "The crawler crashed before it finished. The sessions listed above were recorded, but the crawl is incomplete and no test run will be created.",
+    );
+    process.exit(1);
+  }
 
   if (sessionIds.length === 0) {
     logger.error("No sessions were recorded. Exiting.");
@@ -196,6 +239,11 @@ export const crawlCommand: CommandModule<unknown, Options> = {
     "Pass --startUrl more than once to crawl a list of URLs in the same browser, and so behind the same login.",
   builder: {
     apiToken: OPTIONS.apiToken,
+    project: {
+      string: true,
+      description:
+        "The project to record sessions into (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s).",
+    },
     startUrl: {
       string: true,
       array: true,
@@ -264,6 +312,15 @@ export const crawlCommand: CommandModule<unknown, Options> = {
       description:
         "Write a JSON summary of the crawl to this path: { sessionIds, startUrls, " +
         "numSessions, uniqueUrlCount, loginWallDetected }",
+    },
+    allowedPathPrefix: {
+      string: true,
+      array: true,
+      description:
+        "Restrict the crawl to URLs under this path prefix on the start URL's " +
+        "origin, e.g. --allowedPathPrefix /agents. Repeat the flag to allow " +
+        "several prefixes. Prefixes match at a path-segment boundary: /agents " +
+        "covers /agents and /agents/x but not /agentsfoo.",
     },
   },
   handler: wrapHandler(handler),

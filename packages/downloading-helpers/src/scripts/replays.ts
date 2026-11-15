@@ -240,22 +240,16 @@ export const getOrFetchReplayArchive = async (
       !excluded.has(fileType) &&
       !previousScopes.some((scope) => shouldDownloadFile(fileType, scope));
 
-    const replay = await getReplay(client, replayId);
-
-    let hasNormalArtifacts = false;
-    if (replay.version === "v3") {
-      hasNormalArtifacts = await downloadReplayV3Files(
-        client,
-        replayId,
-        replayDir,
-        includes,
-        bestEffortFileTypes as ReadonlySet<string> | undefined,
-      );
-    } else {
-      throw new Error(
-        `Error: Unknown replay version "${replay.version}". This may be an invalid replay`,
-      );
-    }
+    // No `GET replays/:id` first: the download-urls route already rejects
+    // replays that aren't v3, and this runs once per replay in every test
+    // run's post-processing.
+    const hasNormalArtifacts = await downloadReplayV3Files(
+      client,
+      replayId,
+      replayDir,
+      includes,
+      bestEffortFileTypes as ReadonlySet<string> | undefined,
+    );
 
     // Don't write the cache marker when excludes or best-effort file types are
     // set; the cache directory would otherwise look complete to future
@@ -292,6 +286,13 @@ const downloadReplayV3Files = async (
     includeChromeDiagnostics: includes("chromeDiagnostics"),
   });
   if (!downloadUrls) {
+    // download-urls answers 404 both for a replay without artifacts and for one
+    // this token can't read; only the former is safe for callers to skip.
+    if ((await getReplay(client, replayId)) == null) {
+      throw new Error(
+        `Replay ${replayId} was not found, or this API token cannot read it`,
+      );
+    }
     throw new ReplayHasNoArtifactsError(replayId);
   }
 

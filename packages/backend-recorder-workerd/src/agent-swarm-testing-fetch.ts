@@ -2,10 +2,14 @@ import { readRequestBodyWithCap } from "./body-capture";
 import type { RequestAgentSwarmTestingContext } from "./context";
 import { getOriginalFetch } from "./original-fetch";
 import {
+  type AgentSwarmTestingPassthroughResult,
   type OutboundFetchAgentSwarmTestingRequest,
   type OutboundFetchAgentSwarmTestingResponse,
 } from "./protocol";
-import { postAgentSwarmTestingOutboundFetch } from "./sidecar-client";
+import {
+  postAgentSwarmTestingOutboundFetch,
+  postAgentSwarmTestingPassthroughResult,
+} from "./sidecar-client";
 import { buildMockResponse, hasPassthroughHeader } from "./replay-fetch";
 
 /**
@@ -64,5 +68,62 @@ export const agentSwarmTestingOutboundCall = async (
     }
   }
 
-  return invoke(request);
+  const callId = result?.outcome === "passthrough" ? result.callId : undefined;
+  if (callId === undefined) {
+    return invoke(request);
+  }
+  return invokeAndReport(ctx, callId, () => invoke(request));
+};
+
+/**
+ * Passes the call through and tells the interceptor how it ended, so a call the real service
+ * refused or failed is visible to the agent rather than "not observed". The report runs under
+ * `waitUntil`; the app gets the call's own response or error unchanged.
+ */
+const invokeAndReport = async (
+  ctx: RequestAgentSwarmTestingContext,
+  callId: string,
+  send: () => Promise<Response>,
+): Promise<Response> => {
+  const report = (result: AgentSwarmTestingPassthroughResult): void => {
+    ctx.waitUntil(
+      postAgentSwarmTestingPassthroughResult(
+        getOriginalFetch(),
+        ctx.sidecarUrl,
+        {
+          runId: ctx.runId,
+          ...(ctx.frontendSessionId !== undefined
+            ? { frontendSessionId: ctx.frontendSessionId }
+            : {}),
+          callId,
+          result,
+        },
+      ),
+    );
+  };
+  let response: Response;
+  try {
+    response = await send();
+  } catch (error) {
+    report({ error: describeCallError(error) });
+    throw error;
+  }
+  report({ statusCode: response.status });
+  return response;
+};
+
+/**
+ * A failed call's message with its cause: a fetch failure often says only
+ * "fetch failed", while the cause names the refused host and port.
+ */
+const describeCallError = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error);
+  const cause = error instanceof Error ? error.cause : undefined;
+  if (cause == null) {
+    return message;
+  }
+  const causeMessage = cause instanceof Error ? cause.message : String(cause);
+  return causeMessage === "" || causeMessage === message
+    ? message
+    : `${message} (cause: ${causeMessage})`;
 };

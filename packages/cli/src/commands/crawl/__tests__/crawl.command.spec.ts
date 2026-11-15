@@ -5,6 +5,7 @@ import type * as Common from "@alwaysmeticulous/common";
 import type { RunCrawlOptions } from "@alwaysmeticulous/sdk-bundles-api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { crawlCommand, LOGIN_REQUIRED_EXIT_CODE } from "../../crawl.command";
+import { CliUserError } from "../../../utils/cli-user-error";
 
 const loggerMock = {
   info: vi.fn(),
@@ -58,6 +59,8 @@ const ALL_CAPABILITIES = {
   headless: true,
   storageToSeed: true,
   visitedUrls: true,
+  allowedPathPrefixes: true,
+  crawlerFailed: true,
 };
 
 const runHandler = async (args: Record<string, unknown>) => {
@@ -74,11 +77,16 @@ const runHandler = async (args: Record<string, unknown>) => {
       nonInteractive: false,
       storageState: undefined,
       outputFile: undefined,
+      allowedPathPrefix: undefined,
+      project: undefined,
       ...args,
     });
   } catch (error) {
     if (error instanceof ExitError) {
       return error.code;
+    }
+    if (error instanceof CliUserError) {
+      return error.exitCode;
     }
     throw error;
   }
@@ -288,5 +296,191 @@ describe("crawl command", () => {
     });
 
     expect(exitCode).toBe(1);
+  });
+
+  it("reports the crash, keeps the report and exits 1 when the crawler failed", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "crawl-command-"));
+    const outputFile = join(dir, "out.json");
+    mocks.runCrawl.mockResolvedValue({
+      sessionIds: ["s1"],
+      uniqueUrlCount: 1,
+      visitedUrls: ["http://localhost:3000/"],
+      crawlerFailed: true,
+    });
+
+    const exitCode = await runHandler({
+      startUrl: ["http://localhost:3000/"],
+      nonInteractive: true,
+      skipTestRun: false,
+      outputFile,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      expect.stringContaining("crashed before it finished"),
+    );
+    expect(mocks.createCrawlerTestRun).not.toHaveBeenCalled();
+    // The sessions that did get recorded are still listed for the user.
+    const report = JSON.parse(await readFile(outputFile, "utf8")) as {
+      sessionIds: string[];
+      crawlerFailed?: boolean;
+    };
+    expect(report.sessionIds).toEqual(["s1"]);
+    expect(report.crawlerFailed).toBe(true);
+  });
+
+  it("keeps today's behaviour when the bundle predates crawlerFailed", async () => {
+    mocks.runCrawl.mockResolvedValue({
+      sessionIds: ["s1"],
+      uniqueUrlCount: 1,
+    });
+
+    const exitCode = await runHandler({
+      startUrl: ["http://localhost:3000/"],
+      nonInteractive: true,
+    });
+
+    expect(exitCode).toBe(0);
+  });
+
+  it("passes --allowedPathPrefix through to the bundle", async () => {
+    await runHandler({
+      startUrl: ["http://localhost:3000/agents"],
+      nonInteractive: true,
+      allowedPathPrefix: ["/agents", "/docs"],
+    });
+
+    expect(lastRunCrawlOptions().allowedPathPrefixes).toEqual([
+      "/agents",
+      "/docs",
+    ]);
+  });
+
+  it("refuses --allowedPathPrefix when the bundle predates it", async () => {
+    mocks.loadRunCrawlBundle.mockResolvedValue({
+      runCrawl: mocks.runCrawl,
+      capabilities: {},
+    });
+
+    const exitCode = await runHandler({
+      startUrl: ["http://localhost:3000/agents"],
+      allowedPathPrefix: ["/agents"],
+    });
+
+    expect(exitCode).toBe(1);
+    expect(mocks.runCrawl).not.toHaveBeenCalled();
+  });
+
+  it("refuses a --startUrl outside every --allowedPathPrefix", async () => {
+    const exitCode = await runHandler({
+      startUrl: ["http://localhost:3000/blog"],
+      allowedPathPrefix: ["/agents"],
+    });
+
+    expect(exitCode).toBe(1);
+    expect(mocks.resolveApiTokenWithOAuth).not.toHaveBeenCalled();
+    expect(mocks.runCrawl).not.toHaveBeenCalled();
+  });
+
+  it("accepts a --startUrl exactly on or under an --allowedPathPrefix", async () => {
+    for (const startUrl of [
+      "http://localhost:3000/agents",
+      "http://localhost:3000/agents/x",
+    ]) {
+      vi.clearAllMocks();
+      mocks.loadRunCrawlBundle.mockResolvedValue({
+        runCrawl: mocks.runCrawl,
+        capabilities: ALL_CAPABILITIES,
+      });
+      mocks.runCrawl.mockResolvedValue({
+        sessionIds: ["s1"],
+        uniqueUrlCount: 1,
+      });
+      mocks.resolveApiTokenWithOAuth.mockResolvedValue("token");
+      mocks.getProject.mockResolvedValue({
+        organization: { name: "org" },
+        name: "project",
+      });
+
+      const exitCode = await runHandler({
+        startUrl: [startUrl],
+        nonInteractive: true,
+        allowedPathPrefix: ["/agents"],
+      });
+      expect(exitCode).toBe(0);
+    }
+  });
+
+  it("passes the --project identifier to the server and records into its id", async () => {
+    mocks.getProject.mockResolvedValue({
+      id: "resolved-id",
+      name: "project",
+      organization: { name: "org" },
+    });
+
+    const exitCode = await runHandler({
+      startUrl: ["http://localhost:3000/"],
+      nonInteractive: true,
+      project: "org/project",
+    });
+
+    expect(exitCode).toBe(0);
+    expect(mocks.getProject).toHaveBeenCalledWith({}, "org/project");
+    expect(lastRunCrawlOptions().projectId).toBe("resolved-id");
+    expect(mocks.resolveProjectIdentifier).not.toHaveBeenCalled();
+  });
+
+  it("uses the resolved id for the test run too", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.getProject.mockResolvedValue({
+        id: "resolved-id",
+        name: "project",
+        organization: { name: "org" },
+      });
+      mocks.createCrawlerTestRun.mockResolvedValue({
+        url: "https://app.meticulous.ai/test-run/tr-1",
+        configData: { testCases: [] },
+      });
+
+      const promise = runHandler({
+        startUrl: ["http://localhost:3000/"],
+        nonInteractive: true,
+        skipTestRun: false,
+        project: "test-no-gh",
+      });
+      await vi.runAllTimersAsync();
+      await promise;
+
+      expect(mocks.createCrawlerTestRun).toHaveBeenCalledWith(
+        expect.objectContaining({ projectId: "resolved-id" }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("errors without crawling when the server can't resolve --project", async () => {
+    mocks.getProject.mockResolvedValue(null);
+
+    const exitCode = await runHandler({
+      startUrl: ["http://localhost:3000/"],
+      nonInteractive: true,
+      project: "does-not-exist-xyz",
+    });
+
+    expect(exitCode).toBe(1);
+    expect(mocks.runCrawl).not.toHaveBeenCalled();
+    expect(mocks.createCrawlerTestRun).not.toHaveBeenCalled();
+  });
+
+  it("falls back to default resolution without --project", async () => {
+    await runHandler({
+      startUrl: ["http://localhost:3000/"],
+      nonInteractive: true,
+    });
+
+    expect(mocks.resolveProjectIdentifier).toHaveBeenCalledWith("token");
+    expect(lastRunCrawlOptions().projectId).toBe("p");
   });
 });

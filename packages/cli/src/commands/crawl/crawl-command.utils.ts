@@ -69,6 +69,25 @@ export const printSummary = (
   }
 };
 
+/**
+ * Whether `pathname` equals a prefix or sits under it at a path-segment
+ * boundary — the same rule the crawler applies to links it considers.
+ * `/agents` covers `/agents` and `/agents/x` but not `/agentsfoo`.
+ */
+export const isPathUnderAllowedPrefixes = (
+  pathname: string,
+  allowedPathPrefixes: string[],
+): boolean =>
+  allowedPathPrefixes.some((prefix) => {
+    if (!prefix.startsWith("/")) {
+      return false;
+    }
+    if (prefix.endsWith("/")) {
+      return pathname.startsWith(prefix);
+    }
+    return pathname === prefix || pathname.startsWith(`${prefix}/`);
+  });
+
 export const isLocalUrl = (url: string): boolean => {
   const { hostname } = new URL(url);
   return (

@@ -1,5 +1,30 @@
 # @alwaysmeticulous/custom-checks
 
+## 3.11.2
+
+### Patch Changes
+
+- Updated dependencies [[`098c492`](https://github.com/alwaysmeticulous/meticulous/commit/098c492acf325566e84768d69f9711d332728a38)]:
+  - @alwaysmeticulous/client@3.11.2
+  - @alwaysmeticulous/downloading-helpers@3.11.2
+
+## 3.11.1
+
+### Patch Changes
+
+- Updated dependencies [[`f8402bf`](https://github.com/alwaysmeticulous/meticulous/commit/f8402bff1f696080ccdfe54be54190c9c06b3626)]:
+  - @alwaysmeticulous/downloading-helpers@3.11.1
+
+## 3.11.0
+
+### Patch Changes
+
+- Updated dependencies [[`f6d52f7`](https://github.com/alwaysmeticulous/meticulous/commit/f6d52f76f136297c4f7a26dd654cd38956a3638a), [`f6d52f7`](https://github.com/alwaysmeticulous/meticulous/commit/f6d52f76f136297c4f7a26dd654cd38956a3638a), [`fddeb00`](https://github.com/alwaysmeticulous/meticulous/commit/fddeb00f282f9ba196217664860431492a316b6a), [`6a60afd`](https://github.com/alwaysmeticulous/meticulous/commit/6a60afd0baea504623405cfa7278bf5eeb41971a), [`4564a97`](https://github.com/alwaysmeticulous/meticulous/commit/4564a97ceeb059883af35e94c3f619789adafbb5), [`166f0b7`](https://github.com/alwaysmeticulous/meticulous/commit/166f0b78f33802cccd752952f6bad585ec3279d4), [`8f6ae99`](https://github.com/alwaysmeticulous/meticulous/commit/8f6ae99147399e84b1492a024f038b0744f1ae44), [`78c51f8`](https://github.com/alwaysmeticulous/meticulous/commit/78c51f811b985790e47a588a8bd0d2cf6d46152a), [`eb6fd58`](https://github.com/alwaysmeticulous/meticulous/commit/eb6fd58f7a4bf6f3b78367c52e1cd82cca125436), [`9bf953b`](https://github.com/alwaysmeticulous/meticulous/commit/9bf953b5e72f268e14982582c8a8a8708442774f), [`c25728c`](https://github.com/alwaysmeticulous/meticulous/commit/c25728c4b8f5e1653912bacf93116907771256b0)]:
+  - @alwaysmeticulous/client@3.11.0
+  - @alwaysmeticulous/api@3.11.0
+  - @alwaysmeticulous/downloading-helpers@3.11.0
+  - @alwaysmeticulous/common@3.9.0
+
 ## 3.10.0
 
 ### Patch Changes

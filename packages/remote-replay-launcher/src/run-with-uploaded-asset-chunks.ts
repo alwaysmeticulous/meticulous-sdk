@@ -60,6 +60,8 @@ export interface RunWithUploadedAssetChunksResult {
    * create the run once the limit resets.
    */
   githubRateLimitRetryScheduled?: boolean;
+  /** Set alongside `githubRateLimitRetryScheduled` when the retry is for a GitHub 5xx. */
+  githubServerErrorRetryScheduled?: boolean;
   overlaps?: ChunkPathOverlap[];
   overlapsTruncated?: boolean;
   sourceDeploymentId?: string;
@@ -178,6 +180,8 @@ export const runWithUploadedAssetChunks = async ({
         commentsDisabledForAuthor: initialResult?.commentsDisabledForAuthor,
         githubRateLimitRetryScheduled:
           initialResult?.githubRateLimitRetryScheduled,
+        githubServerErrorRetryScheduled:
+          initialResult?.githubServerErrorRetryScheduled,
         overlaps: initialResult?.overlaps,
         overlapsTruncated: initialResult?.overlapsTruncated,
       },
@@ -200,6 +204,7 @@ export const runWithUploadedAssetChunks = async ({
     allSessionsExcludedBySessionFilter,
     commentsDisabledForAuthor,
     githubRateLimitRetryScheduled,
+    githubServerErrorRetryScheduled,
     overlaps: triggerOverlaps,
     overlapsTruncated: triggerOverlapsTruncated,
   } = polled;
@@ -230,7 +235,8 @@ export const runWithUploadedAssetChunks = async ({
 
   return {
     testRun: testRun ?? null,
-    sourceDeploymentId,
+    sourceDeploymentId:
+      initialResult?.reusedSourceDeploymentId ?? sourceDeploymentId,
     ...(message ? { message } : {}),
     ...(allSessionsExcludedBySessionFilter
       ? { allSessionsExcludedBySessionFilter: true }
@@ -238,6 +244,9 @@ export const runWithUploadedAssetChunks = async ({
     ...(commentsDisabledForAuthor ? { commentsDisabledForAuthor: true } : {}),
     ...(githubRateLimitRetryScheduled
       ? { githubRateLimitRetryScheduled: true }
+      : {}),
+    ...(githubServerErrorRetryScheduled
+      ? { githubServerErrorRetryScheduled: true }
       : {}),
     ...resolvedOverlaps,
   };

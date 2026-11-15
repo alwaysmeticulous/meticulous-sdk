@@ -18,8 +18,8 @@ vi.mock("@puppeteer/browsers", () => ({
   detectBrowserPlatform: detectBrowserPlatformMock,
 }));
 
-vi.mock("puppeteer-core/lib/puppeteer/revisions.js", () => ({
-  PUPPETEER_REVISIONS: { chrome: "152.0.7977.42" },
+vi.mock("../chrome-build-id", () => ({
+  CHROME_BUILD_ID: "152.0.7977.42",
 }));
 
 describe("ensureBrowser", () => {

@@ -46,7 +46,8 @@
   },
   "pnpm": {
     "overrides": {
-      "json5": "^2.2.2"
+      "json5": "^2.2.2",
+      "chromium-bidi": "-"
     }
   },
   "version": "0.0.0",

@@ -363,6 +363,49 @@ describe("ci agent-test on a project without a hosting provider", () => {
     log.mockRestore();
   });
 
+  it("passes an explicit base preview pair through", async () => {
+    await runHandler({
+      previewUrl: "https://head.example.com",
+      basePreviewUrl: "https://base.example.com",
+      baseSha: "b".repeat(40),
+    });
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previewUrl: "https://head.example.com",
+        basePreviewUrl: "https://base.example.com",
+        baseSha: "b".repeat(40),
+      }),
+    );
+  });
+
+  it("rejects --basePreviewUrl without --previewUrl or --baseSha", async () => {
+    await expect(
+      runHandler({
+        assetsDir: "dist",
+        basePreviewUrl: "https://base.example.com",
+        baseSha: "b".repeat(40),
+      }),
+    ).rejects.toThrow(/requires --previewUrl and --baseSha/);
+    await expect(
+      runHandler({
+        previewUrl: "https://head.example.com",
+        basePreviewUrl: "https://base.example.com",
+      }),
+    ).rejects.toThrow(/requires --previewUrl and --baseSha/);
+  });
+
+  it("rejects upload-time container flags with --deploymentId", async () => {
+    await expect(
+      runHandler({ deploymentId: "deployment1", appPort: 8080 }),
+    ).rejects.toThrow(/reuses an uploaded build as it was uploaded/);
+    await expect(
+      runHandler({
+        deploymentId: "deployment1",
+        containerHealthCheckEndpoint: "/health",
+      }),
+    ).rejects.toThrow(/reuses an uploaded build as it was uploaded/);
+  });
+
   it("prints the result as JSON with --json", async () => {
     mocks.generateSessions.mockResolvedValueOnce({
       agenticRunId: "swarmrun1",
@@ -378,4 +421,51 @@ describe("ci agent-test on a project without a hosting provider", () => {
     });
     log.mockRestore();
   });
+});
+
+describe("ci agent-test URL", () => {
+  it("passes one URL through to the launch", async () => {
+    await runHandler({ previewUrl: "https://head.example.com" });
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({ previewUrl: "https://head.example.com" }),
+    );
+  });
+  it("echoes the URL in the --json result", async () => {
+    mocks.generateSessions.mockResolvedValueOnce({
+      agenticRunId: "swarmrun1",
+    } as never);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await runHandler({ previewUrl: "https://head.example.com", json: true });
+
+    expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toEqual({
+      swarmRunId: "swarmrun1",
+      commitSha: "abc123",
+      previewUrl: "https://head.example.com",
+    });
+    log.mockRestore();
+  });
+  it("rejects URL mixed with uploads or backend config", async () => {
+    await expect(
+      runHandler({ previewUrl: "https://head.example.com", assetsDir: "dist" }),
+    ).rejects.toThrow();
+    await expect(
+      runHandler({
+        previewUrl: "https://head.example.com",
+        backendUrl: "https://api.example.com",
+      }),
+    ).rejects.toThrow();
+  });
+});
+
+it("parses --previewUrl for a single preview launch", async () => {
+  const parsed = await parseAgentTest([
+    "--previewUrl",
+    "https://preview.example.com",
+  ]);
+  expect(parsed?.previewUrl).toBe("https://preview.example.com");
+  await runHandler(parsed!);
+  expect(mocks.generateSessions).toHaveBeenCalledWith(
+    expect.objectContaining({ previewUrl: "https://preview.example.com" }),
+  );
 });
