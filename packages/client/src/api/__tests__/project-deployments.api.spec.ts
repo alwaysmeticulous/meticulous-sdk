@@ -308,6 +308,31 @@ describe("source-map artifact reads", () => {
     });
     expect(get).toHaveBeenNthCalledWith(2, url, undefined);
   });
+
+  it.each([
+    [
+      "getDeploymentSourceMapMappingArtifact",
+      (client: MeticulousClient) =>
+        getDeploymentSourceMapMappingArtifact({
+          client,
+          projectDeploymentId: "dep-1",
+        }),
+    ],
+    [
+      "getDeploymentSourceMapArtifactDownloadUrl",
+      (client: MeticulousClient) =>
+        getDeploymentSourceMapArtifactDownloadUrl({
+          client,
+          projectDeploymentId: "dep-1",
+          sourceMapSha256: "abc",
+        }),
+    ],
+  ])("%s reads an empty body as no artifact", async (_name, read) => {
+    const get = vi.fn().mockResolvedValue({ data: "" });
+    const client = { get } as unknown as MeticulousClient;
+
+    await expect(read(client)).resolves.toBeNull();
+  });
 });
 
 describe("completeContainerUpload", () => {

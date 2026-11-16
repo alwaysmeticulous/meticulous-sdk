@@ -1,5 +1,13 @@
 # @alwaysmeticulous/debug-workspace
 
+## 3.11.3
+
+### Patch Changes
+
+- Updated dependencies [[`f91a81d`](https://github.com/alwaysmeticulous/meticulous/commit/f91a81d4b39e9ceb38637b665e608ec857f06be4)]:
+  - @alwaysmeticulous/client@3.11.3
+  - @alwaysmeticulous/downloading-helpers@3.11.3
+
 ## 3.11.2
 
 ### Patch Changes

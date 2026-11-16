@@ -1,5 +1,11 @@
 # @alwaysmeticulous/client
 
+## 3.11.3
+
+### Patch Changes
+
+- [#17924](https://github.com/alwaysmeticulous/meticulous/pull/17924) [`f91a81d`](https://github.com/alwaysmeticulous/meticulous/commit/f91a81d4b39e9ceb38637b665e608ec857f06be4) Thanks [@edoardopirovano](https://github.com/edoardopirovano)! - `getDeploymentSourceMapMappingArtifact` and `getDeploymentSourceMapArtifactDownloadUrl` now return `null`, as documented, when the deployment has no ingested source-map artifact, instead of an empty string.
+
 ## 3.11.2
 
 ### Patch Changes

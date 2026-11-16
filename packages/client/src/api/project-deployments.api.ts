@@ -413,7 +413,7 @@ export const getDeploymentSourceMapMappingArtifact = async ({
       `project-deployments/${encodeURIComponent(projectDeploymentId)}/source-map-mapping-artifact`,
       buildRequestConfig({ timeoutMs, retry }),
     );
-  return data;
+  return emptyBodyAsNull(data);
 };
 
 /**
@@ -434,8 +434,12 @@ export const getDeploymentSourceMapArtifactDownloadUrl = async ({
       `project-deployments/${encodeURIComponent(projectDeploymentId)}/source-map-mapping-artifact/maps/${encodeURIComponent(sourceMapSha256)}`,
       buildRequestConfig({ timeoutMs, retry }),
     );
-  return data;
+  return emptyBodyAsNull(data);
 };
+
+/** The backend serves a `null` return as an empty body, which axios hands back as `""`. */
+const emptyBodyAsNull = <T extends object>(data: T | "" | null): T | null =>
+  data === "" ? null : data;
 
 /** Explicitly starts source-map ingestion for an uploaded deployment. */
 export const triggerDeploymentSourceMapIngestion = async ({
