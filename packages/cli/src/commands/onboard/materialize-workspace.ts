@@ -3,7 +3,7 @@ import { join } from "path";
 import { onboardTemplatesDir } from "../../bundled-assets";
 import { CUSTOMER_AGENT_NAMES } from "./customer-agents";
 import { CUSTOMER_DOC_DIRS, CUSTOMER_DOC_FILES } from "./customer-docs";
-import { inlineImportedDocConstants } from "./inline-doc-constants";
+import { inlineImportedDocConstants } from "@alwaysmeticulous/public-prompts/onboard";
 import {
   assertWorkspaceInsideProject,
   copyFileSafeSync,

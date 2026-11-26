@@ -1,4 +1,5 @@
 import {
+  type AgentSwarmRunKind,
   type AgentSwarmRunProcessingResponse,
   type AgentSwarmRunTarget,
   isAgentSwarmRunProcessingResponse,
@@ -18,6 +19,7 @@ export interface SwarmRunSelectorOptions {
   commitSha: string | undefined;
   prNumber: number | undefined;
   project?: string | undefined;
+  swarmKind?: AgentSwarmRunKind | undefined;
   dontWaitForSwarmRunToComplete: boolean;
   json: boolean;
 }
@@ -51,6 +53,13 @@ export const swarmRunSelectorBuilder = {
       "The project to look up the commit or pull request in (id, 'org/proj', or simply 'proj'). One-off override; when omitted, uses the OAuth user's configured default project or the API token's own project(s). Cannot be combined with --swarmRunId or --testRunId, which already determine the project.",
     conflicts: ["testRunId", "swarmRunId"],
   },
+  swarmKind: {
+    string: true,
+    choices: ["regular", "preview-url"],
+    conflicts: ["swarmRunId"],
+    description:
+      "With a commit, test run or pull request lookup: whose run to look up, regular or preview-url (runs launched with `ci agent-test --previewUrlAgentSwarm` against a live preview). When omitted, the regular run, or the preview-url run when the commit has no regular one.",
+  },
 } as const;
 
 /** Declared last, after each command's own options. */
@@ -74,6 +83,7 @@ export const resolveSwarmRunSelector = async ({
   commitSha,
   prNumber,
   project,
+  swarmKind,
 }: SwarmRunSelectorOptions): Promise<AgentSwarmRunTarget> => {
   assertSingleRunSelector({ testRunId, prNumber, commitSha });
   if (swarmRunId != null) {
@@ -84,11 +94,12 @@ export const resolveSwarmRunSelector = async ({
     }
     return { swarmRunId };
   }
+  const kind = swarmKind == null ? {} : { swarmKind };
   if (testRunId != null) {
-    return { testRunId };
+    return { testRunId, ...kind };
   }
   if (prNumber != null) {
-    return { prNumber, project };
+    return { prNumber, project, ...kind };
   }
   const resolvedCommitSha = await getCommitSha(commitSha);
   if (!resolvedCommitSha) {
@@ -97,7 +108,7 @@ export const resolveSwarmRunSelector = async ({
     );
   }
   await logResolvedCommitSha(commitSha, resolvedCommitSha);
-  return { commitSha: resolvedCommitSha, project };
+  return { commitSha: resolvedCommitSha, project, ...kind };
 };
 
 /**

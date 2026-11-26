@@ -614,20 +614,21 @@ describe("complete-base-run handler", () => {
     );
   });
 
-  it.each(["not-a-base-run", "ephemeral-deployment"])(
-    "turns the backend's %s refusal into a CliUserError",
-    async (reason) => {
-      mocks.completeBaseRun.mockRejectedValue({
-        response: {
-          status: 400,
-          data: { reason, message: "Test run tr-base cannot be completed." },
-        },
-      });
+  it.each([
+    "not-a-base-run",
+    "ephemeral-deployment",
+    "completion-limit-reached",
+  ])("turns the backend's %s refusal into a CliUserError", async (reason) => {
+    mocks.completeBaseRun.mockRejectedValue({
+      response: {
+        status: 400,
+        data: { reason, message: "Test run tr-base cannot be completed." },
+      },
+    });
 
-      await expect(runHandler()).rejects.toBeInstanceOf(CliUserError);
-      await expect(runHandler()).rejects.toThrow(/tr-base cannot be completed/);
-    },
-  );
+    await expect(runHandler()).rejects.toBeInstanceOf(CliUserError);
+    await expect(runHandler()).rejects.toThrow(/tr-base cannot be completed/);
+  });
 
   // Anything else is a genuine failure and must keep reaching the generic
   // (Sentry) path rather than being dressed up as a user error.

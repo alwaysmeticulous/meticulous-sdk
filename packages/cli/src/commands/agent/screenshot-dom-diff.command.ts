@@ -1,5 +1,6 @@
 import {
   createClientWithOAuth,
+  type ReplayDiffScopeOptions,
   DEFAULT_SCREENSHOT_DOM_LIMIT,
   getScreenshotDomDiffText,
   MAX_SCREENSHOT_DOM_LIMIT,
@@ -18,8 +19,9 @@ import {
   NTH_CHILD_PATH_DESCRIPTION,
   parsePath,
 } from "./screenshot-dom.utils";
+import { replayDiffScopeOptions } from "./replay-diff-scope-options";
 
-interface Options {
+interface Options extends ReplayDiffScopeOptions {
   apiToken?: string | null | undefined;
   replayDiffId: string;
   screenshotName: string;
@@ -33,6 +35,8 @@ interface Options {
 const handler = async ({
   apiToken,
   replayDiffId,
+  project,
+  testRunId,
   screenshotName,
   context,
   path,
@@ -59,6 +63,8 @@ const handler = async ({
       ...(nthChildPath != null ? { path: nthChildPath } : {}),
       ...(limit != null ? { limit } : {}),
       ...(offset != null ? { offset } : {}),
+      project,
+      testRunId,
     },
   );
 
@@ -101,6 +107,7 @@ export const domDiffCommand: CommandModule<unknown, Options> = {
         'The screenshot name, as listed in the screenshotName column of `agent test-run-diffs` (e.g. "after-event-5" or "end-state").',
       demandOption: true,
     },
+    ...replayDiffScopeOptions,
     context: {
       string: true,
       description:

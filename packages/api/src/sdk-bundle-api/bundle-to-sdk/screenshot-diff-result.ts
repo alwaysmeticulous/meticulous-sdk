@@ -325,6 +325,23 @@ export interface ScreenshotDiffResultDifference extends ScreenshotDiffResultComp
    * when false.
    */
   onlyChangedThirdPartyImages?: true;
+
+  /**
+   * Present when part of the diff, but not all of it, was image resampling
+   * noise (see {@link onlyImageResamplingNoise}, whose rules decide this for
+   * each image on its own). The diff image draws the pixels of those images
+   * as unchanged, so it shows only the rest of the diff. `mismatchPixels`,
+   * `mismatchFraction` and `diffHash` still include them.
+   *
+   * Absent when the diff image leaves nothing out, and on replays before
+   * ~Nov 2026.
+   */
+  imageResamplingNoiseOmittedFromDiffImage?: {
+    /** How many images had their differing pixels left out. */
+    imageCount: number;
+    /** How many differing pixels were left out, across those images. */
+    pixelCount: number;
+  };
 }
 
 /**

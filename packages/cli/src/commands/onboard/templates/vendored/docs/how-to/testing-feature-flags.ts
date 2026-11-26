@@ -156,7 +156,7 @@ JavaScript API. Your app must still **record** the values it actually used with 
 recording the flag values your server sends to the browser. Requests your frontend makes with \`fetch\` or
 \`XMLHttpRequest\` are normally answered from the recording during a replay, so the cookie only changes what your server
 sends for requests that actually reach it, such as page loads. With
-[backend testing](${ADDITIONAL_GUIDES.GETTING_STARTED_BACKEND_TESTING_URL}), your app's own API requests reach your server
+[SSR testing](${ADDITIONAL_GUIDES.GETTING_STARTED_SSR_TESTING_URL}), your app's own API requests reach your server
 too, so it applies the cookie there as well.
 
 ## Defaulting new flags to on {% #defaulting-new-flags-to-on %}

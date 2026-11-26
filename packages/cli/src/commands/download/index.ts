@@ -1,6 +1,7 @@
 import { routeLogsToStderr } from "@alwaysmeticulous/common";
 import type { CommandModule } from "yargs";
 import { RESULT_ONLY_LOG_OPTIONS } from "../../command-utils/log-level-options";
+import { downloadCoverageCommand } from "./coverage.command";
 import { downloadReplayCommand } from "./replay.command";
 import { downloadSessionCommand } from "./session.command";
 import { downloadTestRunCommand } from "./test-run.command";
@@ -13,6 +14,7 @@ export const downloadCommand: CommandModule = {
       .command(downloadSessionCommand)
       .command(downloadReplayCommand)
       .command(downloadTestRunCommand)
+      .command(downloadCoverageCommand)
       .options(RESULT_ONLY_LOG_OPTIONS)
       .middleware(routeLogsToStderr)
       .option("json", {

@@ -4,6 +4,14 @@ export {
   METICULOUS_CO_AUTHOR_INSTRUCTION,
   METICULOUS_CO_AUTHOR_NOTICE,
 } from "./agent-attribution";
+export {
+  GITHUB_APP_BOT_LOGIN,
+  GITHUB_APP_BOT_NOREPLY_EMAIL,
+  GITHUB_APP_BOT_USER_ID,
+  GITHUB_APP_INSTALL_URL,
+  GITHUB_APP_SLUG,
+  GITHUB_APP_URL,
+} from "./github-app";
 export { TEST_RUN_EVENT_TYPES } from "./agent-stats.types";
 export type {
   BulkStatsEnvelope,
@@ -67,8 +75,6 @@ export {
   isNonEagerSessionPool,
   isSessionPool,
   TestRunNetworkPatchingResult,
-  ExecuteSecureTunnelTestRunOptions,
-  ExecuteSecureTunnelTestRunResponse,
 } from "./replay/test-run.types";
 export {
   BaseResolutionDetails,
@@ -110,7 +116,14 @@ export {
   CustomData,
   CustomUserEvent,
   SessionContext,
+  FeatureFlagProvider,
+  FEATURE_FLAG_PROVIDERS,
+  FlagOverrideValue,
+  FlagOverrideJsApiUsage,
+  FlagOverrideInjectionRecord,
   RecordedFeatureFlag,
+  RecordedFeatureFlagSource,
+  RECORDED_FEATURE_FLAG_SOURCES,
   LegacyRecordedFeatureFlag,
   FEATURE_FLAGS_SCHEMA_VERSION,
   ExpiringImage,
@@ -142,6 +155,7 @@ export {
   StreamingXhrChunk,
   StreamingXhrResponseData,
 } from "./sdk-bundle-api/sdk-to-bundle/streaming-xhr-data";
+export { FailedNetworkRequest } from "./sdk-bundle-api/sdk-to-bundle/failed-network-request";
 export { Replay } from "./replay/replay.types";
 export {
   ScreenshotAssertionsOptions,

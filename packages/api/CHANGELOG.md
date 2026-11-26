@@ -1,5 +1,23 @@
 # @alwaysmeticulous/api
 
+## 3.12.0
+
+### Minor Changes
+
+- [#18813](https://github.com/alwaysmeticulous/meticulous/pull/18813) [`ac563f3`](https://github.com/alwaysmeticulous/meticulous/commit/ac563f3596b88a0c88e3f4b6c186c095c8b45a76) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add the optional `SessionData.failedNetworkRequests` field and the `FailedNetworkRequest` type: fetch and XHR requests that failed at the network level while recording, with no response. Older sessions don't have the field.
+
+- [#18303](https://github.com/alwaysmeticulous/meticulous/pull/18303) [`c6b2e6f`](https://github.com/alwaysmeticulous/meticulous/commit/c6b2e6fb3f1f5ae5db6f00ccaaae36629af97561) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Export shared feature-flag override contract types (`FlagOverrideValue`, `FlagOverrideJsApiUsage`, `FlagOverrideInjectionRecord`) from `@alwaysmeticulous/api` and add optional `injectionsBySessionId` onto `AgenticRunResultCase` in `@alwaysmeticulous/client`.
+
+- [#18549](https://github.com/alwaysmeticulous/meticulous/pull/18549) [`ed3ebcc`](https://github.com/alwaysmeticulous/meticulous/commit/ed3ebccee04e4c688ee32cef580bb5f6c1247ab3) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Remove secure tunnels. Meticulous no longer runs tests through a tunnel, and tunnel test runs were already rejected by the backend. `ci run-with-tunnel` (and its `run-all-tests-in-cloud` alias) and `ci start-tunnel` now fail straight away with migration guidance. `executeRemoteTestRun` and `TunnelData` are removed from `@alwaysmeticulous/remote-replay-launcher`, and `executeSecureTunnelTestRun` from `@alwaysmeticulous/client` / `@alwaysmeticulous/api`. Use `ci upload-assets` for static builds or `ci upload-container` for apps that need a server instead. The onboarding agents and docs shipped with `meticulous onboard` now recommend those.
+
+- [#18218](https://github.com/alwaysmeticulous/meticulous/pull/18218) [`577976a`](https://github.com/alwaysmeticulous/meticulous/commit/577976af05ffe994ceea61f7510ad4cba7821f22) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add optional `source` provenance (`"record-feature-flag"` or a `FeatureFlagProvider`) to `RecordedFeatureFlag` and export `FEATURE_FLAG_PROVIDERS` / `RECORDED_FEATURE_FLAG_SOURCES`.
+
+### Patch Changes
+
+- [#18141](https://github.com/alwaysmeticulous/meticulous/pull/18141) [`4e50125`](https://github.com/alwaysmeticulous/meticulous/commit/4e50125cbac3845870efda1695a9aa1dbd0341f8) Thanks [@claude](https://github.com/apps/claude)! - Point the Meticulous co-author trailer at the GitHub App's renamed bot login (`meticulous[bot]`), and export the GitHub App slug, URLs and bot login constants.
+
+- [#19113](https://github.com/alwaysmeticulous/meticulous/pull/19113) [`3e02861`](https://github.com/alwaysmeticulous/meticulous/commit/3e02861f583afc2023de782bf5cc33fe45da1075) Thanks [@adrikoz](https://github.com/adrikoz)! - Add `imageResamplingNoiseOmittedFromDiffImage` to `ScreenshotDiffResultDifference`: set when part of a diff, but not all of it, was image resampling noise, which the diff image then draws as unchanged.
+
 ## 3.11.0
 
 ### Minor Changes

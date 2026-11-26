@@ -1,5 +1,11 @@
 # @alwaysmeticulous/backend-recorder-workerd
 
+## 3.12.0
+
+### Minor Changes
+
+- [#18145](https://github.com/alwaysmeticulous/meticulous/pull/18145) [`2b28181`](https://github.com/alwaysmeticulous/meticulous/commit/2b2818153e72fbcc076e3e7102af2f77d466a64f) Thanks [@dennysem](https://github.com/dennysem)! - Add the agent-swarm-testing protocol pieces for recording the backend calls a be-mock answers: the `x-meticulous-be-mock-id` request header (`BE_MOCK_ID_HEADER`), an optional `beMockId` on outbound-fetch consults, the `METICULOUS_AGENT_SWARM_TESTING_RECORD_SPANS` sidecar switch, and the `/v1/agent-swarm-testing/spans` route with its `AgentSwarmTestingSessionSpans` response. Add the pieces for offering a Node backend's database, cache and wrapped-operation calls to a be-mock: the `METICULOUS_AGENT_SWARM_TESTING_DATA_CALLS` switch (`consult` or `live`, default `live`), the `/v1/agent-swarm-testing/outbound-call` route with its request and answer types, the be-mock's data-call and answer types, and an optional `unansweredDataCalls` list on `AgentSwarmTestingSessionSpans`. All additions are optional, so existing shims and sidecars are unaffected.
+
 ## 3.11.0
 
 ### Minor Changes

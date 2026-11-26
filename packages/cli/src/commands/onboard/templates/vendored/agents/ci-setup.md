@@ -224,8 +224,7 @@ order of preference -- always pick the highest one that applies:
 ```
 
 `upload-container` is the universal fallback: because a missing Dockerfile is not a blocker
-(you generate one in the plan), almost any app can be containerized, so there is no need for
-any tunnel-based approach.
+(you generate one in the plan), almost any app can be containerized.
 
 Once you've chosen the approach, produce CI config for the customer's CI provider:
 
@@ -269,8 +268,9 @@ Once you've chosen the approach, produce CI config for the customer's CI provide
 - **Cloud Replay (preview URLs)** is a good option when the customer already has a
   preview URL provider (Vercel, Netlify, Cloudflare) and the above approaches don't
   apply.
-- **Never recommend a tunnel-based approach (`cloud-compute` / `run-with-tunnel`).** When
-  nothing else fits, fall back to `upload-container` and generate a Dockerfile in the plan.
+- **Secure tunnels (`cloud-compute` / `run-with-tunnel`) are no longer supported.** If the
+  repo already has such a setup, replace it. When nothing else fits, fall back to
+  `upload-container` and generate a Dockerfile in the plan.
 - **Cloud Replay is GitHub Actions only.** For non-GitHub CI, use the CLI-based approaches
   (`upload-assets` or `upload-container`).
 

@@ -1,3 +1,4 @@
+import type { ReplayDiffScopeOptions } from "./agent-replay-diff-scope";
 /** The default page size of `getScreenshotDom` and `getScreenshotDomDiffText`, in lines. */
 export const DEFAULT_SCREENSHOT_DOM_LIMIT = 100;
 
@@ -47,7 +48,7 @@ export interface ScreenshotDomResponse {
   notes?: string[];
 }
 
-export interface ScreenshotDomDiffTextOptions {
+export interface ScreenshotDomDiffTextOptions extends ReplayDiffScopeOptions {
   /** Lines of context around each hunk (default 3), or `"full"`. */
   context?: number | "full";
   /** Diff only this element, as {@link ScreenshotDomOptions.path}. */

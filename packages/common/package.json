@@ -1,6 +1,6 @@
 {
   "name": "@alwaysmeticulous/common",
-  "version": "3.9.0",
+  "version": "3.12.0",
   "description": "Meticulous common utilities",
   "license": "ISC",
   "main": "dist/index.js",
@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./candidate-prs": {
+      "types": "./dist/candidate-prs/index.d.ts",
+      "default": "./dist/candidate-prs/index.js"
     },
     "./constants": {
       "types": "./dist/constants.d.ts",
@@ -29,6 +33,9 @@
   },
   "typesVersions": {
     "*": {
+      "candidate-prs": [
+        "./dist/candidate-prs/index.d.ts"
+      ],
       "constants": [
         "./dist/constants.d.ts"
       ],

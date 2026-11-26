@@ -7,7 +7,7 @@ import {
 } from "./github-rate-limit-retry";
 import type {
   UploadAssetsAndTriggerTestRunOptions,
-  ExecuteRemoteTestRunResult,
+  UploadAndTriggerTestRunResult,
 } from "./types";
 
 export const uploadAssetsAndTriggerTestRun = async ({
@@ -21,7 +21,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
   waitForBase,
   projectId,
   debugContext,
-}: UploadAssetsAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
+}: UploadAssetsAndTriggerTestRunOptions): Promise<UploadAndTriggerTestRunResult> => {
   const logger = initLogger();
 
   const opts = {
@@ -48,7 +48,7 @@ export const uploadAssetsAndTriggerTestRun = async ({
     throw new Error("Expected either appDirectory or appZip to be provided");
   }
 
-  let skipReason: ExecuteRemoteTestRunResult["skipReason"];
+  let skipReason: UploadAndTriggerTestRunResult["skipReason"];
   let skipMessage: string | undefined;
   if (result.testRun) {
     const organizationName = encodeURIComponent(

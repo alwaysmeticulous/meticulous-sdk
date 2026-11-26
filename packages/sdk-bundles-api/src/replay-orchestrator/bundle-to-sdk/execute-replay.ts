@@ -70,6 +70,11 @@ export interface ReplayAndStoreResultsResult {
   hitReplayKillingError?: boolean;
 
   /**
+   * Whether the replay hit a timeout, in which case its screenshots were not diffed.
+   */
+  hitTimeoutError?: boolean;
+
+  /**
    * npm package version of the customer's bundled workerd shim, captured from
    * the replay's app responses. Absent when the app is not a workerd app, or
    * the bundled shim predates version reporting.

@@ -9,6 +9,7 @@ import {
   GITHUB_ACTION_UPLOAD_ASSETS_NAME,
   GITHUB_ACTION_UPLOAD_CONTAINER_NAME,
   METICULOUS_GITHUB_APP_INSTALL_URL,
+  METICULOUS_GITHUB_APP_URL,
 } from "./constants";
 import {
   workflowEnsureBaseAndCheckout,
@@ -447,7 +448,7 @@ HTTP header. The \`upload-assets\` and \`upload-container\` actions pick them up
 automatically when they sit next to the bundles in your build output.
 
 For monorepo source maps that span multiple packages, see the
-[Viewing source coverage information in Meticulous guide](${ENABLE_SOURCE_COVERAGE_URL}).
+[Viewing and exporting source coverage in Meticulous guide](${ENABLE_SOURCE_COVERAGE_URL}).
 
 {% callout_card variant="warning" title="Cloud Replay only" %}
 If you use cloud replay against a public preview URL (Vercel, Netlify, etc.), enabling
@@ -488,7 +489,7 @@ If PR comments are enabled for your project, Meticulous will also post a comment
 
 ## 6. (Optional) Require approving diffs before merging a PR
 
-If you've installed the [Meticulous GitHub App](https://github.com/apps/alwaysmeticulous) Meticulous will add a check on your PR that is red
+If you've installed the [Meticulous GitHub App](${METICULOUS_GITHUB_APP_URL}) Meticulous will add a check on your PR that is red
 if there are diffs that haven't been approved yet and becomes green once you click the green 'Approve all Visual Differences' button.
 This button can be found on the test run page in the Meticulous UI (or by clicking the link in the Meticulous PR comment, if comments are enabled).
 
@@ -757,7 +758,7 @@ HTTP header. The \`ci upload-assets\` and \`ci upload-container\` commands pick 
 automatically when they sit next to the bundles in your build output.
 
 For monorepo source maps that span multiple packages, see the
-[Viewing source coverage information in Meticulous guide](${ENABLE_SOURCE_COVERAGE_URL}).
+[Viewing and exporting source coverage in Meticulous guide](${ENABLE_SOURCE_COVERAGE_URL}).
 
 {% /expand %}
 

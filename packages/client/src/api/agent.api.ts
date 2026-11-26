@@ -1,3 +1,7 @@
+import {
+  type ReplayDiffScopeOptions,
+  replayDiffScopeParams,
+} from "./agent-replay-diff-scope";
 import type {
   ScreenshotIdentifier,
   SessionContext,
@@ -327,7 +331,7 @@ export interface AgentDiffComment {
   isResolved?: boolean;
 }
 
-export interface GetDiffCommentsOptions {
+export interface GetDiffCommentsOptions extends ReplayDiffScopeOptions {
   includeResolved?: boolean;
 }
 
@@ -1337,12 +1341,13 @@ export interface TimelinePagingOptions {
 export interface TimelineOptions
   extends TimelineFilterOptions, TimelinePagingOptions {}
 
-export interface TimelineDiffOptions extends TimelineOptions {
+export interface TimelineDiffOptions
+  extends TimelineOptions, ReplayDiffScopeOptions {
   /** Return identical rows too, instead of only differences plus context. */
   includeIdenticalEvents?: boolean | undefined;
 }
 
-export interface TimelineEventDiffOptions {
+export interface TimelineEventDiffOptions extends ReplayDiffScopeOptions {
   /** Return the identical fields too, not only those that differ. */
   includeIdenticalFields?: boolean | undefined;
 }
@@ -1717,7 +1722,7 @@ export const getDiffComments = async (
   screenshotName: string,
   options: GetDiffCommentsOptions = {},
 ): Promise<AgentDiffComment[]> => {
-  const params: Record<string, string> = {};
+  const params = replayDiffScopeParams(options);
   if (options.includeResolved) {
     params.includeResolved = "true";
   }
@@ -2395,11 +2400,17 @@ export const getScreenshotUrls = async (
   client: MeticulousClient,
   replayDiffId: string,
   screenshotName: string,
+  scope: ReplayDiffScopeOptions = {},
 ): Promise<ScreenshotUrlsResponse> => {
   const { data } = await client
     .get(
       `agent/replay-diffs/${replayDiffId}/screenshots/${encodeURIComponent(screenshotName)}/image-urls`,
-      { params: { clientVersion: String(IMAGE_URLS_CLIENT_VERSION) } },
+      {
+        params: {
+          clientVersion: String(IMAGE_URLS_CLIENT_VERSION),
+          ...replayDiffScopeParams(scope),
+        },
+      },
     )
     .catch((error) => {
       throw maybeEnrichFetchError(error);
@@ -2415,6 +2426,7 @@ export const getTimelineDiff = async (
   const params: Record<string, string> = {
     clientVersion: String(TIMELINE_DIFF_CLIENT_VERSION),
     ...timelineQueryParams(options),
+    ...replayDiffScopeParams(options),
   };
   if (options.includeIdenticalEvents) {
     params.includeIdenticalEvents = "true";
@@ -2471,6 +2483,7 @@ export const getTimelineEventDiff = async (
           ...(options.includeIdenticalFields
             ? { includeIdenticalFields: "true" }
             : {}),
+          ...replayDiffScopeParams(options),
         },
       },
     )

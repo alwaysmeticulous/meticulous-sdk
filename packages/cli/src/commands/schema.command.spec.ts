@@ -50,7 +50,7 @@ describe("generateSchema", () => {
   });
 
   test("a leaf command outside agent/download keeps the global logLevel with no default", () => {
-    const node = asNode(generateSchema(["ci", "run-with-tunnel"]));
+    const node = asNode(generateSchema(["ci", "prepare"]));
     const options = node.options ?? {};
     expect(options).toHaveProperty("logLevel");
     expect(options.logLevel).not.toHaveProperty("default");
@@ -134,15 +134,6 @@ describe("resolveJsonArgsTarget", () => {
     expect(logout.has("logLevel")).toBe(true);
   });
 
-  test("includes hidden (describe:false) commands' options", () => {
-    // `ci start-tunnel` is super-user-gated (describe:false by default), but its
-    // flags must still be accepted via --jsonArgs.
-    const keys = leafKeys(["ci", "start-tunnel"]);
-    expect(keys.has("port")).toBe(true);
-    expect(keys.has("host")).toBe(true);
-    expect(keys.has("subdomain")).toBe(true);
-  });
-
   test("resolves a command by its alias", () => {
     // `simulate` is aliased as `replay`.
     expect(leafKeys(["replay"]).has("sessionId")).toBe(true);
@@ -151,11 +142,7 @@ describe("resolveJsonArgsTarget", () => {
   test("accepts only canonical option names, not their aliases", () => {
     // Merging --jsonArgs sets exactly the key given and handlers read the
     // canonical name, so an alias key would be silently dropped — it's rejected
-    // instead. (start-tunnel's `port`/alias `p`; simulate's `takeSnapshots`/
-    // alias `screenshot`.)
-    const tunnel = leafKeys(["ci", "start-tunnel"]);
-    expect(tunnel.has("port")).toBe(true);
-    expect(tunnel.has("p")).toBe(false);
+    // instead. (simulate's `takeSnapshots`/alias `screenshot`.)
     const simulate = leafKeys(["simulate"]);
     expect(simulate.has("takeSnapshots")).toBe(true);
     expect(simulate.has("screenshot")).toBe(false);
@@ -172,11 +159,11 @@ describe("resolveJsonArgsTarget", () => {
   });
 
   test("resolves hidden deprecated top-level aliases to their target's options", () => {
-    // `run-all-tests-in-cloud` is a hidden alias of `ci run-with-tunnel`,
+    // `prepare-for-meticulous-tests` is a hidden alias of `ci prepare`,
     // registered outside CLI_COMMANDS. It must resolve to that command's options
     // (not fall back to the permissive union), so --jsonArgs is as strict there.
-    const keys = leafKeys(["run-all-tests-in-cloud"]);
-    expect(keys.has("appUrl")).toBe(true); // real ci run-with-tunnel option
+    const keys = leafKeys(["prepare-for-meticulous-tests"]);
+    expect(keys.has("triggerScript")).toBe(true); // real ci prepare option
     expect(keys.has("sessionId")).toBe(false); // not an option there
     expect(keys.has("verbose")).toBe(false); // agent-group-only, not here
   });
@@ -213,12 +200,12 @@ describe("resolveJsonArgsTarget", () => {
 
   test("never surfaces a malformed or prototype-polluting key", () => {
     // Exercises the walker across the tricky cases: a group-inheriting leaf,
-    // globals-only, a hidden command, a kebab-case option name, and a
+    // globals-only, a hidden alias, a kebab-case option name, and a
     // positional (from an object builder).
     const paths = [
       ["agent", "trigger-test-run"],
       ["auth", "logout"],
-      ["ci", "start-tunnel"],
+      ["prepare-for-meticulous-tests"],
       ["simulate"],
       ["local", "relevant-sessions"],
       ["debug", "replay-diff"],

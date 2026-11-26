@@ -2,6 +2,8 @@ import { readFile } from "fs/promises";
 import type {
   AgenticAppTarget,
   AgenticLiveBackend,
+  AgentSwarmEgressRule,
+  AgentSwarmRunKind,
   ContainerEnvVariable,
   ProjectIdentifier,
 } from "@alwaysmeticulous/client";
@@ -17,6 +19,15 @@ import { uploadSourceBundle } from "./source-bundle/upload-source-bundle";
 import { uploadBuild } from "./upload-build";
 
 export interface GenerateSessionsOptions extends ProjectIdentifier {
+  /**
+   * Which Agent swarm to launch; `regular` when absent. `preview-url` needs
+   * `assetsDirectory` (a placeholder) and a `backend` that serves every path.
+   */
+  swarmKind?: AgentSwarmRunKind | undefined;
+  /** Extra browser egress rules for this launch, after the project's saved rules. */
+  egressRules?: AgentSwarmEgressRule[] | undefined;
+  /** Overrides the project's Agent swarm host-rewrite regex for this launch. */
+  hostRewriteRegex?: string | undefined;
   apiToken: string | null | undefined;
   localImageTag?: string | undefined;
   assetsDirectory?: string | undefined;
@@ -76,6 +87,8 @@ export interface GenerateSessionsResult {
    */
   uploadId?: string;
   agenticRunId?: string | null;
+  /** The launched run's kind, when the backend reports it. */
+  swarmKind?: AgentSwarmRunKind;
   message?: string;
 }
 
@@ -86,6 +99,7 @@ export interface GenerateSessionsResult {
  * Meticulous recorder injected, and produces new sessions to test on the PR.
  */
 export const generateSessions = async ({
+  swarmKind,
   apiToken: apiToken_,
   localImageTag,
   assetsDirectory,
@@ -97,6 +111,8 @@ export const generateSessions = async ({
   sourceSnapshot,
   headTestRunId,
   instructionsFile,
+  egressRules,
+  hostRewriteRegex,
   enableLocalMocks,
   containerPort,
   containerEnv,
@@ -249,8 +265,11 @@ export const generateSessions = async ({
     uploadedSource?.baseSha ?? (basePreviewUrl == null ? undefined : baseSha);
   const result = await completeAgenticSessionGeneration({
     client,
+    ...(swarmKind == null ? {} : { swarmKind }),
     commitSha: uploadedSource?.headSha ?? commitSha,
     ...(instructionsId ? { instructionsId } : {}),
+    ...(egressRules ? { egressRules } : {}),
+    ...(hostRewriteRegex == null ? {} : { hostRewriteRegex }),
     appTarget,
     ...(uploadedSource == null
       ? {}
@@ -291,6 +310,7 @@ export const generateSessions = async ({
   return {
     ...(uploadId == null ? {} : { uploadId }),
     agenticRunId: result.agenticRunId ?? null,
+    ...(result.swarmKind == null ? {} : { swarmKind: result.swarmKind }),
     ...(result.message ? { message: result.message } : {}),
   };
 };

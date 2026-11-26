@@ -234,6 +234,25 @@ describe("sessions command", () => {
     expect(noticeText()).toContain("No recorded sessions found");
   });
 
+  it.each([false, true])(
+    "relays the backend's notes on an empty first page (json: %s)",
+    async (json) => {
+      mocks.getSessions.mockResolvedValue({
+        sessions: [],
+        notes: ["no visited URL can match --visitedUrlFilter '/checkout'"],
+      });
+
+      await runHandler({ json, visitedUrlFilter: "/checkout" });
+
+      expect(noticeText()).toContain(
+        "No recorded sessions matching the filters found for this project.",
+      );
+      expect(noticeText()).toContain(
+        "no visited URL can match --visitedUrlFilter '/checkout'",
+      );
+    },
+  );
+
   it.each([
     [{}, true],
     [{ offset: 0 }, true],

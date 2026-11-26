@@ -107,12 +107,13 @@ const DOWNLOAD_SCOPE_TO_FILES_TO_DOWNLOAD: Record<DownloadScope, RegExp> = {
   "screenshots-only": /^screenshots/,
   "timeline-only": /^timeline/,
   "post-test-run-processing-files-only":
-    /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage)/,
+    /^(mappedCoverage|mappedBackendCoverage|timeline|mappedPerScreenshotJsCoverage)/,
   "post-process-including-css-coverage":
-    /^(mappedCoverage|timeline|mappedPerScreenshotJsCoverage|rawCoverage|cssCoverage|mappedCssCoverage)/,
+    /^(mappedCoverage|mappedBackendCoverage|timeline|mappedPerScreenshotJsCoverage|rawCoverage|cssCoverage|mappedCssCoverage)/,
 };
 
-const shouldDownloadFile = (
+// Exported for tests.
+export const shouldDownloadFile = (
   fileType: string,
   downloadScope: DownloadScope,
 ): boolean => {
@@ -135,6 +136,7 @@ export type ReplayFileType =
   | "rawPerScreenshotCssCoverage"
   | "rawPerScreenshotJsCoverage"
   | "mappedCoverage"
+  | "mappedBackendCoverage"
   | "mappedPerScreenshotJsCoverage"
   | "cssCoverage"
   | "mappedCssCoverage"

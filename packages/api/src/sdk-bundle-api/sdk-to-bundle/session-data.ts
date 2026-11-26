@@ -1,5 +1,6 @@
 import type { ReplayableEvent } from "../bidirectional/replayable-event";
 import type { EventSourceConnectionData } from "./event-source-data";
+import type { FailedNetworkRequest } from "./failed-network-request";
 import type { HarLog, HarResponse } from "./har-log";
 import type { StreamingFetchResponseData } from "./streaming-fetch-data";
 import type { StreamingXhrResponseData } from "./streaming-xhr-data";
@@ -64,6 +65,12 @@ export interface SessionData {
    * Only present on recordings since ~Jul 2026.
    */
   streamingXhrData?: StreamingXhrResponseData[];
+
+  /**
+   * Fetch and XHR requests that failed at the network level, with no response.
+   * Only present on recordings since ~Nov 2026.
+   */
+  failedNetworkRequests?: FailedNetworkRequest[];
 
   cookies: Cookie[];
   urlHistory: UrlHistoryEvent[];
@@ -367,11 +374,88 @@ export type CustomData = {
   events?: CustomUserEvent[];
 };
 
-/** One feature flag as recorded by `recordFeatureFlag`. */
+/** Supported third-party feature-flag providers whose network responses can be parsed automatically. */
+export const FEATURE_FLAG_PROVIDERS = [
+  "launchdarkly",
+  "statsig",
+  "posthog",
+  "growthbook",
+  "confidence",
+] as const;
+
+export type FeatureFlagProvider = (typeof FEATURE_FLAG_PROVIDERS)[number];
+
+/** Supported values for a forced feature-flag override. */
+export type FlagOverrideValue = string | boolean;
+
+/** Telemetry from the customer app reading `window.Meticulous.context.getFlagOverride` / `getAllFlagOverrides`. */
+export interface FlagOverrideJsApiUsage {
+  /**
+   * Names passed to `getFlagOverride`. Absent before usage is attached or
+   * when neither `getFlagOverride` nor `getAllFlagOverrides` was called;
+   * may be empty when only `getAllFlagOverrides` was called.
+   */
+  consulted?: string[];
+  /** The app read every override at once with `getAllFlagOverrides`. */
+  readAll?: true;
+  /** `consulted` hit its cap, so a name missing from it may still have been asked. */
+  truncated?: true;
+}
+
+/**
+ * Summary of the forced feature-flag overrides offered to a replay/session, how
+ * they were delivered, and which values the application or network stubbing observed.
+ */
+export interface FlagOverrideInjectionRecord {
+  overrides: Record<string, FlagOverrideValue>;
+  /** Present when the JS API (`getFlagOverride` / `getAllFlagOverrides`) was offered or consulted. */
+  jsApi?: FlagOverrideJsApiUsage;
+  /** Cookie name when cookie delivery was seeded; absent otherwise. */
+  cookieName?: string;
+  /**
+   * Forced flag keys rewritten onto recorded flag-service responses by
+   * network injection, grouped by provider. Absent when no response was rewritten.
+   */
+  networkInjections?: Partial<Record<FeatureFlagProvider, string[]>>;
+  /**
+   * Evaluated values reported by the app (e.g. via `recordFeatureFlag`) for
+   * forced flags during this run, keyed by flag name. Scoped to forced keys
+   * so injection telemetry stays compact. Absent when unavailable or omitted
+   * in favor of a separate coverage index.
+   */
+  reportedFlags?: Record<string, FlagOverrideValue>;
+}
+
+/** Provenance values stored on {@link RecordedFeatureFlag.source}. */
+export const RECORDED_FEATURE_FLAG_SOURCES = [
+  "record-feature-flag",
+  ...FEATURE_FLAG_PROVIDERS,
+] as const;
+
+export type RecordedFeatureFlagSource =
+  (typeof RECORDED_FEATURE_FLAG_SOURCES)[number];
+
+/**
+ * One feature flag captured on a recorded session (`SessionData.context`) or on
+ * a replay timeline (`replay-context`).
+ *
+ * Entries come from either:
+ * - explicit `window.Meticulous.context.recordFeatureFlag` calls made by the app
+ *   at session-recording time or replay time (`source` omitted or `"record-feature-flag"`), or
+ * - automatic discovery from third-party flag-service network responses at
+ *   session ingestion or during replay (`source` set to the {@link FeatureFlagProvider}).
+ */
 export interface RecordedFeatureFlag {
   value: string | boolean;
   /** Human-readable name shown in the Meticulous UI in place of the key. */
   label?: string;
+  /**
+   * Provenance of this entry: omitted (or `"record-feature-flag"`) when
+   * explicitly recorded via `recordFeatureFlag` (at record time or replay time),
+   * or a {@link FeatureFlagProvider} name when automatically discovered from
+   * flag-service network responses (at session ingestion or during replay).
+   */
+  source?: RecordedFeatureFlagSource;
 }
 
 /**

@@ -9,7 +9,7 @@ import {
   TESTING_POOL_URL,
   TROUBLESHOOTING_FAILED_SIMULATIONS_STEPS_ANCHOR,
 } from "src/lib/utils/internal-urls/docs-urls.utils";
-import { METICULOUS_DEBUG_PR_LABEL, SIMULATION_TAB_NAMES } from "../constants";
+import { SIMULATION_TAB_NAMES } from "../constants";
 
 export const document = `---
   {
@@ -42,7 +42,7 @@ export const document = `---
   To verify whether the user session can be simulated accurately in the same environment in which it was recorded, you can:
 
   1. Find a session from the **All Sessions** or **Selected Sessions** tab of your {% project_link %}Meticulous dashboard{% /project_link %}.
-  2. Follow the command to "Replay this session" on the **Simulate** tab of the session page.
+  2. Follow the command by clicking **Debug Locally** on the session page.
   3. Note that if the session was originally recorded on localhost then the \`--appUrl\` flag will be set to a localhost URL, and you'll
   need to serve your app on that same port locally to replay the session (or edit the \`--appUrl\`).
 
@@ -65,19 +65,14 @@ export const document = `---
 
   1. Navigate back to the session you selected in the previous step.
   2. Click on the **Simulations** tab to find a recent simulation in CI. You'll be able to tell it's a CI simulation since the 'Simulated Against'
-  URL will show a Meticulous secure tunnel URL (\`*.tunnels.meticulous.ai\`) or a Vercel, Netlify or Cloudflare preview URL.
+  URL will show an uploaded build or a Vercel, Netlify or Cloudflare preview URL.
   3. Select one of the simulations and follow the command to "Re-run the simulation with the Meticulous CLI" on the **${SIMULATION_TAB_NAMES.DEBUG_LOCALLY}** tab of the simulation page.
 
   If you're triggering Meticulous tests in CI against Vercel, Netlify or Cloudflare preview URLs then you can run this command as is:
   the \`--appUrl\` it is set to run against will most likely still be a valid preview URL.
 
-  If however you're triggering Meticulous tests in
-  CI against a Meticulous secure tunnel URL or a localhost server running in your CI runner then you'll need to edit the \`--appUrl\` to point to a valid URL. If you're
-  using the cloud replay action you can get a URL to run against by opening a new PR with \`${METICULOUS_DEBUG_PR_LABEL}\` in the title. This
-  will keep the secure tunnel open for debugging. Meticulous will post a comment on your PR on how to access the secure tunnel to debug
-  your application setup, and you can use this as the \`--appUrl\` to replay the simulation against. It will also post a username and password
-  which you must make available as \`METICULOUS_TUNNEL_USERNAME\` and \`METICULOUS_TUNNEL_PASSWORD\` environment variables when running the Meticulous
-  CLI.
+  If however you're uploading your build to Meticulous (\`upload-assets\` or \`upload-container\`) then you'll need to edit the \`--appUrl\` to point
+  to the same build running locally, for example by serving your build output or running your container on your machine.
 
   Look out for any of the symptoms described in step 1. If the simulation fails when simulating against the test run environment but not when simulating against the original recording
   environment then the issue is likely environmental differences between the recording and test run environments. For more

@@ -1,5 +1,6 @@
 import {
   createClientWithOAuth,
+  type ReplayDiffScopeOptions,
   getTimelineDiff,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
@@ -17,8 +18,10 @@ import {
   type TimelineFilterFlags,
   type TimelinePagingFlags,
 } from "./timeline.utils";
+import { replayDiffScopeOptions } from "./replay-diff-scope-options";
 
-interface Options extends TimelineFilterFlags, TimelinePagingFlags {
+interface Options
+  extends TimelineFilterFlags, TimelinePagingFlags, ReplayDiffScopeOptions {
   apiToken?: string | null | undefined;
   replayDiffId: string;
   includeIdenticalEvents?: boolean | undefined;
@@ -28,6 +31,8 @@ interface Options extends TimelineFilterFlags, TimelinePagingFlags {
 const handler = async ({
   apiToken,
   replayDiffId,
+  project,
+  testRunId,
   includeIdenticalEvents,
   kinds,
   sinceMs,
@@ -47,6 +52,8 @@ const handler = async ({
 
   const response = await getTimelineDiff(client, replayDiffId, {
     includeIdenticalEvents,
+    project,
+    testRunId,
     ...(parsedKinds != null ? { kinds: parsedKinds } : {}),
     sinceMs,
     untilMs,
@@ -77,6 +84,7 @@ export const timelineDiffCommand: CommandModule<unknown, Options> = {
       description: "The replay diff ID.",
       demandOption: true,
     },
+    ...replayDiffScopeOptions,
     includeIdenticalEvents: {
       boolean: true,
       description:

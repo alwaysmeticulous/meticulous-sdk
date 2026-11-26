@@ -940,6 +940,7 @@ const redactLogCredentialsInNdjsonFile = (filePath: string): boolean => {
 };
 
 const LOG_NOISE_PATTERNS = [
+  // Meticulous secure tunnel hosts: no longer created, but older replays still log them.
   /https?:\/\/[a-z0-9]+-[a-z0-9-]+-[a-z0-9]+\.tunnel-\d+\.tunnels\.meticulous\.ai/g,
   /https?:\/\/[a-z0-9]+\.tunnel-\d+[^\s'")\]&]*/g,
   /https?:\/\/[a-z0-9-]+\.lhr\.life[^\s'")\]&]*/g,

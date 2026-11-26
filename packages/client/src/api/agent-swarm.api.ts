@@ -2,6 +2,7 @@ import type { MeticulousClient } from "../types/client.types";
 import { maybeEnrichFetchError } from "../errors";
 import type { AgentResponseNotes } from "./agent.api";
 import type {
+  AgentSwarmRunKind,
   AgenticRunBackendFailureKind,
   AgenticRunBlockedBy,
   AgenticRunCaseCheckLinkedToChange,
@@ -28,6 +29,11 @@ export interface AgentSwarmRunInfo {
   swarmRunId: string;
   status: AgentSwarmRunStatus;
   commitSha: string;
+  /**
+   * Which Agent swarm the run belongs to. Absent from backends that predate
+   * run kinds, whose runs are all regular.
+   */
+  swarmKind?: AgentSwarmRunKind;
   errorMessage?: string;
 }
 
@@ -58,6 +64,11 @@ export interface AgentSwarmRunListItem extends Partial<AgentSwarmCaseCounts> {
    * the project's PR data.
    */
   prNumber?: string;
+  /**
+   * Which Agent swarm the run belongs to. Absent from backends that predate
+   * run kinds, whose runs are all regular.
+   */
+  swarmKind?: AgentSwarmRunKind;
 }
 
 export interface AgentSwarmRunsResponse {
@@ -324,6 +335,11 @@ export interface AgentSwarmRunTarget {
   prNumber?: number | undefined;
   testRunId?: string | undefined;
   project?: string | undefined;
+  /**
+   * With a commit, test run or pull request lookup: whose run to get. Without
+   * it, the regular run, or the preview-URL run when there is no regular one.
+   */
+  swarmKind?: AgentSwarmRunKind | undefined;
 }
 
 const toParams = (

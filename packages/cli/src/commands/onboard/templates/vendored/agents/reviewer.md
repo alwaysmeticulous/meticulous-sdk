@@ -571,8 +571,10 @@ For EACH candidate backend, gather:
 - Entry point and start command (e.g. `next start`, `node dist/main.js`).
 - Whether server code is **bundled** (Next.js webpack/Turbopack build, `output:
 "standalone"`, a server webpack/esbuild config) or runs from **plain node_modules**
-  (tsc + node, ts-node, nest build). This decides whether Prisma/ioredis need manual
-  wrapping instead of automatic require-hook instrumentation.
+  (tsc + node, ts-node, nest build), and whether unbundled server code runs as CommonJS or
+  as ES modules (`"type": "module"`). Together these decide whether ioredis and pg need
+  manual wrapping instead of automatic require-hook instrumentation (Prisma and postgres.js
+  always need it; Next.js loads its external packages, including `pg`, with `import()`).
 - Outbound dependency clients in that backend's `package.json` (report ALL that appear):
   `@prisma/client` / `prisma`, `pg`, `postgres` (postgres.js), `ioredis`, `redis`
   (node-redis v4), `mysql` / `mysql2`, `mongodb` / `mongoose`, `@grpc/grpc-js` / `grpc`,
@@ -743,7 +745,8 @@ Output a structured summary in this exact format:
     - Entry point / start command: <e.g. `next start` via `apps/web/package.json`>
     - Server bundling: <Bundled (Next.js webpack/Turbopack / standalone) / Plain node_modules / Unknown>
     - Outbound clients: <e.g. @prisma/client 5.x, ioredis 5.x, axios — or "None detected">
-    - Meticulous-supported clients: <auto-instrumented: http/https/fetch/undici/pg/postgres.js; manual wrap: prisma, ioredis + postgres.js (when bundled); everything else via the generic seam — or "N/A">
+    - Server module format: <CommonJS / ES modules / N/A (Next.js) / Unknown>
+    - Meticulous-supported clients: <auto-instrumented: http/https/fetch/undici, plus pg/ioredis when a CommonJS server loads them with `require`; manual wrap: prisma, postgres.js (always), ioredis (when bundled, ESM or Next.js); everything else, including pg loaded with `import()` or bundled, via the generic seam — or "N/A">
     - Unsupported clients present: <mysql2 / mongodb / redis (node-redis v4) / gRPC / kafkajs / vendor SDKs / ... or "None">
 - Non-JS SSR: <Yes — <language>, unsupported by the backend recorder / No>
 - Frontend-backend origin: <same-origin / cross-origin (<api domain>) / Unknown>
@@ -758,7 +761,7 @@ Preference order (pick the first that applies):
 2. **upload-container** -- has Dockerfile, or is Next.js / Nuxt / SSR that can be containerized. This is also the universal fallback when nothing else fits, since a missing Dockerfile is generated in the plan.
 3. **Cloud Replay** -- has preview URLs (Vercel / Netlify / Cloudflare) but neither of the above applies.
 
-Never recommend a tunnel-based approach (`cloud-compute` / `run-with-tunnel`); fall back to `upload-container` instead.
+Secure tunnels (`cloud-compute` / `run-with-tunnel`) are no longer supported; if the repo already uses one, recommend replacing it, falling back to `upload-container` when nothing else fits.
 
 ### Warnings
 - <Any blockers, issues, or special considerations>

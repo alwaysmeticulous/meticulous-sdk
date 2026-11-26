@@ -49,6 +49,7 @@ const SWARM_RUNS = [
     status: "succeeded",
     commitSha: "sha-2",
     prNumber: "17",
+    swarmKind: "preview-url",
     total: 3,
     pass: 2,
     fail: 1,
@@ -88,9 +89,9 @@ describe("agent-swarm-runs command", () => {
     await runHandler();
 
     expect(stdoutText().split("\n")).toEqual([
-      "swarmRunId\tcreatedAt\tstatus\tcommitSha\tprNumber",
-      "run-2\t2026-09-02T00:00:00.000Z\tsucceeded\tsha-2\t17",
-      "run-1\t2026-09-01T00:00:00.000Z\tsucceeded\tsha-1\t",
+      "swarmRunId\tcreatedAt\tstatus\tcommitSha\tprNumber\tswarmKind",
+      "run-2\t2026-09-02T00:00:00.000Z\tsucceeded\tsha-2\t17\tpreview-url",
+      "run-1\t2026-09-01T00:00:00.000Z\tsucceeded\tsha-1\t\t",
     ]);
   });
 
@@ -99,9 +100,9 @@ describe("agent-swarm-runs command", () => {
 
     const lines = stdoutText().split("\n");
     expect(lines[0]).toBe(
-      "swarmRunId\tcreatedAt\tstatus\tcommitSha\tprNumber\ttotal\tpass\tfail\tblocked\tskipped\trunning\tnotStarted",
+      "swarmRunId\tcreatedAt\tstatus\tcommitSha\tprNumber\tswarmKind\ttotal\tpass\tfail\tblocked\tskipped\trunning\tnotStarted",
     );
-    expect(lines[1]?.split("\t").slice(5)).toEqual([
+    expect(lines[1]?.split("\t").slice(6)).toEqual([
       "3",
       "2",
       "1",
@@ -110,7 +111,7 @@ describe("agent-swarm-runs command", () => {
       "0",
       "0",
     ]);
-    expect(lines[2]?.split("\t").slice(5)).toEqual([
+    expect(lines[2]?.split("\t").slice(6)).toEqual([
       "",
       "",
       "",

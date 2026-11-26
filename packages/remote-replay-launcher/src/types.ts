@@ -9,12 +9,6 @@ import type {
 } from "@alwaysmeticulous/client";
 import type { GitHubDelayedRetrySkipReason } from "./github-rate-limit-retry";
 
-export interface TunnelData {
-  url: string;
-  basicAuthUser: string;
-  basicAuthPassword: string;
-}
-
 export interface CompanionAssetsOptions {
   folder?: string | undefined;
   zip?: string | undefined;
@@ -29,56 +23,7 @@ export interface CompanionAssetsOptions {
   regex: string;
 }
 
-export interface ExecuteRemoteTestRunOptions {
-  apiToken: string | null | undefined;
-
-  appUrl: string;
-  commitSha: string;
-
-  secureTunnelHost?: string | undefined;
-
-  onTunnelCreated?: (data: TunnelData) => void;
-  onTestRunCreated?: (testRun: TestRun) => void;
-  onProgressUpdate?: (testRun: TestRun) => void;
-
-  /**
-   * Called periodically when the test run has completed but the tunnel is still locked.
-   */
-  onTunnelStillLocked?: () => void;
-
-  /**
-   * If set, the tunnel will be kept open until this promise is resolved.
-   * `executeRemoteTestRun` will not resolve until this promise is resolved.
-   */
-  keepTunnelOpenPromise?: Promise<void>;
-
-  environment: string;
-  isLockable: boolean;
-
-  /**
-   * The ID of the pull request in the hosting provider, if one is available.
-   * The backend will try to automatically find one from the commit if this is not provided, but in some
-   * cases (e.g. PRs from forks on GitHub) this may not work, hence one can be provided here.
-   */
-  pullRequestHostingProviderId?: string;
-
-  allowInvalidCert?: boolean;
-  proxyAllUrls?: boolean;
-  rewriteHostnameToAppUrl?: boolean;
-  enableDnsCache?: boolean;
-  http2Connections?: number | undefined;
-  silenceTunnelWorker?: boolean;
-  companionAssets?: CompanionAssetsOptions;
-
-  /**
-   * Post a comment for this test run, even if comments are still disabled for the project.
-   */
-  postComment?: boolean;
-
-  debugContext?: TestRunTriggerDebugContext;
-}
-
-export interface ExecuteRemoteTestRunResult {
+export interface UploadAndTriggerTestRunResult {
   testRun: TestRun | null;
   skipReason?: "comments_disabled_for_author" | GitHubDelayedRetrySkipReason;
   message?: string;

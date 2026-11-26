@@ -54,6 +54,10 @@ const buildDownloadUrls = (): unknown => ({
     signedUrl: "https://example/rawCoverage",
     filePath: "rawCoverage",
   },
+  mappedBackendCoverage: {
+    signedUrl: "https://example/mappedBackendCoverage",
+    filePath: "mappedBackendCoverage",
+  },
   // Special-cased keys (each handled in its own branch).
   screenshots: {},
   diffs: {},
@@ -485,6 +489,36 @@ describe("getOrFetchReplayArchive — post-process-including-css-coverage scope"
     );
     expect(downloadedKeys).not.toContain("https://example/cssCoverage");
     expect(downloadedKeys).not.toContain("https://example/mappedCssCoverage");
+  });
+});
+
+describe.each([
+  "post-test-run-processing-files-only",
+  "post-process-including-css-coverage",
+] as const)("getOrFetchReplayArchive — %s scope", (downloadScope) => {
+  let dataDir: string;
+
+  beforeEach(() => {
+    dataDir = mkdtempSync(join(tmpdir(), "met-replays-be-scope-"));
+    vi.clearAllMocks();
+    (getReplay as Mock).mockResolvedValue({ version: "v3" });
+    (getReplayV3DownloadUrls as Mock).mockResolvedValue(buildDownloadUrls());
+    (downloadAndExtractFile as Mock).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  it("downloads the replay's mapped backend coverage when the server offers it", async () => {
+    await runWithLocalDataDir(dataDir, () =>
+      getOrFetchReplayArchive({} as never, REPLAY_ID, downloadScope),
+    );
+
+    const downloadedKeys = (downloadAndExtractFile as Mock).mock.calls.map(
+      (call) => call[0] as string,
+    );
+    expect(downloadedKeys).toContain("https://example/mappedBackendCoverage");
   });
 });
 

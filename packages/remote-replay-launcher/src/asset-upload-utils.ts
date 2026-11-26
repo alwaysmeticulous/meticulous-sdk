@@ -92,7 +92,7 @@ export const uploadAssets = async (
         `Warning: No index.html found in the app directory (${resolvedAppDirectory}). ` +
           `This may indicate that your build output is not properly configured for static hosting, unless you expect that the root url is invalid. ` +
           `If you're using Next.js or another framework that requires server-side rendering, ` +
-          `you should use the \`cloud-compute\` GitHub Action or the \`run-all-tests-in-cloud\` command instead.`,
+          `you should upload a Docker container instead (the \`ci upload-container\` command).`,
       );
     }
   }

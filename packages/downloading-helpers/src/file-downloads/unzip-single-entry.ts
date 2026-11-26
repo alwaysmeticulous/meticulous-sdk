@@ -35,6 +35,7 @@ import {
  * filesystem to defend against path traversal on. Nothing here touches disk.
  *
  * `name` only labels errors — pass the artifact's file name, not a URL.
+ * `maxBytes` caps decompressed output, checked before and during inflation.
  *
  * Throws if the archive is empty or holds more than one file entry. Entries
  * `safeExtractZip` would not write are ignored — directories, symlinks and
@@ -45,6 +46,7 @@ import {
 export const unzipSingleEntry = async (
   bytes: Uint8Array,
   name: string,
+  { maxBytes }: { maxBytes?: number } = {},
 ): Promise<Buffer> => {
   // Views the caller's bytes rather than copying them.
   const buffer = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -72,7 +74,7 @@ export const unzipSingleEntry = async (
       );
     }
 
-    return await readEntry(zipfile, fileEntries[0]);
+    return await readEntry(zipfile, fileEntries[0], maxBytes);
   } finally {
     // Synchronous and infallible: a buffer-backed archive has no fd, so closing
     // only drops yauzl's refcount. `safeExtractZip`, which reads from a real
@@ -85,18 +87,35 @@ export const unzipSingleEntry = async (
 export const unzipSingleEntryToString = async (
   bytes: Uint8Array,
   name: string,
-): Promise<string> => (await unzipSingleEntry(bytes, name)).toString("utf-8");
+  options: { maxBytes?: number } = {},
+): Promise<string> =>
+  (await unzipSingleEntry(bytes, name, options)).toString("utf-8");
 
 /** {@link unzipSingleEntryToString}, parsed as JSON. */
 export const unzipSingleEntryToJson = async <T>(
   bytes: Uint8Array,
   name: string,
-): Promise<T> => JSON.parse(await unzipSingleEntryToString(bytes, name)) as T;
+  options: { maxBytes?: number } = {},
+): Promise<T> =>
+  JSON.parse(await unzipSingleEntryToString(bytes, name, options)) as T;
 
-const readEntry = async (zipfile: ZipFile, entry: Entry): Promise<Buffer> => {
+const readEntry = async (
+  zipfile: ZipFile,
+  entry: Entry,
+  maxBytes?: number,
+): Promise<Buffer> => {
+  const checkSize = (size: number) => {
+    if (maxBytes != null && size > maxBytes) {
+      throw new Error(`ZIP entry ${entry.fileName} exceeds ${maxBytes} bytes`);
+    }
+  };
+  checkSize(entry.uncompressedSize);
   const readStream = await zipfile.openReadStreamPromise(entry);
   const chunks: Buffer[] = [];
+  let size = 0;
   for await (const chunk of readStream) {
+    size += (chunk as Buffer).byteLength;
+    checkSize(size);
     chunks.push(chunk as Buffer);
   }
   return Buffer.concat(chunks);

@@ -1,6 +1,4 @@
 import type {
-  ExecuteSecureTunnelTestRunOptions as ExecuteSecureTunnelTestRunPayload,
-  ExecuteSecureTunnelTestRunResponse,
   TestRun,
   TestRunData,
   TestRunNetworkPatchingResult,
@@ -10,44 +8,7 @@ import type { MeticulousClient } from "../types/client.types";
 import type { ReplayDiffResponse } from "./replay-diff.api";
 import { TEST_RUN_STATUS_CLIENT_VERSION } from "./test-run-status-client-version";
 
-export type ExecuteSecureTunnelTestRunOptions =
-  ExecuteSecureTunnelTestRunPayload & {
-    client: MeticulousClient;
-  };
-
-export type { ExecuteSecureTunnelTestRunResponse, TestRun };
-
-export const executeSecureTunnelTestRun = async ({
-  client,
-  headSha,
-  tunnelUrl,
-  basicAuthUser,
-  basicAuthPassword,
-  environment,
-  isLockable,
-  companionAssetsInfo,
-  pullRequestHostingProviderId,
-  postComment,
-  debugContext,
-}: ExecuteSecureTunnelTestRunOptions): Promise<ExecuteSecureTunnelTestRunResponse> => {
-  const { data } = await client
-    .post("test-runs/trigger-secure-tunnel-test-run-v2", {
-      headSha,
-      tunnelUrl,
-      basicAuthUser,
-      basicAuthPassword,
-      environment,
-      isLockable,
-      ...(postComment ? { postComment } : {}),
-      ...(companionAssetsInfo ? { companionAssetsInfo } : {}),
-      ...(pullRequestHostingProviderId ? { pullRequestHostingProviderId } : {}),
-      ...(debugContext ? { debugContext } : {}),
-    })
-    .catch((error) => {
-      throw maybeEnrichFetchError(error);
-    });
-  return data as ExecuteSecureTunnelTestRunResponse;
-};
+export type { TestRun };
 
 export const getTestRun: (options: {
   client: MeticulousClient;
@@ -261,6 +222,55 @@ export const getTestRunReplayDiffs = async ({
   }
 
   return replayDiffs;
+};
+
+export type CoverageLcovScope = "executed" | "selected-set";
+
+/**
+ * Line coverage for one test run, as a gzipped LCOV file plus a table of which
+ * case produced which hits. `processing` means the file is still being built;
+ * ask again.
+ */
+export type CoverageLcovResponse =
+  | {
+      status: "processing";
+      message: string;
+    }
+  | {
+      status: "ready";
+      testRunId: string;
+      /** The commit the line numbers refer to. On a pull request, the merge commit. */
+      executionSha: string;
+      scope: CoverageLcovScope;
+      lcovUrl: string;
+      casesUrl: string;
+      sessions: number;
+      measuredSessions: number;
+      reusedSessions: number;
+      transferredSessions: number;
+      files: number;
+      executedLines: number;
+      executableLines: number;
+      complete: boolean;
+    };
+
+export const getTestRunCoverageLcov = async ({
+  client,
+  testRunId,
+  scope,
+}: {
+  client: MeticulousClient;
+  testRunId: string;
+  scope: CoverageLcovScope;
+}): Promise<CoverageLcovResponse> => {
+  const { data } = await client
+    .get<CoverageLcovResponse>(`test-runs/${testRunId}/coverage-lcov`, {
+      params: { scope },
+    })
+    .catch((error) => {
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
 };
 
 export const emitTelemetry = async ({

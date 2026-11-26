@@ -1,4 +1,7 @@
-export { sanitizeFilename } from "./file-downloads/local-data.utils";
+export {
+  sanitizeFilename,
+  waitToAcquireLockOnFile,
+} from "./file-downloads/local-data.utils";
 export {
   DOWNLOADED_SCOPES_FILE_NAME,
   LEGACY_PREVIOUSLY_DOWNLOADED_FILE_NAME,

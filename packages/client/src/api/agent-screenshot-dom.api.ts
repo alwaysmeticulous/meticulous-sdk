@@ -1,3 +1,4 @@
+import { replayDiffScopeParams } from "./agent-replay-diff-scope";
 import { maybeEnrichFetchError } from "../errors";
 import type { MeticulousClient } from "../types/client.types";
 import {
@@ -39,7 +40,10 @@ export const getScreenshotDomDiffText = async (
   screenshotName: string,
   options: ScreenshotDomDiffTextOptions = {},
 ): Promise<ScreenshotDomDiffTextResponse> => {
-  const params = pagedPathParams(options);
+  const params = {
+    ...pagedPathParams(options),
+    ...replayDiffScopeParams(options),
+  };
   params.clientVersion = String(SCREENSHOT_DOM_DIFF_TEXT_CLIENT_VERSION);
   if (options.context != null) {
     params.context = String(options.context);

@@ -278,11 +278,11 @@ const handler = async ({
             project,
           ),
     );
-    return;
   }
   // The paging notice is written by the backend, which knows whether another
   // page exists without counting the set, and relayed here verbatim — see
-  // `agent.pagination.utils.ts`.
+  // `agent.pagination.utils.ts`. An empty first page can still carry notes,
+  // such as why a filter matched nothing.
   logResponseNotes(response);
 };
 
@@ -376,7 +376,7 @@ export const sessionsCommand: CommandModule<unknown, Options> = {
     visitedUrlFilter: {
       string: true,
       description:
-        "Output only sessions that visited a URL matching this glob (only '*' is a wildcard, matching any run of characters; everything else — including '?', '.', '/' — is literal), e.g. '*/checkout*'.",
+        "Output only sessions that visited a URL matching this glob. It is matched against the whole URL, scheme included, so start it with '*' to match part of one, e.g. '*/checkout*'. Only '*' is a wildcard, matching any run of characters; everything else — including '?', '.', '/' — is literal.",
     },
     selectedSet: {
       string: true,

@@ -1,6 +1,6 @@
 import type { CommandModule } from "yargs";
 import { ciPrepareCommand } from "./ci/prepare.command";
-import { ciRunCommand } from "./ci/run.command";
+import { removedRunAllTestsInCloudCommand } from "./ci/removed-tunnel-commands";
 import { ciUploadAssetsCommand } from "./ci/upload-assets.command";
 import { ciUploadContainerCommand } from "./ci/upload-container.command";
 
@@ -22,11 +22,7 @@ const createDeprecatedAlias = (
 });
 
 export const deprecatedAliases: CommandModule[] = [
-  createDeprecatedAlias(
-    "run-all-tests-in-cloud",
-    "ci run-with-tunnel",
-    ciRunCommand,
-  ),
+  removedRunAllTestsInCloudCommand,
   createDeprecatedAlias(
     "prepare-for-meticulous-tests",
     "ci prepare",

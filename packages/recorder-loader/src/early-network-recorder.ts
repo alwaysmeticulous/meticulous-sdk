@@ -8,6 +8,9 @@ import type { PrivateWindowApi } from "./private-window-api";
  * if you do not want to record. When you call stopIntercepting any network requests/responses stored in memory
  * will be dropped and Meticulous will be deactivated. No data will be sent to Meticulous's servers.
  *
+ * In a Meticulous Agent swarm browser this method does nothing, so the test recording keeps its
+ * network requests.
+ *
  * Please note that if you've already started recording and sending data to Meticulous's services i.e.
  * loaded the main meticulous recorder script or called tryLoadAndStartRecorder then this method will
  * not stop the recording. For that you need to call the stopRecording method returned by tryLoadAndStartRecorder.

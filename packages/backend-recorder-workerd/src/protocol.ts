@@ -422,6 +422,51 @@ export const SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH =
   "/v1/agent-swarm-testing/outbound-fetch";
 
 /**
+ * Request header naming the be-mock an inbound request's outbound calls are offered
+ * to, when that is not the one installed under the request's session id. A crawl
+ * records one session per page it loads, each with its own id, while its be-mock is
+ * installed once per attempt. The Node recorder reads it in agent-swarm-testing mode.
+ */
+export const BE_MOCK_ID_HEADER = "x-meticulous-be-mock-id";
+
+/**
+ * Sidecar env var that makes the agent-swarm-testing interceptor keep, per session,
+ * backend spans of the calls its be-mocks answered, so the run can attach them to the
+ * sessions it recorded and replay them later. Off unless `"true"`.
+ */
+export const AGENT_SWARM_TESTING_RECORD_SPANS_ENV_KEY =
+  "METICULOUS_AGENT_SWARM_TESTING_RECORD_SPANS";
+
+/**
+ * Agent-swarm-testing route returning one session's
+ * {@link AgentSwarmTestingSessionSpans}: `GET` with `runId` and `sessionId` query
+ * params. 404 when span recording is off.
+ */
+export const SIDECAR_AGENT_SWARM_TESTING_SPANS_PATH =
+  "/v1/agent-swarm-testing/spans";
+
+export interface AgentSwarmTestingSessionSpans {
+  /**
+   * Spans of the calls a be-mock answered under this session, in the recorded span
+   * format, so a replay of the session can serve them.
+   */
+  spans: unknown[];
+  /**
+   * Calls made under this session that no be-mock answered: they went to the real
+   * service, so a replay of the session has nothing to serve for them.
+   */
+  unansweredCalls: { method: string; url: string }[];
+  /**
+   * Database, cache and wrapped-operation calls made under this session that no be-mock
+   * answered (they failed in the app), or whose answer a replay could not serve. Absent
+   * from a sidecar that does not offer them.
+   */
+  unansweredDataCalls?: { technology: string; summary: string }[];
+  /** True when the session outgrew the sidecar's bound and spans were dropped. */
+  truncated: boolean;
+}
+
+/**
  * Agent-swarm-testing WebSocket route that hosts one be-mock: an agent-authored
  * `be-mock.ts` (backend mocks), compiled by the agentic session-generation
  * worker into a self-contained sandbox bundle. The sidecar runs it in its own
@@ -505,6 +550,8 @@ export const SIDECAR_AGENT_SWARM_TESTING_PASSTHROUGH_RESULT_PATH =
 export interface AgentSwarmTestingPassthroughReport {
   runId: string;
   frontendSessionId?: string;
+  /** The consult's {@link OutboundFetchAgentSwarmTestingRequest.beMockId}, if any. */
+  beMockId?: string;
   /** The `callId` of the interceptor's passthrough answer. */
   callId: string;
   result: AgentSwarmTestingPassthroughResult;
@@ -540,7 +587,7 @@ export interface BeMockInstallMessage {
   /**
    * Recorded sessions whose backend calls answer what the module leaves
    * unanswered, before the call passes through: the run's recorded backend
-   * default, which the worker fills with the sessions the case's `state.ts`
+   * default, which the worker fills with the sessions the case's `prepare.ts`
    * loaded, in load order. Absent or empty: unanswered calls pass through.
    */
   recordedDefaultSessionIds?: string[];
@@ -629,6 +676,12 @@ export interface OutboundFetchAgentSwarmTestingRequest {
   runId: string;
   /** Value of {@link FRONTEND_SESSION_ID_HEADER} on the inbound request, if any. */
   frontendSessionId?: string;
+  /**
+   * Value of {@link BE_MOCK_ID_HEADER} on the inbound request: the be-mock to offer
+   * the call to, when it is not the one installed under `frontendSessionId`.
+   * Absent on a recorder older than this field.
+   */
+  beMockId?: string;
   method: string;
   /** Full URL including query string. */
   url: string;

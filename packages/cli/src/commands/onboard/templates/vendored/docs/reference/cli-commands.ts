@@ -3,7 +3,6 @@ import {
   AGENTS_CLI_COMMANDS_URL,
   FAQ_AND_TROUBLESHOOTING_URL,
   GITHUB_ACTIONS_SETUP_URL,
-  TUNNEL_ADVANCED_OPTIONS_URL,
 } from "src/lib/utils/internal-urls/docs-urls.utils";
 
 export const document = `---
@@ -38,7 +37,6 @@ meticulous [command]
 | Command | Purpose | Use Case |
 |---------|---------|----------|
 | \`onboard\` | Install Meticulous using local Claude Code or Codex | Initial recorder and CI setup |
-| \`ci run-with-tunnel\` | Run tests in cloud via tunnel | CI testing with local app |
 | \`ci upload-assets\` | Upload and test static assets | CI testing for static sites |
 | \`ci upload-asset-chunk\` | Upload one named, versioned asset chunk | Multi-bundle deployments |
 | \`ci run-with-uploaded-asset-chunks\` | Trigger a test run against uploaded chunks | Multi-bundle deployments |
@@ -47,7 +45,6 @@ meticulous [command]
 | \`ci run-local\` | Run all replay test cases locally | Local test execution |
 | \`ci prepare\` | Ensure base run exists | CI setup |
 | \`ci label-commit\` | Attach labels to a commit | Marking commits as not relevant for testing |
-| \`ci start-tunnel\` | Start secure tunnel | Manual testing/debugging |
 | \`simulate\` (alias: \`replay\`) | Replay session locally | Local debugging |
 | \`record session\` | Record a user session | Session recording |
 | \`record login\` | Record a login flow | Login flow recording |
@@ -63,6 +60,7 @@ meticulous [command]
 | \`download session\` | Download a recorded session | Debugging |
 | \`download replay\` | Download a replay | Debugging |
 | \`download test-run\` | Download a test run | Debugging |
+| \`download coverage\` | Download a test run's line coverage as LCOV | Coverage |
 | \`traces upload\` | Upload coding-agent session traces you already have | Agent traces |
 | \`local relevant-sessions\` | Find sessions covering the current branch's code changes | Local development |
 | \`debug replay\` | Set up a debug workspace for a single replay | Investigating a replay |
@@ -71,6 +69,7 @@ meticulous [command]
 | \`agent upload-build\` | Upload a build (static assets or container) and capture a deployment ID | Agent/programmatic use |
 | \`agent trigger-test-run\` | Trigger a test run against an uploaded build | Agent/programmatic use |
 | \`agent test-run-diffs\` | List replay diffs for a test run with summary | Agent/programmatic use |
+| \`agent test-run-replays\` | List every session a test run replayed, with its head and base replay IDs, including sessions with no diffs | Agent/programmatic use |
 | \`agent diff-comments\` | Get review comments for a replay-diff screenshot | Agent/programmatic use |
 | \`agent approve-diff\` | Agent-approve one or more screenshot diffs, optionally commenting why, if the project allows it | Agent/programmatic use |
 | \`agent reject-diff\` | Agent-reject one or more screenshot diffs and comment why | Agent/programmatic use |
@@ -147,176 +146,6 @@ Key options include \`--cwd\`, \`--project\`, \`--app\`, \`--agent\`,
 
 ---
 
-## ci run-with-tunnel
-
-Run Meticulous tests in the cloud against a locally-running application.
-
-### Synopsis
-
-\`\`\`bash
-npx @alwaysmeticulous/cli ci run-with-tunnel \\
-  --apiToken="<token>" \\
-  --appUrl="<url>" \\
-  [options]
-\`\`\`
-
-### Required Flags
-
-#### \`--apiToken\`
-
-**Type**: String
-**Description**: Your Meticulous API token
-**How to get**: From [Settings → API tokens](https://app.meticulous.ai/settings?page=api-tokens) in the Meticulous dashboard
-
-**Example**:
-\`\`\`bash
---apiToken="met_live_abc123..."
-\`\`\`
-
-**Note**: Can also be set via \`METICULOUS_API_TOKEN\` environment variable.
-
----
-
-#### \`--appUrl\`
-
-**Type**: String
-**Description**: URL where your app is running
-**Format**: Full URL including protocol and port
-
-**Examples**:
-\`\`\`bash
---appUrl="http://localhost:3000"
---appUrl="http://localhost:8080"
---appUrl="https://localhost:3000"
-\`\`\`
-
----
-
-### Optional Flags
-
-#### \`--commitSha\`
-
-**Type**: String
-**Description**: Commit SHA being tested
-**Default**: Auto-detected from git
-
-**Example**:
-\`\`\`bash
---commitSha="$GITHUB_SHA"
---commitSha="abc123def456..."
-\`\`\`
-
----
-
-#### \`--companionAssetsFolder\`
-
-**Type**: String (path)
-**Description**: Path to local folder with static assets to upload
-**Default**: None
-**Requires**: Must also provide \`--companionAssetsRegex\`
-
-**Example**:
-\`\`\`bash
---companionAssetsFolder="companion-assets"
-\`\`\`
-
----
-
-#### \`--companionAssetsRegex\`
-
-**Type**: String (regex)
-**Description**: Regex pattern for requests to serve from companion assets
-**Default**: None
-**Requires**: Must also provide \`--companionAssetsFolder\`
-
-**Example**:
-\`\`\`bash
---companionAssetsRegex="^/_next/static/"
-\`\`\`
-
----
-
-#### \`--proxyAllUrls\`
-
-**Type**: Boolean
-**Description**: Proxy all URLs through tunnel (not just app URL)
-**Default**: false
-
-**Example**:
-\`\`\`bash
---proxyAllUrls
-\`\`\`
-
-**Use case**: Multi-server applications (frontend + API on different ports)
-
----
-
-#### \`--rewriteHostnameToAppUrl\`
-
-**Type**: Boolean
-**Description**: Rewrite request hostname to match app URL
-**Default**: false
-
-**Example**:
-\`\`\`bash
---rewriteHostnameToAppUrl
-\`\`\`
-
-**Use case**: When HTML contains absolute URLs
-
----
-
-#### \`--secureTunnelHost\`
-
-**Type**: String
-**Description**: Custom tunnel server host
-**Default**: Meticulous production tunnel
-**Note**: For Meticulous team use only
-
----
-
-#### \`--hadPreparedForTests\`
-
-**Type**: Boolean
-**Description**: Indicate that \`meticulous ci prepare\` was already run
-**Default**: false
-
----
-
-### Complete Example
-
-\`\`\`bash
-# Basic usage
-npx @alwaysmeticulous/cli ci run-with-tunnel \\
-  --apiToken="$METICULOUS_API_TOKEN" \\
-  --appUrl="http://localhost:3000"
-
-# With companion assets (Next.js)
-npx @alwaysmeticulous/cli ci run-with-tunnel \\
-  --apiToken="$METICULOUS_API_TOKEN" \\
-  --appUrl="http://localhost:3000" \\
-  --companionAssetsFolder="companion-assets" \\
-  --companionAssetsRegex="^/_next/static/"
-
-# Multi-server app
-npx @alwaysmeticulous/cli ci run-with-tunnel \\
-  --apiToken="$METICULOUS_API_TOKEN" \\
-  --appUrl="http://localhost:3000" \\
-  --proxyAllUrls
-\`\`\`
-
----
-
-### Exit Codes
-
-| Code | Meaning |
-|------|---------|
-| 0 | Success - all tests passed or diffs approved |
-| 1 | Failure - tests failed or unapproved diffs |
-| 2 | Error - configuration or connection error |
-
----
-
 ## ci agent-test
 
 {% callout type="info" title="Beta opt-in" %}
@@ -339,7 +168,9 @@ Provide exactly one target:
 - \`--assetsDir\` — a built static frontend directory.
 - \`--localImageTag\` — a locally built Docker image.
 
-By default, the agent reads routes and flows to exercise from \`.meticulous/agent-swarm-instructions.md\` in the repository at the commit being tested. Use \`--instructionsFile\` to override those instructions for one CLI-launched run. With an uploaded frontend, \`--backendUrl\` proxies configured relative paths (\`--backendProxyPaths\`, default \`/api\`) to a public HTTPS staging backend. It cannot be combined with \`--enableLocalMocks\`. For absolute cross-origin requests, contact Meticulous to add the required egress policy for your project.
+To test a live preview that serves the whole app, backend included, pass \`--previewUrlAgentSwarm\` with the preview's origin as \`--backendUrl\` instead: no build is needed, \`--backendProxyPaths\` defaults to \`/\`, and the preview URL Agent swarm run is reported apart from your regular Agent swarm runs, with its own status check and pull request comment.
+
+By default, the agent reads routes and flows to exercise from \`.meticulous/agent-swarm-instructions.md\` in the repository at the commit being tested. Use \`--instructionsFile\` to override those instructions for one CLI-launched run. With an uploaded frontend, \`--backendUrl\` proxies configured relative paths (\`--backendProxyPaths\`, default \`/api\`) to a public HTTPS staging backend. It cannot be combined with \`--enableLocalMocks\`. For absolute cross-origin requests, use \`--egressRule\` to pass an extra egress rule in action:domain[,domain...][:port] form for this launch, evaluated after the project's saved rules. Use \`--hostRewriteRegex\` to override the project's saved regex for rewriting absolute app-host URLs onto the app origin; an empty value disables the rewrite for that launch.
 
 With a container (\`--localImageTag\`), \`--backendUrl\` connects the image to the same staging backend: the origin is injected at runtime into the environment variable named by \`--backendUrlEnvVariable\` (default \`METICULOUS_BACKEND_URL\`), which your image must use to route its backend traffic. Passing \`--backendProxyPaths\` additionally opts into an experimental fronting server: the browser opens the proxy origin, backend paths go to staging and all other requests go to the container; routing inside the container through the injected variable is preferred, and server-side (SSR) fetches are only covered that way.
 
@@ -1044,207 +875,6 @@ When the browser opens, log in if your app requires it, then press Enter in the 
 
 ---
 
-## ci start-tunnel
-
-Start a secure tunnel for manual testing and debugging.
-
-### Synopsis
-
-\`\`\`bash
-npx @alwaysmeticulous/cli ci start-tunnel \\
-  --port=<port> \\
-  [options]
-\`\`\`
-
-### Required Flags
-
-#### \`--port\` / \`-p\`
-
-**Type**: Number
-**Description**: Port your local server is running on
-
-**Example**:
-\`\`\`bash
---port=3000
--p 3000
-\`\`\`
-
----
-
-### Optional Flags
-
-#### \`--apiToken\`
-
-**Type**: String
-**Description**: Your Meticulous API token
-**Note**: Required for authentication
-
----
-
-#### \`--localHost\` / \`-l\`
-
-**Type**: String
-**Description**: Host to tunnel to
-**Default**: localhost
-
-**Example**:
-\`\`\`bash
---localHost=127.0.0.1
-\`\`\`
-
----
-
-#### \`--localHttps\`
-
-**Type**: Boolean
-**Description**: Connect to local HTTPS server
-**Default**: false
-
-**Example**:
-\`\`\`bash
---localHttps
-\`\`\`
-
----
-
-#### \`--localCert\`
-
-**Type**: String (path)
-**Description**: Path to SSL certificate file
-
-**Example**:
-\`\`\`bash
---localCert="./certs/server.crt"
-\`\`\`
-
----
-
-#### \`--localKey\`
-
-**Type**: String (path)
-**Description**: Path to SSL key file
-
-**Example**:
-\`\`\`bash
---localKey="./certs/server.key"
-\`\`\`
-
----
-
-#### \`--localCa\`
-
-**Type**: String (path)
-**Description**: Path to CA file for self-signed certificates
-
-**Example**:
-\`\`\`bash
---localCa="./certs/ca.crt"
-\`\`\`
-
----
-
-#### \`--allowInvalidCert\`
-
-**Type**: Boolean
-**Description**: Ignore SSL certificate errors
-**Default**: false
-
-**Example**:
-\`\`\`bash
---allowInvalidCert
-\`\`\`
-
----
-
-#### \`--proxyAllUrls\`
-
-**Type**: Boolean
-**Description**: Proxy all URLs through tunnel
-**Default**: false
-
----
-
-#### \`--rewriteHostnameToAppUrl\`
-
-**Type**: Boolean
-**Description**: Rewrite request hostnames
-**Default**: false
-
----
-
-#### \`--enableDnsCache\`
-
-**Type**: Boolean
-**Description**: Enable DNS caching
-**Default**: false
-
----
-
-#### \`--printRequests\`
-
-**Type**: Boolean
-**Description**: Log all requests through tunnel
-**Default**: false
-
-**Example**:
-\`\`\`bash
---printRequests
-\`\`\`
-
----
-
-#### \`--http2Connections\`
-
-**Type**: Number
-**Description**: Number of HTTP/2 connections for multiplexing
-**Default**: Number of CPU cores
-
-**Example**:
-\`\`\`bash
---http2Connections=8
-\`\`\`
-
----
-
-### Complete Example
-
-\`\`\`bash
-# Basic tunnel
-npx @alwaysmeticulous/cli ci start-tunnel \\
-  --port=3000
-
-# With request logging
-npx @alwaysmeticulous/cli ci start-tunnel \\
-  --port=3000 \\
-  --printRequests
-
-# HTTPS tunnel with self-signed cert
-npx @alwaysmeticulous/cli ci start-tunnel \\
-  --port=3000 \\
-  --localHttps \\
-  --allowInvalidCert
-
-# Multi-server setup
-npx @alwaysmeticulous/cli ci start-tunnel \\
-  --port=3000 \\
-  --proxyAllUrls
-\`\`\`
-
----
-
-### Output
-
-When tunnel starts successfully:
-
-\`\`\`
-Your url is: https://abc123.meticulous.ai
-user: meticulous, password: ******
-\`\`\`
-
-Use these credentials to access your app through the tunnel.
-
----
-
 ## ci prepare
 
 Ensure a base test run exists before running tests.
@@ -1433,8 +1063,8 @@ Set API token via environment variable:
 export METICULOUS_API_TOKEN="met_live_abc123..."
 
 # Now can omit --apiToken flag
-npx @alwaysmeticulous/cli ci run-with-tunnel \\
-  --appUrl="http://localhost:3000"
+npx @alwaysmeticulous/cli ci upload-assets \\
+  --appDirectory="dist"
 \`\`\`
 
 ---
@@ -1446,9 +1076,9 @@ npx @alwaysmeticulous/cli ci run-with-tunnel \\
 \`\`\`yaml
 - name: Run Meticulous tests
   run: |
-    npx @alwaysmeticulous/cli ci run-with-tunnel \\
+    npx @alwaysmeticulous/cli ci upload-assets \\
       --apiToken="\${{ secrets.METICULOUS_API_TOKEN }}" \\
-      --appUrl="http://localhost:3000"
+      --appDirectory="dist"
 \`\`\`
 
 #### GitLab CI
@@ -1469,9 +1099,9 @@ script:
 Enable verbose logging:
 
 \`\`\`bash
-DEBUG=meticulous:* npx @alwaysmeticulous/cli ci run-with-tunnel \\
+DEBUG=meticulous:* npx @alwaysmeticulous/cli ci upload-assets \\
   --apiToken="$METICULOUS_API_TOKEN" \\
-  --appUrl="http://localhost:3000"
+  --appDirectory="dist"
 \`\`\`
 
 ---
@@ -1484,22 +1114,14 @@ Use in shell scripts:
 #!/bin/bash
 set -e
 
-# Start app
-npm start &
-APP_PID=$!
+# Build app
+npm run build
 
-# Wait for app
-npx wait-on http://localhost:3000
-
-# Run tests
-npx @alwaysmeticulous/cli ci run-with-tunnel \\
+# Upload the build and run tests
+npx @alwaysmeticulous/cli ci upload-assets \\
   --apiToken="$METICULOUS_API_TOKEN" \\
-  --appUrl="http://localhost:3000"
-
-# Cleanup
-kill $APP_PID
+  --appDirectory="dist"
 \`\`\`
-
 ---
 
 ### Machine-readable output
@@ -1594,20 +1216,8 @@ Upload sizes and part-by-part progress are not included in the JSON. Pass \`--lo
 
 ---
 
-### "Tunnel connection failed"
-
-**Cause**: Network/firewall issue
-
-**Solutions**:
-1. Check outbound HTTPS (443) is allowed
-2. Try \`--printRequests\` to debug
-3. Contact support if persists
-
----
-
 ## See Also
 
 - [GitHub Actions Setup](${GITHUB_ACTIONS_SETUP_URL}) - GitHub Actions configuration
-- [Tunnel Advanced Options](${TUNNEL_ADVANCED_OPTIONS_URL}) - Detailed tunnel configuration
 - [FAQ & Troubleshooting](${FAQ_AND_TROUBLESHOOTING_URL}) - Common issues and solutions
 `;

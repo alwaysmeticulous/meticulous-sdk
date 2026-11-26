@@ -359,7 +359,7 @@ const handler = async ({
 export const testRunDiffsCommand: CommandModule<unknown, Options> = {
   command: "test-run-diffs",
   describe:
-    "Get the list of screenshot diffs for a given test run (by default all diffs when there are at most five; above that, a selected representative subset in priority order). Outputs a priority-ordered TSV table with columns replayDiffId and screenshotName plus the requested additional columns. Pass --counts to print just the totals instead of the list.",
+    "Get the list of screenshot diffs for a given test run (by default all diffs when there are at most five; above that, a selected representative subset in priority order). Outputs a priority-ordered TSV table with columns replayDiffId and screenshotName plus the requested additional columns. Pass --counts to print just the totals instead of the list. Only sessions with differences appear here: use 'agent test-run-replays' for the replay IDs of every session the run replayed.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },
     testRunId: {

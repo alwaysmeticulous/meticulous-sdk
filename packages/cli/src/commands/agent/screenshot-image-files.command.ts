@@ -2,6 +2,7 @@ import { mkdir, readdir, stat, unlink } from "fs/promises";
 import { join } from "path";
 import {
   createClientWithOAuth,
+  type ReplayDiffScopeOptions,
   getScreenshotUrls,
 } from "@alwaysmeticulous/client";
 import {
@@ -13,8 +14,9 @@ import type { CommandModule } from "yargs";
 import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { requireIdArgument } from "./argument-validation.utils";
+import { replayDiffScopeOptions } from "./replay-diff-scope-options";
 
-interface Options {
+interface Options extends ReplayDiffScopeOptions {
   apiToken?: string | null | undefined;
   replayDiffId: string;
   screenshotName: string;
@@ -64,6 +66,8 @@ const downloadImage = async (
 const handler = async ({
   apiToken,
   replayDiffId,
+  project,
+  testRunId,
   screenshotName,
   json,
 }: Options): Promise<void> => {
@@ -75,7 +79,10 @@ const handler = async ({
     enableOAuthLogin: true,
   });
 
-  const urls = await getScreenshotUrls(client, replayDiffId, screenshotName);
+  const urls = await getScreenshotUrls(client, replayDiffId, screenshotName, {
+    project,
+    testRunId,
+  });
 
   const dir = getAgentImagesDir();
   await mkdir(dir, { recursive: true });
@@ -138,6 +145,7 @@ export const imageFilesCommand: CommandModule<unknown, Options> = {
         'The screenshot name, as listed in the screenshotName column of `agent test-run-diffs` (e.g. "after-event-5" or "end-state").',
       demandOption: true,
     },
+    ...replayDiffScopeOptions,
   },
   handler: wrapHandler(handler),
 };

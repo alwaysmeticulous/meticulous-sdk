@@ -14,4 +14,11 @@ export interface RecordedSession {
    * have been selected, so `null` (or absent) for everything else.
    */
   description?: string | null;
+
+  /**
+   * Changes whenever ingestion rewrites the session's data. Returned by the
+   * `GET sessions/:id` REST endpoint. Absent for sessions without one and
+   * from older backends.
+   */
+  s3ObjectsHash?: string;
 }

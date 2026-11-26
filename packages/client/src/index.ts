@@ -203,10 +203,21 @@ export type {
   TestRunsResponse,
 } from "./api/agent-test-runs.types";
 export {
+  DEFAULT_TEST_RUN_REPLAYS_LIMIT,
+  getTestRunReplays,
+  MAX_TEST_RUN_REPLAYS_LIMIT,
+} from "./api/agent-test-run-replays.api";
+export type {
+  GetTestRunReplaysOptions,
+  TestRunReplay,
+  TestRunReplaysResponse,
+} from "./api/agent-test-run-replays.api";
+export {
   getScreenshotDom,
   getScreenshotDomDiffText,
 } from "./api/agent-screenshot-dom.api";
 export { parseNthChildPath } from "./api/agent-screenshot-dom.utils";
+export type { ReplayDiffScopeOptions } from "./api/agent-replay-diff-scope";
 export {
   DEFAULT_SCREENSHOT_DOM_LIMIT,
   MAX_SCREENSHOT_DOM_LIMIT,
@@ -282,12 +293,13 @@ export {
   getPrDiffForTestRun,
 } from "./api/source-code.api";
 export {
-  ExecuteSecureTunnelTestRunOptions,
-  executeSecureTunnelTestRun,
   getTestRun,
   getTestRunNetworkPatchingResult,
   markTestRunExpectsCustomChecks,
   getTestRunData,
+  getTestRunCoverageLcov,
+  CoverageLcovResponse,
+  CoverageLcovScope,
   getTestRunReplayDiffs,
   GetLatestTestRunOptions,
   getLatestTestRunResults,
@@ -437,6 +449,7 @@ export {
   CompleteAgenticSessionGenerationParams,
   CompleteAgenticSessionGenerationResponse,
   AgenticAppTarget,
+  AgentSwarmEgressRule,
   AgenticAssetsAppTarget,
   AgenticLiveBackend,
   AgenticAssetsBackend,
@@ -460,6 +473,7 @@ export {
   AgenticRunNotTestable,
   AgenticRunRetiredTestcase,
   AgenticRunMockDataProvenance,
+  AgenticRunCaseAppLoadOverrides,
   AgenticRunBackendFailureKind,
   AgenticRunBackendFailure,
   AgenticRunEvidence,
@@ -480,6 +494,9 @@ export {
   AgenticRunCaseCheck,
   AgenticRunChecksBlob,
   AgenticRunCaseRelevance,
+  AGENTIC_RUN_CRITICAL_FLOW_REPAIR_ACTIONS,
+  AgenticRunCriticalFlowRepairAction,
+  AgenticRunCriticalFlowMetadata,
   AgenticRunResultCase,
   AgenticRunComparisonVerdict,
   AgenticRunComparisonDefect,
@@ -539,6 +556,8 @@ export {
   CreateLocalAgentSwarmRunResponse,
   createLocalAgentSwarmRun,
   AgenticRunModelUsage,
+  AgenticRunModelDegradation,
+  AgenticRunModelDegradationReason,
   AgenticRunTraceEventKind,
   AgenticRunTraceEvent,
   AgenticRunTraceUsage,
@@ -552,8 +571,11 @@ export {
   AgenticRunResultBlob,
   AgenticResultArtifactKind,
   ReportAgenticRunResultResponse,
+  RequestAgenticBackendSpansUploadsParams,
+  RequestAgenticBackendSpansUploadsResponse,
   RequestAgenticResultUploadParams,
   RequestAgenticResultUploadResponse,
+  requestAgenticBackendSpansUploads,
   requestAgenticResultUpload,
   CompleteAgenticRunResultParams,
   completeAgenticRunResult,
@@ -599,9 +621,15 @@ export {
   AgentSwarmMemoryCandidate,
   AgentSwarmMemoryCandidateAudience,
   AgentSwarmMemoryCandidateCategory,
+  AgentSwarmMemoryAgentFeedback,
+  AgentSwarmMemoryFeedback,
+  AgentSwarmMemoryMismatch,
+  AgentSwarmMemoryProposedEdit,
+  AgentSwarmMemoryUse,
   RequestAgenticProgressUploadParams,
   RequestAgenticProgressUploadResponse,
   requestAgenticProgressUpload,
+  AgentSwarmRunKind,
 } from "./api/agentic-session-generation.api";
 export {
   CatalogMaintenanceWorkflowStatusResponse,

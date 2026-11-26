@@ -168,8 +168,8 @@ const parseUrl = (url: string): URL | undefined => {
   }
 };
 
-// Paths rather than whole URLs: the replayed app's host (a tunnel) never
-// matches the recorded one.
+// Paths rather than whole URLs: the replayed app's host (e.g. a preview URL)
+// never matches the recorded one.
 const getPath = (url: string): string =>
   parseUrl(url)?.pathname ?? url.split("?")[0];
 

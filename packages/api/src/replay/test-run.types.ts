@@ -1,8 +1,6 @@
 import type { Project } from "../project.types";
 import type { S3Location } from "../s3.types";
-import type { CompanionAssetsInfo } from "../sdk-bundle-api/sdk-to-bundle/companion-assets";
 import type { ScreenshotDiffOptions } from "../sdk-bundle-api/sdk-to-bundle/screenshotting-options";
-import type { TestRunTriggerDebugContext } from "./test-run-debug-context.types";
 
 /**
  * Relevance of a session
@@ -422,24 +420,4 @@ export interface TestRunNetworkPatchingResult {
    * is true, and report against `effectiveTestRunId` once it is false.
    */
   isNetworkPatchingInProgress: boolean;
-}
-
-export interface ExecuteSecureTunnelTestRunOptions {
-  headSha: string;
-  tunnelUrl: string;
-  basicAuthUser: string;
-  basicAuthPassword: string;
-  environment: string;
-  isLockable: boolean;
-  companionAssetsInfo?: CompanionAssetsInfo;
-  pullRequestHostingProviderId?: string;
-  postComment?: boolean;
-  debugContext?: TestRunTriggerDebugContext;
-}
-
-export interface ExecuteSecureTunnelTestRunResponse {
-  testRun?: TestRun;
-  deploymentId: string;
-  message?: string;
-  commentsDisabledForAuthor?: boolean;
 }

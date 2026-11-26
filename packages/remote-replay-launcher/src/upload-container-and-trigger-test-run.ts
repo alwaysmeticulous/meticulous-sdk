@@ -1,7 +1,7 @@
 import { initLogger, logNotice } from "@alwaysmeticulous/common";
 import type {
   UploadContainerAndTriggerTestRunOptions,
-  ExecuteRemoteTestRunResult,
+  UploadAndTriggerTestRunResult,
 } from "./types";
 import { uploadContainer } from "./upload-container";
 import {
@@ -20,7 +20,7 @@ export const uploadContainerAndTriggerTestRun = async ({
   companionAssets,
   projectId,
   debugContext,
-}: UploadContainerAndTriggerTestRunOptions): Promise<ExecuteRemoteTestRunResult> => {
+}: UploadContainerAndTriggerTestRunOptions): Promise<UploadAndTriggerTestRunResult> => {
   const logger = initLogger();
 
   const result = await uploadContainer({
@@ -36,7 +36,7 @@ export const uploadContainerAndTriggerTestRun = async ({
     ...(debugContext ? { debugContext } : {}),
   });
 
-  let skipReason: ExecuteRemoteTestRunResult["skipReason"];
+  let skipReason: UploadAndTriggerTestRunResult["skipReason"];
   let skipMessage: string | undefined;
   if (result.testRun) {
     const organizationName = encodeURIComponent(

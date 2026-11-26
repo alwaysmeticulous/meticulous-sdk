@@ -66,6 +66,28 @@ describe("unzipSingleEntry", () => {
     expect(await unzipSingleEntryToString(bytes, "big.txt")).toBe(large);
   });
 
+  it("caps decompressed output even when its archive is small", async () => {
+    const zip = new JSZip();
+    zip.file("large.txt", "x".repeat(100_000));
+    const bytes = await zip.generateAsync({
+      type: "uint8array",
+      compression: "DEFLATE",
+    });
+
+    expect(bytes.byteLength).toBeLessThan(1000);
+    await expect(
+      unzipSingleEntryToString(bytes, "large.txt", { maxBytes: 1000 }),
+    ).rejects.toThrow("exceeds 1000 bytes");
+  });
+
+  it("allows JSON exactly at the decompressed size limit", async () => {
+    const bytes = await makeZip((zip) => zip.file("data.json", '{"ok":true}'));
+
+    expect(
+      await unzipSingleEntryToJson(bytes, "data.json", { maxBytes: 11 }),
+    ).toEqual({ ok: true });
+  });
+
   it("ignores directory entries alongside the file", async () => {
     const bytes = await makeZip((zip) => {
       zip.folder("nested");

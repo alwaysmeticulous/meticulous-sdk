@@ -12,15 +12,7 @@ const distDir = join(packageRoot, "dist");
 const result = await build({
   absWorkingDir: packageRoot,
   bundle: true,
-  entryPoints: [
-    { in: "src/index.ts", out: "index" },
-    {
-      // The tunnel client forks cluster workers from this file, resolved next
-      // to its own module; in the bundle that is dist/.
-      in: require.resolve("@alwaysmeticulous/tunnels-client/dist/lib/tunnel-worker.entrypoint.js"),
-      out: "tunnel-worker.entrypoint",
-    },
-  ],
+  entryPoints: [{ in: "src/index.ts", out: "index" }],
   // Read by src/bundled-assets.ts to locate the assets copied below.
   define: { "process.env.METICULOUS_CLI_BUNDLED": '"true"' },
   format: "cjs",
@@ -74,8 +66,6 @@ const optionalRuntimeImports = new Set([
   // when these modules are absent.
   "cpu-features",
   "bufferutil",
-  "macos-temperature-sensor",
-  "osx-temperature-sensor",
   "utf-8-validate",
   "./crypto/build/Release/sshcrypto.node",
 ]);

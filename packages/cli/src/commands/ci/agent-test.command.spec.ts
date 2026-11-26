@@ -1,3 +1,5 @@
+import { access, readFile } from "fs/promises";
+import { join } from "path";
 import type * as Client from "@alwaysmeticulous/client";
 import type * as Common from "@alwaysmeticulous/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -468,4 +470,182 @@ it("parses --previewUrl for a single preview launch", async () => {
   expect(mocks.generateSessions).toHaveBeenCalledWith(
     expect.objectContaining({ previewUrl: "https://preview.example.com" }),
   );
+});
+
+describe("ci agent-test --egressRule", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("parses and forwards repeated launch egress rules", async () => {
+    await runHandler({
+      assetsDir: "dist",
+      egressRule: [
+        "allow:js.stripe.com,fonts.googleapis.com:443,8443",
+        "deny:10.0.0.0/8",
+      ],
+    });
+
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        egressRules: [
+          {
+            type: "allow",
+            domains: ["js.stripe.com", "fonts.googleapis.com"],
+            ports: [443, 8443],
+          },
+          { type: "deny", ipRanges: ["10.0.0.0/8"] },
+        ],
+      }),
+    );
+  });
+
+  it("rejects an invalid action before launching", async () => {
+    await expect(
+      runHandler({ assetsDir: "dist", egressRule: ["maybe:example.com"] }),
+    ).rejects.toThrow("action must be allow or deny");
+    expect(mocks.generateSessions).not.toHaveBeenCalled();
+  });
+});
+
+describe("ci agent-test --hostRewriteRegex", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("parses and forwards the launch override", async () => {
+    const parsed = await parseAgentTest([
+      "--assetsDir",
+      "dist",
+      "--hostRewriteRegex",
+      "(^|\\.)example\\.com$",
+    ]);
+    expect(parsed?.["hostRewriteRegex"]).toBe("(^|\\.)example\\.com$");
+
+    await runHandler(parsed!);
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hostRewriteRegex: "(^|\\.)example\\.com$",
+      }),
+    );
+  });
+
+  it("forwards an empty override to disable the saved rewrite", async () => {
+    await runHandler({ assetsDir: "dist", hostRewriteRegex: "" });
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({ hostRewriteRegex: "" }),
+    );
+  });
+
+  it("rejects an invalid regex before launching", async () => {
+    await expect(
+      runHandler({ assetsDir: "dist", hostRewriteRegex: "[" }),
+    ).rejects.toThrow("Invalid --hostRewriteRegex");
+    expect(mocks.generateSessions).not.toHaveBeenCalled();
+  });
+});
+
+describe("ci agent-test --previewUrlAgentSwarm", () => {
+  const PREVIEW = "https://pr-12.preview.example.com";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("launches against the live preview with a placeholder build, proxying every path", async () => {
+    let placeholderIndex: string | undefined;
+    mocks.generateSessions.mockImplementationOnce((async ({
+      assetsDirectory,
+    }: {
+      assetsDirectory: string;
+    }) => {
+      placeholderIndex = await readFile(
+        join(assetsDirectory, "index.html"),
+        "utf8",
+      );
+      return { agenticRunId: "swarmrun1", swarmKind: "preview-url" };
+    }) as never);
+    const parsed = await parseAgentTest([
+      "--previewUrlAgentSwarm",
+      "--backendUrl",
+      PREVIEW,
+    ]);
+
+    await runHandler(parsed!);
+
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        swarmKind: "preview-url",
+        assetsDirectory: expect.any(String),
+        backend: expect.objectContaining({ url: PREVIEW, proxyPaths: ["/"] }),
+      }),
+    );
+    expect(placeholderIndex).toBe("<!doctype html>\n");
+    const [{ assetsDirectory }] = mocks.generateSessions.mock
+      .calls[0] as unknown as [{ assetsDirectory: string }];
+    await expect(access(assetsDirectory)).rejects.toThrow();
+    expect(loggerMock.warn).not.toHaveBeenCalled();
+  });
+
+  it("uploads the given --assetsDir instead of a placeholder", async () => {
+    await runHandler({
+      previewUrlAgentSwarm: true,
+      assetsDir: "dist",
+      backendUrl: PREVIEW,
+      backendProxyPaths: ["/"],
+    });
+
+    expect(mocks.generateSessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        swarmKind: "preview-url",
+        assetsDirectory: "dist",
+      }),
+    );
+  });
+
+  it.each([
+    ["without --backendUrl", {}, /needs --backendUrl/],
+    [
+      "with --previewUrl",
+      { backendUrl: PREVIEW, previewUrl: PREVIEW },
+      /can't be combined/,
+    ],
+    [
+      "with --localImageTag",
+      { backendUrl: PREVIEW, localImageTag: "app:latest" },
+      /can't be combined/,
+    ],
+    [
+      "with proxy paths that leave the uploaded build serving pages",
+      { backendUrl: PREVIEW, backendProxyPaths: ["/api"] },
+      /serve every path/,
+    ],
+  ])("refuses a launch %s", async (_name, options, error) => {
+    await expect(
+      runHandler({ previewUrlAgentSwarm: true, ...options }),
+    ).rejects.toThrow(error);
+    expect(mocks.generateSessions).not.toHaveBeenCalled();
+  });
+
+  it("warns when the backend launched a regular run instead, and prints the kind it reported", async () => {
+    mocks.generateSessions.mockResolvedValueOnce({
+      agenticRunId: "swarmrun1",
+    } as never);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await runHandler({
+      previewUrlAgentSwarm: true,
+      backendUrl: PREVIEW,
+      json: true,
+    });
+
+    expect(loggerMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("launched a regular Agent swarm run"),
+    );
+    expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toEqual({
+      swarmRunId: "swarmrun1",
+      commitSha: "abc123",
+    });
+    log.mockRestore();
+  });
 });

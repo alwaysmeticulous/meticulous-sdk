@@ -23,7 +23,7 @@ describe("formatPollyReplayDetail", () => {
       formatPollyReplayDetail({
         result: "success",
         pollyRequest: har(
-          "https://tunnel.example/graphql",
+          "https://replay.example/graphql",
           {},
           JSON.stringify({ operationName: "GetUser" }),
         ),
@@ -31,7 +31,7 @@ describe("formatPollyReplayDetail", () => {
         transformationsApplied: ["id"],
       }),
     ).toBe(
-      "POST https://tunnel.example/graphql op=GetUser -> 200 (success) rec=#3@17:04:30.123 match=exact",
+      "POST https://replay.example/graphql op=GetUser -> 200 (success) rec=#3@17:04:30.123 match=exact",
     );
   });
 
@@ -39,7 +39,7 @@ describe("formatPollyReplayDetail", () => {
     const withSteps = (steps: string[]) =>
       formatPollyReplayDetail({
         result: "success",
-        pollyRequest: har("https://tunnel.example/api/me"),
+        pollyRequest: har("https://replay.example/api/me"),
         matchedRequest: har("https://app.example.com/api/me"),
         transformationsApplied: steps,
       });
@@ -61,7 +61,7 @@ describe("formatPollyReplayDetail", () => {
     expect(
       formatPollyReplayDetail({
         result: "success",
-        pollyRequest: har("https://tunnel.example/api/deployments?page=1"),
+        pollyRequest: har("https://replay.example/api/deployments?page=1"),
         matchedRequest: har("https://app.example.com/api/tickets?status=open", {
           _meticulousNetworkPatched: "db-patch-direct",
         }),
@@ -73,7 +73,7 @@ describe("formatPollyReplayDetail", () => {
         ],
       }),
     ).toBe(
-      "POST https://tunnel.example/api/deployments?page=1 -> 200 (success) rec=#3@17:04:30.123 SERVED-OTHER-URL=/api/tickets?status=open match=loose:fuzzed-url-right-0 BODY-IGNORED repair=db-patch-direct",
+      "POST https://replay.example/api/deployments?page=1 -> 200 (success) rec=#3@17:04:30.123 SERVED-OTHER-URL=/api/tickets?status=open match=loose:fuzzed-url-right-0 BODY-IGNORED repair=db-patch-direct",
     );
   });
 
@@ -81,22 +81,22 @@ describe("formatPollyReplayDetail", () => {
     expect(
       formatPollyReplayDetail({
         result: "success",
-        pollyRequest: har("https://tunnel.example/api/me"),
+        pollyRequest: har("https://replay.example/api/me"),
         matchedRequest: har("https://app.example.com/api/me"),
         matchIndex: { kind: "matched", parts: [] },
       }),
     ).toBe(
-      "POST https://tunnel.example/api/me -> 200 (success) rec=#3@17:04:30.123 match=index:matched",
+      "POST https://replay.example/api/me -> 200 (success) rec=#3@17:04:30.123 match=index:matched",
     );
     expect(
       formatPollyReplayDetail({
         result: "failure",
-        pollyRequest: har("https://tunnel.example/api/new"),
+        pollyRequest: har("https://replay.example/api/new"),
         matchedRequest: null,
         matchIndex: { kind: "no-match", reason: "no-candidates", parts: [] },
       }),
     ).toBe(
-      "POST https://tunnel.example/api/new -> (failure) match=index:no-match(no-candidates)",
+      "POST https://replay.example/api/new -> (failure) match=index:no-match(no-candidates)",
     );
   });
 });

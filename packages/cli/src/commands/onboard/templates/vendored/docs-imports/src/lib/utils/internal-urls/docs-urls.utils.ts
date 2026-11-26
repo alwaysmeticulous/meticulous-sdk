@@ -134,6 +134,9 @@ export const BUILT_IN_CHECKS_URL = "/docs/built-in-checks";
 export const BUILT_IN_CHECKS_ACCESSIBILITY_URL =
   "/docs/built-in-checks/accessibility";
 
+export const BUILT_IN_CHECKS_AI_SLOP_PATTERNS_URL =
+  "/docs/built-in-checks/ai-slop-patterns";
+
 export const BUILT_IN_CHECKS_NETWORK_REQUESTS_URL =
   "/docs/built-in-checks/network-requests";
 
@@ -175,16 +178,12 @@ export const TROUBLESHOOTING_FAILED_SIMULATIONS_STEPS_URL = `/docs/how-to/troubl
 export const COMPANION_ASSETS_ADVANCED_URL =
   "/docs/how-to/companion-assets-advanced";
 
-export const TUNNEL_ADVANCED_OPTIONS_URL =
-  "/docs/how-to/tunnel-advanced-options";
-
 export const INCREMENTAL_ASSET_UPLOAD_URL =
   "/docs/how-to/incremental-asset-upload";
 
 export const FILTER_SESSIONS_BY_START_URL_URL =
   "/docs/how-to/filter-sessions-by-start-url";
 
-// Framework-specific guides
 export const NEXTJS_PAGES_ROUTER_URL = "/docs/frameworks/nextjs/pages-router";
 
 export const REACT_VITE_URL = "/docs/frameworks/react/vite";
@@ -195,7 +194,6 @@ export const VUE_VITE_URL = "/docs/frameworks/vue/vite";
 
 export const ANGULAR_CLI_URL = "/docs/frameworks/angular/angular-cli";
 
-// Concepts
 export const ARCHITECTURE_OVERVIEW_URL = "/docs/concepts/architecture-overview";
 
 /** Alias for {@link NETWORK_STUBBING_EXPLANATION_URL}. */
@@ -204,7 +202,6 @@ export const NETWORK_RECORDING_AND_PATCHING_URL =
 
 export const GLOSSARY_URL = "/docs/concepts/glossary";
 
-// Agents
 export const AGENTS_SETUP_URL = "/docs/agents/setup";
 
 /**
@@ -223,10 +220,8 @@ export const AGENTS_MCP_SERVER_URL = "/docs/agents/mcp-server";
 
 export const AGENTS_SKILLS_URL = "/docs/agents/skills";
 
-// App
 export const USER_SETTINGS_URL = "/user-settings";
 
-// Reference
 export const CLI_COMMANDS_URL = "/docs/reference/cli-commands";
 
 export const ENVIRONMENT_VARIABLES_URL =
@@ -235,8 +230,8 @@ export const ENVIRONMENT_VARIABLES_URL =
 export const PERFORMANCE_API_URL = "/docs/reference/performance-api";
 
 export const ADDITIONAL_GUIDES = {
-  GETTING_STARTED_BACKEND_TESTING_URL:
-    "/docs/additional-guides/getting-started-backend-testing",
+  GETTING_STARTED_SSR_TESTING_URL:
+    "/docs/additional-guides/getting-started-ssr-testing",
   INSTALL_RECORDER_SCRIPT_FOR_BACKEND_TESTING_URL:
     "/docs/additional-guides/recorder-script-backend-testing",
   INSTALL_BACKEND_RECORDER_URL: "/docs/additional-guides/backend-recorder",
@@ -252,6 +247,8 @@ export const ADDITIONAL_GUIDES = {
 };
 
 export const ADDITIONAL_GUIDES_URL = "/docs/additional-guides";
+
+export const CRITICAL_FLOWS_URL = "/docs/additional-guides/critical-flows";
 
 export const USE_CUSTOM_EVENT_API_URL = "/docs/how-to/use-custom-event-api";
 

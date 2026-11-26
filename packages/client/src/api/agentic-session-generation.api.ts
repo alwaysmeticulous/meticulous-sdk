@@ -1,3 +1,4 @@
+import type { FlagOverrideInjectionRecord } from "@alwaysmeticulous/api";
 import type { MeticulousClient } from "../types/client.types";
 import type {
   ContainerEnvVariable,
@@ -112,7 +113,27 @@ export type AgenticAppTarget =
   | AgenticDeploymentAppTarget
   | AgenticUrlAppTarget;
 
+export interface AgentSwarmEgressRule {
+  type: "allow" | "deny";
+  domains?: string[];
+  ipRanges?: string[];
+  ports?: number[];
+}
+
+/**
+ * Which Agent swarm a run belongs to. `preview-url` runs drive a live preview
+ * that serves every path (an assets target whose staging backend proxies `/`)
+ * and are configured, reported and superseded apart from regular runs.
+ */
+export type AgentSwarmRunKind = "regular" | "preview-url";
+
 export interface CompleteAgenticSessionGenerationParams extends ProjectIdentifier {
+  /** `regular` when absent. */
+  swarmKind?: AgentSwarmRunKind;
+  /** Extra browser egress rules for this launch, after the project's saved rules. */
+  egressRules?: AgentSwarmEgressRule[];
+  /** Overrides the project's Agent swarm host-rewrite regex for this launch. */
+  hostRewriteRegex?: string;
   commitSha: string;
   /** Server-minted id of instructions uploaded for this trigger, if any. */
   instructionsId?: string;
@@ -138,6 +159,11 @@ export interface CompleteAgenticSessionGenerationParams extends ProjectIdentifie
 export interface CompleteAgenticSessionGenerationResponse {
   /** The backend-minted id for the launched agentic session generation run. */
   agenticRunId?: string;
+  /**
+   * The launched run's kind. Absent from backends that predate run kinds,
+   * which launch every run as a regular one.
+   */
+  swarmKind?: AgentSwarmRunKind;
   message?: string;
 }
 
@@ -942,8 +968,9 @@ export interface AgenticRunCaseWarning {
   /**
    * `soft-mark`: a mark too weak to fail on. `state`: a state the agent did
    * not call expected. `unattributed`: looks broken, not traced to the
-   * change. `unrelated`: looks broken, and the agent says the change did not
-   * cause it. `agent`: the case agent's own. `coverage`: screenshots the
+   * change. `unrelated`: no longer written (the change did not cause it, so it
+   * is not worth a look); older results may have it. `agent`: the case
+   * agent's own. `coverage`: screenshots the
    * visual review did not reach.
    */
   source:
@@ -956,6 +983,11 @@ export interface AgenticRunCaseWarning {
   stepIndex?: number;
   screenshotName?: string;
   markId?: string;
+  /**
+   * Where on the screenshot an `agent` warning is, as fractions of it,
+   * located from text the agent quoted; a mark's warning is where its mark is.
+   */
+  box?: AgenticRunChangedRegion;
 }
 
 /**
@@ -1316,6 +1348,53 @@ export interface AgenticRunPropertyResult {
   stepIndices: number[];
 }
 
+/**
+ * What a session's run changed about how the app boots, in a way replay does
+ * not reproduce. Names only: header values can be credentials.
+ */
+export interface AgenticRunCaseAppLoadOverrides {
+  /** Headers added to the app's own document requests. */
+  navigationRequestHeaders?: string[];
+  /** A script ran in each of the app's pages before the page's own scripts. */
+  appInitScript?: true;
+  /** Paths of the app's own scripts and stylesheets served edited. */
+  rewrittenAppResources?: string[];
+}
+
+export const AGENTIC_RUN_CRITICAL_FLOW_REPAIR_ACTIONS = [
+  "replayed",
+  "recompile-triggered",
+  "repaired-stale",
+  "repaired-intended",
+  "repaired-superseded",
+  "invariant-violation",
+  "replay-failed",
+  "repair-failed",
+  "repair-blocked",
+] as const;
+
+export type AgenticRunCriticalFlowRepairAction =
+  (typeof AGENTIC_RUN_CRITICAL_FLOW_REPAIR_ACTIONS)[number];
+
+/**
+ * Critical flow provenance and repair verdict for a case produced by the
+ * critical-flow replay suite. Absent for non-critical-flow cases.
+ */
+export interface AgenticRunCriticalFlowMetadata {
+  flowDescriptionId: string;
+  testcaseId?: string;
+  flowTitle?: string;
+  flowDescription?: string;
+  /** Whether the flow is critical; absent in older blobs means critical. */
+  isCritical?: boolean;
+  repairAction?: AgenticRunCriticalFlowRepairAction;
+  /**
+   * Proposed replacement flow description when `repairAction` is
+   * `"repaired-intended"`; automatically promoted when the PR merges.
+   */
+  proposedFlowDescription?: string;
+}
+
 export interface AgenticRunResultCase {
   /** Short human-readable name of the flow, unique within this run. */
   title: string;
@@ -1380,6 +1459,21 @@ export interface AgenticRunResultCase {
     string,
     Record<string, string | boolean>
   >;
+  /**
+   * Per-session forced-flag injection and usage telemetry for each cited
+   * session whose run forced flags, keyed by session id (1:1 with
+   * `injectionsByReplay` on test runs). Worker-computed per run — never
+   * declared by the agent. Absent on blobs from older workers and cases whose
+   * runs forced no flags.
+   */
+  injectionsBySessionId?: Record<string, FlagOverrideInjectionRecord>;
+  /**
+   * App load overrides each cited session's own run applied, keyed by session id.
+   * Replay cannot reproduce them, so these sessions never enter session
+   * selection. Worker-computed per run. Absent on blobs from older workers and
+   * cases whose runs applied none.
+   */
+  appLoadOverridesBySessionId?: Record<string, AgenticRunCaseAppLoadOverrides>;
   /** Why this case was worth testing, e.g. which changed code it targets. */
   rationale?: string;
   /**
@@ -1400,6 +1494,14 @@ export interface AgenticRunResultCase {
   relevance?: AgenticRunCaseRelevance;
   /** One sentence backing `relevance`, naming the evidence that decided it. */
   relevanceRationale?: string;
+  /**
+   * True when the planner built the case to carry out a check the pull
+   * request description or the project's instructions explicitly asked for,
+   * such as an acceptance criterion. Readers show a requested case's outcome
+   * whatever its `relevance`. Absent for cases the agent chose itself and for
+   * blobs from older workers.
+   */
+  explicitlyRequested?: boolean;
   /** Independent review of the case agent's original failed verdict. */
   check?: AgenticRunCaseCheck;
   /** Whether the case drove the PR's base deployment alongside its head. */
@@ -1442,6 +1544,19 @@ export interface AgenticRunResultCase {
    * Never part of `sessionIds`, so they are not replayed or selected.
    */
   baseSessionIds?: string[];
+  /**
+   * Critical flow provenance and repair verdict for cases produced by the
+   * critical-flow replay suite. Absent for non-critical-flow cases.
+   */
+  criticalFlow?: AgenticRunCriticalFlowMetadata;
+  /**
+   * Active execution time spent on this case in milliseconds (for generated
+   * cases: sum of active attempts including retries, excluding queue waits and
+   * failure checks; for saved-flow cases: deterministic browser replay time
+   * only). Absent for blobs from older workers, carried-forward or
+   * never-started cases, and repaired or donor-expired saved flows.
+   */
+  durationMs?: number;
   /**
    * @deprecated Legacy workers may have included free-form notes. New workers
    * report step outcomes instead.
@@ -1534,6 +1649,72 @@ export interface AgentSwarmMemoryCandidate {
   dismissSelector?: string;
 }
 
+/** A memory entry (or `GUIDE.md`) that changed what an agent did, and how. */
+export interface AgentSwarmMemoryUse {
+  path: string;
+  how: string;
+}
+
+/** A change an agent proposed to a memory entry; consolidation decides whether it lands. */
+export type AgentSwarmMemoryProposedEdit =
+  | {
+      op: "create";
+      path: string;
+      description: string;
+      audiences?: AgentSwarmMemoryCandidateAudience[] | undefined;
+      body: string;
+      reason: string;
+    }
+  | {
+      op: "update";
+      path: string;
+      description?: string | undefined;
+      body: string;
+      reason: string;
+    }
+  | {
+      op: "edit";
+      path: string;
+      edits: Array<{ oldText: string; newText: string }>;
+      reason: string;
+    }
+  | { op: "delete"; path: string; reason: string };
+
+/** Where an agent's memory report disagreed with what it read. */
+export interface AgentSwarmMemoryMismatch {
+  kind:
+    | "used-not-read"
+    | "used-unknown-path"
+    | "edit-not-read"
+    | "delete-not-read"
+    | "edit-missing-path"
+    | "edit-not-applicable"
+    | "create-existing-path"
+    | "invalid-path"
+    | "invalid-edit"
+    | "guide-edit";
+  path: string;
+}
+
+/** One agent's memory activity in a run: a planner branch or a testcase. */
+export interface AgentSwarmMemoryAgentFeedback {
+  agentId: string;
+  role: AgentSwarmMemoryCandidateAudience;
+  title: string;
+  outcome?: string | undefined;
+  relevance?: string | undefined;
+  reads: string[];
+  used: AgentSwarmMemoryUse[];
+  edits: AgentSwarmMemoryProposedEdit[];
+  mismatches: AgentSwarmMemoryMismatch[];
+}
+
+/** A run's activity against the file-based project memory it was given. */
+export interface AgentSwarmMemoryFeedback {
+  snapshotVersion: number;
+  agents: AgentSwarmMemoryAgentFeedback[];
+}
+
 /** Coarse metadata about how the agentic run itself executed. */
 export interface AgenticRunModelUsage {
   /** Provider/model identifier reported by the runtime for this billed usage. */
@@ -1546,13 +1727,28 @@ export interface AgenticRunModelUsage {
   costUsd?: number;
 }
 
+export type AgenticRunModelDegradationReason =
+  | "saturated"
+  | "circuit_open"
+  | "all_open";
+
+/** One non-preferred assignment caused by a serving's capacity or health. */
+export interface AgenticRunModelDegradation {
+  role: "caseRunner" | "planner" | "checker" | "comparer";
+  preferredModel: string;
+  model: string;
+  reason: AgenticRunModelDegradationReason;
+}
+
 export interface AgenticRunMetadata {
   /** ISO timestamp the worker started the run. */
   startedAt?: string;
   /** ISO timestamp the worker finished driving and reported. */
   finishedAt?: string;
-  /** The model the agent ran on. */
+  /** The case runner's preferred model, before any failover. */
   model?: string;
+  /** Non-preferred assignments caused by capacity or health, deduplicated per role/model. */
+  modelDegradations?: AgenticRunModelDegradation[];
   /** Number of runTest invocations across the run. */
   iterations?: number;
   /** Who served each agent role, when the run chose them per role (local runs). */
@@ -1613,6 +1809,7 @@ export interface CreateLocalAgentSwarmRunResponse {
   /** The run's workflow token, for every worker callback. */
   apiToken: string;
   recordingToken: string;
+  customHostRewriteRegex?: string;
   organizationName: string;
   projectName: string;
   instructionsUrl?: string;
@@ -1812,6 +2009,11 @@ export interface AgenticRunResultBlob {
   summary?: AgenticRunSummary;
   /** Untrusted project-memory observations proposed during this run. */
   memoryCandidates?: AgentSwarmMemoryCandidate[];
+  /**
+   * Which memory entries the run's agents read and used, and the changes they
+   * proposed. Present only when the run was given file-based project memory.
+   */
+  memoryFeedback?: AgentSwarmMemoryFeedback;
   /** Present when the agent determined no browser flow can exercise the change. */
   notTestable?: AgenticRunNotTestable;
   /**
@@ -1846,7 +2048,9 @@ export type AgenticResultArtifactKind =
   | "coverage"
   | "traces"
   | "checks"
-  | "plan";
+  | "case_coverage"
+  | "plan"
+  | "project-files-usage";
 
 export interface RequestAgenticResultUploadParams extends ProjectIdentifier {
   /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
@@ -1879,6 +2083,37 @@ export const requestAgenticResultUpload = async ({
 }): Promise<RequestAgenticResultUploadResponse> => {
   const { data } = await client.post<RequestAgenticResultUploadResponse>(
     "agentic-session-generation/request-result-upload",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data;
+};
+
+export interface RequestAgenticBackendSpansUploadsParams extends ProjectIdentifier {
+  /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
+  agenticRunId: string;
+  /** Sessions the run recorded whose server spans it is about to upload. */
+  sessionIds: string[];
+}
+
+export interface RequestAgenticBackendSpansUploadsResponse {
+  /** A presigned PUT URL per session; each takes gzipped JSON. */
+  uploads: Record<string, { url: string }>;
+}
+
+/**
+ * Presigned PUTs for the server spans of sessions the run recorded on a
+ * backend whose interceptor keeps them, stored beside each session's data.
+ */
+export const requestAgenticBackendSpansUploads = async ({
+  client,
+  projectId,
+  ...body
+}: RequestAgenticBackendSpansUploadsParams & {
+  client: MeticulousClient;
+}): Promise<RequestAgenticBackendSpansUploadsResponse> => {
+  const { data } = await client.post<RequestAgenticBackendSpansUploadsResponse>(
+    "agentic-session-generation/request-backend-spans-uploads",
     body,
     projectIdQuery(projectId),
   );

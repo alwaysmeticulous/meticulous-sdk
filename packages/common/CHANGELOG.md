@@ -1,5 +1,13 @@
 # @alwaysmeticulous/common
 
+## 3.12.0
+
+### Minor Changes
+
+- [#18110](https://github.com/alwaysmeticulous/meticulous/pull/18110) [`b1fad61`](https://github.com/alwaysmeticulous/meticulous/commit/b1fad616e14c04f1c3780937a240c760222a4b75) Thanks [@joshivanhoe](https://github.com/joshivanhoe)! - Share the `meticulous try` candidate pull request scorer through `@alwaysmeticulous/common/candidate-prs`.
+
+- [#19172](https://github.com/alwaysmeticulous/meticulous/pull/19172) [`7ac7fff`](https://github.com/alwaysmeticulous/meticulous/commit/7ac7fff8549289a5cc96b94572977204c3b9ba95) Thanks [@narobertson42](https://github.com/narobertson42)! - Add the optional `s3ObjectsHash` field to `RecordedSession`: the session's data version, returned by `GET sessions/:id`.
+
 ## 3.9.0
 
 ### Patch Changes

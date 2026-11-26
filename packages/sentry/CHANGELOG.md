@@ -1,5 +1,14 @@
 # @alwaysmeticulous/sentry
 
+## 3.12.0
+
+### Patch Changes
+
+- [#18549](https://github.com/alwaysmeticulous/meticulous/pull/18549) [`ed3ebcc`](https://github.com/alwaysmeticulous/meticulous/commit/ed3ebccee04e4c688ee32cef580bb5f6c1247ab3) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Remove secure tunnels. Meticulous no longer runs tests through a tunnel, and tunnel test runs were already rejected by the backend. `ci run-with-tunnel` (and its `run-all-tests-in-cloud` alias) and `ci start-tunnel` now fail straight away with migration guidance. `executeRemoteTestRun` and `TunnelData` are removed from `@alwaysmeticulous/remote-replay-launcher`, and `executeSecureTunnelTestRun` from `@alwaysmeticulous/client` / `@alwaysmeticulous/api`. Use `ci upload-assets` for static builds or `ci upload-container` for apps that need a server instead. The onboarding agents and docs shipped with `meticulous onboard` now recommend those.
+
+- Updated dependencies [[`b1fad61`](https://github.com/alwaysmeticulous/meticulous/commit/b1fad616e14c04f1c3780937a240c760222a4b75), [`7ac7fff`](https://github.com/alwaysmeticulous/meticulous/commit/7ac7fff8549289a5cc96b94572977204c3b9ba95)]:
+  - @alwaysmeticulous/common@3.12.0
+
 ## 3.9.0
 
 ### Patch Changes

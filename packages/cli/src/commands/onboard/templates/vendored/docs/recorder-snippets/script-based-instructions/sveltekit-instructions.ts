@@ -5,8 +5,6 @@ import {
 import { ENSURE_RECORDER_CAPTURES_ALL_REQUESTS_URL } from "src/lib/utils/internal-urls/docs-urls.utils";
 import { SNIPPET_URL } from "../constants";
 
-// Tested on https://github.com/davjhan/guess-the-year-game
-// (note: you need to delete all davjhan-core references, or manually checkout the davjhan-core repo)
 export const svelteKitInstructions = (
   injectSessionIdHeader = false,
 ) => `**(A)** Add the Meticulous recorder script tag in a \`<svelte:head>\` tag at the top of your \`__layout.svelte\` file. It's important the script is the

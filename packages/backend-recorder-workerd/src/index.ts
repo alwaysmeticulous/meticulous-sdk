@@ -28,6 +28,7 @@ export type {
   KvOmittedReason,
   KvOperation,
   KvOperationEvent,
+  AgentSwarmTestingSessionSpans,
   OutboundFetchAgentSwarmTestingRequest,
   OutboundFetchAgentSwarmTestingResponse,
   OutboundFetchLookupRequest,
@@ -37,8 +38,10 @@ export type {
   ReplaySessionInfoResponse,
 } from "./protocol";
 export {
+  AGENT_SWARM_TESTING_RECORD_SPANS_ENV_KEY,
   AGENT_SWARM_TESTING_RUN_ID_ENV_KEY,
   AGENT_SWARM_TESTING_SIDECAR_URL_ENV_KEY,
+  BE_MOCK_ID_HEADER,
   BE_MOCK_PING_INTERVAL_MS,
   CAPTURED_HEADERS,
   FRONTEND_SESSION_ID_HEADER,
@@ -50,6 +53,7 @@ export {
   SIDECAR_AGENT_SWARM_TESTING_BE_MOCK_PATH,
   SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_FETCH_PATH,
   SIDECAR_AGENT_SWARM_TESTING_PASSTHROUGH_RESULT_PATH,
+  SIDECAR_AGENT_SWARM_TESTING_SPANS_PATH,
   SIDECAR_EVENTS_PATH,
   SIDECAR_PROTOCOL_VERSION,
   SIDECAR_PROTOCOL_VERSION_HEADER,
@@ -59,6 +63,19 @@ export {
   VIRTUAL_TIME_HEADER,
   WORKERD_SHIM_VERSION_HEADER,
 } from "./protocol";
+export type {
+  AgentSwarmTestingDataCall,
+  AgentSwarmTestingDataCallsMode,
+  AgentSwarmTestingDataCallTechnology,
+  BeMockDataCall,
+  BeMockDataCallAnswer,
+  OutboundCallAgentSwarmTestingRequest,
+  OutboundCallAgentSwarmTestingResponse,
+} from "./agent-swarm-data-calls";
+export {
+  AGENT_SWARM_TESTING_DATA_CALLS_ENV_KEY,
+  SIDECAR_AGENT_SWARM_TESTING_OUTBOUND_CALL_PATH,
+} from "./agent-swarm-data-calls";
 export { WORKERD_SHIM_VERSION } from "./version";
 export {
   MAX_BODY_CAPTURE_SIZE,

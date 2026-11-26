@@ -20,6 +20,7 @@ import { testRunsCommand } from "./test-runs.command";
 import { submitFeedbackCommand } from "./submit-feedback.command";
 import { testRunCheckCommand } from "./test-run-check.command";
 import { testRunDiffsCommand } from "./test-run-diffs.command";
+import { testRunReplaysCommand } from "./test-run-replays.command";
 import { testRunForCommitCommand } from "./test-run-for-commit.command";
 import {
   projectDailyStatsCommand,
@@ -51,6 +52,7 @@ export const agentCommand: CommandModule = {
       .command(checkCommentsCommand)
       .command(ignoreCheckCommand)
       .command(testRunDiffsCommand)
+      .command(testRunReplaysCommand)
       .command(imageFilesCommand)
       .command(imageUrlsCommand)
       .command(screenshotDomCommand)

@@ -1,5 +1,6 @@
 import {
   createClientWithOAuth,
+  type ReplayDiffScopeOptions,
   getDiffComments,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
@@ -8,8 +9,9 @@ import { printJson } from "../../command-utils/print-json";
 import { wrapHandler } from "../../command-utils/sentry.utils";
 import { requireIdArgument } from "./argument-validation.utils";
 import { printCommentThreadsTsv } from "./comments-tsv.utils";
+import { replayDiffScopeOptions } from "./replay-diff-scope-options";
 
-interface Options {
+interface Options extends ReplayDiffScopeOptions {
   apiToken?: string | null | undefined;
   replayDiffId: string;
   screenshotName: string;
@@ -20,6 +22,8 @@ interface Options {
 const handler = async ({
   apiToken,
   replayDiffId,
+  project,
+  testRunId,
   screenshotName,
   includeResolved,
   json,
@@ -33,6 +37,8 @@ const handler = async ({
   });
   const comments = await getDiffComments(client, replayDiffId, screenshotName, {
     includeResolved,
+    project,
+    testRunId,
   });
 
   if (json) {
@@ -66,6 +72,7 @@ export const diffCommentsCommand: CommandModule<unknown, Options> = {
         'The screenshot name, as listed in the screenshotName column of `agent test-run-diffs` (e.g. "after-event-5" or "end-state").',
       demandOption: true,
     },
+    ...replayDiffScopeOptions,
     includeResolved: {
       boolean: true,
       description:

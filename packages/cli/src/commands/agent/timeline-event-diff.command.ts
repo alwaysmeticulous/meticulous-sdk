@@ -1,5 +1,6 @@
 import {
   createClientWithOAuth,
+  type ReplayDiffScopeOptions,
   getTimelineEventDiff,
 } from "@alwaysmeticulous/client";
 import { initLogger } from "@alwaysmeticulous/common";
@@ -9,8 +10,9 @@ import { wrapHandler } from "../../command-utils/sentry.utils";
 import { requireIdArgument } from "./argument-validation.utils";
 import { logResponseNotes } from "./response-notes.utils";
 import { formatTimelineEventDiff } from "./timeline-event.utils";
+import { replayDiffScopeOptions } from "./replay-diff-scope-options";
 
-interface Options {
+interface Options extends ReplayDiffScopeOptions {
   apiToken?: string | null | undefined;
   replayDiffId: string;
   eventId: string;
@@ -21,6 +23,8 @@ interface Options {
 const handler = async ({
   apiToken,
   replayDiffId,
+  project,
+  testRunId,
   eventId,
   includeIdenticalFields,
   json,
@@ -35,6 +39,8 @@ const handler = async ({
 
   const response = await getTimelineEventDiff(client, replayDiffId, eventId, {
     includeIdenticalFields,
+    project,
+    testRunId,
   });
 
   const { notes: _notes, ...result } = response;
@@ -59,6 +65,7 @@ export const timelineEventDiffCommand: CommandModule<unknown, Options> = {
       description: "The replay diff ID.",
       demandOption: true,
     },
+    ...replayDiffScopeOptions,
     eventId: {
       string: true,
       description:

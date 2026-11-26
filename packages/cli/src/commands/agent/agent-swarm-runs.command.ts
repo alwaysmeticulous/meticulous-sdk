@@ -104,6 +104,7 @@ const handler = async ({
       { header: "status", value: (run) => run.status },
       { header: "commitSha", value: (run) => run.commitSha },
       { header: "prNumber", value: (run) => run.prNumber ?? "" },
+      { header: "swarmKind", value: (run) => run.swarmKind ?? "" },
       ...(includeCounts
         ? COUNT_COLUMNS.map(
             (header): Column => ({
@@ -142,7 +143,7 @@ export const agentSwarmRunsCommand: CommandModule<unknown, Options> = {
   describe:
     "Get the list of Agent swarm runs for a given project, newest first (default: limit to 100 runs). " +
     "Agent swarm is Meticulous's hosted agent that explores a pull request's build in a browser and reports pass/fail/blocked test flows. " +
-    "Outputs a TSV table with columns swarmRunId, createdAt, status, commitSha, prNumber plus the requested additional columns. " +
+    "Outputs a TSV table with columns swarmRunId, createdAt, status, commitSha, prNumber, swarmKind plus the requested additional columns. " +
     "A succeeded run can still contain failed cases: pass its swarmRunId to agent agent-swarm-run --swarmRunId for the run's cases.",
   builder: {
     apiToken: { string: true, description: "Meticulous API token." },

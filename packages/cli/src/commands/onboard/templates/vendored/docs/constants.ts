@@ -1,18 +1,18 @@
+import { GITHUB_APP_INSTALL_URL, GITHUB_APP_URL } from "@alwaysmeticulous/api";
 import { METICULOUS_SUPPORT_EMAIL } from "src/lib/next/next.constants";
 
 export const METICULOUS_VERCEL_INTEGRATION_INSTALL_URL =
   "https://vercel.com/integrations/meticulous";
 
-export const METICULOUS_GITHUB_APP_INSTALL_URL =
-  "https://github.com/apps/alwaysmeticulous/installations/new";
+export const METICULOUS_GITHUB_APP_URL = GITHUB_APP_URL;
+
+export const METICULOUS_GITHUB_APP_INSTALL_URL = GITHUB_APP_INSTALL_URL;
 
 export const WHERE_CAN_I_REACH_OUT_FOR_SUPPORT = `
   ### Where can I reach out for support?
 
   Reach out to [${METICULOUS_SUPPORT_EMAIL}](mailto:${METICULOUS_SUPPORT_EMAIL}) and we'll be happy to help.
   `;
-
-export const METICULOUS_DEBUG_PR_LABEL = "[meticulous debug]";
 
 export const SIMULATION_TAB_NAMES = {
   DEBUG_LOCALLY: "Debug Locally",
