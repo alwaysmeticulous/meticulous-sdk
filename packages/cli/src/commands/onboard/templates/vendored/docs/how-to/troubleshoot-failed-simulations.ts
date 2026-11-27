@@ -41,7 +41,7 @@ export const document = `---
 
   To verify whether the user session can be simulated accurately in the same environment in which it was recorded, you can:
 
-  1. Find a session from the **All Sessions** or **Selected Sessions** tab of your {% project_link %}Meticulous dashboard{% /project_link %}.
+  1. Find a session on the **Sessions** tab of your {% project_link %}Meticulous dashboard{% /project_link %}.
   2. Follow the command by clicking **Debug Locally** on the session page.
   3. Note that if the session was originally recorded on localhost then the \`--appUrl\` flag will be set to a localhost URL, and you'll
   need to serve your app on that same port locally to replay the session (or edit the \`--appUrl\`).

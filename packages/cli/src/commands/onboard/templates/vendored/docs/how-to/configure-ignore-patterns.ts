@@ -71,7 +71,7 @@ The slug is derived from your Meticulous project name using these steps:
 | \`apps/admin\` | \`.meticulousignore.apps-admin\` |
 | \`My App (v2)\` | \`.meticulousignore.my-app-v2\` |
 
-Your project name is shown in the Meticulous UI in the top-left of your project's page, and in the URL: \`app.meticulous.ai/projects/{org}/{project-name}\`.
+Your project name is shown in the Meticulous UI in the top-left of your project's page, and in the URL: \`app.meticulous.ai/organizations/{org}/projects/{project-name}\`.
 
 ${WHERE_CAN_I_REACH_OUT_FOR_SUPPORT}
 `;

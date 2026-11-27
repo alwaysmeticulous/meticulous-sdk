@@ -141,6 +141,7 @@ import type { Options } from "@alwaysmeticulous/recorder-plugin";
 | `inject`               | `"auto" \| "replace"`                                      | `"auto"`                                           | `"auto"` prepends a new `<script>` as the first child of `<head>`. `"replace"` swaps a placeholder script tag (see below).                                                                                |
 | `placeholderAttribute` | `string`                                                   | `"data-meticulous"`                                | Attribute name used to find the placeholder when `inject: "replace"`.                                                                                                                                     |
 | `snippetUrl`           | `string`                                                   | `"https://snippet.meticulous.ai/v1/meticulous.js"` | Override the snippet URL.                                                                                                                                                                                 |
+| `commitHash`           | `string`                                                   | `process.env.METICULOUS_APP_COMMIT_HASH`           | Git commit SHA of the app build. Emitted as `data-commit-hash`, so recorded sessions are tagged with the commit they were recorded on. Omitted when unset.                                                |
 | `attributes`           | `Record<string, string \| boolean \| null \| undefined>`   | `{}`                                               | Extra attributes on the `<script>` tag (e.g. `nonce`). `true` emits a boolean attribute; `false`/`null`/`undefined` skip it. Overrides any default attribute, including `data-is-production-environment`. |
 
 The plugin always emits `data-is-production-environment="true"` or
@@ -158,6 +159,23 @@ meticulous({
   },
 });
 ```
+
+### Tagging sessions with your app's commit
+
+Pass the commit SHA your app was built from, so each recorded session records
+which commit it ran on. Use a commit that stays in your repository, such as
+your hosting provider's commit variable:
+
+```ts
+meticulous({
+  recordingToken: "<your-recording-token>",
+  commitHash: process.env.VERCEL_GIT_COMMIT_SHA,
+});
+```
+
+Alternatively set `METICULOUS_APP_COMMIT_HASH` in the build environment. Avoid
+`GITHUB_SHA` on GitHub Actions `pull_request` builds: it is a temporary merge
+commit that GitHub deletes once the pull request closes.
 
 ### Controlling when the recorder loads
 

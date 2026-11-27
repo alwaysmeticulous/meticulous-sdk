@@ -8,6 +8,7 @@ import type {
   AgenticRunCaseCheckLinkedToChange,
   AgenticRunComparisonVerdict,
   AgenticRunMockFallback,
+  AgenticRunNotCausedByChange,
   AgenticRunNotTestableCategory,
   AgenticRunProgressCaseStatus,
   AgenticRunResultCaseOutcome,
@@ -156,6 +157,12 @@ export interface AgentSwarmCaseSummary {
   caseIndex: number;
   status: AgenticRunProgressCaseStatus;
   blockedBy?: AgenticRunBlockedBy;
+  /**
+   * True for a blocked case whose failure the independent checker judged real
+   * but already in the app before the pull request: an existing issue, not
+   * caused by this change. Still counted as blocked. Omitted otherwise.
+   */
+  existingIssue?: boolean;
   title: string;
   outcomeSummary?: string;
   /**
@@ -172,9 +179,9 @@ export interface AgentSwarmCaseSummary {
    */
   usedSyntheticMockData: boolean;
   /**
-   * True when a test environment setup issue blocked the case against the live
-   * backend and its result comes from a retry with mocked API responses: a
-   * pass verified the frontend only, not the backend.
+   * True when this case ran against mocked API responses on a live-backend
+   * run (either via a mock-fallback retry or per-case mocked saved-flow replay):
+   * a pass verified the frontend only, not the backend.
    */
   mockedBackend: boolean;
 }
@@ -253,6 +260,15 @@ export interface AgentSwarmCaseCheck {
    */
   linkedToChange?: AgenticRunCaseCheckLinkedToChange;
   linkedToChangeRationale?: string;
+  /**
+   * For a verdict of `blocked` by the application, why the failure is not the
+   * pull request's: `existing-bug` (the app already had it), `existing-intended`
+   * (existing, deliberate behaviour) or `app-prerequisite` (the app lacks a
+   * state or code path the test needed). Omitted for older checks.
+   */
+  notCausedByChange?: AgenticRunNotCausedByChange;
+  /** The defect the app already had, for `existing-bug`. */
+  existingBug?: string;
   /** Set when checking could not complete and the original verdict was kept. */
   error?: string;
 }
@@ -282,6 +298,8 @@ export interface AgentSwarmCaseResponse {
   title: string;
   status: AgenticRunProgressCaseStatus;
   blockedBy?: AgenticRunBlockedBy;
+  /** See {@link AgentSwarmCaseSummary.existingIssue}. */
+  existingIssue?: boolean;
   outcomeSummary?: string;
   /** Evidence-backed explanation of the underlying cause, when established. */
   diagnosis?: string;
@@ -304,6 +322,12 @@ export interface AgentSwarmCaseResponse {
    * reported. Omitted when the case was not retried.
    */
   mockFallback?: AgenticRunMockFallback;
+  /**
+   * True when this case ran against mocked API responses on a live-backend
+   * run (either via a mock-fallback retry or per-case mocked saved-flow replay):
+   * a pass verified the frontend only, not the backend. Omitted when false.
+   */
+  mockedBackend?: boolean;
   /**
    * Backend failures and page errors during the reported run; omitted when the
    * run left none. A failure that depends on them may be environmental.

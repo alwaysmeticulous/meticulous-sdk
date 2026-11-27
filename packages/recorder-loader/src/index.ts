@@ -1,3 +1,12 @@
-export { loadAndStartRecorder, tryLoadAndStartRecorder } from "./loader";
-export { tryInstallMeticulousIntercepts } from "./install-meticulous-intercepts";
+export {
+  loadAndStartRecorder,
+  tryLoadAndStartRecorder,
+  type Recorder,
+} from "./loader";
+export type { LoaderOptions } from "./loader.types";
+export {
+  tryInstallMeticulousIntercepts,
+  type Interceptor,
+  type InterceptorOptions,
+} from "./install-meticulous-intercepts";
 export { stopIntercepting } from "./early-network-recorder";

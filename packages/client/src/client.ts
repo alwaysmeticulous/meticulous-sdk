@@ -1,17 +1,24 @@
-import {
-  initLogger,
-  executeWithRetry,
-  logProgress,
-  meticulousFetch,
-} from "@alwaysmeticulous/common";
+import { initLogger, logProgress } from "@alwaysmeticulous/common";
 import type log from "loglevel";
 import type { Dispatcher, RequestInit } from "undici";
-import { getApiToken, resolveAuthToken } from "./api-token.utils";
+import {
+  getApiToken,
+  readFileBasedToken,
+  resolveAuthToken,
+} from "./api-token.utils";
 import type { AuthTokenResolution } from "./auth-resolution.types";
+import { hasGitHubActionsOidcEnv } from "./ci-oidc/ci-oidc-auth";
 import {
   maybeEnrichMissingAuthFetchError,
   maybeTagRejectedCredentialsError,
 } from "./errors";
+import {
+  buildUserAgent,
+  declareClientAppInfo,
+  describeRuntime,
+  makeRequest,
+  type MakeRequestOptions,
+} from "./http-request";
 import { performOAuthLogin } from "./oauth/oauth-login";
 import { getStoredOAuthTokens } from "./oauth/oauth-token-store";
 import { isOAuthJwt } from "./oauth/oauth-utils";
@@ -21,72 +28,13 @@ import type {
   RequestConfig,
   Response,
 } from "./types/client.types";
-import { VERSION } from "./version";
 
-const DEFAULT_TIMEOUT = 60_000;
-const BASE_API_URL = "https://app.meticulous.ai/api/";
-
-// Bun and Deno both report a compatible Node version in `process.versions.node`,
-// so they're checked first — otherwise their users would be counted as Node.
-// Exported for unit testing; not re-exported from the package index.
-export const describeRuntime = ({
-  bun,
-  deno,
-  node,
-}: NodeJS.ProcessVersions): string => {
-  if (bun) {
-    return `bun/${bun}`;
-  }
-  if (deno) {
-    return `deno/${deno}`;
-  }
-  return `node/${node}`;
-};
-
-// Sent on every request so the backend can attribute traffic to a client
-// version and JS runtime (queryable in Datadog) — the runtime is what decides
-// whether raising the SDK's `engines` floor breaks a customer's CI. This package
-// is Node-only (it imports undici's fetch), so setting User-Agent is allowed.
-// Callers may override it by passing their own `user-agent` header.
-const USER_AGENT = `@alwaysmeticulous/client/${VERSION} ${describeRuntime(process.versions)}`;
-
-// Consumers can append their own identity to the User-Agent so backend logs
-// attribute traffic to a specific consumer and version (e.g.
-// `report-diffs-action/cloud-compute@v1`). The suffix is taken from the
-// `appInfo` client option, falling back to the
-// METICULOUS_CLIENT_USER_AGENT_SUFFIX env var — the env var covers clients that
-// are created deep inside dependencies (e.g. the remote-replay-launcher builds
-// its own client) where threading an option through is not possible.
-const USER_AGENT_SUFFIX_ENV_VAR = "METICULOUS_CLIENT_USER_AGENT_SUFFIX";
-
-// Exported for unit testing; not re-exported from the package index.
-export const buildUserAgent = (appInfo?: string): string => {
-  const suffix =
-    appInfo?.trim() || process.env[USER_AGENT_SUFFIX_ENV_VAR]?.trim();
-  return suffix ? `${USER_AGENT} ${suffix}` : USER_AGENT;
-};
-
-/**
- * Declares which entry point this process is, for the `User-Agent` of every
- * client it creates — including clients built deep inside dependencies, which is
- * why this goes through the environment rather than the `appInfo` option.
- *
- * Call it once at process start, before any client is created. Its purpose is to
- * make an entry point distinguishable from *direct library use*: a process that
- * never declares anything reports the bare client `User-Agent`, which is
- * therefore the signature of code that imported this package and called it
- * directly.
- *
- * An identity already present in the environment wins, so an outer consumer that
- * labelled the process (e.g. a GitHub Action that then invokes the CLI) keeps
- * its attribution rather than having it overwritten by the inner entry point.
- */
-export const declareClientAppInfo = (appInfo: string): void => {
-  // Treats a blank value as absent: an empty env var would otherwise suppress
-  // the label entirely, since `buildUserAgent` discards a blank suffix.
-  if (!process.env[USER_AGENT_SUFFIX_ENV_VAR]?.trim()) {
-    process.env[USER_AGENT_SUFFIX_ENV_VAR] = appInfo;
-  }
+export {
+  buildUserAgent,
+  declareClientAppInfo,
+  describeRuntime,
+  makeRequest,
+  type MakeRequestOptions,
 };
 
 export interface ClientOptions {
@@ -106,147 +54,6 @@ export interface ClientOptions {
    */
   dispatcher?: Dispatcher;
 }
-
-export interface MakeRequestOptions {
-  url: string;
-  headers: Record<string, string>;
-  options: RequestInit;
-  config: RequestConfig<any>;
-  logger: log.Logger;
-}
-
-const makeSingleRequest = async <T>(
-  url: string,
-  options: RequestInit,
-  timeout?: number,
-): Promise<Response<T>> => {
-  const controller = new AbortController();
-  // A caller-supplied signal (deadline or cancellation) must abort the
-  // request too, not just the built-in timeout — and must stop the retry
-  // loop from re-attempting an abandoned request.
-  const callerSignal = options.signal;
-  const forwardAbort = (): void => controller.abort();
-  if (callerSignal != null) {
-    if (callerSignal.aborted) {
-      controller.abort();
-    } else {
-      callerSignal.addEventListener("abort", forwardAbort, { once: true });
-    }
-  }
-  const timeoutId = setTimeout(() => {
-    controller.abort();
-  }, timeout ?? DEFAULT_TIMEOUT);
-  let response: Awaited<ReturnType<typeof meticulousFetch>>;
-  try {
-    response = await meticulousFetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-  } finally {
-    // Also on a failed or aborted fetch: the timer is ref'd, so leaking it
-    // would keep the caller's process alive for the rest of the timeout.
-    clearTimeout(timeoutId);
-    callerSignal?.removeEventListener("abort", forwardAbort);
-  }
-  const responseHeaders: Record<string, string> = {};
-  response.headers.forEach((value: string, key: string) => {
-    responseHeaders[key] = value;
-  });
-
-  let data: T;
-  const contentType = response.headers.get("content-type");
-  if (contentType && contentType.includes("application/json")) {
-    data = (await response.json()) as T;
-  } else {
-    data = (await response.text()) as T;
-  }
-
-  if (!response.ok) {
-    const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
-    (error as any).response = {
-      status: response.status,
-      statusText: response.statusText,
-      data,
-      headers: responseHeaders,
-    };
-    (error as any).config = { url, ...options };
-    throw error;
-  }
-
-  return {
-    data,
-    status: response.status,
-    statusText: response.statusText,
-    headers: responseHeaders,
-  };
-};
-
-const combineUrls = (baseUrl: string, path: string): string => {
-  const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-  const relativePath = path.startsWith("/") ? path.slice(1) : path;
-  return `${base}/${relativePath}`;
-};
-
-export const makeRequest = async <T>(
-  requestOptions: MakeRequestOptions,
-): Promise<Response<T>> => {
-  const { url, headers, options, config = {}, logger } = requestOptions;
-  let finalUrl = combineUrls(getApiUrl(), url);
-
-  const finalHeaders = {
-    "Content-Type": "application/json",
-    "user-agent": buildUserAgent(),
-    ...headers,
-    ...config.headers,
-    ...options.headers,
-  };
-
-  if (config.params) {
-    const urlWithParams = new URL(finalUrl);
-    Object.entries(config.params).forEach(([key, value]) => {
-      if (value === undefined || value === null) {
-        return;
-      }
-      // An array becomes a repeated param (`?glob=a&glob=b`), which is how
-      // NestJS hands the endpoint an array. Stringifying it instead would
-      // comma-join silently, and a comma is legal inside the values (file
-      // globs, most obviously).
-      if (Array.isArray(value)) {
-        value.forEach((item) => {
-          if (item !== undefined && item !== null) {
-            urlWithParams.searchParams.append(key, String(item));
-          }
-        });
-        return;
-      }
-      urlWithParams.searchParams.append(key, String(value));
-    });
-    finalUrl = urlWithParams.toString();
-  }
-
-  const requestInit: RequestInit = {
-    ...options,
-    ...(config.signal != null ? { signal: config.signal } : {}),
-    headers: finalHeaders,
-  };
-
-  const attempt = () =>
-    makeSingleRequest<T>(finalUrl, requestInit, config.timeout);
-
-  if (config.retry === false) {
-    return await attempt();
-  }
-
-  return await executeWithRetry(attempt, {
-    // A caller-aborted request is never re-attempted, even mid-backoff: the
-    // deadline or cancellation that aborted it stands even if the network
-    // error looks transient.
-    signal: config.signal,
-    logger,
-    operationDescription: `${requestInit.method ?? "GET"} ${new URL(finalUrl).pathname}`,
-    ...config.retry,
-  });
-};
 
 type StaticToken = string | null | AuthTokenResolution;
 
@@ -404,8 +211,14 @@ const resolveAuthTokenWithOAuthLogin = async (
   const isInteractive = options.enableOAuthLogin && isInteractiveContext();
 
   // A rejected refresh has already cleared the store, so this still logs in
-  // again; only a transient refresh failure leaves tokens behind.
-  if (!resolution.token && isInteractive && getStoredOAuthTokens() == null) {
+  // again; only a transient refresh failure or explicit CI OIDC attempt skips
+  // launching a browser login.
+  if (
+    resolution.token === null &&
+    resolution.missingReason.kind !== "ci-oidc-failed" &&
+    isInteractive &&
+    getStoredOAuthTokens() == null
+  ) {
     const tokens = await performOAuthLogin();
     resolution = { token: tokens.accessToken };
   }
@@ -413,7 +226,10 @@ const resolveAuthTokenWithOAuthLogin = async (
   if (!resolution.token) {
     // See the matching logProgress in createClient for why not logger.debug.
     logProgress(
-      "No usable Meticulous login or API token found; proceeding with unauthenticated requests",
+      resolution.token === null &&
+        resolution.missingReason.kind === "ci-oidc-failed"
+        ? `CI OIDC authentication failed (${resolution.missingReason.detail}); proceeding with unauthenticated requests`
+        : "No usable Meticulous login or API token found; proceeding with unauthenticated requests",
     );
     return resolution;
   }
@@ -460,10 +276,20 @@ export const createClientWithOAuth = async (
   // (expired, rejected, cleared) rather than by the server rejecting a stale
   // token.
   const usingOAuth = !options.apiToken && getStoredOAuthTokens() != null;
+  const usingRefreshableCiOidc =
+    !options.apiToken &&
+    !usingOAuth &&
+    initial.token != null &&
+    hasGitHubActionsOidcEnv() &&
+    !process.env["METICULOUS_API_TOKEN"] &&
+    !process.env["METICULOUS_OIDC_TOKEN"]?.trim() &&
+    readFileBasedToken() == null;
 
   const token: TokenProvider = usingOAuth
     ? async () => reresolveOAuthToken(options.apiToken)
-    : initial;
+    : usingRefreshableCiOidc
+      ? async () => resolveAuthToken(options.apiToken)
+      : initial;
 
   return buildClient(token, initLogger(), options.appInfo, options.dispatcher);
 };
@@ -485,10 +311,3 @@ const reresolveOAuthToken = async (
 const isAuthTokenResolution = (
   token: StaticToken,
 ): token is AuthTokenResolution => token != null && typeof token === "object";
-
-const getApiUrl = () => {
-  if (process.env["METICULOUS_API_URL"]) {
-    return process.env["METICULOUS_API_URL"];
-  }
-  return BASE_API_URL;
-};

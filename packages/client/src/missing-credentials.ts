@@ -84,6 +84,12 @@ const adviseOnMissingCredential = (reason: MissingCredentialReason): string => {
       return `${RETRY_ADVICE} ${API_TOKEN_ONLY_COMMAND_ADVICE}`;
     case "login-not-used":
       return API_TOKEN_ONLY_ADVICE;
+    case "ci-oidc-failed":
+      return (
+        "Check your project's CI trust policy in Project Settings (and set " +
+        "METICULOUS_PROJECT if multiple projects share this repository), or " +
+        "set METICULOUS_API_TOKEN / pass --apiToken instead."
+      );
     case "not-logged-in":
     case "login-expired":
     case "login-rejected":
@@ -134,6 +140,8 @@ const describeMissingCredentialReason = (
         "use your Meticulous login, and no API token was passed or found in " +
         "METICULOUS_API_TOKEN or the Meticulous config file."
       );
+    case "ci-oidc-failed":
+      return `CI OIDC authentication failed (${reason.detail}), and no API token is set.`;
     default: {
       const unreachable: never = reason;
       return unreachable;

@@ -21,6 +21,7 @@ export const formatSwarmRunCase = (
   add("title", testCase.title);
   add("status", testCase.status);
   add("blockedBy", testCase.blockedBy);
+  add("existingIssue", testCase.existingIssue === true ? "true" : undefined);
   add("outcomeSummary", testCase.outcomeSummary);
   add("diagnosis", testCase.diagnosis);
   add("rationale", testCase.rationale);
@@ -100,6 +101,8 @@ export const formatSwarmRunCase = (
     add("check.reason", check.reason);
     add("check.linkedToChange", check.linkedToChange);
     add("check.linkedToChangeRationale", check.linkedToChangeRationale);
+    add("check.notCausedByChange", check.notCausedByChange);
+    add("check.existingBug", check.existingBug);
     add("check.error", check.error);
   }
   add("checkWithheld", testCase.checkWithheld);

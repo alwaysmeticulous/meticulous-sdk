@@ -42,6 +42,8 @@ export interface BuildScriptTagContext {
  *   {@link BuildScriptTagContext.isProduction}. This matches the Meticulous
  *   docs recommendation; non-production environments (localhost, staging,
  *   preview) will be tagged as such automatically.
+ * - `data-commit-hash` — from {@link ResolvedOptions.commitHash}, omitted when
+ *   no commit is configured.
  *
  * Any user-supplied {@link ResolvedOptions.attributes} are merged on top, so
  * callers can override the defaults (including
@@ -54,6 +56,7 @@ export const buildScriptTag = (
   const baseAttributes: Record<string, ScriptAttributeValue> = {
     "data-recording-token": options.recordingToken,
     "data-is-production-environment": ctx.isProduction ? "true" : "false",
+    "data-commit-hash": options.commitHash,
     src: options.snippetUrl,
   };
 

@@ -5,31 +5,39 @@
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
+      "@alwaysmeticulous/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./candidate-prs": {
+      "@alwaysmeticulous/source": "./src/candidate-prs/index.ts",
       "types": "./dist/candidate-prs/index.d.ts",
       "default": "./dist/candidate-prs/index.js"
     },
     "./constants": {
+      "@alwaysmeticulous/source": "./src/constants.ts",
       "types": "./dist/constants.d.ts",
       "default": "./dist/constants.js"
     },
     "./git-commit-sha": {
+      "@alwaysmeticulous/source": "./src/git-commit-sha.utils.ts",
       "types": "./dist/git-commit-sha.utils.d.ts",
       "default": "./dist/git-commit-sha.utils.js"
     },
     "./json": {
+      "@alwaysmeticulous/source": "./src/json.utils.ts",
       "types": "./dist/json.utils.d.ts",
       "default": "./dist/json.utils.js"
     },
     "./virtual-time-order": {
+      "@alwaysmeticulous/source": "./src/virtual-time-order.utils.ts",
       "types": "./dist/virtual-time-order.utils.d.ts",
       "default": "./dist/virtual-time-order.utils.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "typesVersions": {
     "*": {

@@ -7,7 +7,7 @@ const baseContext = {
   meticulousTokensUrl:
     "https://app.meticulous.ai/settings/acme/projects/web%20app/api-tokens",
   meticulousSessionsUrl:
-    "https://app.meticulous.ai/projects/acme/web%20app?tab=sessions",
+    "https://app.meticulous.ai/projects/acme/web%20app?tab=sessions&view=all",
   secretsUrl: "https://github.com/acme/web/settings/secrets/actions",
   secretsUrlLabel: "GitHub Actions secrets",
   githubConfigureProjectsUrl: null,

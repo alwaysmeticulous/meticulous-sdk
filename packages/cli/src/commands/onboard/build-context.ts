@@ -108,7 +108,9 @@ const buildDashboardUrls = (options: {
   return {
     meticulousSettingsUrl: settingsPath ? `${settingsPath}/repository` : null,
     meticulousTokensUrl: settingsPath ? `${settingsPath}/api-tokens` : null,
-    meticulousSessionsUrl: projectPath ? `${projectPath}?tab=sessions` : null,
+    meticulousSessionsUrl: projectPath
+      ? `${projectPath}?tab=sessions&view=all`
+      : null,
     githubConfigureProjectsUrl: orgPath
       ? `${orgPath}/integrations/github/configure-projects`
       : null,

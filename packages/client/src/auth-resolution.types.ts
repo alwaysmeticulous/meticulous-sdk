@@ -21,7 +21,12 @@ export type MissingCredentialReason =
    * while a still-valid OAuth login is stored: the caller authenticates with
    * an API token only, so it never used the login.
    */
-  | { kind: "login-not-used" };
+  | { kind: "login-not-used" }
+  /**
+   * CI OIDC credentials were present in the environment, but exchanging them
+   * for a Meticulous workflow token failed.
+   */
+  | { kind: "ci-oidc-failed"; detail: string };
 
 export type AuthTokenResolution =
   | { token: string }

@@ -1,5 +1,14 @@
 # @alwaysmeticulous/downloading-helpers
 
+## 3.13.0
+
+### Patch Changes
+
+- Updated dependencies [[`5fe16d8`](https://github.com/alwaysmeticulous/meticulous/commit/5fe16d8b03d5f913b80ba9bbe3644bc2d6675cbe), [`bd87e4b`](https://github.com/alwaysmeticulous/meticulous/commit/bd87e4bfe6cd39cac051a94bb1505edb8309ba7d), [`aa45985`](https://github.com/alwaysmeticulous/meticulous/commit/aa459857c0dcc6598905dab18b471da43efe8557), [`621995e`](https://github.com/alwaysmeticulous/meticulous/commit/621995e8164a906309854992cbd156c454c13878), [`1df4b48`](https://github.com/alwaysmeticulous/meticulous/commit/1df4b488adb4ec7208a9687f66764541879fe1b4), [`de2cc89`](https://github.com/alwaysmeticulous/meticulous/commit/de2cc895954a433bbed46f54836bb70832370a24)]:
+  - @alwaysmeticulous/client@3.13.0
+  - @alwaysmeticulous/api@3.13.0
+  - @alwaysmeticulous/common@3.12.0
+
 ## 3.12.0
 
 ### Patch Changes

@@ -1139,7 +1139,7 @@ The result is one of three shapes, told apart by \`outcome\`:
   "testRunId": "…",
   "status": null,
   "sourceDeploymentId": "…",
-  "testRunUrl": "https://app.meticulous.ai/projects/<org>/<project>/test-runs/<testRunId>"
+  "testRunUrl": "https://app.meticulous.ai/organizations/<org>/projects/<project>/test-runs/<testRunId>"
 }
 \`\`\`
 

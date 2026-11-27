@@ -1,5 +1,11 @@
 # @alwaysmeticulous/api
 
+## 3.13.0
+
+### Minor Changes
+
+- [#19253](https://github.com/alwaysmeticulous/meticulous/pull/19253) [`de2cc89`](https://github.com/alwaysmeticulous/meticulous/commit/de2cc895954a433bbed46f54836bb70832370a24) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Add `CustomDataSingletonInternalKey.PageClockShiftMs` (`met-page-clock-shift-ms`): how far a recording page's clock ran from real time. Replay adds it to the session start so a session recorded under a shifted clock replays at the time its page saw. Older consumers ignore the key.
+
 ## 3.12.0
 
 ### Minor Changes

@@ -344,6 +344,16 @@ export enum CustomDataSingletonInternalKey {
    * Present on recordings since ~May 2025.
    */
   CustomObjectTooLargeToSerialize = "met-custom-object-too-large-to-serialize",
+
+  /**
+   * How far the recording page's clock (`Date` and friends) ran ahead of real time, in
+   * milliseconds, as a decimal string; negative when it ran behind. The session's other
+   * timestamps (`urlHistory`, HAR entries) stay on real time, so replay starts its clock
+   * at the session start plus this shift to show the page the time it saw. Absent when the
+   * page ran on real time. Set by Meticulous's own recording browsers; replay ignores a
+   * shift of more than two years either way.
+   */
+  PageClockShiftMs = "met-page-clock-shift-ms",
 }
 
 export type CustomRecordingType =
@@ -362,6 +372,7 @@ export type CustomDataSingletonInternalValues = {
   [CustomDataSingletonInternalKey.Languages]: string;
   [CustomDataSingletonInternalKey.UserAgent]: string;
   [CustomDataSingletonInternalKey.CustomObjectTooLargeToSerialize]: CustomRecordingType;
+  [CustomDataSingletonInternalKey.PageClockShiftMs]: string;
 };
 
 export type CustomData = {

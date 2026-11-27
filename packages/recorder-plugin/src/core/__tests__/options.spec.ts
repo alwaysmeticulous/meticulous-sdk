@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveOptions } from "../options";
 
 describe("resolveOptions", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("throws when options is undefined", () => {
     expect(() => resolveOptions(undefined)).toThrow(
       /`recordingToken` is required/,
@@ -33,6 +37,7 @@ describe("resolveOptions", () => {
   });
 
   it("applies all defaults when only recordingToken is provided", () => {
+    vi.stubEnv("METICULOUS_APP_COMMIT_HASH", "");
     const resolved = resolveOptions({ recordingToken: "tok" });
     expect(resolved).toEqual({
       recordingToken: "tok",
@@ -40,6 +45,7 @@ describe("resolveOptions", () => {
       inject: "auto",
       placeholderAttribute: "data-meticulous",
       snippetUrl: "https://snippet.meticulous.ai/v1/meticulous.js",
+      commitHash: undefined,
       attributes: {},
     });
   });
@@ -60,5 +66,14 @@ describe("resolveOptions", () => {
     expect(resolved.placeholderAttribute).toBe("data-foo");
     expect(resolved.snippetUrl).toBe("https://example.test/snippet.js");
     expect(resolved.attributes).toBe(attributes);
+  });
+
+  it("does not infer the commit from CI or hosting-provider variables", () => {
+    vi.stubEnv("METICULOUS_APP_COMMIT_HASH", "");
+    vi.stubEnv("GITHUB_SHA", "merge-commit");
+    vi.stubEnv("VERCEL_GIT_COMMIT_SHA", "vercel-commit");
+    expect(
+      resolveOptions({ recordingToken: "tok" }).commitHash,
+    ).toBeUndefined();
   });
 });

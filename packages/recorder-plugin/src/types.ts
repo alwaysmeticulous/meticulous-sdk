@@ -72,6 +72,21 @@ export interface Options {
   snippetUrl?: string;
 
   /**
+   * Git commit SHA of the app build being recorded. Emitted as the
+   * `data-commit-hash` attribute, so every recorded session is tagged with
+   * the commit it was recorded on.
+   *
+   * Falls back to the `METICULOUS_APP_COMMIT_HASH` environment variable at
+   * build time. When neither is set, no commit is reported.
+   *
+   * Pass the SHA of a commit that stays in your repository, such as your
+   * hosting provider's commit variable (e.g. `VERCEL_GIT_COMMIT_SHA`). On
+   * GitHub Actions `pull_request` builds, `GITHUB_SHA` is a temporary merge
+   * commit that GitHub deletes once the pull request closes.
+   */
+  commitHash?: string;
+
+  /**
    * Extra attributes to add to the injected `<script>` tag, e.g. `nonce` or
    * `data-is-production-environment`. String values are emitted verbatim
    * (escaped). `true` emits a boolean attribute (no value). `false`, `null`,
@@ -86,5 +101,6 @@ export interface ResolvedOptions {
   inject: "auto" | "replace";
   placeholderAttribute: string;
   snippetUrl: string;
+  commitHash: string | undefined;
   attributes: Record<string, ScriptAttributeValue>;
 }

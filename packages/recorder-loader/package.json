@@ -1,8 +1,7 @@
 {
   "name": "@alwaysmeticulous/recorder-loader",
-  "version": "3.12.0",
+  "version": "3.13.0",
   "license": "ISC",
-  "source": "src/index.ts",
   "main": "dist/index.js",
   "module": "dist/module.js",
   "types": "dist/index.d.ts",
@@ -12,8 +11,8 @@
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf dist tsconfig.tsbuildinfo",
-    "dev": "parcel watch",
-    "build": "parcel build",
+    "dev": "tsdown --watch",
+    "build": "tsdown",
     "format": "prettier --write src",
     "lint": "oxlint --type-aware src",
     "lint:commit": "eslint --cache $(git diff --relative --name-only --diff-filter=ACMRTUXB master | grep  -E \"(.js$|.ts$|.tsx$)\")",
@@ -24,7 +23,7 @@
     "@alwaysmeticulous/sdk-bundles-api": "workspace:*"
   },
   "devDependencies": {
-    "parcel": "^2.15.2"
+    "tsdown": "^0.21.7"
   },
   "author": {
     "name": "The Meticulous Team",

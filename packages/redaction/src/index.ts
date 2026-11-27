@@ -9,3 +9,7 @@ export * from "./generic/redact-nested-fields/pattern-based-redactors";
 export * from "./generic/redact-email";
 export * from "./generic/redact-url";
 export * from "./generic/redact-string";
+export type {
+  Redactor,
+  RedactorsFor,
+} from "./generic/redact-nested-fields/utils/redactors-for";

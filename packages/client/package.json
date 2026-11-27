@@ -1,10 +1,25 @@
 {
   "name": "@alwaysmeticulous/client",
-  "version": "3.12.0",
+  "version": "3.13.0",
   "description": "Helper methods for using the Meticulous backend API",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "@alwaysmeticulous/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./dist/api/project-deployments.api": {
+      "@alwaysmeticulous/source": "./src/api/project-deployments.api.ts",
+      "types": "./dist/api/project-deployments.api.d.ts",
+      "default": "./dist/api/project-deployments.api.js"
+    },
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist"
   ],

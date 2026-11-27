@@ -47,10 +47,16 @@ export default defineNuxtModule<Options>({
       src: resolved.snippetUrl,
       "data-recording-token": resolved.recordingToken,
       "data-is-production-environment": isProduction ? "true" : "false",
+      ...(resolved.commitHash !== undefined
+        ? { "data-commit-hash": resolved.commitHash }
+        : {}),
     };
 
     for (const [key, val] of Object.entries(resolved.attributes)) {
-      if (val === false || val === null || val === undefined) continue;
+      if (val === false || val === null || val === undefined) {
+        delete scriptEntry[key];
+        continue;
+      }
       scriptEntry[key] = val === true ? true : val;
     }
 

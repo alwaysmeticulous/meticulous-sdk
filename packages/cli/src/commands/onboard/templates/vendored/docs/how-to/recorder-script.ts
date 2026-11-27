@@ -136,4 +136,14 @@ ${POST_TAB_CONTENT}
 {% /tab %}
 
 {% /tabs %}
+
+## Tag sessions with your app's commit
+
+Optionally, tell the recorder which commit your app was built from, and every recorded session is tagged with it. Use whichever fits your setup:
+
+- A \`data-commit-hash="<commit sha>"\` attribute on the recorder script tag.
+- The \`commitHash\` option of \`@alwaysmeticulous/recorder-plugin\`, or the \`METICULOUS_APP_COMMIT_HASH\` environment variable at build time.
+- The \`commitHash\` option of \`tryLoadAndStartRecorder\` in \`@alwaysmeticulous/recorder-loader\`.
+
+The value is read when the recorder starts, so inject it at build time, for example from your hosting provider's commit variable (\`VERCEL_GIT_COMMIT_SHA\` on Vercel). Pass a commit that stays in your repository: on GitHub Actions \`pull_request\` builds, \`GITHUB_SHA\` is a temporary merge commit that GitHub deletes once the pull request closes.
 `;

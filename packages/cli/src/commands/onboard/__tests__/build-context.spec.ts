@@ -102,7 +102,7 @@ describe("buildOnboardContext", () => {
       meticulousTokensUrl:
         "https://app.meticulous.ai/settings/acme/projects/web/api-tokens",
       meticulousSessionsUrl:
-        "https://app.meticulous.ai/projects/acme/web?tab=sessions",
+        "https://app.meticulous.ai/projects/acme/web?tab=sessions&view=all",
       githubConfigureProjectsUrl:
         "https://app.meticulous.ai/organizations/acme/integrations/github/configure-projects",
       secretsUrl: "https://github.com/acme/web/settings/secrets/actions",

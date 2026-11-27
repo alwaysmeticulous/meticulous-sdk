@@ -1,5 +1,19 @@
 # @alwaysmeticulous/cli
 
+## 3.13.0
+
+### Minor Changes
+
+- [#19322](https://github.com/alwaysmeticulous/meticulous/pull/19322) [`5fe16d8`](https://github.com/alwaysmeticulous/meticulous/commit/5fe16d8b03d5f913b80ba9bbe3644bc2d6675cbe) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Agent swarm: mark a blocked case whose failure already existed in the app before the pull request as an existing issue. The client adds an optional `existingIssue` to case summaries and case responses, `notCausedByChange` and `existingBug` to failure checks, and `notCausedByChange` to result cases and failures. `agent agent-swarm-run` adds a trailing `existingIssue` column, and `agent agent-swarm-run-case` prints `existingIssue`, `check.notCausedByChange` and `check.existingBug` when present.
+
+- [#19414](https://github.com/alwaysmeticulous/meticulous/pull/19414) [`aa45985`](https://github.com/alwaysmeticulous/meticulous/commit/aa459857c0dcc6598905dab18b471da43efe8557) Thanks [@Genora51](https://github.com/Genora51)! - Add CI OIDC token exchange support (`exchangeCiOidcToken`, `requestGitHubActionsOidcToken`, `resolveCiOidcAccessToken`), automatic CI OIDC fallback in `resolveAuthToken`, and the `meticulous auth exchange-oidc` CLI command.
+
+### Patch Changes
+
+- [#19387](https://github.com/alwaysmeticulous/meticulous/pull/19387) [`621995e`](https://github.com/alwaysmeticulous/meticulous/commit/621995e8164a906309854992cbd156c454c13878) Thanks [@linpengzhang](https://github.com/linpengzhang)! - Add an optional `mockedBackend` flag to `AgenticRunResultCase` and `AgentSwarmCaseResponse` to mark live-backend cases that executed against recorded mocks (either mock-fallback retries or saved flows replayed on mocks), and update `agent agent-swarm-run` help text accordingly.
+
+- [#19292](https://github.com/alwaysmeticulous/meticulous/pull/19292) [`b5199fe`](https://github.com/alwaysmeticulous/meticulous/commit/b5199fe741ed0b8348f0336d918c33ebc5fed0e1) Thanks [@narobertson42](https://github.com/narobertson42)! - `meticulous onboard` links to the All sessions view of the project's Sessions tab, and its bundled docs call the project's selected sessions the Golden set.
+
 ## 3.12.0
 
 ### Minor Changes

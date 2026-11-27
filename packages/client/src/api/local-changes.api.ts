@@ -68,7 +68,7 @@ export interface RangeCoverageSummary {
   /** Lines of the range at least one base session reaches. */
   linesReachedByBase: number;
   reachingSessionCount: number;
-  /** Up to 20, sorted. */
+  /** Up to 20: the response's relevant sessions first, each part sorted. */
   reachingSessionIds: string[];
   /** Set when the head test run's selection is known. */
   linesReachedBySelected?: number;

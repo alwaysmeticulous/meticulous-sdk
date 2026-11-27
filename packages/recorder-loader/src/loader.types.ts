@@ -12,6 +12,16 @@ interface BaseLoaderOptions {
 
   uploadIntervalMs?: number;
   snapshotLinkedStylesheets?: boolean;
+
+  /**
+   * Git commit SHA of the app build being recorded, e.g. injected at build
+   * time from your hosting provider's commit variable. Recorded sessions are
+   * tagged with it.
+   *
+   * Pass the SHA of a commit that stays in your repository. On GitHub Actions
+   * `pull_request` builds, `GITHUB_SHA` is a temporary merge commit that
+   * GitHub deletes once the pull request closes.
+   */
   commitHash?: string;
 
   /**

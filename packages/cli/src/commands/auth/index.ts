@@ -1,4 +1,5 @@
 import type { CommandModule } from "yargs";
+import { exchangeOidcCommand } from "./exchange-oidc.command";
 import { getProjectCommand } from "./get-project.command";
 import { listProjectsCommand } from "./list-projects.command";
 import { loginCommand } from "./login.command";
@@ -14,6 +15,7 @@ export const authCommand: CommandModule = {
       .command(loginCommand)
       .command(whoamiCommand)
       .command(logoutCommand)
+      .command(exchangeOidcCommand)
       .command(getProjectCommand)
       .command(setProjectCommand)
       .command(listProjectsCommand)

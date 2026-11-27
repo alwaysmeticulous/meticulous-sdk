@@ -1,4 +1,5 @@
 import type { FlagOverrideInjectionRecord } from "@alwaysmeticulous/api";
+import { isFetchError, maybeEnrichFetchError } from "../errors";
 import type { MeticulousClient } from "../types/client.types";
 import type {
   ContainerEnvVariable,
@@ -241,6 +242,24 @@ export type AgenticRunResultCaseOutcome =
   | "skipped";
 
 export type AgenticRunBlockedBy = "application" | "environment";
+
+export type AgenticRunBlockedReason = "donor-session-missing";
+
+/**
+ * Why the independent check found a failure the application blocked was not
+ * the pull request's: `existing-bug`, a defect the app already had before the
+ * change; `existing-intended`, existing behaviour the source shows is
+ * deliberate; `app-prerequisite`, a state or code path the test needed that
+ * the app does not have. Judged from the source; nothing reruns the base.
+ */
+export const AGENTIC_RUN_NOT_CAUSED_BY_CHANGE_REASONS = [
+  "existing-bug",
+  "existing-intended",
+  "app-prerequisite",
+] as const;
+
+export type AgenticRunNotCausedByChange =
+  (typeof AGENTIC_RUN_NOT_CAUSED_BY_CHANGE_REASONS)[number];
 
 export const AGENTIC_RUN_SETUP_ISSUE_CATEGORIES = [
   "missingTestData",
@@ -497,6 +516,16 @@ export type AgenticRunCaseRelevance = "high" | "medium" | "low";
  * recorded while running it. One agentic run produces many of these.
  */
 export type AgenticCaseProvenance = "new" | "reused" | "repaired";
+
+/** The other pull request's case a case started from. */
+export interface AgenticRunCaseAdoption {
+  runId: string;
+  caseIndex: number;
+  title: string;
+  pullRequestNumber?: string;
+  /** What the case agent changed from it, and why. */
+  adaptation?: string;
+}
 
 /**
  * Where the mocked API responses backing a case's reported run came from.
@@ -766,6 +795,13 @@ export interface AgenticRunCaseCheck {
   /** One sentence on what decided `linkedToChange`. */
   linkedToChangeRationale?: string;
   /**
+   * For a verdict of `blocked` by the application, why the failure is not the
+   * pull request's. Absent on checks written before this field existed.
+   */
+  notCausedByChange?: AgenticRunNotCausedByChange;
+  /** The defect the app already had, in one sentence, for `existing-bug`. */
+  existingBug?: string;
+  /**
    * Markdown diagnosis for an upheld failure. Rendered from `rootCause` for
    * checks that have one, so readers that predate it still show guidance.
    */
@@ -834,9 +870,9 @@ export interface AgenticRunCaseFailure {
    */
   id: string;
   kind: AgenticRunCaseFailureKind;
-  /** The step it failed: its earliest occurrence's. */
+  /** The step it failed: the earliest of its occurrences' steps marked fail. */
   stepIndex?: number;
-  /** The earliest occurrence's screenshot, for a visible defect. */
+  /** Its screenshot at that step (else its earliest), for a visible defect. */
   screenshotName?: string;
   /** The finding's `key`, for a visual failure on older blobs. */
   visualFindingKey?: string;
@@ -848,6 +884,11 @@ export interface AgenticRunCaseFailure {
   causeId?: string;
   /** `fail` while upheld, including when it was never checked. */
   outcome: AgenticRunCaseCheckVerdict;
+  /**
+   * Its check's `notCausedByChange` while `outcome` is `blocked`, kept here
+   * because `check` never reaches the result blob.
+   */
+  notCausedByChange?: AgenticRunNotCausedByChange;
   /**
    * Source-sensitive: never in the result blob. Readers join it from the
    * checks artifact or the traces, by `id`.
@@ -1399,6 +1440,12 @@ export interface AgenticRunResultCase {
   /** Short human-readable name of the flow, unique within this run. */
   title: string;
   /**
+   * The case of another pull request's run this case started from, with what
+   * the case agent changed from it. Absent for a case written from scratch or
+   * inherited from an earlier run on this PR.
+   */
+  adoptedFrom?: AgenticRunCaseAdoption;
+  /**
    * How this run came by the case: authored fresh, inherited and re-run
    * unchanged, or inherited and edited. Derived by the worker from the case
    * file's hash — never declared by the agent.
@@ -1413,6 +1460,15 @@ export interface AgenticRunResultCase {
   outcome: AgenticRunResultCaseOutcome;
   /** What prevented verification. Present only when `outcome` is `blocked`. */
   blockedBy?: AgenticRunBlockedBy;
+  /** Narrow machine-readable block cause when `outcome` is `blocked`. */
+  blockedReason?: AgenticRunBlockedReason;
+  /**
+   * Why the independent check found the case's failures were not the pull
+   * request's. Present only when `outcome` is `blocked` and `blockedBy` is
+   * `application`; `existing-bug` when any of its blocked failures is one, so
+   * the case found an existing issue rather than one the change caused.
+   */
+  notCausedByChange?: AgenticRunNotCausedByChange;
   /**
    * Actionable deployment/project setup problem that prevented a live-backend
    * run from evaluating this case. Present only when `outcome` is `blocked`.
@@ -1424,6 +1480,12 @@ export interface AgenticRunResultCase {
    * nothing about the backend.
    */
   mockFallback?: AgenticRunMockFallback;
+  /**
+   * True when this case ran against per-case recorded mocks inside an
+   * otherwise live-backend run (for example, saved-flow replay/repair on a
+   * staging-backend run): a pass verified the frontend only, not the backend.
+   */
+  mockedBackend?: boolean;
   /**
    * Concise user-visible account of what happened and, for a non-passing case,
    * the concrete reason. Optional for result blobs written by older workers.
@@ -2050,7 +2112,8 @@ export type AgenticResultArtifactKind =
   | "checks"
   | "case_coverage"
   | "plan"
-  | "project-files-usage";
+  | "project-files-usage"
+  | "flowReplay";
 
 export interface RequestAgenticResultUploadParams extends ProjectIdentifier {
   /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
@@ -2067,6 +2130,50 @@ export interface RequestAgenticResultUploadParams extends ProjectIdentifier {
 export interface RequestAgenticResultUploadResponse {
   uploadUrl: string;
 }
+
+export interface GetAgenticFlowReplayResultParams extends ProjectIdentifier {
+  /** The agentic run id the backend minted at launch (env `AGENTIC_RUN_ID`). */
+  agenticRunId?: string;
+}
+
+export interface GetAgenticFlowReplayResultResponse {
+  /** Presigned S3 download URL for `flow_replay.json`. */
+  url: string;
+}
+
+/**
+ * Fetches a presigned download URL for the run's `flow_replay.json`
+ * artifact, or returns `null` when the artifact has not been uploaded yet
+ * (HTTP 404).
+ */
+export const getAgenticFlowReplayResult = async ({
+  client,
+  projectId,
+  agenticRunId,
+  signal,
+}: GetAgenticFlowReplayResultParams & {
+  client: MeticulousClient;
+  signal?: AbortSignal | undefined;
+}): Promise<GetAgenticFlowReplayResultResponse | null> => {
+  const { data } = await client
+    .get<GetAgenticFlowReplayResultResponse>(
+      "agentic-session-generation/flow-replay-result",
+      {
+        params: {
+          ...(projectId ? { projectId } : {}),
+          ...(agenticRunId == null ? {} : { agenticRunId }),
+        },
+        signal,
+      },
+    )
+    .catch((error) => {
+      if (isFetchError(error) && error.response?.status === 404) {
+        return { data: null };
+      }
+      throw maybeEnrichFetchError(error);
+    });
+  return data;
+};
 
 /**
  * Requests a presigned URL for the run's result blob, so the worker PUTs the
@@ -2742,6 +2849,125 @@ export const getRecordedRequest = async ({
     `agentic-session-generation/recorded-requests/${encodeURIComponent(
       sessionId,
     )}/${encodeURIComponent(hash)}`,
+    { params: { ...(projectId ? { projectId } : {}) } },
+  );
+  return data;
+};
+
+/** A case another pull request's Agent swarm run wrote, passed and kept the files of. */
+export interface AgentSwarmPriorCaseSummary {
+  runId: string;
+  caseIndex: number;
+  title: string;
+  outcome: "pass";
+  /** Why that run thought the case was worth testing. */
+  flowSummary: string | null;
+  /** The path it opened first: its entry path, or its starting surface. */
+  entryPath: string | null;
+  /** Repo files of the diff regions that run assigned the case. */
+  scopeFiles: string[];
+  /**
+   * The recorded sessions its testcase loads. A session since deleted or
+   * expired leaves its setup unable to load the data it relied on.
+   */
+  sessionIds: string[];
+  commitSha: string;
+  createdAt: string;
+  /**
+   * Whether the case passed against a mocked backend: its run mocked the
+   * app's backend, or the case passed only on its retry with mocks.
+   */
+  usedLocalMocks: boolean | null;
+  /** Never a pull request closed without merging. */
+  pullRequest: {
+    number: string;
+    title: string | null;
+    /** Not merged means still open, or of unknown state. */
+    merged: boolean;
+  } | null;
+}
+
+export interface AgentSwarmPriorCaseMatch extends AgentSwarmPriorCaseSummary {
+  /** The search's relevant sessions this case's testcase loads, most relevant first. */
+  matchedSessionIds: string[];
+  /** The search's scope files this case's diff regions were also in, sorted. */
+  sharedScopeFiles: string[];
+}
+
+export interface SearchAgentSwarmPriorCasesParams extends ProjectIdentifier {
+  /**
+   * The sessions relevant to the run's change right now, most relevant
+   * first, from its relevant-sessions lookup. When given, only cases whose
+   * testcase loads one of them qualify.
+   */
+  sessionIds?: string[];
+  /**
+   * The path the new case opens first: its entry path, or its starting
+   * surface. Breaks ties, and qualifies cases when no sessions are given.
+   */
+  startPath?: string;
+  /**
+   * The new case's scope: the diff regions it targets, e.g.
+   * `src/Dashboard.tsx:42-58`. Cases whose own scope shares more of its
+   * files rank higher among those citing as many relevant sessions.
+   */
+  scope?: string[];
+  /** The device the new case runs on; laptop when omitted. */
+  device?: string;
+  limit?: number;
+}
+
+/**
+ * Passing cases of other pull requests' runs on the same device whose flow
+ * cites one of `sessionIds` (or, with none, that start on the same route as
+ * `startPath`), best first.
+ */
+export const searchAgentSwarmPriorCases = async ({
+  client,
+  projectId,
+  ...body
+}: SearchAgentSwarmPriorCasesParams & {
+  client: MeticulousClient;
+}): Promise<AgentSwarmPriorCaseMatch[]> => {
+  const { data } = await client.post<{ cases: AgentSwarmPriorCaseMatch[] }>(
+    "agentic-session-generation/prior-cases/search",
+    body,
+    projectIdQuery(projectId),
+  );
+  return data.cases;
+};
+
+export type GetAgentSwarmPriorCaseResponse =
+  | {
+      status: "found";
+      priorCase: AgentSwarmPriorCaseSummary;
+      /**
+       * Repo files the case's run executed, at that run's commit, from its
+       * per-case coverage. Empty when that coverage can't be read.
+       */
+      coveredFiles: string[];
+      /** The format of the `testcases.json` the entry came from. */
+      testcasesFormatVersion: number;
+      /** That run's persisted testcase entry, unchanged and unvalidated. */
+      testcase: unknown;
+    }
+  | { status: "missing" };
+
+/** One prior case with its persisted files, to start a new case from. */
+export const getAgentSwarmPriorCase = async ({
+  client,
+  projectId,
+  runId,
+  caseIndex,
+}: ProjectIdentifier & {
+  client: MeticulousClient;
+  runId: string;
+  caseIndex: number;
+}): Promise<GetAgentSwarmPriorCaseResponse> => {
+  const { data } = await client.get<GetAgentSwarmPriorCaseResponse>(
+    `agentic-session-generation/prior-cases/${encodeURIComponent(
+      runId,
+    )}/${caseIndex}`,
     { params: { ...(projectId ? { projectId } : {}) } },
   );
   return data;

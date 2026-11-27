@@ -37,6 +37,24 @@ export const resolveOptions = (
     placeholderAttribute:
       options?.placeholderAttribute ?? DEFAULT_PLACEHOLDER_ATTRIBUTE,
     snippetUrl: options?.snippetUrl ?? DEFAULT_SNIPPET_URL,
+    commitHash: resolveCommitHash(options?.commitHash),
     attributes,
   };
+};
+
+// Only explicit configuration is used. Hosting-provider build variables
+// (VERCEL_GIT_COMMIT_SHA, Netlify COMMIT_REF, CF_PAGES_COMMIT_SHA,
+// RENDER_GIT_COMMIT) name the commit that was built and could be inferred as
+// a further fallback. Generic CI variables (GITHUB_SHA, GitLab CI_COMMIT_SHA,
+// BITBUCKET_COMMIT) must not be: on pull request pipelines they name a
+// temporary merge commit, or a commit other than the one built.
+const resolveCommitHash = (
+  commitHash: string | undefined,
+): string | undefined => {
+  const fromOption = commitHash?.trim();
+  if (fromOption) {
+    return fromOption;
+  }
+  const fromEnv = process.env.METICULOUS_APP_COMMIT_HASH?.trim();
+  return fromEnv ? fromEnv : undefined;
 };

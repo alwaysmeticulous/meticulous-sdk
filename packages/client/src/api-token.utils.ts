@@ -5,6 +5,10 @@ import {
   initLogger,
 } from "@alwaysmeticulous/common";
 import type { AuthTokenResolution } from "./auth-resolution.types";
+import {
+  hasCiOidcEnv,
+  resolveCachedCiOidcTokenForAuth,
+} from "./ci-oidc/ci-oidc-auth";
 import { resolveOAuthAccessToken } from "./oauth/oauth-refresh";
 
 interface PersonalConfig {
@@ -72,6 +76,7 @@ export const getApiToken = (
  * 2. OAuth access token (with auto-refresh)
  * 3. METICULOUS_API_TOKEN env var
  * 4. Legacy ~/.meticulous/config.json
+ * 5. CI OIDC exchange (METICULOUS_OIDC_TOKEN or GitHub Actions OIDC)
  *
  * OAuth is preferred over the env var / legacy config file so that a logged-in
  * user is used unless they explicitly `meticulous auth logout`. An explicit
@@ -110,6 +115,22 @@ export const resolveAuthToken = async (
   if (fileToken) {
     logAuthSource(fileToken.path);
     return { token: fileToken.token };
+  }
+
+  if (hasCiOidcEnv()) {
+    try {
+      const ciOidcToken = await resolveCachedCiOidcTokenForAuth();
+      logAuthSource("CI OIDC");
+      return { token: ciOidcToken };
+    } catch (error) {
+      return {
+        token: null,
+        missingReason: {
+          kind: "ci-oidc-failed",
+          detail: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
   }
 
   return {

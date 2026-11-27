@@ -1,5 +1,14 @@
 # @alwaysmeticulous/recorder-loader
 
+## 3.13.0
+
+### Patch Changes
+
+- [#19171](https://github.com/alwaysmeticulous/meticulous/pull/19171) [`bcfd902`](https://github.com/alwaysmeticulous/meticulous/commit/bcfd90287d12b90823da8f6d79477dbffb4dee7d) Thanks [@AlexKuhnle](https://github.com/AlexKuhnle)! - Tag recorded sessions with the commit of the app build. The recorder plugin gains a `commitHash` option (falling back to the `METICULOUS_APP_COMMIT_HASH` build environment variable), emitted as `data-commit-hash` on the injected script. The recorder loader documents its existing `commitHash` option.
+
+- Updated dependencies []:
+  - @alwaysmeticulous/sdk-bundles-api@3.13.0
+
 ## 3.12.0
 
 ### Patch Changes

@@ -8,6 +8,7 @@ const baseOptions: ResolvedOptions = {
   inject: "auto",
   placeholderAttribute: "data-meticulous",
   snippetUrl: "https://snippet.meticulous.ai/v1/meticulous.js",
+  commitHash: undefined,
   attributes: {},
 };
 
